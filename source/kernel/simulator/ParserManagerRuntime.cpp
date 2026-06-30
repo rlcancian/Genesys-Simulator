@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <iostream>
 #include <filesystem>
+#include <exception>
 
 std::list<ParserChangesInformation*> ParserManager::aggregateChanges() {
 	std::list<ParserChangesInformation*> result;
@@ -23,8 +24,10 @@ std::list<ParserChangesInformation*> ParserManager::aggregateChanges() {
 				continue;
 			}
 			ParserChangesInformation* changes = mdd->_getParserChangesInformation();
-			if (changes != nullptr) {
+			if (changes != nullptr && changes->hasChanges()) {
 				result.push_back(changes);
+			} else {
+				delete changes;
 			}
 		}
 	}
@@ -50,42 +53,58 @@ bool ParserManager::connectNewParser(ParserManager::NewParser newParser, std::st
 		return false;
 	}
 
-	if (_dynamicLibraryHandle != nullptr) {
-		dlclose(_dynamicLibraryHandle);
-		_dynamicLibraryHandle = nullptr;
-	}
-
 	log("Loading: " + newParser.compiledParserFilename);
-	_dynamicLibraryHandle = dlopen(newParser.compiledParserFilename.c_str(), RTLD_NOW | RTLD_DEEPBIND);
-	if (_dynamicLibraryHandle == nullptr) {
+	void* oldLibraryHandle = _dynamicLibraryHandle;
+	void* newLibraryHandle = dlopen(newParser.compiledParserFilename.c_str(), RTLD_NOW | RTLD_DEEPBIND);
+	if (newLibraryHandle == nullptr) {
 		log("dlopen failed: " + std::string(dlerror()));
 		return false;
 	}
 	log("dlopen OK (with DEEPBIND for self-contained parser symbols)");
 
-	auto* createFn = reinterpret_cast<Parser_if* (*)(Model*, Sampler_if*)>(dlsym(_dynamicLibraryHandle, "genesys_createParser"));
+	auto* createFn = reinterpret_cast<Parser_if* (*)(Model*, Sampler_if*)>(dlsym(newLibraryHandle, "genesys_createParser"));
 	if (createFn == nullptr) {
 		log("dlsym genesys_createParser failed: " + std::string(dlerror()));
-		dlclose(_dynamicLibraryHandle);
-		_dynamicLibraryHandle = nullptr;
+		dlclose(newLibraryHandle);
 		return false;
 	}
 	log("dlsym OK");
 
-	Sampler_if* sampler = (_model->getParser() != nullptr) ? _model->getParser()->releaseSampler() : nullptr;
-	Parser_if* newParserInstance = createFn(_model, nullptr);
+	Parser_if* oldParser = _model->getParser();
+	Sampler_if* sampler = oldParser != nullptr ? oldParser->releaseSampler() : nullptr;
+	Parser_if* newParserInstance = nullptr;
+	try {
+		newParserInstance = createFn(_model, sampler);
+	} catch (const std::exception& e) {
+		log("genesys_createParser threw: " + std::string(e.what()));
+		if (oldParser != nullptr && sampler != nullptr) {
+			oldParser->setSamplerOwned(sampler);
+		}
+		dlclose(newLibraryHandle);
+		return false;
+	} catch (...) {
+		log("genesys_createParser threw an unknown exception");
+		if (oldParser != nullptr && sampler != nullptr) {
+			oldParser->setSamplerOwned(sampler);
+		}
+		dlclose(newLibraryHandle);
+		return false;
+	}
 	if (newParserInstance == nullptr) {
 		log("createFn returned nullptr");
-		dlclose(_dynamicLibraryHandle);
-		_dynamicLibraryHandle = nullptr;
+		if (oldParser != nullptr && sampler != nullptr) {
+			oldParser->setSamplerOwned(sampler);
+		}
+		dlclose(newLibraryHandle);
 		return false;
 	}
 	log("Parser created OK");
-	if (sampler != nullptr) {
-		newParserInstance->setSampler(sampler);
-	}
 
+	_dynamicLibraryHandle = newLibraryHandle;
 	_model->setParser(newParserInstance);
+	if (oldLibraryHandle != nullptr) {
+		dlclose(oldLibraryHandle);
+	}
 	log("New parser connected successfully.");
 	return true;
 }

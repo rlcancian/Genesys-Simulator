@@ -116,6 +116,10 @@ void ParserDefaultImpl2::setSampler(Sampler_if* _sampler) {
 	_setSamplerInternal(_sampler, false);
 }
 
+void ParserDefaultImpl2::setSamplerOwned(Sampler_if* sampler) {
+	_setSamplerInternal(sampler, true);
+}
+
 Sampler_if* ParserDefaultImpl2::getSampler() const {
 	return _wrapper.getSampler();
 }

@@ -328,6 +328,14 @@ TEST(SimulatorSupportTest, ParserChangesInformationSupportsMultilineAndOverwrite
     EXPECT_EQ(info.getfunctionProdutions(), "f1\nf2");
 }
 
+TEST(SimulatorSupportTest, ParserChangesInformationReportsWhetherAnySectionHasChanges) {
+	ParserChangesInformation changes;
+	EXPECT_FALSE(changes.hasChanges());
+
+	changes.setLexicalRules("[dD][eE][mM][oO] return DEMO;\n");
+	EXPECT_TRUE(changes.hasChanges());
+}
+
 TEST(SimulatorSupportTest, PluginInformationComponentConstructorConfiguresComponentMode) {
     PluginInformation info("Create", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
 

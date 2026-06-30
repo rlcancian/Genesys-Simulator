@@ -45,9 +45,10 @@ bool ModelDataManager::insert(ModelDataDefinition* anElement) {
 		ModelDataDefinition::CreateInternalData(anElement);
 		// Mark parser as stale if this element contributes parser changes.
 		ParserChangesInformation* changes = anElement->_getParserChangesInformation();
-		if (changes != nullptr) {
+		if (changes != nullptr && changes->hasChanges()) {
 			_parentModel->setParserIsStale(true);
 		}
+		delete changes;
 	}
 	return result;
 }

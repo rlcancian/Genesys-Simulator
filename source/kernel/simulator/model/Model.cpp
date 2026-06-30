@@ -364,6 +364,11 @@ double Model::parseExpression(const std::string expression, bool& success, std::
             for (auto* ch : allChanges) {
                 if (ch == nullptr) continue;
                 combined->setTokens(combined->gettokens() + ch->gettokens());
+                combined->setIncludes(combined->getincludes() + ch->getincludes());
+                combined->setTypeObjs(combined->gettypeObjs() + ch->gettypeObjs());
+                combined->setExpressions(combined->getexpressions() + ch->getexpressions());
+                combined->setExpressionProductions(combined->getexpressionProductions() + ch->getexpressionProductions());
+                combined->setAssignments(combined->getassignments() + ch->getassignments());
                 combined->setFunctionProdutions(combined->getfunctionProdutions() + ch->getfunctionProdutions());
                 combined->setLexicalRules(combined->getlexicalRules() + ch->getlexicalRules());
                 combined->setLexicalLiterals(combined->getlexicalLiterals() + ch->getlexicalLiterals());
@@ -378,6 +383,15 @@ double Model::parseExpression(const std::string expression, bool& success, std::
                 }
             } else {
                 errorMessage = "Lazy parser regeneration failed: generation error";
+                if (!result.bisonMessages.empty()) {
+                    errorMessage += "\nBison: " + result.bisonMessages;
+                }
+                if (!result.lexMessages.empty()) {
+                    errorMessage += "\nFlex: " + result.lexMessages;
+                }
+                if (!result.compilationMessages.empty()) {
+                    errorMessage += "\nCompilation: " + result.compilationMessages;
+                }
                 success = false;
                 return 0.0;
             }
@@ -401,7 +415,7 @@ void Model::setParser(Parser_if* parser) {
     }
     Sampler_if* currentSampler = (_parser != nullptr) ? _parser->releaseSampler() : nullptr;
     if (parser != nullptr && currentSampler != nullptr) {
-        parser->setSampler(currentSampler);
+        parser->setSamplerOwned(currentSampler);
     }
     delete _parser;
     _parser = parser;

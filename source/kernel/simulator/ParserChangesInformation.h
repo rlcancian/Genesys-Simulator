@@ -55,6 +55,8 @@ public: // gets and sets
 	std::string getlexicalLiterals() const;
 	void setLexicalLiterals(const std::string &newLexicalLiterals);
 
+	bool hasChanges() const;
+
 private:
 	std::string _includes = "";
 	std::string _tokens = "";

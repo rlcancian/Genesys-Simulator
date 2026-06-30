@@ -105,3 +105,16 @@ void ParserChangesInformation::setLexicalLiterals(const std::string &newLexicalL
 {
 	_lexicalLiterals = newLexicalLiterals;
 }
+
+bool ParserChangesInformation::hasChanges() const
+{
+	return !_includes.empty()
+		|| !_tokens.empty()
+		|| !_typeObjs.empty()
+		|| !_expressions.empty()
+		|| !_expressionProductions.empty()
+		|| !_assignments.empty()
+		|| !_functionProdutions.empty()
+		|| !_lexicalRules.empty()
+		|| !_lexicalLiterals.empty();
+}

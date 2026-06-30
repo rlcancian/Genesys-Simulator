@@ -307,7 +307,7 @@ bool ModelDataDefinition::_check(std::string& errorMessage) {
 }
 
 ParserChangesInformation* ModelDataDefinition::_getParserChangesInformation() {
-	return new ParserChangesInformation(); // if there is no override, return no changes
+	return nullptr; // if there is no override, return no changes
 }
 
 void ModelDataDefinition::_initBetweenReplications() {

@@ -502,7 +502,12 @@ TEST_F(ParserExpressionsTest, DynamicParserDemoPluginAddsNewFunction) {
     auto* combined = new ParserChangesInformation();
     for (ParserChangesInformation* ch : allChanges) {
         if (ch == nullptr) continue;
+        combined->setIncludes(combined->getincludes() + ch->getincludes());
         combined->setTokens(combined->gettokens() + ch->gettokens());
+        combined->setTypeObjs(combined->gettypeObjs() + ch->gettypeObjs());
+        combined->setExpressions(combined->getexpressions() + ch->getexpressions());
+        combined->setExpressionProductions(combined->getexpressionProductions() + ch->getexpressionProductions());
+        combined->setAssignments(combined->getassignments() + ch->getassignments());
         combined->setFunctionProdutions(combined->getfunctionProdutions() + ch->getfunctionProdutions());
         combined->setLexicalRules(combined->getlexicalRules() + ch->getlexicalRules());
         combined->setLexicalLiterals(combined->getlexicalLiterals() + ch->getlexicalLiterals());
@@ -543,4 +548,17 @@ TEST_F(ParserExpressionsTest, DynamicParserDemoPluginAddsNewFunction) {
 
     model->getDataManager()->remove(demo);
     delete demo;
+}
+
+TEST_F(ParserExpressionsTest, ConnectNewParserRejectsMissingLibraryWithMessage) {
+    ParserManager* pm = model->getParserManager();
+    ASSERT_NE(pm, nullptr);
+    pm->setModel(model);
+
+    ParserManager::NewParser parser;
+    parser.compiledParserFilename = "/tmp/genesys-parser-that-does-not-exist.so";
+    std::string errorMessage;
+
+    EXPECT_FALSE(pm->connectNewParser(parser, &errorMessage));
+    EXPECT_NE(errorMessage.find("compiled parser file not found"), std::string::npos);
 }

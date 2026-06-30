@@ -69,6 +69,15 @@ public:
 	 * documentation for lifetime/ownership details of the underlying instance.
 	 */
 	virtual Sampler_if* getSampler() const = 0;
+	/*!
+	 * \brief Sets the sampler and transfers ownership to this parser.
+	 * \param sampler Pointer to sampler instance now owned by the parser.
+	 *
+	 * This is used when replacing parser implementations at runtime. The default
+	 * implementation keeps older parser implementations source-compatible, but
+	 * concrete implementations that manage sampler ownership should override it.
+	 */
+	virtual void setSamplerOwned(Sampler_if* sampler) { setSampler(sampler); }
 	// @ToDo: (pequena alteração): Implement a method to get the TOKENS parsed. Example: If parsing "nq(queue1) < var1" return a list containing something like "fNQ tLPAR eQUEUE tRPAR tLESS eVARIABLE"
 	/*!
 	 * \brief getParser
