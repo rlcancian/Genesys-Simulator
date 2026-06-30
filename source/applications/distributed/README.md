@@ -56,6 +56,16 @@ from the project root and use a shell variable for brevity:
 APP=build/distributed/source/applications/distributed/genesys_distributed_app
 ```
 
+### Start two workers on free ports
+
+```bash
+WEB=build/distributed/source/applications/web/genesys_web_app
+pkill -f genesys_web_app           # make sure no stale worker holds the ports
+$WEB --port 8101 --max-requests 200 &
+$WEB --port 8102 --max-requests 200 &
+sleep 2
+```
+
 Via command-line arguments (no config file needed):
 
 ```bash
