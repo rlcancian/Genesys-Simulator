@@ -79,6 +79,8 @@ std::vector<std::string> runUserElementary(Simulator& simulator, unsigned short 
 
 } // namespace
 
+// Rule30FromUserSourceMatchesTextbook — a user-supplied Rule 30 body, compiled at runtime, must reproduce
+// the same textbook ground truth as the built-in engine (rows t0..t3 on width 9).
 TEST(UserDefinedCA, Rule30FromUserSourceMatchesTextbook) {
 	Simulator simulator;
 	std::string error;
@@ -92,6 +94,8 @@ TEST(UserDefinedCA, Rule30FromUserSourceMatchesTextbook) {
 	EXPECT_EQ(rows[3], "011011110");
 }
 
+// Rule90FromUserSourceMatchesSierpinski — a user-supplied Rule 90 body must reproduce the Sierpinski
+// ground truth (rows t0..t4 on width 11), proving runtime-compiled rules match the analytical result.
 TEST(UserDefinedCA, Rule90FromUserSourceMatchesSierpinski) {
 	Simulator simulator;
 	std::string error;
@@ -106,6 +110,8 @@ TEST(UserDefinedCA, Rule90FromUserSourceMatchesSierpinski) {
 	EXPECT_EQ(rows[4], "01000000010");
 }
 
+// UserRule90EqualsBuiltInElementary90 — strong equivalence check: the user rule and the built-in
+// LocalRule_Elementary(90) must produce byte-identical histories over a wide lattice and many steps.
 TEST(UserDefinedCA, UserRule90EqualsBuiltInElementary90) {
 	// The user-defined rule must produce identical output to the built-in LocalRule_Elementary(90)
 	// over many steps and a wider lattice (strong equivalence / consistency check).
@@ -144,6 +150,8 @@ TEST(UserDefinedCA, UserRule90EqualsBuiltInElementary90) {
 	EXPECT_EQ(userRows, builtInRows);
 }
 
+// BadUserCodeFailsGracefully — feeding the compiler invalid C++ must return false, leave the rule
+// not-ready, and report a non-empty error instead of crashing the simulator.
 TEST(UserDefinedCA, BadUserCodeFailsGracefully) {
 	// A compilation error in the user's rule must be reported, not crash, and leave the rule not-ready.
 	Simulator simulator;
@@ -159,6 +167,8 @@ TEST(UserDefinedCA, BadUserCodeFailsGracefully) {
 	EXPECT_FALSE(error.empty());
 }
 
+// GameOfLifeBlinkerOscillatesViaUserRule — Game of Life (B3/S23) written as a multi-statement user rule
+// over a 2D Moore neighborhood; a horizontal blinker must flip vertical after one step and back after two.
 TEST(UserDefinedCA, GameOfLifeBlinkerOscillatesViaUserRule) {
 	// 2D Game of Life (B3/S23) expressed as a user rule over a Moore neighborhood. A horizontal
 	// blinker (3 cells) must become vertical after one step and horizontal again after two (period 2).
@@ -211,6 +221,8 @@ TEST(UserDefinedCA, GameOfLifeBlinkerOscillatesViaUserRule) {
 	EXPECT_EQ(vertical, expectedVertical);
 }
 
+// ClosedBoundaryWrapsAroundTorus — exercises the Closed (periodic) boundary with a "copy left neighbor"
+// user rule: a single live cell on a width-5 ring shifts right each step and returns to its start after 5.
 TEST(UserDefinedCA, ClosedBoundaryWrapsAroundTorus) {
 	// Exercises the Boundary_Closed (periodic) condition, distinct from the Fixed boundary used above.
 	// A "copy your left neighbor" rule (next = neighbors[0]) shifts the pattern one cell to the right
@@ -252,6 +264,8 @@ TEST(UserDefinedCA, ClosedBoundaryWrapsAroundTorus) {
 	EXPECT_EQ(rowOf(lattice), "00100") << "after `width` steps the pattern must return to its start";
 }
 
+// GameOfLifeGliderTranslatesViaUserRule — the classic GoL glider, run via the user rule on a 10x10 grid,
+// must reappear as the same shape shifted by (+1,+1) after 4 generations (backs the shipped evidence diagram).
 TEST(UserDefinedCA, GameOfLifeGliderTranslatesViaUserRule) {
 	// The classic Game of Life glider returns to its own shape shifted by (+1,+1) after 4 generations.
 	// This test-backs the glider space-time diagram shipped in dcs/site/assets/evidence-diagrams.txt
@@ -305,6 +319,9 @@ TEST(UserDefinedCA, GameOfLifeGliderTranslatesViaUserRule) {
 	EXPECT_EQ(rowOf(lattice), expected) << "glider must reappear shifted by (+1,+1) after 4 steps";
 }
 
+// ExtendedContractExposesCellPosition — the extended contract (nextStateEx) passes the cell's coordinates
+// to user code; a rule returning the parity of column 0 must paint "010101" after one step, proving the
+// position is actually delivered (independent of neighbor states).
 TEST(UserDefinedCA, ExtendedContractExposesCellPosition) {
 	// The extended user contract (nextStateEx) hands the rule the cell's n-dimensional position.
 	// A rule returning the parity of the first coordinate must paint a 1D row 0,1,0,1,... after one

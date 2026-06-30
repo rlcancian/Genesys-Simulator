@@ -64,6 +64,8 @@ std::vector<std::string> runElementary(unsigned short width, std::uint8_t ruleNu
 
 } // namespace
 
+// Rule30MatchesTextbookGroundTruth — runs elementary Rule 30 from a single central 1 on a width-9 lattice
+// and asserts rows t0..t3 equal the worked example from the textbook (Cap. 11), bit for bit.
 TEST(ElementaryCA, Rule30MatchesTextbookGroundTruth) {
 	const std::vector<std::string> rows = runElementary(9, 30, 3);
 	ASSERT_EQ(rows.size(), 4u);
@@ -73,6 +75,8 @@ TEST(ElementaryCA, Rule30MatchesTextbookGroundTruth) {
 	EXPECT_EQ(rows[3], "011011110");
 }
 
+// Rule90MatchesSierpinskiGroundTruth — runs Rule 90 (next = left XOR right) from a single central 1 on a
+// width-11 lattice and asserts rows t0..t4 match the Sierpinski-triangle ground truth exactly.
 TEST(ElementaryCA, Rule90MatchesSierpinskiGroundTruth) {
 	const std::vector<std::string> rows = runElementary(11, 90, 4);
 	ASSERT_EQ(rows.size(), 5u);
@@ -83,10 +87,14 @@ TEST(ElementaryCA, Rule90MatchesSierpinskiGroundTruth) {
 	EXPECT_EQ(rows[4], "01000000010");
 }
 
+// IsDeterministicAcrossRuns — two independent Rule 30 runs with identical setup must produce identical
+// histories, confirming the engine has no hidden nondeterminism (uninitialized state, ordering, etc.).
 TEST(ElementaryCA, IsDeterministicAcrossRuns) {
 	EXPECT_EQ(runElementary(11, 30, 6), runElementary(11, 30, 6));
 }
 
+// EmptyGridStaysEmptyUnderRule30 — degeneracy/quiescence check: with no live cell, Rule 30 (000 -> 0) must
+// leave the lattice all-zero after several steps, verifying the rule has the expected stable empty state.
 TEST(ElementaryCA, EmptyGridStaysEmptyUnderRule30) {
 	// Degeneracy test: with no live cell, rule 30 (000 -> 0) keeps the lattice all-zero.
 	CellularAutomata_Classic cellularAutomata;

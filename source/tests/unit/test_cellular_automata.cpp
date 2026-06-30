@@ -113,6 +113,8 @@ unsigned long NeighborCount(CellularAutomataComp* cellularAutomata, const std::v
 
 }
 
+// IntegerStateSetRejectsDoubleValues — the INTEGERBASED state set must accept whole numbers but reject
+// fractions. Configures a 1D INTEGERBASED automaton, then asserts setCellState accepts 1.0 and rejects 1.5.
 TEST_F(CellularAutomataFixture, IntegerStateSetRejectsDoubleValues) {
 	CellularAutomataComp* cellularAutomata = CreateComponent();
 	ConfigureGenericAutomata(cellularAutomata, {3}, CellularAutomataComp::NeighboorhoodType::VONNEUMANN, CellularAutomataComp::StateSetType::INTEGERBASED);
@@ -124,6 +126,8 @@ TEST_F(CellularAutomataFixture, IntegerStateSetRejectsDoubleValues) {
 	EXPECT_FALSE(cellularAutomata->setCellState(0L, 1.5));
 }
 
+// BitStateSetRejectsNonBitValues — the BITBASED state set may only hold 0 or 1. Asserts setCellState
+// accepts 0.0 and 1.0 but rejects in-between (0.5) and out-of-range (2.0) values.
 TEST_F(CellularAutomataFixture, BitStateSetRejectsNonBitValues) {
 	CellularAutomataComp* cellularAutomata = CreateComponent();
 	ConfigureRule90(cellularAutomata, CellularAutomataComp::BoundaryType::FIXED, CellularAutomataComp::StateSetType::BITBASED);
@@ -137,6 +141,8 @@ TEST_F(CellularAutomataFixture, BitStateSetRejectsNonBitValues) {
 	EXPECT_FALSE(cellularAutomata->setCellState(0L, 2.0));
 }
 
+// DoubleStateSetAcceptsFractionalValues — the DOUBLEBASED state set must store real numbers. Sets a cell
+// to 1.5 and reads it back unchanged, proving fractional state is preserved (not truncated/rejected).
 TEST_F(CellularAutomataFixture, DoubleStateSetAcceptsFractionalValues) {
 	CellularAutomataComp* cellularAutomata = CreateComponent();
 	ConfigureGenericAutomata(cellularAutomata, {3}, CellularAutomataComp::NeighboorhoodType::VONNEUMANN, CellularAutomataComp::StateSetType::DOUBLEBASED);
@@ -148,6 +154,8 @@ TEST_F(CellularAutomataFixture, DoubleStateSetAcceptsFractionalValues) {
 	EXPECT_DOUBLE_EQ(cellularAutomata->getlattice()->getCell(0L)->getCurrentState().getDoubleValue(), 1.5);
 }
 
+// Rule90FixedBoundaryMatchesExpectedSequence — end-to-end run of elementary Rule 90 on a 7-cell lattice
+// with a fixed-0 boundary. Starts from "1001000" and asserts the full 6-step space-time history cell by cell.
 TEST_F(CellularAutomataFixture, Rule90FixedBoundaryMatchesExpectedSequence) {
 	CellularAutomataComp* cellularAutomata = CreateComponent();
 	ConfigureRule90(cellularAutomata);
@@ -164,6 +172,9 @@ TEST_F(CellularAutomataFixture, Rule90FixedBoundaryMatchesExpectedSequence) {
 			"1010101"}));
 }
 
+// Rule90BoundaryConditionsHaveExpectedFinalStates — same Rule 90 run under each non-fixed boundary
+// (CLOSED, REFLEXIVE, ADIABATIC). Asserts the final row after 6 steps differs per boundary as expected,
+// proving the boundary policy actually changes how edge cells see their missing neighbors.
 TEST_F(CellularAutomataFixture, Rule90BoundaryConditionsHaveExpectedFinalStates) {
 	CellularAutomataComp* closed = CreateComponent();
 	ConfigureRule90(closed, CellularAutomataComp::BoundaryType::CLOSED);
@@ -178,6 +189,8 @@ TEST_F(CellularAutomataFixture, Rule90BoundaryConditionsHaveExpectedFinalStates)
 	EXPECT_EQ(RunRule90(adiabatic, 6).back(), "0000101");
 }
 
+// Rule90AcceptsBitStateSet — Rule 90 must run unchanged when states are stored as BITBASED instead of
+// ENUMERATED. Runs one step and checks the resulting row, proving the rule is state-set agnostic.
 TEST_F(CellularAutomataFixture, Rule90AcceptsBitStateSet) {
 	CellularAutomataComp* cellularAutomata = CreateComponent();
 	ConfigureRule90(cellularAutomata, CellularAutomataComp::BoundaryType::FIXED, CellularAutomataComp::StateSetType::BITBASED);
@@ -187,6 +200,8 @@ TEST_F(CellularAutomataFixture, Rule90AcceptsBitStateSet) {
 	EXPECT_EQ(states.at(1), "0110100");
 }
 
+// GameOfLifeBlinkerOscillates — the built-in Game of Life rule on a 5x5 Moore lattice. Seeds a vertical
+// 3-cell blinker and asserts it flips vertical->horizontal->vertical, i.e. oscillates with period 2.
 TEST_F(CellularAutomataFixture, GameOfLifeBlinkerOscillates) {
 	CellularAutomataComp* cellularAutomata = CreateComponent();
 	ConfigureGameOfLife(cellularAutomata);
@@ -202,6 +217,9 @@ TEST_F(CellularAutomataFixture, GameOfLifeBlinkerOscillates) {
 	EXPECT_EQ(Grid(cellularAutomata, 5, 5), "00000\n00100\n00100\n00100\n00000");
 }
 
+// GameOfLifeRejectsInvalidConfigurations — Game of Life is only defined for a Moore neighborhood over a
+// binary (ENUMERATED) state set. Asserts initialize fails when given a VonNeumann neighborhood or an
+// INTEGERBASED state set, so misconfigurations are caught up front instead of producing wrong results.
 TEST_F(CellularAutomataFixture, GameOfLifeRejectsInvalidConfigurations) {
 	CellularAutomataComp* vonNeumann = CreateComponent();
 	ConfigureGameOfLife(vonNeumann, CellularAutomataComp::NeighboorhoodType::VONNEUMANN);
@@ -214,6 +232,9 @@ TEST_F(CellularAutomataFixture, GameOfLifeRejectsInvalidConfigurations) {
 	EXPECT_FALSE(integerBased->initializeCellularAutomata(&errorMessage));
 }
 
+// NeighborhoodsHaveExpectedCountsInOneTwoAndThreeDimensions — sanity-checks neighbor counts for a center
+// cell across dimensions: Moore gives 2/8/26 and VonNeumann gives 2/4/6 in 1D/2D/3D respectively. Confirms
+// both neighborhood generators scale correctly with lattice dimensionality.
 TEST_F(CellularAutomataFixture, NeighborhoodsHaveExpectedCountsInOneTwoAndThreeDimensions) {
 	CellularAutomataComp* moore1D = CreateComponent();
 	ConfigureGenericAutomata(moore1D, {3}, CellularAutomataComp::NeighboorhoodType::MOORE);
@@ -252,6 +273,8 @@ TEST_F(CellularAutomataFixture, NeighborhoodsHaveExpectedCountsInOneTwoAndThreeD
 	EXPECT_EQ(NeighborCount(vonNeumann3D, {1, 1, 1}), 6u);
 }
 
+// ThreeDimensionalLatticeRejectsInvalidCoordinates — bounds checking on a 3D lattice. Asserts setCellState
+// returns false for an out-of-range coordinate ({-1,0,0}), so bad positions are rejected, not silently wrapped.
 TEST_F(CellularAutomataFixture, ThreeDimensionalLatticeRejectsInvalidCoordinates) {
 	CellularAutomataComp* cellularAutomata = CreateComponent();
 	ConfigureGenericAutomata(cellularAutomata, {3, 3, 3}, CellularAutomataComp::NeighboorhoodType::VONNEUMANN);
@@ -262,6 +285,10 @@ TEST_F(CellularAutomataFixture, ThreeDimensionalLatticeRejectsInvalidCoordinates
 	EXPECT_FALSE(cellularAutomata->setCellState({-1, 0, 0}, 1));
 }
 
+// UpdatePoliciesProduceDeterministicSequences — each update policy (SYNCHRONOUS, SEQUENTIAL, RANDOM,
+// BLOCKS) drives the same Rule 90 and must give a deterministic result. SYNC/SEQUENTIAL/BLOCKS are pinned
+// to golden final rows; RANDOM is only asserted reproducible under a fixed seed (its exact mapping is
+// std-library dependent, so no hardcoded golden — same seed must reproduce the same run).
 TEST_F(CellularAutomataFixture, UpdatePoliciesProduceDeterministicSequences) {
 	CellularAutomataComp* synchronous = CreateComponent();
 	ConfigureRule90(synchronous);
