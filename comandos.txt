@@ -1,0 +1,20 @@
+Rodar os testes:
+
+- Compilar:
+cmake --build build/tests-kernel-unit --target genesys_test_modal_model_efsm
+
+- Rodar:
+build/tests-kernel-unit/source/tests/unit/genesys_test_modal_model_efsm
+
+Rodar o Smart Test:
+
+- Compilar:
+cmake -S . -B build/efsm-smart \
+  -DGENESYS_TERMINAL_APP=Smart_ModalModelFSM \
+  -DGENESYS_BUILD_TESTS=OFF \
+  -DCMAKE_BUILD_TYPE=Debug
+
+cmake --build build/efsm-smart --target genesys_terminal_application
+
+- Rodar:
+build/efsm-smart/source/applications/terminal/genesys_terminal_application
