@@ -1,6 +1,6 @@
 #ifdef PLUGINCONNECT_DYNAMIC
 
-#include "kernel/simulator/PluginInfomation.h"
+#include "kernel/simulator/PluginInformation.h"
 #include "plugins/components/Continuous/DiffEquations.h"
 #include "plugins/components/Continuous/LSODE.h"
 #include "plugins/components/Continuous/OLD_ODEelement.h"

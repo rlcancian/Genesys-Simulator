@@ -15,7 +15,7 @@
 
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
 // extern "C" StaticGetPluginInformation GetPluginInformation() {
 // 	return &Exit::GetPluginInformation;
