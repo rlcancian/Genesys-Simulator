@@ -2,7 +2,7 @@
 
 #include "animations/AnimationPlaceholder.h"
 #include "graphicals/ModelGraphicsScene.h"
-#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/model/ModelComponent.h"
 
 class AnimationResource : public AnimationPlaceholder {
 public:
