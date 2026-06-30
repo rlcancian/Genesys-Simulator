@@ -2,6 +2,6 @@
 
 O componente \texttt{DataAnalyzer} foi implementado e integrado ao GenESyS, atendendo à diretriz 11.3.1 da proposta. Partindo da necessidade de coordenar manualmente \texttt{Fitter\_if}, \texttt{HypothesisTester\_if} e parsers de arquivo, o grupo construiu uma fachada única que cobre análise descritiva, ajuste de sete distribuições com seleção automática, dois testes de aderência (qui-quadrado e KS), média móvel e autocorrelação, e inferência paramétrica para uma e duas populações.
 
-A decisão de organizar o desenvolvimento em marcos com documentação contínua se mostrou útil: o diário técnico em \texttt{DEVELOPMENT\_DataAnalyzer.md} registrou as motivações por trás de cada mudança -- inclusive a decisão de não usar \texttt{StatisticsDataFile\_if} -- e facilitou a revisão entre os membros. O comando \texttt{-{}-demo} com 26 testes automatizados garantiu que nenhum marco posterior quebrou os anteriores.
+A decisão de organizar o desenvolvimento em marcos com documentação contínua se mostrou útil: o diário técnico em \texttt{DEVELOPMENT\_DataAnalyzer.md} registrou as motivações por trás de cada mudança -- inclusive a decisão de não usar \texttt{StatisticsDataFile\_if} -- e facilitou a revisão entre os membros. O comando \texttt{-{}-demo} com 51 testes automatizados garantiu que nenhum marco posterior quebrou os anteriores.
 
 O componente está pronto para ser consumido por outros módulos do simulador via \texttt{TraitsTools<DataAnalyzer\_if>::Implementation}, e serve de base direta para futuros painéis gráficos de análise de resultados.
