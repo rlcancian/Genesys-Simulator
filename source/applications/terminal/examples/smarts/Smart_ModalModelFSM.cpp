@@ -38,7 +38,8 @@ int Smart_ModalModelFSM::main(int argc, char** argv) {
 	fsm->addNode(green);
 	fsm->addNode(finished);
 	fsm->setEntryNode(red);
-	plugins->newInstance<Variable>(model, "signal");
+	Variable* signal = plugins->newInstance<Variable>(model, "signal");
+	fsm->addOutputExpressionReference(signal);
 
 
 	EFSMTransition* r2g = new EFSMTransition(red, green, "RedToGreen");

@@ -58,26 +58,32 @@ elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_ModalModelFSM")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         examples/smarts/Smart_ModalModelFSM.cpp
     )
+    set(GENESYS_TERMINAL_SELECTED_HEADER "examples/smarts/Smart_ModalModelFSM.h")
 elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_SeizeDelayRelease")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         examples/smarts/Smart_SeizeDelayRelease.cpp
     )
+    set(GENESYS_TERMINAL_SELECTED_HEADER "examples/smarts/Smart_SeizeDelayRelease.h")
 elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_SeizeDelayReleaseMany")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         examples/smarts/Smart_SeizeDelayReleaseMany.cpp
     )
+    set(GENESYS_TERMINAL_SELECTED_HEADER "examples/smarts/Smart_SeizeDelayReleaseMany.h")
 elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_SeizeDelayReleaseNoDataDefs")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         examples/smarts/Smart_SeizeDelayReleaseNoDataDefs.cpp
     )
+    set(GENESYS_TERMINAL_SELECTED_HEADER "examples/smarts/Smart_SeizeDelayReleaseNoDataDefs.h")
 elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_R_Simulator")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         examples/smarts/Smart_R_Simulator.cpp
     )
+    set(GENESYS_TERMINAL_SELECTED_HEADER "examples/smarts/Smart_R_Simulator.h")
 elseif(GENESYS_TERMINAL_APP STREQUAL "AnElectronicAssemblyAndTestSystem")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         examples/teaching/AnElectronicAssemblyAndTestSystem.cpp
     )
+    set(GENESYS_TERMINAL_SELECTED_HEADER "examples/teaching/AnElectronicAssemblyAndTestSystem.h")
 else()
     message(FATAL_ERROR "Unsupported GENESYS_TERMINAL_APP='${GENESYS_TERMINAL_APP}'. Choose one of the values listed in the cache property.")
 endif()
@@ -102,10 +108,28 @@ target_compile_definitions(genesys_terminal_application
         GENESYS_TERMINAL_APP_HEADER="${GENESYS_TERMINAL_SELECTED_HEADER}"
 )
 
-target_link_libraries(genesys_terminal_application
-    PRIVATE
-        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+set(GENESYS_TERMINAL_LINK_LIBRARIES
+    genesys_kernel_util
+    genesys_kernel_statistics
+    genesys_parser
+    genesys_plugins_data
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_support
+    genesys_kernel_simulator_runtime
 )
+
+if(CMAKE_CXX_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED)
+    target_link_libraries(genesys_terminal_application
+        PRIVATE
+            "$<LINK_GROUP:RESCAN,${GENESYS_TERMINAL_LINK_LIBRARIES}>"
+    )
+else()
+    target_link_libraries(genesys_terminal_application
+        PRIVATE
+            ${GENESYS_TERMINAL_LINK_LIBRARIES}
+            ${GENESYS_TERMINAL_LINK_LIBRARIES}
+    )
+endif()
 
 target_compile_features(genesys_terminal_application PRIVATE cxx_std_23)
 
