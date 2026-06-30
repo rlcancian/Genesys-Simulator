@@ -87,16 +87,20 @@ orchestrator. The command is only compiled when the layer is enabled (it is guar
 default terminal build is unaffected.
 
 Build the terminal with the layer wired in (the `distributed-app` preset does this), then drive it
-non-interactively — pass each shell command as a quoted argument and end with `exit`:
+non-interactively — pass each shell command as a quoted argument and end with `exit`. The examples
+use a model that ships with the repo (`models/Smart_HoldSearchRemove.gen`); any multi-line `.gen`
+works, including the `model.txt` built in
+[Reproducing the distributed speedup](#reproducing-the-distributed-speedup) below.
 
 ```bash
 APP=build/distributed/source/applications/terminal/genesys_terminal_application
+MODEL=models/Smart_HoldSearchRemove.gen
 
 # Local only (no workers needed):
-"$APP" "load model.txt" "distribute --local --replications 200" "exit" < /dev/null
+"$APP" "load $MODEL" "distribute --local --replications 200" "exit" < /dev/null
 
 # Distributed across two workers plus local (start the workers first, see below):
-"$APP" "load model.txt" \
+"$APP" "load $MODEL" \
     "distribute --worker 127.0.0.1:8101 --worker 127.0.0.1:8102 --local --replications 3000" \
     "exit" < /dev/null
 ```
