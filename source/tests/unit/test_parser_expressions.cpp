@@ -461,30 +461,30 @@ TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerSameExternalPointerDoe
     EXPECT_EQ(destroyedCounter, 1);
 }
 
-class ParserExtensionTestPlugin : public ModelDataDefinition {
+class DemoPlugin : public ModelDataDefinition {
 public:
-    ParserExtensionTestPlugin(Model* model) : ModelDataDefinition(model, "ParserExtensionTestPlugin") {}
+    DemoPlugin(Model* model) : ModelDataDefinition(model, "DemoPlugin") {}
 
     ParserChangesInformation* _getParserChangesInformation() override {
         auto* changes = new ParserChangesInformation();
-        changes->setTokens("%token <obj_t> fPARSERTEST\n");
+        changes->setTokens("%token <obj_t> fDEMO\n");
         changes->setFunctionProdutions(
-            "    | fPARSERTEST \"(\" expression \")\" { $$.valor = $3.valor + 1; }\n"
+            "    | fDEMO \"(\" expression \")\" { $$.valor = $3.valor + 1; }\n"
         );
         changes->setLexicalRules(
-            "[pP][aA][rR][sS][eE][rR][tT][eE][sS][tT] {return yy::genesyspp_parser::make_fPARSERTEST(obj_t(0, std::string(yytext)), loc);}\n"
+            "[dD][eE][mM][oO] {return yy::genesyspp_parser::make_fDEMO(obj_t(0, std::string(yytext)), loc);}\n"
         );
         return changes;
     }
 
     static ModelDataDefinition* LoadInstance(Model* model, std::map<std::string, std::string>* /*args*/) {
-        return new ParserExtensionTestPlugin(model);
+        return new DemoPlugin(model);
     }
 };
 
-TEST_F(ParserExpressionsTest, DynamicParserExtensionAddsNewFunction) {
-    auto* extension = new ParserExtensionTestPlugin(model);
-    model->getDataManager()->insert(extension);
+TEST_F(ParserExpressionsTest, DynamicParserDemoPluginAddsNewFunction) {
+    auto* demo = new DemoPlugin(model);
+    model->getDataManager()->insert(demo);
 
     ParserManager* pm = model->getParserManager();
     ASSERT_NE(pm, nullptr);
@@ -492,7 +492,7 @@ TEST_F(ParserExpressionsTest, DynamicParserExtensionAddsNewFunction) {
     std::filesystem::path sourceRoot = FindSourceRoot();
     ASSERT_FALSE(sourceRoot.empty()) << "Could not find GenESyS source root";
     pm->setSourceDir(sourceRoot.string());
-    std::filesystem::path workDir = std::filesystem::temp_directory_path() / "genesys_parser_extension_test_build";
+    std::filesystem::path workDir = std::filesystem::temp_directory_path() / "genesys_parser_demo_build";
     pm->setWorkDir(workDir.string());
 
     std::list<ParserChangesInformation*> allChanges = pm->aggregateChanges();
@@ -530,24 +530,24 @@ TEST_F(ParserExpressionsTest, DynamicParserExtensionAddsNewFunction) {
         return;
     }
 
-    // After connecting the new parser, the parsertest() function should be recognized.
+    // After connecting the new parser, the demo() function should be recognized
     bool success = false;
     std::string errorMsg;
-    double result1 = model->parseExpression("parsertest(5)", success, errorMsg);
+    double result1 = model->parseExpression("demo(5)", success, errorMsg);
     if (!success) {
-        std::cout << "parse parsertest(5) failed: " << errorMsg << std::endl;
+        std::cout << "parse demo(5) failed: " << errorMsg << std::endl;
     }
-    EXPECT_TRUE(success) << "parsertest(5) parse failed: " << errorMsg;
+    EXPECT_TRUE(success) << "demo(5) parse failed: " << errorMsg;
     EXPECT_DOUBLE_EQ(result1, 6.0);
 
-    double result2 = model->parseExpression("parsertest(0)");
+    double result2 = model->parseExpression("demo(0)");
     EXPECT_DOUBLE_EQ(result2, 1.0);
 
-    double result3 = model->parseExpression("parsertest(parsertest(2))");
+    double result3 = model->parseExpression("demo(demo(2))");
     EXPECT_DOUBLE_EQ(result3, 4.0);
 
-    model->getDataManager()->remove(extension);
-    delete extension;
+    model->getDataManager()->remove(demo);
+    delete demo;
 }
 
 TEST_F(ParserExpressionsTest, ConnectNewParserRejectsMissingLibraryWithMessage) {

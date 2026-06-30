@@ -608,8 +608,83 @@ void GenesysShell::cmdModelSave() {
 }
 
 void GenesysShell::cmdDynamicParser() {
-	cout << "Dynamic parser support is exercised by plugins that provide ParserChangesInformation." << endl;
-	cout << "Run genesys_test_parser_expressions for the self-contained parser reload test." << endl;
+	if (model == nullptr) {
+		cout << "Error: There is no loaded model. Create one first with 'model -n'." << endl;
+		return;
+	}
+
+	ModelDataDefinition* demo = simulator->getPluginManager()->newInstance("DemoPlugin", model, "DemoPlugin_1");
+	if (demo == nullptr) {
+		cout << "Error: Could not create DemoPlugin instance. Make sure the plugin is loaded." << endl;
+		return;
+	}
+	model->getDataManager()->insert(demo);
+
+	ParserManager* pm = model->getParserManager();
+	pm->setModel(model);
+
+	std::filesystem::path marker = "source/parser/parserBisonFlex/bisonparser.yy";
+	// Determine source root from executable path (works regardless of CWD)
+	std::filesystem::path sourceRoot = std::filesystem::canonical("/proc/self/exe").parent_path();
+	for (int i = 0; i < 8; ++i) {
+		if (std::filesystem::exists(sourceRoot / marker)) break;
+		sourceRoot = sourceRoot.parent_path();
+	}
+	if (!std::filesystem::exists(sourceRoot / marker)) {
+		// Fallback: try current working directory
+		sourceRoot = std::filesystem::current_path();
+		for (int i = 0; i < 6; ++i) {
+			if (std::filesystem::exists(sourceRoot / marker)) break;
+			sourceRoot = sourceRoot.parent_path();
+		}
+	}
+	pm->setSourceDir(sourceRoot.string());
+	pm->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_shell_demo").string());
+
+	cout << "Aggregating parser changes..." << endl;
+	auto allChanges = pm->aggregateChanges();
+	if (allChanges.empty()) {
+		cout << "No parser changes found." << endl;
+		return;
+	}
+
+	auto* combined = new ParserChangesInformation();
+	for (auto* ch : allChanges) {
+		if (ch == nullptr) continue;
+		combined->setTokens(combined->gettokens() + ch->gettokens());
+		combined->setFunctionProdutions(combined->getfunctionProdutions() + ch->getfunctionProdutions());
+		combined->setLexicalRules(combined->getlexicalRules() + ch->getlexicalRules());
+		combined->setLexicalLiterals(combined->getlexicalLiterals() + ch->getlexicalLiterals());
+	}
+
+	cout << "Generating new parser (this may take a few seconds)..." << endl;
+	auto result = pm->generateNewParser(combined);
+	if (!result.result) {
+		cout << "Parser generation failed:" << endl;
+		cout << result.bisonMessages << endl;
+		cout << result.lexMessages << endl;
+		cout << result.compilationMessages << endl;
+		return;
+	}
+	cout << "Parser generated successfully." << endl;
+
+	cout << "Connecting new parser..." << endl;
+	if (!pm->connectNewParser(result.newParser)) {
+		cout << "Failed to connect new parser." << endl;
+		return;
+	}
+	cout << "New parser connected." << endl;
+
+	bool ok = false;
+	std::string err;
+	double r1 = model->parseExpression("demo(5)", ok, err);
+	cout << "demo(5) = " << r1 << (ok ? " (OK)" : " (FAIL: " + err + ")") << endl;
+
+	double r2 = model->parseExpression("demo(demo(2))", ok, err);
+	cout << "demo(demo(2)) = " << r2 << (ok ? " (OK)" : " (FAIL: " + err + ")") << endl;
+
+	model->getDataManager()->remove(demo);
+	delete demo;
 }
 
 /*
