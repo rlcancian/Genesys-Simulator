@@ -66,11 +66,6 @@ list(REMOVE_ITEM GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/SinkModelComponent.cpp"
 )
 
-list(APPEND GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
-        "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorStaticImpl1.cpp"
-        "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorDummyImpl1.cpp"
-)
-
 add_library(genesys_kernel_simulator_runtime STATIC
     ${GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES}
 )
@@ -85,9 +80,14 @@ target_link_libraries(genesys_kernel_simulator_runtime
         genesys_kernel_util
         genesys_plugins_data
         genesys_plugins_components_minimal
+        genesys_plugin_connector
         genesys_kernel_simulator_support
         genesys_kernel_statistics
         genesys_parser
 )
+
+if(GENESYS_DYNAMIC_PLUGINS)
+    target_link_libraries(genesys_kernel_simulator_runtime PUBLIC dl)
+endif()
 
 target_compile_features(genesys_kernel_simulator_runtime PUBLIC cxx_std_23)
