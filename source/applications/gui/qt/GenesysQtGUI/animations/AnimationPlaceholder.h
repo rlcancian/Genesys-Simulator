@@ -32,6 +32,9 @@ public:
     // Resets runtime-only overlay state at simulation start (overridden by plugin placeholders).
     virtual void resetRuntimeState();
 
+    // Returns overlay occupancy when supported (Resource/Station plugins); otherwise -1.
+    virtual int overlayBusyCount() const;
+
 private:
     QString _animationType;
     QString _targetName;

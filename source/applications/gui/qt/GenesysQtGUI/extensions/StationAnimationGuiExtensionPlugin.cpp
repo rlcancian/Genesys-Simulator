@@ -12,6 +12,10 @@ public:
 		setEntityCount(0);
 	}
 
+	int overlayBusyCount() const override {
+		return _entityCount;
+	}
+
 	void setEntityCount(int count) {
 		_entityCount = qMax(0, count);
 		update();

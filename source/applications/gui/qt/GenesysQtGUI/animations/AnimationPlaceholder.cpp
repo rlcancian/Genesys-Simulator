@@ -73,6 +73,10 @@ void AnimationPlaceholder::setTargetName(const QString& targetName) {
 void AnimationPlaceholder::resetRuntimeState() {
 }
 
+int AnimationPlaceholder::overlayBusyCount() const {
+    return -1;
+}
+
 void AnimationPlaceholder::startDrawing(QGraphicsSceneMouseEvent* event) {
     _isDrawingInicialized = true;
     _isResizing = true;
