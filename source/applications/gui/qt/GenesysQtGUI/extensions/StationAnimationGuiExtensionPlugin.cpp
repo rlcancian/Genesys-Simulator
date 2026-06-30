@@ -90,7 +90,8 @@ public:
 		}
 		GuiDrawingToolContribution tool;
 		tool.animationType = "Station";
-		tool.text = "Animate Station";
+		tool.text = "Station";
+		tool.iconResource = ":/icons3/resources/icons/pack3/ico/question.ico";
 		tool.menuPath = "Animate/Plugin";
 		tool.toolBarId = "toolBarAnimate";
 		tool.statusTip = "Draw a Station animation placeholder on the scene";

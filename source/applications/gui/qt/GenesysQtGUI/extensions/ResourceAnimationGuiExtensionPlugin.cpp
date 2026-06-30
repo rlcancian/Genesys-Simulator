@@ -90,7 +90,8 @@ public:
 		}
 		GuiDrawingToolContribution tool;
 		tool.animationType = "Resource";
-		tool.text = "Animate Resource";
+		tool.text = "Resource";
+		tool.iconResource = ":/icons3/resources/icons/pack3/ico/question.ico";
 		tool.menuPath = "Animate/Plugin";
 		tool.toolBarId = "toolBarAnimate";
 		tool.statusTip = "Draw a Resource animation placeholder on the scene";

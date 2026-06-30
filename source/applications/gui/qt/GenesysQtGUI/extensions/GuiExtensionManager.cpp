@@ -190,6 +190,9 @@ void GuiExtensionManager::_applyDrawingToolContribution(
 
 	QAction* action = new QAction(QString::fromStdString(contribution.text), _mainWindow);
 	action->setCheckable(true);
+	if (!contribution.iconResource.empty()) {
+		action->setIcon(QIcon(QString::fromStdString(contribution.iconResource)));
+	}
 	if (!contribution.statusTip.empty()) {
 		action->setStatusTip(QString::fromStdString(contribution.statusTip));
 	}

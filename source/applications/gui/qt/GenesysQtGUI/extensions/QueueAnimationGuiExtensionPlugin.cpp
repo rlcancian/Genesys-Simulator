@@ -32,7 +32,8 @@ public:
 		}
 		GuiDrawingToolContribution tool;
 		tool.animationType = "Queue";
-		tool.text = "Animate Queue";
+		tool.text = "Queue";
+		tool.iconResource = ":/resources/ToolBar/_animfila.bmp";
 		tool.menuPath = "Animate/Plugin";
 		tool.toolBarId = "toolBarAnimate";
 		tool.statusTip = "Draw a Queue animation placeholder on the scene";

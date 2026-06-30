@@ -33,6 +33,7 @@ struct GuiSimAnimationEvent {
 struct GuiDrawingToolContribution {
 	std::string animationType;  // e.g. "Queue", "Resource", "Station"
 	std::string text;           // Label shown in menu and toolbar
+	std::string iconResource;   // Qt resource path, e.g. ":/resources/ToolBar/_animfila.bmp" (empty = no icon)
 	std::string menuPath;       // e.g. "Animate/Plugin Tools"
 	std::string toolBarId;      // Toolbar object name or title (empty = no toolbar button)
 	std::string statusTip;      // Optional status bar hint
