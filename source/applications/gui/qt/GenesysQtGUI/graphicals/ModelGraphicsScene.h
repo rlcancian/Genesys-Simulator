@@ -62,6 +62,8 @@
 /**
  * @brief Lightweight event envelope used to notify GUI changes in the graphics scene.
  */
+class GuiExtensionManager;
+
 class GraphicalModelEvent {
 public:
 
@@ -115,7 +117,8 @@ public: // editing graphic model
     enum DrawingMode{
         NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED,
         COUNTER, VARIABLE, TIMER,
-        ATTRIBUTE, ENTITY, EVENT, EXPRESSION, PLOT, QUEUE_PLACEHOLDER, RESOURCE, STATION, STATISTICS
+        ATTRIBUTE, ENTITY, EVENT, EXPRESSION, PLOT, QUEUE_PLACEHOLDER, RESOURCE, STATION, STATISTICS,
+        PLUGIN_DRAWING
     };
     /** @brief Creates and inserts one graphical component into the scene. */
     GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false, GraphicalModelComponent* autoConnectSource = nullptr);
@@ -380,12 +383,22 @@ public:
     void drawingStation();
     /** @brief Creates statistics overlay geometry. */
     void drawingStatistics();
+    /** @brief Activates plugin-provided drawing mode for the given animation type. */
+    void drawingByAnimationType(const std::string& animationType);
+    /** @brief Returns the animation type set by drawingByAnimationType(), or empty if none. */
+    std::string pluginDrawingAnimationType() const;
     /** @brief Clears animation-specific cached values. */
     void clearAnimationsValues();
     /** @brief Synchronizes the component counters used by animation overlays. */
     void setCounters();
     /** @brief Synchronizes the variable counters used by animation overlays. */
     void setVariables();
+    /** @brief Links Statistics animation placeholders to model StatisticsCollectors by Target name. */
+    void setStatisticsCollectors();
+    /** @brief Dispatches resource/station plugin animation events after an entity move. */
+    void notifyEntityMovePluginAnimations(ModelComponent* sourceComponent, Entity* entity);
+    /** @brief Dispatches station plugin animation events after a component processes an entity. */
+    void notifyAfterProcessPluginAnimations(ModelComponent* processedComponent, Entity* entity);
     // TODO: Funções abaixo são usadas para reaver os dataDefinitions do componente nos dataDefinitions do modelo dos componentes deletados, "checados" e reinseridos (Control Z de um delete, por exemplo).
     // O kernel não trata este caso, ale acusa erro, pois não encontra os dataDefinitions do componente nos dataDefinitions do modelo, pois ele os remove como "órfãos" e não os reinsere quando voltados ao modelo.
     /** @brief Restores data definitions removed by previous delete/check cycles. */
@@ -472,11 +485,13 @@ public:
     /** @brief Creates the queue-remove animation overlay for one component. */
     void animateQueueRemove(ModelComponent *component);
     /** @brief Updates the counter animation overlay. */
+    void setGuiExtensionManager(GuiExtensionManager* manager);
     void animateCounter();
     /** @brief Updates the variable animation overlay. */
     void animateVariable(Entity* entity = nullptr);
     /** @brief Updates the timer animation overlay. */
     void animateTimer(double time);
+    void animateStatistics();
 
 protected: // virtual functions
     virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent *contextMenuEvent);
@@ -506,6 +521,7 @@ private:
 private:
     GRID _grid;
     Simulator* _simulator = nullptr;
+    GuiExtensionManager* _guiExtensionManager = nullptr;
     PropertyEditorGenesys* _propertyEditor = nullptr;
     std::map<SimulationControl*, DataComponentProperty*>* _propertyList = nullptr;
     std::map<SimulationControl*, DataComponentEditor*>* _propertyEditorUI = nullptr;
@@ -524,6 +540,7 @@ private:
     QList<ModelDataDefinition *> *_variables = new QList<ModelDataDefinition *>();
 private:
     DrawingMode _drawingMode = NONE;
+    std::string _pluginDrawingAnimationType;
     QGraphicsRectItem* _currentRectangle = nullptr;
     QGraphicsLineItem* _currentLine = nullptr;
     QGraphicsPolygonItem* _currentPolygon = nullptr;

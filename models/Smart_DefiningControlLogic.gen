@@ -16,6 +16,7 @@
 64  Assign     "var_assign1" assignIsAttrib[0]=0 assignExpr[0]="2" nextId=65 assignDest[0]="process_time" 
 65  Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="240.000000" nextId=66 
 66  Assign     "var_assign2" assignIsAttrib[0]=0 assignExpr[0]="1" nextId=67 assignDest[0]="process_time" 
+67  Dispose    "Dispose_2" nexts=0 
 68  Create     "Mail_Arrival" entityType="Entity_1" timeBetweenCreationsTimeUnit=6 nextId=72 timeBetweenCreations="EXPO(2)" 
 72  Seize      "Seize_1" queueable="Seize_1.Queue" nextId=73 requestSeizable[0]="Resource_1" 
 73  Delay      "Delay_2" delayExpressionTimeUnit=6 delayExpression="process_time" nextId=74 

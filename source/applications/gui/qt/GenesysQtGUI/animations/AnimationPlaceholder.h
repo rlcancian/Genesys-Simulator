@@ -8,6 +8,8 @@
 #include <QString>
 #include <limits>
 
+#include "kernel/statistics/Collector_if.h"
+
 class Model;
 
 class AnimationPlaceholder : public QGraphicsRectItem {
@@ -26,6 +28,12 @@ public:
     void adjustSizeAndPosition(QGraphicsSceneMouseEvent* event);
     bool isDrawingInicialized() const;
     bool isDrawingFinalized() const;
+
+    // Resets runtime-only overlay state at simulation start (overridden by plugin placeholders).
+    virtual void resetRuntimeState();
+
+    // Returns overlay occupancy when supported (Resource/Station plugins); otherwise -1.
+    virtual int overlayBusyCount() const;
 
 private:
     QString _animationType;
@@ -117,24 +125,24 @@ private:
     QVector<DataSeries> _series;
 };
 
-class AnimationQueueDisplay : public AnimationPlaceholder {
-public:
-    AnimationQueueDisplay();
-};
-
-class AnimationResource : public AnimationPlaceholder {
-public:
-    AnimationResource();
-};
-
-class AnimationStation : public AnimationPlaceholder {
-public:
-    AnimationStation();
-};
-
 class AnimationStatistics : public AnimationPlaceholder {
 public:
     AnimationStatistics();
+
+    void setCollector(Collector_if* collector);
+    Collector_if* getCollector() const;
+
+    // Refreshes the displayed values from the linked collector.
+    void refreshValue();
+    void clearRuntimeState();
+
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
+
+private:
+    Collector_if* _collector = nullptr;
+    double _lastValue = 0.0;
+    unsigned long _numSamples = 0;
+    QString _collectorName;
 };
 
 #endif // ANIMATIONPLACEHOLDER_H

@@ -136,9 +136,6 @@ private slots:
 	void on_actionAnimateSimulatedTime_triggered();
 	void on_actionAnimateVariable_triggered();
 	void on_actionAnimateExpression_triggered();
-	void on_actionAnimateResource_triggered();
-	void on_actionAnimateQueue_triggered();
-	void on_actionAnimateStation_triggered();
 	void on_actionAnimateCounter_triggered();
 	void on_actionAnimateEntity_triggered();
 	void on_actionAnimateEvent_triggered();

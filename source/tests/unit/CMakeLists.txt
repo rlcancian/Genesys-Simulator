@@ -197,7 +197,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             ${GENESYS_QT_TEST_PACKAGE}::Core
             ${GENESYS_QT_TEST_PACKAGE}::Gui
             ${GENESYS_QT_TEST_PACKAGE}::Widgets
-            "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+            ${GENESYS_KERNEL_LINK_LIBS}
             genesys_web_core
             genesys_tools
     )
@@ -228,6 +228,64 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     gtest_discover_tests(genesys_test_gui_gmdd_layout
         PROPERTIES
             LABELS "unit;gui"
+    )
+
+    add_executable(genesys_test_gui_animation_dispatch
+        test_gui_animation_dispatch.cpp
+        ${GENESYS_QT_GUI_TEST_SOURCES}
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/GenesysQtGUI_resources.qrc
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
+        ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
+    )
+
+    target_include_directories(genesys_test_gui_animation_dispatch
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/source
+            ${CMAKE_SOURCE_DIR}/source/applications/web
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/codeeditor
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser
+    )
+
+    target_link_libraries(genesys_test_gui_animation_dispatch
+        PRIVATE
+            GTest::gtest
+            ${GENESYS_QT_TEST_PACKAGE}::Core
+            ${GENESYS_QT_TEST_PACKAGE}::Gui
+            ${GENESYS_QT_TEST_PACKAGE}::Widgets
+            ${GENESYS_KERNEL_LINK_LIBS}
+            genesys_web_core
+            genesys_tools
+    )
+
+    if(TARGET ${GENESYS_QT_TEST_PACKAGE}::PrintSupport)
+        target_link_libraries(genesys_test_gui_animation_dispatch
+            PRIVATE
+                ${GENESYS_QT_TEST_PACKAGE}::PrintSupport
+        )
+    endif()
+    if(TARGET ${GENESYS_QT_TEST_PACKAGE}::Network)
+        target_link_libraries(genesys_test_gui_animation_dispatch
+            PRIVATE
+                ${GENESYS_QT_TEST_PACKAGE}::Network
+        )
+    endif()
+
+    target_compile_features(genesys_test_gui_animation_dispatch PRIVATE cxx_std_23)
+    set_target_properties(genesys_test_gui_animation_dispatch
+        PROPERTIES
+            AUTOMOC ON
+            AUTOUIC ON
+            AUTORCC ON
+            AUTOUIC_SEARCH_PATHS "${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI;${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/dialogs"
+            FOLDER tests/unit
+    )
+
+    gtest_discover_tests(genesys_test_gui_animation_dispatch
+        PROPERTIES
+            LABELS "unit;gui;animation"
     )
 else()
     message(STATUS "Qt was not found; skipping GUI render strategy unit test.")
@@ -310,6 +368,10 @@ endif()
 
 if(TARGET genesys_test_gui_gmdd_layout)
     add_dependencies(genesys_kernel_unit_tests genesys_test_gui_gmdd_layout)
+endif()
+
+if(TARGET genesys_test_gui_animation_dispatch)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_gui_animation_dispatch)
 endif()
 
 set(GENESYS_KERNEL_SIMULATOR_HEADERS_DIR "${CMAKE_SOURCE_DIR}/source/kernel/simulator")
