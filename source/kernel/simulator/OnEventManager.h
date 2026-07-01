@@ -155,10 +155,6 @@ public:
 	double getEntityMoveTimeDelay() const {
 		return entityMoveTimeDelay;
 	}
-
-	/** Creates an empty simulation-event payload for integration tests. */
-	static SimulationEvent* NewUnsetInstance();
-	static void DeleteInstance(SimulationEvent* instance);
 private:
 
 	SimulationEvent() {

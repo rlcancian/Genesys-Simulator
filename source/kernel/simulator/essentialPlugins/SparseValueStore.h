@@ -120,11 +120,7 @@ private:
 			if (token.empty()) {
 				continue;
 			}
-			try {
-				parsed.push_back(static_cast<unsigned int>(std::stoul(token)));
-			} catch (const std::exception&) {
-				return {};
-			}
+			parsed.push_back(static_cast<unsigned int>(std::stoul(token)));
 		}
 		return parsed;
 	}
@@ -303,16 +299,9 @@ inline double SparseValueStore::value(const std::string& index) const {
 	}
 	if (_denseActive) {
 		const std::vector<unsigned int> indexes = parseIndex(index);
-		if (!index.empty() && indexes.empty()) {
-			// Non-numeric key: look only in the sparse map.
-			const auto it = _values.find(normalizeIndexKey(index));
-			return it != _values.end() ? it->second : 0.0;
-		}
 		const std::size_t linear = linearIndex(indexes);
 		if (linear == static_cast<std::size_t>(-1) || linear >= _denseValues.size()) {
-			// Dimension mismatch: fall back to sparse map.
-			const auto it = _values.find(normalizeIndexKey(index));
-			return it != _values.end() ? it->second : 0.0;
+			return 0.0;
 		}
 		return _denseValues[linear];
 	}
