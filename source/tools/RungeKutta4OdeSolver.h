@@ -5,9 +5,15 @@
 
 #include "OdeSolver_if.h"
 
-/**
- * @brief Fixed-step fourth-order Runge-Kutta solver for first-order ODE systems.
- */
+// Classic 4th-order Runge-Kutta with a fixed step. This is the original solver
+// and the math inside is unchanged. The only difference now is that code asks
+// the OdeSolverFactory for it (by the name "RungeKutta4") instead of building it
+// directly, so it can be swapped for another method like Dormand-Prince without
+// touching the caller.
+//
+// 4 stages, error shrinks like O(h^4), and it does exactly 4 slope evaluations
+// per step. There's no error estimate and no step adaptation, so the accuracy is
+// whatever the chosen step size gives you.
 class RungeKutta4OdeSolver : public OdeSolver_if {
 public:
 	bool advance(const OdeSystem_if& system, double t0, double dt, const double* y0, double* y1) const override {
