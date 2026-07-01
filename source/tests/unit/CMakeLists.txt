@@ -77,6 +77,7 @@ genesys_add_unit_test(genesys_test_runtime_pluginmanager
     genesys_kernel_simulator_runtime
 )
 
+
 genesys_add_unit_test(genesys_test_support_oneventmanager
     test_support_oneventmanager.cpp
     genesys_kernel_simulator_support
@@ -234,10 +235,10 @@ endif()
 
 add_executable(genesys_test_tools_hypothesistester
     test_tools_hypothesistester.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/HypothesisTesterDefaultImpl1.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistribution.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistributionBase.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/SolverDefaultImpl1.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/HypothesisTesterDefaultImpl1.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/ProbabilityDistribution.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/ProbabilityDistributionBase.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Continuous/SolverDefaultImpl1.cpp
 )
 
 target_include_directories(genesys_test_tools_hypothesistester
@@ -259,6 +260,13 @@ gtest_discover_tests(genesys_test_tools_hypothesistester
 )
 
 set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit)
+
+genesys_add_unit_test(genesys_test_tools_optimization
+    test_tools_optimization.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+)
 
 genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
     test_tools_simulation_results_dataset.cpp
@@ -283,6 +291,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_experimentmanager
         genesys_test_statistics
         genesys_test_tools_hypothesistester
+        genesys_test_tools_optimization
         genesys_test_tools_simulation_results_dataset
 )
 
@@ -362,6 +371,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_support_experimentmanager>
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
+    COMMAND $<TARGET_FILE:genesys_test_tools_optimization>
     COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
