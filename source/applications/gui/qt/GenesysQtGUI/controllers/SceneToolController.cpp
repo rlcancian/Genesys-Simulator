@@ -380,18 +380,6 @@ void SceneToolController::onActionAnimatePlotTriggered() {
     activateAnimationDrawingTool(_ui->actionAnimatePlot, &ModelGraphicsScene::drawingPlot);
 }
 
-void SceneToolController::onActionAnimateQueueTriggered() {
-    activateAnimationDrawingTool(_ui->actionAnimateQueue, &ModelGraphicsScene::drawingQueue);
-}
-
-void SceneToolController::onActionAnimateResourceTriggered() {
-    activateAnimationDrawingTool(_ui->actionAnimateResource, &ModelGraphicsScene::drawingResource);
-}
-
-void SceneToolController::onActionAnimateStationTriggered() {
-    activateAnimationDrawingTool(_ui->actionAnimateStation, &ModelGraphicsScene::drawingStation);
-}
-
 void SceneToolController::onActionAnimateStatisticsTriggered() {
     activateAnimationDrawingTool(_ui->actionAnimateStatistics, &ModelGraphicsScene::drawingStatistics);
 }

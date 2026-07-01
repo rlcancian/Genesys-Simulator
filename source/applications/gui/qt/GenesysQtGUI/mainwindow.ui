@@ -930,8 +930,6 @@
      <addaction name="actionAnimatePlot"/>
      <addaction name="separator"/>
      <addaction name="actionAnimateVariable"/>
-     <addaction name="actionAnimateResource"/>
-     <addaction name="actionAnimateQueue"/>
      <addaction name="actionAnimateExpression"/>
     </widget>
     <widget class="QMenu" name="menuViewArranje">
@@ -1334,7 +1332,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>toolBar</string>
    </property>
    <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
+    <enum>LeftToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
     <bool>false</bool>
@@ -1348,9 +1346,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <addaction name="actionAnimateExpression"/>
    <addaction name="actionAnimateVariable"/>
    <addaction name="actionAnimatePlot"/>
-   <addaction name="actionAnimateResource"/>
-   <addaction name="actionAnimateQueue"/>
-   <addaction name="actionAnimateStation"/>
   </widget>
   <widget class="QToolBar" name="toolBarArranje">
    <property name="windowTitle">
@@ -1884,42 +1879,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="text">
     <string>Expression</string>
-   </property>
-  </action>
-  <action name="actionAnimateResource">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/icons3/resources/icons/pack3/ico/question.ico</normaloff>:/icons3/resources/icons/pack3/ico/question.ico</iconset>
-   </property>
-   <property name="text">
-    <string>Resource</string>
-   </property>
-  </action>
-  <action name="actionAnimateQueue">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/resources/ToolBar/_animfila.bmp</normaloff>:/resources/ToolBar/_animfila.bmp</iconset>
-   </property>
-   <property name="text">
-    <string>Queue</string>
-   </property>
-  </action>
-  <action name="actionAnimateStation">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/icons3/resources/icons/pack3/ico/question.ico</normaloff>:/icons3/resources/icons/pack3/ico/question.ico</iconset>
-   </property>
-   <property name="text">
-    <string>Station</string>
    </property>
   </action>
   <action name="actionGModelShowConnect">

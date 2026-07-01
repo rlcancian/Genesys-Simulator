@@ -1,4 +1,4 @@
-﻿
+
 /*
  * The MIT License
  *
@@ -38,6 +38,7 @@
 #include <memory>
 #include <string>
 #include <list>
+#include <vector>
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/GraphicalModelComponent.h"
@@ -53,11 +54,18 @@
 #include "dialogs/DialogSelectCounter.h"
 #include "dialogs/DialogSelectVariable.h"
 #include "dialogs/DialogTimerConfigure.h"
-#include "animations/AnimationQueue.h"
+#include "extensions/GuiExtensionManager.h"
 #include "services/GraphicalModelBuilder.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
 #include "../../../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
+#include "../../../../../kernel/util/Util.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
+#include "plugins/components/MaterialHandling/Enter.h"
+#include "plugins/components/MaterialHandling/Leave.h"
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QThread>
@@ -100,6 +108,38 @@ namespace {
         return candidate;
     }
 
+    void dispatchPluginAnimationEvent(ModelGraphicsScene* scene,
+                                      GuiExtensionManager* manager,
+                                      const char* animationType,
+                                      GuiSimAnimationEvent::Type type,
+                                      ModelComponent* component,
+                                      const std::string& targetName) {
+        if (scene == nullptr || manager == nullptr || targetName.empty()) {
+            return;
+        }
+        GuiSimAnimationEvent event;
+        event.type = type;
+        event.component = component;
+        event.animationTargetName = targetName;
+        event.visible = true;
+        manager->dispatchAnimationEvent(animationType, scene, event);
+    }
+
+    void collectDirectResourceNames(List<SeizableItem*>* requests, std::vector<std::string>& names) {
+        if (requests == nullptr || requests->list() == nullptr) {
+            return;
+        }
+        for (SeizableItem* item : *requests->list()) {
+            if (item == nullptr || item->getSeizableType() != SeizableItem::SeizableType::RESOURCE) {
+                continue;
+            }
+            Resource* resource = item->getResource();
+            if (resource != nullptr) {
+                names.push_back(resource->getName());
+            }
+        }
+    }
+
     void restoreExtendedSelection(QGraphicsScene* scene,
                                   const QList<QGraphicsItem*>& selectionBeforeClick,
                                   QGraphicsItem* clickedSelectableItem) {
@@ -127,13 +167,14 @@ namespace {
         case ModelGraphicsScene::RESOURCE:
         case ModelGraphicsScene::STATION:
         case ModelGraphicsScene::STATISTICS:
+        case ModelGraphicsScene::PLUGIN_DRAWING:
             return true;
         default:
             return false;
         }
     }
 
-    AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode) {
+    AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode, GuiExtensionManager* manager, const std::string& pluginAnimationType = "") {
         switch (mode) {
         case ModelGraphicsScene::ENTITY:
             return new AnimationEntity();
@@ -144,13 +185,15 @@ namespace {
         case ModelGraphicsScene::PLOT:
             return new AnimationPlot();
         case ModelGraphicsScene::QUEUE_PLACEHOLDER:
-            return new AnimationQueueDisplay();
+            return manager ? manager->createAnimationPlaceholder("Queue") : nullptr;
         case ModelGraphicsScene::RESOURCE:
-            return new AnimationResource();
+            return manager ? manager->createAnimationPlaceholder("Resource") : nullptr;
         case ModelGraphicsScene::STATION:
-            return new AnimationStation();
+            return manager ? manager->createAnimationPlaceholder("Station") : nullptr;
         case ModelGraphicsScene::STATISTICS:
             return new AnimationStatistics();
+        case ModelGraphicsScene::PLUGIN_DRAWING:
+            return (manager && !pluginAnimationType.empty()) ? manager->createAnimationPlaceholder(pluginAnimationType) : nullptr;
         default:
             return nullptr;
         }
@@ -2062,25 +2105,95 @@ void ModelGraphicsScene::handleAnimationStateChanged(QAbstractAnimation::State n
 }
 
 void ModelGraphicsScene::animateQueueInsert(ModelComponent* component, bool visivible) {
-    // Cria a animação
-    AnimationQueue* animationQueue = new AnimationQueue(this, component);
-
-    // Adiciona uma imagem na fila
-    animationQueue->addAnimationQueue(visivible);
-
-    // Libera o espaço de memória alocado pela animação
-    delete animationQueue;
+    if (_guiExtensionManager == nullptr) {
+        return;
+    }
+    GuiSimAnimationEvent event;
+    event.type = GuiSimAnimationEvent::Type::Insert;
+    event.component = component;
+    event.visible = visivible;
+    _guiExtensionManager->dispatchAnimationEvent("Queue", this, event);
 }
 
 void ModelGraphicsScene::animateQueueRemove(ModelComponent* component) {
-    // Cria a animação
-    AnimationQueue* animationQueue = new AnimationQueue(this, component);
+    if (_guiExtensionManager == nullptr) {
+        return;
+    }
+    GuiSimAnimationEvent event;
+    event.type = GuiSimAnimationEvent::Type::Remove;
+    event.component = component;
+    event.visible = true;
+    _guiExtensionManager->dispatchAnimationEvent("Queue", this, event);
+}
 
-    // Remove uma imagem da fila
-    animationQueue->removeAnimationQueue();
+void ModelGraphicsScene::notifyEntityMovePluginAnimations(ModelComponent* sourceComponent, Entity* entity) {
+    Q_UNUSED(entity);
+    if (_guiExtensionManager == nullptr || sourceComponent == nullptr) {
+        return;
+    }
 
-    // Libera o espaço de memória alocado pela animação
-    delete animationQueue;
+    if (Seize* seize = dynamic_cast<Seize*>(sourceComponent)) {
+        std::vector<std::string> resourceNames;
+        collectDirectResourceNames(seize->getSeizeRequests(), resourceNames);
+        for (const std::string& resourceName : resourceNames) {
+            dispatchPluginAnimationEvent(this,
+                                         _guiExtensionManager,
+                                         "Resource",
+                                         GuiSimAnimationEvent::Type::Insert,
+                                         sourceComponent,
+                                         resourceName);
+        }
+        return;
+    }
+
+    if (Release* release = dynamic_cast<Release*>(sourceComponent)) {
+        std::vector<std::string> resourceNames;
+        collectDirectResourceNames(release->getReleaseRequests(), resourceNames);
+        for (const std::string& resourceName : resourceNames) {
+            dispatchPluginAnimationEvent(this,
+                                         _guiExtensionManager,
+                                         "Resource",
+                                         GuiSimAnimationEvent::Type::Remove,
+                                         sourceComponent,
+                                         resourceName);
+        }
+    }
+}
+
+void ModelGraphicsScene::notifyAfterProcessPluginAnimations(ModelComponent* processedComponent, Entity* entity) {
+    Q_UNUSED(entity);
+    if (_guiExtensionManager == nullptr || processedComponent == nullptr) {
+        return;
+    }
+
+    if (Enter* enter = dynamic_cast<Enter*>(processedComponent)) {
+        Station* station = enter->getStation();
+        if (station != nullptr) {
+            dispatchPluginAnimationEvent(this,
+                                         _guiExtensionManager,
+                                         "Station",
+                                         GuiSimAnimationEvent::Type::Insert,
+                                         processedComponent,
+                                         station->getName());
+        }
+        return;
+    }
+
+    if (Leave* leave = dynamic_cast<Leave*>(processedComponent)) {
+        Station* station = leave->getStation();
+        if (station != nullptr) {
+            dispatchPluginAnimationEvent(this,
+                                         _guiExtensionManager,
+                                         "Station",
+                                         GuiSimAnimationEvent::Type::Remove,
+                                         processedComponent,
+                                         station->getName());
+        }
+    }
+}
+
+void ModelGraphicsScene::setGuiExtensionManager(GuiExtensionManager* manager) {
+    _guiExtensionManager = manager;
 }
 
 
@@ -2119,6 +2232,15 @@ void ModelGraphicsScene::animatePlot() {
         AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
         if (plot != nullptr) {
             plot->appendSample(currentModel);
+        }
+    }
+}
+
+void ModelGraphicsScene::animateStatistics() {
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationStatistics* stats = dynamic_cast<AnimationStatistics*>(placeholder);
+        if (stats != nullptr) {
+            stats->refreshValue();
         }
     }
 }
@@ -3145,7 +3267,7 @@ void ModelGraphicsScene::initializeAnimationDrawing(QGraphicsSceneMouseEvent* mo
     }
 
     if (isPlaceholderAnimationMode(_drawingMode)) {
-        _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode);
+        _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode, _guiExtensionManager, _pluginDrawingAnimationType);
         if (_currentPlaceholderAnimation != nullptr) {
             _currentPlaceholderAnimation->startDrawing(mouseEvent);
             addItem(_currentPlaceholderAnimation);
@@ -3204,7 +3326,7 @@ void ModelGraphicsScene::continueAnimationDrawing(QGraphicsSceneMouseEvent* mous
             }
         }
         else {
-            _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode);
+            _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode, _guiExtensionManager, _pluginDrawingAnimationType);
         }
     }
 }
@@ -3602,6 +3724,15 @@ void ModelGraphicsScene::drawingStatistics() {
     _drawingMode = DrawingMode::STATISTICS;
 }
 
+void ModelGraphicsScene::drawingByAnimationType(const std::string& animationType) {
+    _pluginDrawingAnimationType = animationType;
+    _drawingMode = DrawingMode::PLUGIN_DRAWING;
+}
+
+std::string ModelGraphicsScene::pluginDrawingAnimationType() const {
+    return _pluginDrawingAnimationType;
+}
+
 void ModelGraphicsScene::setObjectBeingDragged(QTreeWidgetItem* objectBeingDragged) {
     _objectBeingDragged = objectBeingDragged;
 }
@@ -3802,10 +3933,13 @@ void ModelGraphicsScene::clearAnimationsValues() {
     }
 
     for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
-        AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
-        if (plot != nullptr) {
+        if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
             plot->clearValues();
         }
+        if (AnimationStatistics* stats = dynamic_cast<AnimationStatistics*>(placeholder)) {
+            stats->clearRuntimeState();
+        }
+        placeholder->resetRuntimeState();
     }
 }
 
@@ -3854,6 +3988,50 @@ void ModelGraphicsScene::setVariables() {
                     _variables->append(attribute);
                 }
             }
+        }
+    }
+}
+
+void ModelGraphicsScene::setStatisticsCollectors() {
+    Model* currentModel = _simulator != nullptr ? _simulator->getModelManager()->current() : nullptr;
+    if (currentModel == nullptr) {
+        return;
+    }
+
+    List<ModelDataDefinition*>* collectorsList =
+        currentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());
+    if (collectorsList == nullptr || collectorsList->list() == nullptr) {
+        return;
+    }
+
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationStatistics* stats = dynamic_cast<AnimationStatistics*>(placeholder);
+        if (stats == nullptr) {
+            continue;
+        }
+
+        stats->setCollector(nullptr);
+        const QString targetName = stats->getTargetName().trimmed();
+        if (targetName.isEmpty()) {
+            continue;
+        }
+
+        for (ModelDataDefinition* definition : *collectorsList->list()) {
+            if (definition == nullptr) {
+                continue;
+            }
+            if (QString::fromStdString(definition->getName()) != targetName) {
+                continue;
+            }
+            StatisticsCollector* collectorDefinition = dynamic_cast<StatisticsCollector*>(definition);
+            if (collectorDefinition == nullptr) {
+                break;
+            }
+            Statistics_if* statistics = collectorDefinition->getStatistics();
+            if (statistics != nullptr) {
+                stats->setCollector(statistics->getCollector());
+            }
+            break;
         }
     }
 }

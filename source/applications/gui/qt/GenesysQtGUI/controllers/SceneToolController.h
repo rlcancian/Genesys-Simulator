@@ -92,12 +92,6 @@ public:
     void onActionAnimateExpressionTriggered();
     /** @brief Activates plot animation placeholder drawing. */
     void onActionAnimatePlotTriggered();
-    /** @brief Activates queue animation placeholder drawing. */
-    void onActionAnimateQueueTriggered();
-    /** @brief Activates resource animation placeholder drawing. */
-    void onActionAnimateResourceTriggered();
-    /** @brief Activates station animation placeholder drawing. */
-    void onActionAnimateStationTriggered();
     /** @brief Activates statistics animation placeholder drawing. */
     void onActionAnimateStatisticsTriggered();
     /** @brief Activates connection-creation mode and resets first-click compatibility state. */
