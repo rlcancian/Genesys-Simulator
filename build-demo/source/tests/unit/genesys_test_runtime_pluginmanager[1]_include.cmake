@@ -1,0 +1,5 @@
+if(EXISTS "/home/diego/ufsc/modsim/Genesys-Simulator/build-demo/source/tests/unit/genesys_test_runtime_pluginmanager[1]_tests.cmake")
+  include("/home/diego/ufsc/modsim/Genesys-Simulator/build-demo/source/tests/unit/genesys_test_runtime_pluginmanager[1]_tests.cmake")
+else()
+  add_test(genesys_test_runtime_pluginmanager_NOT_BUILT genesys_test_runtime_pluginmanager_NOT_BUILT)
+endif()
