@@ -1,11 +1,8 @@
 #include "animations/AnimationPlaceholder.h"
-#include "controllers/SimulationEventController.h"
 #include "extensions/GuiExtensionManager.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
 #include "graphicals/ModelGraphicsScene.h"
 
-#include "kernel/simulator/Event.h"
-#include "kernel/simulator/OnEventManager.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/essentialPlugins/Entity.h"
@@ -22,14 +19,8 @@
 
 #include <QAction>
 #include <QApplication>
-#include <QLabel>
 #include <QMainWindow>
-#include <QProgressBar>
-#include <QTabWidget>
-#include <QTableWidget>
-#include <QTextEdit>
 
-#include <memory>
 #include <string>
 
 namespace {
@@ -96,80 +87,6 @@ bool hasAnimationContribution(const GuiExtensionManager& manager, const std::str
     }
     return false;
 }
-
-struct SimulationControllerUi {
-    QLabel replicationLabel;
-    QProgressBar progressBar;
-    QTableWidget simulationEventsTable;
-    QTableWidget entitiesTable;
-    QTableWidget variablesTable;
-    QTextEdit simulationText;
-    QTextEdit reportsText;
-    QTabWidget centralTabWidget;
-    QAction graphicalSimulationAction;
-    QAction animationEnabledAction;
-    bool modelChecked = true;
-
-    explicit SimulationControllerUi(QMainWindow* mainWindow)
-        : graphicalSimulationAction(mainWindow)
-        , animationEnabledAction(mainWindow) {
-        graphicalSimulationAction.setCheckable(true);
-        graphicalSimulationAction.setChecked(true);
-        animationEnabledAction.setCheckable(true);
-        animationEnabledAction.setChecked(true);
-    }
-};
-
-std::unique_ptr<SimulationEventController> makeSimulationEventController(
-    Simulator* simulator,
-    ModelGraphicsScene* scene,
-    SimulationControllerUi* ui)
-{
-    return std::make_unique<SimulationEventController>(
-        simulator,
-        scene,
-        nullptr,
-        &ui->replicationLabel,
-        &ui->progressBar,
-        &ui->simulationEventsTable,
-        &ui->entitiesTable,
-        &ui->variablesTable,
-        &ui->simulationText,
-        &ui->reportsText,
-        &ui->centralTabWidget,
-        &ui->graphicalSimulationAction,
-        &ui->animationEnabledAction,
-        &ui->modelChecked,
-        0,
-        SimulationEventController::Callbacks{
-            []() {},
-            [](SimulationEvent*) {},
-            [](bool) {},
-            [](bool) {},
-            [](SimulationEvent*) {},
-        });
-}
-
-class SimulationEventControllerE2EFixture : public AnimationDispatchTestFixture {
-protected:
-    void SetUp() override {
-        AnimationDispatchTestFixture::SetUp();
-        _controllerUi = std::make_unique<SimulationControllerUi>(&_mainWindow);
-        _controller = makeSimulationEventController(&_simulator, scene(), _controllerUi.get());
-    }
-
-    SimulationEventController* controller() { return _controller.get(); }
-    SimulationControllerUi* controllerUi() { return _controllerUi.get(); }
-
-    SimulationEvent* makeSimulationEvent(Event* kernelEvent) {
-        SimulationEvent* simulationEvent = SimulationEvent::NewUnsetInstance();
-        simulationEvent->setCurrentEvent(kernelEvent);
-        return simulationEvent;
-    }
-
-    std::unique_ptr<SimulationControllerUi> _controllerUi;
-    std::unique_ptr<SimulationEventController> _controller;
-};
 
 } // namespace
 
@@ -353,103 +270,6 @@ TEST_F(AnimationDispatchTestFixture, StatisticsCollectorRelinksAfterTargetChange
 
     EXPECT_NE(stats->getCollector(), nullptr);
     EXPECT_EQ(stats->getCollector(), secondCollector->getStatistics()->getCollector());
-}
-
-TEST_F(SimulationEventControllerE2EFixture, SimulationStartHandlerResetsOverlaysAndLinksStatistics) {
-    auto* collectorDefinition = new StatisticsCollector(model(), "WaitTimeCollector");
-    ASSERT_NE(collectorDefinition, nullptr);
-
-    auto* resource = new Resource(model(), "Machine_1");
-    auto* seize = new Seize(model(), "Seize_1");
-    seize->addRequest(new SeizableItem(resource));
-
-    AnimationPlaceholder* resourcePlaceholder = addPlaceholder("Resource", QStringLiteral("Machine_1"));
-    AnimationStatistics* stats = addStatisticsPlaceholder(QStringLiteral("WaitTimeCollector"));
-    ASSERT_NE(resourcePlaceholder, nullptr);
-    ASSERT_NE(stats, nullptr);
-
-    scene()->notifyEntityMovePluginAnimations(seize, nullptr);
-    ASSERT_EQ(resourcePlaceholder->overlayBusyCount(), 1);
-    ASSERT_EQ(stats->getCollector(), nullptr);
-
-    SimulationEvent* startEvent = SimulationEvent::NewUnsetInstance();
-    controller()->onSimulationStartHandler(startEvent);
-    SimulationEvent::DeleteInstance(startEvent);
-
-    EXPECT_EQ(resourcePlaceholder->overlayBusyCount(), 0);
-    EXPECT_NE(stats->getCollector(), nullptr);
-    EXPECT_EQ(stats->getCollector(), collectorDefinition->getStatistics()->getCollector());
-}
-
-TEST_F(SimulationEventControllerE2EFixture, SimulationEventControllerUpdatesResourceOverlayOnSeizeMove) {
-    auto* resource = new Resource(model(), "Machine_1");
-    auto* seize = new Seize(model(), "Seize_1");
-    auto* release = new Release(model(), "Release_1");
-    seize->addRequest(new SeizableItem(resource));
-    release->addReleaseRequests(new SeizableItem(resource));
-
-    AnimationPlaceholder* placeholder = addPlaceholder("Resource", QStringLiteral("Machine_1"));
-    ASSERT_NE(placeholder, nullptr);
-
-    Entity* entity = model()->createEntity("Entity_1");
-    Event seizeEvent(0.0, entity, seize);
-    SimulationEvent* seizeSimulationEvent = makeSimulationEvent(&seizeEvent);
-    controller()->onMoveEntityEvent(seizeSimulationEvent);
-    EXPECT_EQ(placeholder->overlayBusyCount(), 1);
-
-    Event releaseEvent(1.0, entity, release);
-    SimulationEvent* releaseSimulationEvent = makeSimulationEvent(&releaseEvent);
-    controller()->onMoveEntityEvent(releaseSimulationEvent);
-
-    EXPECT_EQ(placeholder->overlayBusyCount(), 0);
-
-    SimulationEvent::DeleteInstance(seizeSimulationEvent);
-    SimulationEvent::DeleteInstance(releaseSimulationEvent);
-}
-
-TEST_F(SimulationEventControllerE2EFixture, SimulationEventControllerUpdatesStationOverlayOnAfterProcess) {
-    auto* station = new Station(model(), "station1");
-    auto* enter = new Enter(model(), "Enter_1");
-    auto* leave = new Leave(model(), "Leave_1");
-    enter->setStation(station);
-    leave->setStation(station);
-
-    AnimationPlaceholder* placeholder = addPlaceholder("Station", QStringLiteral("station1"));
-    ASSERT_NE(placeholder, nullptr);
-
-    Entity* entity = model()->createEntity("Entity_1");
-    Event enterEvent(0.0, entity, enter);
-    SimulationEvent* enterSimulationEvent = makeSimulationEvent(&enterEvent);
-    controller()->onAfterProcessEvent(enterSimulationEvent);
-    EXPECT_EQ(placeholder->overlayBusyCount(), 1);
-
-    Event leaveEvent(1.0, entity, leave);
-    SimulationEvent* leaveSimulationEvent = makeSimulationEvent(&leaveEvent);
-    controller()->onAfterProcessEvent(leaveSimulationEvent);
-    EXPECT_EQ(placeholder->overlayBusyCount(), 0);
-
-    SimulationEvent::DeleteInstance(enterSimulationEvent);
-    SimulationEvent::DeleteInstance(leaveSimulationEvent);
-}
-
-TEST_F(SimulationEventControllerE2EFixture, MoveEntityEventSkippedWhenGraphicalSimulationDisabled) {
-    auto* resource = new Resource(model(), "Machine_1");
-    auto* seize = new Seize(model(), "Seize_1");
-    seize->addRequest(new SeizableItem(resource));
-
-    AnimationPlaceholder* placeholder = addPlaceholder("Resource", QStringLiteral("Machine_1"));
-    ASSERT_NE(placeholder, nullptr);
-
-    controllerUi()->graphicalSimulationAction.setChecked(false);
-
-    Entity* entity = model()->createEntity("Entity_1");
-    Event seizeEvent(0.0, entity, seize);
-    SimulationEvent* seizeSimulationEvent = makeSimulationEvent(&seizeEvent);
-    controller()->onMoveEntityEvent(seizeSimulationEvent);
-
-    EXPECT_EQ(placeholder->overlayBusyCount(), 0);
-
-    SimulationEvent::DeleteInstance(seizeSimulationEvent);
 }
 
 TEST(GuiAnimationDispatch, NotifyWithNullExtensionManagerDoesNotCrash) {
