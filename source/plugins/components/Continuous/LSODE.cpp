@@ -14,7 +14,7 @@
 #include <fstream>
 #include <vector>
 #include "plugins/components/Continuous/LSODE.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 

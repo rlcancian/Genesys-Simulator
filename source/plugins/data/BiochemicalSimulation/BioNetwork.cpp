@@ -10,8 +10,8 @@
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "kernel/simulator/Event.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "tools/BioKineticLawExpression.h"
 #include "tools/MassActionOdeSystem.h"
 #include "tools/RungeKutta4OdeSolver.h"
@@ -202,7 +202,7 @@ BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(mod
 
 PluginInformation* BioNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioNetwork>(), &BioNetwork::LoadInstance, &BioNetwork::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setDescriptionHelp("Native biochemical network runner. It advances BioSpecies and BioReaction data definitions with mass-action kinetics using a fixed-step RK4 solver, optionally constrained to explicit network membership.");
 	return info;
 }

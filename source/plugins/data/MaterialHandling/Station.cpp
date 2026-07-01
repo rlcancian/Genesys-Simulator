@@ -12,9 +12,9 @@
  */
 
 #include "Station.h"
-#include "kernel/simulator/Entity.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Entity.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include <vector>
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -101,6 +101,7 @@ PluginInformation* Station::GetPluginInformation() {
 	help += " If a parent Activity Area is defined, then it also accrues any times and costs by the entities in this station.";
 	help += " TYPICAL USES: (1) Defining a lathe area; (2) Defining a set of toll booths; (3) Defining a food preparation area";
 	info->setDescriptionHelp(help);
+	info->setCategory("MaterialHandling");
 	return info;
 }
 

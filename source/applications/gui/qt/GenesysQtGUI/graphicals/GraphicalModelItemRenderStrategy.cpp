@@ -313,6 +313,274 @@ void drawItemText(QPainter* painter,
     }
 }
 
+bool isGeneticCircuitPartContext(const GraphicalModelItemRenderContext& context) {
+    return context.semanticClassName == QStringLiteral("GeneticCircuitPart");
+}
+
+bool isGeneticRegulationContext(const GraphicalModelItemRenderContext& context) {
+    return context.semanticClassName == QStringLiteral("GeneticRegulation");
+}
+
+QString geneticCircuitPartRole(const GraphicalModelItemRenderContext& context) {
+    const QString source = context.semanticSubtype.isEmpty() ? context.primaryText : context.semanticSubtype;
+    const QString lower = source.toLower();
+
+    if (lower.contains("promoter") || lower.contains("pre-gene regulatory")) {
+        return QStringLiteral("Pre-gene regulatory");
+    }
+    if (lower.contains("regulatory") || lower.contains("operator")) {
+        return QStringLiteral("Regulatory");
+    }
+    if (lower.contains("rbs") || lower.contains("translation initiation")) {
+        return QStringLiteral("Translation initiation");
+    }
+    if (lower.contains("cds") || lower.contains("coding") || lower.contains("gene")) {
+        return QStringLiteral("Coding");
+    }
+    if (lower.contains("terminator") || lower.contains("termination")) {
+        return QStringLiteral("Termination");
+    }
+    if (lower.contains("region") || lower.contains("pre-gene")) {
+        return QStringLiteral("Pre-gene region");
+    }
+    return QStringLiteral("Other");
+}
+
+QString geneticRegulationRole(const GraphicalModelItemRenderContext& context) {
+    const QString source = context.semanticSubtype.isEmpty() ? context.primaryText : context.semanticSubtype;
+    const QString lower = source.toLower();
+
+    if (lower.contains("activation")) {
+        return QStringLiteral("Activation");
+    }
+    if (lower.contains("repression")) {
+        return QStringLiteral("Repression");
+    }
+    if (lower.contains("dual")) {
+        return QStringLiteral("Dual");
+    }
+    return QStringLiteral("Regulation");
+}
+
+QColor geneticCircuitPartAccentColor(const QString& role) {
+    if (role == QStringLiteral("Pre-gene regulatory")) {
+        return QColor(64, 170, 120);
+    }
+    if (role == QStringLiteral("Regulatory")) {
+        return QColor(150, 92, 194);
+    }
+    if (role == QStringLiteral("Translation initiation")) {
+        return QColor(229, 158, 44);
+    }
+    if (role == QStringLiteral("Coding")) {
+        return QColor(52, 152, 219);
+    }
+    if (role == QStringLiteral("Termination")) {
+        return QColor(214, 82, 102);
+    }
+    if (role == QStringLiteral("Pre-gene region")) {
+        return QColor(119, 136, 153);
+    }
+    return QColor(110, 110, 110);
+}
+
+QColor geneticRegulationAccentColor(const QString& role) {
+    if (role == QStringLiteral("Activation")) {
+        return QColor(64, 170, 120);
+    }
+    if (role == QStringLiteral("Repression")) {
+        return QColor(214, 82, 102);
+    }
+    if (role == QStringLiteral("Dual")) {
+        return QColor(229, 158, 44);
+    }
+    return QColor(110, 110, 110);
+}
+
+QPainterPath geneticCircuitPartShape(const GraphicalModelItemRenderContext& context) {
+    const QRectF body = innerRect(context).adjusted(context.raise, context.raise, -context.raise, -context.raise);
+    const QString role = geneticCircuitPartRole(context);
+    const qreal left = body.left();
+    const qreal right = body.right();
+    const qreal top = body.top();
+    const qreal bottom = body.bottom();
+    const qreal centerY = body.center().y();
+    const qreal insetX = qMax<qreal>(6.0, body.width() * 0.12);
+    const qreal headX = qMax<qreal>(10.0, body.width() * 0.18);
+    const qreal midBand = qMax<qreal>(4.0, body.height() * 0.12);
+
+    QPainterPath path;
+    if (role == QStringLiteral("Regulatory")) {
+        path.moveTo(body.center().x(), top);
+        path.lineTo(right, centerY);
+        path.lineTo(body.center().x(), bottom);
+        path.lineTo(left, centerY);
+        path.closeSubpath();
+        return path;
+    }
+
+    if (role == QStringLiteral("Pre-gene region")) {
+        path.addRoundedRect(body.adjusted(insetX * 0.5, 0.0, -insetX * 0.5, 0.0), body.height() / 3.0, body.height() / 3.0);
+        return path;
+    }
+
+    if (role == QStringLiteral("Translation initiation")) {
+        path.addRoundedRect(body.adjusted(insetX * 0.6, body.height() * 0.22, -insetX * 0.6, -body.height() * 0.22),
+                            body.height() / 3.0,
+                            body.height() / 3.0);
+        return path;
+    }
+
+    if (role == QStringLiteral("Termination")) {
+        path.addRoundedRect(body.adjusted(insetX * 0.35, body.height() * 0.18, -headX * 0.8, -body.height() * 0.18),
+                            body.height() / 4.0,
+                            body.height() / 4.0);
+        return path;
+    }
+
+    // Pre-gene regulatory, coding, and fallback use a directional cassette shape.
+    path.moveTo(left + insetX, top);
+    path.lineTo(right - headX, top);
+    path.lineTo(right, centerY);
+    path.lineTo(right - headX, bottom);
+    path.lineTo(left + insetX, bottom);
+    path.lineTo(left, centerY);
+    path.closeSubpath();
+
+    if (role == QStringLiteral("Other")) {
+        QPainterPath notch;
+        notch.addRoundedRect(body.adjusted(insetX * 0.3, body.height() * 0.25, -headX * 0.7, -body.height() * 0.25),
+                             midBand,
+                             midBand);
+        path.addPath(notch);
+    }
+
+    return path;
+}
+
+QPainterPath geneticRegulationShape(const GraphicalModelItemRenderContext& context) {
+    const QRectF body = innerRect(context).adjusted(context.raise, context.raise, -context.raise, -context.raise);
+    const QString role = geneticRegulationRole(context);
+    const qreal left = body.left();
+    const qreal right = body.right();
+    const qreal top = body.top();
+    const qreal bottom = body.bottom();
+    const qreal centerY = body.center().y();
+    const qreal insetX = qMax<qreal>(6.0, body.width() * 0.14);
+    const qreal capsuleRadius = body.height() / 2.0;
+
+    QPainterPath path;
+    if (role == QStringLiteral("Dual")) {
+        path.addRoundedRect(body.adjusted(insetX * 0.35, body.height() * 0.18, -insetX * 0.35, -body.height() * 0.18),
+                            capsuleRadius,
+                            capsuleRadius);
+        return path;
+    }
+
+    path.addRoundedRect(body.adjusted(insetX * 0.35, body.height() * 0.22, -insetX * 0.35, -body.height() * 0.22),
+                        capsuleRadius,
+                        capsuleRadius);
+
+    QPainterPath tip;
+    if (role == QStringLiteral("Activation")) {
+        tip.moveTo(right - insetX * 0.25, centerY);
+        tip.lineTo(right - insetX * 0.8, top + body.height() * 0.18);
+        tip.lineTo(right - insetX * 0.8, bottom - body.height() * 0.18);
+        tip.closeSubpath();
+    } else if (role == QStringLiteral("Repression")) {
+        tip.addRect(QRectF(right - insetX * 0.7, top + body.height() * 0.2, insetX * 0.18, body.height() * 0.6));
+    } else {
+        tip.moveTo(right - insetX * 0.25, centerY);
+        tip.lineTo(right - insetX * 0.8, top + body.height() * 0.18);
+        tip.lineTo(right - insetX * 0.8, bottom - body.height() * 0.18);
+        tip.closeSubpath();
+    }
+
+    path.addPath(tip);
+    return path;
+}
+
+void drawGeneticCircuitPartDetails(QPainter* painter, const GraphicalModelItemRenderContext& context) {
+    const QRectF body = innerRect(context).adjusted(context.raise, context.raise, -context.raise, -context.raise);
+    const QString role = geneticCircuitPartRole(context);
+    const QColor accent = geneticCircuitPartAccentColor(role);
+    QPen accentPen(accent.lighter(140), 2);
+    accentPen.setCosmetic(true);
+
+    painter->setBrush(Qt::NoBrush);
+    painter->setPen(accentPen);
+
+    const qreal midY = body.center().y();
+    const qreal left = body.left();
+    const qreal right = body.right();
+    const qreal headX = qMax<qreal>(10.0, body.width() * 0.18);
+    const qreal insetX = qMax<qreal>(6.0, body.width() * 0.12);
+
+    if (role == QStringLiteral("Pre-gene regulatory")) {
+        painter->drawLine(QPointF(left + insetX, midY), QPointF(right - headX, midY));
+        painter->drawLine(QPointF(right - headX, midY), QPointF(right - headX - 8.0, midY - 5.0));
+        painter->drawLine(QPointF(right - headX, midY), QPointF(right - headX - 8.0, midY + 5.0));
+        return;
+    }
+
+    if (role == QStringLiteral("Regulatory")) {
+        painter->drawLine(QPointF(body.center().x() - body.width() * 0.18, midY),
+                          QPointF(body.center().x() + body.width() * 0.18, midY));
+        painter->drawEllipse(QRectF(body.center().x() - 5.0, midY - 5.0, 10.0, 10.0));
+        return;
+    }
+
+    if (role == QStringLiteral("Translation initiation")) {
+        painter->drawLine(QPointF(left + insetX * 1.1, body.top() + body.height() * 0.22),
+                          QPointF(left + insetX * 1.1, body.bottom() - body.height() * 0.22));
+        return;
+    }
+
+    if (role == QStringLiteral("Coding")) {
+        painter->drawLine(QPointF(left + insetX * 1.1, midY), QPointF(right - headX * 0.6, midY));
+        return;
+    }
+
+    if (role == QStringLiteral("Termination")) {
+        painter->drawLine(QPointF(right - headX * 0.3, body.top() + body.height() * 0.2),
+                          QPointF(right - headX * 0.3, body.bottom() - body.height() * 0.2));
+        return;
+    }
+
+    painter->drawLine(QPointF(left + insetX, midY), QPointF(right - headX, midY));
+}
+
+void drawGeneticRegulationDetails(QPainter* painter, const GraphicalModelItemRenderContext& context) {
+    const QRectF body = innerRect(context).adjusted(context.raise, context.raise, -context.raise, -context.raise);
+    const QString role = geneticRegulationRole(context);
+    const QColor accent = geneticRegulationAccentColor(role);
+    QPen accentPen(accent.lighter(145), 2);
+    accentPen.setCosmetic(true);
+
+    painter->setBrush(Qt::NoBrush);
+    painter->setPen(accentPen);
+
+    const qreal midY = body.center().y();
+    const qreal left = body.left();
+    const qreal right = body.right();
+    const qreal insetX = qMax<qreal>(6.0, body.width() * 0.14);
+
+    painter->drawLine(QPointF(left + insetX * 1.1, midY), QPointF(right - insetX * 1.4, midY));
+
+    if (role == QStringLiteral("Activation")) {
+        painter->drawLine(QPointF(right - insetX * 1.4, midY), QPointF(right - insetX * 1.95, midY - 5.5));
+        painter->drawLine(QPointF(right - insetX * 1.4, midY), QPointF(right - insetX * 1.95, midY + 5.5));
+    } else if (role == QStringLiteral("Repression")) {
+        painter->drawLine(QPointF(right - insetX * 1.55, body.top() + body.height() * 0.24),
+                          QPointF(right - insetX * 1.55, body.bottom() - body.height() * 0.24));
+    } else if (role == QStringLiteral("Dual")) {
+        painter->drawLine(QPointF(right - insetX * 1.35, midY), QPointF(right - insetX * 1.75, midY - 5.5));
+        painter->drawLine(QPointF(right - insetX * 1.35, midY), QPointF(right - insetX * 1.75, midY + 5.5));
+        painter->drawLine(QPointF(right - insetX * 1.95, body.top() + body.height() * 0.24),
+                          QPointF(right - insetX * 1.95, body.bottom() - body.height() * 0.24));
+    }
+}
+
 class ClassicGraphicalModelItemRenderStrategy final : public GraphicalModelItemRenderStrategy {
 public:
     const char* name() const override {
@@ -320,6 +588,12 @@ public:
     }
 
     QPainterPath shape(const GraphicalModelItemRenderContext& context) const override {
+        if (isGeneticCircuitPartContext(context)) {
+            return geneticCircuitPartShape(context);
+        }
+        if (isGeneticRegulationContext(context)) {
+            return geneticRegulationShape(context);
+        }
         QPainterPath path;
         path.addRect(context.bounds);
         return path;
@@ -327,6 +601,116 @@ public:
 
     void paint(QPainter* painter, const GraphicalModelItemRenderContext& context) const override {
         painter->save();
+
+        if (isGeneticCircuitPartContext(context)) {
+            painter->setRenderHint(QPainter::Antialiasing, true);
+
+            const QRectF body = innerRect(context).adjusted(context.raise, context.raise, -context.raise, -context.raise);
+            const QString role = geneticCircuitPartRole(context);
+            const QColor accent = geneticCircuitPartAccentColor(role);
+
+            QPainterPath partPath = geneticCircuitPartShape(context);
+            QColor shadow = colorFromRgba(context.borderColor);
+            shadow.setAlpha(context.selected ? 120 : 60);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(shadow);
+            painter->drawPath(partPath.translated(0, context.selected ? 3 : 2));
+
+            QLinearGradient gradient(body.topLeft(), body.bottomRight());
+            gradient.setColorAt(0.0, context.fillColor.lighter(170));
+            gradient.setColorAt(0.55, context.fillColor);
+            gradient.setColorAt(1.0, context.fillColor.darker(140));
+            painter->setBrush(QBrush(gradient));
+
+            QPen bodyPen(accent.darker(120));
+            bodyPen.setWidth(context.selected ? context.penWidth + 2 : context.penWidth + 1);
+            bodyPen.setCosmetic(true);
+            painter->setPen(bodyPen);
+            painter->drawPath(partPath);
+
+            painter->setBrush(QBrush(accent.lighter(160)));
+            painter->setPen(Qt::NoPen);
+            if (role == QStringLiteral("Regulatory")) {
+                const QRectF markerRect(body.center().x() - body.width() * 0.08,
+                                        body.center().y() - body.height() * 0.08,
+                                        body.width() * 0.16,
+                                        body.height() * 0.16);
+                painter->drawEllipse(markerRect);
+            } else if (role == QStringLiteral("Termination")) {
+                const QRectF markerRect(body.right() - qMax<qreal>(6.0, body.width() * 0.07),
+                                        body.top() + body.height() * 0.2,
+                                        qMax<qreal>(4.0, body.width() * 0.04),
+                                        body.height() * 0.6);
+                painter->drawRect(markerRect);
+            }
+
+            drawGeneticCircuitPartDetails(painter, context);
+
+            const QRectF textRect = body.adjusted(context.raise + 2,
+                                                  context.raise + 2,
+                                                  -(context.raise + 2),
+                                                  -(context.raise + 2));
+            drawItemText(painter, context, textRect, true);
+            drawSelectionHandles(painter, context, true);
+
+            if (context.breakpoint) {
+                painter->setBrush(Qt::NoBrush);
+                QPen breakpointPen(colorFromRgba(context.breakpointColor), 2);
+                breakpointPen.setCosmetic(true);
+                painter->setPen(breakpointPen);
+                painter->drawPath(partPath);
+            }
+
+            painter->restore();
+            return;
+        }
+
+        if (isGeneticRegulationContext(context)) {
+            painter->setRenderHint(QPainter::Antialiasing, true);
+
+            const QRectF body = innerRect(context).adjusted(context.raise, context.raise, -context.raise, -context.raise);
+            const QString role = geneticRegulationRole(context);
+            const QColor accent = geneticRegulationAccentColor(role);
+
+            QPainterPath regulationPath = geneticRegulationShape(context);
+            QColor shadow = colorFromRgba(context.borderColor);
+            shadow.setAlpha(context.selected ? 120 : 60);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(shadow);
+            painter->drawPath(regulationPath.translated(0, context.selected ? 3 : 2));
+
+            QLinearGradient gradient(body.topLeft(), body.bottomRight());
+            gradient.setColorAt(0.0, context.fillColor.lighter(170));
+            gradient.setColorAt(0.5, context.fillColor);
+            gradient.setColorAt(1.0, context.fillColor.darker(145));
+            painter->setBrush(QBrush(gradient));
+
+            QPen bodyPen(accent.darker(115));
+            bodyPen.setWidth(context.selected ? context.penWidth + 2 : context.penWidth + 1);
+            bodyPen.setCosmetic(true);
+            painter->setPen(bodyPen);
+            painter->drawPath(regulationPath);
+
+            drawGeneticRegulationDetails(painter, context);
+
+            const QRectF textRect = body.adjusted(context.raise + 2,
+                                                  context.raise + 2,
+                                                  -(context.raise + 2),
+                                                  -(context.raise + 2));
+            drawItemText(painter, context, textRect, true);
+            drawSelectionHandles(painter, context, true);
+
+            if (context.breakpoint) {
+                painter->setBrush(Qt::NoBrush);
+                QPen breakpointPen(colorFromRgba(context.breakpointColor), 2);
+                breakpointPen.setCosmetic(true);
+                painter->setPen(breakpointPen);
+                painter->drawPath(regulationPath);
+            }
+
+            painter->restore();
+            return;
+        }
 
         const int wi = context.width - 2 * context.margin - context.penWidth;
         const int hi = context.height - 2 * context.margin - context.penWidth;
@@ -473,6 +857,12 @@ public:
     }
 
     QPainterPath shape(const GraphicalModelItemRenderContext& context) const override {
+        if (isGeneticCircuitPartContext(context)) {
+            return geneticCircuitPartShape(context);
+        }
+        if (isGeneticRegulationContext(context)) {
+            return geneticRegulationShape(context);
+        }
         QPainterPath path;
         if (context.kind == GraphicalModelItemRenderContext::ItemKind::Component) {
             const QRectF body = bodyRect(context);
@@ -486,6 +876,98 @@ public:
     void paint(QPainter* painter, const GraphicalModelItemRenderContext& context) const override {
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing, true);
+
+        if (isGeneticCircuitPartContext(context)) {
+            const QRectF body = bodyRect(context);
+            const QString role = geneticCircuitPartRole(context);
+            const QColor accent = geneticCircuitPartAccentColor(role);
+            const QPainterPath partPath = geneticCircuitPartShape(context);
+
+            QColor shadow = colorFromRgba(context.borderColor);
+            shadow.setAlpha(context.selected ? 120 : 60);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(shadow);
+            painter->drawPath(partPath.translated(0, context.selected ? 3 : 2));
+
+            QRadialGradient gradient(body.center() - QPointF(body.width() * 0.16, body.height() * 0.22),
+                                     qMax(body.width(), body.height()) * 0.74);
+            gradient.setColorAt(0.0, context.fillColor.lighter(175));
+            gradient.setColorAt(0.58, context.fillColor);
+            gradient.setColorAt(1.0, context.fillColor.darker(140));
+            painter->setBrush(QBrush(gradient));
+
+            QPen bodyPen(accent);
+            bodyPen.setWidth(context.selected ? context.penWidth + 3 : context.penWidth + 1);
+            bodyPen.setCosmetic(true);
+            painter->setPen(bodyPen);
+            painter->drawPath(partPath);
+
+            drawGeneticCircuitPartDetails(painter, context);
+
+            const QRectF textRect = body.adjusted(context.raise + 2,
+                                                  context.raise + 2,
+                                                  -(context.raise + 2),
+                                                  -(context.raise + 2));
+            drawItemText(painter, context, textRect, true);
+            drawSelectionHandles(painter, context, true);
+
+            if (context.breakpoint) {
+                painter->setBrush(Qt::NoBrush);
+                QPen breakpointPen(colorFromRgba(context.breakpointColor), 2);
+                breakpointPen.setCosmetic(true);
+                painter->setPen(breakpointPen);
+                painter->drawPath(partPath);
+            }
+
+            painter->restore();
+            return;
+        }
+
+        if (isGeneticRegulationContext(context)) {
+            const QRectF body = bodyRect(context);
+            const QString role = geneticRegulationRole(context);
+            const QColor accent = geneticRegulationAccentColor(role);
+            const QPainterPath regulationPath = geneticRegulationShape(context);
+
+            QColor shadow = colorFromRgba(context.borderColor);
+            shadow.setAlpha(context.selected ? 120 : 60);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(shadow);
+            painter->drawPath(regulationPath.translated(0, context.selected ? 3 : 2));
+
+            QRadialGradient gradient(body.center() - QPointF(body.width() * 0.15, body.height() * 0.18),
+                                     qMax(body.width(), body.height()) * 0.78);
+            gradient.setColorAt(0.0, context.fillColor.lighter(175));
+            gradient.setColorAt(0.55, context.fillColor);
+            gradient.setColorAt(1.0, context.fillColor.darker(145));
+            painter->setBrush(QBrush(gradient));
+
+            QPen bodyPen(accent);
+            bodyPen.setWidth(context.selected ? context.penWidth + 3 : context.penWidth + 1);
+            bodyPen.setCosmetic(true);
+            painter->setPen(bodyPen);
+            painter->drawPath(regulationPath);
+
+            drawGeneticRegulationDetails(painter, context);
+
+            const QRectF textRect = body.adjusted(context.raise + 2,
+                                                  context.raise + 2,
+                                                  -(context.raise + 2),
+                                                  -(context.raise + 2));
+            drawItemText(painter, context, textRect, true);
+            drawSelectionHandles(painter, context, true);
+
+            if (context.breakpoint) {
+                painter->setBrush(Qt::NoBrush);
+                QPen breakpointPen(colorFromRgba(context.breakpointColor), 2);
+                breakpointPen.setCosmetic(true);
+                painter->setPen(breakpointPen);
+                painter->drawPath(regulationPath);
+            }
+
+            painter->restore();
+            return;
+        }
 
         const QRectF body = bodyRect(context);
         const QPainterPath bodyPath = shape(context);

@@ -13,8 +13,8 @@
 
 
 #include "plugins/components/DiscreteProcessing/Clone.h"
-#include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/PluginManager.h"
@@ -72,6 +72,7 @@ PluginInformation* Clone::GetPluginInformation() {
 	info->setDescriptionHelp("//@TODO");
 	info->setMinimumOutputs(2); // port 0: original ; port 1: clones
 	info->setMaximumOutputs(2);
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

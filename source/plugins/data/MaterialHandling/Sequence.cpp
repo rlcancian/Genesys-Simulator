@@ -12,8 +12,8 @@
  */
 
 #include "Sequence.h"
-#include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -49,6 +49,7 @@ std::string Sequence::show() {
 
 PluginInformation* Sequence::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Sequence>(), &Sequence::LoadInstance, &Sequence::NewInstance);
+	info->setCategory("MaterialHandling");
 	return info;
 }
 

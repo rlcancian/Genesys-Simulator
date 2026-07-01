@@ -14,10 +14,10 @@
 #ifndef VARIABLE_H
 #define VARIABLE_H
 
-#include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/Plugin.h"
-#include "kernel/simulator/SparseValueStore.h"
+#include "../../../kernel/simulator/essentialPlugins/SparseValueStore.h"
 
 /*!
 Variable module

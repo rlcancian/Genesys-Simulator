@@ -14,7 +14,7 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/DiscreteProcessing/Release.h"

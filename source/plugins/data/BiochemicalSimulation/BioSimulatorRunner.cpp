@@ -18,8 +18,8 @@
 #include <vector>
 
 #include "kernel/TraitsKernel.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/util/List.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
@@ -555,6 +555,7 @@ std::string buildBioNetworkReportJson(Model* model, BioNetwork* network, const s
 		return "";
 	}
 
+	// Keep this payload compact and machine-readable so the GUI can reuse it directly.
 	std::ostringstream out;
 	out << makePayloadPrefix(true, status, "BioSimulatorRunner", command, "bio_network_report_json");
 	out << ",\"networkName\":\"" << jsonEscape(network->getName()) << "\"";
@@ -686,7 +687,7 @@ BioSimulatorRunner::BioSimulatorRunner(Model* model, std::string name) : ModelDa
 
 PluginInformation* BioSimulatorRunner::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioSimulatorRunner>(), &BioSimulatorRunner::LoadInstance, &BioSimulatorRunner::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic");
 	info->setDescriptionHelp("Structural biochemical simulator runner. This phase persists configuration and can validate, simulate, query and update a target BioNetwork using the native biochemical backend.");
 	info->insertSystemDependency(SystemDependency(
 			SystemDependency::OS::Linux,

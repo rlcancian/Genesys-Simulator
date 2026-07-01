@@ -7,7 +7,7 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../systempreferences.h"
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Model.h"
+#include "../../../../../kernel/simulator/model/Model.h"
 
 #include <QCoreApplication>
 #include <QDir>

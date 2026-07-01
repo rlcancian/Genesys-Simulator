@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "Model.h"
+#include "model/Model.h"
 #include "../util/List.h"
 #include "../util/Util.h"
 #include "Plugin.h"

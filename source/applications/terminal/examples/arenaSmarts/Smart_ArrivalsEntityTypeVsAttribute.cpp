@@ -7,7 +7,7 @@
 #include "Smart_ArrivalsEntityTypeVsAttribute.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Assign.h"

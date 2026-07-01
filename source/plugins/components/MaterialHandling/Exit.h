@@ -14,7 +14,7 @@
 #ifndef EXIT_H
 #define EXIT_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
 Exit module

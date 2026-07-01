@@ -1,7 +1,7 @@
 #include "DataAnalyzerWindow.h"
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelManager.h"
+#include "../../../../../../kernel/simulator/model/Model.h"
+#include "../../../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
 #include "tools/FitterDefaultImpl.h"
@@ -24,6 +24,7 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QListWidget>
 #include <QMap>
 #include <QMenu>
@@ -949,7 +950,7 @@ void DataAnalyzerWindow::importSimulationResponsesSnapshot() {
             continue;
         }
         bool ok = false;
-        const double value = valueItem->text().toDouble(&ok);
+        const double value = QLocale::c().toDouble(valueItem->text(), &ok);
         if (ok && std::isfinite(value)) {
             values.append(value);
             DatasetObservation observation;

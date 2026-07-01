@@ -14,7 +14,7 @@
 #ifndef DROPOFF_H
 #define DROPOFF_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
 Dropoff module

@@ -16,7 +16,7 @@
 
 #include <string>
 #include "Parser_if.h"
-#include "Model.h"
+#include "model/Model.h"
 #include "../../parser/Genesys++-driver.h"
 
 

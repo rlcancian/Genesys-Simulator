@@ -14,7 +14,7 @@
 #ifndef STOP_H
 #define STOP_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
 Stop module

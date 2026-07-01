@@ -14,8 +14,8 @@
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 
 #include "kernel/TraitsKernel.h"
-#include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/Logic/Variable.h"
@@ -36,30 +36,42 @@ bool isMarkovChainSupportedDefinition(const ModelDataDefinition* definition) {
 	       definition->getClassname() == Util::TypeOf<Attribute>();
 }
 
-const std::list<unsigned int>* getDefinitionDimensionSizes(const ModelDataDefinition* definition) {
+const SparseValueStore* getDefinitionValueStore(const ModelDataDefinition* definition) {
 	if (definition == nullptr) {
 		return nullptr;
 	}
 	if (definition->getClassname() == Util::TypeOf<Variable>()) {
-		return static_cast<const Variable*>(definition)->getDimensionSizes();
+		const Variable* variable = static_cast<const Variable*>(definition);
+		const SparseValueStore* runtimeStore = const_cast<Variable*>(variable)->getValueStore();
+		if (runtimeStore != nullptr && !runtimeStore->values()->empty()) {
+			return runtimeStore;
+		}
+		const SparseValueStore* initialStore = const_cast<Variable*>(variable)->getInitialValueStore();
+		if (initialStore != nullptr && !initialStore->values()->empty()) {
+			return initialStore;
+		}
+		if (runtimeStore != nullptr && !runtimeStore->dimensionSizes()->empty()) {
+			return runtimeStore;
+		}
+		return initialStore;
 	}
 	if (definition->getClassname() == Util::TypeOf<Attribute>()) {
-		return static_cast<const Attribute*>(definition)->getDimensionSizes();
+		return const_cast<Attribute*>(static_cast<const Attribute*>(definition))->getInitialValueStore();
 	}
 	return nullptr;
 }
 
-double readDefinitionInitialValue(const ModelDataDefinition* definition, const std::string& index) {
-	if (definition == nullptr) {
-		return 0.0;
+const std::list<unsigned int>* getDefinitionDimensionSizes(const ModelDataDefinition* definition) {
+	const SparseValueStore* store = getDefinitionValueStore(definition);
+	return store != nullptr ? store->dimensionSizes() : nullptr;
+}
+
+double readDefinitionValue(const ModelDataDefinition* definition, const std::string& index) {
+	const SparseValueStore* store = getDefinitionValueStore(definition);
+	if (store == nullptr) {
+		throw std::invalid_argument("Unsupported MarkovChain data definition type.");
 	}
-	if (definition->getClassname() == Util::TypeOf<Variable>()) {
-		return const_cast<Variable*>(static_cast<const Variable*>(definition))->getInitialValue(index);
-	}
-	if (definition->getClassname() == Util::TypeOf<Attribute>()) {
-		return const_cast<Attribute*>(static_cast<const Attribute*>(definition))->getInitialValue(index);
-	}
-	throw std::invalid_argument("Unsupported MarkovChain data definition type.");
+	return store->value(index);
 }
 
 bool validateTransitionMatrixDefinition(const ModelDataDefinition* definition, std::string& errorMessage) {
@@ -86,7 +98,7 @@ bool validateTransitionMatrixDefinition(const ModelDataDefinition* definition, s
 		double rowSum = 0.0;
 		for (unsigned int column = 0; column < columnCount; ++column) {
 			const std::string index = std::to_string(row) + "," + std::to_string(column);
-			const double probability = readDefinitionInitialValue(definition, index);
+			const double probability = readDefinitionValue(definition, index);
 			if (!std::isfinite(probability) || probability < -probabilityTolerance || probability > 1.0 + probabilityTolerance) {
 				errorMessage += "MarkovChain transition probability p[" + index + "] must be between 0 and 1. ";
 				return false;
@@ -121,7 +133,7 @@ bool validateInitialDistributionDefinition(const ModelDataDefinition* initialDis
 	double probabilitySum = 0.0;
 	for (unsigned int state = 0; state < stateCount; ++state) {
 		const std::string index = dimensions->empty() ? "" : std::to_string(state);
-		const double probability = readDefinitionInitialValue(initialDistribution, index);
+		const double probability = readDefinitionValue(initialDistribution, index);
 		if (!std::isfinite(probability) || probability < -probabilityTolerance || probability > 1.0 + probabilityTolerance) {
 			errorMessage += "MarkovChain initial distribution p[" + std::to_string(state) + "] must be between 0 and 1. ";
 			return false;
@@ -377,7 +389,7 @@ unsigned int sampleStateFromDistribution(const ModelDataDefinition* distribution
 	const std::list<unsigned int>* dimensions = getDefinitionDimensionSizes(distribution);
 	for (unsigned int state = 0; state < stateCount; ++state) {
 		const std::string index = (dimensions == nullptr || dimensions->empty()) ? "" : std::to_string(state);
-		probabilities.push_back(readDefinitionInitialValue(distribution, index));
+		probabilities.push_back(readDefinitionValue(distribution, index));
 		values.push_back(static_cast<double>(state));
 	}
 	return static_cast<unsigned int>(sampler->sampleDiscrete(probabilities.data(), values.data(), static_cast<int>(stateCount)));
@@ -621,15 +633,7 @@ unsigned int MarkovChain::_drawNextState(Entity* entity, unsigned int currentSta
 }
 
 unsigned int MarkovChain::_stateCount() const {
-	if (_transitionProbMatrix == nullptr) {
-		return 0;
-	}
-	std::list<unsigned int>* dimensions = nullptr;
-	if (_transitionProbMatrix->getClassname() == Util::TypeOf<Variable>()) {
-		dimensions = static_cast<Variable*>(_transitionProbMatrix)->getDimensionSizes();
-	} else if (_transitionProbMatrix->getClassname() == Util::TypeOf<Attribute>()) {
-		dimensions = static_cast<Attribute*>(_transitionProbMatrix)->getDimensionSizes();
-	}
+	const std::list<unsigned int>* dimensions = getDefinitionDimensionSizes(_transitionProbMatrix);
 	if (dimensions == nullptr || dimensions->empty()) {
 		return 0;
 	}

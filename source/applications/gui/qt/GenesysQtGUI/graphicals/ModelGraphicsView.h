@@ -43,15 +43,24 @@
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PropertyGenesys.h"
 //#include "kernel/simulator/Plugin.h"
 
 class ModelGraphicsView : public QGraphicsView {
 public:
+    /**
+     * @brief View wrapper that hosts the model graphics scene and delegates GUI events.
+     *
+     * The view keeps the scene-specific input handlers outside the raw Qt widget layer so the
+     * MainWindow composition root can wire context menus, wheel behavior, and selection changes
+     * through injected callbacks.
+     */
     ModelGraphicsView(QWidget *parent = nullptr);
+    /** @brief Copy constructor used by legacy compatibility paths. */
     ModelGraphicsView(const ModelGraphicsView& orig);
+    /** @brief Releases the Qt view and its compatibility state. */
     virtual ~ModelGraphicsView();
 public: // editing graphic model
     // TODO: AddGraphicalModelComponent should be only on scene
@@ -63,18 +72,30 @@ public: // editing graphic model
     //bool removeDrawing();
     //bool addAnimation();
     //bool removeAnimation();
+    /** @brief Returns the scene currently owned by the view. */
     ModelGraphicsScene* getScene();
 public:
+    /** @brief Requests grid visibility from the underlying scene. */
     void showGrid();
+    /** @brief Clears the current scene contents and compatibility state. */
     void clear();
+    /** @brief Starts the connection-creation workflow in the scene. */
     void beginConnection();
+    /** @brief Highlights the requested component in the scene and centers it when possible. */
     void selectModelComponent(ModelComponent* component);
+    /** @brief Injects the simulator dependency used by scene callbacks. */
     void setSimulator(Simulator* simulator);
+    /** @brief Injects the property editor dependency used by scene callbacks. */
     void setPropertyEditor(PropertyEditorGenesys* propEditor);
+    /** @brief Injects the property list map used by scene/editor synchronization. */
     void setPropertyList(std::map<SimulationControl*, DataComponentProperty*>* propList);
+    /** @brief Injects the property-editor widget map used by scene/editor synchronization. */
     void setPropertyEditorUI(std::map<SimulationControl*, DataComponentEditor*>* propEditorUI);
+    /** @brief Injects the enum combo-box map used by scene/editor synchronization. */
     void setComboBox(std::map<SimulationControl*, ComboBoxEnum*>* propBox);
+    /** @brief Enables or disables interaction while keeping the scene wiring intact. */
     void setEnabled(bool enabled);
+    /** @brief Returns the current selected items from the underlying scene. */
     QList<QGraphicsItem*> selectedItems();
 public: // events and notifications
 
@@ -104,20 +125,31 @@ public: // events and notifications
         this->_contextMenuEventHandler = handlerMethod;
     }
 
+    /** @brief Notifies the registered mouse-event handler, if any. */
     void notifySceneMouseEventHandler(QGraphicsSceneMouseEvent* mouseEvent);
+    /** @brief Notifies the registered wheel-in handler, if any. */
     void notifySceneWheelInEventHandler();
+    /** @brief Notifies the registered wheel-out handler, if any. */
     void notifySceneWheelOutEventHandler();
+    /** @brief Notifies the registered graphical-model-event handler, if any. */
     void notifySceneGraphicalModelEventHandler(const GraphicalModelEvent& modelGraphicsEvent);
+    /** @brief Enables or disables graphical-model event emission from the view. */
     void setCanNotifyGraphicalModelEventHandlers(bool can);
+    /** @brief Clears all custom event handlers installed by the composition root. */
     void clearEventHandlers();
+    /** @brief Sets the widget used as parent for dialogs and transient controls. */
     void setParentWidget(QWidget *parentWidget);
     // Enables or disables ruler rendering over the graphics viewport.
+    /** @brief Enables or disables ruler rendering over the graphics viewport. */
     void setRuleVisible(bool visible);
     // Informs if ruler rendering is active for action synchronization.
+    /** @brief Returns whether ruler rendering is active. */
     bool isRuleVisible() const;
     // Enables or disables guide line rendering over the graphics viewport.
+    /** @brief Enables or disables guide line rendering over the graphics viewport. */
     void setGuidesVisible(bool visible);
     // Informs if guide line rendering is active for action synchronization.
+    /** @brief Returns whether guide line rendering is active. */
     bool isGuidesVisible() const;
 protected:// slots:
     void changed(const QList<QRectF> &region);

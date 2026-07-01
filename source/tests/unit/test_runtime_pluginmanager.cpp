@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Counter.h"
+#include "../../kernel/simulator/essentialPlugins/Counter.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/SystemDependencyResolver.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
@@ -1660,6 +1660,52 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesSignalGridConfiguration
 	EXPECT_EQ(colony->getGridWidth(), 7u);
 	EXPECT_EQ(colony->getGridHeight(), 5u);
 	EXPECT_DOUBLE_EQ(colony->getSignalValueAt(6, 4), 0.0);
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeSupportsSignalMatrixAndDumpCommands) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_SignalMatrixDump");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+	    "program colony() { "
+	    "set(\"signal_grid_width\", 3); "
+	    "set(\"signal_grid_height\", 2); "
+	    "set_signal_rect(0, -1, -1, 0, 0, 4.5); "
+	    "get_signal_matrix(); "
+	    "dump_signal_field(1, 2); "
+	    "}");
+
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_SignalMatrixDump");
+	ASSERT_NE(colony, nullptr);
+	colony->setInitialPopulation(0);
+	colony->setGroProgram(program);
+	ModelDataDefinition::InitBetweenReplications(colony);
+
+	GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+	EXPECT_TRUE(result.succeeded) << result.errorMessage;
+	EXPECT_EQ(result.signalMatrixWidth, 3u);
+	EXPECT_EQ(result.signalMatrixHeight, 2u);
+	ASSERT_EQ(result.signalMatrixValues.size(), 6u);
+	EXPECT_DOUBLE_EQ(result.signalMatrixValues[0], 4.5);
+	EXPECT_DOUBLE_EQ(result.signalMatrixValues[1], 4.5);
+	EXPECT_DOUBLE_EQ(result.signalMatrixValues[3], 4.5);
+	EXPECT_DOUBLE_EQ(result.signalMatrixValues[4], 4.5);
+	EXPECT_NE(result.signalFieldDump.find("signal_matrix 3x2"), std::string::npos);
+	EXPECT_NE(result.signalFieldDump.find("(preview)"), std::string::npos);
+	EXPECT_NE(result.signalFieldDump.find("row 0:"), std::string::npos);
+	EXPECT_NE(result.signalFieldDump.find("4.5"), std::string::npos);
+	EXPECT_EQ(result.signalFieldDump.find("row 1:"), std::string::npos);
+	EXPECT_EQ(colony->getSignalMatrix().size(), 2u);
+	EXPECT_EQ(colony->getSignalMatrix()[0].size(), 3u);
+	EXPECT_DOUBLE_EQ(colony->getSignalMatrix()[0][0], 4.5);
+	EXPECT_NE(colony->getSignalMatrixDump(2, 3).find("signal_matrix 3x2"), std::string::npos);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesVisibleGrowthToBacteria) {

@@ -2,6 +2,7 @@
 #define SCENETOOLCONTROLLER_H
 
 #include <functional>
+#include <QRectF>
 
 class ModelGraphicsView;
 class ModelGraphicsScene;
@@ -59,6 +60,10 @@ public:
     void onActionZoomOutTriggered();
     /** @brief Fits the current graphical model in view and re-synchronizes zoom widgets. */
     void onActionZoomAllTriggered();
+    /** @brief Restores the graphical view to its default 1:1 zoom. */
+    void onActionZoomActualSizeTriggered();
+    /** @brief Synchronizes the zoom slider and label with the current view scale. */
+    void syncZoomWidgetsForCurrentScale();
     /** @brief Synchronizes slider-originated zoom changes with scene/view scale. */
     void onHorizontalSliderZoomGraphicalValueChanged(int value);
     /** @brief Activates line drawing mode as a compatibility façade wrapper. */
@@ -137,6 +142,14 @@ public:
     void onActionGModelShowConnectTriggered();
 
 private:
+    QRectF _zoomableModelBounds() const;
+    double _currentViewScale() const;
+    double _minimumZoomScale() const;
+    double _maximumZoomScale() const;
+    double _zoomScaleFromSliderValue(int value) const;
+    int _sliderValueForZoomScale(double scale) const;
+    void _syncZoomWidgetsForCurrentScale();
+
     void activateAnimationDrawingTool(QAction* action, void (ModelGraphicsScene::*drawingFunction)());
 
     ModelGraphicsView* _graphicsView;

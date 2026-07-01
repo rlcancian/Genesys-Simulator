@@ -29,7 +29,7 @@
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Clone.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/Logic/Variable.h"
 #include "../../../TraitsApp.h"
 
 Smart_ContinuousFlowEntities::Smart_ContinuousFlowEntities() {

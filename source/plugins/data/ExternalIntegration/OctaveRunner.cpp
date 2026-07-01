@@ -19,7 +19,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 

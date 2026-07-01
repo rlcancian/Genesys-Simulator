@@ -8,7 +8,7 @@
 #ifndef BACTERIACOLONY_H
 #define BACTERIACOLONY_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/util/Util.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
@@ -143,6 +143,10 @@ public:
 	bool hasRuntimeVariable(const std::string& variableName) const;
 	/*! \brief Returns the runtime signal value stored at one grid coordinate. */
 	double getSignalValueAt(unsigned int x, unsigned int y) const;
+	/*! \brief Returns the current runtime signal field as a row-major matrix. */
+	std::vector<std::vector<double>> getSignalMatrix() const;
+	/*! \brief Returns a textual dump of the current runtime signal field. */
+	std::string getSignalMatrixDump(std::size_t maxRows = 0, std::size_t maxColumns = 0) const;
 	/*! \brief Returns the runtime signal value seen by one bacterium at its current cell. */
 	double getBacteriumLocalSignal(std::size_t index) const;
 	/*! \brief Enables or disables the colony chemostat mode used by Gro microfluidics. */
@@ -245,6 +249,11 @@ private:
 	double _signalValueAt(unsigned int x, unsigned int y) const;
 	void _setSignalValueAt(unsigned int x, unsigned int y, double value);
 	void _addSignalAt(unsigned int x, unsigned int y, double value);
+	std::vector<std::vector<double>> _buildSignalMatrix() const;
+	std::string _buildSignalFieldDump(std::size_t maxRows = 0, std::size_t maxColumns = 0) const;
+	void _captureSignalFieldSnapshot(GroProgramRuntime::ExecutionResult& result,
+	                                 std::size_t maxRows = 0,
+	                                 std::size_t maxColumns = 0) const;
 	double _computeNeighborSignalSum(unsigned int x, unsigned int y) const;
 	unsigned int _computeLocalBacteriaCount(unsigned int x, unsigned int y) const;
 	void _applySignalFieldStep();

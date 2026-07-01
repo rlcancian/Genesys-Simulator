@@ -14,7 +14,7 @@
 #ifndef SIGNAL_H
 #define SIGNAL_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/Synchronization/SignalData.h"
 
 /*!
