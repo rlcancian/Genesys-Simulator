@@ -1,0 +1,23 @@
+# Genesys Simulation Model 
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220131 
+0   ModelInfo  "test_harmonic_oscillator" analystName="" description="Harmonic oscillator: dx/dt=v, dv/dt=-x. Exact solution x=cos(t), v=-sin(t)." projectTitle="" version="1.0" 
+0   ModelSimulation "" traceLevel=2 replicationLength=3.200000 numberOfReplications=1 showReportsAfterReplicaton=0 showReportsAfterSimulation=0 
+
+# Model Data Definitions
+1601 Variable   "t" 
+1602 Variable   "x" dimension[0]=2 dimensions=1 valuePos[1]="1" value[0]=1.000000 values=2 
+1603 Variable   "v" dimension[0]=2 dimensions=1 valuePos[1]="1" value[0]=0.000000 values=2 
+1604 ODESolver   "HarmonicOscillator" timeVariableName="t" stateVariableNames="x;v" equationExpressions="v;-x" step=0.010000 precision=0.000001 maxSteps=100000 currentTime=0.000000 
+1605 EntityType  "entitytype" 
+
+# Model Components
+# Events at t = 0.1, 0.5, 1.0, pi/2, pi
+1590 Create     "Create_t01" entityType="entitytype" firstCreation=0.100000 maxCreations=1 timeBetweenCreations="999" nextId=1596 
+1591 Create     "Create_t05" entityType="entitytype" firstCreation=0.500000 maxCreations=1 timeBetweenCreations="999" nextId=1596 
+1592 Create     "Create_t10" entityType="entitytype" firstCreation=1.000000 maxCreations=1 timeBetweenCreations="999" nextId=1596 
+1593 Create     "Create_tPi2" entityType="entitytype" firstCreation=1.5707963267948966 maxCreations=1 timeBetweenCreations="999" nextId=1596 
+1594 Create     "Create_tPi" entityType="entitytype" firstCreation=3.141592653589793 maxCreations=1 timeBetweenCreations="999" nextId=1596 
+1596 ContinuousSystemComponent   "ContinuousSystem_1" odeSolver="HarmonicOscillator" nextId=1597 
+1597 Write      "Write_Results" write[0]="t=" write[1]="'t'" write[2]=" x=" write[3]="'x'" write[4]=" v=" write[5]="'v'" write[6]=" | cos(t)=" write[7]="'cos(t)'" write[8]=" -sin(t)=" write[9]="'-sin(t)'" write[10]="\n" writes=11 nextId=1598 
+1598 Dispose    "Dispose_1" nexts=0 

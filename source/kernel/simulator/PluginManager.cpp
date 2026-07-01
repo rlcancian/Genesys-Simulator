@@ -223,6 +223,10 @@ void PluginManager::_insertDefaultKernelElements() {
 	_plugins->insert(new Plugin(&StatisticsCollector::GetPluginInformation));
 }
 
+void PluginManager::insertStaticPlugin(Plugin* plugin) {
+	_plugins->insert(plugin);
+}
+
 List<Plugin*>* PluginManager::completePluginsFieldsAndTemplates() {
 	return _simulator->_completePluginsFieldsAndTemplate();
 }
