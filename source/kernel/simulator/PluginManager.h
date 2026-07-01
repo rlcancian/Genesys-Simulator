@@ -168,9 +168,6 @@ public:
 	/*! \brief Auto-loads plugins discovered automatically using insertion policy hooks. */
 	List<Plugin*>* autoInsertPlugins(const PluginInsertionOptions& options);
 
-	/*! \brief Inserts a static plugin directly (for testing purposes). */
-	void insertStaticPlugin(Plugin* plugin);
-
 public:
 	/*! \brief Returns the first plugin in the internal plugin list. */
 	Plugin* front();
