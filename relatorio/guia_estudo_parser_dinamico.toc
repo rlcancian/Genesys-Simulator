@@ -1,0 +1,34 @@
+\babel@toc {brazil}{}\relax 
+\contentsline {section}{\numberline {1}Como Usar Este Guia}{1}{section.2}%
+\contentsline {section}{\numberline {2}Vis\~ao do GenESyS que Precisamos Entender}{1}{section.3}%
+\contentsline {subsection}{\numberline {2.1}O \texttt {Model} como centro da simula\c {c}\~ao}{1}{subsection.4}%
+\contentsline {subsection}{\numberline {2.2}\texttt {ModelDataDefinition}, \texttt {ModelComponent} e \texttt {ModelDataManager}}{1}{subsection.16}%
+\contentsline {section}{\numberline {3}Como a Linguagem de Express\~oes Funcionava Antes}{2}{section.17}%
+\contentsline {subsection}{\numberline {3.1}Parser ativo por interface}{2}{subsection.18}%
+\contentsline {subsection}{\numberline {3.2}O parser fixo e os arquivos-base}{2}{subsection.30}%
+\contentsline {section}{\numberline {4}O Problema Arquitetural}{3}{section.42}%
+\contentsline {section}{\numberline {5}Bison, Flex e C++ Din\^amico Neste Projeto}{3}{section.50}%
+\contentsline {subsection}{\numberline {5.1}Bison e Flex no fluxo do GenESyS}{3}{subsection.51}%
+\contentsline {subsection}{\numberline {5.2}Biblioteca compartilhada e carregamento em runtime}{4}{subsection.52}%
+\contentsline {section}{\numberline {6}Os Contratos que J\'a Existiam}{4}{section.58}%
+\contentsline {subsection}{\numberline {6.1}\texttt {ParserChangesInformation}}{4}{subsection.59}%
+\contentsline {subsection}{\numberline {6.2}\texttt {\_getParserChangesInformation()}}{4}{subsection.74}%
+\contentsline {subsection}{\numberline {6.3}\texttt {ParserManager}}{5}{subsection.80}%
+\contentsline {section}{\numberline {7}Implementa\c {c}\~ao Passo a Passo}{5}{section.89}%
+\contentsline {subsection}{\numberline {7.1}Passo 1: inserir uma extens\~ao no modelo}{5}{subsection.90}%
+\contentsline {subsection}{\numberline {7.2}Passo 2: o primeiro uso dispara o lazy reload}{5}{subsection.99}%
+\contentsline {subsection}{\numberline {7.3}Passo 3: agregar mudan\c {c}as de todos os objetos}{6}{subsection.114}%
+\contentsline {subsection}{\numberline {7.4}Passo 4: gerar os arquivos Bison/Flex modificados}{6}{subsection.124}%
+\contentsline {subsection}{\numberline {7.5}Passo 5: executar Bison, Flex e compilador C++}{6}{subsection.138}%
+\contentsline {subsection}{\numberline {7.6}Passo 6: conectar o parser novo}{7}{subsection.143}%
+\contentsline {subsection}{\numberline {7.7}Passo 7: trocar o parser sem perder o sampler}{7}{subsection.152}%
+\contentsline {section}{\numberline {8}Exemplo Did\'atico: \texttt {ParserExtensionTestPlugin}}{7}{section.168}%
+\contentsline {section}{\numberline {9}Decis\~oes de Engenharia}{8}{section.183}%
+\contentsline {section}{\numberline {10}Diagramas Did\'aticos}{9}{section.185}%
+\contentsline {subsection}{\numberline {10.1}Antes: parser fixo}{9}{subsection.186}%
+\contentsline {subsection}{\numberline {10.2}Depois: atualiza\c {c}\~ao sob demanda}{9}{subsection.189}%
+\contentsline {subsection}{\numberline {10.3}Pipeline de gera\c {c}\~ao}{9}{subsection.192}%
+\contentsline {section}{\numberline {11}Como Ler o C\'odigo}{9}{section.195}%
+\contentsline {section}{\numberline {12}FAQ}{10}{section.197}%
+\contentsline {section}{\numberline {13}Gloss\'ario Direcionado}{11}{section.204}%
+\contentsline {section}{\numberline {14}Fechamento}{11}{section.205}%

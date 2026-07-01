@@ -1,0 +1,52 @@
+\babel@toc {brazil}{}\relax 
+\contentsline {section}{\numberline {1}Introdu\c {c}\~ao}{1}{section.2}%
+\contentsline {section}{\numberline {2}Desenvolvimento}{1}{section.3}%
+\contentsline {subsection}{\numberline {2.1}Vis\~ao geral: de contratos previstos a mecanismo funcional}{1}{subsection.4}%
+\contentsline {subsection}{\numberline {2.2}Contrato de declara\c {c}\~ao de mudan\c {c}as: ParserChangesInformation}{1}{subsection.5}%
+\contentsline {subsubsection}{\numberline {2.2.1}Contrato previsto no branch 2026-1}{1}{subsubsection.6}%
+\contentsline {subsubsection}{\numberline {2.2.2}Problema em aberto}{2}{subsubsection.7}%
+\contentsline {subsubsection}{\numberline {2.2.3}Decis\~ao arquitetural adotada}{2}{subsubsection.8}%
+\contentsline {subsubsection}{\numberline {2.2.4}Implementa\c {c}\~ao concreta}{2}{subsubsection.9}%
+\contentsline {subsubsection}{\numberline {2.2.5}Evid\^encia de valida\c {c}\~ao}{3}{subsubsection.23}%
+\contentsline {subsection}{\numberline {2.3}Contrato de extens\~ao por elementos de modelo: \_getParserChangesInformation()}{3}{subsection.24}%
+\contentsline {subsubsection}{\numberline {2.3.1}Contrato previsto no branch 2026-1}{3}{subsubsection.25}%
+\contentsline {subsubsection}{\numberline {2.3.2}Problema em aberto}{4}{subsubsection.26}%
+\contentsline {subsubsection}{\numberline {2.3.3}Decis\~ao arquitetural adotada}{4}{subsubsection.27}%
+\contentsline {subsubsection}{\numberline {2.3.4}Implementa\c {c}\~ao concreta}{4}{subsubsection.28}%
+\contentsline {subsubsection}{\numberline {2.3.5}Evid\^encia de valida\c {c}\~ao}{5}{subsubsection.39}%
+\contentsline {subsection}{\numberline {2.4}Contrato de gera\c {c}\~ao: ParserManager::generateNewParser()}{5}{subsection.40}%
+\contentsline {subsubsection}{\numberline {2.4.1}Contrato previsto no branch 2026-1}{5}{subsubsection.41}%
+\contentsline {subsubsection}{\numberline {2.4.2}Problema em aberto}{5}{subsubsection.42}%
+\contentsline {subsubsection}{\numberline {2.4.3}Decis\~ao arquitetural adotada}{5}{subsubsection.43}%
+\contentsline {subsubsection}{\numberline {2.4.4}Implementa\c {c}\~ao concreta}{5}{subsubsection.44}%
+\contentsline {subsubsection}{\numberline {2.4.5}Evid\^encia de valida\c {c}\~ao}{7}{subsubsection.84}%
+\contentsline {subsection}{\numberline {2.5}Contrato de conex\~ao: ParserManager::connectNewParser()}{7}{subsection.85}%
+\contentsline {subsubsection}{\numberline {2.5.1}Contrato previsto no branch 2026-1}{7}{subsubsection.86}%
+\contentsline {subsubsection}{\numberline {2.5.2}Problema em aberto}{7}{subsubsection.87}%
+\contentsline {subsubsection}{\numberline {2.5.3}Decis\~ao arquitetural adotada}{7}{subsubsection.88}%
+\contentsline {subsubsection}{\numberline {2.5.4}Implementa\c {c}\~ao concreta}{8}{subsubsection.89}%
+\contentsline {subsubsection}{\numberline {2.5.5}Evid\^encia de valida\c {c}\~ao}{9}{subsubsection.117}%
+\contentsline {subsection}{\numberline {2.6}Contrato de integra\c {c}\~ao com o ciclo do modelo: ModelDataManager::insert() e Model::parseExpression()}{9}{subsection.118}%
+\contentsline {subsubsection}{\numberline {2.6.1}Contrato previsto no branch 2026-1}{9}{subsubsection.119}%
+\contentsline {subsubsection}{\numberline {2.6.2}Problema em aberto}{9}{subsubsection.120}%
+\contentsline {subsubsection}{\numberline {2.6.3}Decis\~ao arquitetural adotada}{9}{subsubsection.121}%
+\contentsline {subsubsection}{\numberline {2.6.4}Implementa\c {c}\~ao concreta}{10}{subsubsection.122}%
+\contentsline {subsubsection}{\numberline {2.6.5}Evid\^encia de valida\c {c}\~ao}{10}{subsubsection.144}%
+\contentsline {subsection}{\numberline {2.7}Contrato de substitui\c {c}\~ao segura: Parser\_if, ParserDefaultImpl2 e ownership do Sampler}{11}{subsection.145}%
+\contentsline {subsubsection}{\numberline {2.7.1}Contrato previsto no branch 2026-1}{11}{subsubsection.146}%
+\contentsline {subsubsection}{\numberline {2.7.2}Problema em aberto}{11}{subsubsection.147}%
+\contentsline {subsubsection}{\numberline {2.7.3}Decis\~ao arquitetural adotada}{11}{subsubsection.148}%
+\contentsline {subsubsection}{\numberline {2.7.4}Implementa\c {c}\~ao concreta}{11}{subsubsection.149}%
+\contentsline {subsubsection}{\numberline {2.7.5}Evid\^encia de valida\c {c}\~ao}{12}{subsubsection.173}%
+\contentsline {subsection}{\numberline {2.8}Pipeline completo implementado}{12}{subsection.174}%
+\contentsline {subsection}{\numberline {2.9}Projeto de software e diagramas}{13}{subsection.176}%
+\contentsline {subsubsection}{\numberline {2.9.1}Diagrama de classes}{13}{subsubsection.177}%
+\contentsline {subsubsection}{\numberline {2.9.2}Diagrama de sequ\^encia}{14}{subsubsection.180}%
+\contentsline {subsubsection}{\numberline {2.9.3}Diagrama de componentes}{15}{subsubsection.183}%
+\contentsline {subsubsection}{\numberline {2.9.4}Diagrama de estados}{15}{subsubsection.186}%
+\contentsline {section}{\numberline {3}Valida\c {c}\~ao}{16}{section.189}%
+\contentsline {subsection}{\numberline {3.1}Rastreabilidade entre requisitos, contratos e testes}{16}{subsection.190}%
+\contentsline {subsection}{\numberline {3.2}Testes unit\'arios e de integra\c {c}\~ao}{17}{subsection.192}%
+\contentsline {subsection}{\numberline {3.3}Comandos de valida\c {c}\~ao}{18}{subsection.194}%
+\contentsline {subsection}{\numberline {3.4}Experimento com plugin Demo}{19}{subsection.195}%
+\contentsline {section}{\numberline {4}Conclus\~ao}{20}{section.216}%

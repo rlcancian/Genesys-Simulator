@@ -1,0 +1,647 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{seqsplit}
+\usepackage{listings}
+
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, shapes.misc, fit, calc}
+
+\geometry{margin=2.5cm}
+\hypersetup{
+    colorlinks=true,
+    hypertexnames=false,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black
+}
+
+\setlist[itemize]{leftmargin=1.2cm}
+\setlist[enumerate]{leftmargin=1.2cm}
+\newcommand{\codeid}[1]{\texttt{\detokenize{#1}}}
+
+\definecolor{codekeyword}{RGB}{25,70,145}
+\definecolor{codetype}{RGB}{120,55,140}
+\definecolor{codestring}{RGB}{145,70,25}
+\definecolor{codecomment}{RGB}{70,120,70}
+\definecolor{codenumber}{RGB}{120,120,120}
+\definecolor{boxblue}{RGB}{235,241,250}
+\definecolor{boxgreen}{RGB}{235,248,238}
+\definecolor{boxorange}{RGB}{255,244,230}
+
+\lstdefinestyle{cppsmall}{
+    language=C++,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\bfseries\color{codekeyword},
+    keywordstyle=[2]\color{codetype},
+    commentstyle=\itshape\color{codecomment},
+    stringstyle=\color{codestring},
+    numberstyle=\tiny\color{codenumber},
+    emphstyle=\color{codetype},
+    morekeywords=[2]{ParserChangesInformation,ParserManager,Parser_if,ParserDefaultImpl2,Model,ModelDataDefinition,ModelDataManager,Sampler_if,NewParser,GenerateNewParserResult},
+    emph={nullptr,true,false,std,string,vector,size_t},
+    breaklines=true,
+    columns=fullflexible,
+    keepspaces=true,
+    frame=single,
+    rulecolor=\color{black!25},
+    backgroundcolor=\color{gray!4},
+    xleftmargin=0.35cm,
+    xrightmargin=0.15cm,
+    showstringspaces=false,
+    tabsize=2
+}
+
+\tikzset{
+    guidebox/.style={
+        rectangle,
+        draw,
+        rounded corners,
+        align=center,
+        minimum width=3.1cm,
+        minimum height=1.0cm,
+        font=\scriptsize
+    },
+    kernelbox/.style={guidebox, fill=boxblue},
+    extensionbox/.style={guidebox, fill=boxgreen},
+    buildbox/.style={guidebox, fill=boxorange},
+    flowarrow/.style={-{Latex[length=2.2mm]}, thick},
+    diagramlabel/.style={fill=white, inner sep=1pt}
+}
+
+\title{Guia de Estudo: Implementa\c{c}\~ao do Parser Din\^amico no GenESyS}
+\author{Nome do autor \\ Matr\'icula}
+\date{\today}
+
+\begin{document}
+
+\begin{titlepage}
+    \thispagestyle{empty}
+    \centering
+    \vspace*{2cm}
+    {\Large Institui\c{c}\~ao\par}
+    \vspace{0.5cm}
+    {\large Disciplina\par}
+    \vspace{0.5cm}
+    {\large Professor\par}
+    \vfill
+    {\bfseries\LARGE Guia de Estudo: Implementa\c{c}\~ao do Parser Din\^amico no GenESyS\par}
+    \vspace{0.7cm}
+    {\large Arquitetura, Bison/Flex, C++ din\^amico e integra\c{c}\~ao com o simulador\par}
+    \vfill
+    {\large Autor: Nome do autor\par}
+    {\large Matr\'icula: Matr\'icula\par}
+    \vspace{1.5cm}
+    {\large \today\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\section{Como Usar Este Guia}
+
+Este documento foi escrito para estudantes de Ci\^encia da Computa\c{c}\~ao que j\'a conhecem a ideia de lexer, parser, token e gram\'atica, mas ainda n\~ao conhecem bem o GenESyS, Bison, Flex ou o uso de bibliotecas din\^amicas em C++. O objetivo n\~ao \'e repetir o relat\'orio t\'ecnico formal. A inten\c{c}\~ao \'e construir o caminho mental necess\'ario para ler o c\'odigo e entender por que as mudan\c{c}as foram feitas.
+
+O melhor modo de leitura \'e sequencial. Primeiro, o guia apresenta o papel do parser dentro do simulador. Depois, mostra como a linguagem de express\~oes era formada a partir de arquivos Bison/Flex. Em seguida, introduz os contratos j\'a existentes no GenESyS e, finalmente, explica o mecanismo implementado passo a passo.
+
+\section{Vis\~ao do GenESyS que Precisamos Entender}
+
+\subsection{O \texttt{Model} como centro da simula\c{c}\~ao}
+
+No GenESyS, a classe \codeid{Model} \'e o objeto central de uma simula\c{c}\~ao. Ela representa o modelo discreto que ser\'a executado: guarda componentes, dados auxiliares, eventos futuros, servi\c{c}os de persist\^encia, verificador de modelo, parser e gerenciadores internos.
+
+Para entender o trabalho do parser din\^amico, a parte mais importante \'e perceber que cada \codeid{Model} nasce com tr\^es pe\c{c}as relacionadas \`a linguagem de express\~oes:
+
+\begin{itemize}
+    \item um parser ativo, acessado pela interface \codeid{Parser\_if};
+    \item um sampler, usado por fun\c{c}\~oes estoc\'asticas da linguagem;
+    \item um \codeid{ParserManager}, respons\'avel por gerar e conectar parsers din\^amicos.
+\end{itemize}
+
+No construtor do \codeid{Model}, o parser e o gerenciador s\~ao criados como parte normal da infraestrutura do modelo:
+
+\begin{lstlisting}[style=cppsmall]
+_parser = new TraitsKernel<Parser_if>::Implementation(
+    this,
+    new TraitsKernel<Sampler_if>::Implementation());
+
+_parserManager = new ParserManager();
+_parserManager->setModel(this);
+_parserManager->setSourceDir(sourceRoot.string());
+_parserManager->setWorkDir(
+    (std::filesystem::temp_directory_path() /
+     "genesys_parser_auto").string());
+\end{lstlisting}
+
+Este trecho tem duas consequ\^encias importantes. Primeiro, o parser din\^amico n\~ao \'e um objeto separado do simulador; ele pertence ao ciclo de vida do \codeid{Model}. Segundo, o \codeid{ParserManager} j\'a sabe qual modelo deve atualizar e onde procurar os arquivos-fonte do parser.
+
+\subsection{\texttt{ModelDataDefinition}, \texttt{ModelComponent} e \texttt{ModelDataManager}}
+
+O GenESyS organiza os elementos de modelagem em duas categorias importantes:
+
+\begin{itemize}
+    \item \codeid{ModelComponent}: componentes do fluxo de simula\c{c}\~ao, como blocos que recebem entidades e executam a\c{c}\~oes;
+    \item \codeid{ModelDataDefinition}: dados do modelo, como filas, recursos, vari\'aveis, conjuntos, f\'ormulas e objetos auxiliares.
+\end{itemize}
+
+Na pr\'atica, \codeid{ModelComponent} herda de \codeid{ModelDataDefinition}. Por isso, o projeto usa \codeid{ModelDataDefinition} como ponto comum para perguntar: ``este objeto precisa mudar a linguagem do parser?''.
+
+O \codeid{ModelDataManager} funciona como um cat\'alogo. Ele guarda objetos por tipo e nome, por exemplo todas as filas, todos os recursos, todas as vari\'aveis. O lexer do GenESyS usa esse cat\'alogo para reconhecer nomes de objetos dentro de express\~oes. Quando o usu\'ario escreve algo como uma refer\^encia a uma fila, o scanner pode consultar o \codeid{ModelDataManager} para descobrir se aquele texto corresponde a uma defini\c{c}\~ao existente.
+
+\section{Como a Linguagem de Express\~oes Funcionava Antes}
+
+\subsection{Parser ativo por interface}
+
+O restante do simulador n\~ao chama diretamente uma classe concreta do parser. Ele chama a interface \codeid{Parser\_if}. Essa interface define opera\c{c}\~oes como avaliar uma express\~ao, consultar erro, associar sampler e expor o driver interno quando necess\'ario.
+
+\begin{lstlisting}[style=cppsmall]
+class Parser_if {
+public:
+    virtual double parse(const std::string expression) = 0;
+    virtual double parse(const std::string expression,
+                         bool& success,
+                         std::string& errorMessage) = 0;
+    virtual void setSampler(Sampler_if* sampler) = 0;
+    virtual Sampler_if* getSampler() const = 0;
+    virtual genesyspp_driver getParser() const = 0;
+};
+\end{lstlisting}
+
+Esse desenho \'e importante porque permite trocar a implementa\c{c}\~ao concreta do parser sem mudar todas as classes que avaliam express\~oes. Antes do parser din\^amico, essa interface normalmente apontava para \codeid{ParserDefaultImpl2}, que encapsula o driver gerado por Bison/Flex.
+
+\subsection{O parser fixo e os arquivos-base}
+
+A linguagem de express\~oes do GenESyS vem de dois arquivos principais:
+
+\begin{itemize}
+    \item \codeid{source/parser/parserBisonFlex/lexerparser.ll}, usado pelo Flex para gerar o scanner;
+    \item \codeid{source/parser/parserBisonFlex/bisonparser.yy}, usado pelo Bison para gerar o parser.
+\end{itemize}
+
+Esses arquivos j\'a possu\'iam regi\~oes marcadas para trechos de plugins. Por exemplo, o arquivo Bison tem uma se\c{c}\~ao de tokens de plugins:
+
+\begin{lstlisting}[style=cppsmall]
+/****begin_Tokens_plugins****/
+    %token <obj_t> QUEUE
+    %token <obj_t> fNQ
+    %token <obj_t> fFIRSTINQ
+/****end_Tokens_plugins****/
+\end{lstlisting}
+
+O arquivo Flex tamb\'em tem uma regi\~ao para regras l\'exicas de plugins:
+
+\begin{lstlisting}[style=cppsmall]
+%{/****begin_Lexical_plugins****/%}
+[nN][qQ] {return yy::genesyspp_parser::make_fNQ(
+    obj_t(0, std::string(yytext)), loc);}
+%{/****end_Lexical_plugins****/%}
+\end{lstlisting}
+
+Esses marcadores mostram que a arquitetura j\'a imaginava extens\~oes de linguagem. O que faltava era um mecanismo concreto para pegar fragmentos declarados por plugins, injetar nesses pontos e recompilar um parser novo automaticamente.
+
+\section{O Problema Arquitetural}
+
+Um plugin pode adicionar uma classe nova ao simulador. Por exemplo, uma nova defini\c{c}\~ao de dados ou um novo componente. Mas isso n\~ao significa que a linguagem de express\~oes passe a reconhecer automaticamente novas fun\c{c}\~oes, nomes ou tokens.
+
+Antes desta implementa\c{c}\~ao, havia um desalinhamento:
+
+\begin{itemize}
+    \item o modelo podia receber novas classes;
+    \item os arquivos Bison/Flex tinham marcadores para extens\~oes;
+    \item mas n\~ao havia pipeline completo para regenerar e conectar o parser em runtime.
+\end{itemize}
+
+No c\'odigo real, v\'arios plugins j\'a sobrescrevem \codeid{\_getParserChangesInformation()}, mas retornam um objeto vazio. Este \'e um sinal de que o contrato existia, mas muitas contribui\c{c}\~oes ainda n\~ao estavam implementadas. Um exemplo simplificado encontrado em plugins reais \'e:
+
+\begin{lstlisting}[style=cppsmall]
+ParserChangesInformation* Queue::_getParserChangesInformation() {
+    ParserChangesInformation* changes = new ParserChangesInformation();
+    // changes->getProductionToAdd()->insert(...);
+    // changes->getTokensToAdd()->insert(...);
+    return changes;
+}
+\end{lstlisting}
+
+Por isso, os testes de unidade usam uma classe chamada \codeid{ParserExtensionTestPlugin}. Ela \'e o melhor exemplo did\'atico porque declara uma extens\~ao completa: token Bison, produ\c{c}\~ao Bison e regra Flex.
+
+\section{Bison, Flex e C++ Din\^amico Neste Projeto}
+
+\subsection{Bison e Flex no fluxo do GenESyS}
+
+Como voc\^es j\'a conhecem parser e lexer, o ponto importante aqui n\~ao \'e explicar o conceito, mas a ferramenta. Flex recebe um arquivo \codeid{.ll} e gera c\'odigo C++ para o scanner. Bison recebe um arquivo \codeid{.yy} e gera c\'odigo C++ para o parser.
+
+No GenESyS, o pipeline est\'atico tradicional pode ser pensado assim:
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.0cm and 1.0cm]
+    \node[buildbox] (ll) {\codeid{lexerparser.ll}\\Flex};
+    \node[buildbox, right=of ll] (yy) {\codeid{bisonparser.yy}\\Bison};
+    \node[kernelbox, right=of yy] (driver) {driver/parser\\C++ gerado};
+    \node[kernelbox, right=of driver] (model) {\codeid{Model}\\avalia express\~oes};
+
+    \draw[flowarrow] (ll) -- (driver);
+    \draw[flowarrow] (yy) -- (driver);
+    \draw[flowarrow] (driver) -- (model);
+\end{tikzpicture}
+\end{center}
+
+A implementa\c{c}\~ao din\^amica n\~ao muda a teoria do parser. Ela automatiza a gera\c{c}\~ao de novos arquivos \codeid{.ll}/\codeid{.yy}, executa Flex/Bison e compila uma nova biblioteca compartilhada.
+
+\subsection{Biblioteca compartilhada e carregamento em runtime}
+
+Em Linux, uma biblioteca compartilhada normalmente usa extens\~ao \codeid{.so}. Ela pode ser carregada durante a execu\c{c}\~ao do programa com \codeid{dlopen}. Depois de carregada, o programa pode procurar uma fun\c{c}\~ao dentro dela com \codeid{dlsym}.
+
+O problema em C++ \'e que nomes de fun\c{c}\~oes podem sofrer \textit{name mangling}. Ou seja, o nome real exportado no bin\'ario pode n\~ao ser exatamente o texto escrito no c\'odigo. Por isso, o projeto usa uma factory C:
+
+\begin{lstlisting}[style=cppsmall]
+extern "C" Parser_if* genesys_createParser(Model* model,
+                                           Sampler_if* sampler) {
+    return new ParserDefaultImpl2(model, sampler);
+}
+\end{lstlisting}
+
+O \codeid{extern "C"} preserva um nome est\'avel para a fun\c{c}\~ao. Assim, o kernel pode procurar exatamente \codeid{genesys\_createParser} com \codeid{dlsym}, sem depender de detalhes da ABI C++.
+
+\section{Os Contratos que J\'a Existiam}
+
+\subsection{\texttt{ParserChangesInformation}}
+
+\codeid{ParserChangesInformation} \'e um objeto de transporte. Ele n\~ao compila nada, n\~ao carrega biblioteca e n\~ao avalia express\~oes. Ele apenas carrega fragmentos de texto que ser\~ao inseridos nos arquivos Bison/Flex.
+
+\begin{lstlisting}[style=cppsmall]
+class ParserChangesInformation {
+public:
+    std::string gettokens() const;
+    void setTokens(const std::string& newTokens);
+
+    std::string getfunctionProdutions() const;
+    void setFunctionProdutions(const std::string& newFunctionProdutions);
+
+    std::string getlexicalRules() const;
+    void setLexicalRules(const std::string& newLexicalRules);
+
+    bool hasChanges() const;
+};
+\end{lstlisting}
+
+Pense nesse objeto como um ``pacote de patches'' para o parser. Cada campo corresponde a uma regi\~ao do arquivo Bison ou Flex.
+
+\subsection{\texttt{\_getParserChangesInformation()}}
+
+\codeid{ModelDataDefinition} define um hook virtual:
+
+\begin{lstlisting}[style=cppsmall]
+ParserChangesInformation*
+ModelDataDefinition::_getParserChangesInformation() {
+    return nullptr;
+}
+\end{lstlisting}
+
+O retorno \codeid{nullptr} significa: ``esta classe n\~ao participa da atualiza\c{c}\~ao din\^amica do parser''. Uma subclasse pode sobrescrever esse m\'etodo e retornar um objeto com tokens, produ\c{c}\~oes ou regras l\'exicas.
+
+\subsection{\texttt{ParserManager}}
+
+\codeid{ParserManager} \'e o coordenador. Ele n\~ao decide quais mudan\c{c}as uma extens\~ao quer fazer, mas sabe como coletar, gerar, compilar e conectar um parser novo.
+
+\begin{lstlisting}[style=cppsmall]
+struct GenerateNewParserResult {
+    bool result = false;
+    std::string bisonMessages;
+    std::string lexMessages;
+    std::string compilationMessages;
+    NewParser newParser;
+};
+\end{lstlisting}
+
+Esse resultado \'e didaticamente importante: o pipeline tem v\'arias etapas que podem falhar. Separar mensagens de Bison, Flex e compila\c{c}\~ao ajuda a entender onde o problema ocorreu.
+
+\section{Implementa\c{c}\~ao Passo a Passo}
+
+\subsection{Passo 1: inserir uma extens\~ao no modelo}
+
+Quando um objeto entra no modelo, ele passa pelo \codeid{ModelDataManager::insert()}. Depois de registrar o objeto, o gerenciador pergunta se esse objeto contribui com mudan\c{c}as de parser.
+
+\begin{lstlisting}[style=cppsmall]
+ParserChangesInformation* changes =
+    anElement->_getParserChangesInformation();
+
+if (changes != nullptr && changes->hasChanges()) {
+    _parentModel->setParserIsStale(true);
+}
+delete changes;
+\end{lstlisting}
+
+O ponto central \'e que \codeid{insert()} n\~ao recompila o parser. Ele apenas marca o parser como possivelmente desatualizado. Esse estado \'e armazenado em \codeid{Model::_parserIsStale}.
+
+\subsection{Passo 2: o primeiro uso dispara o lazy reload}
+
+O reload acontece em \codeid{Model::parseExpression(expression, success, errorMessage)}. Esse m\'etodo \'e uma boa escolha porque \'e o ponto em que a linguagem realmente precisa estar atualizada.
+
+\begin{lstlisting}[style=cppsmall]
+if (_parserIsStale) {
+    _parserIsStale = false;
+    auto allChanges = _parserManager->aggregateChanges();
+    auto* combined = new ParserChangesInformation();
+    for (auto* ch : allChanges) {
+        combined->setTokens(
+            combined->gettokens() + ch->gettokens());
+        combined->setLexicalRules(
+            combined->getlexicalRules() + ch->getlexicalRules());
+    }
+    auto result = _parserManager->generateNewParser(combined);
+    ...
+}
+\end{lstlisting}
+
+O trecho acima est\'a reduzido: no c\'odigo real, todos os campos s\~ao combinados. A ideia \'e simples: se existem v\'arias extens\~oes, suas contribui\c{c}\~oes s\~ao concatenadas por se\c{c}\~ao antes da gera\c{c}\~ao.
+
+\subsection{Passo 3: agregar mudan\c{c}as de todos os objetos}
+
+\codeid{ParserManager::aggregateChanges()} percorre todos os tipos de \codeid{ModelDataDefinition} registrados no \codeid{ModelDataManager}. Para cada objeto, chama o hook virtual.
+
+\begin{lstlisting}[style=cppsmall]
+ParserChangesInformation* changes =
+    mdd->_getParserChangesInformation();
+
+if (changes != nullptr && changes->hasChanges()) {
+    result.push_back(changes);
+} else {
+    delete changes;
+}
+\end{lstlisting}
+
+Esse m\'etodo implementa a ideia de contrato. O \codeid{ParserManager} n\~ao precisa saber se o objeto \'e fila, recurso, vari\'avel ou plugin de teste. Ele s\'o sabe chamar o m\'etodo virtual e aceitar objetos que realmente tenham mudan\c{c}as.
+
+\subsection{Passo 4: gerar os arquivos Bison/Flex modificados}
+
+\codeid{generateNewParser()} come\c{c}a localizando os arquivos-base e lendo seu conte\'udo. Depois, injeta os fragmentos nos marcadores.
+
+\begin{lstlisting}[style=cppsmall]
+bool ParserManager::_injectSection(std::string& content,
+        const std::string& beginMarker,
+        const std::string& endMarker,
+        const std::string& block) {
+    if (block.empty()) return true;
+    size_t beginPos = content.find(beginMarker);
+    if (beginPos == std::string::npos) return false;
+    size_t endPos = content.find(endMarker, beginPos);
+    if (endPos == std::string::npos) return false;
+    content.insert(endPos, block + "\n");
+    return true;
+}
+\end{lstlisting}
+
+Essa fun\c{c}\~ao evita gerar uma gram\'atica paralela. O projeto usa a gram\'atica original como fonte de verdade e apenas adiciona fragmentos nos pontos planejados.
+
+\subsection{Passo 5: executar Bison, Flex e compilador C++}
+
+Depois da inje\c{c}\~ao, o gerenciador escreve novos arquivos no diret\'orio de trabalho e executa as ferramentas:
+
+\begin{lstlisting}[style=cppsmall]
+bison --defines=... --locations --debug -Wall -v ...
+flex -o Genesys++-scanner.cpp lexerparser.ll
+g++ -std=c++23 -fPIC -shared ... -o genesys_parser_dynamic.so
+\end{lstlisting}
+
+O resultado \'e uma biblioteca compartilhada chamada \codeid{genesys\_parser\_dynamic.so}. Ela cont\'em o parser gerado, o scanner gerado, arquivos de suporte e a factory \codeid{genesys\_createParser}.
+
+\subsection{Passo 6: conectar o parser novo}
+
+\codeid{connectNewParser()} valida se o arquivo existe, carrega a biblioteca e resolve a factory.
+
+\begin{lstlisting}[style=cppsmall]
+void* newLibraryHandle =
+    dlopen(newParser.compiledParserFilename.c_str(),
+           RTLD_NOW | RTLD_DEEPBIND);
+
+auto* createFn =
+    reinterpret_cast<Parser_if* (*)(Model*, Sampler_if*)>(
+        dlsym(newLibraryHandle, "genesys_createParser"));
+\end{lstlisting}
+
+\codeid{RTLD\_NOW} faz a resolu\c{c}\~ao de s\'imbolos acontecer imediatamente. \codeid{RTLD\_DEEPBIND} ajuda a biblioteca carregada a preferir seus pr\'oprios s\'imbolos, reduzindo conflito com s\'imbolos j\'a presentes no processo.
+
+\subsection{Passo 7: trocar o parser sem perder o sampler}
+
+O parser usa um \codeid{Sampler\_if} para fun\c{c}\~oes estoc\'asticas. Ao trocar o parser, esse sampler precisa continuar vivo e n\~ao pode ser destru\'ido duas vezes. Por isso, a interface ganhou opera\c{c}\~oes expl\'icitas de ownership.
+
+\begin{lstlisting}[style=cppsmall]
+Sampler_if* ParserDefaultImpl2::releaseSampler() {
+    Sampler_if* s = _wrapper.getSampler();
+    _ownsSampler = false;
+    _wrapper.setSampler(nullptr);
+    return s;
+}
+\end{lstlisting}
+
+No \codeid{Model::setParser()}, o sampler sai do parser antigo e entra no novo:
+
+\begin{lstlisting}[style=cppsmall]
+Sampler_if* currentSampler =
+    (_parser != nullptr) ? _parser->releaseSampler() : nullptr;
+if (parser != nullptr && currentSampler != nullptr) {
+    parser->setSamplerOwned(currentSampler);
+}
+delete _parser;
+_parser = parser;
+\end{lstlisting}
+
+Sem essa transfer\^encia, a troca din\^amica poderia causar vazamento de mem\'oria, perda do sampler ou dupla libera\c{c}\~ao.
+
+\section{Exemplo Did\'atico: \texttt{ParserExtensionTestPlugin}}
+
+O teste cria uma extens\~ao que adiciona a fun\c{c}\~ao \codeid{parsertest(x)}. Ela retorna \codeid{x + 1}. Para isso, declara um token, uma produ\c{c}\~ao Bison e uma regra Flex.
+
+\begin{lstlisting}[style=cppsmall]
+changes->setTokens("%token <obj_t> fPARSERTEST\n");
+
+changes->setFunctionProdutions(
+    " | fPARSERTEST \"(\" expression \")\" "
+    "{ $$.valor = $3.valor + 1.0; }\n");
+
+changes->setLexicalRules(
+    "[pP][aA][rR][sS][eE][rR][tT][eE][sS][tT] "
+    "{ return yy::genesyspp_parser::make_fPARSERTEST("
+    "obj_t(0, std::string(yytext)), loc); }\n");
+\end{lstlisting}
+
+Esse exemplo \'e pequeno, mas mostra a ideia completa:
+
+\begin{itemize}
+    \item Flex reconhece o texto \codeid{parsertest};
+    \item o scanner retorna o token \codeid{fPARSERTEST};
+    \item Bison aceita \codeid{fPARSERTEST "(" expression ")"};
+    \item a a\c{c}\~ao sem\^antica calcula o valor final.
+\end{itemize}
+
+Depois que o parser novo \'e conectado, os testes validam express\~oes como:
+
+\begin{lstlisting}[style=cppsmall]
+model->parseExpression("parsertest(5)", success, errorMsg);
+model->parseExpression("parsertest(parsertest(2))");
+\end{lstlisting}
+
+\section{Decis\~oes de Engenharia}
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.24\textwidth} >{\raggedright\arraybackslash}p{0.35\textwidth} >{\raggedright\arraybackslash}p{0.31\textwidth}}
+\toprule
+\textbf{Decis\~ao} & \textbf{Motivo} & \textbf{Onde aparece} \\
+\midrule
+\endhead
+Lazy reload & Evita recompilar a cada inser\c{c}\~ao e s\'o paga o custo quando uma express\~ao precisa ser avaliada. & \codeid{ModelDataManager::insert()} e \codeid{Model::parseExpression()} \\
+Inje\c{c}\~ao em marcadores & Mant\'em os arquivos-base como fonte de verdade e evita uma gram\'atica paralela. & \codeid{ParserManager::\_injectSection()} \\
+Parser antigo preservado & Uma falha em Bison, Flex, compila\c{c}\~ao ou conex\~ao n\~ao deve inutilizar o simulador. & \codeid{connectNewParser()} e retorno de erro em \codeid{parseExpression()} \\
+Factory C & Garante nome exportado est\'avel apesar do name mangling C++. & \codeid{ParserFactory.cpp} \\
+Ownership expl\'icito do sampler & Evita vazamento, dupla libera\c{c}\~ao e perda de estado estoc\'astico. & \codeid{Parser\_if}, \codeid{ParserDefaultImpl2}, \codeid{Model::setParser()} \\
+\bottomrule
+\end{longtable}
+
+\section{Diagramas Did\'aticos}
+
+\subsection{Antes: parser fixo}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.95\textwidth}{!}{
+\begin{tikzpicture}[node distance=1.0cm and 1.1cm]
+    \node[extensionbox] (expr) {Express\~ao do modelo};
+    \node[kernelbox, right=of expr] (parser) {Parser fixo\\\codeid{ParserDefaultImpl2}};
+    \node[kernelbox, right=of parser] (model) {\codeid{Model}\\resultado num\'erico};
+    \node[buildbox, below=of parser] (base) {\codeid{bisonparser.yy}\\\codeid{lexerparser.ll}\\compilados antes};
+
+    \draw[flowarrow] (expr) -- (parser);
+    \draw[flowarrow] (parser) -- (model);
+    \draw[flowarrow] (base) -- (parser);
+\end{tikzpicture}}
+\caption{Antes da solu\c{c}\~ao, o parser ativo refletia a linguagem j\'a compilada.}
+\end{figure}
+
+\subsection{Depois: atualiza\c{c}\~ao sob demanda}
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}[node distance=1.0cm and 1.0cm]
+    \node[extensionbox] (ext) {Extens\~ao\\declara mudan\c{c}as};
+    \node[extensionbox, right=of ext] (contract) {\codeid{ParserChangesInformation}};
+    \node[kernelbox, right=of contract] (stale) {\codeid{Model}\\parser stale};
+    \node[kernelbox, right=of stale] (parse) {\codeid{parseExpression()}};
+    \node[buildbox, right=of parse] (so) {gera e carrega\\\codeid{.so}};
+    \node[kernelbox, right=of so] (newparser) {novo parser ativo};
+
+    \draw[flowarrow] (ext) -- (contract);
+    \draw[flowarrow] (contract) -- (stale);
+    \draw[flowarrow] (stale) -- (parse);
+    \draw[flowarrow] (parse) -- (so);
+    \draw[flowarrow] (so) -- (newparser);
+\end{tikzpicture}}
+\caption{Depois da solu\c{c}\~ao, a atualiza\c{c}\~ao acontece automaticamente no primeiro uso da linguagem.}
+\end{figure}
+
+\subsection{Pipeline de gera\c{c}\~ao}
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{
+\begin{tikzpicture}[node distance=0.9cm and 0.9cm]
+    \node[extensionbox] (changes) {Contrato\\\codeid{ParserChangesInformation}};
+    \node[buildbox, right=of changes] (inject) {inje\c{c}\~ao\\em marcadores};
+    \node[buildbox, right=of inject] (tools) {Bison + Flex\\+ g++};
+    \node[buildbox, right=of tools] (lib) {\codeid{genesys\_parser\_dynamic.so}};
+    \node[kernelbox, right=of lib] (load) {\codeid{dlopen}\\\codeid{dlsym}};
+    \node[kernelbox, right=of load] (active) {\codeid{Parser\_if}\\ativo};
+
+    \draw[flowarrow] (changes) -- (inject);
+    \draw[flowarrow] (inject) -- (tools);
+    \draw[flowarrow] (tools) -- (lib);
+    \draw[flowarrow] (lib) -- (load);
+    \draw[flowarrow] (load) -- (active);
+\end{tikzpicture}}
+\caption{Pipeline completo entre uma contribui\c{c}\~ao de linguagem e o parser ativo.}
+\end{figure}
+
+\section{Como Ler o C\'odigo}
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.32\textwidth} >{\raggedright\arraybackslash}p{0.30\textwidth} >{\raggedright\arraybackslash}p{0.28\textwidth}}
+\toprule
+\textbf{Arquivo ou classe} & \textbf{O que procurar} & \textbf{Pergunta respondida} \\
+\midrule
+\endhead
+\codeid{ParserChangesInformation} & Campos, getters/setters e \codeid{hasChanges()}. & Como uma extens\~ao descreve mudan\c{c}as? \\
+\codeid{ModelDataDefinition} & Hook \codeid{\_getParserChangesInformation()}. & Como uma classe participa do contrato? \\
+\codeid{ModelDataManager::insert()} & Marca\c{c}\~ao de \codeid{parserIsStale}. & Quando o modelo percebe que o parser pode estar velho? \\
+\codeid{Model::parseExpression()} & Lazy reload antes de avaliar. & Quando a regenera\c{c}\~ao realmente acontece? \\
+\codeid{ParserManagerRuntime.cpp} & Agrega\c{c}\~ao, \codeid{dlopen}, \codeid{dlsym}. & Como o parser novo entra no modelo? \\
+\codeid{ParserManager.cpp} & Inje\c{c}\~ao, Bison, Flex, compila\c{c}\~ao. & Como a biblioteca \codeid{.so} \'e gerada? \\
+\codeid{ParserFactory.cpp} & \codeid{extern "C"} e cria\c{c}\~ao do parser. & Qual \'e a fronteira ABI est\'avel? \\
+\codeid{ParserDefaultImpl2} & Parser concreto e ownership do sampler. & Quem avalia express\~oes e quem destr\'oi o sampler? \\
+\codeid{test\_parser\_expressions.cpp} & \codeid{ParserExtensionTestPlugin}. & Como uma extens\~ao completa funciona na pr\'atica? \\
+\bottomrule
+\end{longtable}
+
+\section{FAQ}
+
+\subsection*{Por que n\~ao recompilar no \texttt{insert()}?}
+
+Porque inserir objetos no modelo pode acontecer v\'arias vezes em sequ\^encia. Se cada inser\c{c}\~ao recompilasse o parser, o custo seria alto e repetitivo. O lazy reload acumula mudan\c{c}as e s\'o recompila quando uma express\~ao precisa ser avaliada.
+
+\subsection*{Por que os plugins reais ainda t\^em mudan\c{c}as vazias?}
+
+Porque o contrato foi preparado para que plugins declarem mudan\c{c}as, mas nem todo plugin j\'a implementa uma contribui\c{c}\~ao real de linguagem. Por isso, o m\'etodo \codeid{hasChanges()} \'e importante: ele evita tratar objeto vazio como altera\c{c}\~ao efetiva.
+
+\subsection*{Por que os testes usam \texttt{ParserExtensionTestPlugin}?}
+
+Porque ele \'e pequeno e completo. Ele declara token, produ\c{c}\~ao e regra l\'exica, permitindo validar o pipeline inteiro sem depender de um plugin grande do simulador.
+
+\subsection*{O que acontece se Bison, Flex ou g++ falharem?}
+
+O resultado de gera\c{c}\~ao retorna \codeid{result = false} e mensagens separadas. O \codeid{Model::parseExpression()} reporta erro e n\~ao substitui o parser ativo por um parser quebrado.
+
+\subsection*{Por que usar \texttt{extern "C"}?}
+
+Para exportar uma fun\c{c}\~ao com nome est\'avel. Sem isso, o compilador C++ poderia transformar o nome da fun\c{c}\~ao, e \codeid{dlsym} n\~ao encontraria \codeid{genesys\_createParser} pelo texto esperado.
+
+\subsection*{Qual \'e o papel do sampler?}
+
+O sampler fornece suporte a fun\c{c}\~oes estoc\'asticas da linguagem. Quando o parser \'e trocado, esse objeto precisa sobreviver e passar para o parser novo. Por isso, a troca exige cuidado com ownership.
+
+\section{Gloss\'ario Direcionado}
+
+\begin{description}
+    \item[Bison] Ferramenta que gera parser C/C++ a partir de uma gram\'atica em arquivo \codeid{.yy}.
+    \item[Flex] Ferramenta que gera scanner C/C++ a partir de regras l\'exicas em arquivo \codeid{.ll}.
+    \item[\codeid{.so}] Biblioteca compartilhada em Linux, carreg\'avel em runtime.
+    \item[\codeid{dlopen}] Fun\c{c}\~ao que abre uma biblioteca compartilhada durante a execu\c{c}\~ao.
+    \item[\codeid{dlsym}] Fun\c{c}\~ao que procura um s\'imbolo exportado dentro de uma biblioteca carregada.
+    \item[ABI] Contrato bin\'ario entre c\'odigo compilado e chamadores.
+    \item[Name mangling] Transforma\c{c}\~ao de nomes C++ feita pelo compilador para suportar overloads, namespaces e tipos.
+    \item[Factory] Fun\c{c}\~ao ou objeto que cria inst\^ancias sem expor o construtor concreto ao chamador.
+    \item[Hook virtual] M\'etodo virtual usado como ponto de extens\~ao por subclasses.
+    \item[Lazy reload] Atualiza\c{c}\~ao adiada at\'e o primeiro momento em que ela \'e necess\'aria.
+    \item[Stale] Estado em que o parser ativo ainda existe, mas pode estar desatualizado.
+    \item[Ownership] Regra de quem \'e respons\'avel por destruir um objeto em C++.
+    \item[Sampler] Objeto usado pelo parser para suporte a fun\c{c}\~oes estoc\'asticas.
+\end{description}
+
+\section{Fechamento}
+
+A implementa\c{c}\~ao do parser din\^amico n\~ao muda apenas uma fun\c{c}\~ao isolada. Ela conecta contratos j\'a presentes no GenESyS a um pipeline completo: extens\~oes declaram fragmentos, o modelo marca o parser como desatualizado, o primeiro uso dispara a gera\c{c}\~ao, Bison/Flex/g++ produzem uma biblioteca, e o kernel carrega essa biblioteca para substituir o parser ativo com seguran\c{c}a.
+
+Para estudar o trabalho, vale lembrar a frase-resumo: o plugin n\~ao compila nada; ele declara. O \codeid{ParserManager} n\~ao inventa uma linguagem nova; ele injeta nos arquivos-base. O \codeid{Model} n\~ao pede interven\c{c}\~ao manual; ele atualiza sob demanda quando a express\~ao precisa ser avaliada.
+
+\end{document}
