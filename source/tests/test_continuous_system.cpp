@@ -18,15 +18,14 @@
 #include <sstream>
 
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Model.h"
+#include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/PluginManager.h"
-#include "kernel/simulator/Plugin.h"
 #include "plugins/data/Logic/Variable.h"
 #include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "kernel/simulator/EntityType.h"
+#include "kernel/simulator/essentialPlugins/EntityType.h"
 #include "kernel/simulator/TraceManager.h"
 
 struct Sample {
@@ -98,17 +97,18 @@ int main() {
 
 	model->getDataManager()->insert(odeSolver);
 
-	// Registrar plugins estáticos manualmente no PluginManager
-	// Isso é necessário porque o model check precisa encontrar os plugins
+	// Carregar os plugins necessários pelo mecanismo padrão do PluginManager
+	// (EntityType já vem registrado por padrão em _insertDefaultKernelElements)
 	PluginManager* pluginManager = simulator->getPluginManager();
-	
-	// Criar e inserir os plugins necessários
-	pluginManager->insertStaticPlugin(new Plugin(&Create::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&Dispose::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&ContinuousSystemComponent::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&ODESolver::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&Variable::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&EntityType::GetPluginInformation));
+
+	if (pluginManager->insert("create.so") == nullptr ||
+	    pluginManager->insert("dispose.so") == nullptr ||
+	    pluginManager->insert("continuoussystemcomponent.so") == nullptr ||
+	    pluginManager->insert("odesolver.so") == nullptr ||
+	    pluginManager->insert("variable.so") == nullptr) {
+		std::cerr << "Erro ao carregar plugins necessarios" << std::endl;
+		return 1;
+	}
 
 	// Criar EntityType
 	EntityType* entityType = pluginManager->newInstance<EntityType>(model, "entitytype");

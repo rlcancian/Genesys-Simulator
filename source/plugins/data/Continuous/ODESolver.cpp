@@ -6,8 +6,8 @@
  */
 
 #include "plugins/data/Continuous/ODESolver.h"
-#include "kernel/simulator/ModelDataManager.h"
-#include "kernel/simulator/Model.h"
+#include "kernel/simulator/model/ModelDataManager.h"
+#include "kernel/simulator/model/Model.h"
 #include "plugins/data/Logic/Variable.h"
 #include "kernel/util/Util.h"
 

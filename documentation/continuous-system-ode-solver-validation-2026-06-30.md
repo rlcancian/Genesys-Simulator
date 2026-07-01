@@ -22,7 +22,8 @@ componente `LSODE`.
 - [`source/plugins/data/Continuous/ODESolver.h`](../source/plugins/data/Continuous/ODESolver.h) / `.cpp`
   — `ModelDataDefinition` que encapsula estado (`_stateValues`), equações (`_equationExpressions`
   em função de nomes de variáveis de estado), passo, precisão, `maxSteps` e delega a integração ao
-  `RungeKutta4OdeSolver` (`source/tools/`).
+  `RungeKutta4OdeSolver` (`source/tools/`) — classe **já existente** desde o 2026-1, reaproveitada
+  aqui sem alteração de lógica (apenas comentários explicativos, ver seção abaixo).
 
 ### Corrigido — `LSODE::_doStep()`
 - [`source/plugins/components/Continuous/LSODE.cpp`](../source/plugins/components/Continuous/LSODE.cpp)
@@ -41,17 +42,17 @@ componente `LSODE`.
   plugin de código externo do restante do simulador.
 
 ### Integração com o GenESyS (registro de plugins)
-- [`source/kernel/simulator/PluginManager.h`](../source/kernel/simulator/PluginManager.h) / `.cpp`
-  — novo método `insertStaticPlugin(Plugin*)` para inserir plugins estáticos diretamente
-  (usado pelos testes de integração, sem passar pelo carregamento dinâmico de `.so`).
 - [`source/plugins/PluginConnectorDummyImpl1.cpp`](../source/plugins/PluginConnectorDummyImpl1.cpp)
   — `ContinuousSystemComponent` e `ODESolver` registrados no conector estático de plugins
   (`continuoussystemcomponent.so`, `odesolver.so`), tornando-os descobríveis pelo
   `PluginManager` da mesma forma que os demais componentes/definições de dados do simulador.
+  Os testes de integração carregam esses plugins pelo mecanismo padrão já existente
+  (`PluginManager::insert("nome.so")`), sem exigir nenhuma alteração no `PluginManager`.
 
-### Comentários/robustez
-- [`source/tools/RungeKutta4OdeSolver.h`](../source/tools/RungeKutta4OdeSolver.h) — comentários
-  explicando cada estágio (k1..k4) do RK4 clássico; sem mudança de lógica.
+### Comentários (sem mudança de lógica)
+- [`source/tools/RungeKutta4OdeSolver.h`](../source/tools/RungeKutta4OdeSolver.h) — classe
+  pré-existente (2026-1); nesta entrega apenas foram adicionados comentários explicando cada
+  estágio (k1..k4) do RK4 clássico. Não é implementação nova.
 
 ## Testes
 

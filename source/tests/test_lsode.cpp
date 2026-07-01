@@ -12,9 +12,8 @@
 #include <sstream>
 #include <vector>
 
-#include "kernel/simulator/EntityType.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/essentialPlugins/EntityType.h"
+#include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/TraceManager.h"
@@ -84,12 +83,15 @@ int main() {
 	Model* model = simulator->getModelManager()->newModel();
 	model->getTracer()->setTraceLevel(TraceManager::Level::L3_errorRecover);
 
+	// EntityType já vem registrado por padrão em _insertDefaultKernelElements
 	PluginManager* pluginManager = simulator->getPluginManager();
-	pluginManager->insertStaticPlugin(new Plugin(&Create::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&Dispose::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&LSODE::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&Variable::GetPluginInformation));
-	pluginManager->insertStaticPlugin(new Plugin(&EntityType::GetPluginInformation));
+	if (pluginManager->insert("create.so") == nullptr ||
+	    pluginManager->insert("dispose.so") == nullptr ||
+	    pluginManager->insert("lsode.so") == nullptr ||
+	    pluginManager->insert("variable.so") == nullptr) {
+		std::cerr << "Erro ao carregar plugins necessarios" << std::endl;
+		return 1;
+	}
 
 	Variable* state = pluginManager->newInstance<Variable>(model, "LSODEVar");
 	state->insertDimentionSize(2);

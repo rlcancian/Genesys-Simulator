@@ -11,7 +11,7 @@
 
 #include <string>
 
-#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/model/ModelComponent.h"
 #include "plugins/data/Continuous/ODESolver.h"
 
 /*!

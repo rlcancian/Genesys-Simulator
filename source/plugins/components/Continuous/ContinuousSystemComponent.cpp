@@ -8,8 +8,8 @@
 
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/Logic/Variable.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -111,10 +111,6 @@ std::string ContinuousSystemComponent::getOdeSolverName() const {
 
 void ContinuousSystemComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
-
-	std::cout << "[DEBUG onDispatch] chamado em simTime="
-	          << _parentModel->getSimulation()->getSimulatedTime()
-	          << " _odeSolver=" << _odeSolver << std::endl;
 
 	if (_odeSolver == nullptr) {
 		traceSimulation(this, TraceManager::Level::L1_errorFatal,
