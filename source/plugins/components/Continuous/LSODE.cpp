@@ -12,6 +12,7 @@
  */
 
 #include <fstream>
+#include <vector>
 #include "plugins/components/Continuous/LSODE.h"
 #include "../../../kernel/simulator/model/Model.h"
 
@@ -120,59 +121,64 @@ std::string LSODE::getFileName() const {
 
 bool LSODE::_doStep() {
 	double initTime, time, tnow, eqResult, halfStep;
-	//std::list<std::string>* eqs = _diffEquations->formulaExpressions()->list();
-	unsigned int i, numEqs = _diffEquations->size();
-	double k1[numEqs], k2[numEqs], k3[numEqs], k4[numEqs], valVar[numEqs];
+	std::vector<std::string> expressions;
+	for (const std::string& equation : *_diffEquations->list()) {
+		expressions.push_back(equation);
+	}
+	unsigned int i, numEqs = expressions.size();
+	// valVar holds the state at the start of the step; it is the base for all four stages
+	std::vector<double> k1(numEqs), k2(numEqs), k3(numEqs), k4(numEqs), valVar(numEqs);
 	time = _timeVariable->getValue();
-	initTime = time;
+	initTime = time; // save t0 — needed to restore the time variable after midpoint evaluations
 	std::string expression;
 	tnow = _parentModel->getSimulation()->getSimulatedTime();
-	// @TODO: numerical error treatment by just adding 1e-15
+	// 1e-15 guard against floating-point rounding when time + step ≈ tnow
 	bool res = time + _step <= tnow + 1e-15;
 	if (res) { // if simulatedTime has not reached a single step, do not solve
 		halfStep = _step * 0.5;
-		for (i = 0; i < numEqs; i++) {//(std::list<std::string>::iterator it = eqs->begin(); it != eqs->end(); it++) {
-			/* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
-			expression = "";///* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
+		// k1: slope at t0, y0
+		for (i = 0; i < numEqs; i++) {
+			expression = expressions[i];
 			valVar[i] = _variable->getValue(std::to_string(i));
 			eqResult = _parentModel->parseExpression(expression);
 			k1[i] = eqResult;
 		}
+		// advance to midpoint for k2 evaluation
 		time += halfStep;
 		_timeVariable->setValue(time);
 		for (i = 0; i < numEqs; i++) {
 			_variable->setValue(valVar[i] + k1[i] * halfStep, std::to_string(i));
 		}
+		// k2: slope at t0+h/2, y0+h/2·k1
 		for (i = 0; i < numEqs; i++) {
-			/* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
-			//expression = _diffEquations->getAtRank(i);
-			expression = "";//_diffEquations->getAtRank(i);
+			expression = expressions[i];
 			eqResult = _parentModel->parseExpression(expression);
 			k2[i] = eqResult;
 		}
 		for (i = 0; i < numEqs; i++) {
 			_variable->setValue(valVar[i] + k2[i] * halfStep, std::to_string(i));
 		}
+		// k3: slope at t0+h/2, y0+h/2·k2 (time stays at midpoint)
 		for (i = 0; i < numEqs; i++) {
-			/* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
-			//expression = _diffEquations->getAtRank(i);
-			expression = "";//_diffEquations->getAtRank(i);
+			expression = expressions[i];
 			eqResult = _parentModel->parseExpression(expression);
 			k3[i] = eqResult;
 		}
+		// advance to end of step for k4 evaluation
+		time = initTime + _step;
+		_timeVariable->setValue(time);
 		for (i = 0; i < numEqs; i++) {
-			_variable->setValue(valVar[i] + k3[i] * halfStep, std::to_string(i));
+			_variable->setValue(valVar[i] + k3[i] * _step, std::to_string(i));
 		}
+		// k4: slope at t0+h, y0+h·k3
 		for (i = 0; i < numEqs; i++) {
-			/* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
-			//expression = _diffEquations->getAtRank(i);
-			expression = "";//_diffEquations->getAtRank(i);
+			expression = expressions[i];
 			eqResult = _parentModel->parseExpression(expression);
 			k4[i] = eqResult;
 		}
+		// combine: use valVar (not the current variable value) as base to avoid accumulated error
 		for (i = 0; i < numEqs; i++) {
-
-			eqResult = _variable->getValue(std::to_string(i)) +(_step / 6) * (k1[i] + 2 * (k2[i] + k3[i]) + k4[i]);
+			eqResult = valVar[i] + (_step / 6) * (k1[i] + 2 * (k2[i] + k3[i]) + k4[i]);
 			_variable->setValue(eqResult, std::to_string(i));
 		}
 		time = initTime + _step;
