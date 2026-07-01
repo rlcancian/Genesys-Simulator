@@ -49,11 +49,6 @@ public:
 	std::string getLastErrorMessage() const;
 	void setLastResponsePayload(std::string lastResponsePayload);
 	std::string getLastResponsePayload() const;
-	// ODE solver selection: chooses which OdeSolver_if the runner builds via
-	// OdeSolverFactory. Stored as a stable string key ("RungeKutta4",
-	// "DormandPrince54", ...) so it round-trips through model files and the GUI.
-	void setOdeSolver(std::string odeSolver);
-	std::string getOdeSolver() const;
 	void addSpecies(std::string speciesName);
 	void addReaction(std::string reactionName);
 	void clearSpecies();
@@ -109,7 +104,6 @@ private:
 		std::string lastStatus = "Idle";
 		std::string lastErrorMessage = "";
 		std::string lastResponsePayload = "";
-		std::string odeSolver = "RungeKutta4";
 	} DEFAULT;
 
 	double _startTime = DEFAULT.startTime;
@@ -120,7 +114,6 @@ private:
 	std::string _lastStatus = DEFAULT.lastStatus;
 	std::string _lastErrorMessage = DEFAULT.lastErrorMessage;
 	std::string _lastResponsePayload = DEFAULT.lastResponsePayload;
-	std::string _odeSolver = DEFAULT.odeSolver;
 	std::vector<std::string> _speciesNames;
 	std::vector<std::string> _reactionNames;
 	BioSimulationResult _lastSimulationResult;

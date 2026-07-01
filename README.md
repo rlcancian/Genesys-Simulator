@@ -1,125 +1,426 @@
-# DCS — Solver de EDO (Factory + Dormand-Prince 5(4)) e extensão de difusão N-D
+# GenESyS — Generic and Expansible System Simulator
 
-Extensão do simulador GenESyS (branch `2026-1`) para a disciplina de Modelagem e Simulação,
-em duas partes coesas.
+GenESyS (**Ge**neric and E**xp**ansible **S**ystem Simulator) is a C++ simulation platform designed as an extensible software architecture for modeling and simulation, rather than as a fixed simulator with a closed set of built-in blocks.
 
-## Visualizar nosso vídeo:
-Está presente no diretório raíz do projeto, como `video_entrega.mp4`
+The current repository is organized around:
 
-Alternativamente, é possível visualizá-lo no youtube por aqui: https://youtu.be/0pVlK125Oio
+- a reusable **simulation kernel**;
+- **parser** infrastructure;
+- **plugin** libraries for components and data definitions;
+- optional **applications** (terminal, GUI, web);
+- and automated **tests** driven by **CMake**.
 
-## Visualizar nosso Pull Request:
-https://github.com/rlcancian/Genesys-Simulator/pull/425
+> **Important**
+>
+> Older documentation that refers to legacy build flows, older directory layouts, or `project` / `projects` folders as the main build entry point is obsolete.
+>
+> The current recommended workflow is based on **CMake + Ninja**, using the presets defined in `CMakePresets.json`.
 
-## Relatório
-Está presente no diretório raíz do projeto, como `relatorio.pdf`
+---
 
+## 1. Current Build System
 
-## Parte 1 — Factory de solvers de EDO + Dormand-Prince 5(4)
-A integração de EDOs no plugin `BioNetwork` estava presa ao Runge-Kutta 4 de passo fixo. Esta parte:
-1. cria uma **Factory** (`OdeSolverFactory`) que produz solvers `OdeSolver_if` sob demanda;
-2. implementa o método embutido e adaptativo **Dormand-Prince 5(4)** (`DormandPrince54OdeSolver`);
-3. permite **escolher o solver em tempo de execução** no `BioNetwork` (campo persistido e validado).
+The repository now uses **CMake** as its primary build system.
 
+Main build entry points:
 
-## Parte 2 — Plugin de difusão N-D pelo Método das Linhas (extensão)
-Um novo plugin (`DiffusionField`) resolve a equação de difusão `∂u/∂t = D∇²u` em **N dimensões
-(parametrizável)** pelo **Método das Linhas**: diferenças finitas centrais no espaço transformam a
-EDP num sistema de EDOs, integrado pelos **mesmos solvers**, via a mesma `OdeSolverFactory` — sem
-alterar uma linha do componente da Parte 1.
+- `CMakeLists.txt`
+- `CMakePresets.json`
 
-**Resultado combinado:** 71 verificações automatizadas, 0 falhas. Ordens de convergência confirmadas
-(RK4 ~4,0 no tempo; difusão O(h²) no espaço), conservação de massa Neumann a 1e-16, e o plugin de
-difusão compilando contra o kernel real.
+### Technical baseline
 
+- **Minimum CMake:** 3.24
+- **C++ standard:** C++23
+- **Default generator in presets:** `Ninja`
 
-## Pré-requisitos
+### Main build options
 
-- **CMake ≥ 3.24**, compilador com **C++23** (GCC 13+/Clang 16+) e um gerador: **Ninja** (usado pelos presets) **ou Make**.
-- **GoogleTest** (resolvido pelo próprio build dos testes).
+The root build currently exposes the following important options:
 
+- `GENESYS_TERMINAL_APPLICATION`
+- `GENESYS_BUILD_GUI_APPLICATION`
+- `GENESYS_BUILD_WEB_APPLICATION`
+- `GENESYS_BUILD_TESTS`
+- `GENESYS_BUILD_KERNEL`
+- `GENESYS_BUILD_PARSER`
+- `GENESYS_BUILD_PLUGINS`
+- `GENESYS_BUILD_TOOLS`
 
-## Compilar e rodar os testes
+### GUI build status
 
-> Compilar os testes compila também as libs do kernel (a lib `genesys_tools` depende delas),
-> mas **não** precisa de Qt nem das aplicações terminal/GUI.
+The Qt GUI is currently integrated into the CMake workflow, but its build is still delegated by CMake to a `qmake`-based path.
 
-### 1. Configurar
+Therefore:
+
+- the repository is **CMake-centric**;
+- the GUI is enabled from the root CMake build;
+- but building the GUI still requires `qmake` available in `PATH`.
+
+---
+
+## 2. Quick Start
+
+### Debug build
 
 ```bash
-# Opção A — presets do projeto (requer Ninja)
+cmake --preset debug
+cmake --build --preset debug
+ctest --preset debug
+```
+
+### Release build
+
+```bash
+cmake --preset release
+cmake --build --preset release
+```
+
+### Terminal application
+
+```bash
+cmake --preset terminal-app
+cmake --build --preset terminal-app
+```
+
+This builds the `genesys_terminal_application` target.
+
+### Kernel unit tests
+
+```bash
 cmake --preset tests-kernel-unit
-
-# Opção B — manual, sem Ninja (usa Make); gera em build/tests-unit
-cmake -S . -B build/tests-unit -G "Unix Makefiles" \
-  -DGENESYS_BUILD_TESTS=ON \
-  -DGENESYS_BUILD_TERMINAL_APPLICATION=OFF \
-  -DGENESYS_BUILD_GUI_APPLICATION=OFF
-```
-
-### 2. Compilar
-
-```bash
-# com preset
 cmake --build --preset tests-kernel-unit-run
-# ou, com a build manual (Make)
-cmake --build build/tests-unit -j
 ```
 
-### 3. Rodar
+This is the recommended workflow for building and running all Kernel Simulator unit tests.
 
-Use `--preset tests-kernel-unit` (se configurou por preset) ou `--test-dir build/tests-unit`
-(se configurou manual):
+You may also run the preset explicitly with:
 
 ```bash
-# todos os testes
-ctest --test-dir build/tests-unit
-
-# apenas os testes do DCS (filtro por nome -R)
-ctest --test-dir build/tests-unit -R "OdeSolverFactory|DormandPrince54|RungeKutta4|OdeSolverContract"  # Parte 1
-ctest --test-dir build/tests-unit -R "DiffusionMol"                                                     # Parte 2
-ctest --test-dir build/tests-unit -R "Diffusion|BioNetwork"                                             # integração
+ctest --preset tests-kernel-unit
 ```
 
-
-
-
-Ou executar os binários diretamente (aceitam `--gtest_filter`):
+### Smoke tests
 
 ```bash
-BIN=build/tests-unit/source/tests/unit   # ou build/tests-kernel-unit/... se usou o preset
-$BIN/genesys_test_tools_ode_solver_factory
-$BIN/genesys_test_tools_diffusion_mol
-$BIN/genesys_test_simulator_runtime --gtest_filter='*Diffusion*'
+cmake --preset tests-smoke
+cmake --build --preset tests-smoke
+ctest --preset tests-smoke
 ```
 
-## Rodar a demo (difusão 2D animada)
-
-A demo é o alvo `genesys_diffusion_ascii_demo` (fonte: `diffusion_demo.cpp`). Compilar só ela e executar:
+### AddressSanitizer
 
 ```bash
-# build manual (Make)
-cmake --build build/tests-unit --target genesys_diffusion_ascii_demo -j
-./build/tests-unit/source/tests/genesys_diffusion_ascii_demo
-
-# (com preset:
-#   cmake --build --preset tests-kernel-unit-run --target genesys_diffusion_ascii_demo
-#   ./build/tests-kernel-unit/source/tests/genesys_diffusion_ascii_demo )
+cmake --preset asan
+cmake --build --preset asan
+ctest --preset asan
 ```
 
-Mostra uma malha **2D 41×41**, condição inicial **Gaussiana**, contorno **Neumann**, solver
-**Dormand-Prince 5(4)**, integrando de `t=0` a `t=1.5`. A cada passo, redesenha o campo com blocos
-Unicode e imprime o tempo, a **massa total** (que permanece constante — checagem de
-conservação) e o valor máximo. Requer terminal UTF-8.
+### UndefinedBehaviorSanitizer
 
-
-## Escolher o solver de EDO (Parte 1)
-
-Tanto `BioNetwork` quanto `DiffusionField` expõem o controle **`OdeSolver`**. Trocar entre
-`"RungeKutta4"` e `"DormandPrince54"` muda o método de integração **sem alterar nenhuma linha de
-lógica** — a `OdeSolverFactory` resolve o nome em tempo de execução. Se o nome for desconhecido, automaticamente se usa Runge-Kutta-4.
-```cpp
-field.setOdeSolver("DormandPrince54");  // adaptativo, mais estável em malha fina
-field.setOdeSolver("RungeKutta4");      // passo fixo, mais leve
+```bash
+cmake --preset ubsan
+cmake --build --preset ubsan
+ctest --preset ubsan
 ```
 
+---
+
+## 3. Optional Qt GUI Build
+
+The GUI can be enabled from the root CMake workflow.
+
+Example:
+
+```bash
+cmake -S . -B build/gui -G Ninja \
+  -DGENESYS_BUILD_GUI_APPLICATION=ON \
+  -DGENESYS_BUILD_TESTS=OFF
+
+cmake --build build/gui --target genesys_gui
+```
+
+Requirements:
+
+- Qt installed;
+- `qmake6`, `qmake-qt5`, or `qmake` available in `PATH`.
+
+If `qmake` is not available, GUI configuration will fail.
+
+---
+
+## 4. Current Repository Map
+
+The most relevant current repository structure is:
+
+```text
+Genesys-Simulator/
+├── CMakeLists.txt
+├── CMakePresets.json
+├── autoloadplugins.txt
+├── documentation/
+├── docker/
+├── models/
+├── source/
+│   ├── applications/
+│   │   ├── gui/
+│   │   ├── terminal/
+│   │   └── web/
+│   ├── kernel/
+│   │   ├── simulator/
+│   │   ├── statistics/
+│   │   └── util/
+│   ├── parser/
+│   ├── plugins/
+│   └── tests/
+└── build/                # generated out-of-source build directories
+```
+
+### Notes
+
+- `source/` is the main implementation tree.
+- `models/` contains models and examples used with the simulator.
+- `documentation/` contains supporting written material.
+- `docker/` contains container-related assets.
+- `autoloadplugins.txt` gives a useful overview of the plugin universe associated with the platform.
+- `build/` is not part of the source tree design; it is generated by CMake out-of-source builds.
+
+---
+
+## 5. Core Source Organization
+
+### 5.1 Kernel
+
+The kernel is split into major subareas:
+
+- `source/kernel/util`
+- `source/kernel/statistics`
+- `source/kernel/simulator`
+
+At a high level, the simulator kernel contains the main runtime and support abstractions used by the rest of the platform.
+
+### 5.2 Parser
+
+- `source/parser`
+
+This area contains the parser and related infrastructure for expressions and model semantics.
+
+### 5.3 Plugins
+
+- `source/plugins`
+
+This area contains plugin-related code, including components and data definitions used by the simulator.
+
+### 5.4 Applications
+
+- `source/applications/terminal`
+- `source/applications/gui/qt/GenesysQtGUI`
+- `source/applications/web`
+
+These are optional front-ends or execution interfaces layered on top of the core platform.
+
+### 5.5 Tests
+
+- `source/tests/unit`
+- `source/tests/smoke`
+
+The repository now treats testing as a first-class build concern.
+
+---
+
+## 6. Current Build Graph Overview
+
+The root CMake build conditionally assembles the platform from multiple subsystems.
+
+### Kernel-related targets
+
+The build includes static-library targets such as:
+
+- `genesys_kernel_util`
+- `genesys_kernel_statistics`
+- `genesys_kernel_simulator_support`
+- `genesys_kernel_simulator_runtime`
+
+### Parser target
+
+- `genesys_parser`
+
+### Plugin targets
+
+The plugin build currently includes, among others:
+
+- `genesys_plugins_data`
+- `genesys_plugins_components_minimal`
+
+### Aggregate kernel target
+
+When kernel, parser, and plugins are enabled together, the build provides:
+
+- `genesys_kernel`
+
+This acts as an aggregate target for the current simulator core.
+
+### Application targets
+
+Depending on options, the build may also provide targets for:
+
+- terminal application
+- GUI application
+- web application
+
+### Test targets
+
+When tests are enabled, the build includes unit tests and optionally smoke tests.
+
+If a packaged `GTest` is not found, the repository falls back to the bundled `source/gtest` tree.
+
+---
+
+## 7. Testing
+
+Testing is part of the normal repository workflow.
+
+### Unit tests
+
+Unit tests live under:
+
+- `source/tests/unit`
+
+There is also a dedicated guide for Kernel Simulator unit-test workflow:
+
+- `source/tests/unit/KERNEL_UNIT_TESTS.md`
+
+### Smoke tests
+
+Smoke tests live under:
+
+- `source/tests/smoke`
+
+and are controlled by the build option:
+
+- `GENESYS_BUILD_SMOKE_TESTS`
+
+### Recommended testing workflow
+
+For routine development:
+
+1. configure with a preset;
+2. build with the matching build preset;
+3. run `ctest` with the matching test preset, or use the run-oriented build target.
+
+---
+
+## 8. Architecture in Practical Terms
+
+GenESyS should be understood as a **simulation platform architecture**.
+
+At a high level, the current repository is centered on:
+
+- a reusable **kernel**;
+- **parser** and semantic support;
+- **plugin-oriented extensibility**;
+- optional application layers;
+- and automated test infrastructure.
+
+This makes the repository useful for at least three different purposes:
+
+1. **using** the simulator;
+2. **extending** the simulator;
+3. **studying** the simulator as a software architecture for simulation.
+
+---
+
+## 9. Plugin Scope and Modeling Breadth
+
+The file `autoloadplugins.txt` reflects a broad plugin ecosystem associated with the platform.
+
+From that list, GenESyS is clearly intended to cover multiple modeling families, including areas such as:
+
+- discrete-event / process-oriented simulation;
+- queues, resources, and routing;
+- state machines and modal models;
+- differential equations and numerical support;
+- formulas and schedules;
+- Markov-chain-related modeling;
+- cellular automata;
+- circuit / SPICE-oriented elements.
+
+Accordingly, GenESyS should not be interpreted as a narrow single-paradigm simulator. It is better understood as a **multi-paradigm extensible simulation platform**.
+
+---
+
+## 10. Development Guidance
+
+### Prefer CMake presets
+
+For local development, CI-oriented workflows, and IDE integration, prefer the presets defined in:
+
+- `CMakePresets.json`
+
+### Prefer out-of-source builds
+
+Generated files should go to directories under `build/`, not into the source tree.
+
+### Enable GUI only when the Qt toolchain is ready
+
+Since the GUI path still depends on `qmake`, enabling it without a valid Qt environment will fail.
+
+### Treat older README/wiki instructions as historical
+
+Any documentation that still assumes:
+
+- `project` or `projects` as the main build entry point;
+- an older qmake-first workflow;
+- a primarily Makefile-centered build flow;
+- outdated directory descriptions;
+- or old class/layout assumptions no longer reflected in the source tree
+
+should be considered legacy documentation and updated against the current repository state.
+
+---
+
+## 11. Recommended Reading Order
+
+If you are new to the repository, a productive reading order is:
+
+1. `CMakeLists.txt`
+2. `CMakePresets.json`
+3. `source/kernel/simulator`
+4. `source/parser`
+5. `source/plugins`
+6. `source/applications/terminal`
+7. `source/tests/unit`
+8. `source/applications/gui/qt/GenesysQtGUI` if you are working on the GUI
+
+This order follows the current build graph and avoids confusion caused by older documentation.
+
+---
+
+## 12. Kernel Unit-Test Guide
+
+For the ready-to-use kernel test workflow, including preset-based usage and CLion-oriented setup, see:
+
+- `source/tests/unit/KERNEL_UNIT_TESTS.md`
+
+---
+
+## 13. Current Status of Documentation
+
+The codebase has evolved substantially. As a consequence:
+
+- some old repository paths mentioned in historical documentation no longer exist or are no longer relevant;
+- the build workflow is now centered on root-level CMake files and presets;
+- and parts of the wiki may lag behind the current implementation.
+
+This `README.md` is intended to reflect the **current build and repository structure**, not older historical layouts.
+
+---
+
+## 14. In Short
+
+GenESyS is a **generic and extensible simulation platform** implemented primarily in modern C++, now built through a **CMake-centered workflow** with **Ninja-based presets**, optional application targets, plugin-oriented extensibility, and integrated automated testing.
+
+## Wiki
+
+More information is available in the project wiki:
+
+https://github.com/rlcancian/Genesys-Simulator/wiki

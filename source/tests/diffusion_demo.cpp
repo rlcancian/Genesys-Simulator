@@ -6,7 +6,7 @@
 
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
-#include "plugins/data/DiffusionSimulation/DiffusionField.h"
+#include "plugins/data/Continuous/DiffusionField.h"
 
 int main() {
     std::locale::global(std::locale(""));
