@@ -329,25 +329,6 @@ public:
 		return _dataFilename;
 	}
 
-	virtual void setDataValues(const std::vector<double>& values) override {
-		_invalidateCache();
-		if (values.empty()) {
-			_cacheLoaded = true;
-			return;
-		}
-		for (double v : values) {
-			if (!std::isfinite(v)) {
-				_cacheLoaded = true;
-				return;
-			}
-		}
-		_data = values;
-		_sortedData = _data;
-		std::sort(_sortedData.begin(), _sortedData.end());
-		_cacheUsable = _computeStatsFromLoadedData();
-		_cacheLoaded = true;
-	}
-
 private:
 	void _invalidateCache() {
 		_cacheLoaded = false;
@@ -404,19 +385,17 @@ private:
 		_data = values;
 		_sortedData = _data;
 		std::sort(_sortedData.begin(), _sortedData.end());
-		return _computeStatsFromLoadedData();
-	}
-
-	bool _computeStatsFromLoadedData() {
 		_count = _data.size();
 		if (_count == 0) {
 			return false;
 		}
+
 		_sampleMin = _sortedData.front();
 		_sampleMax = _sortedData.back();
 		const double sum = std::accumulate(_data.begin(), _data.end(), 0.0);
 		_sampleMean = sum / static_cast<double>(_count);
 		_hasNegativeData = (_sampleMin < 0.0);
+
 		if (_count >= 2) {
 			double sq = 0.0;
 			for (double x : _data) {

@@ -64,6 +64,3 @@ void FitterDummyImpl::setDataFilename(std::string dataFilename) {
 std::string FitterDummyImpl::getDataFilename() {
 
 }
-
-void FitterDummyImpl::setDataValues(const std::vector<double>& values) {
-}
