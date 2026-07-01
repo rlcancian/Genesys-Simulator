@@ -123,3 +123,15 @@ Sampler_if* ParserDefaultImpl2::getSampler() const {
 genesyspp_driver ParserDefaultImpl2::getParser() const {
 	return _wrapper;
 }
+
+void ParserDefaultImpl2::setFunctionRegistry(FunctionRegistry* functionRegistry) {
+	_wrapper.setFunctionRegistry(functionRegistry);
+}
+
+FunctionRegistry* ParserDefaultImpl2::getFunctionRegistry() const {
+	return _wrapper.getFunctionRegistry();
+}
+
+bool ParserDefaultImpl2::hasFunctionRegistry() const {
+	return _wrapper.hasFunctionRegistry();
+}

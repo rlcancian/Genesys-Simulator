@@ -10,6 +10,7 @@
 #include "kernel/statistics/Sampler_if.h"
 // Tell Flex the lexer's prototype ...
 
+class FunctionRegistry;
 
 #define YY_DECL \
   yy::genesyspp_parser::symbol_type yylex (genesyspp_driver& driver)
@@ -70,6 +71,11 @@ public: // Sampler
 	void setSampler(Sampler_if* _sampler);
 	Sampler_if* getSampler() const;
 
+public: // FunctionRegistry bridge. The driver references an external registry and does not own it.
+	void setFunctionRegistry(FunctionRegistry* functionRegistry);
+	FunctionRegistry* getFunctionRegistry() const;
+	bool hasFunctionRegistry() const;
+
 public: // trying to get infos about ModelDataElements refered in expressions (so they are not considered orphans
 	void setRegisterReferedDataElements(bool value);
 	bool getRegisterReferedDataElements();
@@ -88,6 +94,7 @@ public: // SimulationResponse / SimulationControl helpers for parser semantics
 private:
 	/*GenesysKernel::*/Model* _model = nullptr;
 	Sampler_if* _sampler = nullptr;
+	FunctionRegistry* _functionRegistry = nullptr;
 	std::map<std::string, std::list<std::string>*>* _referedDataElements = new std::map<std::string, std::list<std::string>*>(); // maps each dataelement class referenced to a list of referenced names
 	bool _isRegisterReferedDataElements = false;
 private:

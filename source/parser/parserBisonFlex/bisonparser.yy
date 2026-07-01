@@ -10,6 +10,7 @@
 	#include <string>
 	#include <cmath>
 	#include <algorithm>
+	#include <vector>
 	#include "obj_t.h"
 	#include "kernel/util/Util.h"
 	#include "kernel/simulator/essentialPlugins/Attribute.h"
@@ -61,6 +62,7 @@
 %code
 {
 # include "Genesys++-driver.h"
+# include "SemanticResolver.h"
 # include <exception>
 
 namespace {
@@ -80,6 +82,16 @@ std::string parserIndexPart(double value) {
 
 std::string appendParserIndex(const std::string& currentKey, double value) {
 	return SparseValueStore::appendIndexKeyFromDouble(currentKey, value);
+}
+
+SemanticResolverResult resolveGenericFunction(genesyspp_driver& driver, const std::string& functionName, const std::vector<double>& arguments) {
+	SemanticResolver resolver(driver.getFunctionRegistry());
+	SemanticResolverResult result = resolver.resolveFunction(functionName, arguments);
+	if (!result.success) {
+		driver.setErrorMessage(result.errorMessage);
+		driver.setResult(-1);
+	}
+	return result;
 }
 
 }
@@ -166,6 +178,7 @@ std::string appendParserIndex(const std::string& currentKey, double value) {
 
 // not found, wrong, illegal
 %token <obj_t> ILLEGAL     /* illegal token */
+%token <obj_t> IDENTIFIER
 
 /****begin_Tokens_plugins****/
 
@@ -253,9 +266,11 @@ std::string appendParserIndex(const std::string& currentKey, double value) {
 %type <obj_t> pluginFunction
 %type <obj_t> userFunction
 %type <obj_t> elementFunction
+%type <obj_t> genericFunction
 %type <obj_t> listaparm
 %type <obj_t> illegal
 %type <std::string> indexList
+%type <std::vector<double>> argumentList
 
 /****begin_TypeObj_plugins****/
 
@@ -388,6 +403,7 @@ function:
     | elementFunction    { $$.valor = $1.valor; }
     | pluginFunction     { $$.valor = $1.valor; }
     | userFunction       { $$.valor = $1.valor; }
+    | genericFunction    { $$.valor = $1.valor; }
     ;
 
 kernelFunction:
@@ -635,6 +651,30 @@ listaparm:
     | expression "," expression                  {/*@TODO: NOT IMPLEMENTED YET*/}
     ;
 
+genericFunction:
+      IDENTIFIER "(" ")" {
+		SemanticResolverResult result = resolveGenericFunction(driver, $1.tipo, {});
+		if (!result.success) {
+			if (driver.getThrowsException()) throw std::string(result.errorMessage);
+			YYERROR;
+		}
+		$$.valor = result.value;
+	}
+    | IDENTIFIER "(" argumentList ")" {
+		SemanticResolverResult result = resolveGenericFunction(driver, $1.tipo, $3);
+		if (!result.success) {
+			if (driver.getThrowsException()) throw std::string(result.errorMessage);
+			YYERROR;
+		}
+		$$.valor = result.value;
+	}
+    ;
+
+argumentList:
+      expression                                  { $$ = std::vector<double>{$1.valor}; }
+    | argumentList "," expression                 { $1.push_back($3.valor); $$ = $1; }
+    ;
+
 indexList:
       expression                                  { $$ = parserIndexPart($1.valor); }
     | indexList COMMA expression                  { $$ = appendParserIndex($1, $3.valor); }
@@ -660,6 +700,16 @@ illegal:
 			}else if($1.valor == 1){
 				driver.setErrorMessage(caracterMsg);
 			}
+		}
+	}
+	| IDENTIFIER      {
+		driver.setResult(-1);
+		std::string lexema = $1.tipo;
+		std::string literalMsg = lexema.empty() ? std::string("Literal nao encontrado") : std::string("Literal nao encontrado: \"") + lexema + "\"";
+		if(driver.getThrowsException()){
+			throw literalMsg;
+		} else {
+			driver.setErrorMessage(literalMsg);
 		}
 	}
 	;

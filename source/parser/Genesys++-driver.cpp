@@ -40,6 +40,7 @@ genesyspp_driver::~genesyspp_driver() {
 genesyspp_driver::genesyspp_driver(const genesyspp_driver& other)
 	: _model(other._model),
 	  _sampler(other._sampler),
+	  _functionRegistry(other._functionRegistry),
 	  _referedDataElements(cloneReferedDataElements(other._referedDataElements)),
 	  _isRegisterReferedDataElements(other._isRegisterReferedDataElements),
 	  result(other.result),
@@ -58,6 +59,7 @@ genesyspp_driver& genesyspp_driver::operator=(const genesyspp_driver& other) {
 	delete _referedDataElements;
 	_model = other._model;
 	_sampler = other._sampler;
+	_functionRegistry = other._functionRegistry;
 	_referedDataElements = newReferedDataElements;
 	_isRegisterReferedDataElements = other._isRegisterReferedDataElements;
 	result = other.result;
@@ -72,6 +74,7 @@ genesyspp_driver& genesyspp_driver::operator=(const genesyspp_driver& other) {
 genesyspp_driver::genesyspp_driver(genesyspp_driver&& other) noexcept
 	: _model(other._model),
 	  _sampler(other._sampler),
+	  _functionRegistry(other._functionRegistry),
 	  _referedDataElements(other._referedDataElements),
 	  _isRegisterReferedDataElements(other._isRegisterReferedDataElements),
 	  result(other.result),
@@ -81,6 +84,7 @@ genesyspp_driver::genesyspp_driver(genesyspp_driver&& other) noexcept
 	  errorMessage(std::move(other.errorMessage)) {
 	other._model = nullptr;
 	other._sampler = nullptr;
+	other._functionRegistry = nullptr;
 	other._referedDataElements = nullptr;
 	other._isRegisterReferedDataElements = false;
 	other.result = 0.0;
@@ -95,6 +99,7 @@ genesyspp_driver& genesyspp_driver::operator=(genesyspp_driver&& other) noexcept
 	delete _referedDataElements;
 	_model = other._model;
 	_sampler = other._sampler;
+	_functionRegistry = other._functionRegistry;
 	_referedDataElements = other._referedDataElements;
 	_isRegisterReferedDataElements = other._isRegisterReferedDataElements;
 	result = other.result;
@@ -104,6 +109,7 @@ genesyspp_driver& genesyspp_driver::operator=(genesyspp_driver&& other) noexcept
 	errorMessage = std::move(other.errorMessage);
 	other._model = nullptr;
 	other._sampler = nullptr;
+	other._functionRegistry = nullptr;
 	other._referedDataElements = nullptr;
 	other._isRegisterReferedDataElements = false;
 	other.result = 0.0;
@@ -258,6 +264,18 @@ void genesyspp_driver::setSampler(Sampler_if* _sampler) {
 
 Sampler_if* genesyspp_driver::getSampler() const {
 	return _sampler;
+}
+
+void genesyspp_driver::setFunctionRegistry(FunctionRegistry* functionRegistry) {
+	_functionRegistry = functionRegistry;
+}
+
+FunctionRegistry* genesyspp_driver::getFunctionRegistry() const {
+	return _functionRegistry;
+}
+
+bool genesyspp_driver::hasFunctionRegistry() const {
+	return _functionRegistry != nullptr;
 }
 
 void genesyspp_driver::setRegisterReferedDataElements(bool value) {

@@ -6208,28 +6208,29 @@ YY_RULE_SETUP
 
 /****end_LexicalLiterals_plugins****/
 
-	// If no one before has identified this literal, then it is an ILLEGAL (not found, unknown) literal 
-        //Case not found retturns a illegal token
+	// Unknown literals are generic identifiers. The grammar keeps standalone
+	// identifiers on the legacy "literal not found" error path and resolves
+	// identifier calls through FunctionRegistry/SemanticResolver.
 		//datadef = driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Set>(), std::string(yytext));
 		//std::cout << "NOT FOUND " << std::string(yytext) << std::endl;
-        return yy::genesyspp_parser::make_ILLEGAL(obj_t(0, std::string(yytext)), loc);
+        return yy::genesyspp_parser::make_IDENTIFIER(obj_t(0, std::string(yytext)), loc);
       }
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 337 "lexerparser.ll"
+#line 338 "lexerparser.ll"
 {return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string(yytext)), loc);}
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 339 "lexerparser.ll"
+#line 340 "lexerparser.ll"
 {return yy::genesyspp_parser::make_END(loc);}
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 342 "lexerparser.ll"
+#line 343 "lexerparser.ll"
 ECHO;
 	YY_BREAK
-#line 6233 "../Genesys++-scanner.cpp"
+#line 6234 "../Genesys++-scanner.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -7190,7 +7191,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 342 "lexerparser.ll"
+#line 343 "lexerparser.ll"
 
 
 void

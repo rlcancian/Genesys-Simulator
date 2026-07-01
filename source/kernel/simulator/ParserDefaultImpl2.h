@@ -54,6 +54,9 @@ public:
 	virtual void setSampler(Sampler_if* _sampler) override;
 	virtual Sampler_if* getSampler() const override;
 	virtual genesyspp_driver getParser() const override;
+	void setFunctionRegistry(FunctionRegistry* functionRegistry);
+	FunctionRegistry* getFunctionRegistry() const;
+	bool hasFunctionRegistry() const;
 private:
 	void _setSamplerInternal(Sampler_if* sampler, bool ownsSampler);
 private:
