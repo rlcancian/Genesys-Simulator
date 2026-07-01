@@ -60,6 +60,8 @@ target_link_libraries(genesys_qt_gui_application
 
 target_compile_features(genesys_qt_gui_application PRIVATE cxx_std_23)
 
+target_link_options(genesys_qt_gui_application PRIVATE -rdynamic)
+
 set_target_properties(genesys_qt_gui_application
     PROPERTIES
         AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/dialogs"

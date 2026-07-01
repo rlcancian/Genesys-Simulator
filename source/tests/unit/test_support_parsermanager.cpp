@@ -21,3 +21,12 @@ TEST(SupportParserManagerClassTest, NewParserStartsWithEmptyPaths) {
     EXPECT_EQ(parser.flexFilename, "");
     EXPECT_EQ(parser.compiledParserFilename, "");
 }
+
+TEST(SupportParserManagerClassTest, GenerateNewParserRejectsNullChanges) {
+    ParserManager manager;
+
+    ParserManager::GenerateNewParserResult result = manager.generateNewParser(nullptr);
+
+    EXPECT_FALSE(result.result);
+    EXPECT_NE(result.compilationMessages.find("No changes provided"), std::string::npos);
+}

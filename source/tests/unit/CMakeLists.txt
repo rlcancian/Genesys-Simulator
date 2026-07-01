@@ -51,6 +51,7 @@ genesys_add_unit_test(genesys_test_parser_expressions
     genesys_plugins_components_minimal
     genesys_kernel_simulator_runtime
 )
+set_target_properties(genesys_test_parser_expressions PROPERTIES ENABLE_EXPORTS ON)
 
 genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
     test_cellular_automata_neighborhood.cpp

@@ -52,7 +52,9 @@ public:
 	 * tracked as non-owned.
 	 */
 	virtual void setSampler(Sampler_if* _sampler) override;
+	virtual void setSamplerOwned(Sampler_if* sampler) override;
 	virtual Sampler_if* getSampler() const override;
+	virtual Sampler_if* releaseSampler() override;
 	virtual genesyspp_driver getParser() const override;
 private:
 	void _setSamplerInternal(Sampler_if* sampler, bool ownsSampler);

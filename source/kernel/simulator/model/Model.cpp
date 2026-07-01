@@ -27,6 +27,7 @@
 #include "../OnEventManager.h"
 #include "../essentialPlugins/StatisticsCollector.h"
 #include "../../TraitsKernel.h"
+#include "../ParserChangesInformation.h"
 //#include "Access.h"
 
 //using namespace GenesysKernel;
@@ -127,6 +128,25 @@ Model::Model(Simulator* simulator, unsigned int level) {
     _parser = new TraitsKernel<Parser_if>::Implementation(this, new TraitsKernel<Sampler_if>::Implementation());
     _modelChecker = new TraitsKernel<ModelChecker_if>::Implementation(this);
     _modelPersistence = new TraitsKernel<Persistence_if>::Implementation(this);
+    _parserManager = new ParserManager();
+    _parserManager->setModel(this);
+    {
+        std::filesystem::path marker = "source/parser/parserBisonFlex/bisonparser.yy";
+        std::filesystem::path sourceRoot = std::filesystem::canonical("/proc/self/exe").parent_path();
+        for (int i = 0; i < 8; ++i) {
+            if (std::filesystem::exists(sourceRoot / marker)) break;
+            sourceRoot = sourceRoot.parent_path();
+        }
+        if (!std::filesystem::exists(sourceRoot / marker)) {
+            sourceRoot = std::filesystem::current_path();
+            for (int i = 0; i < 6; ++i) {
+                if (std::filesystem::exists(sourceRoot / marker)) break;
+                sourceRoot = sourceRoot.parent_path();
+            }
+        }
+        _parserManager->setSourceDir(sourceRoot.string());
+        _parserManager->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_auto").string());
+    }
     // 1:n associations
     _futureEvents = new List<Event*>(); // The future events list must be chronologicaly sorted
     //_events->setSortFunc(&EventCompare); // It works too
@@ -192,6 +212,8 @@ Model::~Model() {
     _modelChecker = nullptr;
     delete _parser;
     _parser = nullptr;
+    delete _parserManager;
+    _parserManager = nullptr;
 
     // Destroys infrastructure containers owned by Model after contained objects were released.
     delete _futureEvents;
@@ -334,12 +356,77 @@ void Model::checkReferencesToDataDefinitions(std::string expression,
 }
 
 double Model::parseExpression(const std::string expression, bool& success, std::string& errorMessage) {
+    if (_parserIsStale) {
+        _parserIsStale = false;
+        auto allChanges = _parserManager->aggregateChanges();
+        if (!allChanges.empty()) {
+            auto* combined = new ParserChangesInformation();
+            for (auto* ch : allChanges) {
+                if (ch == nullptr) continue;
+                combined->setTokens(combined->gettokens() + ch->gettokens());
+                combined->setIncludes(combined->getincludes() + ch->getincludes());
+                combined->setTypeObjs(combined->gettypeObjs() + ch->gettypeObjs());
+                combined->setExpressions(combined->getexpressions() + ch->getexpressions());
+                combined->setExpressionProductions(combined->getexpressionProductions() + ch->getexpressionProductions());
+                combined->setAssignments(combined->getassignments() + ch->getassignments());
+                combined->setFunctionProdutions(combined->getfunctionProdutions() + ch->getfunctionProdutions());
+                combined->setLexicalRules(combined->getlexicalRules() + ch->getlexicalRules());
+                combined->setLexicalLiterals(combined->getlexicalLiterals() + ch->getlexicalLiterals());
+            }
+            auto result = _parserManager->generateNewParser(combined);
+            if (result.result) {
+                std::string connectError;
+                if (!_parserManager->connectNewParser(result.newParser, &connectError)) {
+                    errorMessage = "Lazy parser regeneration failed: " + connectError;
+                    success = false;
+                    return 0.0;
+                }
+            } else {
+                errorMessage = "Lazy parser regeneration failed: generation error";
+                if (!result.bisonMessages.empty()) {
+                    errorMessage += "\nBison: " + result.bisonMessages;
+                }
+                if (!result.lexMessages.empty()) {
+                    errorMessage += "\nFlex: " + result.lexMessages;
+                }
+                if (!result.compilationMessages.empty()) {
+                    errorMessage += "\nCompilation: " + result.compilationMessages;
+                }
+                success = false;
+                return 0.0;
+            }
+        }
+    }
     double value = _parser->parse(expression, success, errorMessage);
-    //yy::location l/
-    //std::string m;
-    //_parser->getParser().error(l, m);
-    //std::cout << "l:" <<l<<", m:"<<m<<std::endl;
     return value;
+}
+
+ParserManager* Model::getParserManager() const {
+    return _parserManager;
+}
+
+Parser_if* Model::getParser() const {
+    return _parser;
+}
+
+void Model::setParser(Parser_if* parser) {
+    if (parser == _parser) {
+        return;
+    }
+    Sampler_if* currentSampler = (_parser != nullptr) ? _parser->releaseSampler() : nullptr;
+    if (parser != nullptr && currentSampler != nullptr) {
+        parser->setSamplerOwned(currentSampler);
+    }
+    delete _parser;
+    _parser = parser;
+}
+
+void Model::setParserIsStale(bool stale) {
+    _parserIsStale = stale;
+}
+
+bool Model::isParserStale() const {
+    return _parserIsStale;
 }
 
 std::string Model::showLanguage() {

@@ -14,7 +14,10 @@
 #include "../tools/dataanalyzer/DataAnalyzerWindow.h"
 #include "../tools/optimizer/OptimizerWindow.h"
 
+#include <filesystem>
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ParserManager.h"
+#include "kernel/simulator/ParserChangesInformation.h"
 #include "../../../../../kernel/simulator/model/Model.h"
 #include "../../../../../kernel/simulator/model/ModelManager.h"
 #include "../../../../../kernel/simulator/model/ModelSimulation.h"
@@ -1106,8 +1109,10 @@ void DialogUtilityController::onActionToolsParserGrammarCheckerTriggered() {
     auto* consoleButtons = new QHBoxLayout();
     auto* evaluateButton = new QPushButton(QObject::tr("Evaluate"), consoleTab);
     auto* clearConsoleButton = new QPushButton(QObject::tr("Clear Console"), consoleTab);
+    auto* regenerateParserButton = new QPushButton(QObject::tr("Regenerate Parser"), consoleTab);
     consoleButtons->addWidget(evaluateButton);
     consoleButtons->addWidget(clearConsoleButton);
+    consoleButtons->addWidget(regenerateParserButton);
     consoleButtons->addStretch();
     consoleLayout->addWidget(contextLabel);
     consoleLayout->addWidget(console, 1);
@@ -1269,6 +1274,67 @@ void DialogUtilityController::onActionToolsParserGrammarCheckerTriggered() {
     QObject::connect(clearConsoleButton, &QPushButton::clicked, &dialog, [console, consoleStatus]() {
         console->setPlainText(QStringLiteral("> "));
         consoleStatus->setText(QObject::tr("Console cleared."));
+    });
+    QObject::connect(regenerateParserButton, &QPushButton::clicked, &dialog, [this, model, console, appendConsole, consoleStatus]() {
+        if (model == nullptr) {
+            appendConsole(QObject::tr("! No current model. Open a model first.\n> "));
+            consoleStatus->setText(QObject::tr("No current model."));
+            return;
+        }
+        ParserManager* pm = model->getParserManager();
+        pm->setModel(model);
+
+        std::filesystem::path marker = "source/parser/parserBisonFlex/bisonparser.yy";
+        std::filesystem::path sourceRoot = std::filesystem::canonical("/proc/self/exe").parent_path();
+        for (int i = 0; i < 8; ++i) {
+            if (std::filesystem::exists(sourceRoot / marker)) break;
+            sourceRoot = sourceRoot.parent_path();
+        }
+        if (!std::filesystem::exists(sourceRoot / marker)) {
+            sourceRoot = std::filesystem::current_path();
+            for (int i = 0; i < 6; ++i) {
+                if (std::filesystem::exists(sourceRoot / marker)) break;
+                sourceRoot = sourceRoot.parent_path();
+            }
+        }
+        pm->setSourceDir(sourceRoot.string());
+        pm->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_gui_dynamic").string());
+
+        appendConsole(QObject::tr("Aggregating parser changes...\n"));
+        auto allChanges = pm->aggregateChanges();
+        if (allChanges.empty()) {
+            appendConsole(QObject::tr("! No parser changes found.\n> "));
+            consoleStatus->setText(QObject::tr("No parser changes found."));
+            return;
+        }
+
+        auto* combined = new ParserChangesInformation();
+        for (auto* ch : allChanges) {
+            if (ch == nullptr) continue;
+            combined->setTokens(combined->gettokens() + ch->gettokens());
+            combined->setFunctionProdutions(combined->getfunctionProdutions() + ch->getfunctionProdutions());
+            combined->setLexicalRules(combined->getlexicalRules() + ch->getlexicalRules());
+            combined->setLexicalLiterals(combined->getlexicalLiterals() + ch->getlexicalLiterals());
+        }
+
+        appendConsole(QObject::tr("Generating new parser...\n"));
+        auto result = pm->generateNewParser(combined);
+        if (!result.result) {
+            appendConsole(QObject::tr("! Parser generation failed.\n> "));
+            consoleStatus->setText(QObject::tr("Parser generation failed."));
+            return;
+        }
+        appendConsole(QObject::tr("Parser generated. Connecting...\n"));
+        std::string connectError;
+        if (!pm->connectNewParser(result.newParser, &connectError)) {
+            appendConsole(QObject::tr("! Failed to connect new parser:\n"));
+            appendConsole(QString::fromStdString(connectError));
+            appendConsole(QObject::tr("\n> "));
+            consoleStatus->setText(QObject::tr("Failed to connect new parser."));
+            return;
+        }
+        appendConsole(QObject::tr("New parser connected.\n> "));
+        consoleStatus->setText(QObject::tr("Dynamic parser regenerated and connected."));
     });
     auto* evaluateShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Return), console);
     QObject::connect(evaluateShortcut, &QShortcut::activated, &dialog, evaluateExpression);

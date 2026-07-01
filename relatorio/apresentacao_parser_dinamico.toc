@@ -1,0 +1,5 @@
+\babel@toc {brazil}{}\relax 
+\beamer@sectionintoc {1}{Apresentando o Projeto}{3}{0}{1}
+\beamer@sectionintoc {2}{Desenvolvimento}{6}{0}{2}
+\beamer@sectionintoc {3}{Testes}{16}{0}{3}
+\beamer@sectionintoc {4}{Resultados}{18}{0}{4}

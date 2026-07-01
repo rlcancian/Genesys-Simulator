@@ -108,5 +108,6 @@ target_link_libraries(genesys_terminal_application
 )
 
 target_compile_features(genesys_terminal_application PRIVATE cxx_std_23)
+set_target_properties(genesys_terminal_application PROPERTIES ENABLE_EXPORTS ON)
 
 add_dependencies(genesys_terminal_application genesys_kernel)

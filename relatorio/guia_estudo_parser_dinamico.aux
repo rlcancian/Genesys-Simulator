@@ -1,0 +1,53 @@
+\relax 
+\providecommand\babel@aux[2]{}
+\@nameuse{bbl@beforestart}
+\catcode `"\active 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\babel@aux{brazil}{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Como Usar Este Guia}{1}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Vis\~ao do GenESyS que Precisamos Entender}{1}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}O \texttt  {Model} como centro da simula\c {c}\~ao}{1}{subsection.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}\texttt  {ModelDataDefinition}, \texttt  {ModelComponent} e \texttt  {ModelDataManager}}{1}{subsection.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Como a Linguagem de Express\~oes Funcionava Antes}{2}{section.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Parser ativo por interface}{2}{subsection.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}O parser fixo e os arquivos-base}{2}{subsection.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}O Problema Arquitetural}{3}{section.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Bison, Flex e C++ Din\^amico Neste Projeto}{3}{section.50}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Bison e Flex no fluxo do GenESyS}{3}{subsection.51}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Biblioteca compartilhada e carregamento em runtime}{4}{subsection.52}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Os Contratos que J\'a Existiam}{4}{section.58}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}\texttt  {ParserChangesInformation}}{4}{subsection.59}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}\texttt  {\_getParserChangesInformation()}}{4}{subsection.74}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}\texttt  {ParserManager}}{5}{subsection.80}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Implementa\c {c}\~ao Passo a Passo}{5}{section.89}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Passo 1: inserir uma extens\~ao no modelo}{5}{subsection.90}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Passo 2: o primeiro uso dispara o lazy reload}{5}{subsection.99}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Passo 3: agregar mudan\c {c}as de todos os objetos}{6}{subsection.114}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.4}Passo 4: gerar os arquivos Bison/Flex modificados}{6}{subsection.124}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.5}Passo 5: executar Bison, Flex e compilador C++}{6}{subsection.138}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.6}Passo 6: conectar o parser novo}{7}{subsection.143}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.7}Passo 7: trocar o parser sem perder o sampler}{7}{subsection.152}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {8}Exemplo Did\'atico: \texttt  {ParserExtensionTestPlugin}}{7}{section.168}\protected@file@percent }
+\gdef \LT@i {\LT@entry 
+    {1}{121.26108pt}\LT@entry 
+    {1}{171.33821pt}\LT@entry 
+    {1}{153.12456pt}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Decis\~oes de Engenharia}{8}{section.183}\protected@file@percent }
+\gdef \LT@ii {\LT@entry 
+    {1}{157.68144pt}\LT@entry 
+    {1}{148.57462pt}\LT@entry 
+    {1}{139.46779pt}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Diagramas Did\'aticos}{9}{section.185}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}Antes: parser fixo}{9}{subsection.186}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Antes da solu\c {c}\~ao, o parser ativo refletia a linguagem j\'a compilada.}}{9}{figure.188}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.2}Depois: atualiza\c {c}\~ao sob demanda}{9}{subsection.189}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Depois da solu\c {c}\~ao, a atualiza\c {c}\~ao acontece automaticamente no primeiro uso da linguagem.}}{9}{figure.191}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.3}Pipeline de gera\c {c}\~ao}{9}{subsection.192}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Pipeline completo entre uma contribui\c {c}\~ao de linguagem e o parser ativo.}}{9}{figure.194}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}Como Ler o C\'odigo}{9}{section.195}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {12}FAQ}{10}{section.197}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {13}Gloss\'ario Direcionado}{11}{section.204}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {14}Fechamento}{11}{section.205}\protected@file@percent }
+\gdef \@abspage@last{13}

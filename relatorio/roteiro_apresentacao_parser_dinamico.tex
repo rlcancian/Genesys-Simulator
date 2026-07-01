@@ -1,0 +1,414 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{microtype}
+
+\geometry{margin=2.5cm}
+\setlength{\emergencystretch}{3em}
+\hypersetup{
+    colorlinks=true,
+    hypertexnames=false,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black
+}
+
+\setlist[itemize]{leftmargin=1.2cm}
+\setlist[enumerate]{leftmargin=1.2cm}
+\newcommand{\codeid}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\slide}[2]{\subsection{Slide #1 -- #2}}
+
+\title{Roteiro da Apresenta\c{c}\~ao Beamer: Parser Din\^amico no GenESyS}
+\author{
+Vicente Cardoso dos Santos (22102203) \\
+Ricardo Henrique Medeiros Pereira (22100637) \\
+Eduardo Bischoff Grasel (22200355)
+}
+\date{}
+
+\begin{document}
+
+\begin{titlepage}
+    \thispagestyle{empty}
+    \centering
+    \vspace*{2cm}
+    {\Large Universidade Federal de Santa Catarina (UFSC)\par}
+    \vspace{0.5cm}
+    {\large INE5425-06208 -- Modelagem e Simula\c{c}\~ao\par}
+    \vspace{0.5cm}
+    {\large Professor: Dr. Rafael Luiz Cancian\par}
+    \vfill
+    {\bfseries\LARGE Roteiro da Apresenta\c{c}\~ao Beamer: Parser Din\^amico no GenESyS\par}
+    \vspace{0.7cm}
+    {\large Pr\'evia para apresenta\c{c}\~ao em simp\'osio\par}
+    \vfill
+    {\large Vicente Cardoso dos Santos (22102203)\par}
+    {\large Ricardo Henrique Medeiros Pereira (22100637)\par}
+    {\large Eduardo Bischoff Grasel (22200355)\par}
+\end{titlepage}
+
+\pagenumbering{roman}
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+\section{Orienta\c{c}\~ao Geral}
+
+Este roteiro acompanha diretamente o arquivo \codeid{apresentacao_parser_dinamico.tex}. A numera\c{c}\~ao, os t\'itulos e os blocos seguem a apresenta\c{c}\~ao Beamer atual. Cada slide possui: descri\c{c}\~ao visual, conceitos que o aluno deve saber e uma sugest\~ao de fala.
+
+A apresenta\c{c}\~ao est\'a organizada como uma pr\'evia de simp\'osio. Ela n\~ao tenta cobrir todo o relat\'orio em detalhe; ela conduz o p\'ublico por quatro perguntas: qual \'e o projeto, como ele foi desenvolvido, como foi testado e quais resultados foram obtidos.
+
+\section{Estrutura da Apresenta\c{c}\~ao}
+
+\begin{longtable}{p{0.17\textwidth} p{0.25\textwidth} p{0.48\textwidth}}
+\toprule
+\textbf{Bloco} & \textbf{Slides} & \textbf{Fun\c{c}\~ao} \\
+\midrule
+\endhead
+Abertura & 1--2 & Apresentar o tema e o roteiro da pr\'evia. \\
+Projeto & 3--5 & Explicar o problema, o objetivo e a vis\~ao geral da solu\c{c}\~ao. \\
+Desenvolvimento & 6--15 & Explicar os contratos, o lazy reload, a gera\c{c}\~ao, os diagramas e a substitui\c{c}\~ao segura. \\
+Testes & 16--17 & Mostrar o plano de testes e as evid\^encias de valida\c{c}\~ao. \\
+Resultados & 18--20 & Mostrar a demonstra\c{c}\~ao, os resultados e encerrar. \\
+\bottomrule
+\end{longtable}
+
+\section{Roteiro Slide a Slide}
+
+\subsection*{Abertura}
+
+\slide{1}{Capa}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+Este slide corresponde \`a capa da apresenta\c{c}\~ao Beamer. Ele deve mostrar o t\'itulo ``Mecanismo de Atualiza\c{c}\~ao Din\^amica do Parser no GenESyS'', o subt\'itulo ``Pr\'evia para apresenta\c{c}\~ao em simp\'osio'', os nomes dos integrantes, a UFSC e a disciplina. A capa n\~ao deve exibir data.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+O aluno deve saber resumir o tema em uma frase: o trabalho permite que a linguagem de express\~oes do GenESyS seja atualizada em tempo de execu\c{c}\~ao quando extens\~oes do modelo declaram novas regras.
+
+\subsubsection*{Script de fala sugerido}
+
+``Bom dia. Esta apresenta\c{c}\~ao \'e uma pr\'evia do nosso projeto sobre atualiza\c{c}\~ao din\^amica do parser no GenESyS. Vamos mostrar o problema, como a solu\c{c}\~ao foi desenvolvida, como ela foi testada e quais resultados observamos.''
+
+\slide{2}{Roteiro da Pr\'evia}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra quatro blocos: apresentando o projeto, desenvolvimento, testes e resultados. Cada bloco aparece em um card curto, servindo como mapa da fala.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Este slide organiza a narrativa. O p\'ublico deve entender que a apresenta\c{c}\~ao n\~ao come\c{c}a diretamente no c\'odigo; ela primeiro explica por que o problema existe.
+
+\subsubsection*{Script de fala sugerido}
+
+``A apresenta\c{c}\~ao est\'a dividida em quatro partes. Primeiro apresentamos o projeto e o problema. Depois mostramos o desenvolvimento da solu\c{c}\~ao. Em seguida, mostramos como testamos o mecanismo. Por fim, apresentamos os resultados e a demonstra\c{c}\~ao.''
+
+\subsection*{Bloco 1 -- Apresentando o Projeto}
+
+\slide{3}{Problema: Modelo Extens\'ivel, Parser Fixo}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide compara duas colunas: o modelo extens\'ivel e o parser original. Na parte inferior, h\'a um fluxo indicando que uma nova extens\~ao pode resultar em express\~ao n\~ao reconhecida se o parser continuar fixo.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+O parser original depende de regras j\'a compiladas em Bison/Flex. Uma nova extens\~ao pode existir no modelo sem ser reconhecida pela linguagem de express\~oes.
+
+\subsubsection*{Script de fala sugerido}
+
+``Aqui est\'a o desalinhamento. O modelo pode receber plugins e novas defini\c{c}\~oes de dados, mas o parser original reconhece apenas aquilo que j\'a foi compilado na gram\'atica e no lexer. Ent\~ao uma extens\~ao pode existir no modelo, mas ainda assim a express\~ao correspondente pode falhar no parser.''
+
+\slide{4}{Objetivo}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide apresenta o objetivo central em um bloco: permitir que extens\~oes declarem mudan\c{c}as de linguagem e que o GenESyS atualize o parser automaticamente. Abaixo, quatro blocos resumem as etapas: declarar, agregar, gerar e conectar.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Declarar mudan\c{c}as \'e responsabilidade da extens\~ao. Agregar, gerar e conectar o parser s\~ao responsabilidades do kernel. Essa separa\c{c}\~ao evita que plugins tenham que lidar com Bison, Flex, compila\c{c}\~ao e carregamento din\^amico.
+
+\subsubsection*{Script de fala sugerido}
+
+``O objetivo foi criar um fluxo em que a extens\~ao declara o que muda na linguagem, e o GenESyS faz o restante. O kernel agrega as contribui\c{c}\~oes, gera os arquivos, compila uma biblioteca din\^amica e conecta o novo parser ao modelo.''
+
+\slide{5}{Vis\~ao Geral da Solu\c{c}\~ao}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide exibe o pipeline: extens\~ao, \codeid{ParserChangesInformation}, marca\c{c}\~ao de stale, \codeid{parseExpression}, \codeid{ParserManager}, Bison/Flex+C++, biblioteca \codeid{.so} e novo parser ativo.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+\textit{Stale} significa que o parser atual ainda funciona, mas pode estar desatualizado. O reload acontece sob demanda, na pr\'oxima avalia\c{c}\~ao de express\~ao.
+
+\subsubsection*{Script de fala sugerido}
+
+``Este \'e o fluxo geral. Uma extens\~ao entrega um pacote de mudan\c{c}as. O modelo marca o parser como possivelmente desatualizado. Quando uma express\~ao for avaliada, o ParserManager gera e compila uma nova biblioteca e conecta o novo parser ao modelo.''
+
+\subsection*{Bloco 2 -- Desenvolvimento}
+
+\slide{6}{Contratos Aproveitados e Completados}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide tem duas colunas: ``J\'a previsto'' e ``Implementado''. A primeira lista contratos e marcadores existentes; a segunda lista o que foi concretizado, como campos l\'exicos, \codeid{hasChanges()}, agrega\c{c}\~ao, gera\c{c}\~ao da \codeid{.so} e carregamento din\^amico.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Contrato \'e uma conven\c{c}\~ao arquitetural que permite que partes do sistema conversem sem conhecer detalhes concretos. O trabalho completou uma arquitetura j\'a prevista, em vez de criar um parser paralelo.
+
+\subsubsection*{Script de fala sugerido}
+
+``Um ponto importante \'e que o projeto j\'a tinha sinais de uma arquitetura para parser din\^amico. Existiam contratos e marcadores. O desenvolvimento consistiu em completar esses pontos e fazer o fluxo realmente sair da extens\~ao e chegar ao parser carregado.''
+
+\slide{7}{Contrato de Mudan\c{c}as}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide apresenta \codeid{ParserChangesInformation} como pacote de fragmentos. A figura divide os fragmentos em Bison, Flex e \codeid{hasChanges()}.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+\codeid{ParserChangesInformation} n\~ao compila nem executa nada; ele transporta fragmentos. Tokens e produ\c{c}\~oes pertencem ao Bison. Regras l\'exicas pertencem ao Flex. \codeid{hasChanges()} evita recompilar quando n\~ao h\'a mudan\c{c}a real.
+
+\subsubsection*{Script de fala sugerido}
+
+``A extens\~ao comunica suas necessidades por meio de ParserChangesInformation. Esse objeto carrega fragmentos de gram\'atica e de lexer. Ele tamb\'em informa se h\'a mudan\c{c}a real, para que objetos vazios n\~ao disparem recompila\c{c}\~oes desnecess\'arias.''
+
+\slide{8}{Lazy Reload no Ciclo do Modelo}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra dois momentos: a inser\c{c}\~ao da extens\~ao apenas marca o parser como stale; o primeiro uso por \codeid{parseExpression} dispara o reload autom\'atico.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Lazy reload adia o custo de recompila\c{c}\~ao at\'e o momento em que a linguagem precisa ser usada. Isso evita regenerar o parser v\'arias vezes durante a montagem do modelo.
+
+\subsubsection*{Script de fala sugerido}
+
+``A escolha foi fazer reload sob demanda. Quando uma extens\~ao entra, o sistema n\~ao recompila imediatamente. Ele apenas marca o parser como stale. A recompila\c{c}\~ao acontece quando uma express\~ao \'e avaliada, que \'e o momento em que a linguagem precisa estar atualizada.''
+
+\slide{9}{Diagrama de Sequ\^encia: Lazy Reload}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra o fluxo temporal entre extens\~ao, \codeid{ModelDataManager}, \codeid{Model}, \codeid{ParserManager}, toolchain, biblioteca \codeid{.so} e parser.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Diagrama de sequ\^encia mostra a ordem das chamadas. A extens\~ao fornece mudan\c{c}as; o modelo dispara a atualiza\c{c}\~ao; o \codeid{ParserManager} gera e conecta o parser; depois a express\~ao \'e finalmente avaliada.
+
+\subsubsection*{Script de fala sugerido}
+
+``Este diagrama mostra a mesma ideia em ordem temporal. Primeiro a extens\~ao entra no modelo e fornece mudan\c{c}as. Depois, quando uma express\~ao \'e avaliada, o modelo pede ao ParserManager para agregar, gerar e conectar o novo parser. S\'o depois disso a express\~ao \'e avaliada.''
+
+\slide{10}{Gera\c{c}\~ao do Parser}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra que os arquivos-base \codeid{bisonparser.yy} e \codeid{lexerparser.ll} continuam sendo a fonte de verdade. Os fragmentos s\~ao injetados por marcadores e geram arquivos modificados.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Bison gera o parser a partir da gram\'atica. Flex gera o scanner a partir de regras l\'exicas. A solu\c{c}\~ao n\~ao cria uma nova linguagem do zero; ela injeta fragmentos nos pontos planejados.
+
+\subsubsection*{Script de fala sugerido}
+
+``A gera\c{c}\~ao preserva os arquivos-base como fonte de verdade. O ParserManager apenas injeta os fragmentos da extens\~ao nos marcadores corretos. Assim, a linguagem original continua central, e o parser din\^amico nasce como uma vers\~ao modificada dela.''
+
+\slide{11}{Diagrama de Componentes}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra o mecanismo dividido em tr\^es regi\~oes visuais. A regi\~ao da esquerda representa as extens\~oes do modelo. A regi\~ao central representa o kernel do GenESyS. A regi\~ao da direita representa a gera\c{c}\~ao do parser e o carregamento em runtime.
+
+Na regi\~ao de extens\~oes, a caixa \codeid{ModelDataDefinition} representa qualquer elemento ou plugin que pode participar do modelo. O ponto importante \'e que esse elemento n\~ao compila parser, n\~ao chama Bison e n\~ao carrega biblioteca. Ele apenas fornece informa\c{c}\~oes de mudan\c{c}a por meio do hook de extens\~ao. A caixa \codeid{ParserChangesInformation} representa exatamente esse pacote de informa\c{c}\~oes: tokens, produ\c{c}\~oes gramaticais e regras l\'exicas.
+
+Na regi\~ao do kernel, a caixa \codeid{Model} representa o modelo de simula\c{c}\~ao que recebe extens\~oes e avalia express\~oes. A caixa \codeid{ParserManager} \'e o coordenador do mecanismo: ele agrega mudan\c{c}as, gera os arquivos modificados, invoca a compila\c{c}\~ao e conecta o novo parser. A caixa \codeid{Parser_if} representa a interface pela qual o restante do simulador usa o parser ativo. Essa interface \'e importante porque o modelo n\~ao precisa saber se o parser ativo \'e o parser original ou um parser gerado dinamicamente. A caixa \codeid{ParserDefaultImpl2} representa a implementa\c{c}\~ao concreta que efetivamente avalia express\~oes.
+
+Na regi\~ao de gera\c{c}\~ao e runtime, as caixas \codeid{bisonparser.yy} e \codeid{lexerparser.ll} representam os arquivos-base da linguagem. A caixa de arquivos modificados representa as vers\~oes geradas depois da inje\c{c}\~ao dos fragmentos. A toolchain Bison/Flex/compilador C++ transforma esses arquivos em uma biblioteca compartilhada \codeid{genesys_parser_dynamic.so}. Depois, \codeid{dlopen} abre essa biblioteca, \codeid{dlsym} encontra a factory \codeid{genesys_createParser}, e essa factory cria uma nova inst\^ancia de \codeid{ParserDefaultImpl2}.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Diagrama de componentes mostra responsabilidades e fronteiras. A fronteira entre extens\~ao e kernel separa quem declara mudan\c{c}as de quem aplica mudan\c{c}as. A fronteira entre kernel e toolchain separa a l\'ogica do simulador das ferramentas externas de gera\c{c}\~ao e compila\c{c}\~ao. A fronteira entre biblioteca din\^amica e runtime mostra que o novo parser n\~ao nasce como objeto comum do execut\'avel original; ele \'e carregado a partir de uma \codeid{.so}.
+
+O aluno tamb\'em deve saber explicar as setas principais. A seta de \codeid{ParserChangesInformation} para \codeid{ParserManager} significa que o kernel recebe fragmentos declarados pela extens\~ao. As setas para os arquivos modificados significam inje\c{c}\~ao nos arquivos Bison/Flex. A seta da toolchain para \codeid{genesys_parser_dynamic.so} significa compila\c{c}\~ao de uma biblioteca compartilhada. A seta de \codeid{dlopen}/\codeid{dlsym} para a factory significa carregamento e busca da fun\c{c}\~ao de cria\c{c}\~ao. A seta do novo parser para \codeid{Parser_if} significa que o parser gerado continua obedecendo \`a interface esperada pelo modelo.
+
+\subsubsection*{Script de fala sugerido}
+
+Este diagrama \'e importante porque ele mostra a arquitetura inteira separada por responsabilidades. Come\c{c}ando pela esquerda, temos a extens\~ao do modelo. Ela pode ser qualquer elemento derivado de \codeid{ModelDataDefinition} que queira alterar a linguagem. Essa extens\~ao n\~ao compila nada; ela apenas devolve um \codeid{ParserChangesInformation} com tokens, produ\c{c}\~oes e regras l\'exicas.
+
+No centro est\'a o kernel do GenESyS. O \codeid{Model} \'e quem usa express\~oes, mas quem coordena o mecanismo \'e o \codeid{ParserManager}. Ele recebe as mudan\c{c}as, combina as contribui\c{c}\~oes e manda gerar o novo parser. O \codeid{Parser_if} aparece aqui porque o modelo usa o parser por interface. Isso permite substituir o parser ativo sem mudar o restante do simulador.
+
+Na direita est\'a o pipeline de gera\c{c}\~ao. O \codeid{ParserManager} parte dos arquivos-base do Bison e do Flex, injeta os fragmentos da extens\~ao e produz arquivos modificados. Depois, Bison, Flex e o compilador C++ geram a biblioteca \codeid{genesys_parser_dynamic.so}. Por fim, em runtime, o sistema usa \codeid{dlopen} para abrir essa biblioteca e \codeid{dlsym} para encontrar a fun\c{c}\~ao \codeid{genesys_createParser}. Essa factory cria o novo \codeid{ParserDefaultImpl2}, que volta para o modelo pela interface \codeid{Parser_if}. Assim, a extens\~ao apenas declara, o kernel coordena, a toolchain gera e o runtime carrega o novo parser.
+
+\slide{12}{Compila\c{c}\~ao e Carregamento em Runtime}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide traz dois blocos: toolchain e runtime. Toolchain: Bison, Flex e compilador C++. Runtime: \codeid{dlopen()}, \codeid{dlsym()} e \codeid{genesys_createParser()}.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Uma biblioteca \codeid{.so} pode ser carregada em runtime. \codeid{dlopen} abre a biblioteca. \codeid{dlsym} busca a factory. \codeid{extern "C"} fornece um nome est\'avel, sem \textit{name mangling}.
+
+\subsubsection*{Script de fala sugerido}
+
+``Depois da inje\c{c}\~ao, Bison e Flex geram c\'odigo C++, e o compilador cria uma biblioteca compartilhada. Em runtime, usamos dlopen para abrir a biblioteca e dlsym para localizar a factory C, que cria o novo parser.''
+
+\slide{13}{Diagrama de Classes}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra as classes principais: \codeid{Model}, \codeid{ParserManager}, \codeid{ModelDataManager}, \codeid{ModelDataDefinition}, \codeid{ParserChangesInformation}, \codeid{Parser_if}, \codeid{ParserDefaultImpl2} e \codeid{ParserFactory}.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+\codeid{Model} possui o parser ativo e o gerenciador. \codeid{ModelDataDefinition} fornece o hook. \codeid{ParserManager} agrega, gera e conecta. \codeid{Parser_if} isola o restante do simulador da implementa\c{c}\~ao concreta.
+
+\subsubsection*{Script de fala sugerido}
+
+``No diagrama de classes, vemos como os contratos se conectam. O \codeid{Model} possui o \codeid{ParserManager} e o parser ativo. As defini\c{c}\~oes de dados podem fornecer mudan\c{c}as. O \codeid{ParserManager} usa essas mudan\c{c}as para gerar a biblioteca e a factory cria a implementa\c{c}\~ao concreta pela interface \codeid{Parser_if}.''
+
+\slide{14}{Substitui\c{c}\~ao Segura do Parser}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra parser antigo, \codeid{Sampler_if} e parser novo. As setas indicam \codeid{releaseSampler()} e \codeid{setSamplerOwned()}.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Ownership define quem deve destruir um objeto. O \codeid{Sampler_if} precisa ser transferido para o novo parser sem dupla libera\c{c}\~ao e sem vazamento.
+
+\subsubsection*{Script de fala sugerido}
+
+``Trocar o parser n\~ao \'e apenas trocar um ponteiro. O parser usa um sampler, e esse objeto precisa sobreviver \`a troca. Por isso, o parser antigo libera o sampler sem destru\'i-lo, e o novo parser assume a posse.''
+
+\slide{15}{Diagrama de Estados}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra os estados \textit{Clean}, \textit{Stale}, \textit{Generating}, \textit{Connected} e \textit{Failed}. A transi\c{c}\~ao de erro volta para \textit{Clean} preservando o parser antigo.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+O estado \textit{Failed} representa falha controlada. A falha pode acontecer em Bison, Flex, compila\c{c}\~ao, \codeid{dlopen} ou \codeid{dlsym}; em todos esses casos, o parser antigo deve permanecer us\'avel.
+
+\subsubsection*{Script de fala sugerido}
+
+``O diagrama de estados mostra a robustez do mecanismo. O modelo come\c{c}a com um parser v\'alido. Quando h\'a mudan\c{c}as, ele fica stale. Se a gera\c{c}\~ao funciona, o novo parser \'e conectado. Se falha, o erro \'e retornado e o parser antigo continua preservado.''
+
+\subsection*{Bloco 3 -- Testes}
+
+\slide{16}{Plano de Testes}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide divide os testes em tr\^es blocos: contrato, integra\c{c}\~ao e falhas. Cada bloco tem tr\^es itens curtos.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Testes de contrato validam objetos isolados. Testes de integra\c{c}\~ao validam o fluxo completo. Testes de falha validam robustez e preserva\c{c}\~ao do parser anterior.
+
+\subsubsection*{Script de fala sugerido}
+
+``A valida\c{c}\~ao foi organizada em tr\^es grupos. Primeiro, verificamos contratos como ParserChangesInformation. Depois, testamos o fluxo completo do parser din\^amico. Por fim, testamos falhas para garantir que o parser antigo n\~ao seja perdido.''
+
+\slide{17}{Evid\^encias de Teste}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide atual n\~ao usa mais uma tabela apertada. Ele mostra seis blocos em duas colunas: fluxo principal, atualiza\c{c}\~ao sob demanda, m\'ultiplas extens\~oes, falha controlada, biblioteca ausente e ownership.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Cada bloco corresponde a um conjunto de testes. Os nomes completos dos testes podem ser citados se houver pergunta, mas no slide aparecem r\'otulos leg\'iveis para facilitar a apresenta\c{c}\~ao.
+
+\subsubsection*{Script de fala sugerido}
+
+``Aqui est\~ao as principais evid\^encias. O fluxo principal comprova que uma extens\~ao pode adicionar uma fun\c{c}\~ao. O reload sob demanda comprova que a atualiza\c{c}\~ao acontece no primeiro uso. Tamb\'em testamos m\'ultiplas extens\~oes, falhas controladas, biblioteca ausente e transfer\^encia segura do sampler.''
+
+\subsection*{Bloco 4 -- Resultados}
+
+\slide{18}{Resultado Observado: Demonstra\c{c}\~ao Demo}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide mostra tr\^es imagens: antes da extens\~ao, inser\c{c}\~ao da extens\~ao e depois da atualiza\c{c}\~ao. A leitura principal \'e que \codeid{demo()} n\~ao era reconhecida antes e passou a ser reconhecida depois.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+A demonstra\c{c}\~ao Demo \'e uma evid\^encia visual. Ela mostra, de forma simples, uma extens\~ao declarando token, regra Flex e produ\c{c}\~ao Bison para que a linguagem passe a reconhecer uma fun\c{c}\~ao nova.
+
+\subsubsection*{Script de fala sugerido}
+
+``Como resultado visual, usamos a demonstra\c{c}\~ao Demo. Antes, a fun\c{c}\~ao demo n\~ao era reconhecida. Depois, a extens\~ao foi inserida no modelo. Na avalia\c{c}\~ao seguinte, o parser foi atualizado e a fun\c{c}\~ao passou a ser aceita.''
+
+\slide{19}{Resultados do Projeto}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide lista os resultados: contratos funcionais, declara\c{c}\~ao de mudan\c{c}as l\'exicas e sint\'aticas, parser regenerado sob demanda, biblioteca carregada por factory C e falhas preservando o parser anterior.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+O resultado principal \'e arquitetural: a linguagem deixa de ser fixa e passa a acompanhar extens\~oes carregadas no modelo. O mecanismo n\~ao substitui Bison/Flex; ele automatiza seu uso.
+
+\subsubsection*{Script de fala sugerido}
+
+``Os principais resultados s\~ao estes: os contratos previstos passaram a formar um fluxo funcional; plugins podem declarar mudan\c{c}as; o parser \'e regenerado sob demanda; a biblioteca \'e carregada em runtime; e falhas preservam o parser anterior.''
+
+\slide{20}{Encerramento}
+
+\subsubsection*{Descri\c{c}\~ao do slide}
+
+O slide final mostra ``Obrigado'', o tema e a chamada para perguntas.
+
+\subsubsection*{Conceitos que o aluno deve saber}
+
+Este slide n\~ao introduz conceito novo. Ele deve refor\c{c}ar a mensagem final: o parser agora acompanha dinamicamente as extens\~oes do modelo.
+
+\subsubsection*{Script de fala sugerido}
+
+``Com isso, encerramos a pr\'evia. A ideia central \'e que o parser do GenESyS agora pode acompanhar dinamicamente as extens\~oes carregadas no modelo. Obrigado. Estamos abertos a perguntas.''
+
+\section{Sugest\~ao de Distribui\c{c}\~ao de Tempo}
+
+\begin{longtable}{p{0.18\textwidth} p{0.53\textwidth} p{0.18\textwidth}}
+\toprule
+\textbf{Slides} & \textbf{Foco} & \textbf{Tempo sugerido} \\
+\midrule
+\endhead
+1--2 & Abertura e roteiro & 1--2 min \\
+3--5 & Apresentando o projeto & 3--4 min \\
+6--15 & Desenvolvimento e diagramas & 8--10 min \\
+16--17 & Testes & 3 min \\
+18--20 & Resultados e fechamento & 3 min \\
+\bottomrule
+\end{longtable}
+
+\section{Checklist de Coer\^encia com os Slides}
+
+\begin{itemize}
+    \item O roteiro possui 20 slides, a mesma quantidade da apresenta\c{c}\~ao Beamer.
+    \item Os t\'itulos do roteiro acompanham os t\'itulos dos frames em \codeid{apresentacao_parser_dinamico.tex}.
+    \item O slide de testes foi atualizado para combinar com os blocos visuais da apresenta\c{c}\~ao, n\~ao com a tabela antiga.
+    \item Os diagramas de sequ\^encia, componentes, classes e estados aparecem no roteiro nos mesmos pontos em que aparecem nos slides.
+    \item A capa do roteiro e a capa da apresenta\c{c}\~ao n\~ao exibem data.
+\end{itemize}
+
+\end{document}

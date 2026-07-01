@@ -14,12 +14,16 @@
 #include "GenesysShell.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ParserManager.h"
+#include "kernel/simulator/ParserChangesInformation.h"
+#include "kernel/simulator/model/ModelDataDefinition.h"
 #include <regex>
 #include <assert.h>
 #include <algorithm>
 #include <string>
 #include <chrono>
 #include <thread>
+#include <filesystem>
 
 #include <fstream>
 #include <istream>
@@ -243,6 +247,7 @@ void GenesysShell::defineCommands() {
 	//_commands->insert(new ShellCommand("", "check", "", "Check the model", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModelCheck)));
 	_commands->insert(new ShellCommand("", "load", "<filename>", "Load a model from a file", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModelLoad)));
 	_commands->insert(new ShellCommand("", "save", "<filename>", "Save a model to a file", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModelSave)));
+	_commands->insert(new ShellCommand("", "dynamicparser", "", "Run dynamic parser demo", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdDynamicParser)));
 	//_commands->insert(new ShellCommand("", "setInfos", "", "Set information of the model", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModelSetInfos)));
 }
 
@@ -600,6 +605,11 @@ void GenesysShell::cmdModelSave() {
 	} else {
 		cout<<"Error: Could not save the model"<<endl;
 	}
+}
+
+void GenesysShell::cmdDynamicParser() {
+	cout << "Dynamic parser support is exercised by plugins that provide ParserChangesInformation." << endl;
+	cout << "Run genesys_test_parser_expressions for the self-contained parser reload test." << endl;
 }
 
 /*

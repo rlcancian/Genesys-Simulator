@@ -13,6 +13,7 @@ file(GLOB GENESYS_KERNEL_SIMULATOR_PERSISTENCE_SOURCES CONFIGURE_DEPENDS
 set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     LicenceManager.cpp
     ParserManager.cpp
+    ParserManagerRuntime.cpp
     ParserChangesInformation.cpp
     PluginInformation.cpp
     SystemDependencyResolver.cpp

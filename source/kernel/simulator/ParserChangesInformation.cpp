@@ -86,3 +86,35 @@ void ParserChangesInformation::setFunctionProdutions(const std::string &newFunct
 	_functionProdutions = newFunctionProdutions;
 }
 
+std::string ParserChangesInformation::getlexicalRules() const
+{
+	return _lexicalRules;
+}
+
+void ParserChangesInformation::setLexicalRules(const std::string &newLexicalRules)
+{
+	_lexicalRules = newLexicalRules;
+}
+
+std::string ParserChangesInformation::getlexicalLiterals() const
+{
+	return _lexicalLiterals;
+}
+
+void ParserChangesInformation::setLexicalLiterals(const std::string &newLexicalLiterals)
+{
+	_lexicalLiterals = newLexicalLiterals;
+}
+
+bool ParserChangesInformation::hasChanges() const
+{
+	return !_includes.empty()
+		|| !_tokens.empty()
+		|| !_typeObjs.empty()
+		|| !_expressions.empty()
+		|| !_expressionProductions.empty()
+		|| !_assignments.empty()
+		|| !_functionProdutions.empty()
+		|| !_lexicalRules.empty()
+		|| !_lexicalLiterals.empty();
+}
