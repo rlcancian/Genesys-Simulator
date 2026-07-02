@@ -17,12 +17,12 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/TraitsKernel.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Formula::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Formula::GetPluginInformation;
+// }
+// #endif
 
 //Parser_if* Formula::_myPrivateParser = new TraitsKernel<Parser_if>::Implementation(model, sampler);
 

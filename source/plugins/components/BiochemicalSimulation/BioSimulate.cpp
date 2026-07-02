@@ -12,12 +12,12 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &BioSimulate::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &BioSimulate::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* BioSimulate::NewInstance(Model* model, std::string name) {
 	return new BioSimulate(model, name);

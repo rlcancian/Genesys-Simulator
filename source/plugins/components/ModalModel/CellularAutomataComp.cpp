@@ -24,12 +24,12 @@
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &CellularAutomataComp::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &CellularAutomataComp::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* CellularAutomataComp::NewInstance(Model* model, std::string name) {
 	return new CellularAutomataComp(model, name);

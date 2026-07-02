@@ -111,7 +111,7 @@ public:
 	std::string getDescriptionHelp() const;
 	// @ToDo: (importante): Clarify ownership for the incoming fields map.
 	// This setter currently replaces the internal raw pointer without documenting lifetime expectations.
-	void setFields(std::map<std::string, std::string>* _fiewlds);
+	void setFields(std::map<std::string, std::string>* _fields);
 	std::map<std::string, std::string>* getFields() const;
 	void setLanguageTemplate(std::string _languageTemplate);
 	std::string getLanguageTemplate() const;

@@ -19,12 +19,12 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Match::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Match::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Match::NewInstance(Model* model, std::string name) {
 	return new Match(model, name);

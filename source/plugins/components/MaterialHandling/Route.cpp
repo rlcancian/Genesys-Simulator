@@ -19,12 +19,12 @@
 #include "../../data/MaterialHandling/Sequence.h"
 #include "../../data/Logic/Label.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Route::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Route::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Route::NewInstance(Model* model, std::string name) {
 	return new Route(model, name);

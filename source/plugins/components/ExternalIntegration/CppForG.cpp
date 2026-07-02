@@ -19,12 +19,12 @@
 #include <dlfcn.h>
 #include <string>
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &CppForG::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &CppForG::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* CppForG::NewInstance(Model* model, std::string name) {
 	return new CppForG(model, name);

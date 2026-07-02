@@ -113,11 +113,11 @@ void DefaultNodeTransition::execute(Model* model, Entity* entity) const {
 
 
 /// Externalize function GetPluginInformation to be accessible throught dynamic linked library
-#ifdef PLUGINCONNECT_DYNAMIC
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-    return &DefaultNode::GetPluginInformation;
-}
-#endif
+// #ifdef PLUGINCONNECT_DYNAMIC
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+//     return &DefaultNode::GetPluginInformation;
+// }
+// #endif
 
 
 //

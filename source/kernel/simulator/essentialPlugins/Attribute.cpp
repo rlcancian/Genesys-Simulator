@@ -23,12 +23,12 @@
 
 //using namespace GenesysKernel;
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Attribute::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Attribute::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Attribute::NewInstance(Model* model, std::string name) {
 	return new Attribute(model, name);

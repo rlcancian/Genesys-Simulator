@@ -14,8 +14,9 @@
 #ifndef PLUGINCONNECTORDUMMYIMPL1_H
 #define PLUGINCONNECTORDUMMYIMPL1_H
 
-#include "kernel/simulator/PluginConnector_if.h"
 #include "kernel/util/List.h"
+#include <string>
+#include "kernel/simulator/PluginConnector_if.h"
 //namespace GenesysKernel {
 
 /*!
@@ -29,37 +30,17 @@ public:
 	PluginConnectorDummyImpl1();
 	virtual ~PluginConnectorDummyImpl1() = default;
 public:
-	/*!
-	 * \brief Verifies whether a built-in plugin name can be resolved.
-	 * \param dynamicLibraryFilename Plugin library filename or alias.
-	 * \return Metadata for the resolved plugin, or \c nullptr if unknown.
-	 */
-	Plugin* check(const std::string dynamicLibraryFilename) override;
-	/*!
-	 * \brief Resolves a built-in plugin by filename alias.
-	 * \param dynamicLibraryFilename Plugin library filename or alias.
-	 * \return Metadata for the resolved plugin, or \c nullptr if unknown.
-	 */
-	Plugin* connect(const std::string dynamicLibraryFilename) override;
-	/*!
-	 * \brief Returns the list of built-in plugin filenames recognized by this connector.
-	 * \return Newly allocated list with known plugin aliases.
-	 */
+	List<Plugin*>* check(const std::string dynamicLibraryFilename) override;
+	List<Plugin*>* connect(const std::string dynamicLibraryFilename) override;
 	List<std::string>* find() override;
-	/*!
-	 * \brief Disconnects a plugin identified by filename.
-	 * \param dynamicLibraryFilename Plugin library filename or alias.
-	 * \return Always \c true in the current dummy implementation.
-	 */
 	bool disconnect(const std::string dynamicLibraryFilename) override;
-	/*!
-	 * \brief Disconnects a plugin instance.
-	 * \param plugin Plugin instance to disconnect.
-	 * \return Always \c true in the current dummy implementation.
-	 */
 	bool disconnect(Plugin* plugin) override;
+
 private:
-	void _connect(List<Plugin*>* plugins, Plugin* plugin);
+	// Looks up the compiled-in GetPluginInformation for a given file alias.
+	// Returns nullptr if the alias isn't recognized.
+	Plugin* _resolve(const std::string& dynamicLibraryFilename) const;
 };
+
 //namespace\\}
 #endif /* PLUGINCONNECTORDUMMYIMPL1_H */

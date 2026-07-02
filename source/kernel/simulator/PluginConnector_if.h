@@ -35,14 +35,14 @@ public:
 	 * \return
 	 */
 	/*! \brief Validates whether a dynamic library contains a compatible plugin without permanently connecting it. */
-	virtual Plugin* check(const std::string dynamicLibraryFilename) = 0;
+	virtual List<Plugin*>* check(const std::string dynamicLibraryFilename) = 0;
 	/*!
 	 * \brief connect
 	 * \param dynamicLibraryFilename
 	 * \return
 	 */
 	/*! \brief Loads and connects a plugin from a dynamic library. */
-	virtual Plugin* connect(const std::string dynamicLibraryFilename) = 0;
+	virtual List<Plugin*>* connect(const std::string dynamicLibraryFilename) = 0;
 	/*!
 	 * \brief find dynamicLibraryFilenames
 	 * \param

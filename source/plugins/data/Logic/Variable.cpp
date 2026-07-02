@@ -16,12 +16,12 @@
 
 #include <exception>
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Variable::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Variable::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Variable::NewInstance(Model* model, std::string name) {
 	return new Variable(model, name);

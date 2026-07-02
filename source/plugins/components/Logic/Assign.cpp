@@ -29,12 +29,12 @@ std::string _trimCopy(std::string value) {
 }
 }
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Assign::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Assign::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Assign::NewInstance(Model* model, std::string name) {
 	return new Assign(model, name);

@@ -397,12 +397,12 @@ unsigned int sampleStateFromDistribution(const ModelDataDefinition* distribution
 
 } // namespace
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &MarkovChain::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &MarkovChain::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* MarkovChain::NewInstance(Model* model, std::string name) {
 	return new MarkovChain(model, name);

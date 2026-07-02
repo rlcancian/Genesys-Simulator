@@ -16,12 +16,12 @@
 
 //using namespace GenesysKernel;
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Counter::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Counter::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Counter::NewInstance(Model* model, std::string name) {
 	return new Counter(model, name);

@@ -19,12 +19,12 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/PluginManager.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Clone::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Clone::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Clone::NewInstance(Model* model, std::string name) {
 	return new Clone(model, name);

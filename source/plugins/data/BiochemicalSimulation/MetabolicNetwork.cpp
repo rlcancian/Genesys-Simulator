@@ -7,12 +7,12 @@
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &MetabolicNetwork::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &MetabolicNetwork::GetPluginInformation;
+// }
+// #endif
 
 namespace {
 

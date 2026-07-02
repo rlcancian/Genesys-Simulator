@@ -14,12 +14,12 @@
 #include "plugins/components/Logic/Dispose.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Dispose::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Dispose::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Dispose::NewInstance(Model* model, std::string name) {
 	return new Dispose(model, name);

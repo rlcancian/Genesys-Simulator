@@ -17,10 +17,18 @@ option(GENESYS_BUILD_KERNEL "Build kernel static libraries" ON)
 option(GENESYS_BUILD_PARSER "Build parser static library" ON)
 option(GENESYS_BUILD_PLUGINS "Build plugins static libraries" ON)
 option(GENESYS_BUILD_TOOLS "Build tools static libraries" OFF)
+option(GENESYS_DYNAMIC_PLUGINS "Use dynamic library loader for plugins" ON)
+
+if(GENESYS_DYNAMIC_PLUGINS)
+    set(GENESYS_BUILD_TOOLS ON CACHE BOOL "" FORCE)
+    add_compile_definitions(PLUGINCONNECT_DYNAMIC)
+endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CTest)
 

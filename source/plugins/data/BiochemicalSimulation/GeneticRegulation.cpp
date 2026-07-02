@@ -7,12 +7,12 @@
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &GeneticRegulation::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &GeneticRegulation::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* GeneticRegulation::NewInstance(Model* model, std::string name) {
 	return new GeneticRegulation(model, name);

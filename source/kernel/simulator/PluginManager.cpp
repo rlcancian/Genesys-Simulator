@@ -1,5 +1,5 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
+* To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
@@ -389,45 +389,47 @@ bool PluginManager::_insert(Plugin* plugin, const PluginInsertionOptions& option
 }
 
 bool PluginManager::check(const std::string& dynamicLibraryFilename) {
-	Plugin* plugin;
+	std::unique_ptr<List<Plugin*>> plugins;
 	try {
-		plugin = _pluginConnector->check(dynamicLibraryFilename);
+		plugins.reset(_pluginConnector->check(dynamicLibraryFilename));
 	} catch (...) {
 		return false;
 	}
-	const bool checked = plugin != nullptr && plugin->isIsValidPlugin();
-	delete plugin;
-	return checked;
+	if (plugins == nullptr) {
+		return false;
+	}
+	bool anyValid = false;
+	for (Plugin* plugin : *plugins->list()) {
+		if (plugin != nullptr && plugin->isIsValidPlugin()) {
+			anyValid = true;
+		}
+		delete plugin; // check() is non-mutating; connector never registered these
+	}
+	return anyValid;
 }
 
 SystemDependencyCheckResult PluginManager::checkSystemDependencies(const std::string& dynamicLibraryFilename) {
 	SystemDependencyCheckResult result;
-	Plugin* plugin = nullptr;
+	std::unique_ptr<List<Plugin*>> plugins;
 	try {
-		plugin = _pluginConnector->check(dynamicLibraryFilename);
+		plugins.reset(_pluginConnector->check(dynamicLibraryFilename));
 	} catch (...) {
 		return result;
 	}
-	if (plugin != nullptr && plugin->isIsValidPlugin() && plugin->getPluginInfo() != nullptr) {
-		result = SystemDependencyResolver::evaluate(plugin->getPluginInfo()->getSystemDependencies(), *_systemCommandExecutor);
+	if (plugins == nullptr) {
+		return result;
 	}
-	delete plugin;
+	for (Plugin* plugin : *plugins->list()) {
+		if (plugin != nullptr && plugin->isIsValidPlugin() && plugin->getPluginInfo() != nullptr) {
+			SystemDependencyCheckResult componentResult = SystemDependencyResolver::evaluate(
+				plugin->getPluginInfo()->getSystemDependencies(), *_systemCommandExecutor);
+			for (const SystemDependencyCheckEntry& entry : componentResult.entries()) {
+				result.add(entry);
+			}
+		}
+		delete plugin;
+	}
 	return result;
-}
-
-List<std::string>* PluginManager::discoverPluginFilenames() const {
-	if (_pluginConnector == nullptr) {
-		return new List<std::string>();
-	}
-	return _pluginConnector->find();
-}
-
-List<PluginLoadIssue>* PluginManager::getPluginLoadIssues() const {
-	return _pluginLoadIssues;
-}
-
-void PluginManager::clearPluginLoadIssues() {
-	_pluginLoadIssues->clear();
 }
 
 void PluginManager::clearPluginLoadIssue(const std::string& dynamicLibraryFilename) {
@@ -464,92 +466,60 @@ Plugin* PluginManager::insert(const std::string& dynamicLibraryFilename) {
 	return insert(dynamicLibraryFilename, options);
 }
 
-Plugin* PluginManager::insert(const std::string& dynamicLibraryFilename, const PluginInsertionOptions& options) {
-	Plugin* plugin = nullptr;
-	try {
-		std::unique_ptr<Plugin> checkedPlugin(_pluginConnector->check(dynamicLibraryFilename));
-		if (checkedPlugin == nullptr || !checkedPlugin->isIsValidPlugin() || checkedPlugin->getPluginInfo() == nullptr) {
-			_simulator->getTraceManager()->traceError(
-				"Plugin from file \"" + dynamicLibraryFilename + "\" could not be checked as a valid plugin.",
-				TraceManager::Level::L3_errorRecover);
-			_recordLoadIssue(PluginLoadIssue(
-				dynamicLibraryFilename,
-				"",
-				PluginLoadIssue::Reason::InvalidPlugin,
-				"Plugin could not be checked as a valid plugin."));
-			return nullptr;
-		}
-		PluginInformation* checkedInfo = checkedPlugin->getPluginInfo();
-		Plugin* alreadyInserted = find(checkedInfo->getPluginTypename());
-		if (alreadyInserted != nullptr) {
-			_simulator->getTraceManager()->trace(
-				"Plugin \"" + checkedInfo->getPluginTypename() + "\" already exists and was not connected again");
-			_removeLoadIssue(dynamicLibraryFilename, checkedInfo->getPluginTypename());
-			return alreadyInserted;
-		}
-		// Preflight before connect prevents loading/connecting plugins whose system prerequisites are absent.
-		SystemDependencyCheckResult blockingResult;
-		std::string failureMessage;
-		if (!_preflightAndMaybeInstallSystemDependencies(checkedInfo, options, &blockingResult, &failureMessage)) {
-			_recordLoadIssue(PluginLoadIssue(
-				dynamicLibraryFilename,
-				checkedInfo->getPluginTypename(),
-				PluginLoadIssue::Reason::MissingSystemDependency,
-				failureMessage,
-				blockingResult));
-			return nullptr;
-		}
+List<Plugin*>* PluginManager::insert(const std::string& dynamicLibraryFilename,
+                                      const PluginInsertionOptions& options) {
+    auto *insertedPlugins = new List<Plugin*>();
+    std::unique_ptr<List<Plugin*>> connectedPlugins;
+    try {
+        connectedPlugins.reset(_pluginConnector->connect(dynamicLibraryFilename));
+    } catch (...) {
+        _recordLoadIssue(PluginLoadIssue(
+            dynamicLibraryFilename, "", PluginLoadIssue::Reason::Exception,
+            "An exception was thrown while connecting the plugin library."));
+        return insertedPlugins;
+    }
+    if (connectedPlugins == nullptr) {
+        _recordLoadIssue(PluginLoadIssue(
+            dynamicLibraryFilename, "", PluginLoadIssue::Reason::ConnectionFailure,
+            "Plugin connector returned no plugins."));
+        return insertedPlugins;
+    }
 
-		plugin = _pluginConnector->connect(dynamicLibraryFilename);
-		if (plugin != nullptr) {
-			const bool validBeforeInsert = plugin->isIsValidPlugin();
-			if (!_insert(plugin, options, dynamicLibraryFilename)) {
-				if (validBeforeInsert) {
-					// A connected but rejected plugin must be released by the connector.
-					_pluginConnector->disconnect(plugin);
-				}
-				plugin = nullptr;
-			}
-		} else {
-			_simulator->getTraceManager()->traceError("Plugin from file \"" + dynamicLibraryFilename + "\" could not be loaded.", TraceManager::Level::L3_errorRecover);
-			_recordLoadIssue(PluginLoadIssue(
-				dynamicLibraryFilename,
-				checkedInfo->getPluginTypename(),
-				PluginLoadIssue::Reason::ConnectionFailure,
-				"Plugin connector returned no plugin instance."));
-		}
-	} catch (...) {
-		_recordLoadIssue(PluginLoadIssue(
-			dynamicLibraryFilename,
-			"",
-			PluginLoadIssue::Reason::Exception,
-			"An exception was thrown while checking or connecting the plugin."));
-		return nullptr;
-	}
-	return plugin;
-}
+    for (Plugin* plugin : *connectedPlugins->list()) {
+        if (plugin == nullptr || !plugin->isIsValidPlugin() || plugin->getPluginInfo() == nullptr) {
+            _recordLoadIssue(PluginLoadIssue(
+                dynamicLibraryFilename, "", PluginLoadIssue::Reason::InvalidPlugin,
+                "Plugin could not be connected as a valid plugin."));
+            if (plugin) _pluginConnector->disconnect(plugin);
+            continue;
+        }
 
-bool PluginManager::remove(const std::string& dynamicLibraryFilename) {
-	Plugin* pi = this->find(dynamicLibraryFilename);
-	return remove(pi);
-}
+        PluginInformation* info = plugin->getPluginInfo();
+        Plugin* alreadyInserted = find(info->getPluginTypename());
+        if (alreadyInserted != nullptr) {
+            _removeLoadIssue(dynamicLibraryFilename, info->getPluginTypename());
+            _pluginConnector->disconnect(plugin); // release the duplicate we just opened
+            insertedPlugins->insert(alreadyInserted);
+            continue;
+        }
 
-bool PluginManager::remove(Plugin* plugin) {
-	if (plugin != nullptr) {
-		try {
-			if (!_pluginConnector->disconnect(plugin)) {
-				return false;
-			}
-		} catch (...) {
-			return false;
-		}
-		_plugins->remove(plugin);
-		delete plugin;
-		_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin successfully removed");
-		return true;
-	}
-	_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin could not be removed");
-	return false;
+        SystemDependencyCheckResult blockingResult;
+        std::string failureMessage;
+        if (!_preflightAndMaybeInstallSystemDependencies(info, options, &blockingResult, &failureMessage)) {
+            _recordLoadIssue(PluginLoadIssue(
+                dynamicLibraryFilename, info->getPluginTypename(),
+                PluginLoadIssue::Reason::MissingSystemDependency, failureMessage, blockingResult));
+            _pluginConnector->disconnect(plugin);
+            continue;
+        }
+
+        if (!_insert(plugin, options, dynamicLibraryFilename)) {
+            _pluginConnector->disconnect(plugin);
+            continue;
+        }
+        insertedPlugins->insert(plugin);
+    }
+    return insertedPlugins;
 }
 
 Plugin* PluginManager::find(const std::string& pluginTypeName) {
