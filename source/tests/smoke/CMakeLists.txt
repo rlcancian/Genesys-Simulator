@@ -45,6 +45,19 @@ target_link_libraries(genesys_test_lsode
 add_test(NAME test_lsode COMMAND genesys_test_lsode)
 set_tests_properties(test_lsode PROPERTIES LABELS "smoke")
 
+add_executable(genesys_demo_continuous_trace
+    ../demo_continuous_trace.cpp
+)
+
+target_link_libraries(genesys_demo_continuous_trace
+    PRIVATE
+        genesys_kernel_util
+        genesys_plugins_data
+        genesys_plugins_components_minimal
+        genesys_kernel_simulator_runtime
+        genesys_kernel_simulator_support
+)
+
 add_custom_target(genesys_smoke_tests
     DEPENDS genesys_smoke_simulator_start genesys_test_continuous_system genesys_test_lsode
 )

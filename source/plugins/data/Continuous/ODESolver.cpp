@@ -8,10 +8,14 @@
 #include "plugins/data/Continuous/ODESolver.h"
 #include "kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/model/ModelSimulation.h"
+#include "kernel/simulator/Event.h"
 #include "plugins/data/Logic/Variable.h"
 #include "kernel/util/Util.h"
 
 #include <sstream>
+#include <fstream>
+#include <ios>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -171,13 +175,31 @@ std::vector<double> ODESolver::getInitialStateValues() const {
 	return _initialStateValues;
 }
 
+void ODESolver::setAutoAdvance(bool autoAdvance) {
+	this->_autoAdvance = autoAdvance;
+}
+
+bool ODESolver::isAutoAdvance() const {
+	return _autoAdvance;
+}
+
+void ODESolver::setOutputFile(std::string outputFile) {
+	this->_outputFile = outputFile;
+}
+
+std::string ODESolver::getOutputFile() const {
+	return _outputFile;
+}
+
 // new methods
 
 void ODESolver::integrate(double targetTime) {
 	if (_stateVariableNames.empty() || _equationExpressions.empty()) {
 		return;
 	}
-	
+
+	const double startTime = _currentTime;
+
 	// Local ODE system implementation
 	struct ODESystem : public OdeSystem_if {
 		ODESolver* _solver;
@@ -255,6 +277,11 @@ void ODESolver::integrate(double targetTime) {
 	if (timeVar != nullptr) {
 		timeVar->setValue(_currentTime);
 	}
+
+	// Record one CSV row per advance, so the trajectory can be exported/plotted.
+	if (_currentTime > startTime) {
+		_appendOutputRow();
+	}
 }
 
 void ODESolver::resetState() {
@@ -294,7 +321,9 @@ bool ODESolver::_loadInstance(PersistenceRecord *fields) {
 		_precision = fields->loadField("precision", DEFAULT.precision);
 		_maxSteps = fields->loadField("maxSteps", DEFAULT.maxSteps);
 		_currentTime = fields->loadField("currentTime", DEFAULT.currentTime);
-		
+		_autoAdvance = fields->loadField("autoAdvance", DEFAULT.autoAdvance ? 1 : 0) != 0;
+		_outputFile = fields->loadField("outputFile", DEFAULT.outputFile);
+
 		// Load state variable names as ";" delimited string
 		std::string stateVarsStr = fields->loadField("stateVariableNames", "");
 		if (!stateVarsStr.empty()) {
@@ -351,7 +380,9 @@ void ODESolver::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues)
 	fields->saveField("precision", _precision, DEFAULT.precision, saveDefaultValues);
 	fields->saveField("maxSteps", _maxSteps, DEFAULT.maxSteps, saveDefaultValues);
 	fields->saveField("currentTime", _currentTime, DEFAULT.currentTime, saveDefaultValues);
-	
+	fields->saveField("autoAdvance", _autoAdvance ? 1 : 0, DEFAULT.autoAdvance ? 1 : 0, saveDefaultValues);
+	fields->saveField("outputFile", _outputFile, DEFAULT.outputFile, saveDefaultValues);
+
 	// Save state variable names as ";" delimited string
 	std::string stateVarsStr = "";
 	for (unsigned int i = 0; i < _stateVariableNames.size(); i++) {
@@ -417,6 +448,73 @@ void ODESolver::_initBetweenReplications() {
 	_stateValues = _initialStateValues;
 	_stateValues.resize(_stateVariableNames.size(), 0.0);
 	writeStateToVariables();
+	// Start a fresh trajectory file (header + initial state) when export is enabled.
+	if (!_outputFile.empty()) {
+		_writeOutputHeader();
+		_appendOutputRow();
+	}
+	// Kick off the autonomous integration coupled to the event calendar. Without this the
+	// continuous state would only advance reactively, when a discrete entity reaches a
+	// ContinuousSystemComponent; with it, the ODE evolves with the simulation clock.
+	if (_autoAdvance) {
+		_scheduleNextInternalEvent();
+	}
+}
+
+void ODESolver::_handleInternalEvent(void* /*parameter*/) {
+	// The internal event fired at its scheduled time, so simulatedTime is now that instant.
+	// Bring the continuous state up to it, then keep the chain alive for the next step.
+	double simTime = _parentModel->getSimulation()->getSimulatedTime();
+	integrate(simTime);
+	if (_autoAdvance) {
+		_scheduleNextInternalEvent();
+	}
+}
+
+void ODESolver::_scheduleNextInternalEvent() {
+	if (_step <= 0.0 || _stateVariableNames.empty() || _equationExpressions.empty()) {
+		return;
+	}
+	double simTime = _parentModel->getSimulation()->getSimulatedTime();
+	double eventTime = simTime + _step;
+	// ModelSimulation discards out-of-window events without dispatching them, so this
+	// self-scheduling chain stops on its own at the end of the replication — no need to
+	// query the replication length here.
+	InternalEvent* event = new InternalEvent(eventTime, "ODESolverStep");
+	event->setEventHandler(this, &ODESolver::_handleInternalEvent, nullptr);
+	_parentModel->getFutureEvents()->insert(event);
+}
+
+void ODESolver::_writeOutputHeader() const {
+	if (_outputFile.empty()) {
+		return;
+	}
+	std::ofstream out(_outputFile, std::ofstream::out); // truncate: fresh file per replication
+	if (!out.is_open()) {
+		return;
+	}
+	out << _timeVariableName;
+	for (const std::string& name : _stateVariableNames) {
+		out << "," << name;
+	}
+	out << std::endl;
+}
+
+void ODESolver::_appendOutputRow() const {
+	if (_outputFile.empty()) {
+		return;
+	}
+	std::ofstream out(_outputFile, std::ofstream::app);
+	if (!out.is_open()) {
+		return;
+	}
+	out.setf(std::ios::fixed);
+	out.precision(9);
+	out << _currentTime;
+	for (unsigned int i = 0; i < _stateValues.size(); i++) {
+		out << "," << _stateValues[i];
+	}
+	out << std::endl;
 }
 
 void ODESolver::_createEditableDataDefinitions() {

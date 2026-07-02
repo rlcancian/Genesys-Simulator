@@ -50,6 +50,10 @@ public: // gets & sets
 	std::vector<double> getStateValues() const;
 	void setInitialStateValues(std::vector<double> initialStateValues);
 	std::vector<double> getInitialStateValues() const;
+	void setAutoAdvance(bool autoAdvance);
+	bool isAutoAdvance() const;
+	void setOutputFile(std::string outputFile);
+	std::string getOutputFile() const;
 public: // new methods
 	void integrate(double targetTime);
 	void resetState();
@@ -73,6 +77,8 @@ private:
 		const double precision = 1e-6;
 		const int maxSteps = 100000;
 		const double currentTime = 0.0;
+		const bool autoAdvance = true;
+		const std::string outputFile = "";
 	} DEFAULT;
 	std::string _timeVariableName = DEFAULT.timeVariableName;
 	std::vector<std::string> _stateVariableNames;
@@ -81,6 +87,8 @@ private:
 	double _precision = DEFAULT.precision;
 	int _maxSteps = DEFAULT.maxSteps;
 	double _currentTime = DEFAULT.currentTime;
+	bool _autoAdvance = DEFAULT.autoAdvance;
+	std::string _outputFile = DEFAULT.outputFile;
 	std::vector<double> _stateValues;
 	std::vector<double> _initialStateValues;
 	RungeKutta4OdeSolver _solver;
@@ -91,6 +99,15 @@ private:
 	                      const std::vector<double>& values,
 	                      bool saveDefaultValues) const;
 	double _readVariableValue(const std::string& variableName) const;
+	// Self-scheduling that couples the continuous integration to the discrete event calendar:
+	// each internal event advances the ODE by one step and schedules the next, so the continuous
+	// state evolves with the simulation clock instead of only when a discrete entity arrives.
+	void _handleInternalEvent(void* parameter);
+	void _scheduleNextInternalEvent();
+	// Optional CSV dump of the trajectory: when _outputFile is set, one row per integration
+	// step is written (t and each state variable), so any model can export its trajectory.
+	void _writeOutputHeader() const;
+	void _appendOutputRow() const;
 };
 
 #endif /* ODESOLVER_H */

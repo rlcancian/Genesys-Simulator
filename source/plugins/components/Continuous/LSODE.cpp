@@ -15,6 +15,7 @@
 #include <vector>
 #include "plugins/components/Continuous/LSODE.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -216,7 +217,37 @@ void LSODE::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool LSODE::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_step = fields->loadField("step", DEFAULT.step);
+		_filename = fields->loadField("filename", DEFAULT.filename);
+
+		// Variable references are persisted by name and resolved against the data manager.
+		std::string timeVariableName = fields->loadField("timeVariable", "");
+		_timeVariable = nullptr;
+		if (!timeVariableName.empty()) {
+			_timeVariable = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(
+					Util::TypeOf<Variable>(), timeVariableName));
+		}
+		std::string variableName = fields->loadField("variable", "");
+		_variable = nullptr;
+		if (!variableName.empty()) {
+			_variable = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(
+					Util::TypeOf<Variable>(), variableName));
+		}
+
+		// Differential equations are stored as a single ";"-delimited string.
+		_diffEquations->clear();
+		std::string equationsStr = fields->loadField("diffEquations", "");
+		if (!equationsStr.empty()) {
+			size_t pos = 0;
+			size_t delimPos;
+			while ((delimPos = equationsStr.find(";", pos)) != std::string::npos) {
+				_diffEquations->insert(equationsStr.substr(pos, delimPos - pos));
+				pos = delimPos + 1;
+			}
+			if (pos < equationsStr.length()) {
+				_diffEquations->insert(equationsStr.substr(pos));
+			}
+		}
 	}
 
 	return res;
@@ -224,14 +255,52 @@ bool LSODE::_loadInstance(PersistenceRecord *fields) {
 
 void LSODE::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("step", _step, DEFAULT.step, saveDefaultValues);
+	fields->saveField("filename", _filename, DEFAULT.filename, saveDefaultValues);
+	fields->saveField("timeVariable",
+	                  _timeVariable != nullptr ? _timeVariable->getName() : std::string(""),
+	                  std::string(""), saveDefaultValues);
+	fields->saveField("variable",
+	                  _variable != nullptr ? _variable->getName() : std::string(""),
+	                  std::string(""), saveDefaultValues);
+
+	std::string equationsStr = "";
+	for (unsigned int i = 0; i < _diffEquations->size(); i++) {
+		equationsStr += _diffEquations->getAtRank(i);
+		if (i < _diffEquations->size() - 1) {
+			equationsStr += ";";
+		}
+	}
+	fields->saveField("diffEquations", equationsStr, "", saveDefaultValues);
 }
 
 bool LSODE::_check(std::string& errorMessage) {
-	bool resultAll = true;
+	bool resultAll = ModelComponent::_check(errorMessage);
 	std::ofstream savefile;
-	// @TODO: not implemented yet
-	errorMessage += "";
+
+	// Structural validation of the ODE configuration. The equations are kept as opaque strings
+	// referencing variables by name, so they cannot be syntactically parsed here: the model's
+	// orphan cleanup runs before component checks and temporarily removes the referenced
+	// variables from the parser scope. Presence/consistency checks are what matter at this stage.
+	if (_timeVariable == nullptr) {
+		errorMessage += "TimeVariable is not defined. ";
+		resultAll = false;
+	}
+	if (_variable == nullptr) {
+		errorMessage += "State Variable is not defined. ";
+		resultAll = false;
+	}
+	if (_step <= 0.0) {
+		errorMessage += "Step must be greater than 0. ";
+		resultAll = false;
+	}
+	if (_diffEquations->size() == 0) {
+		errorMessage += "At least one differential equation must be defined. ";
+		resultAll = false;
+	}
+
+	// Only touch the output file once the configuration is valid, so the variable pointers
+	// dereferenced below are guaranteed to be non-null.
 	if (resultAll) {
 		if (_filename != "") {
 			try {
