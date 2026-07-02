@@ -66,6 +66,13 @@ SimulatorSessionService::SimulatorSessionService(SessionManager& sessionManager,
  */
 SimulatorSessionService::CreateSessionResult SimulatorSessionService::createSession() {
     SessionContext* session = _sessionManager.createSession();
+    if (session != nullptr && session->simulator != nullptr) {
+        // Web sessions need the default plugin set so language import and worker
+        // snapshots can resolve built-in model elements immediately.
+        if (session->simulator->getPluginManager() != nullptr) {
+            session->simulator->getPluginManager()->autoInsertPlugins();
+        }
+    }
     return CreateSessionResult{session->sessionId, session->accessToken};
 }
 

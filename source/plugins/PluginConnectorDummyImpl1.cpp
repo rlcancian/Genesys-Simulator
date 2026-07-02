@@ -173,8 +173,8 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("buffer.so");
     filenames->insert("create.so");
     filenames->insert("dispose.so");
-    //filenames->insert("dummy.so");
-    //filenames->insert("dummyelement.so");
+    filenames->insert("dummy.so");
+    filenames->insert("dummyelement.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
     filenames->insert("formula.so");
@@ -335,10 +335,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Create::GetPluginInformation;
     else if (fn == "dispose.so")
         GetInfo = &Dispose::GetPluginInformation;
-    //else if (fn == "dummy.so")
-    //    GetInfo = &DummyComponent::GetPluginInformation;
-    //else if (fn == "dummyelement.so")
-    //    GetInfo = &DummyElement::GetPluginInformation;
+    else if (fn == "dummy.so")
+        GetInfo = &DummyComponent::GetPluginInformation;
+    else if (fn == "dummyelement.so")
+        GetInfo = &DummyElement::GetPluginInformation;
     else if (fn == "entitygroup.so")
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")

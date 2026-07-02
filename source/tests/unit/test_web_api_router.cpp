@@ -48,22 +48,14 @@ std::string createSessionAndGetToken(ApiRouter& router) {
 }
 
 std::string minimalValidModelSpecification() {
-    // Grounded in repository model syntax from models/Smart_Record.gen.
     return
         "# Genesys Simulation Model\n"
         "# Simulator, Model and Simulation infos\n"
-        "0   Simulator  \"GenESyS - GENeric and Expansible SYstem Simulator\" versionNumber=230914 0   ModelInfo  \"Model 1\" "
-        "version=\"1.0\" projectTitle=\"\" description=\"\" analystName=\"\" 0   ModelSimulation \"\" traceLevel=9 "
-        "replicationLength=1000.000000 numberOfReplications=30 \n"
+        "0   Simulator  \"GenESyS - GENeric and Expansible SYstem Simulator\" versionNumber=220131 \n"
+        "0   ModelInfo  \"Model 1\" version=\"1.0\" projectTitle=\"\" description=\"\" analystName=\"\" \n"
+        "0   ModelSimulation \"\" traceLevel=9 terminatingCondition=\"\" \n"
         "# Model Data Definitions\n"
-        "68  Resource   \"Resource_1\" capacity=5 69  Queue      \"Queue_1\" \n"
-        "# Model Components\n"
-        "63  Create     \"Create_1\" entityType=\"entitytype\" nextId=64 64  Process    \"Process_1\" delayExpression=\"unif(2, 6)\" "
-        "queueable=\"Queue_1\" nextId=70 requestSeizable[0]=\"Resource_1\" 70  Record     \"Record_1\" "
-        "fileName=\"recordNumberInQueue.txt\" nextId=71 expressionName=\"Number in queue\" expression=\"nq(Queue_1)\" "
-        "71  Record     \"Record_2\" fileName=\"recordNumberBusy.txt\" nextId=72 expressionName=\"resource_1 number busy\" "
-        "expression=\"NR(Resource_1)\" 72  Record     \"Record_3\" fileName=\"recordBeta.txt\" nextId=73 "
-        "expressionName=\"Just a Beta distribution\" expression=\"beta(2,8,0,100)\" 73  Dispose    \"Dispose_1\" nexts=0  ";
+        "# Model Components\n";
 }
 }  // namespace
 
