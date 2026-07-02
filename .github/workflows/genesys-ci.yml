@@ -1,0 +1,67 @@
+name: GenESyS CI
+
+on:
+  pull_request:
+    branches:
+      - 2026-1
+      - WorkInProgress
+      - WiP20261
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Configure, build and test unit preset
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    env:
+      QT_QPA_PLATFORM: offscreen
+      CTEST_OUTPUT_ON_FAILURE: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show runner and toolchain baseline
+        run: |
+          set -euxo pipefail
+          uname -a
+          lsb_release -a || cat /etc/os-release
+          cmake --version || true
+          ninja --version || true
+          g++ --version || true
+
+      - name: Install build dependencies
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            qt6-base-dev \
+            qt6-tools-dev \
+            qt6-tools-dev-tools \
+            libgl1-mesa-dev
+
+      - name: Configure tests-unit preset
+        run: |
+          set -euxo pipefail
+          cmake --preset tests-unit
+
+      - name: Build tests-unit preset
+        run: |
+          set -euxo pipefail
+          cmake --build --preset tests-unit --parallel
+
+      - name: Run tests-unit preset
+        run: |
+          set -euxo pipefail
+          ctest --preset tests-unit --output-on-failure
