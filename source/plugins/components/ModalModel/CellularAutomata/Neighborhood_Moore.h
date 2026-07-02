@@ -15,8 +15,8 @@
 
 class Neighborhood_Moore : public Neighborhood {
 public:
-    Neighborhood_Moore(CellularAutomataBase* parentCellularAutomata, unsigned short radius = 1, BoundaryCondition* boundary = nullptr)
-        :Neighborhood(parentCellularAutomata, radius, boundary) { this->name = "Moore"; }
+    Neighborhood_Moore(CellularAutomataBase* parentCellularAutomata, unsigned short radius = 1, BoundaryCondition* boundary = nullptr, bool includeCellItself = false, bool registerWithCA = true)
+        :Neighborhood(parentCellularAutomata, radius, boundary, includeCellItself, registerWithCA) { this->name = "Moore"; }
     Neighborhood_Moore(const Neighborhood_Moore& orig):Neighborhood(orig) {    }
     virtual ~Neighborhood_Moore() = default;
 public:

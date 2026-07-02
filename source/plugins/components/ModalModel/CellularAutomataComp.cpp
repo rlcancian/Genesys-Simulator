@@ -15,11 +15,15 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Reflexive.h"
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Adiabatic.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_1DTimed.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniform.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Elementary.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Growty.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_Custom.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Center.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
@@ -61,27 +65,71 @@ void CellularAutomataComp::_onDispatchEvent(Entity* entity, unsigned int inputPo
 bool CellularAutomataComp::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		setCellularAutomataType(static_cast<CellularAutomataType>(
+			fields->loadField("caType", static_cast<int>(DEFAULT.cellularAutomataType))));
+		setLatticeType(static_cast<LatticeType>(
+			fields->loadField("latticeType", static_cast<int>(DEFAULT.latticeType))));
+		setNeighboorhoodType(static_cast<NeighboorhoodType>(
+			fields->loadField("neighborhoodType", static_cast<int>(DEFAULT.neighboorhoodType))));
+		setBoundaryType(static_cast<BoundaryType>(
+			fields->loadField("boundaryType", static_cast<int>(DEFAULT.boundaryType))));
+		setStateSetType(static_cast<StateSetType>(
+			fields->loadField("stateSetType", static_cast<int>(DEFAULT.stateSetType))));
+		setLocalRuleType(static_cast<LocalRuleType>(
+			fields->loadField("localRuleType", static_cast<int>(DEFAULT.localRuleType))));
 	}
 	return res;
 }
 
 void CellularAutomataComp::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("caType",           static_cast<int>(_cellularAutomataType), static_cast<int>(DEFAULT.cellularAutomataType), saveDefaultValues);
+	fields->saveField("latticeType",      static_cast<int>(_latticeType),          static_cast<int>(DEFAULT.latticeType),          saveDefaultValues);
+	fields->saveField("neighborhoodType", static_cast<int>(_neighboorhoodType),    static_cast<int>(DEFAULT.neighboorhoodType),    saveDefaultValues);
+	fields->saveField("boundaryType",     static_cast<int>(_boundaryType),         static_cast<int>(DEFAULT.boundaryType),         saveDefaultValues);
+	fields->saveField("stateSetType",     static_cast<int>(_stateSetType),         static_cast<int>(DEFAULT.stateSetType),         saveDefaultValues);
+	fields->saveField("localRuleType",    static_cast<int>(_localRuleType),        static_cast<int>(DEFAULT.localRuleType),        saveDefaultValues);
 }
 
 bool CellularAutomataComp::_check(std::string* errorMessage) {
-	*errorMessage += "";
-	_cellularAutomata->setLattice(_lattice);
-	_cellularAutomata->setLocalRule(_localRule);
-	_cellularAutomata->setNeighborhood(_neighboorhood);
-	_cellularAutomata->setStateSet(_stateSet);
-	_localRule->setStateSet(_stateSet);
-	_neighboorhood->setBoundary(_boundary);
-	_boundary->setLattice(_lattice);
-	_boundary->setNeighborhood(_neighboorhood);
-	return true;
+	bool isValid = true;
+	if (_cellularAutomata == nullptr) {
+		*errorMessage += "Cellular automata type not set. ";
+		isValid = false;
+	}
+	if (_lattice == nullptr) {
+		*errorMessage += "Lattice not set. ";
+		isValid = false;
+	}
+	if (_neighboorhood == nullptr) {
+		*errorMessage += "Neighborhood not set. ";
+		isValid = false;
+	}
+	if (_boundary == nullptr) {
+		*errorMessage += "Boundary condition not set. ";
+		isValid = false;
+	}
+	if (_stateSet == nullptr) {
+		*errorMessage += "State set not set. ";
+		isValid = false;
+	}
+	if (_localRule == nullptr &&
+		_cellularAutomataType != CellularAutomataType::NONUNIFORM) {
+		*errorMessage += "Local rule not set. ";
+		isValid = false;
+	}
+	if (isValid) {
+		_cellularAutomata->setLattice(_lattice);
+		_cellularAutomata->setLocalRule(_localRule);
+		_cellularAutomata->setNeighborhood(_neighboorhood);
+		_cellularAutomata->setStateSet(_stateSet);
+		if (_localRule != nullptr)
+			_localRule->setStateSet(_stateSet);
+		_neighboorhood->setBoundary(_boundary);
+		_boundary->setLattice(_lattice);
+		_boundary->setNeighborhood(_neighboorhood);
+	}
+	return isValid;
 }
 
 void CellularAutomataComp::_initBetweenReplications() {
@@ -162,6 +210,44 @@ void CellularAutomataComp::setCellularAutomataType(CellularAutomataComp::Cellula
 		_cellularAutomata = new CellularAutomata_Classic();
 	else if (_cellularAutomataType == CellularAutomataType::TIMED_1D)
 		_cellularAutomata = new CellularAutomata_1DTimed();
+	else if (_cellularAutomataType == CellularAutomataType::NONUNIFORM)
+		_cellularAutomata = new CellularAutomata_NonUniform();
+}
+
+bool CellularAutomataComp::setCellLocalRule(long cellNumber, LocalRule* rule) {
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setCellRule(cellNumber, rule); return true; }
+	return false;
+}
+
+bool CellularAutomataComp::setCellLocalRule(std::vector<int> position, LocalRule* rule) {
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setCellRule(position, rule); return true; }
+	return false;
+}
+
+bool CellularAutomataComp::setCellNeighborhood(long cellNumber, Neighborhood* hood) {
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setCellNeighborhood(cellNumber, hood); return true; }
+	return false;
+}
+
+bool CellularAutomataComp::setCellNeighborhood(std::vector<int> position, Neighborhood* hood) {
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setCellNeighborhood(position, hood); return true; }
+	return false;
+}
+
+bool CellularAutomataComp::setRegionRule(std::vector<int> posMin, std::vector<int> posMax, LocalRule* rule) {
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setRegionRule(posMin, posMax, rule); return true; }
+	return false;
+}
+
+bool CellularAutomataComp::setRegionNeighborhood(std::vector<int> posMin, std::vector<int> posMax, Neighborhood* hood) {
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setRegionNeighborhood(posMin, posMax, hood); return true; }
+	return false;
 }
 
 CellularAutomataComp::LatticeType CellularAutomataComp::getLatticeType() const
@@ -208,6 +294,10 @@ void CellularAutomataComp::setBoundaryType(CellularAutomataComp::BoundaryType ne
 		_boundary = new Boundary_Closed();
 	else if (_boundaryType == BoundaryType::FIXED)
 		_boundary = new Boundary_Fixed();
+	else if (_boundaryType == BoundaryType::REFLEXIVE)
+		_boundary = new Boundary_Reflexive();
+	else if (_boundaryType == BoundaryType::ADIABATIC)
+		_boundary = new Boundary_Adiabatic();
 }
 
 PluginInformation* CellularAutomataComp::GetPluginInformation() {
