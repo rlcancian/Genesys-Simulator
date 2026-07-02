@@ -1,0 +1,19 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=10.000000 
+
+# Model Data Definitions
+104 EntityType "entitytype" 
+105 Attribute  "Entity.ArrivalTime" 
+106 Attribute  "Entity.Type" 
+
+# Model Components
+102 Create     "Create_1" entityType="entitytype" nextId=110 
+107 Dispose    "Dispose_1" nexts=0 
+110 ModalModelDefault "Modal_Sem_Nos" nextId=111 
+111 ModalModelDefault "SubModeloPetriColorida" node[1].name="Lugar2_Vermelho" entryNode="Lugar1_Azul" node[0].id=112 transitionSource[0]="Lugar1_Azul" nextId=107 node[0].name="Lugar1_Azul" node[2].nexts=0 node[2].id=114 node[2].typename="PetriPlace" transitionName[0]="trans_isolada" node[1].nexts=0 node[2].name="Lugar3_Roxo" transitionName[1]="trans_erro_entrada" transitionsSize=2 node[0].typename="PetriPlace" nodesSize=3 transitionDestination[0]="Lugar3_Roxo" node[1].id=113 node[0].initialNode=1 transitionDestination[1]="Lugar3_Roxo" transitionSource[1]="Lugar1_Azul" node[1].typename="PetriPlace" node[0].nexts=0 
+112 PetriPlace "Lugar1_Azul" initialNode=1 nexts=0 
+113 PetriPlace "Lugar2_Vermelho" nexts=0 
+114 PetriPlace "Lugar3_Roxo" nexts=0 

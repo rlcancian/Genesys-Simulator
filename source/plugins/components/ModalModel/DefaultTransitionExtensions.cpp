@@ -43,41 +43,92 @@ PetriTransition::PetriTransition(DefaultNode* source, DefaultNode* destination, 
 	//setTransitionKind(TransitionKind::PETRI);
 }
 
-void PetriTransition::setInputArcWeight(std::string color, unsigned int weight) {
-	_inputArcWeights[color] = weight;
+void PetriTransition::setInputArcWeight(PetriPlace* place, std::string color, unsigned int weight) {
+    if (place != nullptr) {
+        _inputPlaces[place][color] = weight;
+    }
+
+}
+unsigned int PetriTransition::getInputArcWeight(PetriPlace* place, std::string color) {
+    auto placeIt = _inputPlaces.find(place);
+    if (placeIt != _inputPlaces.end()) {
+        auto colorIt = placeIt->second.find(color);
+        if (colorIt != placeIt->second.end()) {
+            return colorIt->second;
+        }
+    }
+    return 0;
+}
+void PetriTransition::setOutputArcWeight(PetriPlace* place, std::string color, unsigned int weight) {
+    if (place != nullptr) {
+        _outputPlaces[place][color] = weight;
+    }
 }
 
-void PetriTransition::setOutputArcWeight(std::string color, unsigned int weight) {
-	_outputArcWeights[color] = weight;
+unsigned int PetriTransition::getOutputArcWeight(PetriPlace* place, std::string color) {
+    auto placeIt = _outputPlaces.find(place);
+    if (placeIt != _outputPlaces.end()) {
+        auto colorIt = placeIt->second.find(color);
+        if (colorIt != placeIt->second.end()) {
+            return colorIt->second;
+        }
+    }
+    return 0;
+}
+
+std::map<PetriPlace*, ColorWeightMap> PetriTransition::getInputPlaces() const {
+    return _inputPlaces;
+}
+
+std::map<PetriPlace*, ColorWeightMap> PetriTransition::getOutputPlaces() const {
+    return _outputPlaces;
 }
 
 bool PetriTransition::canFire(Model* model, Entity* entity) const {
-	(void) model;
-	(void) entity;
-	PetriPlace* sourcePlace = dynamic_cast<PetriPlace*>(getSource());
-	if (sourcePlace == nullptr) {
-		return false;
-	}
-	for (const auto& pair : _inputArcWeights) {
-		if (sourcePlace->getTokens(pair.first) < pair.second) {
-			return false;
-		}
-	}
-	return true;
+    (void) model;
+    (void) entity;
+
+    for (const auto& placePair : _inputPlaces) {
+        PetriPlace* inputPlace = placePair.first;
+        const auto& colorsAndWeights = placePair.second;
+
+        if (inputPlace == nullptr) return false;
+
+        for (const auto& colorWeightPair : colorsAndWeights) {
+            std::string color = colorWeightPair.first;
+            unsigned int requiredWeight = colorWeightPair.second;
+
+            if (inputPlace->getTokens(color) < requiredWeight) {
+                return false; // falta token de alguma cor
+            }
+        }
+    }
+    return true; // todos os lugares de entrada estão satisfeitos
 }
 
 void PetriTransition::execute(Model* model, Entity* entity) const {
 	(void) model;
 	(void) entity;
-	PetriPlace* sourcePlace = dynamic_cast<PetriPlace*>(getSource());
-	PetriPlace* destinationPlace = dynamic_cast<PetriPlace*>(getDestination());
-	if (sourcePlace == nullptr || destinationPlace == nullptr) {
-		return;
-	}
-	for (const auto& pair : _inputArcWeights) {
-		sourcePlace->removeTokens(pair.second, pair.first);
-	}
-	for (const auto& pair : _outputArcWeights) {
-		destinationPlace->addTokens(pair.second, pair.first);
-	}
+
+    for (const auto& placePair : _inputPlaces) {
+        PetriPlace* inputPlace = placePair.first;
+        const auto& colorsAndWeights = placePair.second;
+
+        if (inputPlace == nullptr) continue;
+
+        for (const auto& colorWeightPair : colorsAndWeights) {
+            inputPlace->removeTokens(colorWeightPair.second, colorWeightPair.first);
+        }
+    }
+
+    for (const auto& placePair : _outputPlaces) {
+        PetriPlace* outputPlace = placePair.first;
+        const auto& colorsAndWeights = placePair.second;
+
+        if (outputPlace == nullptr) continue;
+
+        for (const auto& colorWeightPair : colorsAndWeights) {
+            outputPlace->addTokens(colorWeightPair.second, colorWeightPair.first);
+        }
+    }
 }

@@ -20,7 +20,7 @@ public: // static
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected:
-	virtual bool _loadInstance(PersistenceRecord *fields) override;
+    virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 
 private:
