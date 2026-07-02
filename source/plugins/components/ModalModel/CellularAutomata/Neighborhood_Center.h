@@ -9,8 +9,8 @@
 
 class Neighborhood_Center: public Neighborhood {
 public:
-    Neighborhood_Center(CellularAutomataBase* parentCellularAutomata, unsigned short radius=1, BoundaryCondition* boundary= nullptr, bool includeCellItself=false)
-    :Neighborhood(parentCellularAutomata, radius, boundary, includeCellItself) {
+    Neighborhood_Center(CellularAutomataBase* parentCellularAutomata, unsigned short radius=1, BoundaryCondition* boundary= nullptr, bool includeCellItself=false, bool registerWithCA=true)
+    :Neighborhood(parentCellularAutomata, radius, boundary, includeCellItself, registerWithCA) {
         this->name = "Center";
     }
    

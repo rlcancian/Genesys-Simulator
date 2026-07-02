@@ -46,6 +46,10 @@ The run target executes the following unit-test executables:
 - `genesys_test_util`
 - `genesys_test_simulator_support`
 - `genesys_test_simulator_runtime`
+- `genesys_test_parser_expressions`
+- `genesys_test_cellular_automata_neighborhood`
+- `genesys_test_cellular_automata_nonuniform`
+- `genesys_test_cellular_automata_boundary`
 - `genesys_test_support_modelmanager`
 - `genesys_test_support_persistence`
 - `genesys_test_runtime_pluginmanager`
@@ -55,6 +59,9 @@ The run target executes the following unit-test executables:
 - `genesys_test_support_connectionmanager`
 - `genesys_test_support_simulationscenario`
 - `genesys_test_support_experimentmanager`
+- `genesys_test_statistics`
+- `genesys_test_tools_hypothesistester`
+- `genesys_test_tools_simulation_results_dataset`
 - `genesys_test_kernel_simulator_method_inventory` (auto-generated inventory scaffold)
 
 ---
