@@ -24,7 +24,6 @@
 #include <iostream>
 #include <fstream>
 #include <cstdio>
-#include <bits/stdc++.h>
 #include <thread>
 // dynamic load
 #include <dlfcn.h>
