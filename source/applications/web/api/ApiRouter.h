@@ -79,6 +79,12 @@ private:
      */
     static std::optional<SimulatorSessionService::SimulationConfigInput> _parseSimulationConfigBody(const std::string& body);
     /**
+     * @brief Parses the optional per-job worker configuration body.
+     * @param body Raw request body (may be empty).
+     * @return Config with fields set only when present; absent fields keep model defaults.
+     */
+    static SimulatorSessionService::WorkerJobConfigInput _parseWorkerJobConfigBody(const std::string& body);
+    /**
      * @brief Serializes simulation status data into a JSON object string.
      * @param status Simulation status result to serialize.
      * @return JSON object string.

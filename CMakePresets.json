@@ -130,6 +130,19 @@
       }
     },
     {
+      "name": "distributed-app",
+      "displayName": "Application - Distributed",
+      "description": "Builds the distributed orchestrator (genesys_distributed_app), the worker web app (genesys_web_app), and the terminal with the distributed layer wired in (the `distribute` command).",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/distributed",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_DISTRIBUTED": "ON",
+        "GENESYS_BUILD_WEB_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "ON"
+      }
+    },
+    {
       "name": "tests-smoke",
       "displayName": "Tests - Smoke",
       "inherits": "debug-base",
@@ -204,6 +217,15 @@
       "configurePreset": "gui-app",
       "targets": [
         "genesys_gui"
+      ]
+    },
+    {
+      "name": "distributed-app",
+      "configurePreset": "distributed-app",
+      "targets": [
+        "genesys_distributed_app",
+        "genesys_web_app",
+        "genesys_terminal_application"
       ]
     },
     {

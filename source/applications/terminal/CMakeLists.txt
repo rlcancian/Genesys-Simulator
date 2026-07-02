@@ -110,3 +110,13 @@ target_link_libraries(genesys_terminal_application
 target_compile_features(genesys_terminal_application PRIVATE cxx_std_23)
 
 add_dependencies(genesys_terminal_application genesys_kernel)
+
+# Optional: wire the reusable distributed orchestration layer into the terminal (the `distribute`
+# shell command). Gated by GENESYS_BUILD_DISTRIBUTED so the default terminal build is unaffected.
+# The genesys_distributed_core target is added later in the top-level CMake; linking it by name is
+# fine because CMake resolves targets (and their usage requirements) at generation time.
+if(GENESYS_BUILD_DISTRIBUTED)
+    target_link_libraries(genesys_terminal_application PRIVATE genesys_distributed_core)
+    target_compile_definitions(genesys_terminal_application PRIVATE GENESYS_DISTRIBUTED_ENABLED)
+    add_dependencies(genesys_terminal_application genesys_distributed_core)
+endif()

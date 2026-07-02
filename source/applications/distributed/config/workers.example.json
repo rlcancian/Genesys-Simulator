@@ -1,0 +1,14 @@
+{
+  "modelFile": "model.txt",
+  "outputFile": "aggregated-result.json",
+  "totalReplications": 30,
+  "includeLocal": true,
+  "maxRetries": 1,
+  "baseSeed": 16021974,
+  "discoveryTimeoutSeconds": 5,
+  "runTimeoutSeconds": 300,
+  "workers": [
+    { "host": "127.0.0.1", "port": 8101 },
+    { "host": "127.0.0.1", "port": 8102 }
+  ]
+}

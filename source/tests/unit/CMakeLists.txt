@@ -52,6 +52,14 @@ genesys_add_unit_test(genesys_test_parser_expressions
     genesys_kernel_simulator_runtime
 )
 
+genesys_add_unit_test(genesys_test_seed_path
+    test_seed_path.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
 genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
     test_cellular_automata_neighborhood.cpp
     genesys_plugins_components_minimal
@@ -279,6 +287,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_simulator_support
         genesys_test_simulator_runtime
         genesys_test_parser_expressions
+        genesys_test_seed_path
         genesys_test_cellular_automata_neighborhood
         genesys_test_support_modelmanager
         genesys_test_support_persistence
@@ -302,6 +311,81 @@ if(GENESYS_BUILD_WEB_APPLICATION)
     )
 
     add_dependencies(genesys_kernel_unit_tests genesys_test_web_api_router)
+endif()
+
+if(TARGET genesys_distributed_core)
+    genesys_add_unit_test(genesys_test_distributed_json
+        test_distributed_json.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_registry
+        test_distributed_registry.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_discovery
+        test_distributed_discovery.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_scheduler
+        test_distributed_scheduler.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_local_executor
+        test_distributed_local_executor.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_remote_executor
+        test_distributed_remote_executor.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_execution_manager
+        test_distributed_execution_manager.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_aggregator
+        test_distributed_aggregator.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_manager
+        test_distributed_manager.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_config_loader
+        test_distributed_config_loader.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_coordinator
+        test_distributed_coordinator.cpp
+        genesys_distributed_core
+    )
+
+    genesys_add_unit_test(genesys_test_distributed_equivalence
+        test_distributed_equivalence.cpp
+        genesys_distributed_core
+    )
+
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_manager)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_config_loader)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_coordinator)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_equivalence)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_json)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_registry)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_discovery)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_scheduler)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_local_executor)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_execution_manager)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_remote_executor)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_aggregator)
 endif()
 
 if(TARGET genesys_test_gui_render_strategy)
@@ -359,6 +443,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_simulator_support>
     COMMAND $<TARGET_FILE:genesys_test_simulator_runtime>
     COMMAND $<TARGET_FILE:genesys_test_parser_expressions>
+    COMMAND $<TARGET_FILE:genesys_test_seed_path>
     COMMAND $<TARGET_FILE:genesys_test_cellular_automata_neighborhood>
     COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_persistence>

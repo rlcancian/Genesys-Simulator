@@ -3,8 +3,19 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <iomanip>
 #include <regex>
+#include <sstream>
 #include <string_view>
+
+namespace {
+/// Serializes a double with full round-trip precision so transported statistics stay exact.
+std::string fullPrecisionDouble(double value) {
+    std::ostringstream stream;
+    stream << std::setprecision(17) << value;
+    return stream.str();
+}
+} // namespace
 
 /**
  * @brief Dispatches HTTP routes for the Genesys web API.
@@ -83,7 +94,10 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
             return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
         }
 
-        const auto result = _simulatorService.createWorkerJob(token);
+        // The request body is optional; absent fields keep the imported model's configuration.
+        SimulatorSessionService::WorkerJobConfigInput config = _parseWorkerJobConfigBody(request.body);
+
+        const auto result = _simulatorService.createWorkerJob(token, config);
         if (!result.success) {
             return _mapWorkerJobError(result.error, true);
         }
@@ -497,6 +511,23 @@ std::optional<SimulatorSessionService::SimulationConfigInput> ApiRouter::_parseS
     return config;
 }
 
+/** @brief Parses the optional per-job worker configuration body (replications and seed). */
+SimulatorSessionService::WorkerJobConfigInput ApiRouter::_parseWorkerJobConfigBody(const std::string& body) {
+    SimulatorSessionService::WorkerJobConfigInput config{};
+
+    unsigned int numberOfReplications = 0;
+    if (_tryExtractUnsignedIntField(body, "numberOfReplications", numberOfReplications)) {
+        config.numberOfReplications = numberOfReplications;
+    }
+
+    unsigned int seed = 0;
+    if (_tryExtractUnsignedIntField(body, "seed", seed)) {
+        config.seed = static_cast<std::uint32_t>(seed);
+    }
+
+    return config;
+}
+
 /** @brief Serializes simulation status into a compact JSON object. */
 std::string ApiRouter::_simulationStatusDataJson(const SimulatorSessionService::SimulationStatusResult& status) {
     std::string json = "{\"hasCurrentModel\":" + std::string(status.hasCurrentModel ? "true" : "false");
@@ -696,12 +727,22 @@ const char* ApiRouter::_workerJobStateToString(WorkerJobState state) {
 
 /** @brief Serializes worker-job metadata to JSON. */
 std::string ApiRouter::_workerJobDataJson(const SimulatorSessionService::WorkerJobInfoResult& job) {
-    return "{\"jobId\":\"" + _escapeJson(job.jobId) + "\","
+    std::string json = "{\"jobId\":\"" + _escapeJson(job.jobId) + "\","
            "\"state\":\"" + std::string(_workerJobStateToString(job.state)) + "\","
            "\"sessionId\":\"" + _escapeJson(job.sessionId) + "\","
            "\"snapshotFilename\":\"" + _escapeJson(job.snapshotFilename) + "\","
            "\"createdMarker\":\"" + _escapeJson(job.createdMarker) + "\","
-           "\"message\":\"" + _escapeJson(job.message) + "\"}";
+           "\"message\":\"" + _escapeJson(job.message) + "\"";
+
+    if (job.numberOfReplications.has_value()) {
+        json += ",\"numberOfReplications\":" + std::to_string(job.numberOfReplications.value());
+    }
+    if (job.seed.has_value()) {
+        json += ",\"seed\":" + std::to_string(job.seed.value());
+    }
+
+    json += "}";
+    return json;
 }
 
 /** @brief Serializes the terminal result payload returned by `/result`. */
@@ -718,6 +759,35 @@ std::string ApiRouter::_workerJobResultDataJson(const SimulatorSessionService::W
     if (result.hasIsPaused) {
         json += ",\"isPaused\":" + std::string(result.isPaused ? "true" : "false");
     }
+
+    // Cross-replication aggregates split by kind: full statistics for collectors and
+    // summed totals for counters. Doubles use full precision so a distributed orchestrator
+    // can merge partial results exactly.
+    std::string statisticsArray;
+    std::string countersArray;
+    for (const WorkerJobCollectorStat& collector : result.collectors) {
+        if (collector.kind == WorkerJobCollectorKind::Counter) {
+            const double total = collector.average * static_cast<double>(collector.numReplications);
+            if (!countersArray.empty()) {
+                countersArray += ",";
+            }
+            countersArray += "{\"name\":\"" + _escapeJson(collector.name) + "\","
+                             "\"total\":" + fullPrecisionDouble(total) + "}";
+        } else {
+            if (!statisticsArray.empty()) {
+                statisticsArray += ",";
+            }
+            statisticsArray += "{\"name\":\"" + _escapeJson(collector.name) + "\","
+                              "\"numReplications\":" + std::to_string(collector.numReplications) + ","
+                              "\"average\":" + fullPrecisionDouble(collector.average) + ","
+                              "\"variance\":" + fullPrecisionDouble(collector.variance) + ","
+                              "\"min\":" + fullPrecisionDouble(collector.min) + ","
+                              "\"max\":" + fullPrecisionDouble(collector.max) + ","
+                              "\"numObservations\":" + std::to_string(collector.numObservations) + "}";
+        }
+    }
+    json += ",\"statistics\":[" + statisticsArray + "]";
+    json += ",\"counters\":[" + countersArray + "]";
 
     json += "}";
     return json;

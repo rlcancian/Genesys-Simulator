@@ -85,6 +85,21 @@ This stage hardens HTTP transport behavior for existing worker and session APIs 
 
 This stage is explicitly operational hardening only. Application-layer endpoints and worker cycle stages 1-5 contracts remain unchanged.
 
+## Worker cycle Stage 7
+This stage makes worker jobs configurable per job and exposes per-run statistics, enabling a distributed orchestrator to partition replications and merge partial results. It is **additive**: all previous fields and routes are preserved.
+
+- `POST /api/v1/worker/jobs` now accepts an optional JSON body:
+  - `numberOfReplications` (unsigned): replication count for this job;
+  - `seed` (unsigned 32-bit): RNG seed for this job.
+  - Absent fields keep the configuration carried by the imported model. The created job metadata echoes `numberOfReplications` and `seed` when set.
+- Job execution applies the requested replication count and seed before running, so each job can run an independent, reproducible subset of replications.
+- `GET /api/v1/worker/jobs/{jobId}/result` now also returns cross-replication aggregates:
+  - `statistics`: array of `{ name, numReplications, average, variance, min, max, numObservations }` for each statistics collector;
+  - `counters`: array of `{ name, total }` for each counter.
+  - All floating-point values are serialized with full round-trip precision so partial results can be merged exactly.
+
+This stage still does **not** include background execution, cancellation, streaming updates, or distributed orchestration itself (which lives in a separate layer that consumes this worker API).
+
 ## How to run
 ```bash
 cmake -S . -B build/web-debug -G Ninja -DGENESYS_BUILD_WEB_APPLICATION=ON

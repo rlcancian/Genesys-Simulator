@@ -2,6 +2,7 @@
 
 #include "WorkerJob.h"
 
+#include <cstdint>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -29,6 +30,17 @@ public:
      * @return True when the job exists and was updated.
      */
     bool setSnapshotFilename(const std::string& jobId, const std::string& snapshotFilename);
+
+    /**
+     * @brief Stores the requested per-job simulation configuration.
+     * @param jobId Job identifier to update.
+     * @param numberOfReplications Requested replication count (unset keeps the model default).
+     * @param seed Requested RNG seed (unset keeps the model/sampler default).
+     * @return True when the job exists and was updated.
+     */
+    bool setConfig(const std::string& jobId,
+                   std::optional<unsigned int> numberOfReplications,
+                   std::optional<std::uint32_t> seed);
     /**
      * @brief Updates the lifecycle state for an existing job.
      * @param jobId Job identifier to update.

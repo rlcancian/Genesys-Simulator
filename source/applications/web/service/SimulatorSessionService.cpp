@@ -1,5 +1,13 @@
 #include "SimulatorSessionService.h"
 
+#include "kernel/simulator/Parser_if.h"
+#include "kernel/simulator/essentialPlugins/Counter.h"
+#include "kernel/simulator/essentialPlugins/StatisticsCollector.h"
+#include "kernel/statistics/Sampler_if.h"
+#include "kernel/statistics/SamplerDefaultImpl1.h"
+#include "kernel/statistics/Statistics_if.h"
+#include "kernel/util/Util.h"
+
 #include <algorithm>
 #include <cctype>
 #include <exception>
@@ -7,12 +15,86 @@
 #include <mutex>
 #include <optional>
 #include <regex>
+#include <set>
 
 namespace {
 bool _isBlankSpecification(const std::string& specification) {
     return std::all_of(specification.begin(), specification.end(), [](unsigned char character) {
         return std::isspace(character) != 0;
     });
+}
+
+// Applies a per-job RNG seed by mutating the sampler's own parameters and resetting it.
+// The sampler owns its parameter object, so this avoids any external ownership concern.
+void _applyJobSeed(Model* model, std::uint32_t seed) {
+    if (model == nullptr) {
+        return;
+    }
+    Parser_if* parser = model->getParser();
+    if (parser == nullptr) {
+        return;
+    }
+    auto* sampler = dynamic_cast<SamplerDefaultImpl1*>(parser->getSampler());
+    if (sampler == nullptr) {
+        return;
+    }
+    auto* params = dynamic_cast<SamplerDefaultImpl1::DefaultImpl1RNG_Parameters*>(sampler->getRNGparameters());
+    if (params == nullptr) {
+        return;
+    }
+    params->seed = seed;
+    sampler->reset();
+}
+
+// Captures cross-replication aggregates (one per collector/counter) from the finished
+// simulation so they can be returned by /result and merged by a distributed orchestrator.
+void _captureCollectorStats(Model* model, ModelSimulation* simulation, WorkerJobTerminalResult& result) {
+    if (model == nullptr || simulation == nullptr) {
+        return;
+    }
+
+    // Simulation-level aggregates are all StatisticsCollector instances; counters are
+    // classified by matching the original model counter names.
+    std::set<std::string> counterNames;
+    if (ModelDataManager* dataManager = model->getDataManager(); dataManager != nullptr) {
+        if (List<ModelDataDefinition*>* counters = dataManager->getDataDefinitionList(Util::TypeOf<Counter>());
+            counters != nullptr) {
+            for (ModelDataDefinition* counterData : *counters->list()) {
+                if (counterData != nullptr) {
+                    counterNames.insert(counterData->getName());
+                }
+            }
+        }
+    }
+
+    const List<ModelDataDefinition*>* aggregates = simulation->getSimulationStatisticsAggregates();
+    if (aggregates == nullptr) {
+        return;
+    }
+    for (ModelDataDefinition* data : *aggregates->list()) {
+        StatisticsCollector* collector = dynamic_cast<StatisticsCollector*>(data);
+        if (collector == nullptr) {
+            continue;
+        }
+        Statistics_if* statistics = collector->getStatistics();
+        if (statistics == nullptr) {
+            continue;
+        }
+
+        WorkerJobCollectorStat stat;
+        stat.name = collector->getName();
+        stat.kind = counterNames.count(stat.name) > 0 ? WorkerJobCollectorKind::Counter
+                                                       : WorkerJobCollectorKind::Statistics;
+        stat.numReplications = statistics->numElements();
+        if (stat.numReplications > 0) {
+            stat.average = statistics->average();
+            stat.min = statistics->min();
+            stat.max = statistics->max();
+            stat.variance = stat.numReplications >= 2 ? statistics->variance() : 0.0;
+        }
+        stat.numObservations = stat.numReplications;
+        result.collectors.push_back(stat);
+    }
 }
 
 void _populateModelInfoFromModel(Model* model, SimulatorSessionService::ModelInfoResult& outInfo) {
@@ -441,7 +523,8 @@ SimulatorSessionService::ModelImportResult SimulatorSessionService::importModelF
 /**
  * @brief Creates a queued worker job by snapshotting the current model.
  */
-SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::createWorkerJob(const std::string& accessToken) {
+SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::createWorkerJob(const std::string& accessToken,
+                                                                                          const WorkerJobConfigInput& config) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
         return WorkerJobCreationResult{false, WorkerJobError::InvalidToken, WorkerJobInfoResult{}};
@@ -468,6 +551,10 @@ SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::create
     }
 
     if (!_workerJobManager.setSnapshotFilename(job.jobId, snapshotFilename)) {
+        return WorkerJobCreationResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    if (!_workerJobManager.setConfig(job.jobId, config.numberOfReplications, config.seed)) {
         return WorkerJobCreationResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
     }
 
@@ -556,6 +643,15 @@ SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJo
                     if (simulation == nullptr) {
                         failureMessage = "Unable to access model simulation";
                     } else {
+                        // Apply the per-job configuration before running; unset fields keep
+                        // the configuration carried by the imported model.
+                        if (job->numberOfReplications.has_value()) {
+                            simulation->setNumberOfReplications(job->numberOfReplications.value());
+                        }
+                        if (job->seed.has_value()) {
+                            _applyJobSeed(loadedModel, job->seed.value());
+                        }
+
                         simulation->start();
                         executionSucceeded = true;
 
@@ -566,6 +662,9 @@ SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJo
                         terminalResult.replicationLength = simulation->getReplicationLength();
                         terminalResult.warmUpPeriod = simulation->getWarmUpPeriod();
                         terminalResult.isPaused = simulation->isPaused();
+
+                        // Capture cross-replication aggregates for distributed merging.
+                        _captureCollectorStats(loadedModel, simulation, terminalResult);
                     }
                 }
             } catch (const std::exception& exception) {
@@ -662,6 +761,8 @@ SimulatorSessionService::WorkerJobInfoResult SimulatorSessionService::_toWorkerJ
     result.snapshotFilename = job.snapshotFilename;
     result.createdMarker = job.createdMarker;
     result.message = job.message;
+    result.numberOfReplications = job.numberOfReplications;
+    result.seed = job.seed;
     return result;
 }
 
@@ -680,5 +781,6 @@ SimulatorSessionService::WorkerJobResultInfo SimulatorSessionService::_toWorkerJ
     result.warmUpPeriod = job.terminalResult.warmUpPeriod;
     result.hasIsPaused = job.terminalResult.isPaused.has_value();
     result.isPaused = job.terminalResult.isPaused.value_or(false);
+    result.collectors = job.terminalResult.collectors;
     return result;
 }
