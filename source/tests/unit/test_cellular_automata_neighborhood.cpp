@@ -5,6 +5,7 @@
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Center.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
 

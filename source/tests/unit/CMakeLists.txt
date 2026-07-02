@@ -57,6 +57,16 @@ genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
     genesys_plugins_components_minimal
 )
 
+genesys_add_unit_test(genesys_test_cellular_automata_nonuniform
+    test_cellular_automata_nonuniform.cpp
+    genesys_plugins_components_minimal
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata_boundary
+    test_cellular_automata_boundary.cpp
+    genesys_plugins_components_minimal
+)
+
 genesys_add_unit_test(genesys_test_support_modelmanager
     test_support_modelmanager.cpp
     genesys_kernel_simulator_support
@@ -76,7 +86,6 @@ genesys_add_unit_test(genesys_test_runtime_pluginmanager
     genesys_plugins_components_minimal
     genesys_kernel_simulator_runtime
 )
-
 
 genesys_add_unit_test(genesys_test_support_oneventmanager
     test_support_oneventmanager.cpp
@@ -261,13 +270,6 @@ gtest_discover_tests(genesys_test_tools_hypothesistester
 
 set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit)
 
-genesys_add_unit_test(genesys_test_tools_optimization
-    test_tools_optimization.cpp
-    genesys_tools
-    genesys_kernel_simulator_runtime
-    genesys_kernel_util
-)
-
 genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
     test_tools_simulation_results_dataset.cpp
     genesys_tools
@@ -280,6 +282,8 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_simulator_runtime
         genesys_test_parser_expressions
         genesys_test_cellular_automata_neighborhood
+        genesys_test_cellular_automata_nonuniform
+        genesys_test_cellular_automata_boundary
         genesys_test_support_modelmanager
         genesys_test_support_persistence
         genesys_test_runtime_pluginmanager
@@ -291,7 +295,6 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_experimentmanager
         genesys_test_statistics
         genesys_test_tools_hypothesistester
-        genesys_test_tools_optimization
         genesys_test_tools_simulation_results_dataset
 )
 
@@ -360,6 +363,8 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_simulator_runtime>
     COMMAND $<TARGET_FILE:genesys_test_parser_expressions>
     COMMAND $<TARGET_FILE:genesys_test_cellular_automata_neighborhood>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_nonuniform>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_boundary>
     COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_persistence>
     COMMAND $<TARGET_FILE:genesys_test_runtime_pluginmanager>
@@ -371,7 +376,6 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_support_experimentmanager>
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
-    COMMAND $<TARGET_FILE:genesys_test_tools_optimization>
     COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
