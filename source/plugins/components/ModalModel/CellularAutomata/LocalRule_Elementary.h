@@ -15,15 +15,17 @@ public:
     virtual ~LocalRule_Elementary()=default;
 public:
     virtual void applyRule(Cell* cell) override {
-		long number = 0;
-        int bit, power = 2;
-        for (Cell* neigh : cell->getNeighbors()) {
-			number += neigh->getCurrentState().getValue() * std::pow(2, power--);
-            if (power==1)
-				number += std::pow(2, power--)*cell->getCurrentState().getValue();
-        }
-        bit = (ruleNumber & (uint8_t)std::pow(2,number)) >> number;
-		cell->setNextState(State(bit));
+        // Wolfram index for a 1D radius-1 elementary CA = 4*left + 2*center + 1*right (left is the MSB).
+        // Computed with integer shifts; the previous version used std::pow on doubles, which is fragile.
+        // Neighbors of a centered radius-1 1D cell arrive in canonical order {left, right}.
+        const std::vector<Cell*> neighbors = cell->getNeighbors();
+        long index = static_cast<long>(stateValue(cell)) << 1; // center, weight 2
+        if (neighbors.size() >= 1)
+            index += static_cast<long>(stateValue(neighbors[0])) << 2; // left, weight 4
+        if (neighbors.size() >= 2)
+            index += static_cast<long>(stateValue(neighbors[1]));      // right, weight 1
+        const int bit = (ruleNumber >> index) & 1;
+        setNextStateFromValue(cell, bit);
     }
 public:
     uint8_t getRuleNumber() const { return ruleNumber; }
