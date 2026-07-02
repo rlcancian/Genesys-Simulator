@@ -3,6 +3,7 @@
 #include "CellularAutomataDemoBuilder.h"
 #include "CellularAutomataLatticeWidget.h"
 #include "CellularAutomataViewerController.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataAllHeaders.h"
 
 #include <QAction>
 #include <QComboBox>
@@ -331,6 +332,7 @@ void CellularAutomataViewerWindow::_syncControlsFromController() {
 		        {CellularAutomataRulePreset::Identity, cellularAutomataRulePresetText(CellularAutomataRulePreset::Identity)},
 		        {CellularAutomataRulePreset::ForestFire, cellularAutomataRulePresetText(CellularAutomataRulePreset::ForestFire)},
 		        {CellularAutomataRulePreset::HppLatticeGas, cellularAutomataRulePresetText(CellularAutomataRulePreset::HppLatticeGas)},
+		        {CellularAutomataRulePreset::SandRock, cellularAutomataRulePresetText(CellularAutomataRulePreset::SandRock)},
 		    },
 		    settings.rulePreset);
 	}

@@ -88,7 +88,7 @@ This builds the `genesys_terminal_application` target.
 
 ```bash
 cmake --preset tests-kernel-unit
-cmake --build --preset tests-kernel-unit-run
+cmake --build --preset tests-kernel-unit
 ```
 
 This is the recommended workflow for building and running all Kernel Simulator unit tests.

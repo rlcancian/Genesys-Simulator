@@ -7,6 +7,8 @@
 #include <QObject>
 #include <QPoint>
 
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_SandRock_Student.h"
+
 /*
 
 • Para que a GUI use um novo autômato celular com nova regra local,
@@ -117,16 +119,20 @@ Neighborhood* makeNeighborhood(CellularAutomataDemoModel& demo) {
 	case CellularAutomataNeighborhoodPreset::VonNeumann:
 		return new Neighborhood_VonNeumann(demo.automaton.get(), 1, demo.boundary.get());
 	case CellularAutomataNeighborhoodPreset::Moore:
+		return new Neighborhood_Moore(demo.automaton.get(), 2, demo.boundary.get());
 	default:
-		return new Neighborhood_Moore(demo.automaton.get(), 1, demo.boundary.get());
+		return new Neighborhood_Moore(demo.automaton.get(), 2, demo.boundary.get());
 	}
 }
 
 BoundaryCondition* makeBoundary(CellularAutomataDemoModel& demo) {
 	switch (demo.settings.boundaryPreset) {
 	case CellularAutomataBoundaryPreset::Fixed:
+		//Boundary_Fixed* boundary = new Boundary_Fixed();
+		// // boundary.setFixedState(new State());
 		return new Boundary_Fixed();
 	case CellularAutomataBoundaryPreset::Closed:
+		return new Boundary_Closed();
 	default:
 		return new Boundary_Closed();
 	}
@@ -144,8 +150,12 @@ LocalRule* makeLocalRule(CellularAutomataDemoModel& demo) {
 	case CellularAutomataRulePreset::HppLatticeGas:
 		return new LocalRule_HppLatticeGas(demo.automaton.get());
 	case CellularAutomataRulePreset::GameOfLife:
-	default:
 		return new LocalRule_GameOfLife(demo.automaton.get());
+	case CellularAutomataRulePreset::SandRock:
+		return new LocalRule_SandRock_Student(demo.automaton.get());
+	default:
+		return new LocalRule_SandRock_Student(demo.automaton.get());
+		//return new LocalRule_GameOfLife(demo.automaton.get());
 	}
 }
 
@@ -175,8 +185,11 @@ QString cellularAutomataRulePresetText(CellularAutomataRulePreset preset) {
 	case CellularAutomataRulePreset::HppLatticeGas:
 		return QObject::tr("HPP Lattice Gas");
 	case CellularAutomataRulePreset::GameOfLife:
-	default:
 		return QObject::tr("Game of Life");
+	case CellularAutomataRulePreset::SandRock:
+		//return QObject::tr("Sand and Rock"); // default
+	default:
+		return QObject::tr("Sanf and Rock");
 	}
 }
 
@@ -309,6 +322,28 @@ void CellularAutomataDemoModel::seedDefaultPattern() {
 		setStateAt(columns() / 2, rows() / 2 + 1, 1);
 		return;
 	case CellularAutomataRulePreset::GameOfLife:
+		break;
+	case CellularAutomataRulePreset::SandRock:
+		// bloco de areia no alto
+		for (int y = 2; y < rows()*0.33; ++y) {
+			for (int x = columns()*0.33; x < columns()*0.66; ++x) {
+				setStateAt(x, y, 1); // areia
+			}
+		}
+		for (int x = columns()*0.60; x < columns()*0.75; ++x) {
+			setStateAt(x-1, x, 2); // pedra
+			setStateAt(x, columns()-x, 2); // pedra
+		}
+		/*
+		for (int y = 0; y < rows(); ++y) {
+			setStateAt(0, y, 2); // pedra
+			setStateAt(columns()-1, y, 2); // pedra
+		}
+		for (int x = 0; x < columns(); ++x) {
+			setStateAt(x, 0, 2); // pedra
+			setStateAt(x, rows()-1, 2); // pedra
+		}
+		*/
 	default:
 		break;
 	}
@@ -336,6 +371,9 @@ std::vector<long> CellularAutomataDemoModel::availablePaintStates() const {
 	if (settings.rulePreset == CellularAutomataRulePreset::ForestFire) {
 		return {0, 1, 2, 3};
 	}
+	if (settings.rulePreset == CellularAutomataRulePreset::SandRock) {
+		return {0, 1, 2, 3};
+	}
 	if (settings.rulePreset == CellularAutomataRulePreset::HppLatticeGas) {
 		return paintStatesForPreset(CellularAutomataStatePreset::HppLatticeGas);
 	}
@@ -350,6 +388,10 @@ std::unique_ptr<CellularAutomataDemoModel> CellularAutomataDemoBuilder::buildDem
 	if (settings.rulePreset == CellularAutomataRulePreset::HppLatticeGas) {
 		settings.statePreset = CellularAutomataStatePreset::HppLatticeGas;
 		settings.neighborhoodPreset = CellularAutomataNeighborhoodPreset::VonNeumann;
+	}
+	if (settings.rulePreset == CellularAutomataRulePreset::SandRock) {
+		settings.statePreset = CellularAutomataStatePreset::Enumerated;
+		settings.neighborhoodPreset = CellularAutomataNeighborhoodPreset::Moore;
 	}
 	auto demo = std::make_unique<CellularAutomataDemoModel>(settings);
 

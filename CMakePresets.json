@@ -76,7 +76,7 @@
       "inherits": "terminal-app",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
-        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_MarkovChain.cpp"
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_CellularAutomata1.cpp"
       }
     },
     {
@@ -152,6 +152,13 @@
     },
     {
       "name": "tests-kernel-unit-run",
+      "configurePreset": "tests-kernel-unit",
+      "targets": [
+        "genesys_kernel_unit_tests_run"
+      ]
+    },
+    {
+      "name": "tests-kernel-unit",
       "configurePreset": "tests-kernel-unit",
       "targets": [
         "genesys_kernel_unit_tests_run"

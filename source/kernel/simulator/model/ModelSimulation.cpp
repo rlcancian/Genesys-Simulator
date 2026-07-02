@@ -186,10 +186,10 @@ void ModelSimulation::start() {
 			_model->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, "Running Replication");
 		}
 		replicationEnded = _isReplicationEndCondition();
-		while (!replicationEnded) { // this is the main simulation loop
+		while (!replicationEnded && !_stopRequested) { // this is the main simulation loop
 			_stepSimulation();
 			replicationEnded = _isReplicationEndCondition();
-			if (_pauseRequested||_stopRequested) { //check this only after _stepSimulation() and not on loop entering conditin
+			if (_pauseRequested) { //check this only after _stepSimulation() and not on loop entering condition
 				break;
 			}
 		};

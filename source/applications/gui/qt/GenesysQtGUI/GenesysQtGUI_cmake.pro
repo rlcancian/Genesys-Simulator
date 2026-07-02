@@ -100,7 +100,7 @@ run_terminal_example.depends = build_terminal_example
 
 configure_tests_kernel_unit.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset tests-kernel-unit
 build_tests_kernel_unit.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset tests-kernel-unit
-run_tests_kernel_unit.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset tests-kernel-unit-run
+run_tests_kernel_unit.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset tests-kernel-unit
 build_tests_kernel_unit.depends = configure_tests_kernel_unit
 run_tests_kernel_unit.depends = build_tests_kernel_unit
 

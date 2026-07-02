@@ -113,7 +113,8 @@ enum class CellularAutomataRulePreset {
 	Growty = 1,
 	Identity = 2,
 	ForestFire = 3,
-	HppLatticeGas = 4
+	HppLatticeGas = 4,
+	SandRock = 5
 };
 
 enum class CellularAutomataNeighborhoodPreset {
@@ -134,11 +135,11 @@ enum class CellularAutomataStatePreset {
 };
 
 struct CellularAutomataDemoSettings {
-	QSize latticeSize = QSize{200, 200};
-	CellularAutomataRulePreset rulePreset = CellularAutomataRulePreset::GameOfLife;
+	QSize latticeSize = QSize{100, 100};
+	CellularAutomataRulePreset rulePreset = CellularAutomataRulePreset::SandRock;
 	CellularAutomataNeighborhoodPreset neighborhoodPreset = CellularAutomataNeighborhoodPreset::Moore;
-	CellularAutomataBoundaryPreset boundaryPreset = CellularAutomataBoundaryPreset::Closed;
-	CellularAutomataStatePreset statePreset = CellularAutomataStatePreset::Binary;
+	CellularAutomataBoundaryPreset boundaryPreset = CellularAutomataBoundaryPreset::Fixed;
+	CellularAutomataStatePreset statePreset = CellularAutomataStatePreset::Enumerated;
 };
 
 QString cellularAutomataRulePresetText(CellularAutomataRulePreset preset);
