@@ -12,9 +12,10 @@ class Cell;
 //! Defines the complete neighborhood of a cell
 class Neighborhood {
 public:
-	Neighborhood(CellularAutomataBase* parentCellularAutomata, unsigned short radius=1, BoundaryCondition* boundary= nullptr, bool includeCellItself=false){
+	Neighborhood(CellularAutomataBase* parentCellularAutomata, unsigned short radius=1, BoundaryCondition* boundary= nullptr, bool includeCellItself=false, bool registerWithCA=true){
 		this->parentCellularAutomata = parentCellularAutomata;
-		parentCellularAutomata->setNeighborhood(this);
+		if (registerWithCA)
+			parentCellularAutomata->setNeighborhood(this);
 		this->radius = radius;
 		this->boundary = boundary;
 		this->includeCellItself = includeCellItself;

@@ -17,8 +17,8 @@
 class Neighborhood_VonNeumann : public Neighborhood {
 public:
 
-    Neighborhood_VonNeumann(CellularAutomataBase* parentCellularAutomata, unsigned short radius = 1, BoundaryCondition* boundary = nullptr)
-    :Neighborhood(parentCellularAutomata, radius, boundary) {
+    Neighborhood_VonNeumann(CellularAutomataBase* parentCellularAutomata, unsigned short radius = 1, BoundaryCondition* boundary = nullptr, bool includeCellItself = false, bool registerWithCA = true)
+    :Neighborhood(parentCellularAutomata, radius, boundary, includeCellItself, registerWithCA) {
          this->name = "Von Neumann";
     }
 
