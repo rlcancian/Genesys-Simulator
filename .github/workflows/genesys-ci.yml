@@ -1,67 +1,175 @@
 name: GenESyS CI
 
+run-name: GenESyS CI | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }} | preset=tests-unit
+
 on:
   pull_request:
     branches:
       - 2026-1
       - WorkInProgress
       - WiP20261
+      - currentStable
+      - master
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: genesys-ci-${{ github.workflow }}-${{ github.ref }}
+  group: genesys-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  QT_QPA_PLATFORM: offscreen
+  CTEST_OUTPUT_ON_FAILURE: "1"
+  CMAKE_CONFIGURE_PRESET: tests-unit
+  CMAKE_BUILD_PRESET: tests-unit
+  CMAKE_TEST_PRESET: tests-unit
 
 jobs:
   unit-tests:
-    name: Configure, build and test unit preset
+    name: Configure, build and test tests-unit
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-
-    env:
-      QT_QPA_PLATFORM: offscreen
-      CTEST_OUTPUT_ON_FAILURE: "1"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show runner and toolchain baseline
+      - name: Show CI metadata
         run: |
-          set -euxo pipefail
+          set -Eeuo pipefail
+
+          echo "event_name=${{ github.event_name }}"
+          echo "repository=${{ github.repository }}"
+          echo "ref=${GITHUB_REF}"
+          echo "ref_name=${GITHUB_REF_NAME}"
+          echo "sha=${GITHUB_SHA}"
+          echo "configure_preset=${CMAKE_CONFIGURE_PRESET}"
+          echo "build_preset=${CMAKE_BUILD_PRESET}"
+          echo "test_preset=${CMAKE_TEST_PRESET}"
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "pr_number=${{ github.event.pull_request.number }}"
+            echo "pr_base_ref=${{ github.event.pull_request.base.ref }}"
+            echo "pr_base_sha=${{ github.event.pull_request.base.sha }}"
+            echo "pr_head_ref=${{ github.event.pull_request.head.ref }}"
+            echo "pr_head_sha=${{ github.event.pull_request.head.sha }}"
+          fi
+
+          {
+            echo "## GenESyS CI metadata"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Event | ${{ github.event_name }} |"
+            echo "| Repository | ${{ github.repository }} |"
+            echo "| Git ref | ${GITHUB_REF} |"
+            echo "| Ref name | ${GITHUB_REF_NAME} |"
+            echo "| GitHub SHA | ${GITHUB_SHA} |"
+            echo "| Configure preset | ${CMAKE_CONFIGURE_PRESET} |"
+            echo "| Build preset | ${CMAKE_BUILD_PRESET} |"
+            echo "| Test preset | ${CMAKE_TEST_PRESET} |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            {
+              echo "| PR number | ${{ github.event.pull_request.number }} |"
+              echo "| PR base ref | ${{ github.event.pull_request.base.ref }} |"
+              echo "| PR base SHA | ${{ github.event.pull_request.base.sha }} |"
+              echo "| PR head ref | ${{ github.event.pull_request.head.ref }} |"
+              echo "| PR head SHA | ${{ github.event.pull_request.head.sha }} |"
+            } >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Show runner baseline before dependency install
+        run: |
+          set -Eeuo pipefail
           uname -a
-          lsb_release -a || cat /etc/os-release
+          cat /etc/os-release
+          nproc
+          free -h
+          df -h
           cmake --version || true
           ninja --version || true
           g++ --version || true
+          python3 --version || true
 
       - name: Install build dependencies
         run: |
-          set -euxo pipefail
+          set -Eeuo pipefail
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
             ninja-build \
+            python3 \
+            python3-dev \
             qt6-base-dev \
             qt6-tools-dev \
             qt6-tools-dev-tools \
             libgl1-mesa-dev
 
-      - name: Configure tests-unit preset
+      - name: Show toolchain baseline after dependency install
         run: |
-          set -euxo pipefail
-          cmake --preset tests-unit
+          set -Eeuo pipefail
+          cmake --version
+          ninja --version
+          g++ --version
+          python3 --version
+          dpkg-query -W \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            qt6-base-dev \
+            qt6-tools-dev \
+            qt6-tools-dev-tools \
+            libgl1-mesa-dev
 
-      - name: Build tests-unit preset
+      - name: Configure - CMake preset tests-unit
         run: |
-          set -euxo pipefail
-          cmake --build --preset tests-unit --parallel
+          set -Eeuo pipefail
+          cmake --list-presets=all
+          cmake --preset "${CMAKE_CONFIGURE_PRESET}"
 
-      - name: Run tests-unit preset
+      - name: Build - CMake preset tests-unit
         run: |
-          set -euxo pipefail
-          ctest --preset tests-unit --output-on-failure
+          set -Eeuo pipefail
+          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)"
+
+      - name: Tests - CTest preset tests-unit
+        run: |
+          set -Eeuo pipefail
+          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          set +e
+
+          echo "::group::Repository status"
+          git status --short
+          git rev-parse HEAD
+          echo "::endgroup::"
+
+          if [[ -d build ]]; then
+            echo "::group::Build tree"
+            find build -maxdepth 4 -type f | sort | sed -n '1,200p'
+            echo "::endgroup::"
+
+            find build -type f \( \
+                -name CMakeOutput.log \
+                -o -name CMakeError.log \
+                -o -name LastTest.log \
+              \) -print -exec sh -c '
+                echo "::group::$1"
+                sed -n "1,260p" "$1"
+                echo "::endgroup::"
+              ' sh {} \;
+          fi
