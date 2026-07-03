@@ -43,7 +43,8 @@
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
-#include "../../../../kernel/simulator/model/ModelComponent.h"#include "kernel/simulator/Simulator.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PropertyGenesys.h"
 //#include "kernel/simulator/Plugin.h"
 

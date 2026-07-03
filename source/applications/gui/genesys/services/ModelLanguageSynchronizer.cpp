@@ -1,7 +1,8 @@
 #include "services/ModelLanguageSynchronizer.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/model/Model.h"#include "../../../../kernel/simulator/persistence/Persistence_if.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../kernel/simulator/persistence/Persistence_if.h"
 #include <QMessageBox>
 #include <QPlainTextEdit>
 

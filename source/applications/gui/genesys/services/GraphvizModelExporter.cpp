@@ -3,7 +3,9 @@
 // This include gives access to generated Qt widgets consumed by the exporter.
 // These includes provide kernel/model types required by DOT generation.
 #include "kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/model/ModelDataDefinition.h"#include "../../../../kernel/simulator/model/ModelComponent.h"#include "kernel/simulator/ConnectionManager.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "kernel/simulator/ConnectionManager.h"
 #include "kernel/simulator/SourceModelComponent.h"
 #include "kernel/simulator/SinkModelComponent.h"
 

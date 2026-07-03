@@ -14,9 +14,14 @@
 // Dialogs
 // Kernel
 #include "kernel/simulator/SinkModelComponent.h"
-#include "../../../kernel/simulator/essentialPlugins/Attribute.h"#include "../../../kernel/simulator/essentialPlugins/Counter.h"#include "../../../kernel/simulator/essentialPlugins/StatisticsCollector.h"#include "kernel/simulator/PluginManager.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
+#include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Plugin.h"
-#include "../../../kernel/simulator/model/ModelComponent.h"#include "../../../kernel/simulator/model/ModelComponentManager.h"#include "../../../kernel/simulator/model/ModelDataManager.h"// GUI
+#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponentManager.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"// GUI
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"

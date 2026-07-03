@@ -3,7 +3,8 @@
 
 #include <functional>
 
-#include "../../../../kernel/simulator/model/ModelSimulation.h"#include "kernel/simulator/OnEventManager.h"
+#include "../../../../kernel/simulator/model/ModelSimulation.h"
+#include "kernel/simulator/OnEventManager.h"
 #include "kernel/simulator/Simulator.h"
 
 class MainWindow;

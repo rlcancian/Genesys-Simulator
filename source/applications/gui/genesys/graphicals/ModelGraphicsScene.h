@@ -45,15 +45,19 @@
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
-#include "../../../../kernel/simulator/model/ModelComponent.h"#include "kernel/simulator/Simulator.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Plugin.h"
 #include "animations/AnimationTransition.h"
 #include "animations/AnimationVariable.h"
 #include "animations/AnimationCounter.h"
 #include "animations/AnimationTimer.h"
 #include "animations/AnimationPlaceholder.h"
-#include "../../../../kernel/simulator/essentialPlugins/Counter.h"#include "../../../../kernel/simulator/essentialPlugins/Attribute.h"#include "kernel/simulator/PropertyGenesys.h"
-#include "../../../../kernel/simulator/model/ModelDataDefinition.h"#include "../../../../plugins/data/Logic/Variable.h"
+#include "../../../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "kernel/simulator/PropertyGenesys.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../plugins/data/Logic/Variable.h"
 /**
  * @brief Lightweight event envelope used to notify GUI changes in the graphics scene.
  */

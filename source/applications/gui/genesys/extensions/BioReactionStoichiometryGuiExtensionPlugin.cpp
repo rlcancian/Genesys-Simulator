@@ -2,7 +2,10 @@
 
 #include "kernel/TraitsKernel.h"
 #include "kernel/util/List.h"
-#include "../../../../kernel/simulator/model/Model.h"#include "../../../../kernel/simulator/model/ModelDataManager.h"#include "../../../../kernel/simulator/model/ModelManager.h"#include "kernel/simulator/Simulator.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../../kernel/simulator/model/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 
 #include <QInputDialog>

@@ -1,5 +1,6 @@
 #include "PropertyEditor.h"
-#include "../../../../kernel/simulator/model/ModelDataDefinition.h"#include <QLineEdit>
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include <QLineEdit>
 
 PropertyEditor::PropertyEditor(QWidget *parent)
 : QTreeWidget(parent) {

@@ -6,12 +6,16 @@
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/model/ModelManager.h"#include "../../../../kernel/simulator/model/Model.h"#include "../../../../kernel/simulator/model/ModelComponentManager.h"#include "kernel/simulator/ConnectionManager.h"
+#include "../../../../kernel/simulator/model/ModelManager.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../kernel/simulator/model/ModelComponentManager.h"
+#include "kernel/simulator/ConnectionManager.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/SourceModelComponent.h"
 #include "kernel/simulator/GenesysPropertyIntrospection.h"
-#include "../../../../kernel/simulator/model/ModelDataManager.h"#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
 #include <QTextEdit>
 #include <QSet>
 #include <QDebug>

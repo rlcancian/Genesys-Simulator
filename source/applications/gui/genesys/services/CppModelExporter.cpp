@@ -3,8 +3,12 @@
 // This include gives access to generated Qt widgets where generated C++ text is displayed.
 // These includes provide kernel model APIs used by C++ code generation.
 #include "kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/model/Model.h"#include "../../../../kernel/simulator/model/ModelSimulation.h"#include "../../../../kernel/simulator/model/ModelComponent.h"#include "kernel/simulator/ConnectionManager.h"
-#include "../../../../kernel/simulator/model/ModelDataDefinition.h"#include "kernel/util/List.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../kernel/simulator/model/ModelSimulation.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "kernel/simulator/ConnectionManager.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "kernel/util/List.h"
 #include "kernel/util/Util.h"
 
 // This include provides QString conversion APIs used by the target text widget.

@@ -7,7 +7,8 @@
 
 #include "GraphicalModelDataDefinition.h"
 
-#include "../../../../kernel/simulator/model/ModelDataDefinition.h"#include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
 #include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
 
 #include <QRgba64>

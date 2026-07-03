@@ -1,9 +1,13 @@
 #include "GuiExtensionPluginCatalog.h"
 
-#include "../../../../kernel/simulator/model/ModelComponentManager.h"#include "../../../../kernel/simulator/model/Model.h"#include "../../../../kernel/simulator/model/ModelManager.h"#include "kernel/simulator/Simulator.h"
+#include "../../../../kernel/simulator/model/ModelComponentManager.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../kernel/simulator/model/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/ModelGraphicsScene.h"
-#include "../../../../plugins/components/BiochemicalSimulation/BacteriaColony.h"#include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
+#include "../../../../plugins/components/BiochemicalSimulation/BacteriaColony.h"
+#include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 
 #include <QComboBox>
 #include <QDialog>

@@ -17,9 +17,19 @@
 #include "../tools/expressionbuilder/ExpressionBuilder.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/model/Model.h"#include "../../../../kernel/simulator/model/ModelManager.h"#include "../../../../kernel/simulator/model/ModelSimulation.h"#include "../../../../kernel/simulator/model/ModelDataDefinition.h"#include "../../../../kernel/simulator/model/ModelDataManager.h"#include "../../../../kernel/simulator/model/ModelComponent.h"#include "kernel/simulator/SimulationControlAndResponse.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../kernel/simulator/model/ModelManager.h"
+#include "../../../../kernel/simulator/model/ModelSimulation.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/LicenceManager.h"
-#include "../../../../kernel/simulator/essentialPlugins/Entity.h"#include "../../../../tools/Statistics/FitterDefaultImpl.h"#include "../../../../tools/Statistics/HypothesisTesterDefaultImpl1.h"#include "../../../../tools/Optimization/OptimizerDefaultImpl1.h"#include "../../../../tools/Continuous/SolverDefaultImpl1.h"
+#include "../../../../kernel/simulator/essentialPlugins/Entity.h"
+#include "../../../../tools/Statistics/FitterDefaultImpl.h"
+#include "../../../../tools/Statistics/HypothesisTesterDefaultImpl1.h"
+#include "../../../../tools/Optimization/OptimizerDefaultImpl1.h"
+#include "../../../../tools/Continuous/SolverDefaultImpl1.h"
 #include <QAction>
 #include <QCheckBox>
 #include <QComboBox>

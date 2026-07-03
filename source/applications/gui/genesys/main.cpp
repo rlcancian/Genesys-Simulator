@@ -12,7 +12,10 @@
 #include <cstdlib>
 #include <execinfo.h>
 
-#include "../../GenesysApplication_if.h"#include "../../TraitsApp.h"#include "../../terminal/TraitsTerminalApp.h"#include "GuiCrashDiagnostics.h"
+#include "../../GenesysApplication_if.h"
+#include "../../TraitsApp.h"
+#include "../../terminal/TraitsTerminalApp.h"
+#include "GuiCrashDiagnostics.h"
 #include "guithememanager.h"
 #include "systempreferences.h"
 

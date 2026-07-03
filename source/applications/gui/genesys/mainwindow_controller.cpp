@@ -83,7 +83,8 @@
 #include <QPainter>
 #include <QFileInfo>
 #include <QCoreApplication>
-#include "../../../kernel/simulator/model/ModelSimulation.h"#include "../../../tools/Continuous/SolverDefaultImpl1.h"
+#include "../../../kernel/simulator/model/ModelSimulation.h"
+#include "../../../tools/Continuous/SolverDefaultImpl1.h"
 
 //-------------------------
 // PRIVATE SLOTS

@@ -1,6 +1,8 @@
 #include "OptimizerWindow.h"
 
-#include "../../../../../kernel/simulator/model/Model.h"#include "../../../../../kernel/simulator/model/ModelManager.h"#include "kernel/simulator/SimulationControlAndResponse.h"
+#include "../../../../../kernel/simulator/model/Model.h"
+#include "../../../../../kernel/simulator/model/ModelManager.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
 
 #include <QAction>

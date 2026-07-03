@@ -6,7 +6,12 @@
 #include "animations/AnimationTimer.h"
 #include "animations/AnimationTransition.h"
 
-#include "../../../../kernel/simulator/model/Model.h"#include "../../../../kernel/simulator/model/ModelComponent.h"#include "../../../../kernel/simulator/model/ModelDataDefinition.h"#include "../../../../kernel/simulator/model/ModelDataManager.h"#include "../../../../kernel/simulator/model/ModelManager.h"#include "kernel/util/Util.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../../kernel/simulator/model/ModelManager.h"
+#include "kernel/util/Util.h"
 
 #include <QAction>
 #include <QCoreApplication>
