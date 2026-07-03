@@ -173,10 +173,11 @@ jobs:
                 echo "::endgroup::"
               ' sh {} \;
           fi
+
   debian-package:
     name: Build Debian packages
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -190,6 +191,7 @@ jobs:
             build-essential \
             debhelper \
             devscripts \
+            dpkg-dev \
             cmake \
             ninja-build \
             g++ \
@@ -204,9 +206,10 @@ jobs:
       - name: Build Debian binary packages
         run: |
           set -Eeuo pipefail
-          dpkg-buildpackage -us -uc -b
+          dpkg-buildpackage -us -uc -b 2>&1 | tee ../genesys-debian-build.log
 
       - name: Validate AppStream metadata
+        if: success()
         run: |
           set -Eeuo pipefail
           appstreamcli validate --no-net packaging/linux/io.github.rlcancian.genesys.metainfo.xml
@@ -214,10 +217,27 @@ jobs:
       - name: Run lintian
         if: always()
         run: |
-          set -Eeuo pipefail
-          lintian ../*.deb || true
+          set +e
+          lintian ../*.deb 2>&1 | tee ../genesys-lintian.log
+          exit 0
+
+      - name: Collect Debian diagnostics
+        if: always()
+        run: |
+          set +e
+          mkdir -p ../genesys-debian-diagnostics
+          cp -v ../genesys-debian-build.log ../genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../genesys-lintian.log ../genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.build ../genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.buildinfo ../genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.changes ../genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v build-debian/CMakeFiles/CMakeOutput.log ../genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v build-debian/CMakeFiles/CMakeError.log ../genesys-debian-diagnostics/ 2>/dev/null || true
+          find build-debian -type f \( -name "*.log" -o -name "LastTest.log" \) -exec cp -v {} ../genesys-debian-diagnostics/ \; 2>/dev/null || true
+          find .. -maxdepth 2 -type f \( -name "*.deb" -o -name "*.changes" -o -name "*.buildinfo" -o -name "*.build" -o -name "*.log" \) | sort
 
       - name: Upload Debian packages
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: genesys-debian-packages
@@ -226,3 +246,11 @@ jobs:
             ../genesys-web_*.deb
             ../genesys-simulator_*.buildinfo
             ../genesys-simulator_*.changes
+
+      - name: Upload Debian diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-debian-diagnostics
+          path: ../genesys-debian-diagnostics/
+
