@@ -13,7 +13,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: genesys-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:
@@ -23,36 +27,25 @@ env:
   QT_QPA_PLATFORM: offscreen
   CTEST_OUTPUT_ON_FAILURE: "1"
   CMAKE_CONFIGURE_PRESET: tests-unit
+  CMAKE_BUILD_PRESET: tests-unit
   CMAKE_TEST_PRESET: tests-unit
 
 jobs:
   unit-tests:
-    name: Diagnose GUI GMDD layout build
+    name: Configure, build and test tests-unit
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
-      - name: Checkout PR head branch
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
           show-progress: false
-
-      - name: Verify moved GUI includes are clean
-        run: |
-          set -Eeuo pipefail
-          matches="$({ grep -RInE '^\s*#\s*include.*#\s*include' source/applications/gui/genesys --include='*.h' --include='*.hpp' --include='*.cpp' --include='*.cc' --include='*.cxx' || true; } | head -n 40)"
-          if [[ -n "${matches}" ]]; then
-            echo "FOUND_CONCATENATED_INCLUDES"
-            printf '%s\n' "${matches}"
-            exit 1
-          fi
-          echo "NO_CONCATENATED_INCLUDES"
 
       - name: Install build dependencies
         run: |
           set -Eeuo pipefail
-          sudo apt-get update >/dev/null
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
@@ -62,60 +55,19 @@ jobs:
             qt6-base-dev \
             qt6-tools-dev \
             qt6-tools-dev-tools \
-            libgl1-mesa-dev >/dev/null
-          cmake --version | head -n 1
-          ninja --version
-          g++ --version | head -n 1
+            libgl1-mesa-dev
 
       - name: Configure - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
-          mkdir -p .github/ai-diagnostics
-          cmake --preset "${CMAKE_CONFIGURE_PRESET}" >.github/ai-diagnostics/configure-tests-unit.log 2>&1 || {
-            echo "CONFIGURE_FAILED"
-            tail -n 120 .github/ai-diagnostics/configure-tests-unit.log
-            exit 1
-          }
-          echo "CONFIGURE_OK"
+          cmake --preset "${CMAKE_CONFIGURE_PRESET}"
 
-      - name: Build GUI GMDD layout target and commit diagnostics on failure
+      - name: Build - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
-          mkdir -p .github/ai-diagnostics
-          build_log=.github/ai-diagnostics/build-gui-gmdd-layout.log
-          summary=.github/ai-diagnostics/gmdd-first-failure.txt
-          : > "${summary}"
-          {
-            echo "HEAD=$(git rev-parse HEAD)"
-            echo "TARGET=genesys_test_gui_gmdd_layout"
-            echo "BUILD_LOG=${build_log}"
-          } >> "${summary}"
-          set +e
-          cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout --parallel "$(nproc)" >"${build_log}" 2>&1
-          rc=$?
-          set -e
-          echo "BUILD_RC=${rc}" >> "${summary}"
-          if [[ "${rc}" -ne 0 ]]; then
-            first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
-            if [[ -n "${first}" ]]; then
-              start=$((first - 20)); end=$((first + 140)); [[ "${start}" -lt 1 ]] && start=1
-              echo "FIRST_ERROR_LINE=${first}" >> "${summary}"
-              sed -n "${start},${end}p" "${build_log}" >> "${summary}"
-            else
-              echo "FIRST_ERROR_LINE=not_found" >> "${summary}"
-              tail -n 220 "${build_log}" >> "${summary}"
-            fi
-            git config user.name "genesys-ci-bot"
-            git config user.email "actions@users.noreply.github.com"
-            git add .github/ai-diagnostics/gmdd-first-failure.txt
-            git commit -m "ci: record GMDD layout build failure" || true
-            git push origin HEAD:${{ github.event.pull_request.head.ref }} || true
-            cat "${summary}"
-            exit "${rc}"
-          fi
-          echo "BUILD_GUI_GMDD_LAYOUT_OK" >> "${summary}"
-          git config user.name "genesys-ci-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add .github/ai-diagnostics/gmdd-first-failure.txt
-          git commit -m "ci: record GMDD layout build success" || true
-          git push origin HEAD:${{ github.event.pull_request.head.ref }} || true
+          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)"
+
+      - name: Tests - CTest preset tests-unit
+        run: |
+          set -Eeuo pipefail
+          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure
