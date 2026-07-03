@@ -1,12 +1,12 @@
 #pragma once
 
 #include <QDialog>
+#include <memory>
 
 class QCloseEvent;
 class QShowEvent;
 class QPlainTextEdit;
 class QSpinBox;
-class QPushButton;
 class QLabel;
 class WebWorkerRuntime;
 
@@ -22,9 +22,10 @@ class WebWorkerDialog : public QDialog {
 
 public:
     /**
-     * @brief Builds the worker control window for a shared runtime instance.
+     * @brief Builds the worker control window and owns its runtime instance.
      */
-    explicit WebWorkerDialog(WebWorkerRuntime* runtime, QWidget* parent = nullptr);
+    explicit WebWorkerDialog(QWidget* parent = nullptr);
+    ~WebWorkerDialog() override;
 
 protected:
     void closeEvent(QCloseEvent* event) override;
@@ -35,24 +36,7 @@ private:
      * @brief Refreshes the widgets with the current worker snapshot.
      */
     void _refresh();
-    /**
-     * @brief Applies the configured controls and starts the worker.
-     */
-    void _startWorker();
-    /**
-     * @brief Stops the worker and refreshes the dialog.
-     */
-    void _stopWorker();
-    /**
-     * @brief Restarts the worker with the current configuration values.
-     */
-    void _restartWorker();
-    /**
-     * @brief Refreshes the worker on dialog open when the auto-restart toggle is enabled.
-     */
-    void _maybeAutoRestartOnShow();
-
-    WebWorkerRuntime* _runtime = nullptr;
+    std::unique_ptr<WebWorkerRuntime> _runtime;
     QSpinBox* _portSpin = nullptr;
     QSpinBox* _maxRequestsSpin = nullptr;
     QLabel* _statusValue = nullptr;
@@ -63,8 +47,4 @@ private:
     QLabel* _stateValue = nullptr;
     QPlainTextEdit* _historyText = nullptr;
     QPlainTextEdit* _errorText = nullptr;
-    QPushButton* _startButton = nullptr;
-    QPushButton* _stopButton = nullptr;
-    QPushButton* _restartButton = nullptr;
-    QPushButton* _autoRestartButton = nullptr;
 };

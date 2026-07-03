@@ -138,7 +138,8 @@ HEADERS += \
     $$GUI_ROOT/propertyeditor/qtpropertybrowser/QtTreePropertyBrowser \
     $$GUI_ROOT/propertyeditor/qtpropertybrowser/QtVariantEditorFactory \
     $$GUI_ROOT/propertyeditor/qtpropertybrowser/QtVariantProperty \
-    $$GUI_ROOT/propertyeditor/qtpropertybrowser/QtVariantPropertyManager
+    $$GUI_ROOT/propertyeditor/qtpropertybrowser/QtVariantPropertyManager \
+    ../../../web/api/ApiRouter.h
 
 HEADERS -= \
     $$GUI_ROOT/qcustomplot.h \

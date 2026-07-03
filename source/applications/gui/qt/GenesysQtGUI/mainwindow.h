@@ -43,7 +43,6 @@ class EditCommandController;
 class SceneToolController;
 class GraphicalContextMenuController;
 class DialogUtilityController;
-class WebWorkerRuntime;
 class WebWorkerDialog;
 class GuiExtensionManager;
 class QAction;
@@ -579,8 +578,6 @@ private: // interface and model main elements to join
     std::unique_ptr<GraphicalContextMenuController> _graphicalContextMenuController;
     // Add the Phase 11 dialog-utility controller owned by MainWindow.
     std::unique_ptr<DialogUtilityController> _dialogUtilityController;
-    // Owns the embedded web worker runtime shared by the GUI and the standalone web app.
-    std::unique_ptr<WebWorkerRuntime> _webWorkerRuntime;
     // Tracks the optional modeless control window for the worker runtime.
     QPointer<WebWorkerDialog> _webWorkerDialog;
     // Keeps runtime GUI extension contributions isolated from core static menus/toolbars.

@@ -8,7 +8,6 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPlainTextEdit>
-#include <QPushButton>
 #include <QSpinBox>
 #include <QShowEvent>
 #include <QTimer>
@@ -48,8 +47,8 @@ QString _phaseText(const WebWorkerRuntime::Snapshot& snapshot) {
 }
 }  // namespace
 
-WebWorkerDialog::WebWorkerDialog(WebWorkerRuntime* runtime, QWidget* parent)
-    : QDialog(parent), _runtime(runtime) {
+WebWorkerDialog::WebWorkerDialog(QWidget* parent)
+    : QDialog(parent), _runtime(std::make_unique<WebWorkerRuntime>()) {
     setWindowTitle(tr("Web Worker"));
     setMinimumWidth(620);
     setAttribute(Qt::WA_DeleteOnClose, false);
@@ -104,30 +103,6 @@ WebWorkerDialog::WebWorkerDialog(WebWorkerRuntime* runtime, QWidget* parent)
     errorLayout->addWidget(_errorText);
     rootLayout->addWidget(errorGroup, 1);
 
-    auto* buttonRow = new QHBoxLayout();
-    _startButton = new QPushButton(tr("Start"), this);
-    _stopButton = new QPushButton(tr("Stop"), this);
-    _restartButton = new QPushButton(tr("Restart"), this);
-    _autoRestartButton = new QPushButton(tr("Auto-restart on open"), this);
-    _autoRestartButton->setCheckable(true);
-    auto* refreshButton = new QPushButton(tr("Refresh"), this);
-    buttonRow->addWidget(_startButton);
-    buttonRow->addWidget(_stopButton);
-    buttonRow->addWidget(_restartButton);
-    buttonRow->addWidget(_autoRestartButton);
-    buttonRow->addStretch();
-    buttonRow->addWidget(refreshButton);
-    rootLayout->addLayout(buttonRow);
-
-    connect(_startButton, &QPushButton::clicked, this, [this]() { _startWorker(); });
-    connect(_stopButton, &QPushButton::clicked, this, [this]() { _stopWorker(); });
-    connect(_restartButton, &QPushButton::clicked, this, [this]() { _restartWorker(); });
-    connect(refreshButton, &QPushButton::clicked, this, [this]() { _refresh(); });
-    connect(_autoRestartButton, &QPushButton::toggled, this, [this](bool checked) {
-        if (checked) {
-            _maybeAutoRestartOnShow();
-        }
-    });
     connect(_portSpin, &QSpinBox::valueChanged, this, [this]() {
         if (_runtime != nullptr) {
             _runtime->setConfiguredPort(static_cast<unsigned short>(_portSpin->value()));
@@ -147,14 +122,21 @@ WebWorkerDialog::WebWorkerDialog(WebWorkerRuntime* runtime, QWidget* parent)
     _refresh();
 }
 
+WebWorkerDialog::~WebWorkerDialog() = default;
+
 void WebWorkerDialog::closeEvent(QCloseEvent* event) {
+    if (_runtime != nullptr) {
+        _runtime->stop();
+    }
     hide();
     event->ignore();
 }
 
 void WebWorkerDialog::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
-    _maybeAutoRestartOnShow();
+    if (_runtime != nullptr) {
+        _runtime->start();
+    }
 }
 
 void WebWorkerDialog::_refresh() {
@@ -167,10 +149,6 @@ void WebWorkerDialog::_refresh() {
         _activeValue->setText(tr("0"));
         _historyText->setPlainText(tr("Web worker runtime not available."));
         _errorText->setPlainText(tr("Web worker runtime not available."));
-        _startButton->setEnabled(false);
-        _stopButton->setEnabled(false);
-        _restartButton->setEnabled(false);
-        _autoRestartButton->setEnabled(false);
         return;
     }
 
@@ -209,50 +187,4 @@ void WebWorkerDialog::_refresh() {
         }
     }
     _historyText->setPlainText(historyLines.join('\n'));
-
-    _startButton->setEnabled(!snapshot.isRunning && !snapshot.isStarting);
-    _stopButton->setEnabled(snapshot.isRunning || snapshot.isStarting || snapshot.isStopping);
-    _restartButton->setEnabled(true);
-    _autoRestartButton->setEnabled(true);
-}
-
-void WebWorkerDialog::_startWorker() {
-    if (_runtime == nullptr) {
-        return;
-    }
-    _runtime->setConfiguredPort(static_cast<unsigned short>(_portSpin->value()));
-    _runtime->setConfiguredMaxRequests(static_cast<unsigned long>(_maxRequestsSpin->value()));
-    (void)_runtime->start();
-    _refresh();
-}
-
-void WebWorkerDialog::_stopWorker() {
-    if (_runtime == nullptr) {
-        return;
-    }
-    _runtime->stop();
-    _refresh();
-}
-
-void WebWorkerDialog::_restartWorker() {
-    if (_runtime == nullptr) {
-        return;
-    }
-    _runtime->setConfiguredPort(static_cast<unsigned short>(_portSpin->value()));
-    _runtime->setConfiguredMaxRequests(static_cast<unsigned long>(_maxRequestsSpin->value()));
-    (void)_runtime->restart();
-    _refresh();
-}
-
-void WebWorkerDialog::_maybeAutoRestartOnShow() {
-    if (_runtime == nullptr || _autoRestartButton == nullptr || !_autoRestartButton->isChecked()) {
-        return;
-    }
-
-    const WebWorkerRuntime::Snapshot snapshot = _runtime->snapshot();
-    if (snapshot.isRunning || snapshot.isStarting || snapshot.isStopping) {
-        return;
-    }
-
-    _restartWorker();
 }

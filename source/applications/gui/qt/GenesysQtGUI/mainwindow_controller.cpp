@@ -490,13 +490,8 @@ void MainWindow::on_actionToolsParserGrammarChecker_triggered() {
 }
 
 void MainWindow::on_actionToolsWebWorker_triggered() {
-    if (_webWorkerRuntime == nullptr) {
-        _showMessageNotImplemented();
-        return;
-    }
-
     if (_webWorkerDialog == nullptr) {
-        _webWorkerDialog = new WebWorkerDialog(_webWorkerRuntime.get(), this);
+        _webWorkerDialog = new WebWorkerDialog(this);
     }
     _webWorkerDialog->show();
     _webWorkerDialog->raise();
