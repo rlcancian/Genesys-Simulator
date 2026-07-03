@@ -1,0 +1,37 @@
+Source: genesys-simulator
+Section: science
+Priority: optional
+Maintainer: GenESyS Maintainers <rlcancian@users.noreply.github.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake (>= 3.24),
+ ninja-build,
+ g++,
+ pkgconf,
+ qt6-base-dev,
+ qt6-base-dev-tools,
+ libgl-dev,
+ libgtest-dev <!nocheck>
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/rlcancian/Genesys-Simulator
+Vcs-Browser: https://github.com/rlcancian/Genesys-Simulator
+Vcs-Git: https://github.com/rlcancian/Genesys-Simulator.git
+
+Package: genesys-gui
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, genesys-web (= ${binary:Version})
+Description: Generic and Expansible System Simulator Qt GUI
+ GenESyS is a C++ simulation platform designed as an extensible
+ architecture for modeling and simulation.
+ .
+ This package provides the Qt desktop graphical user interface.
+
+Package: genesys-web
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Generic and Expansible System Simulator web application
+ GenESyS is a C++ simulation platform designed as an extensible
+ architecture for modeling and simulation.
+ .
+ This package provides the web/webhook executable used by the platform.

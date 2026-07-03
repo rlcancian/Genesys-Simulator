@@ -1,3 +1,5 @@
+include(GNUInstallDirs)
+
 add_library(genesys_web_core STATIC
     api/ApiRouter.cpp
     auth/TokenService.cpp
@@ -32,5 +34,14 @@ target_link_libraries(genesys_web_app
 )
 
 target_compile_features(genesys_web_app PRIVATE cxx_std_23)
+
+set_target_properties(genesys_web_app
+    PROPERTIES
+        OUTPUT_NAME genesys-web
+)
+
+install(TARGETS genesys_web_app
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 
 add_executable(genesys_webhook ALIAS genesys_web_app)
