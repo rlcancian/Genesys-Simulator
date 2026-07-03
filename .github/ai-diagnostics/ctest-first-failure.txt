@@ -1,0 +1,226 @@
+HEAD=75a0c763e64f719b7afe6546723908a567cbdc0a
+PRESET=tests-unit
+CTEST_LOG=.github/ai-diagnostics/ctest-tests-unit.log
+CTEST_RC=8
+FIRST_FAILURE_LINE=80
+          Start   20: SimulatorSupportTest.ModelInfoSettersMarkObjectAsChanged
+  20/1661 Test   #20: SimulatorSupportTest.ModelInfoSettersMarkObjectAsChanged ...............................................................   Passed    0.00 sec
+          Start   21: SimulatorSupportTest.ModelInfoSaveAndLoadRoundTrip
+  21/1661 Test   #21: SimulatorSupportTest.ModelInfoSaveAndLoadRoundTrip .....................................................................   Passed    0.00 sec
+          Start   22: SimulatorSupportTest.ModelInfoShowReflectsConfiguredFields
+  22/1661 Test   #22: SimulatorSupportTest.ModelInfoShowReflectsConfiguredFields .............................................................   Passed    0.00 sec
+          Start   23: SimulatorSupportTest.ParserChangesInformationStartsEmpty
+  23/1661 Test   #23: SimulatorSupportTest.ParserChangesInformationStartsEmpty ...............................................................   Passed    0.00 sec
+          Start   24: SimulatorSupportTest.ParserChangesInformationStoresAllConfiguredSections
+  24/1661 Test   #24: SimulatorSupportTest.ParserChangesInformationStoresAllConfiguredSections ...............................................   Passed    0.00 sec
+          Start   25: SimulatorSupportTest.ParserChangesInformationSupportsMultilineAndOverwrite
+  25/1661 Test   #25: SimulatorSupportTest.ParserChangesInformationSupportsMultilineAndOverwrite .............................................   Passed    0.00 sec
+          Start   26: SimulatorSupportTest.PluginInformationComponentConstructorConfiguresComponentMode
+  26/1661 Test   #26: SimulatorSupportTest.PluginInformationComponentConstructorConfiguresComponentMode ......................................   Passed    0.00 sec
+          Start   27: SimulatorSupportTest.PluginInformationDataDefinitionConstructorConfiguresElementMode
+  27/1661 Test   #27: SimulatorSupportTest.PluginInformationDataDefinitionConstructorConfiguresElementMode ...................................   Passed    0.00 sec
+          Start   28: SimulatorSupportTest.PluginInformationStoresMetadataAndLimits
+  28/1661 Test   #28: SimulatorSupportTest.PluginInformationStoresMetadataAndLimits ..........................................................   Passed    0.00 sec
+          Start   29: SimulatorSupportTest.SystemDependencyStoresDeclarativeCommands
+  29/1661 Test   #29: SimulatorSupportTest.SystemDependencyStoresDeclarativeCommands .........................................................   Passed    0.00 sec
+          Start   30: SimulatorSupportTest.PluginInformationStoresSystemDependenciesInOrder
+  30/1661 Test   #30: SimulatorSupportTest.PluginInformationStoresSystemDependenciesInOrder ..................................................   Passed    0.00 sec
+          Start   31: SimulatorSupportTest.SystemDependencyResolverMarksSatisfiedDependency
+  31/1661 Test   #31: SimulatorSupportTest.SystemDependencyResolverMarksSatisfiedDependency ..................................................   Passed    0.00 sec
+          Start   32: SimulatorSupportTest.SystemDependencyResolverMarksMissingDependency
+  32/1661 Test   #32: SimulatorSupportTest.SystemDependencyResolverMarksMissingDependency ....................................................   Passed    0.00 sec
+          Start   33: SimulatorSupportTest.SystemDependencyResolverIgnoresDifferentOperatingSystem
+  33/1661 Test   #33: SimulatorSupportTest.SystemDependencyResolverIgnoresDifferentOperatingSystem ...........................................   Passed    0.00 sec
+          Start   34: SimulatorSupportTest.SystemDependencyResolverMarksApplicableDependencyWithoutCheckCommandAsNotVerifiable
+  34/1661 Test   #34: SimulatorSupportTest.SystemDependencyResolverMarksApplicableDependencyWithoutCheckCommandAsNotVerifiable ...............   Passed    0.00 sec
+          Start   35: SimulatorSupportTest.SystemDependencyResolverInstallDiagnosticIncludesCommandAndOutput
+  35/1661 Test   #35: SimulatorSupportTest.SystemDependencyResolverInstallDiagnosticIncludesCommandAndOutput .................................   Passed    0.00 sec
+          Start   36: SimulatorSupportTest.PluginInformationDefaultsAndContainerReplacementWork
+  36/1661 Test   #36: SimulatorSupportTest.PluginInformationDefaultsAndContainerReplacementWork ..............................................   Passed    0.00 sec
+          Start   37: SimulatorSupportTest.PluginConstructedFromFactoryCanExposePluginInformation
+  37/1661 Test   #37: SimulatorSupportTest.PluginConstructedFromFactoryCanExposePluginInformation ............................................   Passed    0.00 sec
+          Start   38: SimulatorSupportTest.PluginShowIncludesConfiguredMetadata
+  38/1661 Test   #38: SimulatorSupportTest.PluginShowIncludesConfiguredMetadata ..............................................................   Passed    0.00 sec
+          Start   39: SimulatorSupportTest.PluginCanRepresentElementPluginKind
+  39/1661 Test   #39: SimulatorSupportTest.PluginCanRepresentElementPluginKind ...............................................................   Passed    0.00 sec
+          Start   40: SimulatorSupportTest.PluginMarksFactoryFailureAsInvalid
+  40/1661 Test   #40: SimulatorSupportTest.PluginMarksFactoryFailureAsInvalid ................................................................   Passed    0.00 sec
+          Start   41: SimulatorSupportTest.SimulationResponseProvidesReadOnlyKernelAccess
+  41/1661 Test   #41: SimulatorSupportTest.SimulationResponseProvidesReadOnlyKernelAccess ....................................................   Passed    0.00 sec
+          Start   42: SimulatorSupportTest.SimulationControlInheritsReadPathAndAddsWritePath
+  42/1661 Test   #42: SimulatorSupportTest.SimulationControlInheritsReadPathAndAddsWritePath .................................................   Passed    0.00 sec
+          Start   43: SimulatorSupportTest.SimulationControlStringReadOnlyRejectsWrites
+  43/1661 Test   #43: SimulatorSupportTest.SimulationControlStringReadOnlyRejectsWrites ......................................................   Passed    0.00 sec
+          Start   44: SimulatorSupportTest.SimulationControlGenericStringPreservesWhitespace
+  44/1661 Test   #44: SimulatorSupportTest.SimulationControlGenericStringPreservesWhitespace .................................................   Passed    0.00 sec
+          Start   45: SimulatorSupportTest.SimulationControlGenericStringListPreservesWhitespace
+  45/1661 Test   #45: SimulatorSupportTest.SimulationControlGenericStringListPreservesWhitespace .............................................   Passed    0.00 sec
+          Start   46: SimulatorSupportTest.SimulationControlBoolParsesTextAndNumericValues
+  46/1661 Test   #46: SimulatorSupportTest.SimulationControlBoolParsesTextAndNumericValues ...................................................   Passed    0.00 sec
+          Start   47: SimulatorSupportTest.DefineSimulationGetterAndSetterBindKernelMethods
+  47/1661 Test   #47: SimulatorSupportTest.DefineSimulationGetterAndSetterBindKernelMethods ..................................................   Passed    0.00 sec
+          Start   48: SimulatorSupportTest.ModelDataDefinitionGetPropertiesNowReturnsSimulationControlList
+  48/1661 Test   #48: SimulatorSupportTest.ModelDataDefinitionGetPropertiesNowReturnsSimulationControlList ...................................   Passed    0.00 sec
+          Start   49: SimulatorSupportTest.ModelGetResponsesNowReturnsSimulationResponseList
+  49/1661 Test   #49: SimulatorSupportTest.ModelGetResponsesNowReturnsSimulationResponseList .................................................   Passed    0.00 sec
+          Start   50: SimulatorSupportTest.ModelGetControlsStillReturnSimulationControlList
+  50/1661 Test   #50: SimulatorSupportTest.ModelGetControlsStillReturnSimulationControlList ..................................................   Passed    0.00 sec
+          Start   51: SimulatorSupportTest.SimulationResponseDoubleIsNotAWritableControl
+  51/1661 Test   #51: SimulatorSupportTest.SimulationResponseDoubleIsNotAWritableControl .....................................................   Passed    0.00 sec
+          Start   52: SimulatorRuntimeTest.CanConstructSimulatorAndAccessManagers
+  52/1661 Test   #52: SimulatorRuntimeTest.CanConstructSimulatorAndAccessManagers ............................................................   Passed    0.01 sec
+          Start   53: SimulatorRuntimeTest.VersionAndNameAreAvailable
+  53/1661 Test   #53: SimulatorRuntimeTest.VersionAndNameAreAvailable ........................................................................   Passed    0.01 sec
+          Start   54: SimulatorRuntimeTest.ConstructAndDestroySimulatorRepeatedly
+  54/1661 Test   #54: SimulatorRuntimeTest.ConstructAndDestroySimulatorRepeatedly ............................................................   Passed    0.01 sec
+          Start   55: SimulatorRuntimeTest.ModelHasChangedReflectsNestedSubsystemUpdates
+  55/1661 Test   #55: SimulatorRuntimeTest.ModelHasChangedReflectsNestedSubsystemUpdates .....................................................   Passed    0.01 sec
+          Start   56: SimulatorRuntimeTest.SimulationStartHandlerReceivesInitializedStateSnapshot
+  56/1661 Test   #56: SimulatorRuntimeTest.SimulationStartHandlerReceivesInitializedStateSnapshot ............................................   Passed    0.01 sec
+          Start   57: SimulatorRuntimeTest.RecordWritesEnrichedDatasetReadableByParser
+  57/1661 Test   #57: SimulatorRuntimeTest.RecordWritesEnrichedDatasetReadableByParser .......................................................   Passed    0.05 sec
+          Start   58: SimulatorRuntimeTest.RecordCheckDoesNotDeleteExistingOutputFile
+  58/1661 Test   #58: SimulatorRuntimeTest.RecordCheckDoesNotDeleteExistingOutputFile ........................................................   Passed    0.01 sec
+          Start   59: SimulatorRuntimeTest.RecordExpressionNameChangeRekeysStatisticReporterOwnership
+  59/1661 Test   #59: SimulatorRuntimeTest.RecordExpressionNameChangeRekeysStatisticReporterOwnership ........................................   Passed    0.01 sec
+          Start   60: SimulatorRuntimeTest.NewModelCanBeCalledMultipleTimesAndUpdatesCurrentModel
+  60/1661 Test   #60: SimulatorRuntimeTest.NewModelCanBeCalledMultipleTimesAndUpdatesCurrentModel ............................................   Passed    0.01 sec
+          Start   61: SimulatorRuntimeTest.ModelClearPreservesBaseSimulationControlsCount
+  61/1661 Test   #61: SimulatorRuntimeTest.ModelClearPreservesBaseSimulationControlsCount ....................................................   Passed    0.01 sec
+          Start   62: SimulatorRuntimeTest.ModelClearIsIdempotentAndKeepsRuntimeUsable
+  62/1661 Test   #62: SimulatorRuntimeTest.ModelClearIsIdempotentAndKeepsRuntimeUsable .......................................................   Passed    0.01 sec
+          Start   63: SimulatorRuntimeTest.ModelAccessorsExposeStableRuntimeReferencesAndFlags
+  63/1661 Test   #63: SimulatorRuntimeTest.ModelAccessorsExposeStableRuntimeReferencesAndFlags ...............................................   Passed    0.01 sec
+          Start   64: SimulatorRuntimeTest.ModelSetTracerRebindsTracerPointer
+  64/1661 Test   #64: SimulatorRuntimeTest.ModelSetTracerRebindsTracerPointer ................................................................   Passed    0.01 sec
+          Start   65: SimulatorRuntimeTest.DataDefinitionClassnamesSnapshotIsReturnedByValue
+  65/1661 Test   #65: SimulatorRuntimeTest.DataDefinitionClassnamesSnapshotIsReturnedByValue .................................................   Passed    0.01 sec
+          Start   66: SimulatorRuntimeTest.AttachedDataRemoveOnlyDetachesRegistryEntry
+  66/1661 Test   #66: SimulatorRuntimeTest.AttachedDataRemoveOnlyDetachesRegistryEntry .......................................................   Passed    0.01 sec
+          Start   67: SimulatorRuntimeTest.ModelDataManagerSupportsLookupByNameIdAndRank
+  67/1661 Test   #67: SimulatorRuntimeTest.ModelDataManagerSupportsLookupByNameIdAndRank .....................................................   Passed    0.01 sec
+          Start   68: SimulatorRuntimeTest.ModelDataManagerHasChangedCanBeToggledAndRecomputed
+  68/1661 Test   #68: SimulatorRuntimeTest.ModelDataManagerHasChangedCanBeToggledAndRecomputed ...............................................   Passed    0.01 sec
+          Start   69: SimulatorRuntimeTest.EntityAttributeValuesRoundTripByNameAndIndex
+  69/1661 Test   #69: SimulatorRuntimeTest.EntityAttributeValuesRoundTripByNameAndIndex ......................................................   Passed    0.01 sec
+          Start   70: SimulatorRuntimeTest.EntityAttributeValuesSupportSparseNDIndexes
+  70/1661 Test   #70: SimulatorRuntimeTest.EntityAttributeValuesSupportSparseNDIndexes .......................................................   Passed    0.01 sec
+          Start   71: SimulatorRuntimeTest.EntityCopiesAttributeSparseInitialValuesOnCreation
+  71/1661 Test   #71: SimulatorRuntimeTest.EntityCopiesAttributeSparseInitialValuesOnCreation ................................................   Passed    0.01 sec
+          Start   72: SimulatorRuntimeTest.RemovingEntityRemovesItFromDataManagerRegistry
+  72/1661 Test   #72: SimulatorRuntimeTest.RemovingEntityRemovesItFromDataManagerRegistry ....................................................   Passed    0.01 sec
+          Start   73: SimulatorRuntimeTest.EntityAttributesCanBeSetAndReadByAttributeId
+  73/1661 Test   #73: SimulatorRuntimeTest.EntityAttributesCanBeSetAndReadByAttributeId ......................................................   Passed    0.01 sec
+          Start   74: SimulatorRuntimeTest.AttributeSupportsSparseInitialValuesAndPersistence
+  74/1661 Test   #74: SimulatorRuntimeTest.AttributeSupportsSparseInitialValuesAndPersistence ................................................   Passed    0.01 sec
+          Start   75: SimulatorRuntimeTest.AttributeInitialValueTextParsesMatrices
+  75/1661 Test   #75: SimulatorRuntimeTest.AttributeInitialValueTextParsesMatrices ...........................................................   Passed    0.01 sec
+          Start   76: SimulatorRuntimeTest.AttributeInitialValueTextParsesOctaveMatrixSyntax
+  76/1661 Test   #76: SimulatorRuntimeTest.AttributeInitialValueTextParsesOctaveMatrixSyntax .................................................   Passed    0.01 sec
+          Start   77: SimulatorRuntimeTest.AttributeInitialValueTextRejectsInvalidTextWithoutThrowing
+  77/1661 Test   #77: SimulatorRuntimeTest.AttributeInitialValueTextRejectsInvalidTextWithoutThrowing ........................................   Passed    0.01 sec
+          Start   78: SimulatorRuntimeTest.AttributeInitialValuePropertyUsesMultiLineTextEditorHint
+  78/1661 Test   #78: SimulatorRuntimeTest.AttributeInitialValuePropertyUsesMultiLineTextEditorHint ..........................................   Passed    0.01 sec
+          Start   79: SimulatorRuntimeTest.ModelDataDefinitionAccessorsExposeStableStateAndMetadata
+  79/1661 Test   #79: SimulatorRuntimeTest.ModelDataDefinitionAccessorsExposeStableStateAndMetadata ..........................................   Passed    0.01 sec
+          Start   80: SimulatorRuntimeTest.ModelDataDefinitionDestructorRemovesOwnedPropertyFromModelControls
+  80/1661 Test   #80: SimulatorRuntimeTest.ModelDataDefinitionDestructorRemovesOwnedPropertyFromModelControls ................................   Passed    0.01 sec
+          Start   81: SimulatorRuntimeTest.ModelDataDefinitionDestructorDeletesOwnedInternalData
+  81/1661 Test   #81: SimulatorRuntimeTest.ModelDataDefinitionDestructorDeletesOwnedInternalData .............................................   Passed    0.01 sec
+          Start   82: SimulatorRuntimeTest.ModelDataDefinitionDestructorDeletesMultipleOwnedInternalDataChildren
+  82/1661 Test   #82: SimulatorRuntimeTest.ModelDataDefinitionDestructorDeletesMultipleOwnedInternalDataChildren .............................   Passed    0.01 sec
+          Start   83: SimulatorRuntimeTest.ModelDataDefinitionDestructorDoesNotDeleteAttachedDataTarget
+  83/1661 Test   #83: SimulatorRuntimeTest.ModelDataDefinitionDestructorDoesNotDeleteAttachedDataTarget ......................................   Passed    0.01 sec
+          Start   84: SimulatorRuntimeTest.ModelDataDefinitionDestructorRemovesOwnedPropertyAlsoRegisteredAsResponse
+  84/1661 Test   #84: SimulatorRuntimeTest.ModelDataDefinitionDestructorRemovesOwnedPropertyAlsoRegisteredAsResponse .........................   Passed    0.01 sec
+          Start   85: SimulatorRuntimeTest.QueueFirstOnEmptyQueueReturnsNullptr
+  85/1661 Test   #85: SimulatorRuntimeTest.QueueFirstOnEmptyQueueReturnsNullptr ..............................................................   Passed    0.01 sec
+          Start   86: SimulatorRuntimeTest.QueueRemoveElementDeletesOwnedWaiting
+  86/1661 Test   #86: SimulatorRuntimeTest.QueueRemoveElementDeletesOwnedWaiting .............................................................   Passed    0.01 sec
+          Start   87: SimulatorRuntimeTest.QueueInitBetweenReplicationsDeletesOwnedWaiting
+  87/1661 Test   #87: SimulatorRuntimeTest.QueueInitBetweenReplicationsDeletesOwnedWaiting ...................................................   Passed    0.01 sec
+          Start   88: SimulatorRuntimeTest.QueueDestructorDeletesRemainingOwnedWaiting
+  88/1661 Test   #88: SimulatorRuntimeTest.QueueDestructorDeletesRemainingOwnedWaiting .......................................................   Passed    0.01 sec
+          Start   89: SimulatorRuntimeTest.QueueOrderRuleFifoKeepsArrivalOrder
+  89/1661 Test   #89: SimulatorRuntimeTest.QueueOrderRuleFifoKeepsArrivalOrder ...............................................................   Passed    0.01 sec
+          Start   90: SimulatorRuntimeTest.QueueOrderRuleLifoPlacesLatestArrivalFirst
+  90/1661 Test   #90: SimulatorRuntimeTest.QueueOrderRuleLifoPlacesLatestArrivalFirst ........................................................   Passed    0.01 sec
+          Start   91: SimulatorRuntimeTest.QueueOrderRuleHighestValueRanksByAttributeDescending
+  91/1661 Test   #91: SimulatorRuntimeTest.QueueOrderRuleHighestValueRanksByAttributeDescending ..............................................   Passed    0.01 sec
+          Start   92: SimulatorRuntimeTest.QueueOrderRuleSmallestValueRanksByAttributeAscending
+  92/1661 Test   #92: SimulatorRuntimeTest.QueueOrderRuleSmallestValueRanksByAttributeAscending ..............................................   Passed    0.01 sec
+          Start   93: SimulatorRuntimeTest.QueueOrderRuleAttributeTieUsesFifoTiebreaker
+  93/1661 Test   #93: SimulatorRuntimeTest.QueueOrderRuleAttributeTieUsesFifoTiebreaker ......................................................   Passed    0.01 sec
+          Start   94: SimulatorRuntimeTest.QueueCheckFailsWhenAttributeRuleHasNoAttributeName
+  94/1661 Test   #94: SimulatorRuntimeTest.QueueCheckFailsWhenAttributeRuleHasNoAttributeName ................................................   Passed    0.01 sec
+          Start   95: SimulatorRuntimeTest.QueueCheckPassesWhenAttributeRuleHasValidAttributeName
+  95/1661 Test   #95: SimulatorRuntimeTest.QueueCheckPassesWhenAttributeRuleHasValidAttributeName ............................................   Passed    0.01 sec
+          Start   96: SimulatorRuntimeTest.VariableInitBetweenReplicationsCopiesWithoutAliasingInitialValues
+  96/1661 Test   #96: SimulatorRuntimeTest.VariableInitBetweenReplicationsCopiesWithoutAliasingInitialValues .................................   Passed    0.01 sec
+          Start   97: SimulatorRuntimeTest.VariableSupportsScalarOneTwoAndNDIndexesWithSparseDefault
+  97/1661 Test   #97: SimulatorRuntimeTest.VariableSupportsScalarOneTwoAndNDIndexesWithSparseDefault .........................................   Passed    0.01 sec
+          Start   98: SimulatorRuntimeTest.VariableInitBetweenReplicationsRestoresCurrentValueFromInitial
+  98/1661 Test   #98: SimulatorRuntimeTest.VariableInitBetweenReplicationsRestoresCurrentValueFromInitial ....................................   Passed    0.01 sec
+          Start   99: SimulatorRuntimeTest.VariableSavePersistsMultipleDimensionsWithIncreasingIndexes
+  99/1661 Test   #99: SimulatorRuntimeTest.VariableSavePersistsMultipleDimensionsWithIncreasingIndexes .......................................   Passed    0.01 sec
+          Start  100: SimulatorRuntimeTest.VariableSaveAndLoadPreservesInitialValues
+ 100/1661 Test  #100: SimulatorRuntimeTest.VariableSaveAndLoadPreservesInitialValues .........................................................   Passed    0.01 sec
+          Start  101: SimulatorRuntimeTest.VariableSaveAndLoadPreservesNDInitialValues
+ 101/1661 Test  #101: SimulatorRuntimeTest.VariableSaveAndLoadPreservesNDInitialValues .......................................................   Passed    0.01 sec
+          Start  102: SimulatorRuntimeTest.VariableLoadedCurrentAndInitialContainersRemainIndependentAfterReset
+ 102/1661 Test  #102: SimulatorRuntimeTest.VariableLoadedCurrentAndInitialContainersRemainIndependentAfterReset ..............................   Passed    0.01 sec
+          Start  103: SimulatorRuntimeTest.VariableShowIncludesVariableSpecificValues
+ 103/1661 Test  #103: SimulatorRuntimeTest.VariableShowIncludesVariableSpecificValues ........................................................   Passed    0.01 sec
+          Start  104: SimulatorRuntimeTest.ScheduleDestructorDeletesOwnedSchedulableItemsSafely
+ 104/1661 Test  #104: SimulatorRuntimeTest.ScheduleDestructorDeletesOwnedSchedulableItemsSafely ..............................................   Passed    0.01 sec
+          Start  105: SimulatorRuntimeTest.ScheduleLoadInstanceReplacesSchedulableItemsWithoutKeepingOldPointers
+ 105/1661 Test  #105: SimulatorRuntimeTest.ScheduleLoadInstanceReplacesSchedulableItemsWithoutKeepingOldPointers .............................   Passed    0.01 sec
+          Start  106: SimulatorRuntimeTest.ScheduleGetExpressionReturnsSafeFallbackForEmptyList
+ 106/1661 Test  #106: SimulatorRuntimeTest.ScheduleGetExpressionReturnsSafeFallbackForEmptyList ..............................................   Passed    0.01 sec
+          Start  107: SimulatorRuntimeTest.ScheduleGetExpressionHandlesNonRepeatingAndReturnsLastAfterEnd
+ 107/1661 Test  #107: SimulatorRuntimeTest.ScheduleGetExpressionHandlesNonRepeatingAndReturnsLastAfterEnd ....................................   Passed    0.01 sec
+          Start  108: SimulatorRuntimeTest.ScheduleGetExpressionRepeatsWithPositiveCycleDurations
+ 108/1661 Test  #108: SimulatorRuntimeTest.ScheduleGetExpressionRepeatsWithPositiveCycleDurations ............................................   Passed    0.01 sec
+          Start  109: SimulatorRuntimeTest.ScheduleCheckFailsForRepeatingCyclesWithZeroTotalDuration
+ 109/1661 Test  #109: SimulatorRuntimeTest.ScheduleCheckFailsForRepeatingCyclesWithZeroTotalDuration .........................................   Passed    0.01 sec
+          Start  110: SimulatorRuntimeTest.ScheduleCheckPassesForValidRepeatingConfiguration
+ 110/1661 Test  #110: SimulatorRuntimeTest.ScheduleCheckPassesForValidRepeatingConfiguration .................................................   Passed    0.01 sec
+          Start  111: SimulatorRuntimeTest.ResourceSettersUpdateState
+ 111/1661 Test  #111: SimulatorRuntimeTest.ResourceSettersUpdateState ........................................................................   Passed    0.01 sec
+          Start  112: SimulatorRuntimeTest.ResourceCheckFailsForInvalidConfiguration
+ 112/1661 Test  #112: SimulatorRuntimeTest.ResourceCheckFailsForInvalidConfiguration .........................................................   Passed    0.01 sec
+          Start  113: SimulatorRuntimeTest.ResourceCheckPassesForValidConfiguration
+ 113/1661 Test  #113: SimulatorRuntimeTest.ResourceCheckPassesForValidConfiguration ..........................................................   Passed    0.01 sec
+          Start  114: SimulatorRuntimeTest.ResourceSaveAndLoadPreservesCapacityScheduleReference
+ 114/1661 Test  #114: SimulatorRuntimeTest.ResourceSaveAndLoadPreservesCapacityScheduleReference .............................................   Passed    0.01 sec
+          Start  115: SimulatorRuntimeTest.ResourceSaveAndLoadPreservesFailuresReferenceList
+ 115/1661 Test  #115: SimulatorRuntimeTest.ResourceSaveAndLoadPreservesFailuresReferenceList .................................................   Passed    0.01 sec
+          Start  116: SimulatorRuntimeTest.ResourceRecheckKeepsAttachedDataConsistent
+ 116/1661 Test  #116: SimulatorRuntimeTest.ResourceRecheckKeepsAttachedDataConsistent ........................................................   Passed    0.01 sec
+          Start  117: SimulatorRuntimeTest.ResourceToggleReportStatisticsClearsAndRecreatesInternalPointersSafely
+ 117/1661 Test  #117: SimulatorRuntimeTest.ResourceToggleReportStatisticsClearsAndRecreatesInternalPointersSafely ............................   Passed    0.01 sec
+          Start  118: SimulatorRuntimeTest.ResourceDestructorCleansOwnedHandlersContainers
+ 118/1661 Test  #118: SimulatorRuntimeTest.ResourceDestructorCleansOwnedHandlersContainers ...................................................   Passed    0.01 sec
+          Start  119: SimulatorRuntimeTest.FailureDestructorReleasesOwnedContainersAndDetachesResources
+ 119/1661 Test  #119: SimulatorRuntimeTest.FailureDestructorReleasesOwnedContainersAndDetachesResources ......................................   Passed    0.01 sec
+          Start  120: SimulatorRuntimeTest.FailureAddResourceMaintainsBidirectionalAssociationWithoutDuplicates
+ 120/1661 Test  #120: SimulatorRuntimeTest.FailureAddResourceMaintainsBidirectionalAssociationWithoutDuplicates ..............................   Passed    0.01 sec
+          Start  121: SimulatorRuntimeTest.FailureRemoveResourceMaintainsBidirectionalAssociation
+ 121/1661 Test  #121: SimulatorRuntimeTest.FailureRemoveResourceMaintainsBidirectionalAssociation ............................................   Passed    0.01 sec
+          Start  122: SimulatorRuntimeTest.FailureSaveAndLoadPreservesFalingResourcesBidirectionally
+ 122/1661 Test  #122: SimulatorRuntimeTest.FailureSaveAndLoadPreservesFalingResourcesBidirectionally .........................................   Passed    0.01 sec
+          Start  123: SimulatorRuntimeTest.FailureInitBetweenReplicationsSchedulesByFalingResourcesList
+ 123/1661 Test  #123: SimulatorRuntimeTest.FailureInitBetweenReplicationsSchedulesByFalingResourcesList ......................................   Passed    0.01 sec
+          Start  124: SimulatorRuntimeTest.SequenceDestructorDeletesOwnedSteps
+ 124/1661 Test  #124: SimulatorRuntimeTest.SequenceDestructorDeletesOwnedSteps ...............................................................   Passed    0.01 sec
+          Start  125: SimulatorRuntimeTest.SequenceStepDestructorOwnsAndDeletesAssignments
+ 125/1661 Test  #125: SimulatorRuntimeTest.SequenceStepDestructorOwnsAndDeletesAssignments ...................................................   Passed    0.01 sec
+          Start  126: SimulatorRuntimeTest.SequenceSaveAndLoadPreservesAssignmentsPerStepWithoutCollision
+ 126/1661 Test  #126: SimulatorRuntimeTest.SequenceSaveAndLoadPreservesAssignmentsPerStepWithoutCollision ....................................   Passed    0.01 sec
+          Start  127: SimulatorRuntimeTest.SequenceSaveAndLoadPreservesStationAndLabelPerStep
+ 127/1661 Test  #127: SimulatorRuntimeTest.SequenceSaveAndLoadPreservesStationAndLabelPerStep ................................................   Passed    0.01 sec
+          Start  128: SimulatorRuntimeTest.SequenceRecheckRemovesObsoleteAttachedData
+ 128/1661 Test  #128: SimulatorRuntimeTest.SequenceRecheckRemovesObsoleteAttachedData ........................................................   Passed    0.01 sec
+          Start  129: SimulatorRuntimeTest.SequenceCheckFailsForEmptyStep
+ 129/1661 Test  #129: SimulatorRuntimeTest.SequenceCheckFailsForEmptyStep ....................................................................   Passed    0.01 sec
+          Start  130: SimulatorRuntimeTest.SequenceCheckPassesForValidSteps
