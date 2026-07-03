@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This file maps historical documents in `docs/ai_assistants/oldies/` to future stable documentation under `docs/ai_assistants/`.
+This file maps historical documents in `docs/ai_assistants/oldies/` to stable documentation under `docs/ai_assistants/`.
 
 The goal is to avoid losing useful technical analysis while preventing `oldies/` from becoming a permanent archive of stale plans.
 
@@ -14,9 +14,11 @@ The goal is to avoid losing useful technical analysis while preventing `oldies/`
 4. Do not consolidate broad TODOs without converting them into specific, testable follow-up tasks.
 5. Keep stable documents short enough to remain operational for future AI assistants.
 
-## Proposed stable documents
+## Stable documents created
 
 ### `build_ci_tests.md`
+
+Status: initial stable guide created.
 
 Purpose: stable reference for CMake/Ninja/CTest presets, terminal-app build strategy, smoke/unit test execution, and CI follow-up.
 
@@ -28,6 +30,8 @@ Candidate sources:
 
 ### `kernel_development.md`
 
+Status: initial stable guide created.
+
 Purpose: stable reference for kernel modernization, simulator inventory, memory-safety risks, ownership conventions, and C++23 modernization strategy.
 
 Candidate sources:
@@ -37,9 +41,21 @@ Candidate sources:
 - `old_modelsimulation-cpp23-review.md`
 - `old_phase2-kernel-simulator-inventory.md`
 
-### `plugins_development.md`
+### `plugins_development.md` and `plugins/`
+
+Status: initial stable guide and domain split created.
 
 Purpose: stable reference for plugin architecture, component method coverage, data definitions, graphical plugin coupling, and plugin migration risks.
+
+Domain guides:
+
+- `plugins/electronic.md`
+- `plugins/external_integration.md`
+- `plugins/biochemical.md`
+- `plugins/whole_cell_model.md`
+- `plugins/modal_model.md`
+- `plugins/continuous_hybrid.md`
+- `plugins/other_plugins.md`
 
 Candidate sources:
 
@@ -51,6 +67,8 @@ Candidate sources:
 
 ### `applications_development.md`
 
+Status: initial stable guide created.
+
 Purpose: stable reference for terminal, web/httpworker, GUI, MCP, and application-structure migration decisions.
 
 Candidate sources:
@@ -60,6 +78,8 @@ Candidate sources:
 - relevant sections of `old_genesys_wiki_consolidated.md`
 
 ### `tools_and_statistics.md`
+
+Status: initial stable guide created.
 
 Purpose: stable reference for data analyzer, optimizer, statistical analysis, experimental design, and future analytical tooling.
 
@@ -71,6 +91,8 @@ Candidate sources:
 
 ### `modal_and_hybrid_simulation.md`
 
+Status: initial stable guide created.
+
 Purpose: stable reference for modal models, EFSM/Petri net planning, temporal synchronization, and discrete-continuous integration risks.
 
 Candidate sources:
@@ -80,6 +102,8 @@ Candidate sources:
 - relevant sections of whole-cell and SBML planning documents if they affect temporal semantics.
 
 ### `whole_cell_and_sbml.md`
+
+Status: initial stable guide created.
 
 Purpose: stable reference for SBML interoperability, TinkerCell context, whole-cell biosimulator planning, and biological modeling integration.
 
@@ -92,6 +116,8 @@ Candidate sources:
 
 ### `python_integration.md`
 
+Status: initial stable guide created.
+
 Purpose: stable reference for PythonForG and Python-facing simulator facade coverage.
 
 Candidate sources:
@@ -99,6 +125,8 @@ Candidate sources:
 - `old_PythonForG_SimulatorFacade_coverage.md`
 
 ### `documentation_governance.md`
+
+Status: initial stable guide created.
 
 Purpose: stable reference for documentation migration, historical retention, issue/relay contracts, and AI-assistant update rules.
 
@@ -109,17 +137,14 @@ Candidate sources:
 - relevant sections of `old_genesys_wiki_consolidated.md`
 - `oldies_inventory.md`
 
-## Suggested consolidation order
+## Remaining consolidation work
 
-1. `build_ci_tests.md`
-2. `kernel_development.md`
-3. `plugins_development.md`
-4. `applications_development.md`
-5. `tools_and_statistics.md`
-6. `modal_and_hybrid_simulation.md`
-7. `whole_cell_and_sbml.md`
-8. `python_integration.md`
-9. `documentation_governance.md`
+Initial stable guides now exist for all planned categories. The next pass should review each oldies file in detail and mark it as:
+
+- consolidated;
+- still pending;
+- obsolete but retained until deletion gate;
+- discard after explicit review.
 
 ## Deletion gate for `oldies/`
 
