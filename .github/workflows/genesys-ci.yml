@@ -40,69 +40,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show CI metadata
+      - name: Detect moved GUI include corruption
         run: |
           set -Eeuo pipefail
-
-          echo "event_name=${{ github.event_name }}"
-          echo "repository=${{ github.repository }}"
-          echo "ref=${GITHUB_REF}"
-          echo "ref_name=${GITHUB_REF_NAME}"
-          echo "sha=${GITHUB_SHA}"
-          echo "configure_preset=${CMAKE_CONFIGURE_PRESET}"
-          echo "build_preset=${CMAKE_BUILD_PRESET}"
-          echo "test_preset=${CMAKE_TEST_PRESET}"
-
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "pr_number=${{ github.event.pull_request.number }}"
-            echo "pr_base_ref=${{ github.event.pull_request.base.ref }}"
-            echo "pr_base_sha=${{ github.event.pull_request.base.sha }}"
-            echo "pr_head_ref=${{ github.event.pull_request.head.ref }}"
-            echo "pr_head_sha=${{ github.event.pull_request.head.sha }}"
+          echo "HEAD=$(git rev-parse HEAD)"
+          echo "Checking for real preprocessor include directives containing more than one #include token."
+          matches="$({ grep -RInE '^\s*#\s*include.*#\s*include' source/applications/gui/genesys --include='*.h' --include='*.hpp' --include='*.cpp' --include='*.cc' --include='*.cxx' || true; } | head -n 40)"
+          if [[ -n "${matches}" ]]; then
+            echo "FOUND_CONCATENATED_INCLUDES"
+            printf '%s\n' "${matches}"
+            exit 1
           fi
-
-          {
-            echo "## GenESyS CI metadata"
-            echo ""
-            echo "| Field | Value |"
-            echo "|---|---|"
-            echo "| Event | ${{ github.event_name }} |"
-            echo "| Repository | ${{ github.repository }} |"
-            echo "| Git ref | ${GITHUB_REF} |"
-            echo "| Ref name | ${GITHUB_REF_NAME} |"
-            echo "| GitHub SHA | ${GITHUB_SHA} |"
-            echo "| Configure preset | ${CMAKE_CONFIGURE_PRESET} |"
-            echo "| Build preset | ${CMAKE_BUILD_PRESET} |"
-            echo "| Test preset | ${CMAKE_TEST_PRESET} |"
-          } >> "${GITHUB_STEP_SUMMARY}"
-
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            {
-              echo "| PR number | ${{ github.event.pull_request.number }} |"
-              echo "| PR base ref | ${{ github.event.pull_request.base.ref }} |"
-              echo "| PR base SHA | ${{ github.event.pull_request.base.sha }} |"
-              echo "| PR head ref | ${{ github.event.pull_request.head.ref }} |"
-              echo "| PR head SHA | ${{ github.event.pull_request.head.sha }} |"
-            } >> "${GITHUB_STEP_SUMMARY}"
-          fi
-
-      - name: Show runner baseline before dependency install
-        run: |
-          set -Eeuo pipefail
-          uname -a
-          cat /etc/os-release
-          nproc
-          free -h
-          df -h
-          cmake --version || true
-          ninja --version || true
-          g++ --version || true
-          python3 --version || true
+          echo "No concatenated real include directives found."
 
       - name: Install build dependencies
         run: |
           set -Eeuo pipefail
-          sudo apt-get update
+          sudo apt-get update >/dev/null
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
@@ -112,131 +66,48 @@ jobs:
             qt6-base-dev \
             qt6-tools-dev \
             qt6-tools-dev-tools \
-            libgl1-mesa-dev
-
-      - name: Show toolchain baseline after dependency install
-        run: |
-          set -Eeuo pipefail
-          cmake --version
+            libgl1-mesa-dev >/dev/null
+          cmake --version | head -n 1
           ninja --version
-          g++ --version
-          python3 --version
-          dpkg-query -W \
-            build-essential \
-            cmake \
-            ninja-build \
-            python3 \
-            python3-dev \
-            qt6-base-dev \
-            qt6-tools-dev \
-            qt6-tools-dev-tools \
-            libgl1-mesa-dev
+          g++ --version | head -n 1
 
       - name: Configure - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
-          cmake --list-presets=all
-          cmake --preset "${CMAKE_CONFIGURE_PRESET}"
+          cmake --preset "${CMAKE_CONFIGURE_PRESET}" >/tmp/genesys-configure.log 2>&1 || {
+            echo "CONFIGURE_FAILED"
+            tail -n 120 /tmp/genesys-configure.log
+            exit 1
+          }
+          echo "CONFIGURE_OK"
 
       - name: Build - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
           mkdir -p .genesys-ci-diagnostics
+          build_log=.genesys-ci-diagnostics/build-tests-unit.log
           set +e
-          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)" 2>&1 | tee .genesys-ci-diagnostics/build-tests-unit.log
-          rc=${PIPESTATUS[0]}
+          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)" >"${build_log}" 2>&1
+          rc=$?
           set -e
-          exit "${rc}"
+          if [[ "${rc}" -ne 0 ]]; then
+            echo "BUILD_FAILED rc=${rc}"
+            first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
+            if [[ -n "${first}" ]]; then
+              start=$((first - 20))
+              end=$((first + 80))
+              [[ "${start}" -lt 1 ]] && start=1
+              echo "FIRST_ERROR_LINE=${first}"
+              sed -n "${start},${end}p" "${build_log}"
+            else
+              echo "FIRST_ERROR_LINE=not_found"
+              tail -n 120 "${build_log}"
+            fi
+            exit "${rc}"
+          fi
+          echo "BUILD_OK"
 
       - name: Tests - CTest preset tests-unit
         run: |
           set -Eeuo pipefail
-          mkdir -p .genesys-ci-diagnostics
-          set +e
-          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure 2>&1 | tee .genesys-ci-diagnostics/ctest-tests-unit.log
-          rc=${PIPESTATUS[0]}
-          set -e
-          exit "${rc}"
-
-      - name: Diagnostics on failure
-        if: failure()
-        run: |
-          set +e
-          mkdir -p .genesys-ci-diagnostics
-
-          summary=.genesys-ci-diagnostics/first-failure-summary.txt
-          build_log=.genesys-ci-diagnostics/build-tests-unit.log
-          ctest_log=.genesys-ci-diagnostics/ctest-tests-unit.log
-          : > "${summary}"
-
-          add() { printf '%s\n' "$*" | tee -a "${summary}"; }
-
-          add "# GenESyS CI failure summary"
-          add ""
-          add "HEAD=$(git rev-parse HEAD 2>/dev/null)"
-          add "STATUS=$(git status --short | wc -l | tr -d ' ')"
-          add ""
-
-          summarize_log() {
-            local name="$1"
-            local log="$2"
-            add "## ${name}"
-            add "LOG=${log}"
-            if [[ ! -f "${log}" ]]; then
-              add "LOG_STATUS=missing"
-              add ""
-              return 0
-            fi
-            add "LOG_LINES=$(wc -l < "${log}" | tr -d ' ')"
-            local first
-            first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${log}" | head -n 1 | cut -d: -f1)
-            if [[ -n "${first}" ]]; then
-              local start=$((first - 20))
-              local end=$((first + 80))
-              [[ "${start}" -lt 1 ]] && start=1
-              add "FIRST_ERROR_LINE=${first}"
-              add '```text'
-              sed -n "${start},${end}p" "${log}" | tee -a "${summary}"
-              add '```'
-            else
-              add "FIRST_ERROR_LINE=not_found"
-              add '```text'
-              tail -n 120 "${log}" | tee -a "${summary}"
-              add '```'
-            fi
-            add ""
-          }
-
-          summarize_log "build-tests-unit" "${build_log}"
-          summarize_log "ctest-tests-unit" "${ctest_log}"
-
-          cat "${summary}" >> "${GITHUB_STEP_SUMMARY}"
-
-          echo "::group::Repository status"
-          git status --short
-          git rev-parse HEAD
-          echo "::endgroup::"
-
-          if [[ -d build ]]; then
-            echo "::group::Build tree"
-            find build -maxdepth 4 -type f | sort | sed -n '1,200p'
-            echo "::endgroup::"
-
-            find build -type f \( \
-                -name CMakeOutput.log \
-                -o -name CMakeError.log \
-                -o -name LastTest.log \
-              \) -print -exec sh -c '
-                echo "::group::$1"
-                sed -n "1,260p" "$1"
-                echo "::endgroup::"
-              ' sh {} \;
-          fi
-
-      - name: Upload CI diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: genesys-ci-diagnostics
-          path: .genesys-ci-diagnostics
-          if-no-files-found: ignore
+          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure
