@@ -38,6 +38,9 @@ public:
     void setOutputArcWeight(PetriPlace* place, std::string color, unsigned int weight);
     unsigned int getOutputArcWeight(PetriPlace* place, std::string color);
 
+	void setInputArcWeight(std::string color, unsigned int weight);
+    void setOutputArcWeight(std::string color, unsigned int weight);
+	
     std::map<PetriPlace*, ColorWeightMap> getInputPlaces() const;
     std::map<PetriPlace*, ColorWeightMap> getOutputPlaces() const;
 

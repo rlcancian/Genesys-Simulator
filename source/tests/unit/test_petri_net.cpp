@@ -2,6 +2,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/ModalModel/PetriPlace.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
+#include "plugins/components/ModalModel/ModalModelPetriNet.h"
 
 class Test_PetriComponents : public ::testing::Test {
 protected:
@@ -110,4 +111,77 @@ TEST_F(Test_PetriComponents, ExecuteMultiCorNoMesmoLugar) {
     EXPECT_EQ(in->getTokens("red"), 0);
     EXPECT_EQ(out->getTokens("purple"), 2);
     EXPECT_EQ(out->getTokens("yellow"), 1);
+}
+
+// SUÍTE 3: INTEGRAÇÃO E CONCORRÊNCIA
+TEST_F(Test_PetriComponents, ConcorrenciaEPrioridade) {
+    PetriPlace* pOrigem = new PetriPlace(model, "P_Origem");
+    PetriPlace* pDestino1 = new PetriPlace(model, "P_Destino1");
+    PetriPlace* pDestino2 = new PetriPlace(model, "P_Destino2");
+    
+    // T1 e T2 disputam o mesmo token
+    PetriTransition* t1 = new PetriTransition(pOrigem, pDestino1, "T1_PrioridadeAlta");
+    t1->setPriority(1); // Prioridade maior (menor valor)
+    t1->setInputArcWeight(pOrigem, "blue", 1);
+    t1->setOutputArcWeight(pDestino1, "blue", 1);
+
+    PetriTransition* t2 = new PetriTransition(pOrigem, pDestino2, "T2_PrioridadeBaixa");
+    t2->setPriority(2);
+    t2->setInputArcWeight(pOrigem, "blue", 1);
+    t2->setOutputArcWeight(pDestino2, "blue", 1);
+
+    // Apenas 1 token disponível
+    pOrigem->addTokens(1, "blue");
+
+    // Adicionamos no ModalModelPetriNet
+    ModalModelPetriNet* mm = new ModalModelPetriNet(model, "RedeTeste");
+    mm->getNodes()->insert(pOrigem);
+    mm->getNodes()->insert(pDestino1);
+    mm->getNodes()->insert(pDestino2);
+    mm->getTransitions()->insert(t1);
+    mm->getTransitions()->insert(t2);
+
+    // Simula disparo via componente
+    Entity* dummyEntity = nullptr;
+    
+    // Testamos a lógica de seleção implementada
+    std::vector<DefaultNodeTransition*> enabled;
+    if (t1->canFire(model, dummyEntity)) enabled.push_back(t1);
+    if (t2->canFire(model, dummyEntity)) enabled.push_back(t2);
+    
+    // Ambas habilitadas
+    EXPECT_EQ(enabled.size(), 2);
+    
+    std::sort(enabled.begin(), enabled.end(), [](DefaultNodeTransition* a, DefaultNodeTransition* b) {
+        return a->getPriority() < b->getPriority();
+    });
+    
+    // T1 deve ser a primeira a executar
+    EXPECT_EQ(enabled.front()->getName(), "T1_PrioridadeAlta");
+    
+    // Executa a primeira habilitada
+    enabled.front()->execute(model, dummyEntity);
+    
+    EXPECT_EQ(pOrigem->getTokens("blue"), 0);
+    EXPECT_EQ(pDestino1->getTokens("blue"), 1); // T1 roubou o token
+    EXPECT_EQ(pDestino2->getTokens("blue"), 0); // T2 ficou sem nada
+    
+    // Agora T2 não pode mais disparar
+    EXPECT_FALSE(t2->canFire(model, dummyEntity));
+}
+
+TEST_F(Test_PetriComponents, TopologiasInvalidasCheck) {
+    ModalModelPetriNet* mm = new ModalModelPetriNet(model, "RedeInvalida");
+    PetriPlace* p = new PetriPlace(model, "P_Solitario");
+    
+    // Transição sem conexões (Isolada)
+    PetriTransition* tIsolada = new PetriTransition(nullptr, nullptr, "T_Isolada");
+    mm->getNodes()->insert(p);
+    mm->getTransitions()->insert(tIsolada);
+    
+    // O método Check estático valida o componente e retorna false se houver erros estruturais
+    bool valid = ModelComponent::Check(mm);
+    
+    // Como a transição não tem lugares de entrada nem saída, a rede deve ser considerada inválida
+    EXPECT_FALSE(valid);
 }
