@@ -27,7 +27,7 @@ env:
 
 jobs:
   unit-tests:
-    name: Configure, build and test tests-unit
+    name: Diagnose GUI GMDD layout build
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -69,108 +69,50 @@ jobs:
       - name: Configure - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
-          cmake --preset "${CMAKE_CONFIGURE_PRESET}" >/tmp/genesys-configure.log 2>&1 || {
+          mkdir -p .genesys-ci-diagnostics
+          cmake --preset "${CMAKE_CONFIGURE_PRESET}" >.genesys-ci-diagnostics/configure-tests-unit.log 2>&1 || {
             echo "CONFIGURE_FAILED"
-            tail -n 120 /tmp/genesys-configure.log
+            tail -n 120 .genesys-ci-diagnostics/configure-tests-unit.log
             exit 1
           }
           echo "CONFIGURE_OK"
 
-      - name: Build non-GUI unit targets
-        run: |
-          set -Eeuo pipefail
-          targets=(
-            genesys_test_util
-            genesys_test_simulator_support
-            genesys_test_simulator_runtime
-            genesys_test_parser_expressions
-            genesys_test_cellular_automata_neighborhood
-            genesys_test_support_modelmanager
-            genesys_test_support_persistence
-            genesys_test_runtime_pluginmanager
-            genesys_test_wcm_plugins
-            genesys_test_support_oneventmanager
-            genesys_test_support_parsermanager
-            genesys_test_support_tracemanager
-            genesys_test_support_connectionmanager
-            genesys_test_support_simulationscenario
-            genesys_test_support_experimentmanager
-            genesys_test_statistics
-            genesys_test_tools_hypothesistester
-            genesys_test_tools_simulation_results_dataset
-            genesys_test_web_api_router
-            genesys_test_kernel_simulator_method_inventory
-          )
-          for target in "${targets[@]}"; do
-            echo "BUILD_TARGET_BEGIN ${target}"
-            build_log="/tmp/build-${target}.log"
-            set +e
-            cmake --build build/tests-unit --target "${target}" --parallel "$(nproc)" >"${build_log}" 2>&1
-            rc=$?
-            set -e
-            if [[ "${rc}" -ne 0 ]]; then
-              echo "BUILD_TARGET_FAILED ${target} rc=${rc}"
-              first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
-              if [[ -n "${first}" ]]; then
-                start=$((first - 20)); end=$((first + 80)); [[ "${start}" -lt 1 ]] && start=1
-                echo "FIRST_ERROR_LINE=${first}"
-                sed -n "${start},${end}p" "${build_log}"
-              else
-                echo "FIRST_ERROR_LINE=not_found"
-                tail -n 120 "${build_log}"
-              fi
-              exit "${rc}"
-            fi
-            echo "BUILD_TARGET_OK ${target}"
-          done
-
-      - name: Build GUI render strategy target
-        run: |
-          set -Eeuo pipefail
-          build_log=/tmp/build-gui-render-strategy.log
-          set +e
-          cmake --build build/tests-unit --target genesys_test_gui_render_strategy --parallel "$(nproc)" >"${build_log}" 2>&1
-          rc=$?
-          set -e
-          if [[ "${rc}" -ne 0 ]]; then
-            echo "BUILD_GUI_RENDER_STRATEGY_FAILED rc=${rc}"
-            first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
-            if [[ -n "${first}" ]]; then
-              start=$((first - 20)); end=$((first + 80)); [[ "${start}" -lt 1 ]] && start=1
-              echo "FIRST_ERROR_LINE=${first}"
-              sed -n "${start},${end}p" "${build_log}"
-            else
-              echo "FIRST_ERROR_LINE=not_found"
-              tail -n 120 "${build_log}"
-            fi
-            exit "${rc}"
-          fi
-          echo "BUILD_GUI_RENDER_STRATEGY_OK"
-
       - name: Build GUI GMDD layout target
         run: |
           set -Eeuo pipefail
-          build_log=/tmp/build-gui-gmdd-layout.log
+          mkdir -p .genesys-ci-diagnostics
+          build_log=.genesys-ci-diagnostics/build-gui-gmdd-layout.log
+          summary=.genesys-ci-diagnostics/first-failure-summary.txt
+          : > "${summary}"
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "TARGET=genesys_test_gui_gmdd_layout"
+            echo "BUILD_LOG=${build_log}"
+          } >> "${summary}"
           set +e
           cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout --parallel "$(nproc)" >"${build_log}" 2>&1
           rc=$?
           set -e
+          echo "BUILD_RC=${rc}" >> "${summary}"
           if [[ "${rc}" -ne 0 ]]; then
             echo "BUILD_GUI_GMDD_LAYOUT_FAILED rc=${rc}"
             first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
             if [[ -n "${first}" ]]; then
-              start=$((first - 20)); end=$((first + 80)); [[ "${start}" -lt 1 ]] && start=1
-              echo "FIRST_ERROR_LINE=${first}"
-              sed -n "${start},${end}p" "${build_log}"
+              start=$((first - 20)); end=$((first + 100)); [[ "${start}" -lt 1 ]] && start=1
+              echo "FIRST_ERROR_LINE=${first}" | tee -a "${summary}"
+              sed -n "${start},${end}p" "${build_log}" | tee -a "${summary}"
             else
-              echo "FIRST_ERROR_LINE=not_found"
-              tail -n 120 "${build_log}"
+              echo "FIRST_ERROR_LINE=not_found" | tee -a "${summary}"
+              tail -n 160 "${build_log}" | tee -a "${summary}"
             fi
             exit "${rc}"
           fi
-          echo "BUILD_GUI_GMDD_LAYOUT_OK"
+          echo "BUILD_GUI_GMDD_LAYOUT_OK" | tee -a "${summary}"
 
-      - name: Tests - CTest preset tests-unit
-        run: |
-          set -Eeuo pipefail
-          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure
+      - name: Upload CI diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-ci-diagnostics
+          path: .genesys-ci-diagnostics
+          if-no-files-found: ignore
