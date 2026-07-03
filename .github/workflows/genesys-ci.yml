@@ -32,15 +32,10 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Silent checkout
-        run: |
-          set -Eeuo pipefail
-          echo "HEAD_TARGET=${GITHUB_SHA}"
-          git init -q .
-          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          git -c protocol.version=2 fetch -q --depth=1 origin "${GITHUB_SHA}"
-          git checkout -q --force FETCH_HEAD
-          echo "CHECKOUT_OK=$(git rev-parse --short HEAD)"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Verify moved GUI includes are clean
         run: |
@@ -81,28 +76,53 @@ jobs:
           }
           echo "CONFIGURE_OK"
 
-      - name: Build core unit targets
+      - name: Build non-GUI unit targets
         run: |
           set -Eeuo pipefail
-          build_log=/tmp/build-core-targets.log
-          set +e
-          cmake --build build/tests-unit --target genesys_kernel_unit_tests --parallel "$(nproc)" >"${build_log}" 2>&1
-          rc=$?
-          set -e
-          if [[ "${rc}" -ne 0 ]]; then
-            echo "BUILD_CORE_FAILED rc=${rc}"
-            first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
-            if [[ -n "${first}" ]]; then
-              start=$((first - 20)); end=$((first + 80)); [[ "${start}" -lt 1 ]] && start=1
-              echo "FIRST_ERROR_LINE=${first}"
-              sed -n "${start},${end}p" "${build_log}"
-            else
-              echo "FIRST_ERROR_LINE=not_found"
-              tail -n 120 "${build_log}"
+          targets=(
+            genesys_test_util
+            genesys_test_simulator_support
+            genesys_test_simulator_runtime
+            genesys_test_parser_expressions
+            genesys_test_cellular_automata_neighborhood
+            genesys_test_support_modelmanager
+            genesys_test_support_persistence
+            genesys_test_runtime_pluginmanager
+            genesys_test_wcm_plugins
+            genesys_test_support_oneventmanager
+            genesys_test_support_parsermanager
+            genesys_test_support_tracemanager
+            genesys_test_support_connectionmanager
+            genesys_test_support_simulationscenario
+            genesys_test_support_experimentmanager
+            genesys_test_statistics
+            genesys_test_tools_hypothesistester
+            genesys_test_tools_simulation_results_dataset
+            genesys_test_web_api_router
+            genesys_test_kernel_simulator_method_inventory
+          )
+          for target in "${targets[@]}"; do
+            echo "BUILD_TARGET_BEGIN ${target}"
+            build_log="/tmp/build-${target}.log"
+            set +e
+            cmake --build build/tests-unit --target "${target}" --parallel "$(nproc)" >"${build_log}" 2>&1
+            rc=$?
+            set -e
+            if [[ "${rc}" -ne 0 ]]; then
+              echo "BUILD_TARGET_FAILED ${target} rc=${rc}"
+              first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
+              if [[ -n "${first}" ]]; then
+                start=$((first - 20)); end=$((first + 80)); [[ "${start}" -lt 1 ]] && start=1
+                echo "FIRST_ERROR_LINE=${first}"
+                sed -n "${start},${end}p" "${build_log}"
+              else
+                echo "FIRST_ERROR_LINE=not_found"
+                tail -n 120 "${build_log}"
+              fi
+              exit "${rc}"
             fi
-            exit "${rc}"
-          fi
-          echo "BUILD_CORE_OK"
+            echo "BUILD_TARGET_OK ${target}"
+          done
 
       - name: Build GUI render strategy target
         run: |
