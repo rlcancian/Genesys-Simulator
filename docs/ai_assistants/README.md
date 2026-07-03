@@ -8,6 +8,8 @@ Read this file before using or updating the other files in this directory.
 
 - `README.md`: entrypoint for AI assistants.
 - `current_plans.md`: active plans and migration notes.
+- `oldies_inventory.md`: inventory of temporary historical documents retained in `oldies/`.
+- `consolidation_map.md`: target map for consolidating historical documents into stable AI-assistant documentation.
 - `oldies/`: temporary historical documents retained for traceability.
 
 ## Rules for AI assistants
@@ -17,7 +19,10 @@ Read this file before using or updating the other files in this directory.
 3. Prefer small, reversible, reviewable changes.
 4. Do not invent paths, targets, classes, methods, plugins, workflows, or build commands.
 5. Validate changes with CMake, Ninja, and CTest when the environment allows it.
+6. Do not delete historical files from `oldies/` before their relevant content has been consolidated or explicitly discarded.
 
 ## Historical material
 
 Historical Markdown documents were moved to `oldies/` during the documentation migration. The directory is temporary and should be removed after 2026-11-01, after relevant content has been consolidated into stable documents under `docs/ai_assistants/`.
+
+Use `oldies_inventory.md` and `consolidation_map.md` before editing or deleting material from `oldies/`.
