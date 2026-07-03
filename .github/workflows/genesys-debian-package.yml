@@ -48,6 +48,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Normalize Debian packaging permissions
+        run: |
+          set -Eeuo pipefail
+          chmod +x debian/rules
+
       - name: Install Debian packaging dependencies
         run: |
           set -Eeuo pipefail
