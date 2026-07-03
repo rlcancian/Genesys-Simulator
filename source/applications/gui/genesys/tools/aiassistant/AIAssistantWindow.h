@@ -4,6 +4,7 @@
 #include "../../../../../tools/AIAssistant/AIAssistantDefaultImpl.h"
 #include "../../../../../tools/AIAssistant/AISecretStore.h"
 #include "../../../../../kernel/simulator/SimulatorFacade.h"
+
 #include <QMainWindow>
 
 class QAction;
@@ -92,16 +93,20 @@ private:
     QPushButton*      _collectResultsBtn   = nullptr;
     QPushButton*      _fullPipelineBtn     = nullptr;
     QTextBrowser*     _executionLog        = nullptr;
+    QLabel*           _statusLabel         = nullptr;
 
-    // Audit tab
+    // Audit log tab
     QTableWidget*     _auditTable          = nullptr;
     QPushButton*      _refreshAuditBtn     = nullptr;
     QPushButton*      _exportAuditBtn      = nullptr;
+    QLabel*           _auditLogPathLabel   = nullptr;
 
-    QLabel*           _statusLabel         = nullptr;
     QTabWidget*       _tabs                = nullptr;
 
-    bool              _running             = false;
+    // Actions
+    QAction*          _applyConfigAction   = nullptr;
+    QAction*          _clearLogAction      = nullptr;
+    QAction*          _refreshAuditAction  = nullptr;
 };
 
 #endif // AIASSISTANTWINDOW_H
