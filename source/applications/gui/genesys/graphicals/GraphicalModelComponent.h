@@ -13,6 +13,12 @@
 #include <QPen>
 #include <QBrush>
 #include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../../../kernel/simulator/PropertyGenesys.h"
+#include "../../../../kernel/simulator/Simulator.h"
+#include "../../../../plugins/data/Logic/Variable.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "graphicals/GraphicalImageAnimation.h"
@@ -129,7 +135,7 @@ private:
 public:
     /** @brief Returns the animation image identifier used for queue visualization. */
     QString getAnimationImageName();
-    /** @brief Updates the animation image identifier used for queue visualization. */
+    /** @brief Updates the animation image identifier used by the renderer. */
     void setAnimationImageName(QString name);
     /** @brief Returns the queue-to-metadata map used by the queue overlay renderer. */
     QMap<Queue *, QPair<unsigned int, unsigned int>>* getMapQueue();
