@@ -206,7 +206,7 @@ jobs:
       - name: Build Debian binary packages
         run: |
           set -Eeuo pipefail
-          dpkg-buildpackage -us -uc -b 2>&1 | tee ../genesys-debian-build.log
+          dpkg-buildpackage -us -uc -b 2>&1 | tee genesys-debian-build.log
 
       - name: Validate AppStream metadata
         if: success()
@@ -218,39 +218,37 @@ jobs:
         if: always()
         run: |
           set +e
-          lintian ../*.deb 2>&1 | tee ../genesys-lintian.log
+          lintian ../*.deb 2>&1 | tee genesys-lintian.log
           exit 0
 
       - name: Collect Debian diagnostics
         if: always()
         run: |
           set +e
-          mkdir -p ../genesys-debian-diagnostics
-          cp -v ../genesys-debian-build.log ../genesys-debian-diagnostics/ 2>/dev/null || true
-          cp -v ../genesys-lintian.log ../genesys-debian-diagnostics/ 2>/dev/null || true
-          cp -v ../*.build ../genesys-debian-diagnostics/ 2>/dev/null || true
-          cp -v ../*.buildinfo ../genesys-debian-diagnostics/ 2>/dev/null || true
-          cp -v ../*.changes ../genesys-debian-diagnostics/ 2>/dev/null || true
-          cp -v build-debian/CMakeFiles/CMakeOutput.log ../genesys-debian-diagnostics/ 2>/dev/null || true
-          cp -v build-debian/CMakeFiles/CMakeError.log ../genesys-debian-diagnostics/ 2>/dev/null || true
-          find build-debian -type f \( -name "*.log" -o -name "LastTest.log" \) -exec cp -v {} ../genesys-debian-diagnostics/ \; 2>/dev/null || true
-          find .. -maxdepth 2 -type f \( -name "*.deb" -o -name "*.changes" -o -name "*.buildinfo" -o -name "*.build" -o -name "*.log" \) | sort
+          mkdir -p genesys-debian-diagnostics genesys-debian-packages
+          cp -v genesys-debian-build.log genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v genesys-lintian.log genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.build genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.buildinfo genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.changes genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v build-debian/CMakeFiles/CMakeOutput.log genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v build-debian/CMakeFiles/CMakeError.log genesys-debian-diagnostics/ 2>/dev/null || true
+          find build-debian -type f \( -name "*.log" -o -name "LastTest.log" \) -exec cp -v {} genesys-debian-diagnostics/ \; 2>/dev/null || true
+          cp -v ../*.deb genesys-debian-packages/ 2>/dev/null || true
+          cp -v ../*.buildinfo genesys-debian-packages/ 2>/dev/null || true
+          cp -v ../*.changes genesys-debian-packages/ 2>/dev/null || true
+          find genesys-debian-diagnostics genesys-debian-packages -maxdepth 2 -type f | sort
 
       - name: Upload Debian packages
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: genesys-debian-packages
-          path: |
-            ../genesys-gui_*.deb
-            ../genesys-web_*.deb
-            ../genesys-simulator_*.buildinfo
-            ../genesys-simulator_*.changes
+          path: genesys-debian-packages/
 
       - name: Upload Debian diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: genesys-debian-diagnostics
-          path: ../genesys-debian-diagnostics/
-
+          path: genesys-debian-diagnostics/
