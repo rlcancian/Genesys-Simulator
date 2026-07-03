@@ -1,4 +1,3 @@
-
 # Developer documentation
 
 This directory contains developer-facing documentation configuration for GenESyS.

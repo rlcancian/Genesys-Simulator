@@ -1,4 +1,3 @@
-
 # User documentation
 
 This directory contains user-facing documentation configuration for GenESyS.
