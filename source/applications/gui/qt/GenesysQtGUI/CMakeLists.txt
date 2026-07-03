@@ -76,4 +76,16 @@ install(TARGETS genesys_qt_gui_application
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/io.github.rlcancian.genesys.desktop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)
+
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/io.github.rlcancian.genesys.metainfo.xml
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo
+)
+
+install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+)
+
 add_custom_target(genesys_gui DEPENDS genesys_qt_gui_application)
