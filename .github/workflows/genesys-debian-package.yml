@@ -4,6 +4,15 @@ run-name: GenESyS Debian Package | ${{ github.event_name }} | ref=${{ github.ref
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - WiP20261
+    paths:
+      - 'debian/**'
+      - 'packaging/linux/**'
+      - 'source/**/CMakeLists.txt'
+      - 'CMakeLists.txt'
+      - '.github/workflows/genesys-debian-package.yml'
   pull_request:
     branches:
       - WiP20261
