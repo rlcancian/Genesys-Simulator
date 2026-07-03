@@ -1,0 +1,262 @@
+===== FEEDBACK =====
+BRANCH=WiP20261
+RUN_ID=28640551688
+STATUS=1
+
+===== RUN SUMMARY =====
+
+X WiP20261 GenESyS CI #419 · 28640551688
+Triggered via workflow_dispatch about 6 minutes ago
+
+JOBS
+X Configure, build and test tests-unit in 6m14s (ID 84935604718)
+  ✓ Set up job
+  ✓ Checkout repository
+  ✓ Show CI metadata
+  ✓ Show runner baseline before dependency install
+  ✓ Install build dependencies
+  ✓ Show toolchain baseline after dependency install
+  ✓ Configure - CMake preset tests-unit
+  ✓ Build - CMake preset tests-unit
+  X Tests - CTest preset tests-unit
+  ✓ Diagnostics on failure
+  ✓ Post Checkout repository
+  ✓ Complete job
+X Build Debian packages in 52s (ID 84935604719)
+  ✓ Set up job
+  ✓ Checkout repository
+  ✓ Install Debian packaging dependencies
+  X Build Debian binary packages
+  - Validate AppStream metadata
+  ✓ Run lintian
+  ✓ Collect Debian diagnostics
+  - Upload Debian packages
+  X Upload Debian diagnostics
+  ✓ Post Checkout repository
+  ✓ Complete job
+
+ANNOTATIONS
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Configure, build and test tests-unit: .github#2
+
+X Process completed with exit code 8.
+Configure, build and test tests-unit: .github#4500
+
+! Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+Build Debian packages: .github#2
+
+X Invalid pattern '../genesys-debian-diagnostics/'. Relative pathing '.' and '..' is not allowed.
+Build Debian packages: .github#19
+
+X Process completed with exit code 2.
+Build Debian packages: .github#80
+
+
+To see what failed, try: gh run view 28640551688 --log-failed
+View this run on GitHub: https://github.com/rlcancian/Genesys-Simulator/actions/runs/28640551688
+
+===== ERROR SUMMARY =====
+6011:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9614198Z 4/1661 Test: UtilTest.AllocationStringConversionsKnownAndUnknown
+6012:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9615349Z Command: "/home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit/genesys_test_util" "--gtest_filter=UtilTest.AllocationStringConversionsKnownAndUnknown" "--gtest_also_run_disabled_tests"
+6013:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9616657Z Directory: /home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit
+6014:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9617304Z "UtilTest.AllocationStringConversionsKnownAndUnknown" start time: Jul 03 05:35 UTC
+6015:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9617731Z Output:
+6016:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9617951Z ----------------------------------------------------------
+6017:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9618458Z Running main() from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/gtest/src/gtest_main.cc
+6018:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9619192Z Note: Google Test filter = UtilTest.AllocationStringConversionsKnownAndUnknown
+6019:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9619615Z [==========] Running 1 test from 1 test suite.
+6020:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9619903Z [----------] Global test environment set-up.
+6021:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9620177Z [----------] 1 test from UtilTest
+6022:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9620497Z [ RUN      ] UtilTest.AllocationStringConversionsKnownAndUnknown
+6023:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9621203Z [       OK ] UtilTest.AllocationStringConversionsKnownAndUnknown (0 ms)
+6024:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9621609Z [----------] 1 test from UtilTest (0 ms total)
+6025:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9621805Z 
+6026:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9621908Z [----------] Global test environment tear-down
+6027:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9622344Z [==========] 1 test from 1 test suite ran. (0 ms total)
+6028:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9622630Z [  PASSED  ] 1 test.
+6029:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9622827Z <end of output>
+6030:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9623015Z Test time =   0.00 sec
+6031:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9623254Z ----------------------------------------------------------
+6032:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9623546Z Test Passed.
+6033:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9623897Z "UtilTest.AllocationStringConversionsKnownAndUnknown" end time: Jul 03 05:35 UTC
+6034:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9624470Z "UtilTest.AllocationStringConversionsKnownAndUnknown" time elapsed: 00:00:00
+6035:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9624909Z ----------------------------------------------------------
+6036:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9625117Z 
+6037:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9625306Z 5/1661 Testing: UtilTest.TimeUnitConvertAdditionalPairsAreCoherent
+6038:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9625761Z 5/1661 Test: UtilTest.TimeUnitConvertAdditionalPairsAreCoherent
+6039:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9626758Z Command: "/home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit/genesys_test_util" "--gtest_filter=UtilTest.TimeUnitConvertAdditionalPairsAreCoherent" "--gtest_also_run_disabled_tests"
+6040:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9627873Z Directory: /home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit
+6041:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9628505Z "UtilTest.TimeUnitConvertAdditionalPairsAreCoherent" start time: Jul 03 05:35 UTC
+6042:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9629036Z Output:
+6043:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9629246Z ----------------------------------------------------------
+6044:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9629746Z Running main() from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/gtest/src/gtest_main.cc
+6045:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9630357Z Note: Google Test filter = UtilTest.TimeUnitConvertAdditionalPairsAreCoherent
+6046:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9630767Z [==========] Running 1 test from 1 test suite.
+6047:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9631283Z [----------] Global test environment set-up.
+6048:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9631557Z [----------] 1 test from UtilTest
+6049:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9631877Z [ RUN      ] UtilTest.TimeUnitConvertAdditionalPairsAreCoherent
+6050:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9632325Z [       OK ] UtilTest.TimeUnitConvertAdditionalPairsAreCoherent (0 ms)
+6051:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9632703Z [----------] 1 test from UtilTest (0 ms total)
+6052:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9632887Z 
+6053:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9632991Z [----------] Global test environment tear-down
+6054:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9633290Z [==========] 1 test from 1 test suite ran. (0 ms total)
+6055:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9633573Z [  PASSED  ] 1 test.
+6056:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9633770Z <end of output>
+6057:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9633956Z Test time =   0.00 sec
+6058:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9634187Z ----------------------------------------------------------
+6059:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9634462Z Test Passed.
+6060:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9634802Z "UtilTest.TimeUnitConvertAdditionalPairsAreCoherent" end time: Jul 03 05:35 UTC
+6061:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9635588Z "UtilTest.TimeUnitConvertAdditionalPairsAreCoherent" time elapsed: 00:00:00
+6062:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9636112Z ----------------------------------------------------------
+6063:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9636321Z 
+6064:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9636465Z 6/1661 Testing: UtilTest.GlobalIdGenerationIsMonotonic
+6065:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9636816Z 6/1661 Test: UtilTest.GlobalIdGenerationIsMonotonic
+6066:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9637707Z Command: "/home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit/genesys_test_util" "--gtest_filter=UtilTest.GlobalIdGenerationIsMonotonic" "--gtest_also_run_disabled_tests"
+6067:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9638891Z Directory: /home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit
+6068:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9639470Z "UtilTest.GlobalIdGenerationIsMonotonic" start time: Jul 03 05:35 UTC
+6069:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9639824Z Output:
+6070:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9640030Z ----------------------------------------------------------
+6071:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9640527Z Running main() from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/gtest/src/gtest_main.cc
+6072:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9641321Z Note: Google Test filter = UtilTest.GlobalIdGenerationIsMonotonic
+6073:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9641680Z [==========] Running 1 test from 1 test suite.
+6074:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9641965Z [----------] Global test environment set-up.
+6075:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9642235Z [----------] 1 test from UtilTest
+6076:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9642508Z [ RUN      ] UtilTest.GlobalIdGenerationIsMonotonic
+6077:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9642855Z [       OK ] UtilTest.GlobalIdGenerationIsMonotonic (0 ms)
+6078:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9643196Z [----------] 1 test from UtilTest (0 ms total)
+6079:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9643378Z 
+6080:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9643490Z [----------] Global test environment tear-down
+6081:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9643780Z [==========] 1 test from 1 test suite ran. (0 ms total)
+6082:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9644050Z [  PASSED  ] 1 test.
+6083:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9644242Z <end of output>
+6084:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9644430Z Test time =   0.00 sec
+6085:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9644658Z ----------------------------------------------------------
+6086:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9644936Z Test Passed.
+6087:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9645222Z "UtilTest.GlobalIdGenerationIsMonotonic" end time: Jul 03 05:35 UTC
+6088:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9645669Z "UtilTest.GlobalIdGenerationIsMonotonic" time elapsed: 00:00:00
+6089:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9646050Z ----------------------------------------------------------
+6090:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9646251Z 
+6091:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9646424Z 7/1661 Testing: UtilTest.TypeScopedIdsCanBeResetIndependently
+6092:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9646833Z 7/1661 Test: UtilTest.TypeScopedIdsCanBeResetIndependently
+6093:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9647786Z Command: "/home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit/genesys_test_util" "--gtest_filter=UtilTest.TypeScopedIdsCanBeResetIndependently" "--gtest_also_run_disabled_tests"
+6094:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9648863Z Directory: /home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit
+6095:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9649477Z "UtilTest.TypeScopedIdsCanBeResetIndependently" start time: Jul 03 05:35 UTC
+6096:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9649892Z Output:
+6097:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9650096Z ----------------------------------------------------------
+6098:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9650587Z Running main() from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/gtest/src/gtest_main.cc
+6099:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9651406Z Note: Google Test filter = UtilTest.TypeScopedIdsCanBeResetIndependently
+6100:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9651805Z [==========] Running 1 test from 1 test suite.
+6101:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9652089Z [----------] Global test environment set-up.
+6102:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9652360Z [----------] 1 test from UtilTest
+6103:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9652657Z [ RUN      ] UtilTest.TypeScopedIdsCanBeResetIndependently
+6104:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9653057Z [       OK ] UtilTest.TypeScopedIdsCanBeResetIndependently (0 ms)
+6105:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9653421Z [----------] 1 test from UtilTest (0 ms total)
+6106:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9653604Z 
+6107:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9653708Z [----------] Global test environment tear-down
+6108:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9653998Z [==========] 1 test from 1 test suite ran. (0 ms total)
+6109:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9654469Z [  PASSED  ] 1 test.
+6110:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9654664Z <end of output>
+6111:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9654847Z Test time =   0.00 sec
+6112:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9655076Z ----------------------------------------------------------
+6113:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9655345Z Test Passed.
+6114:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9655698Z "UtilTest.TypeScopedIdsCanBeResetIndependently" end time: Jul 03 05:35 UTC
+6115:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9656216Z "UtilTest.TypeScopedIdsCanBeResetIndependently" time elapsed: 00:00:00
+6116:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9656621Z ----------------------------------------------------------
+6117:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9656939Z 
+6118:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9657117Z 8/1661 Testing: UtilTest.ResetAllIdsClearsAllTypeScopedCounters
+6119:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9657547Z 8/1661 Test: UtilTest.ResetAllIdsClearsAllTypeScopedCounters
+6120:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9658515Z Command: "/home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit/genesys_test_util" "--gtest_filter=UtilTest.ResetAllIdsClearsAllTypeScopedCounters" "--gtest_also_run_disabled_tests"
+6121:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9659614Z Directory: /home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit
+6122:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9660226Z "UtilTest.ResetAllIdsClearsAllTypeScopedCounters" start time: Jul 03 05:35 UTC
+6123:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9660625Z Output:
+6124:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9661028Z ----------------------------------------------------------
+6125:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9661682Z Running main() from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/gtest/src/gtest_main.cc
+6126:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9662423Z Note: Google Test filter = UtilTest.ResetAllIdsClearsAllTypeScopedCounters
+6127:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9662820Z [==========] Running 1 test from 1 test suite.
+6128:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9663103Z [----------] Global test environment set-up.
+6129:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9663376Z [----------] 1 test from UtilTest
+6130:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9663680Z [ RUN      ] UtilTest.ResetAllIdsClearsAllTypeScopedCounters
+6131:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9664097Z [       OK ] UtilTest.ResetAllIdsClearsAllTypeScopedCounters (0 ms)
+6132:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9664472Z [----------] 1 test from UtilTest (0 ms total)
+6133:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9664660Z 
+6134:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9664759Z [----------] Global test environment tear-down
+6135:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9665048Z [==========] 1 test from 1 test suite ran. (0 ms total)
+6136:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9665342Z [  PASSED  ] 1 test.
+6137:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9665536Z <end of output>
+6138:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9665718Z Test time =   0.00 sec
+6139:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9665948Z ----------------------------------------------------------
+6140:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9666220Z Test Passed.
+6141:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9666549Z "UtilTest.ResetAllIdsClearsAllTypeScopedCounters" end time: Jul 03 05:35 UTC
+6142:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9667079Z "UtilTest.ResetAllIdsClearsAllTypeScopedCounters" time elapsed: 00:00:00
+6143:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9667493Z ----------------------------------------------------------
+6144:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9667699Z 
+6145:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9667879Z 9/1661 Testing: UtilTest.StringHelpersCoverNominalAndEdgeBehavior
+6146:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9668319Z 9/1661 Test: UtilTest.StringHelpersCoverNominalAndEdgeBehavior
+6147:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9669301Z Command: "/home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit/genesys_test_util" "--gtest_filter=UtilTest.StringHelpersCoverNominalAndEdgeBehavior" "--gtest_also_run_disabled_tests"
+6148:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9670396Z Directory: /home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit
+6149:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9671280Z "UtilTest.StringHelpersCoverNominalAndEdgeBehavior" start time: Jul 03 05:35 UTC
+6150:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9671712Z Output:
+6151:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9671920Z ----------------------------------------------------------
+6152:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9672434Z Running main() from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/gtest/src/gtest_main.cc
+6153:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9673044Z Note: Google Test filter = UtilTest.StringHelpersCoverNominalAndEdgeBehavior
+6154:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9673462Z [==========] Running 1 test from 1 test suite.
+6155:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9673749Z [----------] Global test environment set-up.
+6156:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9674225Z [----------] 1 test from UtilTest
+6157:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9674541Z [ RUN      ] UtilTest.StringHelpersCoverNominalAndEdgeBehavior
+6158:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9674975Z [       OK ] UtilTest.StringHelpersCoverNominalAndEdgeBehavior (0 ms)
+6159:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9675349Z [----------] 1 test from UtilTest (0 ms total)
+6160:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9675539Z 
+6161:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9675638Z [----------] Global test environment tear-down
+6162:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9675929Z [==========] 1 test from 1 test suite ran. (0 ms total)
+6163:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9676314Z [  PASSED  ] 1 test.
+6164:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9676506Z <end of output>
+6165:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9676692Z Test time =   0.00 sec
+6166:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9676920Z ----------------------------------------------------------
+6167:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9677196Z Test Passed.
+6168:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9677527Z "UtilTest.StringHelpersCoverNominalAndEdgeBehavior" end time: Jul 03 05:35 UTC
+6169:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9678074Z "UtilTest.StringHelpersCoverNominalAndEdgeBehavior" time elapsed: 00:00:00
+6170:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9678506Z ----------------------------------------------------------
+6171:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9678710Z 
+6172:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9678919Z 10/1661 Testing: UtilTest.CollectionToStringHelpersForNonEmptyContainers
+6173:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9679415Z 10/1661 Test: UtilTest.CollectionToStringHelpersForNonEmptyContainers
+6174:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9680462Z Command: "/home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit/genesys_test_util" "--gtest_filter=UtilTest.CollectionToStringHelpersForNonEmptyContainers" "--gtest_also_run_disabled_tests"
+6175:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9681822Z Directory: /home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit
+6176:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9682489Z "UtilTest.CollectionToStringHelpersForNonEmptyContainers" start time: Jul 03 05:35 UTC
+6177:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9682935Z Output:
+6178:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9683146Z ----------------------------------------------------------
+6179:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9683647Z Running main() from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/gtest/src/gtest_main.cc
+6180:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9684287Z Note: Google Test filter = UtilTest.CollectionToStringHelpersForNonEmptyContainers
+6181:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9684734Z [==========] Running 1 test from 1 test suite.
+6182:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9685018Z [----------] Global test environment set-up.
+6183:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9685294Z [----------] 1 test from UtilTest
+6184:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9685635Z [ RUN      ] UtilTest.CollectionToStringHelpersForNonEmptyContainers
+6185:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9686123Z [       OK ] UtilTest.CollectionToStringHelpersForNonEmptyContainers (0 ms)
+6186:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9686531Z [----------] 1 test from UtilTest (0 ms total)
+6187:Configure, build and test tests-unit	Diagnostics on failure	2026-07-03T05:36:01.9686983Z ##[endgroup]
+6254:Build Debian packages	Checkout repository	2026-07-03T05:29:53.2460195Z   CTEST_OUTPUT_ON_FAILURE: 1
+6336:Build Debian packages	Install Debian packaging dependencies	2026-07-03T05:29:55.9927377Z   CTEST_OUTPUT_ON_FAILURE: 1
+7456:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.1097153Z [36;1mdpkg-buildpackage -us -uc -b 2>&1 | tee ../genesys-debian-build.log[0m
+7460:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.1131563Z   CTEST_OUTPUT_ON_FAILURE: 1
+7465:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.3140145Z dpkg-buildpackage: info: source package genesys-simulator
+7466:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.3140618Z dpkg-buildpackage: info: source version 2026.1.0-1
+7467:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.3141000Z dpkg-buildpackage: info: source distribution noble
+7468:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.3141526Z dpkg-buildpackage: info: source changed by GenESyS Maintainers <rlcancian@users.noreply.github.com>
+7469:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.4327720Z dpkg-buildpackage: warning: debian/rules is not executable; fixing that
+7471:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.4328870Z dpkg-buildpackage: info: host architecture amd64
+7474:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.7152552Z    dh_auto_clean -O--buildsystem=cmake -O--builddirectory=build-debian
+7475:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:31.7570641Z    dh_autoreconf_clean -O--buildsystem=cmake -O--builddirectory=build-debian
+7480:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:32.0022601Z    dh_autoreconf -O--buildsystem=cmake -O--builddirectory=build-debian
+7481:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:32.0401687Z    debian/rules override_dh_auto_configure
+7483:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:32.0421314Z dh_auto_configure -- \
+7507:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:36.1887188Z -- GenESyS: GLPK not found — MetabolicFluxBalance will use built-in basis-enumeration solver (suitable for small models only; install libglpk-dev for WCM-scale networks)
+7525:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:38.2079270Z    dh_auto_build -O--buildsystem=cmake -O--builddirectory=build-debian
+7530:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:38.2476979Z dh_auto_build: error: cd build-debian && make -j4 "INSTALL=install --strip-program=true" VERBOSE=1 returned exit code 2
+7532:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:38.2513453Z dpkg-buildpackage: error: debian/rules binary subprocess returned exit status 2
+7533:Build Debian packages	Build Debian binary packages	2026-07-03T05:30:38.2556989Z ##[error]Process completed with exit code 2.
+7541:Build Debian packages	Run lintian	2026-07-03T05:30:38.2650724Z   CTEST_OUTPUT_ON_FAILURE: 1
+7562:Build Debian packages	Collect Debian diagnostics	2026-07-03T05:30:40.0283226Z   CTEST_OUTPUT_ON_FAILURE: 1
+7584:Build Debian packages	Upload Debian diagnostics	2026-07-03T05:30:40.0671401Z   CTEST_OUTPUT_ON_FAILURE: 1
+
+===== COLLECTED FILES =====
+.genesys-ci-artifacts/feedback.txt
+.genesys-ci-artifacts/run-28640551688.log

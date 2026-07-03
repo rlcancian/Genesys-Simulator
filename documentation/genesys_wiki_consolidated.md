@@ -557,11 +557,11 @@ The GUI remains part of the current repository, but its build path must be under
 ### Example GUI build
 
 ```bash
-cmake -S . -B build/gui -G Ninja \
+cmake -S . -B build/gui-app -G Ninja \
   -DGENESYS_BUILD_GUI_APPLICATION=ON \
   -DGENESYS_BUILD_TESTS=OFF
 
-cmake --build build/gui --target genesys_gui
+cmake --build build/gui-app --target genesys_gui
 ```
 
 ## Out-of-Source Builds
@@ -1456,11 +1456,11 @@ The current Qt GUI source is located under `source/applications/gui/qt/GenesysQt
 ## Practical GUI Build
 
 ```bash
-cmake -S . -B build/gui -G Ninja \
+cmake -S . -B build/gui-app -G Ninja \
   -DGENESYS_BUILD_GUI_APPLICATION=ON \
   -DGENESYS_BUILD_TESTS=OFF
 
-cmake --build build/gui --target genesys_gui
+cmake --build build/gui-app --target genesys_gui
 ```
 
 ## Relationship with Other Pages

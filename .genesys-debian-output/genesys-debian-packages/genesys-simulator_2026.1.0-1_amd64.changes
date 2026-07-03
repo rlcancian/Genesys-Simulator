@@ -1,0 +1,36 @@
+Format: 1.8
+Date: Fri, 03 Jul 2026 12:00:00 -0300
+Source: genesys-simulator
+Binary: genesys-gui genesys-web
+Built-For-Profiles: noudeb
+Architecture: amd64
+Version: 2026.1.0-1
+Distribution: noble
+Urgency: medium
+Maintainer: GenESyS Maintainers <rlcancian@users.noreply.github.com>
+Changed-By: GenESyS Maintainers <rlcancian@users.noreply.github.com>
+Description:
+ genesys-gui - Generic and Expansible System Simulator Qt GUI
+ genesys-web - Generic and Expansible System Simulator web application
+Changes:
+ genesys-simulator (2026.1.0-1) noble; urgency=medium
+ .
+   * Initial Debian packaging for the GenESyS Qt GUI and web application.
+Checksums-Sha1:
+ 79d170fe8f8569dad2852337f160bb2d9b3f584f 52159560 genesys-gui-dbgsym_2026.1.0-1_amd64.ddeb
+ e3844aa712b679e001ac226665ab06f5a5de4ac6 3523082 genesys-gui_2026.1.0-1_amd64.deb
+ 139c2f4efd8714eb520cd700a8e2991c000f9d93 14184 genesys-simulator_2026.1.0-1_amd64.buildinfo
+ 08451494656656d1f817d8c9dd78e965c49ae634 21482422 genesys-web-dbgsym_2026.1.0-1_amd64.ddeb
+ add93e28ae122daa41112c4d01c17e99ca5cb50d 1268994 genesys-web_2026.1.0-1_amd64.deb
+Checksums-Sha256:
+ 5278c6e5b171f2f21241c2d256ffd61f6ca845014429f80184d1721a0aa2d9db 52159560 genesys-gui-dbgsym_2026.1.0-1_amd64.ddeb
+ ae820283e0901d34b3e92dcd156f98d2e08ad8e3db7c6a76f47d36121d856204 3523082 genesys-gui_2026.1.0-1_amd64.deb
+ 141b7fea69bd1ebc47feaba586b7adc39b3744d2c70f2bd31d7d569c3310f683 14184 genesys-simulator_2026.1.0-1_amd64.buildinfo
+ 9e1ea73f50142b60f3fe842f88af76438ab96a69c0adab6b655d0a716495d553 21482422 genesys-web-dbgsym_2026.1.0-1_amd64.ddeb
+ 0d8e34473d7bd603582664282186c802269dc80ed501b30c826c1b0fd0d92dc3 1268994 genesys-web_2026.1.0-1_amd64.deb
+Files:
+ dda1d41d055d5805194f9cab9907723d 52159560 debug optional genesys-gui-dbgsym_2026.1.0-1_amd64.ddeb
+ 1b30159c4d9e1dc08a1026079b204805 3523082 science optional genesys-gui_2026.1.0-1_amd64.deb
+ b631f5e89891e9f31520ec10b09df138 14184 science optional genesys-simulator_2026.1.0-1_amd64.buildinfo
+ ddb4099ffc1a7edd1a16903ee4413b43 21482422 debug optional genesys-web-dbgsym_2026.1.0-1_amd64.ddeb
+ c9ae564b77bd256461bd85bd444e8fa2 1268994 science optional genesys-web_2026.1.0-1_amd64.deb

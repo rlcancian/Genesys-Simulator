@@ -14,3 +14,6 @@ override_dh_auto_configure:
 		-DGENESYS_BUILD_TERMINAL_APPLICATION=OFF \
 		-DGENESYS_BUILD_TESTS=OFF \
 		-DGENESYS_ENABLE_PYTHON_INTEGRATION=OFF
+
+override_dh_auto_build:
+	cmake --build build-debian --parallel

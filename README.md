@@ -132,11 +132,11 @@ The GUI can be enabled from the root CMake workflow.
 Example:
 
 ```bash
-cmake -S . -B build/gui -G Ninja \
+cmake -S . -B build/gui-app -G Ninja \
   -DGENESYS_BUILD_GUI_APPLICATION=ON \
   -DGENESYS_BUILD_TESTS=OFF
 
-cmake --build build/gui --target genesys_gui
+cmake --build build/gui-app --target genesys_gui
 ```
 
 Requirements:
