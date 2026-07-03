@@ -6,6 +6,8 @@ else()
     set(GENESYS_QT_PACKAGE Qt5)
 endif()
 
+include(GNUInstallDirs)
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
@@ -62,11 +64,16 @@ target_compile_features(genesys_qt_gui_application PRIVATE cxx_std_23)
 
 set_target_properties(genesys_qt_gui_application
     PROPERTIES
+        OUTPUT_NAME genesys-gui
         AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/dialogs"
 )
 
 if(TARGET genesys_kernel)
     add_dependencies(genesys_qt_gui_application genesys_kernel)
 endif()
+
+install(TARGETS genesys_qt_gui_application
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 
 add_custom_target(genesys_gui DEPENDS genesys_qt_gui_application)
