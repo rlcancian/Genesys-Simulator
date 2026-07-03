@@ -45,6 +45,18 @@ Known follow-up candidates:
 - evaluate pause, resume, and stop endpoints if simulation control requires them;
 - review JSON parsing, payload-size, timeout, and error-handling behavior before public deployment.
 
+## HTTP worker application direction
+
+The current `source/applications/web/` tree is planned to become semantically clearer as an HTTP/background worker application area.
+
+Planned direction:
+
+- prefer the name `httpworker` for the application concept when folder and target migrations begin;
+- keep the HTTP/API runtime decoupled from any graphical frontend;
+- treat the graphical Web Worker control window as a GUI application frontend, not as part of `source/tools/`;
+- preserve compatibility aliases for existing `web` CMake targets and installed binary names until CI, packaging, documentation, and user workflows have been updated;
+- avoid changing HTTP/API behavior during pure folder-renaming commits.
+
 ## GUI application
 
 Guidance:
@@ -54,6 +66,32 @@ Guidance:
 - Preserve Qt ownership rules when modifying widgets, dialogs, and controllers.
 - Validate GUI changes with the `gui-app` preset in an environment with Qt6 dependencies.
 - Keep generic GUI extension infrastructure separate from domain-specific features.
+
+## GUI applications restructuring direction
+
+The planned GUI restructuring separates the main GenESyS editor from graphical frontends for application/tool workflows.
+
+Target conceptual layout:
+
+```text
+source/applications/gui/
+  genesys/        # main GenESyS Qt GUI
+  httpworker/     # graphical control frontend for the HTTP/background worker
+  dataanalyser/   # graphical frontend for statistics/data-analysis workflows
+  optimizer/      # graphical frontend for optimization workflows
+  ai_assistant/   # graphical frontend for AI-assisted modeling workflows
+  doexperiments/  # future graphical frontend for DOE/factorial-design workflows
+```
+
+Migration policy:
+
+- move the main GUI first only after CMake can scope the GUI source list safely;
+- do not place sibling GUI applications below a directory still scanned by broad recursive source collection;
+- preserve the existing `genesys_gui` target and `genesys-gui` installed binary name during the initial move;
+- use separate executable targets for independent GUI frontends;
+- launch independent GUI frontends from the main GUI through a shared process-launching service rather than direct widget construction;
+- keep model/context handoff explicit and testable instead of sharing raw pointers across application boundaries;
+- avoid changing kernel APIs unless the application requirement and API limitation are documented first.
 
 ## Folder restructuring
 
@@ -83,3 +121,6 @@ For application changes, prefer this order:
 - Consolidate the proposed application-folder restructuring into a separate migration plan.
 - Add lightweight web integration tests if the current test structure supports them.
 - Define packaging-facing executable and man-page expectations for Debian/PPA.
+- Inventory GUI-hosted windows and classify them as core GUI, GUI application frontend, tool frontend, or legacy dialog.
+- Define the compatibility policy for the planned `web` to `httpworker` transition.
+- Define the process-launching contract used by the main GUI to start sibling GUI applications.
