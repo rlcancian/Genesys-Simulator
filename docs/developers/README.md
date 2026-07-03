@@ -1,21 +1,22 @@
+
 # Developer documentation
 
-This directory contains developer-facing Doxygen configurations for GenESyS.
+This directory contains developer-facing documentation configuration for GenESyS.
 
-## Generate Doxygen documentation
+Current Doxygen entrypoint:
 
-Run from the repository root:
+    doxygen docs/developers/DoxyfileDeveloper
 
-```bash
-doxygen docs/developers/DoxyfileDeveloper2022
-doxygen docs/developers/DoxyfileDeveloper2026
-```
+Doxygen working files are generated under:
 
-Generated files are written under:
+    build/doxygen/developers/
 
-```text
-docs/developers/generated/developer2022/
-docs/developers/generated/developer2026/
-```
+Only the final PDF should be versioned here:
 
-The `.legacy` files preserve the historical full Doxygen configurations. The main `DoxyfileDeveloper2022` and `DoxyfileDeveloper2026` files are small wrappers that include the legacy configurations and override repository-relative paths for the current `docs/` layout.
+    docs/developers/GenESyS-Developer-Documentation.pdf
+
+Man pages are generated under:
+
+    build/doxygen/developers/man/
+
+Those man pages are intended for Debian/PPA packaging workflows and should be collected from the build tree, not committed as ordinary documentation.

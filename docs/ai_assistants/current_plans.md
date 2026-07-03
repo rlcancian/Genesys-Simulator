@@ -19,7 +19,7 @@ After the structural migration, `docs/ManualGenESyS.pdf` is the only ordinary do
 ### Decisions recorded
 
 - Remove historical `Doxyfile.bak`.
-- Keep generated Doxygen documentation under `docs/users/generated/` and `docs/developers/generated/`.
+- Do not version Doxygen intermediate/generated trees under `docs/users/generated/` or `docs/developers/generated/`.
 - Move historical Markdown sources temporarily to `docs/ai_assistants/oldies/` after consolidation.
 - Move `TINKERCELL_context.md` to `docs/ai_assistants/oldies/`.
 
@@ -30,9 +30,8 @@ The historical full Doxygen configurations are preserved as `.legacy` files. The
 Run Doxygen from the repository root:
 
 ```bash
-doxygen docs/users/DoxyfileUser2022
-doxygen docs/developers/DoxyfileDeveloper2022
-doxygen docs/developers/DoxyfileDeveloper2026
+doxygen docs/users/DoxyfileUser
+doxygen docs/developers/DoxyfileDeveloper
 ```
 
 ### Oldies retention
@@ -45,3 +44,18 @@ doxygen docs/developers/DoxyfileDeveloper2026
 - Validate Doxygen generation from the repository root.
 - Generate and commit Doxygen outputs under `docs/users/generated/` and `docs/developers/generated/` if that remains the desired versioning policy.
 - Run CMake/Ninja/CTest validation in a local checkout.
+
+## Doxygen generated artifacts policy revision
+
+- Date: 2026-07-03
+- Branch: `WiP20261`
+- Decision: Doxygen intermediate/generated artifacts must not be versioned under `docs/users/generated/` or `docs/developers/generated/`.
+- Rationale: Doxygen generates many HTML, CSS, JavaScript, image, index, LaTeX, man-page, and auxiliary files that create excessive repository noise.
+- Desired build behavior: Doxygen working output should run under `build/doxygen/...`.
+- Versioned documentation policy: only final PDF documentation should be versioned.
+- Target PDF locations:
+  - user-facing final PDF: `docs/users/GenESyS-User-Documentation.pdf`
+  - developer-facing final PDF: `docs/developers/GenESyS-Developer-Documentation.pdf`
+- Packaging policy: Doxygen man pages should be generated under `build/doxygen/.../man` and consumed by Debian/PPA packaging, not committed as ordinary source documentation.
+- Naming policy: final documentation artifacts must not encode stale years such as 2022; repository history and file versioning already provide temporal traceability.
+- Pending follow-up: adjust Debian packaging/build scripts to generate or collect man pages from the build tree.

@@ -1,14 +1,6 @@
-# GenESyS developer Doxygen configuration wrapper for the 2026 profile
-# Run from the repository root:
-#   doxygen docs/developers/DoxyfileDeveloper2026
 
-@INCLUDE = docs/developers/DoxyfileDeveloper2026.legacy
+# Compatibility wrapper.
+# Prefer the canonical Doxygen entrypoint:
+#   docs/developers/DoxyfileDeveloper
 
-# Repository-relative paths after the documentation migration to docs/.
-PROJECT_LOGO           = source/applications/gui/qt/GenesysQtGUI/resources/software_genesys.gif
-OUTPUT_DIRECTORY       = docs/developers/generated/developer2026
-INPUT                  = source/applications \
-                         source/kernel \
-                         source/plugins
-STRIP_FROM_PATH        = source
-STRIP_FROM_INC_PATH    = source
+@INCLUDE = docs/developers/DoxyfileDeveloper

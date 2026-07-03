@@ -1,19 +1,18 @@
+
 # User documentation
 
 This directory contains user-facing documentation configuration for GenESyS.
 
-## Generate Doxygen documentation
+Current Doxygen entrypoint:
 
-Run from the repository root:
+    doxygen docs/users/DoxyfileUser
 
-```bash
-doxygen docs/users/DoxyfileUser2022
-```
+Doxygen working files are generated under:
 
-Generated files are written under:
+    build/doxygen/users/
 
-```text
-docs/users/generated/user2022/
-```
+Only the final PDF should be versioned here:
 
-`DoxyfileUser2022.legacy` preserves the historical full Doxygen configuration. `DoxyfileUser2022` is a small wrapper that includes the legacy configuration and overrides repository-relative paths for the current `docs/` layout.
+    docs/users/GenESyS-User-Documentation.pdf
+
+Intermediate Doxygen artifacts must not be versioned.

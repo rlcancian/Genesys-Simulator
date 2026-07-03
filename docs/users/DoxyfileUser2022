@@ -1,12 +1,6 @@
-# GenESyS user Doxygen configuration wrapper
-# Run from the repository root:
-#   doxygen docs/users/DoxyfileUser2022
 
-@INCLUDE = docs/users/DoxyfileUser2022.legacy
+# Compatibility wrapper.
+# Prefer the canonical Doxygen entrypoint:
+#   docs/users/DoxyfileUser
 
-# Repository-relative paths after the documentation migration to docs/.
-PROJECT_LOGO           = source/applications/gui/qt/GenesysQtGUI/resources/software_genesys.gif
-OUTPUT_DIRECTORY       = docs/users/generated/user2022
-INPUT                  = source
-STRIP_FROM_PATH        = source
-STRIP_FROM_INC_PATH    = source
+@INCLUDE = docs/users/DoxyfileUser
