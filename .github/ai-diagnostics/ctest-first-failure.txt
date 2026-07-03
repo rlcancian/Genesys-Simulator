@@ -1,226 +1,362 @@
-HEAD=75a0c763e64f719b7afe6546723908a567cbdc0a
-PRESET=tests-unit
-CTEST_LOG=.github/ai-diagnostics/ctest-tests-unit.log
+HEAD=b357632815717c97e4d76b6a939de09bc1e5c1b9
 CTEST_RC=8
-FIRST_FAILURE_LINE=80
-          Start   20: SimulatorSupportTest.ModelInfoSettersMarkObjectAsChanged
-  20/1661 Test   #20: SimulatorSupportTest.ModelInfoSettersMarkObjectAsChanged ...............................................................   Passed    0.00 sec
-          Start   21: SimulatorSupportTest.ModelInfoSaveAndLoadRoundTrip
-  21/1661 Test   #21: SimulatorSupportTest.ModelInfoSaveAndLoadRoundTrip .....................................................................   Passed    0.00 sec
-          Start   22: SimulatorSupportTest.ModelInfoShowReflectsConfiguredFields
-  22/1661 Test   #22: SimulatorSupportTest.ModelInfoShowReflectsConfiguredFields .............................................................   Passed    0.00 sec
-          Start   23: SimulatorSupportTest.ParserChangesInformationStartsEmpty
-  23/1661 Test   #23: SimulatorSupportTest.ParserChangesInformationStartsEmpty ...............................................................   Passed    0.00 sec
-          Start   24: SimulatorSupportTest.ParserChangesInformationStoresAllConfiguredSections
-  24/1661 Test   #24: SimulatorSupportTest.ParserChangesInformationStoresAllConfiguredSections ...............................................   Passed    0.00 sec
-          Start   25: SimulatorSupportTest.ParserChangesInformationSupportsMultilineAndOverwrite
-  25/1661 Test   #25: SimulatorSupportTest.ParserChangesInformationSupportsMultilineAndOverwrite .............................................   Passed    0.00 sec
-          Start   26: SimulatorSupportTest.PluginInformationComponentConstructorConfiguresComponentMode
-  26/1661 Test   #26: SimulatorSupportTest.PluginInformationComponentConstructorConfiguresComponentMode ......................................   Passed    0.00 sec
-          Start   27: SimulatorSupportTest.PluginInformationDataDefinitionConstructorConfiguresElementMode
-  27/1661 Test   #27: SimulatorSupportTest.PluginInformationDataDefinitionConstructorConfiguresElementMode ...................................   Passed    0.00 sec
-          Start   28: SimulatorSupportTest.PluginInformationStoresMetadataAndLimits
-  28/1661 Test   #28: SimulatorSupportTest.PluginInformationStoresMetadataAndLimits ..........................................................   Passed    0.00 sec
-          Start   29: SimulatorSupportTest.SystemDependencyStoresDeclarativeCommands
-  29/1661 Test   #29: SimulatorSupportTest.SystemDependencyStoresDeclarativeCommands .........................................................   Passed    0.00 sec
-          Start   30: SimulatorSupportTest.PluginInformationStoresSystemDependenciesInOrder
-  30/1661 Test   #30: SimulatorSupportTest.PluginInformationStoresSystemDependenciesInOrder ..................................................   Passed    0.00 sec
-          Start   31: SimulatorSupportTest.SystemDependencyResolverMarksSatisfiedDependency
-  31/1661 Test   #31: SimulatorSupportTest.SystemDependencyResolverMarksSatisfiedDependency ..................................................   Passed    0.00 sec
-          Start   32: SimulatorSupportTest.SystemDependencyResolverMarksMissingDependency
-  32/1661 Test   #32: SimulatorSupportTest.SystemDependencyResolverMarksMissingDependency ....................................................   Passed    0.00 sec
-          Start   33: SimulatorSupportTest.SystemDependencyResolverIgnoresDifferentOperatingSystem
-  33/1661 Test   #33: SimulatorSupportTest.SystemDependencyResolverIgnoresDifferentOperatingSystem ...........................................   Passed    0.00 sec
-          Start   34: SimulatorSupportTest.SystemDependencyResolverMarksApplicableDependencyWithoutCheckCommandAsNotVerifiable
-  34/1661 Test   #34: SimulatorSupportTest.SystemDependencyResolverMarksApplicableDependencyWithoutCheckCommandAsNotVerifiable ...............   Passed    0.00 sec
-          Start   35: SimulatorSupportTest.SystemDependencyResolverInstallDiagnosticIncludesCommandAndOutput
-  35/1661 Test   #35: SimulatorSupportTest.SystemDependencyResolverInstallDiagnosticIncludesCommandAndOutput .................................   Passed    0.00 sec
-          Start   36: SimulatorSupportTest.PluginInformationDefaultsAndContainerReplacementWork
-  36/1661 Test   #36: SimulatorSupportTest.PluginInformationDefaultsAndContainerReplacementWork ..............................................   Passed    0.00 sec
-          Start   37: SimulatorSupportTest.PluginConstructedFromFactoryCanExposePluginInformation
-  37/1661 Test   #37: SimulatorSupportTest.PluginConstructedFromFactoryCanExposePluginInformation ............................................   Passed    0.00 sec
-          Start   38: SimulatorSupportTest.PluginShowIncludesConfiguredMetadata
-  38/1661 Test   #38: SimulatorSupportTest.PluginShowIncludesConfiguredMetadata ..............................................................   Passed    0.00 sec
-          Start   39: SimulatorSupportTest.PluginCanRepresentElementPluginKind
-  39/1661 Test   #39: SimulatorSupportTest.PluginCanRepresentElementPluginKind ...............................................................   Passed    0.00 sec
-          Start   40: SimulatorSupportTest.PluginMarksFactoryFailureAsInvalid
-  40/1661 Test   #40: SimulatorSupportTest.PluginMarksFactoryFailureAsInvalid ................................................................   Passed    0.00 sec
-          Start   41: SimulatorSupportTest.SimulationResponseProvidesReadOnlyKernelAccess
-  41/1661 Test   #41: SimulatorSupportTest.SimulationResponseProvidesReadOnlyKernelAccess ....................................................   Passed    0.00 sec
-          Start   42: SimulatorSupportTest.SimulationControlInheritsReadPathAndAddsWritePath
-  42/1661 Test   #42: SimulatorSupportTest.SimulationControlInheritsReadPathAndAddsWritePath .................................................   Passed    0.00 sec
-          Start   43: SimulatorSupportTest.SimulationControlStringReadOnlyRejectsWrites
-  43/1661 Test   #43: SimulatorSupportTest.SimulationControlStringReadOnlyRejectsWrites ......................................................   Passed    0.00 sec
-          Start   44: SimulatorSupportTest.SimulationControlGenericStringPreservesWhitespace
-  44/1661 Test   #44: SimulatorSupportTest.SimulationControlGenericStringPreservesWhitespace .................................................   Passed    0.00 sec
-          Start   45: SimulatorSupportTest.SimulationControlGenericStringListPreservesWhitespace
-  45/1661 Test   #45: SimulatorSupportTest.SimulationControlGenericStringListPreservesWhitespace .............................................   Passed    0.00 sec
-          Start   46: SimulatorSupportTest.SimulationControlBoolParsesTextAndNumericValues
-  46/1661 Test   #46: SimulatorSupportTest.SimulationControlBoolParsesTextAndNumericValues ...................................................   Passed    0.00 sec
-          Start   47: SimulatorSupportTest.DefineSimulationGetterAndSetterBindKernelMethods
-  47/1661 Test   #47: SimulatorSupportTest.DefineSimulationGetterAndSetterBindKernelMethods ..................................................   Passed    0.00 sec
-          Start   48: SimulatorSupportTest.ModelDataDefinitionGetPropertiesNowReturnsSimulationControlList
-  48/1661 Test   #48: SimulatorSupportTest.ModelDataDefinitionGetPropertiesNowReturnsSimulationControlList ...................................   Passed    0.00 sec
-          Start   49: SimulatorSupportTest.ModelGetResponsesNowReturnsSimulationResponseList
-  49/1661 Test   #49: SimulatorSupportTest.ModelGetResponsesNowReturnsSimulationResponseList .................................................   Passed    0.00 sec
-          Start   50: SimulatorSupportTest.ModelGetControlsStillReturnSimulationControlList
-  50/1661 Test   #50: SimulatorSupportTest.ModelGetControlsStillReturnSimulationControlList ..................................................   Passed    0.00 sec
-          Start   51: SimulatorSupportTest.SimulationResponseDoubleIsNotAWritableControl
-  51/1661 Test   #51: SimulatorSupportTest.SimulationResponseDoubleIsNotAWritableControl .....................................................   Passed    0.00 sec
-          Start   52: SimulatorRuntimeTest.CanConstructSimulatorAndAccessManagers
-  52/1661 Test   #52: SimulatorRuntimeTest.CanConstructSimulatorAndAccessManagers ............................................................   Passed    0.01 sec
-          Start   53: SimulatorRuntimeTest.VersionAndNameAreAvailable
-  53/1661 Test   #53: SimulatorRuntimeTest.VersionAndNameAreAvailable ........................................................................   Passed    0.01 sec
-          Start   54: SimulatorRuntimeTest.ConstructAndDestroySimulatorRepeatedly
-  54/1661 Test   #54: SimulatorRuntimeTest.ConstructAndDestroySimulatorRepeatedly ............................................................   Passed    0.01 sec
-          Start   55: SimulatorRuntimeTest.ModelHasChangedReflectsNestedSubsystemUpdates
-  55/1661 Test   #55: SimulatorRuntimeTest.ModelHasChangedReflectsNestedSubsystemUpdates .....................................................   Passed    0.01 sec
-          Start   56: SimulatorRuntimeTest.SimulationStartHandlerReceivesInitializedStateSnapshot
-  56/1661 Test   #56: SimulatorRuntimeTest.SimulationStartHandlerReceivesInitializedStateSnapshot ............................................   Passed    0.01 sec
-          Start   57: SimulatorRuntimeTest.RecordWritesEnrichedDatasetReadableByParser
-  57/1661 Test   #57: SimulatorRuntimeTest.RecordWritesEnrichedDatasetReadableByParser .......................................................   Passed    0.05 sec
-          Start   58: SimulatorRuntimeTest.RecordCheckDoesNotDeleteExistingOutputFile
-  58/1661 Test   #58: SimulatorRuntimeTest.RecordCheckDoesNotDeleteExistingOutputFile ........................................................   Passed    0.01 sec
-          Start   59: SimulatorRuntimeTest.RecordExpressionNameChangeRekeysStatisticReporterOwnership
-  59/1661 Test   #59: SimulatorRuntimeTest.RecordExpressionNameChangeRekeysStatisticReporterOwnership ........................................   Passed    0.01 sec
-          Start   60: SimulatorRuntimeTest.NewModelCanBeCalledMultipleTimesAndUpdatesCurrentModel
-  60/1661 Test   #60: SimulatorRuntimeTest.NewModelCanBeCalledMultipleTimesAndUpdatesCurrentModel ............................................   Passed    0.01 sec
-          Start   61: SimulatorRuntimeTest.ModelClearPreservesBaseSimulationControlsCount
-  61/1661 Test   #61: SimulatorRuntimeTest.ModelClearPreservesBaseSimulationControlsCount ....................................................   Passed    0.01 sec
-          Start   62: SimulatorRuntimeTest.ModelClearIsIdempotentAndKeepsRuntimeUsable
-  62/1661 Test   #62: SimulatorRuntimeTest.ModelClearIsIdempotentAndKeepsRuntimeUsable .......................................................   Passed    0.01 sec
-          Start   63: SimulatorRuntimeTest.ModelAccessorsExposeStableRuntimeReferencesAndFlags
-  63/1661 Test   #63: SimulatorRuntimeTest.ModelAccessorsExposeStableRuntimeReferencesAndFlags ...............................................   Passed    0.01 sec
-          Start   64: SimulatorRuntimeTest.ModelSetTracerRebindsTracerPointer
-  64/1661 Test   #64: SimulatorRuntimeTest.ModelSetTracerRebindsTracerPointer ................................................................   Passed    0.01 sec
-          Start   65: SimulatorRuntimeTest.DataDefinitionClassnamesSnapshotIsReturnedByValue
-  65/1661 Test   #65: SimulatorRuntimeTest.DataDefinitionClassnamesSnapshotIsReturnedByValue .................................................   Passed    0.01 sec
-          Start   66: SimulatorRuntimeTest.AttachedDataRemoveOnlyDetachesRegistryEntry
-  66/1661 Test   #66: SimulatorRuntimeTest.AttachedDataRemoveOnlyDetachesRegistryEntry .......................................................   Passed    0.01 sec
-          Start   67: SimulatorRuntimeTest.ModelDataManagerSupportsLookupByNameIdAndRank
-  67/1661 Test   #67: SimulatorRuntimeTest.ModelDataManagerSupportsLookupByNameIdAndRank .....................................................   Passed    0.01 sec
-          Start   68: SimulatorRuntimeTest.ModelDataManagerHasChangedCanBeToggledAndRecomputed
-  68/1661 Test   #68: SimulatorRuntimeTest.ModelDataManagerHasChangedCanBeToggledAndRecomputed ...............................................   Passed    0.01 sec
-          Start   69: SimulatorRuntimeTest.EntityAttributeValuesRoundTripByNameAndIndex
-  69/1661 Test   #69: SimulatorRuntimeTest.EntityAttributeValuesRoundTripByNameAndIndex ......................................................   Passed    0.01 sec
-          Start   70: SimulatorRuntimeTest.EntityAttributeValuesSupportSparseNDIndexes
-  70/1661 Test   #70: SimulatorRuntimeTest.EntityAttributeValuesSupportSparseNDIndexes .......................................................   Passed    0.01 sec
-          Start   71: SimulatorRuntimeTest.EntityCopiesAttributeSparseInitialValuesOnCreation
-  71/1661 Test   #71: SimulatorRuntimeTest.EntityCopiesAttributeSparseInitialValuesOnCreation ................................................   Passed    0.01 sec
-          Start   72: SimulatorRuntimeTest.RemovingEntityRemovesItFromDataManagerRegistry
-  72/1661 Test   #72: SimulatorRuntimeTest.RemovingEntityRemovesItFromDataManagerRegistry ....................................................   Passed    0.01 sec
-          Start   73: SimulatorRuntimeTest.EntityAttributesCanBeSetAndReadByAttributeId
-  73/1661 Test   #73: SimulatorRuntimeTest.EntityAttributesCanBeSetAndReadByAttributeId ......................................................   Passed    0.01 sec
-          Start   74: SimulatorRuntimeTest.AttributeSupportsSparseInitialValuesAndPersistence
-  74/1661 Test   #74: SimulatorRuntimeTest.AttributeSupportsSparseInitialValuesAndPersistence ................................................   Passed    0.01 sec
-          Start   75: SimulatorRuntimeTest.AttributeInitialValueTextParsesMatrices
-  75/1661 Test   #75: SimulatorRuntimeTest.AttributeInitialValueTextParsesMatrices ...........................................................   Passed    0.01 sec
-          Start   76: SimulatorRuntimeTest.AttributeInitialValueTextParsesOctaveMatrixSyntax
-  76/1661 Test   #76: SimulatorRuntimeTest.AttributeInitialValueTextParsesOctaveMatrixSyntax .................................................   Passed    0.01 sec
-          Start   77: SimulatorRuntimeTest.AttributeInitialValueTextRejectsInvalidTextWithoutThrowing
-  77/1661 Test   #77: SimulatorRuntimeTest.AttributeInitialValueTextRejectsInvalidTextWithoutThrowing ........................................   Passed    0.01 sec
-          Start   78: SimulatorRuntimeTest.AttributeInitialValuePropertyUsesMultiLineTextEditorHint
-  78/1661 Test   #78: SimulatorRuntimeTest.AttributeInitialValuePropertyUsesMultiLineTextEditorHint ..........................................   Passed    0.01 sec
-          Start   79: SimulatorRuntimeTest.ModelDataDefinitionAccessorsExposeStableStateAndMetadata
-  79/1661 Test   #79: SimulatorRuntimeTest.ModelDataDefinitionAccessorsExposeStableStateAndMetadata ..........................................   Passed    0.01 sec
-          Start   80: SimulatorRuntimeTest.ModelDataDefinitionDestructorRemovesOwnedPropertyFromModelControls
-  80/1661 Test   #80: SimulatorRuntimeTest.ModelDataDefinitionDestructorRemovesOwnedPropertyFromModelControls ................................   Passed    0.01 sec
-          Start   81: SimulatorRuntimeTest.ModelDataDefinitionDestructorDeletesOwnedInternalData
-  81/1661 Test   #81: SimulatorRuntimeTest.ModelDataDefinitionDestructorDeletesOwnedInternalData .............................................   Passed    0.01 sec
-          Start   82: SimulatorRuntimeTest.ModelDataDefinitionDestructorDeletesMultipleOwnedInternalDataChildren
-  82/1661 Test   #82: SimulatorRuntimeTest.ModelDataDefinitionDestructorDeletesMultipleOwnedInternalDataChildren .............................   Passed    0.01 sec
-          Start   83: SimulatorRuntimeTest.ModelDataDefinitionDestructorDoesNotDeleteAttachedDataTarget
-  83/1661 Test   #83: SimulatorRuntimeTest.ModelDataDefinitionDestructorDoesNotDeleteAttachedDataTarget ......................................   Passed    0.01 sec
-          Start   84: SimulatorRuntimeTest.ModelDataDefinitionDestructorRemovesOwnedPropertyAlsoRegisteredAsResponse
-  84/1661 Test   #84: SimulatorRuntimeTest.ModelDataDefinitionDestructorRemovesOwnedPropertyAlsoRegisteredAsResponse .........................   Passed    0.01 sec
-          Start   85: SimulatorRuntimeTest.QueueFirstOnEmptyQueueReturnsNullptr
-  85/1661 Test   #85: SimulatorRuntimeTest.QueueFirstOnEmptyQueueReturnsNullptr ..............................................................   Passed    0.01 sec
-          Start   86: SimulatorRuntimeTest.QueueRemoveElementDeletesOwnedWaiting
-  86/1661 Test   #86: SimulatorRuntimeTest.QueueRemoveElementDeletesOwnedWaiting .............................................................   Passed    0.01 sec
-          Start   87: SimulatorRuntimeTest.QueueInitBetweenReplicationsDeletesOwnedWaiting
-  87/1661 Test   #87: SimulatorRuntimeTest.QueueInitBetweenReplicationsDeletesOwnedWaiting ...................................................   Passed    0.01 sec
-          Start   88: SimulatorRuntimeTest.QueueDestructorDeletesRemainingOwnedWaiting
-  88/1661 Test   #88: SimulatorRuntimeTest.QueueDestructorDeletesRemainingOwnedWaiting .......................................................   Passed    0.01 sec
-          Start   89: SimulatorRuntimeTest.QueueOrderRuleFifoKeepsArrivalOrder
-  89/1661 Test   #89: SimulatorRuntimeTest.QueueOrderRuleFifoKeepsArrivalOrder ...............................................................   Passed    0.01 sec
-          Start   90: SimulatorRuntimeTest.QueueOrderRuleLifoPlacesLatestArrivalFirst
-  90/1661 Test   #90: SimulatorRuntimeTest.QueueOrderRuleLifoPlacesLatestArrivalFirst ........................................................   Passed    0.01 sec
-          Start   91: SimulatorRuntimeTest.QueueOrderRuleHighestValueRanksByAttributeDescending
-  91/1661 Test   #91: SimulatorRuntimeTest.QueueOrderRuleHighestValueRanksByAttributeDescending ..............................................   Passed    0.01 sec
-          Start   92: SimulatorRuntimeTest.QueueOrderRuleSmallestValueRanksByAttributeAscending
-  92/1661 Test   #92: SimulatorRuntimeTest.QueueOrderRuleSmallestValueRanksByAttributeAscending ..............................................   Passed    0.01 sec
-          Start   93: SimulatorRuntimeTest.QueueOrderRuleAttributeTieUsesFifoTiebreaker
-  93/1661 Test   #93: SimulatorRuntimeTest.QueueOrderRuleAttributeTieUsesFifoTiebreaker ......................................................   Passed    0.01 sec
-          Start   94: SimulatorRuntimeTest.QueueCheckFailsWhenAttributeRuleHasNoAttributeName
-  94/1661 Test   #94: SimulatorRuntimeTest.QueueCheckFailsWhenAttributeRuleHasNoAttributeName ................................................   Passed    0.01 sec
-          Start   95: SimulatorRuntimeTest.QueueCheckPassesWhenAttributeRuleHasValidAttributeName
-  95/1661 Test   #95: SimulatorRuntimeTest.QueueCheckPassesWhenAttributeRuleHasValidAttributeName ............................................   Passed    0.01 sec
-          Start   96: SimulatorRuntimeTest.VariableInitBetweenReplicationsCopiesWithoutAliasingInitialValues
-  96/1661 Test   #96: SimulatorRuntimeTest.VariableInitBetweenReplicationsCopiesWithoutAliasingInitialValues .................................   Passed    0.01 sec
-          Start   97: SimulatorRuntimeTest.VariableSupportsScalarOneTwoAndNDIndexesWithSparseDefault
-  97/1661 Test   #97: SimulatorRuntimeTest.VariableSupportsScalarOneTwoAndNDIndexesWithSparseDefault .........................................   Passed    0.01 sec
-          Start   98: SimulatorRuntimeTest.VariableInitBetweenReplicationsRestoresCurrentValueFromInitial
-  98/1661 Test   #98: SimulatorRuntimeTest.VariableInitBetweenReplicationsRestoresCurrentValueFromInitial ....................................   Passed    0.01 sec
-          Start   99: SimulatorRuntimeTest.VariableSavePersistsMultipleDimensionsWithIncreasingIndexes
-  99/1661 Test   #99: SimulatorRuntimeTest.VariableSavePersistsMultipleDimensionsWithIncreasingIndexes .......................................   Passed    0.01 sec
-          Start  100: SimulatorRuntimeTest.VariableSaveAndLoadPreservesInitialValues
- 100/1661 Test  #100: SimulatorRuntimeTest.VariableSaveAndLoadPreservesInitialValues .........................................................   Passed    0.01 sec
-          Start  101: SimulatorRuntimeTest.VariableSaveAndLoadPreservesNDInitialValues
- 101/1661 Test  #101: SimulatorRuntimeTest.VariableSaveAndLoadPreservesNDInitialValues .......................................................   Passed    0.01 sec
-          Start  102: SimulatorRuntimeTest.VariableLoadedCurrentAndInitialContainersRemainIndependentAfterReset
- 102/1661 Test  #102: SimulatorRuntimeTest.VariableLoadedCurrentAndInitialContainersRemainIndependentAfterReset ..............................   Passed    0.01 sec
-          Start  103: SimulatorRuntimeTest.VariableShowIncludesVariableSpecificValues
- 103/1661 Test  #103: SimulatorRuntimeTest.VariableShowIncludesVariableSpecificValues ........................................................   Passed    0.01 sec
-          Start  104: SimulatorRuntimeTest.ScheduleDestructorDeletesOwnedSchedulableItemsSafely
- 104/1661 Test  #104: SimulatorRuntimeTest.ScheduleDestructorDeletesOwnedSchedulableItemsSafely ..............................................   Passed    0.01 sec
-          Start  105: SimulatorRuntimeTest.ScheduleLoadInstanceReplacesSchedulableItemsWithoutKeepingOldPointers
- 105/1661 Test  #105: SimulatorRuntimeTest.ScheduleLoadInstanceReplacesSchedulableItemsWithoutKeepingOldPointers .............................   Passed    0.01 sec
-          Start  106: SimulatorRuntimeTest.ScheduleGetExpressionReturnsSafeFallbackForEmptyList
- 106/1661 Test  #106: SimulatorRuntimeTest.ScheduleGetExpressionReturnsSafeFallbackForEmptyList ..............................................   Passed    0.01 sec
-          Start  107: SimulatorRuntimeTest.ScheduleGetExpressionHandlesNonRepeatingAndReturnsLastAfterEnd
- 107/1661 Test  #107: SimulatorRuntimeTest.ScheduleGetExpressionHandlesNonRepeatingAndReturnsLastAfterEnd ....................................   Passed    0.01 sec
-          Start  108: SimulatorRuntimeTest.ScheduleGetExpressionRepeatsWithPositiveCycleDurations
- 108/1661 Test  #108: SimulatorRuntimeTest.ScheduleGetExpressionRepeatsWithPositiveCycleDurations ............................................   Passed    0.01 sec
-          Start  109: SimulatorRuntimeTest.ScheduleCheckFailsForRepeatingCyclesWithZeroTotalDuration
- 109/1661 Test  #109: SimulatorRuntimeTest.ScheduleCheckFailsForRepeatingCyclesWithZeroTotalDuration .........................................   Passed    0.01 sec
-          Start  110: SimulatorRuntimeTest.ScheduleCheckPassesForValidRepeatingConfiguration
- 110/1661 Test  #110: SimulatorRuntimeTest.ScheduleCheckPassesForValidRepeatingConfiguration .................................................   Passed    0.01 sec
-          Start  111: SimulatorRuntimeTest.ResourceSettersUpdateState
- 111/1661 Test  #111: SimulatorRuntimeTest.ResourceSettersUpdateState ........................................................................   Passed    0.01 sec
-          Start  112: SimulatorRuntimeTest.ResourceCheckFailsForInvalidConfiguration
- 112/1661 Test  #112: SimulatorRuntimeTest.ResourceCheckFailsForInvalidConfiguration .........................................................   Passed    0.01 sec
-          Start  113: SimulatorRuntimeTest.ResourceCheckPassesForValidConfiguration
- 113/1661 Test  #113: SimulatorRuntimeTest.ResourceCheckPassesForValidConfiguration ..........................................................   Passed    0.01 sec
-          Start  114: SimulatorRuntimeTest.ResourceSaveAndLoadPreservesCapacityScheduleReference
- 114/1661 Test  #114: SimulatorRuntimeTest.ResourceSaveAndLoadPreservesCapacityScheduleReference .............................................   Passed    0.01 sec
-          Start  115: SimulatorRuntimeTest.ResourceSaveAndLoadPreservesFailuresReferenceList
- 115/1661 Test  #115: SimulatorRuntimeTest.ResourceSaveAndLoadPreservesFailuresReferenceList .................................................   Passed    0.01 sec
-          Start  116: SimulatorRuntimeTest.ResourceRecheckKeepsAttachedDataConsistent
- 116/1661 Test  #116: SimulatorRuntimeTest.ResourceRecheckKeepsAttachedDataConsistent ........................................................   Passed    0.01 sec
-          Start  117: SimulatorRuntimeTest.ResourceToggleReportStatisticsClearsAndRecreatesInternalPointersSafely
- 117/1661 Test  #117: SimulatorRuntimeTest.ResourceToggleReportStatisticsClearsAndRecreatesInternalPointersSafely ............................   Passed    0.01 sec
-          Start  118: SimulatorRuntimeTest.ResourceDestructorCleansOwnedHandlersContainers
- 118/1661 Test  #118: SimulatorRuntimeTest.ResourceDestructorCleansOwnedHandlersContainers ...................................................   Passed    0.01 sec
-          Start  119: SimulatorRuntimeTest.FailureDestructorReleasesOwnedContainersAndDetachesResources
- 119/1661 Test  #119: SimulatorRuntimeTest.FailureDestructorReleasesOwnedContainersAndDetachesResources ......................................   Passed    0.01 sec
-          Start  120: SimulatorRuntimeTest.FailureAddResourceMaintainsBidirectionalAssociationWithoutDuplicates
- 120/1661 Test  #120: SimulatorRuntimeTest.FailureAddResourceMaintainsBidirectionalAssociationWithoutDuplicates ..............................   Passed    0.01 sec
-          Start  121: SimulatorRuntimeTest.FailureRemoveResourceMaintainsBidirectionalAssociation
- 121/1661 Test  #121: SimulatorRuntimeTest.FailureRemoveResourceMaintainsBidirectionalAssociation ............................................   Passed    0.01 sec
-          Start  122: SimulatorRuntimeTest.FailureSaveAndLoadPreservesFalingResourcesBidirectionally
- 122/1661 Test  #122: SimulatorRuntimeTest.FailureSaveAndLoadPreservesFalingResourcesBidirectionally .........................................   Passed    0.01 sec
-          Start  123: SimulatorRuntimeTest.FailureInitBetweenReplicationsSchedulesByFalingResourcesList
- 123/1661 Test  #123: SimulatorRuntimeTest.FailureInitBetweenReplicationsSchedulesByFalingResourcesList ......................................   Passed    0.01 sec
-          Start  124: SimulatorRuntimeTest.SequenceDestructorDeletesOwnedSteps
- 124/1661 Test  #124: SimulatorRuntimeTest.SequenceDestructorDeletesOwnedSteps ...............................................................   Passed    0.01 sec
-          Start  125: SimulatorRuntimeTest.SequenceStepDestructorOwnsAndDeletesAssignments
- 125/1661 Test  #125: SimulatorRuntimeTest.SequenceStepDestructorOwnsAndDeletesAssignments ...................................................   Passed    0.01 sec
-          Start  126: SimulatorRuntimeTest.SequenceSaveAndLoadPreservesAssignmentsPerStepWithoutCollision
- 126/1661 Test  #126: SimulatorRuntimeTest.SequenceSaveAndLoadPreservesAssignmentsPerStepWithoutCollision ....................................   Passed    0.01 sec
-          Start  127: SimulatorRuntimeTest.SequenceSaveAndLoadPreservesStationAndLabelPerStep
- 127/1661 Test  #127: SimulatorRuntimeTest.SequenceSaveAndLoadPreservesStationAndLabelPerStep ................................................   Passed    0.01 sec
-          Start  128: SimulatorRuntimeTest.SequenceRecheckRemovesObsoleteAttachedData
- 128/1661 Test  #128: SimulatorRuntimeTest.SequenceRecheckRemovesObsoleteAttachedData ........................................................   Passed    0.01 sec
-          Start  129: SimulatorRuntimeTest.SequenceCheckFailsForEmptyStep
- 129/1661 Test  #129: SimulatorRuntimeTest.SequenceCheckFailsForEmptyStep ....................................................................   Passed    0.01 sec
-          Start  130: SimulatorRuntimeTest.SequenceCheckPassesForValidSteps
+          Start 1499: KernelSimulatorMethodInventory.SimulatorFacade_818
+1499/1661 Test #1499: KernelSimulatorMethodInventory.SimulatorFacade_818 .....................................................................   Passed    0.01 sec
+          Start 1500: KernelSimulatorMethodInventory.SimulatorFacade_819
+1500/1661 Test #1500: KernelSimulatorMethodInventory.SimulatorFacade_819 .....................................................................   Passed    0.01 sec
+          Start 1501: KernelSimulatorMethodInventory.SimulatorFacade_820
+1501/1661 Test #1501: KernelSimulatorMethodInventory.SimulatorFacade_820 .....................................................................   Passed    0.01 sec
+          Start 1502: KernelSimulatorMethodInventory.SimulatorFacade_821
+1502/1661 Test #1502: KernelSimulatorMethodInventory.SimulatorFacade_821 .....................................................................   Passed    0.01 sec
+          Start 1503: KernelSimulatorMethodInventory.SimulatorFacade_822
+1503/1661 Test #1503: KernelSimulatorMethodInventory.SimulatorFacade_822 .....................................................................   Passed    0.01 sec
+          Start 1504: KernelSimulatorMethodInventory.SimulatorFacade_823
+1504/1661 Test #1504: KernelSimulatorMethodInventory.SimulatorFacade_823 .....................................................................   Passed    0.01 sec
+          Start 1505: KernelSimulatorMethodInventory.SimulatorFacade_824
+1505/1661 Test #1505: KernelSimulatorMethodInventory.SimulatorFacade_824 .....................................................................   Passed    0.01 sec
+          Start 1506: KernelSimulatorMethodInventory.SimulatorFacade_825
+1506/1661 Test #1506: KernelSimulatorMethodInventory.SimulatorFacade_825 .....................................................................   Passed    0.01 sec
+          Start 1507: KernelSimulatorMethodInventory.SimulatorFacade_826
+1507/1661 Test #1507: KernelSimulatorMethodInventory.SimulatorFacade_826 .....................................................................   Passed    0.01 sec
+          Start 1508: KernelSimulatorMethodInventory.SimulatorFacade_827
+1508/1661 Test #1508: KernelSimulatorMethodInventory.SimulatorFacade_827 .....................................................................   Passed    0.01 sec
+          Start 1509: KernelSimulatorMethodInventory.SimulatorFacade_828
+1509/1661 Test #1509: KernelSimulatorMethodInventory.SimulatorFacade_828 .....................................................................   Passed    0.01 sec
+          Start 1510: KernelSimulatorMethodInventory.SimulatorFacade_829
+1510/1661 Test #1510: KernelSimulatorMethodInventory.SimulatorFacade_829 .....................................................................   Passed    0.01 sec
+          Start 1511: KernelSimulatorMethodInventory.SimulatorFacade_830
+1511/1661 Test #1511: KernelSimulatorMethodInventory.SimulatorFacade_830 .....................................................................   Passed    0.01 sec
+          Start 1512: KernelSimulatorMethodInventory.SimulatorFacade_831
+1512/1661 Test #1512: KernelSimulatorMethodInventory.SimulatorFacade_831 .....................................................................   Passed    0.01 sec
+          Start 1513: KernelSimulatorMethodInventory.SimulatorFacade_832
+1513/1661 Test #1513: KernelSimulatorMethodInventory.SimulatorFacade_832 .....................................................................   Passed    0.01 sec
+          Start 1514: KernelSimulatorMethodInventory.SimulatorFacade_833
+1514/1661 Test #1514: KernelSimulatorMethodInventory.SimulatorFacade_833 .....................................................................   Passed    0.01 sec
+          Start 1515: KernelSimulatorMethodInventory.SimulatorFacade_834
+1515/1661 Test #1515: KernelSimulatorMethodInventory.SimulatorFacade_834 .....................................................................   Passed    0.01 sec
+          Start 1516: KernelSimulatorMethodInventory.SimulatorFacade_835
+1516/1661 Test #1516: KernelSimulatorMethodInventory.SimulatorFacade_835 .....................................................................   Passed    0.01 sec
+          Start 1517: KernelSimulatorMethodInventory.SimulatorFacade_836
+1517/1661 Test #1517: KernelSimulatorMethodInventory.SimulatorFacade_836 .....................................................................   Passed    0.01 sec
+          Start 1518: KernelSimulatorMethodInventory.SimulatorFacade_837
+1518/1661 Test #1518: KernelSimulatorMethodInventory.SimulatorFacade_837 .....................................................................   Passed    0.01 sec
+          Start 1519: KernelSimulatorMethodInventory.SimulatorFacade_838
+1519/1661 Test #1519: KernelSimulatorMethodInventory.SimulatorFacade_838 .....................................................................   Passed    0.01 sec
+          Start 1520: KernelSimulatorMethodInventory.SimulatorFacade_839
+1520/1661 Test #1520: KernelSimulatorMethodInventory.SimulatorFacade_839 .....................................................................   Passed    0.01 sec
+          Start 1521: KernelSimulatorMethodInventory.SimulatorFacade_840
+1521/1661 Test #1521: KernelSimulatorMethodInventory.SimulatorFacade_840 .....................................................................   Passed    0.01 sec
+          Start 1522: KernelSimulatorMethodInventory.SimulatorFacade_841
+1522/1661 Test #1522: KernelSimulatorMethodInventory.SimulatorFacade_841 .....................................................................   Passed    0.01 sec
+          Start 1523: KernelSimulatorMethodInventory.SimulatorFacade_842
+1523/1661 Test #1523: KernelSimulatorMethodInventory.SimulatorFacade_842 .....................................................................   Passed    0.01 sec
+          Start 1524: KernelSimulatorMethodInventory.SimulatorFacade_843
+1524/1661 Test #1524: KernelSimulatorMethodInventory.SimulatorFacade_843 .....................................................................   Passed    0.01 sec
+          Start 1525: KernelSimulatorMethodInventory.SimulatorFacade_844
+1525/1661 Test #1525: KernelSimulatorMethodInventory.SimulatorFacade_844 .....................................................................   Passed    0.01 sec
+          Start 1526: KernelSimulatorMethodInventory.SimulatorFacade_845
+1526/1661 Test #1526: KernelSimulatorMethodInventory.SimulatorFacade_845 .....................................................................   Passed    0.01 sec
+          Start 1527: KernelSimulatorMethodInventory.SimulatorFacade_846
+1527/1661 Test #1527: KernelSimulatorMethodInventory.SimulatorFacade_846 .....................................................................   Passed    0.01 sec
+          Start 1528: KernelSimulatorMethodInventory.SimulatorFacade_847
+1528/1661 Test #1528: KernelSimulatorMethodInventory.SimulatorFacade_847 .....................................................................   Passed    0.01 sec
+          Start 1529: KernelSimulatorMethodInventory.SimulatorFacade_848
+1529/1661 Test #1529: KernelSimulatorMethodInventory.SimulatorFacade_848 .....................................................................   Passed    0.01 sec
+          Start 1530: KernelSimulatorMethodInventory.SimulatorFacade_849
+1530/1661 Test #1530: KernelSimulatorMethodInventory.SimulatorFacade_849 .....................................................................   Passed    0.01 sec
+          Start 1531: KernelSimulatorMethodInventory.SimulatorFacade_850
+1531/1661 Test #1531: KernelSimulatorMethodInventory.SimulatorFacade_850 .....................................................................   Passed    0.01 sec
+          Start 1532: KernelSimulatorMethodInventory.SimulatorFacade_851
+1532/1661 Test #1532: KernelSimulatorMethodInventory.SimulatorFacade_851 .....................................................................   Passed    0.01 sec
+          Start 1533: KernelSimulatorMethodInventory.SimulatorFacade_852
+1533/1661 Test #1533: KernelSimulatorMethodInventory.SimulatorFacade_852 .....................................................................   Passed    0.01 sec
+          Start 1534: KernelSimulatorMethodInventory.SimulatorFacade_853
+1534/1661 Test #1534: KernelSimulatorMethodInventory.SimulatorFacade_853 .....................................................................   Passed    0.01 sec
+          Start 1535: KernelSimulatorMethodInventory.SimulatorFacade_854
+1535/1661 Test #1535: KernelSimulatorMethodInventory.SimulatorFacade_854 .....................................................................   Passed    0.01 sec
+          Start 1536: KernelSimulatorMethodInventory.SimulatorFacade_855
+1536/1661 Test #1536: KernelSimulatorMethodInventory.SimulatorFacade_855 .....................................................................   Passed    0.01 sec
+          Start 1537: KernelSimulatorMethodInventory.SimulatorFacade_856
+1537/1661 Test #1537: KernelSimulatorMethodInventory.SimulatorFacade_856 .....................................................................   Passed    0.01 sec
+          Start 1538: KernelSimulatorMethodInventory.SimulatorFacade_857
+1538/1661 Test #1538: KernelSimulatorMethodInventory.SimulatorFacade_857 .....................................................................   Passed    0.01 sec
+          Start 1539: KernelSimulatorMethodInventory.SimulatorFacade_858
+1539/1661 Test #1539: KernelSimulatorMethodInventory.SimulatorFacade_858 .....................................................................   Passed    0.01 sec
+          Start 1540: KernelSimulatorMethodInventory.SimulatorFacade_859
+1540/1661 Test #1540: KernelSimulatorMethodInventory.SimulatorFacade_859 .....................................................................   Passed    0.01 sec
+          Start 1541: KernelSimulatorMethodInventory.SimulatorFacade_860
+1541/1661 Test #1541: KernelSimulatorMethodInventory.SimulatorFacade_860 .....................................................................   Passed    0.01 sec
+          Start 1542: KernelSimulatorMethodInventory.SimulatorFacade_861
+1542/1661 Test #1542: KernelSimulatorMethodInventory.SimulatorFacade_861 .....................................................................   Passed    0.01 sec
+          Start 1543: KernelSimulatorMethodInventory.SimulatorFacade_862
+1543/1661 Test #1543: KernelSimulatorMethodInventory.SimulatorFacade_862 .....................................................................   Passed    0.01 sec
+          Start 1544: KernelSimulatorMethodInventory.SimulatorFacade_863
+1544/1661 Test #1544: KernelSimulatorMethodInventory.SimulatorFacade_863 .....................................................................   Passed    0.01 sec
+          Start 1545: KernelSimulatorMethodInventory.SimulatorFacade_864
+1545/1661 Test #1545: KernelSimulatorMethodInventory.SimulatorFacade_864 .....................................................................   Passed    0.01 sec
+          Start 1546: KernelSimulatorMethodInventory.SimulatorFacade_865
+1546/1661 Test #1546: KernelSimulatorMethodInventory.SimulatorFacade_865 .....................................................................   Passed    0.01 sec
+          Start 1547: KernelSimulatorMethodInventory.SimulatorFacade_866
+1547/1661 Test #1547: KernelSimulatorMethodInventory.SimulatorFacade_866 .....................................................................   Passed    0.01 sec
+          Start 1548: KernelSimulatorMethodInventory.SimulatorFacade_867
+1548/1661 Test #1548: KernelSimulatorMethodInventory.SimulatorFacade_867 .....................................................................   Passed    0.01 sec
+          Start 1549: KernelSimulatorMethodInventory.SimulatorFacade_868
+1549/1661 Test #1549: KernelSimulatorMethodInventory.SimulatorFacade_868 .....................................................................   Passed    0.01 sec
+          Start 1550: KernelSimulatorMethodInventory.SimulatorFacade_869
+1550/1661 Test #1550: KernelSimulatorMethodInventory.SimulatorFacade_869 .....................................................................   Passed    0.01 sec
+          Start 1551: KernelSimulatorMethodInventory.SimulatorFacade_870
+1551/1661 Test #1551: KernelSimulatorMethodInventory.SimulatorFacade_870 .....................................................................   Passed    0.01 sec
+          Start 1552: KernelSimulatorMethodInventory.SimulatorFacade_871
+1552/1661 Test #1552: KernelSimulatorMethodInventory.SimulatorFacade_871 .....................................................................   Passed    0.01 sec
+          Start 1553: KernelSimulatorMethodInventory.SimulatorFacade_872
+1553/1661 Test #1553: KernelSimulatorMethodInventory.SimulatorFacade_872 .....................................................................   Passed    0.01 sec
+          Start 1554: KernelSimulatorMethodInventory.SimulatorFacade_873
+1554/1661 Test #1554: KernelSimulatorMethodInventory.SimulatorFacade_873 .....................................................................   Passed    0.01 sec
+          Start 1555: KernelSimulatorMethodInventory.SimulatorFacade_874
+1555/1661 Test #1555: KernelSimulatorMethodInventory.SimulatorFacade_874 .....................................................................   Passed    0.01 sec
+          Start 1556: KernelSimulatorMethodInventory.SimulatorFacade_875
+1556/1661 Test #1556: KernelSimulatorMethodInventory.SimulatorFacade_875 .....................................................................   Passed    0.01 sec
+          Start 1557: KernelSimulatorMethodInventory.SimulatorFacade_876
+1557/1661 Test #1557: KernelSimulatorMethodInventory.SimulatorFacade_876 .....................................................................   Passed    0.01 sec
+          Start 1558: KernelSimulatorMethodInventory.SimulatorFacade_877
+1558/1661 Test #1558: KernelSimulatorMethodInventory.SimulatorFacade_877 .....................................................................   Passed    0.01 sec
+          Start 1559: KernelSimulatorMethodInventory.SimulatorFacade_878
+1559/1661 Test #1559: KernelSimulatorMethodInventory.SimulatorFacade_878 .....................................................................   Passed    0.01 sec
+          Start 1560: KernelSimulatorMethodInventory.SimulatorFacade_879
+1560/1661 Test #1560: KernelSimulatorMethodInventory.SimulatorFacade_879 .....................................................................   Passed    0.01 sec
+          Start 1561: KernelSimulatorMethodInventory.SimulatorFacade_880
+1561/1661 Test #1561: KernelSimulatorMethodInventory.SimulatorFacade_880 .....................................................................   Passed    0.01 sec
+          Start 1562: KernelSimulatorMethodInventory.SimulatorFacade_881
+1562/1661 Test #1562: KernelSimulatorMethodInventory.SimulatorFacade_881 .....................................................................   Passed    0.01 sec
+          Start 1563: KernelSimulatorMethodInventory.SimulatorFacade_882
+1563/1661 Test #1563: KernelSimulatorMethodInventory.SimulatorFacade_882 .....................................................................   Passed    0.01 sec
+          Start 1564: KernelSimulatorMethodInventory.SimulatorFacade_883
+1564/1661 Test #1564: KernelSimulatorMethodInventory.SimulatorFacade_883 .....................................................................   Passed    0.01 sec
+          Start 1565: KernelSimulatorMethodInventory.SimulatorFacade_884
+1565/1661 Test #1565: KernelSimulatorMethodInventory.SimulatorFacade_884 .....................................................................   Passed    0.01 sec
+          Start 1566: KernelSimulatorMethodInventory.SimulatorFacade_885
+1566/1661 Test #1566: KernelSimulatorMethodInventory.SimulatorFacade_885 .....................................................................   Passed    0.01 sec
+          Start 1567: KernelSimulatorMethodInventory.SimulatorFacade_886
+1567/1661 Test #1567: KernelSimulatorMethodInventory.SimulatorFacade_886 .....................................................................   Passed    0.01 sec
+          Start 1568: KernelSimulatorMethodInventory.SimulatorFacade_887
+1568/1661 Test #1568: KernelSimulatorMethodInventory.SimulatorFacade_887 .....................................................................   Passed    0.01 sec
+          Start 1569: KernelSimulatorMethodInventory.SimulatorFacade_888
+1569/1661 Test #1569: KernelSimulatorMethodInventory.SimulatorFacade_888 .....................................................................   Passed    0.01 sec
+          Start 1570: KernelSimulatorMethodInventory.SimulatorFacade_889
+1570/1661 Test #1570: KernelSimulatorMethodInventory.SimulatorFacade_889 .....................................................................   Passed    0.01 sec
+          Start 1571: KernelSimulatorMethodInventory.SimulatorFacade_890
+1571/1661 Test #1571: KernelSimulatorMethodInventory.SimulatorFacade_890 .....................................................................   Passed    0.01 sec
+          Start 1572: KernelSimulatorMethodInventory.SimulatorFacade_891
+1572/1661 Test #1572: KernelSimulatorMethodInventory.SimulatorFacade_891 .....................................................................   Passed    0.01 sec
+          Start 1573: KernelSimulatorMethodInventory.SimulatorFacade_892
+1573/1661 Test #1573: KernelSimulatorMethodInventory.SimulatorFacade_892 .....................................................................   Passed    0.01 sec
+          Start 1574: KernelSimulatorMethodInventory.SimulatorFacade_893
+1574/1661 Test #1574: KernelSimulatorMethodInventory.SimulatorFacade_893 .....................................................................   Passed    0.01 sec
+          Start 1575: KernelSimulatorMethodInventory.SimulatorFacade_894
+1575/1661 Test #1575: KernelSimulatorMethodInventory.SimulatorFacade_894 .....................................................................   Passed    0.01 sec
+          Start 1576: KernelSimulatorMethodInventory.SimulatorFacade_895
+1576/1661 Test #1576: KernelSimulatorMethodInventory.SimulatorFacade_895 .....................................................................   Passed    0.01 sec
+          Start 1577: KernelSimulatorMethodInventory.SimulatorFacade_896
+1577/1661 Test #1577: KernelSimulatorMethodInventory.SimulatorFacade_896 .....................................................................   Passed    0.01 sec
+          Start 1578: KernelSimulatorMethodInventory.SimulatorFacade_897
+1578/1661 Test #1578: KernelSimulatorMethodInventory.SimulatorFacade_897 .....................................................................   Passed    0.01 sec
+          Start 1579: KernelSimulatorMethodInventory.SimulatorFacade_898
+1579/1661 Test #1579: KernelSimulatorMethodInventory.SimulatorFacade_898 .....................................................................   Passed    0.01 sec
+          Start 1580: KernelSimulatorMethodInventory.SimulatorFacade_899
+1580/1661 Test #1580: KernelSimulatorMethodInventory.SimulatorFacade_899 .....................................................................   Passed    0.01 sec
+          Start 1581: KernelSimulatorMethodInventory.SimulatorFacade_900
+1581/1661 Test #1581: KernelSimulatorMethodInventory.SimulatorFacade_900 .....................................................................   Passed    0.01 sec
+          Start 1582: KernelSimulatorMethodInventory.SimulatorFacade_901
+1582/1661 Test #1582: KernelSimulatorMethodInventory.SimulatorFacade_901 .....................................................................   Passed    0.01 sec
+          Start 1583: KernelSimulatorMethodInventory.SimulatorFacade_902
+1583/1661 Test #1583: KernelSimulatorMethodInventory.SimulatorFacade_902 .....................................................................   Passed    0.01 sec
+          Start 1584: KernelSimulatorMethodInventory.SimulatorFacade_903
+1584/1661 Test #1584: KernelSimulatorMethodInventory.SimulatorFacade_903 .....................................................................   Passed    0.01 sec
+          Start 1585: KernelSimulatorMethodInventory.SimulatorFacade_904
+1585/1661 Test #1585: KernelSimulatorMethodInventory.SimulatorFacade_904 .....................................................................   Passed    0.01 sec
+          Start 1586: KernelSimulatorMethodInventory.SimulatorFacade_905
+1586/1661 Test #1586: KernelSimulatorMethodInventory.SimulatorFacade_905 .....................................................................   Passed    0.01 sec
+          Start 1587: KernelSimulatorMethodInventory.SimulatorFacade_906
+1587/1661 Test #1587: KernelSimulatorMethodInventory.SimulatorFacade_906 .....................................................................   Passed    0.01 sec
+          Start 1588: KernelSimulatorMethodInventory.SimulatorFacade_907
+1588/1661 Test #1588: KernelSimulatorMethodInventory.SimulatorFacade_907 .....................................................................   Passed    0.01 sec
+          Start 1589: KernelSimulatorMethodInventory.SimulatorFacade_908
+1589/1661 Test #1589: KernelSimulatorMethodInventory.SimulatorFacade_908 .....................................................................   Passed    0.01 sec
+          Start 1590: KernelSimulatorMethodInventory.SimulatorFacade_909
+1590/1661 Test #1590: KernelSimulatorMethodInventory.SimulatorFacade_909 .....................................................................   Passed    0.01 sec
+          Start 1591: KernelSimulatorMethodInventory.SimulatorFacade_910
+1591/1661 Test #1591: KernelSimulatorMethodInventory.SimulatorFacade_910 .....................................................................   Passed    0.01 sec
+          Start 1592: KernelSimulatorMethodInventory.SimulatorFacade_911
+1592/1661 Test #1592: KernelSimulatorMethodInventory.SimulatorFacade_911 .....................................................................   Passed    0.01 sec
+          Start 1593: KernelSimulatorMethodInventory.SimulatorFacade_912
+1593/1661 Test #1593: KernelSimulatorMethodInventory.SimulatorFacade_912 .....................................................................   Passed    0.01 sec
+          Start 1594: KernelSimulatorMethodInventory.SimulatorFacade_913
+1594/1661 Test #1594: KernelSimulatorMethodInventory.SimulatorFacade_913 .....................................................................   Passed    0.01 sec
+          Start 1595: KernelSimulatorMethodInventory.SimulatorFacade_914
+1595/1661 Test #1595: KernelSimulatorMethodInventory.SimulatorFacade_914 .....................................................................   Passed    0.01 sec
+          Start 1596: KernelSimulatorMethodInventory.SimulatorFacade_915
+1596/1661 Test #1596: KernelSimulatorMethodInventory.SimulatorFacade_915 .....................................................................   Passed    0.01 sec
+          Start 1597: KernelSimulatorMethodInventory.SimulatorFacade_916
+1597/1661 Test #1597: KernelSimulatorMethodInventory.SimulatorFacade_916 .....................................................................   Passed    0.01 sec
+          Start 1598: KernelSimulatorMethodInventory.SimulatorFacade_917
+1598/1661 Test #1598: KernelSimulatorMethodInventory.SimulatorFacade_917 .....................................................................   Passed    0.01 sec
+          Start 1599: KernelSimulatorMethodInventory.SimulatorFacade_918
+1599/1661 Test #1599: KernelSimulatorMethodInventory.SimulatorFacade_918 .....................................................................   Passed    0.01 sec
+          Start 1600: KernelSimulatorMethodInventory.SinkModelComponent_919
+1600/1661 Test #1600: KernelSimulatorMethodInventory.SinkModelComponent_919 ..................................................................   Passed    0.01 sec
+          Start 1601: KernelSimulatorMethodInventory.SinkModelComponent_920
+1601/1661 Test #1601: KernelSimulatorMethodInventory.SinkModelComponent_920 ..................................................................   Passed    0.01 sec
+          Start 1602: KernelSimulatorMethodInventory.SourceModelComponent_921
+1602/1661 Test #1602: KernelSimulatorMethodInventory.SourceModelComponent_921 ................................................................   Passed    0.01 sec
+          Start 1603: KernelSimulatorMethodInventory.SourceModelComponent_922
+1603/1661 Test #1603: KernelSimulatorMethodInventory.SourceModelComponent_922 ................................................................   Passed    0.01 sec
+          Start 1604: KernelSimulatorMethodInventory.SourceModelComponent_923
+1604/1661 Test #1604: KernelSimulatorMethodInventory.SourceModelComponent_923 ................................................................   Passed    0.01 sec
+          Start 1605: KernelSimulatorMethodInventory.SourceModelComponent_924
+1605/1661 Test #1605: KernelSimulatorMethodInventory.SourceModelComponent_924 ................................................................   Passed    0.01 sec
+          Start 1606: KernelSimulatorMethodInventory.SourceModelComponent_925
+1606/1661 Test #1606: KernelSimulatorMethodInventory.SourceModelComponent_925 ................................................................   Passed    0.01 sec
+          Start 1607: KernelSimulatorMethodInventory.SourceModelComponent_926
+1607/1661 Test #1607: KernelSimulatorMethodInventory.SourceModelComponent_926 ................................................................   Passed    0.01 sec
+          Start 1608: KernelSimulatorMethodInventory.SourceModelComponent_927
+1608/1661 Test #1608: KernelSimulatorMethodInventory.SourceModelComponent_927 ................................................................   Passed    0.01 sec
+          Start 1609: KernelSimulatorMethodInventory.SourceModelComponent_928
+1609/1661 Test #1609: KernelSimulatorMethodInventory.SourceModelComponent_928 ................................................................   Passed    0.01 sec
+          Start 1610: KernelSimulatorMethodInventory.SourceModelComponent_929
+1610/1661 Test #1610: KernelSimulatorMethodInventory.SourceModelComponent_929 ................................................................   Passed    0.01 sec
+          Start 1611: KernelSimulatorMethodInventory.SourceModelComponent_930
+1611/1661 Test #1611: KernelSimulatorMethodInventory.SourceModelComponent_930 ................................................................   Passed    0.01 sec
+          Start 1612: KernelSimulatorMethodInventory.SourceModelComponent_931
+1612/1661 Test #1612: KernelSimulatorMethodInventory.SourceModelComponent_931 ................................................................   Passed    0.01 sec
+          Start 1613: KernelSimulatorMethodInventory.SourceModelComponent_932
+1613/1661 Test #1613: KernelSimulatorMethodInventory.SourceModelComponent_932 ................................................................   Passed    0.01 sec
+          Start 1614: KernelSimulatorMethodInventory.SourceModelComponent_933
+1614/1661 Test #1614: KernelSimulatorMethodInventory.SourceModelComponent_933 ................................................................   Passed    0.01 sec
+          Start 1615: KernelSimulatorMethodInventory.SourceModelComponent_934
+1615/1661 Test #1615: KernelSimulatorMethodInventory.SourceModelComponent_934 ................................................................   Passed    0.01 sec
+          Start 1616: KernelSimulatorMethodInventory.SourceModelComponent_935
+1616/1661 Test #1616: KernelSimulatorMethodInventory.SourceModelComponent_935 ................................................................   Passed    0.01 sec
+          Start 1617: KernelSimulatorMethodInventory.SourceModelComponent_936
+1617/1661 Test #1617: KernelSimulatorMethodInventory.SourceModelComponent_936 ................................................................   Passed    0.01 sec
+          Start 1618: KernelSimulatorMethodInventory.SourceModelComponent_937
+1618/1661 Test #1618: KernelSimulatorMethodInventory.SourceModelComponent_937 ................................................................   Passed    0.01 sec
+          Start 1619: KernelSimulatorMethodInventory.SourceModelComponent_938
+1619/1661 Test #1619: KernelSimulatorMethodInventory.SourceModelComponent_938 ................................................................   Passed    0.01 sec
+          Start 1620: KernelSimulatorMethodInventory.SourceModelComponent_939
+1620/1661 Test #1620: KernelSimulatorMethodInventory.SourceModelComponent_939 ................................................................   Passed    0.01 sec
+          Start 1621: KernelSimulatorMethodInventory.SystemCommandExecutor_if_940
+1621/1661 Test #1621: KernelSimulatorMethodInventory.SystemCommandExecutor_if_940 ............................................................   Passed    0.01 sec
+          Start 1622: KernelSimulatorMethodInventory.SystemCommandExecutor_if_941
+1622/1661 Test #1622: KernelSimulatorMethodInventory.SystemCommandExecutor_if_941 ............................................................   Passed    0.01 sec
+          Start 1623: KernelSimulatorMethodInventory.SystemShellCommandExecutor_942
+1623/1661 Test #1623: KernelSimulatorMethodInventory.SystemShellCommandExecutor_942 ..........................................................   Passed    0.01 sec
+          Start 1624: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_943
+1624/1661 Test #1624: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_943 ..........................................................   Passed    0.01 sec
+          Start 1625: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_944
+1625/1661 Test #1625: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_944 ..........................................................   Passed    0.01 sec
+          Start 1626: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_945
+1626/1661 Test #1626: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_945 ..........................................................   Passed    0.01 sec
+          Start 1627: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_946
+1627/1661 Test #1627: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_946 ..........................................................   Passed    0.01 sec
+          Start 1628: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_947
+1628/1661 Test #1628: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_947 ..........................................................   Passed    0.01 sec
+          Start 1629: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_948
+1629/1661 Test #1629: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_948 ..........................................................   Passed    0.01 sec
+          Start 1630: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_949
+1630/1661 Test #1630: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_949 ..........................................................   Passed    0.01 sec
+          Start 1631: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_950
+1631/1661 Test #1631: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_950 ..........................................................   Passed    0.01 sec
+          Start 1632: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_951
+1632/1661 Test #1632: KernelSimulatorMethodInventory.SystemDependencyCheckEntry_951 ..........................................................   Passed    0.01 sec
+          Start 1633: KernelSimulatorMethodInventory.SystemDependencyCheckResult_952
+1633/1661 Test #1633: KernelSimulatorMethodInventory.SystemDependencyCheckResult_952 .........................................................   Passed    0.01 sec
+          Start 1634: KernelSimulatorMethodInventory.SystemDependencyCheckResult_953
+1634/1661 Test #1634: KernelSimulatorMethodInventory.SystemDependencyCheckResult_953 .........................................................   Passed    0.01 sec
+          Start 1635: KernelSimulatorMethodInventory.SystemDependencyCheckResult_954
+1635/1661 Test #1635: KernelSimulatorMethodInventory.SystemDependencyCheckResult_954 .........................................................   Passed    0.01 sec
+          Start 1636: KernelSimulatorMethodInventory.SystemDependencyCheckResult_955
+1636/1661 Test #1636: KernelSimulatorMethodInventory.SystemDependencyCheckResult_955 .........................................................   Passed    0.01 sec
+          Start 1637: KernelSimulatorMethodInventory.SystemDependencyCheckResult_956
+1637/1661 Test #1637: KernelSimulatorMethodInventory.SystemDependencyCheckResult_956 .........................................................   Passed    0.01 sec
+          Start 1638: KernelSimulatorMethodInventory.SystemDependencyCheckResult_957
+1638/1661 Test #1638: KernelSimulatorMethodInventory.SystemDependencyCheckResult_957 .........................................................   Passed    0.01 sec
+          Start 1639: KernelSimulatorMethodInventory.SystemDependencyCheckResult_958
+1639/1661 Test #1639: KernelSimulatorMethodInventory.SystemDependencyCheckResult_958 .........................................................   Passed    0.01 sec
+          Start 1640: KernelSimulatorMethodInventory.SystemDependencyInstallEntry_959
+1640/1661 Test #1640: KernelSimulatorMethodInventory.SystemDependencyInstallEntry_959 ........................................................   Passed    0.01 sec
+          Start 1641: KernelSimulatorMethodInventory.SystemDependencyInstallEntry_960
+1641/1661 Test #1641: KernelSimulatorMethodInventory.SystemDependencyInstallEntry_960 ........................................................   Passed    0.01 sec
+          Start 1642: KernelSimulatorMethodInventory.SystemDependencyInstallEntry_961
+1642/1661 Test #1642: KernelSimulatorMethodInventory.SystemDependencyInstallEntry_961 ........................................................   Passed    0.01 sec
+          Start 1643: KernelSimulatorMethodInventory.SystemDependencyInstallEntry_962
+1643/1661 Test #1643: KernelSimulatorMethodInventory.SystemDependencyInstallEntry_962 ........................................................   Passed    0.01 sec
+          Start 1644: KernelSimulatorMethodInventory.SystemDependencyInstallResult_963
+1644/1661 Test #1644: KernelSimulatorMethodInventory.SystemDependencyInstallResult_963 .......................................................   Passed    0.01 sec
+          Start 1645: KernelSimulatorMethodInventory.SystemDependencyInstallResult_964
+1645/1661 Test #1645: KernelSimulatorMethodInventory.SystemDependencyInstallResult_964 .......................................................   Passed    0.01 sec
+          Start 1646: KernelSimulatorMethodInventory.SystemDependencyInstallResult_965
+1646/1661 Test #1646: KernelSimulatorMethodInventory.SystemDependencyInstallResult_965 .......................................................   Passed    0.01 sec
+          Start 1647: KernelSimulatorMethodInventory.SystemDependencyInstallResult_966
+1647/1661 Test #1647: KernelSimulatorMethodInventory.SystemDependencyInstallResult_966 .......................................................   Passed    0.01 sec
+          Start 1648: KernelSimulatorMethodInventory.SystemDependencyInstallResult_967
+1648/1661 Test #1648: KernelSimulatorMethodInventory.SystemDependencyInstallResult_967 .......................................................   Passed    0.01 sec
+          Start 1649: KernelSimulatorMethodInventory.SystemDependencyResolver_968
+1649/1661 Test #1649: KernelSimulatorMethodInventory.SystemDependencyResolver_968 ............................................................   Passed    0.01 sec
+          Start 1650: KernelSimulatorMethodInventory.SystemDependencyResolver_969
+1650/1661 Test #1650: KernelSimulatorMethodInventory.SystemDependencyResolver_969 ............................................................   Passed    0.01 sec
+          Start 1651: KernelSimulatorMethodInventory.TraceManager_970
+1651/1661 Test #1651: KernelSimulatorMethodInventory.TraceManager_970 ........................................................................   Passed    0.01 sec
+          Start 1652: KernelSimulatorMethodInventory.TraceManager_971
+1652/1661 Test #1652: KernelSimulatorMethodInventory.TraceManager_971 ........................................................................   Passed    0.01 sec
+          Start 1653: KernelSimulatorMethodInventory.TraceManager_972
+1653/1661 Test #1653: KernelSimulatorMethodInventory.TraceManager_972 ........................................................................   Passed    0.01 sec
+          Start 1654: KernelSimulatorMethodInventory.TraceManager_973
+1654/1661 Test #1654: KernelSimulatorMethodInventory.TraceManager_973 ........................................................................   Passed    0.01 sec
+          Start 1655: KernelSimulatorMethodInventory.TraceManager_974
+1655/1661 Test #1655: KernelSimulatorMethodInventory.TraceManager_974 ........................................................................   Passed    0.01 sec
+          Start 1656: KernelSimulatorMethodInventory.TraceManager_975
+1656/1661 Test #1656: KernelSimulatorMethodInventory.TraceManager_975 ........................................................................   Passed    0.01 sec
+          Start 1657: KernelSimulatorMethodInventory.TraceManager_976
+1657/1661 Test #1657: KernelSimulatorMethodInventory.TraceManager_976 ........................................................................   Passed    0.01 sec
+          Start 1658: KernelSimulatorMethodInventory.TraceManager_977
+1658/1661 Test #1658: KernelSimulatorMethodInventory.TraceManager_977 ........................................................................   Passed    0.01 sec
+          Start 1659: KernelSimulatorMethodInventory.TraceManager_978
+1659/1661 Test #1659: KernelSimulatorMethodInventory.TraceManager_978 ........................................................................   Passed    0.01 sec
+          Start 1660: KernelSimulatorMethodInventory.TraceManager_979
+1660/1661 Test #1660: KernelSimulatorMethodInventory.TraceManager_979 ........................................................................   Passed    0.01 sec
+          Start 1661: KernelSimulatorMethodInventory.TraceManager_980
+1661/1661 Test #1661: KernelSimulatorMethodInventory.TraceManager_980 ........................................................................   Passed    0.01 sec
+
+99% tests passed, 16 tests failed out of 1657
+
+Label Time Summary:
+unit    =  17.58 sec*proc (1661 tests)
+
+Total Test time (real) =  18.33 sec
+
+The following tests did not run:
+	225 - SimulatorRuntimeTest.SearchQueueFindsEntityInRangeSavesRankAndRoutesToFoundPort (Disabled)
+	226 - SimulatorRuntimeTest.SearchQueueNotFoundRoutesToPortZeroAndSavesZeroRank (Disabled)
+	229 - SimulatorRuntimeTest.RemoveEqualStartAndEndRankRemovesExactlyOneAndRoutesCorrectly (Disabled)
+	230 - SimulatorRuntimeTest.RemoveRangeRemovesOnlyEntitiesInsideConfiguredInterval (Disabled)
+	364 - SimulatorRuntimeTest.RSimulatorRunnerExecutesSimpleScriptWhenRscriptIsAvailable (Skipped)
+	365 - SimulatorRuntimeTest.RSimulatorRunnerCapturesRFailureWhenRscriptIsAvailable (Skipped)
+
+The following tests FAILED:
+	299 - SimulatorRuntimeTest.MetabolicStateProjectionBridgesFluxBalanceIntoWholeCellState (Failed) unit
+	300 - SimulatorRuntimeTest.MetabolicStateProjectionSupportsAccumulationAndTurnoverModes (Failed) unit
+	301 - SimulatorRuntimeTest.CompartmentExchangeComponentMovesMetaboliteBetweenPools (Failed) unit
+	302 - SimulatorRuntimeTest.CompartmentExchangeComponentSupportsMultipleExchangeRules (Failed) unit
+	330 - SimulatorRuntimeTest.BioNetworkAutoScheduleAdvancesWithKernelInternalEvents (Failed) unit
+	331 - SimulatorRuntimeTest.BioStateProjectionBridgesBioNetworkIntoWholeCellState (Failed) unit
+	332 - SimulatorRuntimeTest.CellCycleCheckpointComponentSynchronizesWholeCellClockAndLifecycle (Failed) unit
+	333 - SimulatorRuntimeTest.CellFateDecisionComponentRoutesStarvedAndDeadCellsToDedicatedOutputs (Failed) unit
+	334 - SimulatorRuntimeTest.PathwayStressResponseComponentCanArrestRuntimeWholeCellFlow (Failed) unit
+	335 - SimulatorRuntimeTest.EukaryoticCellCycleComponentCoordinatesRuntimeLifecycleAndDivision (Failed) unit
+	336 - SimulatorRuntimeTest.WholeCellMvpCombinesMetabolismExpressionGrowthAndDivision (Failed) unit
+	337 - SimulatorRuntimeTest.FluxBalanceWholeCellMvpCombinesFbaExpressionGrowthAndDivision (Failed) unit
+	338 - SimulatorRuntimeTest.YeastDidacticWholeCellMvpCombinesGemInspiredMetabolismTransportAndLifecycle (Failed) unit
+	607 - GuiGmddLayout.SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRows (Failed) unit
+	612 - GuiGmddLayout.SerializerRoundTripRestoresComponentColorAndDataDefinitionPosition (Failed) unit
+	613 - GuiGmddLayout.SerializerRoundTripRestoresViewStateGeometriesAndGroups (Failed) unit
+Errors while running CTest
