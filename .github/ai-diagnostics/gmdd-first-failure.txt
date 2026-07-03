@@ -1,54 +1,5 @@
-HEAD=51757ac3ca1fc1d9ad0096b74ed9f620ff2433f0
+HEAD=eae4a41cb9e9ebafe012729203434ed0782a13c8
 TARGET=genesys_test_gui_gmdd_layout
 BUILD_LOG=.github/ai-diagnostics/build-gui-gmdd-layout.log
-BUILD_RC=1
-FIRST_ERROR_LINE=360
-                 from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/propertyeditor/qtpropertybrowser/qteditorfactory.h:43,
-                 from /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/propertyeditor/qtpropertybrowser/qteditorfactory.cpp:40:
-/usr/include/x86_64-linux-gnu/qt6/QtCore/qstring.h:464:22: note: declared here
-  464 |     inline qsizetype count() const { return d.size; }
-      |                      ^~~~~
-[322/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/services/GraphicalAutomaticPositioningStrategy.cpp.o
-[323/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/propertyeditor/qtpropertybrowser/qtpropertymanager.cpp.o
-[324/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/services/CppModelExporter.cpp.o
-[325/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/propertyeditor/qtpropertybrowser/qtvariantproperty.cpp.o
-[326/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/services/GraphicalDataDefinitionLayout.cpp.o
-[327/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/services/GraphvizModelExporter.cpp.o
-[328/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/services/IssueReportRelayService.cpp.o
-[329/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/services/GraphicalModelBuilder.cpp.o
-[330/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/services/GraphicalModelSerializer.cpp.o
-[331/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/services/ModelLanguageSynchronizer.cpp.o
-[332/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/systempreferences.cpp.o
-[333/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp.o
-FAILED: [code=1] source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp.o 
-/usr/bin/c++ -DGENESYS_HAS_PYTHON_INTEGRATION=1 -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_PRINTSUPPORT_LIB -DQT_WIDGETS_LIB -I/home/runner/work/Genesys-Simulator/Genesys-Simulator/build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout_autogen/include -I/home/runner/work/Genesys-Simulator/Genesys-Simulator/source -I/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/web -I/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys -I/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/codeeditor -I/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/propertyeditor -I/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/propertyeditor/qtpropertybrowser -I/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/gtest -isystem /usr/include/x86_64-linux-gnu/qt6/QtCore -isystem /usr/include/x86_64-linux-gnu/qt6 -isystem /usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -isystem /usr/include/x86_64-linux-gnu/qt6/QtGui -isystem /usr/include/x86_64-linux-gnu/qt6/QtWidgets -isystem /usr/include/python3.12 -isystem /usr/include/x86_64-linux-gnu/qt6/QtPrintSupport -isystem /usr/include/x86_64-linux-gnu/qt6/QtNetwork -g -std=c++23 -include /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/MovedGuiCompatibilityIncludes.h -fPIC -MD -MT source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp.o -MF source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp.o.d -o source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp.o -c /home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp: In member function ‘void AIAssistantWindow::buildMenus()’:
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp:69:5: error: ‘_applyConfigAction’ was not declared in this scope
-   69 |     _applyConfigAction = toolsMenu->addAction(tr("Apply Configuration"));
-      |     ^~~~~~~~~~~~~~~~~~
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp:73:5: error: ‘_clearLogAction’ was not declared in this scope
-   73 |     _clearLogAction = toolsMenu->addAction(tr("Clear Execution Log"));
-      |     ^~~~~~~~~~~~~~~
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp:77:5: error: ‘_refreshAuditAction’ was not declared in this scope; did you mean ‘_refreshAuditBtn’?
-   77 |     _refreshAuditAction = toolsMenu->addAction(tr("Refresh Audit Log"));
-      |     ^~~~~~~~~~~~~~~~~~~
-      |     _refreshAuditBtn
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp: In member function ‘void AIAssistantWindow::connectActions()’:
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp:340:13: error: ‘_applyConfigAction’ was not declared in this scope
-  340 |     connect(_applyConfigAction, &QAction::triggered,
-      |             ^~~~~~~~~~~~~~~~~~
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp:342:13: error: ‘_clearLogAction’ was not declared in this scope
-  342 |     connect(_clearLogAction, &QAction::triggered,
-      |             ^~~~~~~~~~~~~~~
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp:366:13: error: ‘_refreshAuditAction’ was not declared in this scope; did you mean ‘_refreshAuditBtn’?
-  366 |     connect(_refreshAuditAction, &QAction::triggered,   this, &AIAssistantWindow::refreshAuditTable);
-      |             ^~~~~~~~~~~~~~~~~~~
-      |             _refreshAuditBtn
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp: In member function ‘QWidget* AIAssistantWindow::buildAuditTab()’:
-/home/runner/work/Genesys-Simulator/Genesys-Simulator/source/applications/gui/genesys/tools/aiassistant/AIAssistantWindow.cpp:591:5: error: ‘_auditLogPathLabel’ was not declared in this scope
-  591 |     _auditLogPathLabel = new QLabel(tab);
-      |     ^~~~~~~~~~~~~~~~~~
-[334/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/tools/expressionbuilder/ExpressionBuilder.cpp.o
-[335/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/tools/dataanalyzer/DataAnalyzerWindow.cpp.o
-[336/342] Building CXX object source/tests/unit/CMakeFiles/genesys_test_gui_gmdd_layout.dir/__/__/applications/gui/genesys/tools/optimizer/OptimizerWindow.cpp.o
-ninja: build stopped: subcommand failed.
+BUILD_RC=0
+BUILD_GUI_GMDD_LAYOUT_OK
