@@ -36,7 +36,6 @@ The generic extension infrastructure now has first biosimulation consumers:
     direct/reverse kinetic-law expressions, and modifiers list.
 - `Tools/Extensions/Biochemical/Edit BioReaction Stoichiometry...`
   - edits `BioReaction` reactants and products with optional stoichiometry per term (for example `A` or `A:2.5`).
-<<<<<<< Updated upstream
 - `Tools/Extensions/Biochemical/Manage BioSpecies...`
   - provides create/edit/list workflows for `BioSpecies` definitions (name, initial/current amount, constant, boundary condition, unit).
 - `Tools/Extensions/Biochemical/Manage BioParameters...`
@@ -45,21 +44,16 @@ The generic extension infrastructure now has first biosimulation consumers:
   - provides species curves, reaction-rate tables, steady-state checks, local sensitivity scans, and a full analysis report from `BioNetwork` results.
 - `Tools/Extensions/Biochemical/SBML Import/Export...`
   - runs `BioSimulatorRunner` SBML endpoints (`importSBML(...)` and `exportSBML(...)`) for text/file workflows and diagnostics payload visualization.
-=======
->>>>>>> Stashed changes
 
-Both entries are dependency-gated by model plugins:
+These entries are dependency-gated by model plugins:
 
-- BioNetwork editor requires `bionetwork`;
+- BioNetwork editor requires `bionetwork`.
 - BioReaction editor requires `bioreaction`.
 - BioReaction stoichiometry editor requires `bioreaction`.
-<<<<<<< Updated upstream
 - BioSpecies manager requires `biospecies`.
 - BioParameter manager requires `bioparameter`.
 - BioSimulation results viewer requires `bionetwork`.
 - SBML interoperability window requires `biosimulatorrunner`.
-=======
->>>>>>> Stashed changes
 
 ## Configuration file
 
@@ -101,7 +95,7 @@ If the file is absent or invalid JSON, GenESyS falls back to static registration
       "group": "Diagnostics",
       "priority": 10
     }
-  ]
+  }
 }
 ```
 
