@@ -10,8 +10,7 @@ Build-Depends:
  pkgconf,
  qt6-base-dev,
  qt6-base-dev-tools,
- libgl-dev,
- libgtest-dev <!nocheck>
+ libgl-dev
 Standards-Version: 4.7.0
 Rules-Requires-Root: no
 Homepage: https://github.com/rlcancian/Genesys-Simulator
