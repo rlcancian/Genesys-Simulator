@@ -1,5 +1,0 @@
-HEAD=eae4a41cb9e9ebafe012729203434ed0782a13c8
-TARGET=genesys_test_gui_gmdd_layout
-BUILD_LOG=.github/ai-diagnostics/build-gui-gmdd-layout.log
-BUILD_RC=0
-BUILD_GUI_GMDD_LAYOUT_OK
