@@ -130,6 +130,7 @@ bool ModalModelPetriNet::_loadInstance(PersistenceRecord *fields) {
             // adds the true and finalized transition back to the net
             _transitions->insert(pTrans);
             tIndex++;
+            delete oldT;
         }
     }
     return res;

@@ -91,3 +91,17 @@ void PetriTransition::execute(Model* model, Entity* entity) const {
         }
     }
 }
+
+void PetriTransition::setInputArcWeight(std::string color, unsigned int weight) {
+    PetriPlace* sourcePlace = dynamic_cast<PetriPlace*>(this->getSource());
+    if (sourcePlace != nullptr) {
+        setInputArcWeight(sourcePlace, color, weight);
+    }
+}
+
+void PetriTransition::setOutputArcWeight(std::string color, unsigned int weight) {
+    PetriPlace* destPlace = dynamic_cast<PetriPlace*>(this->getDestination());
+    if (destPlace != nullptr) {
+        setOutputArcWeight(destPlace, color, weight);
+    }
+}

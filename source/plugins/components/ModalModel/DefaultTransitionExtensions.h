@@ -32,9 +32,11 @@ public:
 public:
 	void setInputArcWeight(std::string color, unsigned int weight);
 	void setOutputArcWeight(std::string color, unsigned int weight);
+	
+    std::map<PetriPlace*, ColorWeightMap> getInputPlaces() const;
+    std::map<PetriPlace*, ColorWeightMap> getOutputPlaces() const;
 
-public:
-	virtual bool canFire(Model* model, Entity* entity) const override;
+    virtual bool canFire(Model* model, Entity* entity) const override;
 	virtual void execute(Model* model, Entity* entity) const override;
 
 protected:
