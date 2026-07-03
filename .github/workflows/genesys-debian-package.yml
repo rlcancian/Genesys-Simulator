@@ -1,0 +1,108 @@
+name: GenESyS Debian Package
+
+run-name: GenESyS Debian Package | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - WiP20261
+      - 2026-1
+    paths:
+      - 'debian/**'
+      - 'packaging/linux/**'
+      - 'source/**/CMakeLists.txt'
+      - 'CMakeLists.txt'
+      - '.github/workflows/genesys-debian-package.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-debian-package-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  debian-package:
+    name: Build Debian packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Debian packaging dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            debhelper \
+            devscripts \
+            dpkg-dev \
+            cmake \
+            ninja-build \
+            g++ \
+            pkgconf \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            libgl-dev \
+            lintian \
+            appstream
+
+      - name: Build Debian binary packages
+        run: |
+          set -Eeuo pipefail
+          dpkg-buildpackage -us -uc -b 2>&1 | tee genesys-debian-build.log
+
+      - name: Validate AppStream metadata
+        if: success()
+        run: |
+          set -Eeuo pipefail
+          appstreamcli validate --no-net packaging/linux/io.github.rlcancian.genesys.metainfo.xml
+
+      - name: Collect artifacts and diagnostics
+        if: always()
+        run: |
+          set +e
+          mkdir -p genesys-debian-diagnostics genesys-debian-packages
+          cp -v genesys-debian-build.log genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.build genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.buildinfo genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v ../*.changes genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v build-debian/CMakeFiles/CMakeOutput.log genesys-debian-diagnostics/ 2>/dev/null || true
+          cp -v build-debian/CMakeFiles/CMakeError.log genesys-debian-diagnostics/ 2>/dev/null || true
+          find build-debian -type f \( -name '*.log' -o -name 'LastTest.log' \) -exec cp -v {} genesys-debian-diagnostics/ \; 2>/dev/null || true
+          cp -v ../*.deb genesys-debian-packages/ 2>/dev/null || true
+          cp -v ../*.buildinfo genesys-debian-packages/ 2>/dev/null || true
+          cp -v ../*.changes genesys-debian-packages/ 2>/dev/null || true
+          find genesys-debian-diagnostics genesys-debian-packages -maxdepth 2 -type f | sort
+
+      - name: Run lintian
+        if: always()
+        run: |
+          set +e
+          lintian genesys-debian-packages/*.deb 2>&1 | tee genesys-debian-diagnostics/genesys-lintian.log
+          exit 0
+
+      - name: Upload Debian packages
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-debian-packages
+          path: genesys-debian-packages/
+
+      - name: Upload Debian diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-debian-diagnostics
+          path: genesys-debian-diagnostics/
