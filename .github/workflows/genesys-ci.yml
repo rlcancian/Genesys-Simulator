@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 defaults:
   run:
@@ -33,10 +33,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout PR head branch
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
           show-progress: false
 
       - name: Install build dependencies
@@ -57,60 +56,33 @@ jobs:
           ninja --version
           g++ --version | head -n 1
 
-      - name: Configure - CMake preset tests-unit
+      - name: Configure, build and summarize CTest
         run: |
           set -Eeuo pipefail
-          mkdir -p .github/ai-diagnostics
-          cmake --preset "${CMAKE_CONFIGURE_PRESET}" >.github/ai-diagnostics/configure-tests-unit.log 2>&1 || {
-            echo "CONFIGURE_FAILED"
-            tail -n 120 .github/ai-diagnostics/configure-tests-unit.log
-            exit 1
-          }
+          echo "CONFIGURE_BEGIN"
+          cmake --preset "${CMAKE_CONFIGURE_PRESET}" >/tmp/genesys-configure.log 2>&1
           echo "CONFIGURE_OK"
-
-      - name: Build - CMake preset tests-unit
-        run: |
-          set -Eeuo pipefail
-          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)"
-
-      - name: Tests - CTest preset tests-unit and commit diagnostics on failure
-        run: |
-          set -Eeuo pipefail
-          mkdir -p .github/ai-diagnostics
-          ctest_log=.github/ai-diagnostics/ctest-tests-unit.log
-          summary=.github/ai-diagnostics/ctest-first-failure.txt
-          : > "${summary}"
-          {
-            echo "HEAD=$(git rev-parse HEAD)"
-            echo "PRESET=${CMAKE_TEST_PRESET}"
-            echo "CTEST_LOG=${ctest_log}"
-          } >> "${summary}"
+          echo "BUILD_BEGIN"
+          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)" >/tmp/genesys-build.log 2>&1
+          echo "BUILD_OK"
+          echo "CTEST_BEGIN"
           set +e
-          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure >"${ctest_log}" 2>&1
+          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure >/tmp/genesys-ctest.log 2>&1
           rc=$?
           set -e
-          echo "CTEST_RC=${rc}" >> "${summary}"
+          echo "CTEST_RC=${rc}"
           if [[ "${rc}" -ne 0 ]]; then
-            first=$(grep -Ein '(FAILED|Failed|Errors while running CTest|The following tests FAILED|Subprocess aborted|Segmentation fault|Timeout|Exception|Failure)' "${ctest_log}" | head -n 1 | cut -d: -f1 || true)
-            if [[ -n "${first}" ]]; then
-              start=$((first - 40)); end=$((first + 180)); [[ "${start}" -lt 1 ]] && start=1
-              echo "FIRST_FAILURE_LINE=${first}" >> "${summary}"
-              sed -n "${start},${end}p" "${ctest_log}" >> "${summary}"
+            line=$(grep -n '^The following tests FAILED:' /tmp/genesys-ctest.log | tail -n 1 | cut -d: -f1 || true)
+            if [[ -n "${line}" ]]; then
+              start=$((line - 20)); end=$((line + 220)); [[ "${start}" -lt 1 ]] && start=1
+              echo "CTEST_FAILURE_SUMMARY_BEGIN"
+              sed -n "${start},${end}p" /tmp/genesys-ctest.log
+              echo "CTEST_FAILURE_SUMMARY_END"
             else
-              echo "FIRST_FAILURE_LINE=not_found" >> "${summary}"
-              tail -n 260 "${ctest_log}" >> "${summary}"
+              echo "CTEST_TAIL_BEGIN"
+              tail -n 300 /tmp/genesys-ctest.log
+              echo "CTEST_TAIL_END"
             fi
-            git config user.name "genesys-ci-bot"
-            git config user.email "actions@users.noreply.github.com"
-            git add .github/ai-diagnostics/ctest-first-failure.txt
-            git commit -m "ci: record CTest failure summary" || true
-            git push origin HEAD:${{ github.event.pull_request.head.ref }} || true
-            cat "${summary}"
             exit "${rc}"
           fi
-          echo "CTEST_OK" >> "${summary}"
-          git config user.name "genesys-ci-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add .github/ai-diagnostics/ctest-first-failure.txt
-          git commit -m "ci: record CTest success" || true
-          git push origin HEAD:${{ github.event.pull_request.head.ref }} || true
+          echo "CTEST_OK"
