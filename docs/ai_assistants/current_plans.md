@@ -5,7 +5,7 @@
 - Date: 2026-07-03
 - Branch: `WiP20261`
 - Scope: migrate repository documentation from `documentation/` to `docs/`.
-- Status: in progress.
+- Status: structural migration completed; semantic consolidation still pending.
 
 ### Target layout
 
@@ -13,6 +13,8 @@
 - `docs/ai_assistants/`
 - `docs/users/`
 - `docs/developers/`
+
+After the structural migration, `docs/ManualGenESyS.pdf` is the only ordinary documentation file directly under `docs/`.
 
 ### Decisions recorded
 
@@ -25,6 +27,9 @@
 
 `docs/ai_assistants/oldies/` is temporary. It and its contents should be removed after 2026-11-01, after relevant content has been consolidated into the main AI assistant documents.
 
-### Implementation limitation
+### Pending follow-up
 
-The GitHub connector can create and update text files, but binary-safe tree moves were blocked in this environment. The complete directory migration should be finished in a local checkout using `git mv`.
+- Consolidate historical Markdown content from `oldies/` into stable documents under `docs/ai_assistants/`.
+- Adjust Doxyfile output/input paths if needed after validating Doxygen from the repository root.
+- Generate and commit Doxygen outputs under `docs/users/generated/` and `docs/developers/generated/` if that remains the desired versioning policy.
+- Run CMake/Ninja/CTest validation in a local checkout.
