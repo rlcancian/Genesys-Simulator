@@ -33,10 +33,15 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          show-progress: false
+      - name: Silent checkout
+        run: |
+          set -Eeuo pipefail
+          echo "HEAD_TARGET=${GITHUB_SHA}"
+          git init -q .
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git -c protocol.version=2 fetch -q --depth=1 origin "${GITHUB_SHA}"
+          git checkout -q --force FETCH_HEAD
+          echo "CHECKOUT_OK=$(git rev-parse --short HEAD)"
 
       - name: Verify moved GUI includes are clean
         run: |
