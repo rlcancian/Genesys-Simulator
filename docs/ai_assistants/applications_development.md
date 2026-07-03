@@ -75,6 +75,7 @@ Target conceptual layout:
 
 ```text
 source/applications/gui/
+  CMakeLists.txt  # umbrella only; does not collect application sources
   genesys/        # main GenESyS Qt GUI
   httpworker/     # graphical control frontend for the HTTP/background worker
   dataanalyser/   # graphical frontend for statistics/data-analysis workflows
@@ -93,6 +94,31 @@ Migration policy:
 - keep model/context handoff explicit and testable instead of sharing raw pointers across application boundaries;
 - avoid changing kernel APIs unless the application requirement and API limitation are documented first.
 
+## Per-GUI-application CMake policy
+
+Every GUI application must have its own `CMakeLists.txt` and target ownership.
+
+The `source/applications/gui/CMakeLists.txt` file is an umbrella only. It may call `add_subdirectory(...)` for GUI application subdirectories, but it must not recursively collect `.cpp` files from all GUI applications into one executable.
+
+Allowed pattern:
+
+```cmake
+add_subdirectory(genesys)
+
+if(GENESYS_BUILD_GUI_HTTPWORKER)
+    add_subdirectory(httpworker)
+endif()
+```
+
+Disallowed pattern at the umbrella level:
+
+```cmake
+file(GLOB_RECURSE ALL_GUI_SOURCES CONFIGURE_DEPENDS "*.cpp")
+add_executable(some_gui ${ALL_GUI_SOURCES})
+```
+
+Each GUI application may decide whether to use explicit source lists or a scoped source collection inside its own directory. If a scoped source collection is used, its scope must be limited to that single application directory and must not include sibling applications.
+
 ## GUI-hosted frontend inventory
 
 - Date: 2026-07-03
@@ -101,10 +127,10 @@ Migration policy:
 
 Confirmed current entry points:
 
-- `MainWindow` exposes tool/action slots for parser grammar checking, Web Worker, experimentation, optimizer, expression builder, AI assistant, and data analyzer.
-- `DialogUtilityController` directly includes and constructs `AIAssistantWindow`, `DataAnalyzerWindow`, `OptimizerWindow`, and `ExpressionBuilder`.
+- `MainWindow` exposes tool/action slots for parser grammar checking, Web Worker, experimentation, optimizer, AI assistant, and data analyzer.
+- `DialogUtilityController` directly includes and constructs `AIAssistantWindow`, `DataAnalyzerWindow`, and `OptimizerWindow`.
 - `MainWindow` directly owns a modeless `WebWorkerDialog` through `QPointer<WebWorkerDialog>`.
-- The current GUI CMake file gathers all `.cpp` files under the GUI directory using broad recursive source collection. This is a migration blocker for adding sibling GUI applications inside the scanned tree.
+- The current GUI CMake file gathers all `.cpp` files under the current main GUI directory using broad recursive source collection. This is safe only while the collection remains scoped to that single application tree.
 
 Initial classification:
 
@@ -115,14 +141,15 @@ Initial classification:
 | Data Analyzer | `source/applications/gui/qt/GenesysQtGUI/tools/dataanalyzer/` | `QMainWindow` with file/dataset and optional simulator snapshot workflows | `source/applications/gui/dataanalyser/` | preferred first tool frontend extraction |
 | Optimizer | `source/applications/gui/qt/GenesysQtGUI/tools/optimizer/` | `QMainWindow` tied to current simulator/model controls and responses | `source/applications/gui/optimizer/` | after model/context handoff and backend lifetime review |
 | AI Assistant | `source/applications/gui/qt/GenesysQtGUI/tools/aiassistant/` | `QMainWindow` using AI assistant backend, simulator facade, secrets, and provider configuration | `source/applications/gui/ai_assistant/` | after secret/configuration/model-context review |
-| Expression Builder | `source/applications/gui/qt/GenesysQtGUI/tools/expressionbuilder/` | `QDialog` utility | not in the first standalone application wave | defer; likely remains utility dialog or becomes a small helper app later |
+| Expression Builder | `source/applications/gui/qt/GenesysQtGUI/tools/expressionbuilder/` | `QDialog` utility | out of scope for this GUI-application refactoring | remove from this plan; future replacement should be integrated with the Property Editor |
 | Experimentation / Do Experiments | slot exists as legacy placeholder; no current exposed action confirmed in this inventory | placeholder | future `source/applications/gui/doexperiments/` frontend over `source/tools/FactorialDesign/` | after workflow specification |
 
 Immediate migration implication:
 
 - Do not create new `main.cpp` files below the current `GenesysQtGUI` tree while broad recursive source collection is active.
-- The next safe source patch should introduce an umbrella `source/applications/gui/CMakeLists.txt` without changing behavior, or first constrain the existing GUI source collection before adding sibling GUI applications.
+- New GUI applications must be sibling subdirectories below the GUI umbrella, each with an independent `CMakeLists.txt` and executable target.
 - A future process-launching service should replace direct widget construction in `MainWindow`/`DialogUtilityController` only after each target frontend executable exists and has a minimal startup validation path.
+- `ExpressionBuilder` is not part of the application/tool frontend split and should not drive folder or target design.
 
 ## Folder restructuring
 
@@ -155,3 +182,4 @@ For application changes, prefer this order:
 - Define the compatibility policy for the planned `web` to `httpworker` transition.
 - Define the process-launching contract used by the main GUI to start sibling GUI applications.
 - Revalidate the GUI-hosted frontend inventory before each extraction PR.
+- Remove or replace the current Expression Builder menu entry in a dedicated GUI cleanup change.
