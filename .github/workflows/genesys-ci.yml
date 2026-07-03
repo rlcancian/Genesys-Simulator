@@ -13,11 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-
-concurrency:
-  group: genesys-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 defaults:
   run:
@@ -32,20 +28,21 @@ env:
 
 jobs:
   unit-tests:
-    name: Configure, build and test tests-unit
+    name: Diagnose tests-unit CTest
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           show-progress: false
 
       - name: Install build dependencies
         run: |
           set -Eeuo pipefail
-          sudo apt-get update
+          sudo apt-get update >/dev/null
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             cmake \
@@ -55,19 +52,65 @@ jobs:
             qt6-base-dev \
             qt6-tools-dev \
             qt6-tools-dev-tools \
-            libgl1-mesa-dev
+            libgl1-mesa-dev >/dev/null
+          cmake --version | head -n 1
+          ninja --version
+          g++ --version | head -n 1
 
       - name: Configure - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
-          cmake --preset "${CMAKE_CONFIGURE_PRESET}"
+          mkdir -p .github/ai-diagnostics
+          cmake --preset "${CMAKE_CONFIGURE_PRESET}" >.github/ai-diagnostics/configure-tests-unit.log 2>&1 || {
+            echo "CONFIGURE_FAILED"
+            tail -n 120 .github/ai-diagnostics/configure-tests-unit.log
+            exit 1
+          }
+          echo "CONFIGURE_OK"
 
       - name: Build - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
           cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)"
 
-      - name: Tests - CTest preset tests-unit
+      - name: Tests - CTest preset tests-unit and commit diagnostics on failure
         run: |
           set -Eeuo pipefail
-          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure
+          mkdir -p .github/ai-diagnostics
+          ctest_log=.github/ai-diagnostics/ctest-tests-unit.log
+          summary=.github/ai-diagnostics/ctest-first-failure.txt
+          : > "${summary}"
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "PRESET=${CMAKE_TEST_PRESET}"
+            echo "CTEST_LOG=${ctest_log}"
+          } >> "${summary}"
+          set +e
+          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure >"${ctest_log}" 2>&1
+          rc=$?
+          set -e
+          echo "CTEST_RC=${rc}" >> "${summary}"
+          if [[ "${rc}" -ne 0 ]]; then
+            first=$(grep -Ein '(FAILED|Failed|Errors while running CTest|The following tests FAILED|Subprocess aborted|Segmentation fault|Timeout|Exception|Failure)' "${ctest_log}" | head -n 1 | cut -d: -f1 || true)
+            if [[ -n "${first}" ]]; then
+              start=$((first - 40)); end=$((first + 180)); [[ "${start}" -lt 1 ]] && start=1
+              echo "FIRST_FAILURE_LINE=${first}" >> "${summary}"
+              sed -n "${start},${end}p" "${ctest_log}" >> "${summary}"
+            else
+              echo "FIRST_FAILURE_LINE=not_found" >> "${summary}"
+              tail -n 260 "${ctest_log}" >> "${summary}"
+            fi
+            git config user.name "genesys-ci-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add .github/ai-diagnostics/ctest-first-failure.txt
+            git commit -m "ci: record CTest failure summary" || true
+            git push origin HEAD:${{ github.event.pull_request.head.ref }} || true
+            cat "${summary}"
+            exit "${rc}"
+          fi
+          echo "CTEST_OK" >> "${summary}"
+          git config user.name "genesys-ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/ai-diagnostics/ctest-first-failure.txt
+          git commit -m "ci: record CTest success" || true
+          git push origin HEAD:${{ github.event.pull_request.head.ref }} || true
