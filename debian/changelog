@@ -1,0 +1,5 @@
+genesys-simulator (2026.1.0-1) noble; urgency=medium
+
+  * Initial Debian packaging for the GenESyS Qt GUI and web application.
+
+ -- GenESyS Maintainers <rlcancian@users.noreply.github.com>  Fri, 03 Jul 2026 12:00:00 -0300
