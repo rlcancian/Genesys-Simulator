@@ -10,7 +10,8 @@
 #include <cmath>
 #include <QGraphicsLineItem>
 #include "GraphicalConnectionStyle.h"
-#include "../../../../kernel/simulator/model/ModelComponent.h"#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "GraphicalModelComponent.h"
 #include "GraphicalModelDataDefinition.h"
 #include "TraitsGUI.h"
