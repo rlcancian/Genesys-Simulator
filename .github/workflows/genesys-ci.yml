@@ -13,11 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-
-concurrency:
-  group: genesys-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  contents: write
 
 defaults:
   run:
@@ -37,25 +33,89 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Silent checkout and detect moved GUI include corruption
+      - name: Checkout PR head branch
         run: |
           set -Eeuo pipefail
-          echo "HEAD_TARGET=${GITHUB_SHA}"
+          branch="${{ github.event.pull_request.head.ref }}"
+          echo "PR_HEAD_BRANCH=${branch}"
           git init -q .
           git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          git -c protocol.version=2 fetch -q --depth=1 origin "${GITHUB_SHA}"
-          git checkout -q --force FETCH_HEAD
+          git -c protocol.version=2 fetch -q --depth=1 origin "refs/heads/${branch}:refs/remotes/origin/${branch}"
+          git checkout -q -B "${branch}" "refs/remotes/origin/${branch}"
           echo "CHECKOUT_OK=$(git rev-parse --short HEAD)"
-          echo "CHECK_CONCATENATED_INCLUDES_BEGIN"
+
+      - name: Auto-repair concatenated moved GUI includes
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          base = Path("source/applications/gui/genesys")
+          extensions = {".h", ".hpp", ".hh", ".cpp", ".cc", ".cxx"}
+          changed_files = 0
+          changed_includes = 0
+          details = []
+
+          for path in sorted(p for p in base.rglob("*") if p.is_file() and p.suffix in extensions):
+              try:
+                  lines = path.read_text(encoding="utf-8").splitlines(True)
+              except UnicodeDecodeError:
+                  continue
+
+              new_lines = []
+              touched = False
+              for index, line in enumerate(lines, start=1):
+                  stripped = line.lstrip()
+                  if not stripped.startswith("#include"):
+                      new_lines.append(line)
+                      continue
+
+                  fixed, count = re.subn(r'(?<=[">])#\s*include', r'\n#include', line)
+                  new_lines.append(fixed)
+                  if count:
+                      touched = True
+                      changed_includes += count
+                      details.append(f"{path}:{index}: inserted_newlines={count}")
+
+              if touched:
+                  path.write_text("".join(new_lines), encoding="utf-8")
+                  changed_files += 1
+
+          print(f"changed_files={changed_files}")
+          print(f"changed_includes={changed_includes}")
+          for detail in details[:80]:
+              print(detail)
+          PY
+
+          if git diff --quiet -- source/applications/gui/genesys; then
+            echo "AUTO_REPAIR_RESULT=no_changes"
+            exit 0
+          fi
+
+          echo "AUTO_REPAIR_CHANGED_FILES_BEGIN"
+          git diff --name-only -- source/applications/gui/genesys | sed -n '1,120p'
+          echo "AUTO_REPAIR_CHANGED_FILES_END"
+
+          git config user.name "genesys-ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add source/applications/gui/genesys
+          git commit -m "fix: repair concatenated includes after GUI move"
+          git push origin HEAD:"${{ github.event.pull_request.head.ref }}"
+          echo "AUTO_REPAIR_RESULT=pushed"
+          echo "A new commit was pushed; stop this run so the next run validates the repaired branch."
+          exit 1
+
+      - name: Verify no concatenated moved GUI includes remain
+        run: |
+          set -Eeuo pipefail
           matches="$({ grep -RInE '^\s*#\s*include.*#\s*include' source/applications/gui/genesys --include='*.h' --include='*.hpp' --include='*.cpp' --include='*.cc' --include='*.cxx' || true; } | head -n 40)"
           if [[ -n "${matches}" ]]; then
             echo "FOUND_CONCATENATED_INCLUDES"
             printf '%s\n' "${matches}"
-            echo "CHECK_CONCATENATED_INCLUDES_END"
             exit 1
           fi
           echo "NO_CONCATENATED_INCLUDES"
-          echo "CHECK_CONCATENATED_INCLUDES_END"
 
       - name: Install build dependencies
         run: |
@@ -88,8 +148,7 @@ jobs:
       - name: Build - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
-          mkdir -p .genesys-ci-diagnostics
-          build_log=.genesys-ci-diagnostics/build-tests-unit.log
+          build_log=/tmp/build-tests-unit.log
           set +e
           cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)" >"${build_log}" 2>&1
           rc=$?
