@@ -78,7 +78,7 @@ Initial stable guides now exist for:
 - Date: 2026-07-03
 - Branch: `WiP20261`
 - Scope: progressively decouple graphical applications currently hosted by the main GenESyS Qt GUI.
-- Status: planned; no source-tree move is implied by this document alone.
+- Status: planned; documentation and initial inventory recorded; no source-tree move has been made by this plan entry.
 
 ### Architectural intent
 
@@ -124,6 +124,19 @@ Names above are architectural targets. Existing executable target names and inst
 10. Extract AI Assistant as a graphical application after secret storage, provider configuration, audit logging, and model-context handoff are reviewed.
 11. Add the future Do Experiments graphical application on top of the FactorialDesign backend when its workflow is specified.
 
+### Initial inventory result
+
+The initial GUI-hosted frontend inventory is recorded in `docs/ai_assistants/applications_development.md`.
+
+Current inventory conclusions:
+
+- The main GUI still exposes direct action slots for Web Worker, Optimizer, Expression Builder, AI Assistant, and Data Analyzer.
+- `DialogUtilityController` still directly constructs several tool frontends.
+- `WebWorkerDialog` is already more independent than before because it owns its own runtime, but it is still directly hosted by `MainWindow`.
+- Data Analyser, Optimizer, and AI Assistant are already `QMainWindow`-based frontends and are better candidates for eventual standalone GUI applications than small modal dialogs.
+- Expression Builder is currently a `QDialog` utility and is not part of the first standalone application wave.
+- The current GUI CMake file still uses broad recursive `.cpp` collection under the GUI directory, so source scoping must be fixed before adding sibling GUI application trees that contain their own `main.cpp` files.
+
 ### Current constraints and validation gates
 
 - Application-layer restructuring should not require kernel changes unless an explicit kernel API limitation is documented.
@@ -134,8 +147,8 @@ Names above are architectural targets. Existing executable target names and inst
 
 ### Open follow-up tasks
 
-- Inventory current GUI-hosted windows and classify each as core GUI, application frontend, tool frontend, or legacy dialog.
 - Decide the compatibility period for `web`/`httpworker` CMake target aliases and installed binary names.
 - Define a process-launch service in the main GUI for launching sibling GUI applications consistently.
 - Define model/context handoff mechanisms for Data Analyser, Optimizer, AI Assistant, and future Do Experiments.
 - Update Debian/PPA packaging expectations after executable names and install paths are stable.
+- Prepare the first CMake scaffolding patch without changing runtime behavior.
