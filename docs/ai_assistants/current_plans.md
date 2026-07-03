@@ -78,7 +78,7 @@ Initial stable guides now exist for:
 - Date: 2026-07-03
 - Branch: `WiP20261`
 - Scope: progressively decouple graphical applications currently hosted by the main GenESyS Qt GUI.
-- Status: CMake umbrella scaffold and per-GUI build options added; no source-tree move has been made by this plan entry.
+- Status: CMake umbrella scaffold, per-GUI build options, and logical `gui/genesys` routing added; user reported successful compilation after the CMake routing changes.
 
 ### Architectural intent
 
@@ -115,7 +115,7 @@ Names above are architectural targets. Existing executable target names and inst
 
 The GUI umbrella now owns per-GUI-application build options:
 
-- `GENESYS_BUILD_GUI_GENESYS`, default `ON`, currently builds the existing main GUI from `qt/GenesysQtGUI`.
+- `GENESYS_BUILD_GUI_GENESYS`, default `ON`, currently builds the existing main GUI through `source/applications/gui/genesys`, which delegates to the historical `qt/GenesysQtGUI` implementation directory.
 - `GENESYS_BUILD_GUI_HTTPWORKER`, default `OFF`, reserved for the future HTTP worker control GUI.
 - `GENESYS_BUILD_GUI_DATAANALYSER`, default `OFF`, reserved for the future Data Analyser GUI application.
 - `GENESYS_BUILD_GUI_OPTIMIZER`, default `OFF`, reserved for the future Optimizer GUI application.
@@ -127,16 +127,17 @@ Reserved options currently fail configuration intentionally if enabled before th
 ### Migration sequence
 
 1. Add documentation and CMake scaffolding without moving implementation files. Status: completed for the first GUI umbrella scaffold.
-2. Introduce `source/applications/gui/CMakeLists.txt` as the umbrella for GUI applications. Status: completed; it currently delegates to `qt/GenesysQtGUI` through `GENESYS_BUILD_GUI_GENESYS`.
-3. Move the main GUI from the current Qt-specific subdirectory to `source/applications/gui/genesys/`, preserving the `genesys_gui` build target and `genesys-gui` installed binary name.
-4. Keep GUI source collection scoped to each application directory. The GUI umbrella must not recursively collect all GUI `.cpp` files.
-5. Rename or mirror `source/applications/web/` as `source/applications/httpworker/`, preserving temporary compatibility aliases for existing web targets and binary names.
-6. Extract the Web Worker control window into `source/applications/gui/httpworker/` and link it to the HTTP worker service/core library.
-7. Change the main GUI from hosting the Web Worker control dialog directly to launching the graphical HTTP worker frontend as a separate process.
-8. Extract Data Analyser as a standalone-leaning graphical application that can run from files/datasets before deeper live-model integration is attempted.
-9. Extract Optimizer as a graphical application only after model/context handoff and backend pointer/lifetime assumptions have been reviewed.
-10. Extract AI Assistant as a graphical application after secret storage, provider configuration, audit logging, and model-context handoff are reviewed.
-11. Add the future Do Experiments graphical application on top of the FactorialDesign backend when its workflow is specified.
+2. Introduce `source/applications/gui/CMakeLists.txt` as the umbrella for GUI applications. Status: completed.
+3. Introduce `source/applications/gui/genesys/CMakeLists.txt` as the logical stable entrypoint for the main GUI. Status: completed; it delegates temporarily to `../qt/GenesysQtGUI`.
+4. Move the main GUI implementation from the current Qt-specific subdirectory to `source/applications/gui/genesys/`, preserving the `genesys_gui` build target and `genesys-gui` installed binary name.
+5. Keep GUI source collection scoped to each application directory. The GUI umbrella must not recursively collect all GUI `.cpp` files.
+6. Rename or mirror `source/applications/web/` as `source/applications/httpworker/`, preserving temporary compatibility aliases for existing web targets and binary names.
+7. Extract the Web Worker control window into `source/applications/gui/httpworker/` and link it to the HTTP worker service/core library.
+8. Change the main GUI from hosting the Web Worker control dialog directly to launching the graphical HTTP worker frontend as a separate process.
+9. Extract Data Analyser as a standalone-leaning graphical application that can run from files/datasets before deeper live-model integration is attempted.
+10. Extract Optimizer as a graphical application only after model/context handoff and backend pointer/lifetime assumptions have been reviewed.
+11. Extract AI Assistant as a graphical application after provider configuration, audit logging, and model-context handoff are reviewed.
+12. Add the future Do Experiments graphical application on top of the FactorialDesign backend when its workflow is specified.
 
 ### Initial inventory result
 
@@ -161,9 +162,9 @@ Current inventory conclusions:
 
 ### Open follow-up tasks
 
-- Validate the GUI umbrella CMake change in a local checkout or CI run.
+- Validate the full test preset after GUI CMake routing changes.
 - Decide the compatibility period for `web`/`httpworker` CMake target aliases and installed binary names.
 - Define a process-launch service in the main GUI for launching sibling GUI applications consistently.
 - Define model/context handoff mechanisms for Data Analyser, Optimizer, AI Assistant, and future Do Experiments.
 - Update Debian/PPA packaging expectations after executable names and install paths are stable.
-- Prepare the main GUI physical move from `qt/GenesysQtGUI` to `gui/genesys` after the umbrella build path is validated.
+- Prepare the physical move of main GUI implementation files from `qt/GenesysQtGUI` to `gui/genesys`.
