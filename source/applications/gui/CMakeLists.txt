@@ -4,8 +4,9 @@
 # This umbrella coordinates GUI applications without collecting their sources
 # into a single executable.
 #
-# The current main GenESyS GUI remains in its existing location during the
-# first migration step. Future GUI applications should be added as sibling
+# The main GenESyS GUI is routed through source/applications/gui/genesys.
+# During the transition that directory delegates to the historical Qt-specific
+# implementation path. Future GUI applications should be added as sibling
 # subdirectories with independent targets and build options.
 
 option(GENESYS_BUILD_GUI_GENESYS "Build the main GenESyS Qt GUI application" ON)
@@ -16,7 +17,7 @@ option(GENESYS_BUILD_GUI_AI_ASSISTANT "Build the graphical AI assistant applicat
 option(GENESYS_BUILD_GUI_DOEXPERIMENTS "Build the graphical design-of-experiments application" OFF)
 
 if(GENESYS_BUILD_GUI_GENESYS)
-    add_subdirectory(qt/GenesysQtGUI)
+    add_subdirectory(genesys)
 endif()
 
 if(GENESYS_BUILD_GUI_HTTPWORKER)
