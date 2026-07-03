@@ -122,6 +122,7 @@ ctest --preset asan
 ```bash
 cmake --preset ubsan
 cmake --build --preset ubsan
+ctest --preset ubsan
 ```
 
 ---
