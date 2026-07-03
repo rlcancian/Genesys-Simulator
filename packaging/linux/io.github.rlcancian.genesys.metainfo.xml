@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>io.github.rlcancian.genesys</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>LicenseRef-Unknown</project_license>
+  <project_license>GPL-3.0-or-later</project_license>
   <name>GenESyS Simulator</name>
   <summary>Generic and Expansible System Simulator</summary>
   <description>
