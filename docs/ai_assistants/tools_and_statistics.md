@@ -30,12 +30,36 @@ Tools should evolve toward standalone-leaning workstations launched from the GUI
 
 For each major tool, prefer:
 
-- its own folder under the GUI tools area;
+- its own folder under the GUI applications area;
 - a main window;
 - menus and toolbar;
 - a clear workflow;
 - parameter dialogs before major analyses;
 - separation between GUI prototype and backend numerical/tool classes.
+
+The current architectural direction is:
+
+- `source/tools/` contains reusable tool backends and algorithms;
+- `source/applications/gui/<tool-or-application>/` contains graphical frontends;
+- the main GenESyS GUI should eventually launch independent graphical frontends instead of owning every tool window directly;
+- process boundaries require explicit model/context handoff rather than raw pointer sharing.
+
+## GUI frontend mapping
+
+Planned GUI frontend mapping:
+
+```text
+source/tools/Statistics/        -> source/applications/gui/dataanalyser/
+source/tools/Optimization/      -> source/applications/gui/optimizer/
+source/tools/AIAssistant/       -> source/applications/gui/ai_assistant/
+source/tools/FactorialDesign/   -> source/applications/gui/doexperiments/
+```
+
+The HTTP/background worker is not a statistical/tool backend. Its runtime belongs to the application layer, and its graphical control frontend belongs under the GUI applications area:
+
+```text
+source/applications/httpworker/ -> source/applications/gui/httpworker/
+```
 
 ## Data Analyzer concepts
 
@@ -82,6 +106,24 @@ A robust flow should eventually include:
 - desirability functions;
 - candidate solution search and confirmation.
 
+## GUI extraction policy
+
+When extracting a GUI tool into its own graphical application:
+
+- first preserve existing behavior inside the main GUI;
+- then create the standalone graphical executable;
+- then change the main GUI to launch that executable through the application-launching service;
+- only then remove direct widget ownership from the main GUI;
+- keep backend numerical changes separate from GUI folder moves;
+- add tests for backend algorithms before changing statistical behavior;
+- validate import/export and startup behavior independently from model-editor behavior.
+
+Data Analyser is the preferred first tool extraction candidate because file/dataset workflows can be validated without requiring full live-model process sharing.
+
+Optimizer and AI Assistant require additional context-handoff review before extraction because they depend more directly on the current simulator/model context, provider configuration, secret handling, or backend object lifetime assumptions.
+
+Do Experiments should be introduced only after the FactorialDesign workflow and GUI requirements are specified.
+
 ## Validation checklist
 
 For tools/statistics changes, prefer this order:
@@ -99,3 +141,5 @@ For tools/statistics changes, prefer this order:
 - Add tests for exploratory statistics and distribution fitting.
 - Define a precise policy for chi-square and Kolmogorov-Smirnov diagnostics.
 - Define how Genesys simulation responses become datasets in an Analysis Study.
+- Define model/context handoff for standalone Data Analyser and Optimizer executions.
+- Define the future Do Experiments GUI workflow on top of FactorialDesign.
