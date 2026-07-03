@@ -12,6 +12,12 @@ Read this file before using or updating the other files in this directory.
 - `kernel_development.md`: stable kernel modernization and ownership guidance.
 - `plugins_development.md`: plugin development entrypoint.
 - `plugins/`: plugin-domain guides grouped by category.
+- `applications_development.md`: terminal, web, GUI, and application-structure guidance.
+- `tools_and_statistics.md`: statistical tools, data analyzer, optimizer, and DOE/RSM guidance.
+- `modal_and_hybrid_simulation.md`: modal models and hybrid discrete-continuous simulation guidance.
+- `whole_cell_and_sbml.md`: whole-cell, biochemical, and SBML guidance.
+- `python_integration.md`: Python-facing integration guidance.
+- `documentation_governance.md`: documentation retention and governance guidance.
 - `oldies_inventory.md`: inventory of temporary historical documents retained in `oldies/`.
 - `consolidation_map.md`: target map for consolidating historical documents into stable AI-assistant documentation.
 - `oldies/`: temporary historical documents retained for traceability.
