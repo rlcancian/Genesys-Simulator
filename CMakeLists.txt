@@ -23,11 +23,6 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(GENESYS_MOVED_GUI_COMPATIBILITY_INCLUDE "${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/MovedGuiCompatibilityIncludes.h")
-if(GENESYS_BUILD_TESTS AND EXISTS "${GENESYS_MOVED_GUI_COMPATIBILITY_INCLUDE}")
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-include> $<$<COMPILE_LANGUAGE:CXX>:${GENESYS_MOVED_GUI_COMPATIBILITY_INCLUDE}>)
-endif()
-
 include(CTest)
 
 message(STATUS "Configuring GenesysSimulator")
