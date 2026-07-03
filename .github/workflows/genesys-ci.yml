@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 defaults:
   run:
@@ -33,9 +33,10 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: Checkout PR head branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref }}
           show-progress: false
 
       - name: Install build dependencies
@@ -56,33 +57,31 @@ jobs:
           ninja --version
           g++ --version | head -n 1
 
-      - name: Configure, build and summarize CTest
+      - name: Configure, build and version CTest diagnostics
         run: |
           set -Eeuo pipefail
-          echo "CONFIGURE_BEGIN"
+          mkdir -p .github/ai-diagnostics
+          summary=.github/ai-diagnostics/ctest-first-failure.txt
+          echo "HEAD=$(git rev-parse HEAD)" > "${summary}"
           cmake --preset "${CMAKE_CONFIGURE_PRESET}" >/tmp/genesys-configure.log 2>&1
-          echo "CONFIGURE_OK"
-          echo "BUILD_BEGIN"
           cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)" >/tmp/genesys-build.log 2>&1
-          echo "BUILD_OK"
-          echo "CTEST_BEGIN"
           set +e
           ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure >/tmp/genesys-ctest.log 2>&1
           rc=$?
           set -e
-          echo "CTEST_RC=${rc}"
+          echo "CTEST_RC=${rc}" >> "${summary}"
           if [[ "${rc}" -ne 0 ]]; then
-            line=$(grep -n '^The following tests FAILED:' /tmp/genesys-ctest.log | tail -n 1 | cut -d: -f1 || true)
-            if [[ -n "${line}" ]]; then
-              start=$((line - 20)); end=$((line + 220)); [[ "${start}" -lt 1 ]] && start=1
-              echo "CTEST_FAILURE_SUMMARY_BEGIN"
-              sed -n "${start},${end}p" /tmp/genesys-ctest.log
-              echo "CTEST_FAILURE_SUMMARY_END"
-            else
-              echo "CTEST_TAIL_BEGIN"
-              tail -n 300 /tmp/genesys-ctest.log
-              echo "CTEST_TAIL_END"
-            fi
+            tail -n 360 /tmp/genesys-ctest.log >> "${summary}"
+            git config user.name "genesys-ci-bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add "${summary}"
+            git commit -m "ci: record CTest failure tail" || true
+            git push origin HEAD:${{ github.event.pull_request.head.ref }} || true
             exit "${rc}"
           fi
-          echo "CTEST_OK"
+          echo "CTEST_OK" >> "${summary}"
+          git config user.name "genesys-ci-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add "${summary}"
+          git commit -m "ci: record CTest success" || true
+          git push origin HEAD:${{ github.event.pull_request.head.ref }} || true
