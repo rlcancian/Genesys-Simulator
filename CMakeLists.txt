@@ -84,7 +84,7 @@ if(GENESYS_BUILD_WEB_APPLICATION)
 endif()
 
 if(GENESYS_BUILD_GUI_APPLICATION)
-    add_subdirectory(source/applications/gui/qt/GenesysQtGUI)
+    add_subdirectory(source/applications/gui)
 endif()
 
 if(GENESYS_BUILD_TOOLS OR GENESYS_BUILD_GUI_APPLICATION)
