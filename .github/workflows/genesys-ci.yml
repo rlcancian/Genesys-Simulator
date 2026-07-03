@@ -141,17 +141,76 @@ jobs:
       - name: Build - CMake preset tests-unit
         run: |
           set -Eeuo pipefail
-          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)"
+          mkdir -p .genesys-ci-diagnostics
+          set +e
+          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)" 2>&1 | tee .genesys-ci-diagnostics/build-tests-unit.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          exit "${rc}"
 
       - name: Tests - CTest preset tests-unit
         run: |
           set -Eeuo pipefail
-          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure
+          mkdir -p .genesys-ci-diagnostics
+          set +e
+          ctest --preset "${CMAKE_TEST_PRESET}" --output-on-failure 2>&1 | tee .genesys-ci-diagnostics/ctest-tests-unit.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          exit "${rc}"
 
       - name: Diagnostics on failure
         if: failure()
         run: |
           set +e
+          mkdir -p .genesys-ci-diagnostics
+
+          summary=.genesys-ci-diagnostics/first-failure-summary.txt
+          build_log=.genesys-ci-diagnostics/build-tests-unit.log
+          ctest_log=.genesys-ci-diagnostics/ctest-tests-unit.log
+          : > "${summary}"
+
+          add() { printf '%s\n' "$*" | tee -a "${summary}"; }
+
+          add "# GenESyS CI failure summary"
+          add ""
+          add "HEAD=$(git rev-parse HEAD 2>/dev/null)"
+          add "STATUS=$(git status --short | wc -l | tr -d ' ')"
+          add ""
+
+          summarize_log() {
+            local name="$1"
+            local log="$2"
+            add "## ${name}"
+            add "LOG=${log}"
+            if [[ ! -f "${log}" ]]; then
+              add "LOG_STATUS=missing"
+              add ""
+              return 0
+            fi
+            add "LOG_LINES=$(wc -l < "${log}" | tr -d ' ')"
+            local first
+            first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${log}" | head -n 1 | cut -d: -f1)
+            if [[ -n "${first}" ]]; then
+              local start=$((first - 20))
+              local end=$((first + 80))
+              [[ "${start}" -lt 1 ]] && start=1
+              add "FIRST_ERROR_LINE=${first}"
+              add '```text'
+              sed -n "${start},${end}p" "${log}" | tee -a "${summary}"
+              add '```'
+            else
+              add "FIRST_ERROR_LINE=not_found"
+              add '```text'
+              tail -n 120 "${log}" | tee -a "${summary}"
+              add '```'
+            fi
+            add ""
+          }
+
+          summarize_log "build-tests-unit" "${build_log}"
+          summarize_log "ctest-tests-unit" "${ctest_log}"
+
+          cat "${summary}" >> "${GITHUB_STEP_SUMMARY}"
 
           echo "::group::Repository status"
           git status --short
@@ -173,3 +232,11 @@ jobs:
                 echo "::endgroup::"
               ' sh {} \;
           fi
+
+      - name: Upload CI diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-ci-diagnostics
+          path: .genesys-ci-diagnostics
+          if-no-files-found: ignore
