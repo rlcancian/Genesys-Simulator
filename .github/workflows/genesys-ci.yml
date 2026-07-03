@@ -37,21 +37,25 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Detect moved GUI include corruption
+      - name: Silent checkout and detect moved GUI include corruption
         run: |
           set -Eeuo pipefail
-          echo "HEAD=$(git rev-parse HEAD)"
-          echo "Checking for real preprocessor include directives containing more than one #include token."
+          echo "HEAD_TARGET=${GITHUB_SHA}"
+          git init -q .
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git -c protocol.version=2 fetch -q --depth=1 origin "${GITHUB_SHA}"
+          git checkout -q --force FETCH_HEAD
+          echo "CHECKOUT_OK=$(git rev-parse --short HEAD)"
+          echo "CHECK_CONCATENATED_INCLUDES_BEGIN"
           matches="$({ grep -RInE '^\s*#\s*include.*#\s*include' source/applications/gui/genesys --include='*.h' --include='*.hpp' --include='*.cpp' --include='*.cc' --include='*.cxx' || true; } | head -n 40)"
           if [[ -n "${matches}" ]]; then
             echo "FOUND_CONCATENATED_INCLUDES"
             printf '%s\n' "${matches}"
+            echo "CHECK_CONCATENATED_INCLUDES_END"
             exit 1
           fi
-          echo "No concatenated real include directives found."
+          echo "NO_CONCATENATED_INCLUDES"
+          echo "CHECK_CONCATENATED_INCLUDES_END"
 
       - name: Install build dependencies
         run: |
