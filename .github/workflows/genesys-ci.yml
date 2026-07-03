@@ -23,7 +23,6 @@ env:
   QT_QPA_PLATFORM: offscreen
   CTEST_OUTPUT_ON_FAILURE: "1"
   CMAKE_CONFIGURE_PRESET: tests-unit
-  CMAKE_BUILD_PRESET: tests-unit
   CMAKE_TEST_PRESET: tests-unit
 
 jobs:
@@ -82,21 +81,19 @@ jobs:
           }
           echo "CONFIGURE_OK"
 
-      - name: Build - CMake preset tests-unit
+      - name: Build core unit targets
         run: |
           set -Eeuo pipefail
-          build_log=/tmp/build-tests-unit.log
+          build_log=/tmp/build-core-targets.log
           set +e
-          cmake --build --preset "${CMAKE_BUILD_PRESET}" --parallel "$(nproc)" >"${build_log}" 2>&1
+          cmake --build build/tests-unit --target genesys_kernel_unit_tests --parallel "$(nproc)" >"${build_log}" 2>&1
           rc=$?
           set -e
           if [[ "${rc}" -ne 0 ]]; then
-            echo "BUILD_FAILED rc=${rc}"
+            echo "BUILD_CORE_FAILED rc=${rc}"
             first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
             if [[ -n "${first}" ]]; then
-              start=$((first - 20))
-              end=$((first + 80))
-              [[ "${start}" -lt 1 ]] && start=1
+              start=$((first - 20)); end=$((first + 80)); [[ "${start}" -lt 1 ]] && start=1
               echo "FIRST_ERROR_LINE=${first}"
               sed -n "${start},${end}p" "${build_log}"
             else
@@ -105,7 +102,53 @@ jobs:
             fi
             exit "${rc}"
           fi
-          echo "BUILD_OK"
+          echo "BUILD_CORE_OK"
+
+      - name: Build GUI render strategy target
+        run: |
+          set -Eeuo pipefail
+          build_log=/tmp/build-gui-render-strategy.log
+          set +e
+          cmake --build build/tests-unit --target genesys_test_gui_render_strategy --parallel "$(nproc)" >"${build_log}" 2>&1
+          rc=$?
+          set -e
+          if [[ "${rc}" -ne 0 ]]; then
+            echo "BUILD_GUI_RENDER_STRATEGY_FAILED rc=${rc}"
+            first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
+            if [[ -n "${first}" ]]; then
+              start=$((first - 20)); end=$((first + 80)); [[ "${start}" -lt 1 ]] && start=1
+              echo "FIRST_ERROR_LINE=${first}"
+              sed -n "${start},${end}p" "${build_log}"
+            else
+              echo "FIRST_ERROR_LINE=not_found"
+              tail -n 120 "${build_log}"
+            fi
+            exit "${rc}"
+          fi
+          echo "BUILD_GUI_RENDER_STRATEGY_OK"
+
+      - name: Build GUI GMDD layout target
+        run: |
+          set -Eeuo pipefail
+          build_log=/tmp/build-gui-gmdd-layout.log
+          set +e
+          cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout --parallel "$(nproc)" >"${build_log}" 2>&1
+          rc=$?
+          set -e
+          if [[ "${rc}" -ne 0 ]]; then
+            echo "BUILD_GUI_GMDD_LAYOUT_FAILED rc=${rc}"
+            first=$(grep -Ein '(^|[^A-Za-z])(error:|fatal error:|undefined reference|cannot find|No such file|CMake Error|ninja: build stopped|collect2: error|ld returned)' "${build_log}" | head -n 1 | cut -d: -f1 || true)
+            if [[ -n "${first}" ]]; then
+              start=$((first - 20)); end=$((first + 80)); [[ "${start}" -lt 1 ]] && start=1
+              echo "FIRST_ERROR_LINE=${first}"
+              sed -n "${start},${end}p" "${build_log}"
+            else
+              echo "FIRST_ERROR_LINE=not_found"
+              tail -n 120 "${build_log}"
+            fi
+            exit "${rc}"
+          fi
+          echo "BUILD_GUI_GMDD_LAYOUT_OK"
 
       - name: Tests - CTest preset tests-unit
         run: |
