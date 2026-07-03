@@ -140,16 +140,16 @@ endif()
 if(DEFINED GENESYS_QT_TEST_PACKAGE)
     add_executable(genesys_test_gui_render_strategy
         test_gui_render_strategy.cpp
-        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/graphicals/GraphicalConnectionStyle.cpp
-        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/graphicals/GraphicalModelItemRenderStrategy.cpp
-        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/services/GraphicalDataDefinitionLayout.cpp
-        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/systempreferences.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/graphicals/GraphicalConnectionStyle.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/graphicals/GraphicalModelItemRenderStrategy.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/services/GraphicalDataDefinitionLayout.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/systempreferences.cpp
     )
 
     target_include_directories(genesys_test_gui_render_strategy
         PRIVATE
             ${CMAKE_SOURCE_DIR}/source
-            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys
     )
 
     target_link_libraries(genesys_test_gui_render_strategy
@@ -168,7 +168,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     set_property(TARGET genesys_test_gui_render_strategy PROPERTY FOLDER tests/unit)
 
     file(GLOB_RECURSE GENESYS_QT_GUI_TEST_SOURCES CONFIGURE_DEPENDS
-        "${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/*.cpp"
+        "${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/*.cpp"
     )
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/build/")
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/main\\.cpp$")
@@ -181,8 +181,8 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     add_executable(genesys_test_gui_gmdd_layout
         test_gui_gmdd_layout.cpp
         ${GENESYS_QT_GUI_TEST_SOURCES}
-        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/GenesysQtGUI_resources.qrc
-        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/GenesysQtGUI_resources.qrc
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
         ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
         ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
     )
@@ -191,10 +191,10 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
         PRIVATE
             ${CMAKE_SOURCE_DIR}/source
             ${CMAKE_SOURCE_DIR}/source/applications/web
-            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI
-            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/codeeditor
-            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor
-            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/codeeditor
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/propertyeditor
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/propertyeditor/qtpropertybrowser
     )
 
     target_link_libraries(genesys_test_gui_gmdd_layout
@@ -227,7 +227,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             AUTOMOC ON
             AUTOUIC ON
             AUTORCC ON
-            AUTOUIC_SEARCH_PATHS "${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI;${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/dialogs"
+            AUTOUIC_SEARCH_PATHS "${CMAKE_SOURCE_DIR}/source/applications/gui/genesys;${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/dialogs"
             FOLDER tests/unit
     )
 

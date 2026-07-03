@@ -1,0 +1,204 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2022 rlcancian.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+/*
+ * File:   QModelGraphicView.h
+ * Author: rlcancian
+ *
+ * Created on 15 de fevereiro de 2022, 21:12
+ */
+
+#ifndef QMODELGRAPHICVIEW_H
+#define QMODELGRAPHICVIEW_H
+
+#include <QGraphicsView>
+#include <Qt>
+#include <QColor>
+#include <QStyle>
+#include <QGraphicsSceneMouseEvent>
+#include <QContextMenuEvent>
+#include <QPainter>
+#include "graphicals/ModelGraphicsScene.h"
+#include "propertyeditor/DataComponentProperty.h"
+#include "propertyeditor/DataComponentEditor.h"
+#include "propertyeditor/ComboBoxEnum.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/PropertyGenesys.h"
+//#include "kernel/simulator/Plugin.h"
+
+class ModelGraphicsView : public QGraphicsView {
+public:
+    /**
+     * @brief View wrapper that hosts the model graphics scene and delegates GUI events.
+     *
+     * The view keeps the scene-specific input handlers outside the raw Qt widget layer so the
+     * MainWindow composition root can wire context menus, wheel behavior, and selection changes
+     * through injected callbacks.
+     */
+    ModelGraphicsView(QWidget *parent = nullptr);
+    /** @brief Copy constructor used by legacy compatibility paths. */
+    ModelGraphicsView(const ModelGraphicsView& orig);
+    /** @brief Releases the Qt view and its compatibility state. */
+    virtual ~ModelGraphicsView();
+public: // editing graphic model
+    // TODO: AddGraphicalModelComponent should be only on scene
+    //GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position);
+    //bool removeGraphicalModelComponent(GraphicalModelComponent* gmc);
+    //bool addGraphicalConnection(GraphicalComponentPort* sourcePort, GraphicalComponentPort* destinationPort);
+    //bool removeGraphicalConnection(GraphicalConnection* gc);
+    //bool addDrawing();
+    //bool removeDrawing();
+    //bool addAnimation();
+    //bool removeAnimation();
+    /** @brief Returns the scene currently owned by the view. */
+    ModelGraphicsScene* getScene();
+public:
+    /** @brief Requests grid visibility from the underlying scene. */
+    void showGrid();
+    /** @brief Clears the current scene contents and compatibility state. */
+    void clear();
+    /** @brief Starts the connection-creation workflow in the scene. */
+    void beginConnection();
+    /** @brief Highlights the requested component in the scene and centers it when possible. */
+    void selectModelComponent(ModelComponent* component);
+    /** @brief Injects the simulator dependency used by scene callbacks. */
+    void setSimulator(Simulator* simulator);
+    /** @brief Injects the property editor dependency used by scene callbacks. */
+    void setPropertyEditor(PropertyEditorGenesys* propEditor);
+    /** @brief Injects the property list map used by scene/editor synchronization. */
+    void setPropertyList(std::map<SimulationControl*, DataComponentProperty*>* propList);
+    /** @brief Injects the property-editor widget map used by scene/editor synchronization. */
+    void setPropertyEditorUI(std::map<SimulationControl*, DataComponentEditor*>* propEditorUI);
+    /** @brief Injects the enum combo-box map used by scene/editor synchronization. */
+    void setComboBox(std::map<SimulationControl*, ComboBoxEnum*>* propBox);
+    /** @brief Enables or disables interaction while keeping the scene wiring intact. */
+    void setEnabled(bool enabled);
+    /** @brief Returns the current selected items from the underlying scene. */
+    QList<QGraphicsItem*> selectedItems();
+public: // events and notifications
+
+    template<typename Class> void setSceneMouseEventHandler(Class * object, void (Class::*function)(QGraphicsSceneMouseEvent*)) {
+		sceneMouseEventHandlerMethod handlerMethod = std::bind(function, object, std::placeholders::_1);
+		this->_sceneMouseEventHandler = handlerMethod;
+	}
+
+    template<typename Class> void setGraphicalModelEventHandler(Class * object, void (Class::*function)(const GraphicalModelEvent&)) {
+		sceneGraphicalModelEventHandlerMethod handlerMethod = std::bind(function, object, std::placeholders::_1);
+		this->_sceneGraphicalModelEventHandler = handlerMethod;
+    }
+
+    template <typename Class> void setSceneWheelInEventHandler(Class *object, void (Class::*function)()) {
+        sceneWheelEventHandlerMethod handlerMethod = std::bind(function, object);
+        this->_sceneWheelInEventHandler = handlerMethod;
+    }
+
+    template <typename Class> void setSceneWheelOutEventHandler(Class *object, void (Class::*function)()) {
+        sceneWheelEventHandlerMethod handlerMethod = std::bind(function, object);
+        this->_sceneWheelOutEventHandler = handlerMethod;
+    }
+
+    template <typename Class> void setContextMenuEventHandler(Class* object, void (Class::*function)(QContextMenuEvent*)) {
+        // Keep context-menu construction outside the view so menus can reuse MainWindow actions.
+        contextMenuEventHandlerMethod handlerMethod = std::bind(function, object, std::placeholders::_1);
+        this->_contextMenuEventHandler = handlerMethod;
+    }
+
+    /** @brief Notifies the registered mouse-event handler, if any. */
+    void notifySceneMouseEventHandler(QGraphicsSceneMouseEvent* mouseEvent);
+    /** @brief Notifies the registered wheel-in handler, if any. */
+    void notifySceneWheelInEventHandler();
+    /** @brief Notifies the registered wheel-out handler, if any. */
+    void notifySceneWheelOutEventHandler();
+    /** @brief Notifies the registered graphical-model-event handler, if any. */
+    void notifySceneGraphicalModelEventHandler(const GraphicalModelEvent& modelGraphicsEvent);
+    /** @brief Enables or disables graphical-model event emission from the view. */
+    void setCanNotifyGraphicalModelEventHandlers(bool can);
+    /** @brief Clears all custom event handlers installed by the composition root. */
+    void clearEventHandlers();
+    /** @brief Sets the widget used as parent for dialogs and transient controls. */
+    void setParentWidget(QWidget *parentWidget);
+    // Enables or disables ruler rendering over the graphics viewport.
+    /** @brief Enables or disables ruler rendering over the graphics viewport. */
+    void setRuleVisible(bool visible);
+    // Informs if ruler rendering is active for action synchronization.
+    /** @brief Returns whether ruler rendering is active. */
+    bool isRuleVisible() const;
+    // Enables or disables guide line rendering over the graphics viewport.
+    /** @brief Enables or disables guide line rendering over the graphics viewport. */
+    void setGuidesVisible(bool visible);
+    // Informs if guide line rendering is active for action synchronization.
+    /** @brief Returns whether guide line rendering is active. */
+    bool isGuidesVisible() const;
+protected:// slots:
+    void changed(const QList<QRectF> &region);
+    void focusItemChanged(QGraphicsItem *newFocusItem, QGraphicsItem *oldFocusItem, Qt::FocusReason reason);
+    void sceneRectChanged(const QRectF &rect);
+    void selectionChanged();
+protected: // virtual functions
+    virtual void contextMenuEvent(QContextMenuEvent *event) override;
+    virtual void dragEnterEvent(QDragEnterEvent *event) override;
+    //virtual void dragLeaveEvent(QDragLeaveEvent *event) override;
+    //virtual void dragMoveEvent(QDragMoveEvent *event) override;
+    //virtual void dropEvent(QDropEvent *event) override;
+    //virtual bool event(QEvent *event) override;
+    //virtual void focusInEvent(QFocusEvent *event) override;
+    //virtual bool focusNextPrevChild(bool next) override;
+    //virtual void focusOutEvent(QFocusEvent *event) override;
+    //virtual void inputMethodEvent(QInputMethodEvent *event) override;
+    virtual void keyPressEvent(QKeyEvent *event) override;
+    virtual void keyReleaseEvent(QKeyEvent *event) override;
+    //virtual void mouseDoubleClickEvent(QMouseEvent *event) override;
+    //virtual void mouseMoveEvent(QMouseEvent *event) override;
+    //virtual void mousePressEvent(QMouseEvent *event) override;
+    //virtual void mouseReleaseEvent(QMouseEvent *event) override;
+    //virtual void paintEvent(QPaintEvent *event) override;
+    //virtual void resizeEvent(QResizeEvent *event) override;
+    //virtual void scrollContentsBy(int dx, int dy) override;
+    //virtual void showEvent(QShowEvent *event) override;
+    //virtual bool viewportEvent(QEvent *event) override;
+    virtual void wheelEvent(QWheelEvent *event) override;
+    // Draws optional rulers and guides using the current visible scene rectangle.
+    virtual void drawForeground(QPainter *painter, const QRectF &rect) override;
+private:
+	typedef std::function<void(QGraphicsSceneMouseEvent*) > sceneMouseEventHandlerMethod;
+    typedef std::function<void()> sceneWheelEventHandlerMethod;
+    typedef std::function<void(const GraphicalModelEvent&)> sceneGraphicalModelEventHandlerMethod;
+    typedef std::function<void(QContextMenuEvent*)> contextMenuEventHandlerMethod;
+    sceneMouseEventHandlerMethod _sceneMouseEventHandler;
+    sceneWheelEventHandlerMethod _sceneWheelInEventHandler;
+    sceneWheelEventHandlerMethod _sceneWheelOutEventHandler;
+    sceneGraphicalModelEventHandlerMethod _sceneGraphicalModelEventHandler;
+    contextMenuEventHandlerMethod _contextMenuEventHandler;
+    Simulator* _simulator = nullptr;
+    PropertyEditorGenesys* _propertyEditor = nullptr;
+    std::map<SimulationControl*, DataComponentProperty*>* _propertyList = nullptr;
+    std::map<SimulationControl*, DataComponentEditor*>* _propertyEditorUI = nullptr;
+    std::map<SimulationControl*, ComboBoxEnum*>* _propertyBox = nullptr;
+    QWidget* _parentWidget;
+    bool _notifyGraphicalModelEventHandlers = true;
+    bool _ruleVisible = false;
+    bool _guidesVisible = false;
+};
+
+#endif /* QMODELGRAPHICVIEW_H */

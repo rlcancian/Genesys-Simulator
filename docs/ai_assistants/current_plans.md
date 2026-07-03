@@ -78,7 +78,7 @@ Initial stable guides now exist for:
 - Date: 2026-07-03
 - Branch: `WiP20261`
 - Scope: progressively decouple graphical applications currently hosted by the main GenESyS Qt GUI.
-- Status: CMake umbrella scaffold, per-GUI build options, and logical `gui/genesys` routing added; user reported successful compilation after the CMake routing changes.
+- Status: main GUI implementation moved to `source/applications/gui/genesys`; local validation completed by the repository maintenance script.
 
 ### Architectural intent
 
@@ -115,7 +115,7 @@ Names above are architectural targets. Existing executable target names and inst
 
 The GUI umbrella now owns per-GUI-application build options:
 
-- `GENESYS_BUILD_GUI_GENESYS`, default `ON`, currently builds the existing main GUI through `source/applications/gui/genesys`, which delegates to the historical `qt/GenesysQtGUI` implementation directory.
+- `GENESYS_BUILD_GUI_GENESYS`, default `ON`, currently builds the main GUI from `source/applications/gui/genesys`.
 - `GENESYS_BUILD_GUI_HTTPWORKER`, default `OFF`, reserved for the future HTTP worker control GUI.
 - `GENESYS_BUILD_GUI_DATAANALYSER`, default `OFF`, reserved for the future Data Analyser GUI application.
 - `GENESYS_BUILD_GUI_OPTIMIZER`, default `OFF`, reserved for the future Optimizer GUI application.
@@ -129,7 +129,7 @@ Reserved options currently fail configuration intentionally if enabled before th
 1. Add documentation and CMake scaffolding without moving implementation files. Status: completed for the first GUI umbrella scaffold.
 2. Introduce `source/applications/gui/CMakeLists.txt` as the umbrella for GUI applications. Status: completed.
 3. Introduce `source/applications/gui/genesys/CMakeLists.txt` as the logical stable entrypoint for the main GUI. Status: completed; it delegates temporarily to `../qt/GenesysQtGUI`.
-4. Move the main GUI implementation from the current Qt-specific subdirectory to `source/applications/gui/genesys/`, preserving the `genesys_gui` build target and `genesys-gui` installed binary name.
+4. Move the main GUI implementation from the current Qt-specific subdirectory to `source/applications/gui/genesys/`, preserving the `genesys_gui` build target and `genesys-gui` installed binary name. Status: completed. Status: completed.
 5. Keep GUI source collection scoped to each application directory. The GUI umbrella must not recursively collect all GUI `.cpp` files.
 6. Rename or mirror `source/applications/web/` as `source/applications/httpworker/`, preserving temporary compatibility aliases for existing web targets and binary names.
 7. Extract the Web Worker control window into `source/applications/gui/httpworker/` and link it to the HTTP worker service/core library.
@@ -167,4 +167,4 @@ Current inventory conclusions:
 - Define a process-launch service in the main GUI for launching sibling GUI applications consistently.
 - Define model/context handoff mechanisms for Data Analyser, Optimizer, AI Assistant, and future Do Experiments.
 - Update Debian/PPA packaging expectations after executable names and install paths are stable.
-- Prepare the physical move of main GUI implementation files from `qt/GenesysQtGUI` to `gui/genesys`.
+- Validate downstream packaging and documentation references after the main GUI implementation move.
