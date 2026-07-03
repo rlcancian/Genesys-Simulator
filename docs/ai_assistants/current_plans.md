@@ -78,7 +78,7 @@ Initial stable guides now exist for:
 - Date: 2026-07-03
 - Branch: `WiP20261`
 - Scope: progressively decouple graphical applications currently hosted by the main GenESyS Qt GUI.
-- Status: planned; documentation and initial inventory recorded; no source-tree move has been made by this plan entry.
+- Status: CMake umbrella scaffold added; no source-tree move has been made by this plan entry.
 
 ### Architectural intent
 
@@ -100,6 +100,7 @@ source/
     httpworker/          # planned rename of the current web application tree
     mcp/                 # future/independent agent-facing application area when introduced
     gui/
+      CMakeLists.txt     # umbrella only; delegates to each GUI application
       genesys/           # main GenESyS Qt GUI, replacing the current qt/GenesysQtGUI location
       httpworker/        # graphical control frontend for the HTTP/background worker
       dataanalyser/      # graphical frontend for data-analysis/statistics workflows
@@ -112,10 +113,10 @@ Names above are architectural targets. Existing executable target names and inst
 
 ### Migration sequence
 
-1. Add documentation and CMake scaffolding without moving implementation files.
-2. Introduce `source/applications/gui/CMakeLists.txt` as the umbrella for GUI applications.
+1. Add documentation and CMake scaffolding without moving implementation files. Status: completed for the first GUI umbrella scaffold.
+2. Introduce `source/applications/gui/CMakeLists.txt` as the umbrella for GUI applications. Status: completed; it currently delegates to `qt/GenesysQtGUI`.
 3. Move the main GUI from the current Qt-specific subdirectory to `source/applications/gui/genesys/`, preserving the `genesys_gui` build target and `genesys-gui` installed binary name.
-4. Replace broad recursive GUI source collection with explicit or safely scoped source lists before adding sibling GUI applications under `source/applications/gui/`.
+4. Keep GUI source collection scoped to each application directory. The GUI umbrella must not recursively collect all GUI `.cpp` files.
 5. Rename or mirror `source/applications/web/` as `source/applications/httpworker/`, preserving temporary compatibility aliases for existing web targets and binary names.
 6. Extract the Web Worker control window into `source/applications/gui/httpworker/` and link it to the HTTP worker service/core library.
 7. Change the main GUI from hosting the Web Worker control dialog directly to launching the graphical HTTP worker frontend as a separate process.
@@ -130,12 +131,12 @@ The initial GUI-hosted frontend inventory is recorded in `docs/ai_assistants/app
 
 Current inventory conclusions:
 
-- The main GUI still exposes direct action slots for Web Worker, Optimizer, Expression Builder, AI Assistant, and Data Analyzer.
+- The main GUI still exposes direct action slots for Web Worker, Optimizer, AI Assistant, and Data Analyzer.
 - `DialogUtilityController` still directly constructs several tool frontends.
 - `WebWorkerDialog` is already more independent than before because it owns its own runtime, but it is still directly hosted by `MainWindow`.
 - Data Analyser, Optimizer, and AI Assistant are already `QMainWindow`-based frontends and are better candidates for eventual standalone GUI applications than small modal dialogs.
-- Expression Builder is currently a `QDialog` utility and is not part of the first standalone application wave.
-- The current GUI CMake file still uses broad recursive `.cpp` collection under the GUI directory, so source scoping must be fixed before adding sibling GUI application trees that contain their own `main.cpp` files.
+- Expression Builder is out of scope for this GUI-application refactoring. It should not be treated as a tool or application frontend and should be removed or replaced in a dedicated GUI cleanup/property-editor integration change.
+- The GUI umbrella CMake must only delegate to each GUI application CMake file. It must not collect sources recursively across GUI application siblings.
 
 ### Current constraints and validation gates
 
@@ -147,8 +148,9 @@ Current inventory conclusions:
 
 ### Open follow-up tasks
 
+- Validate the GUI umbrella CMake change in a local checkout or CI run.
 - Decide the compatibility period for `web`/`httpworker` CMake target aliases and installed binary names.
 - Define a process-launch service in the main GUI for launching sibling GUI applications consistently.
 - Define model/context handoff mechanisms for Data Analyser, Optimizer, AI Assistant, and future Do Experiments.
 - Update Debian/PPA packaging expectations after executable names and install paths are stable.
-- Prepare the first CMake scaffolding patch without changing runtime behavior.
+- Prepare the main GUI physical move from `qt/GenesysQtGUI` to `gui/genesys` after the umbrella build path is validated.
