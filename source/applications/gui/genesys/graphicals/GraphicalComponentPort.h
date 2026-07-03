@@ -5,7 +5,8 @@
 #include <QGraphicsObject>
 #include <QPen>
 #include <QBrush>
-#include "../../../../kernel/simulator/model/ModelComponent.h"#include "TraitsGUI.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "TraitsGUI.h"
 //#include "GraphicalConnection.h"
 
 class GraphicalModelComponent;
