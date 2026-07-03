@@ -5,7 +5,7 @@
 - Date: 2026-07-03
 - Branch: `WiP20261`
 - Scope: migrate repository documentation from `documentation/` to `docs/`.
-- Status: structural migration completed; Doxygen policy corrected; semantic consolidation still pending.
+- Status: structural migration completed; Doxygen policy corrected; initial semantic consolidation guides created.
 
 ### Target layout
 
@@ -47,13 +47,27 @@ Doxygen intermediate outputs remain ignored in:
 - `docs/users/generated/`
 - `docs/developers/generated/`
 
+### AI-assistant stable guides created
+
+Initial stable guides now exist for:
+
+- build, CI, and tests;
+- kernel development;
+- plugin development and plugin domains;
+- application development;
+- tools and statistics;
+- modal and hybrid simulation;
+- whole-cell and SBML;
+- Python integration;
+- documentation governance.
+
 ### Oldies retention
 
-`docs/ai_assistants/oldies/` is temporary. It and its contents should be removed after 2026-11-01, after relevant content has been consolidated into the main AI assistant documents.
+`docs/ai_assistants/oldies/` is temporary. It and its contents should be removed after 2026-11-01, after relevant content has been consolidated into the main AI assistant documents or explicitly marked obsolete.
 
 ### Pending follow-up
 
-- Consolidate historical Markdown content from `oldies/` into stable documents under `docs/ai_assistants/`.
+- Review each historical Markdown file in `oldies/` and mark it as consolidated, still pending, obsolete, or discard-after-review.
 - Validate Doxygen generation from the repository root.
 - Validate CMake/Ninja/CTest in a local checkout.
 - Adjust Debian packaging/build scripts to generate or collect Doxygen man pages from the build tree.
