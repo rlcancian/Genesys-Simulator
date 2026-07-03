@@ -19,6 +19,7 @@ Read this file before using or updating the other files in this directory.
 - `python_integration.md`: Python-facing integration guidance.
 - `documentation_governance.md`: documentation retention and governance guidance.
 - `oldies_inventory.md`: inventory of temporary historical documents retained in `oldies/`.
+- `oldies_review_status.md`: review matrix for historical files before deletion.
 - `consolidation_map.md`: target map for consolidating historical documents into stable AI-assistant documentation.
 - `oldies/`: temporary historical documents retained for traceability.
 
@@ -36,4 +37,4 @@ Read this file before using or updating the other files in this directory.
 
 Historical Markdown documents were moved to `oldies/` during the documentation migration. The directory is temporary and should be removed after 2026-11-01, after relevant content has been consolidated into stable documents under `docs/ai_assistants/`.
 
-Use `oldies_inventory.md` and `consolidation_map.md` before editing or deleting material from `oldies/`.
+Use `oldies_inventory.md`, `oldies_review_status.md`, and `consolidation_map.md` before editing or deleting material from `oldies/`.
