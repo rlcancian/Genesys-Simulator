@@ -138,6 +138,10 @@ else()
 endif()
 
 if(DEFINED GENESYS_QT_TEST_PACKAGE)
+    set(GENESYS_MOVED_GUI_COMPATIBILITY_INCLUDE
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/MovedGuiCompatibilityIncludes.h
+    )
+
     add_executable(genesys_test_gui_render_strategy
         test_gui_render_strategy.cpp
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/graphicals/GraphicalConnectionStyle.cpp
@@ -151,6 +155,13 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             ${CMAKE_SOURCE_DIR}/source
             ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys
     )
+
+    if(EXISTS ${GENESYS_MOVED_GUI_COMPATIBILITY_INCLUDE})
+        target_compile_options(genesys_test_gui_render_strategy
+            PRIVATE
+                -include ${GENESYS_MOVED_GUI_COMPATIBILITY_INCLUDE}
+        )
+    endif()
 
     target_link_libraries(genesys_test_gui_render_strategy
         PRIVATE
@@ -222,6 +233,13 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     endif()
 
     target_compile_features(genesys_test_gui_gmdd_layout PRIVATE cxx_std_23)
+    if(EXISTS ${GENESYS_MOVED_GUI_COMPATIBILITY_INCLUDE})
+        target_compile_options(genesys_test_gui_gmdd_layout
+            PRIVATE
+                -include ${GENESYS_MOVED_GUI_COMPATIBILITY_INCLUDE}
+        )
+    endif()
+
     set_target_properties(genesys_test_gui_gmdd_layout
         PROPERTIES
             AUTOMOC ON
