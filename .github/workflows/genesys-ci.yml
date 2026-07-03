@@ -173,3 +173,56 @@ jobs:
                 echo "::endgroup::"
               ' sh {} \;
           fi
+  debian-package:
+    name: Build Debian packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Debian packaging dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            debhelper \
+            devscripts \
+            cmake \
+            ninja-build \
+            g++ \
+            pkgconf \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            libgl-dev \
+            libgtest-dev \
+            lintian \
+            appstream
+
+      - name: Build Debian binary packages
+        run: |
+          set -Eeuo pipefail
+          dpkg-buildpackage -us -uc -b
+
+      - name: Validate AppStream metadata
+        run: |
+          set -Eeuo pipefail
+          appstreamcli validate --no-net packaging/linux/io.github.rlcancian.genesys.metainfo.xml
+
+      - name: Run lintian
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          lintian ../*.deb || true
+
+      - name: Upload Debian packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-debian-packages
+          path: |
+            ../genesys-gui_*.deb
+            ../genesys-web_*.deb
+            ../genesys-simulator_*.buildinfo
+            ../genesys-simulator_*.changes
