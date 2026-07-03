@@ -72,3 +72,70 @@ Initial stable guides now exist for:
 - Validate CMake/Ninja/CTest in a local checkout.
 - Adjust Debian packaging/build scripts to generate or collect Doxygen man pages from the build tree.
 - Evaluate whether Debian command man pages, if required for executables, should be maintained separately as section 1 man pages instead of relying only on Doxygen API man pages.
+
+## GUI applications refactoring plan
+
+- Date: 2026-07-03
+- Branch: `WiP20261`
+- Scope: progressively decouple graphical applications currently hosted by the main GenESyS Qt GUI.
+- Status: planned; no source-tree move is implied by this document alone.
+
+### Architectural intent
+
+The application layer should evolve toward a clearer split between executable applications and reusable backend libraries:
+
+- `source/tools/` remains the backend/tooling area for statistics, optimization, AI assistant services, DOE/factorial design, continuous solvers, and related reusable logic.
+- `source/applications/terminal/` remains the terminal application area.
+- `source/applications/httpworker/` is the planned semantic replacement for the current `source/applications/web/` application tree, representing the HTTP/background worker application.
+- `source/applications/gui/` becomes the umbrella for graphical applications, including the main GenESyS GUI and independent graphical frontends for selected tools or applications.
+
+### Target application layout
+
+The planned target layout is:
+
+```text
+source/
+  applications/
+    terminal/
+    httpworker/          # planned rename of the current web application tree
+    mcp/                 # future/independent agent-facing application area when introduced
+    gui/
+      genesys/           # main GenESyS Qt GUI, replacing the current qt/GenesysQtGUI location
+      httpworker/        # graphical control frontend for the HTTP/background worker
+      dataanalyser/      # graphical frontend for data-analysis/statistics workflows
+      optimizer/         # graphical frontend for optimization workflows
+      ai_assistant/      # graphical frontend for AI-assisted modeling workflows
+      doexperiments/     # future graphical frontend for DOE/factorial-design workflows
+```
+
+Names above are architectural targets. Existing executable target names and installed binary names should be preserved or transitioned with compatibility aliases until CMake, CI, packaging, and documentation have been updated.
+
+### Migration sequence
+
+1. Add documentation and CMake scaffolding without moving implementation files.
+2. Introduce `source/applications/gui/CMakeLists.txt` as the umbrella for GUI applications.
+3. Move the main GUI from the current Qt-specific subdirectory to `source/applications/gui/genesys/`, preserving the `genesys_gui` build target and `genesys-gui` installed binary name.
+4. Replace broad recursive GUI source collection with explicit or safely scoped source lists before adding sibling GUI applications under `source/applications/gui/`.
+5. Rename or mirror `source/applications/web/` as `source/applications/httpworker/`, preserving temporary compatibility aliases for existing web targets and binary names.
+6. Extract the Web Worker control window into `source/applications/gui/httpworker/` and link it to the HTTP worker service/core library.
+7. Change the main GUI from hosting the Web Worker control dialog directly to launching the graphical HTTP worker frontend as a separate process.
+8. Extract Data Analyser as a standalone-leaning graphical application that can run from files/datasets before deeper live-model integration is attempted.
+9. Extract Optimizer as a graphical application only after model/context handoff and backend pointer/lifetime assumptions have been reviewed.
+10. Extract AI Assistant as a graphical application after secret storage, provider configuration, audit logging, and model-context handoff are reviewed.
+11. Add the future Do Experiments graphical application on top of the FactorialDesign backend when its workflow is specified.
+
+### Current constraints and validation gates
+
+- Application-layer restructuring should not require kernel changes unless an explicit kernel API limitation is documented.
+- Folder moves should be done in small commits, updating CMake in the same commit that moves files.
+- Existing presets and install names should be treated as compatibility surfaces until packaging and CI are updated.
+- Each structural step must validate unit tests first, then the affected application preset, then smoke/startup behavior when the environment supports it.
+- GUI validation requires an environment with Qt dependencies; headless checks should use `QT_QPA_PLATFORM=offscreen` only for startup/smoke scenarios that are compatible with it.
+
+### Open follow-up tasks
+
+- Inventory current GUI-hosted windows and classify each as core GUI, application frontend, tool frontend, or legacy dialog.
+- Decide the compatibility period for `web`/`httpworker` CMake target aliases and installed binary names.
+- Define a process-launch service in the main GUI for launching sibling GUI applications consistently.
+- Define model/context handoff mechanisms for Data Analyser, Optimizer, AI Assistant, and future Do Experiments.
+- Update Debian/PPA packaging expectations after executable names and install paths are stable.
