@@ -93,6 +93,37 @@ Migration policy:
 - keep model/context handoff explicit and testable instead of sharing raw pointers across application boundaries;
 - avoid changing kernel APIs unless the application requirement and API limitation are documented first.
 
+## GUI-hosted frontend inventory
+
+- Date: 2026-07-03
+- Branch: `WiP20261`
+- Status: initial inventory; revalidate before moving files.
+
+Confirmed current entry points:
+
+- `MainWindow` exposes tool/action slots for parser grammar checking, Web Worker, experimentation, optimizer, expression builder, AI assistant, and data analyzer.
+- `DialogUtilityController` directly includes and constructs `AIAssistantWindow`, `DataAnalyzerWindow`, `OptimizerWindow`, and `ExpressionBuilder`.
+- `MainWindow` directly owns a modeless `WebWorkerDialog` through `QPointer<WebWorkerDialog>`.
+- The current GUI CMake file gathers all `.cpp` files under the GUI directory using broad recursive source collection. This is a migration blocker for adding sibling GUI applications inside the scanned tree.
+
+Initial classification:
+
+| Current artifact | Current location | Current type | Planned classification | Extraction priority |
+| --- | --- | --- | --- | --- |
+| Main GenESyS GUI | `source/applications/gui/qt/GenesysQtGUI/` | `QMainWindow` application | `source/applications/gui/genesys/` | first structural move after CMake source scoping is safe |
+| Web Worker control window | `source/applications/gui/qt/GenesysQtGUI/dialogs/WebWorkerDialog.*` | `QDialog` owning its own `WebWorkerRuntime` | `source/applications/gui/httpworker/` | after HTTP worker application/core naming is stabilized |
+| Data Analyzer | `source/applications/gui/qt/GenesysQtGUI/tools/dataanalyzer/` | `QMainWindow` with file/dataset and optional simulator snapshot workflows | `source/applications/gui/dataanalyser/` | preferred first tool frontend extraction |
+| Optimizer | `source/applications/gui/qt/GenesysQtGUI/tools/optimizer/` | `QMainWindow` tied to current simulator/model controls and responses | `source/applications/gui/optimizer/` | after model/context handoff and backend lifetime review |
+| AI Assistant | `source/applications/gui/qt/GenesysQtGUI/tools/aiassistant/` | `QMainWindow` using AI assistant backend, simulator facade, secrets, and provider configuration | `source/applications/gui/ai_assistant/` | after secret/configuration/model-context review |
+| Expression Builder | `source/applications/gui/qt/GenesysQtGUI/tools/expressionbuilder/` | `QDialog` utility | not in the first standalone application wave | defer; likely remains utility dialog or becomes a small helper app later |
+| Experimentation / Do Experiments | slot exists as legacy placeholder; no current exposed action confirmed in this inventory | placeholder | future `source/applications/gui/doexperiments/` frontend over `source/tools/FactorialDesign/` | after workflow specification |
+
+Immediate migration implication:
+
+- Do not create new `main.cpp` files below the current `GenesysQtGUI` tree while broad recursive source collection is active.
+- The next safe source patch should introduce an umbrella `source/applications/gui/CMakeLists.txt` without changing behavior, or first constrain the existing GUI source collection before adding sibling GUI applications.
+- A future process-launching service should replace direct widget construction in `MainWindow`/`DialogUtilityController` only after each target frontend executable exists and has a minimal startup validation path.
+
 ## Folder restructuring
 
 When reorganizing application folders, preserve Linux build stability first.
@@ -121,6 +152,6 @@ For application changes, prefer this order:
 - Consolidate the proposed application-folder restructuring into a separate migration plan.
 - Add lightweight web integration tests if the current test structure supports them.
 - Define packaging-facing executable and man-page expectations for Debian/PPA.
-- Inventory GUI-hosted windows and classify them as core GUI, GUI application frontend, tool frontend, or legacy dialog.
 - Define the compatibility policy for the planned `web` to `httpworker` transition.
 - Define the process-launching contract used by the main GUI to start sibling GUI applications.
+- Revalidate the GUI-hosted frontend inventory before each extraction PR.
