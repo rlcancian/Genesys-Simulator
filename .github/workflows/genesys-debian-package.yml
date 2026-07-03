@@ -123,3 +123,14 @@ jobs:
           name: genesys-debian-diagnostics
           path: genesys-debian-diagnostics/
           if-no-files-found: ignore
+
+      - name: Verify Debian packages were produced
+        if: always()
+        run: |
+          set -Eeuo pipefail
+          package_count="$(find genesys-debian-packages -maxdepth 1 -type f -name '*.deb' | wc -l)"
+          echo "debian_package_count=${package_count}"
+          if [[ "${package_count}" -eq 0 ]]; then
+            echo "::error::No Debian .deb package was produced. Check genesys-debian-diagnostics."
+            exit 1
+          fi
