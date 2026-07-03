@@ -12,7 +12,8 @@
 #include <QGraphicsObject>
 #include <QPen>
 #include <QBrush>
-#include "../../../../kernel/simulator/model/ModelComponent.h"#include "kernel/simulator/Plugin.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "kernel/simulator/Plugin.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "graphicals/GraphicalImageAnimation.h"
 #include "GraphicalComponentPort.h"
