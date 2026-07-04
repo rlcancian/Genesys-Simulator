@@ -8,7 +8,7 @@ CMake, compiladores ou bibliotecas do projeto na máquina do usuário.
 Execute:
 
 ```bash
-bash docker/exec_genesys.sh
+bash packaging/docker/exec_genesys.sh
 ```
 
 O script mostra três opções:

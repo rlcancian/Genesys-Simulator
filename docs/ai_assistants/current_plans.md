@@ -73,98 +73,200 @@ Initial stable guides now exist for:
 - Adjust Debian packaging/build scripts to generate or collect Doxygen man pages from the build tree.
 - Evaluate whether Debian command man pages, if required for executables, should be maintained separately as section 1 man pages instead of relying only on Doxygen API man pages.
 
-## GUI applications refactoring plan
+## GUI applications separation and handoff
 
-- Date: 2026-07-03
-- Branch: `WiP20261`
-- Scope: progressively decouple graphical applications currently hosted by the main GenESyS Qt GUI.
-- Status: CMake umbrella scaffold, per-GUI build options, and logical `gui/genesys` routing added; user reported successful compilation after the CMake routing changes.
+- Date started: 2026-07-03.
+- Last handoff update: 2026-07-03.
+- Base branch: `WiP20261`.
+- Active WIP branch: `wip/gui-genesys-move-local-salvage-20260703-182121`.
+- Active PR: #451, `WIP: preserve main GUI move attempt`.
+- Current status: `httpworker`, `dataanalyser`, and `optimizer` are now split as standalone GUI targets; PR must remain draft.
+- Current user decision: continue incrementally after phase 1, but keep each extraction small and validated before moving to the next GUI.
 
-### Architectural intent
+### Macro objective
 
-The application layer should evolve toward a clearer split between executable applications and reusable backend libraries:
+The objective is to split graphical frontends currently hosted by or coupled to the main GenESyS Qt GUI into independent GUI application folders under `source/applications/gui/`, while preserving kernel, parser, plugins, tools, CMake/Ninja builds, tests, Debian packaging, and installed binary compatibility.
 
-- `source/tools/` remains the backend/tooling area for statistics, optimization, AI assistant services, DOE/factorial design, continuous solvers, and related reusable logic.
-- `source/applications/terminal/` remains the terminal application area.
-- `source/applications/httpworker/` is the planned semantic replacement for the current `source/applications/web/` application tree, representing the HTTP/background worker application.
-- `source/applications/gui/` becomes the umbrella for graphical applications, including the main GenESyS GUI and independent graphical frontends for selected tools or applications.
-
-### Target application layout
-
-The planned target layout is:
+Target umbrella layout:
 
 ```text
-source/
-  applications/
-    terminal/
-    httpworker/          # planned rename of the current web application tree
-    mcp/                 # future/independent agent-facing application area when introduced
-    gui/
-      CMakeLists.txt     # umbrella only; delegates to each GUI application
-      genesys/           # main GenESyS Qt GUI, replacing the current qt/GenesysQtGUI location
-      httpworker/        # graphical control frontend for the HTTP/background worker
-      dataanalyser/      # graphical frontend for data-analysis/statistics workflows
-      optimizer/         # graphical frontend for optimization workflows
-      ai_assistant/      # graphical frontend for AI-assisted modeling workflows
-      doexperiments/     # future graphical frontend for DOE/factorial-design workflows
+source/applications/gui/
+  CMakeLists.txt
+  genesys/
+  httpworker/
+  dataanalyser/
+  optimizer/
+  ai_assistant/
+  doexperiments/
 ```
 
-Names above are architectural targets. Existing executable target names and installed binary names should be preserved or transitioned with compatibility aliases until CMake, CI, packaging, and documentation have been updated.
+### Planned GUI applications
 
-### Current GUI build switches
+| Build option | Planned folder | Purpose | Current status |
+|---|---|---|---|
+| `GENESYS_BUILD_GUI_GENESYS` | `source/applications/gui/genesys` | Main GenESyS Qt GUI | Physically moved in PR #451; still under validation |
+| `GENESYS_BUILD_GUI_HTTPWORKER` | `source/applications/gui/httpworker` | Graphical control frontend for HTTP/background worker | Stand-alone app added; build validated |
+| `GENESYS_BUILD_GUI_DATAANALYSER` | `source/applications/gui/dataanalyser` | Data-analysis/statistics graphical frontend | Not implemented |
+| `GENESYS_BUILD_GUI_OPTIMIZER` | `source/applications/gui/optimizer` | Optimization graphical frontend | Not implemented |
+| `GENESYS_BUILD_GUI_AI_ASSISTANT` | `source/applications/gui/ai_assistant` | AI-assisted modeling graphical frontend | Stand-alone app added; build validated |
+| `GENESYS_BUILD_GUI_DOEXPERIMENTS` | `source/applications/gui/doexperiments` | DOE/factorial-design graphical frontend | Not implemented |
 
-The GUI umbrella now owns per-GUI-application build options:
+The main application, `genesys`, is physically moved. `httpworker`, `dataanalyser`, `optimizer`, and `ai_assistant` now have standalone GUI application targets and are launched from the main GUI by `QProcess`. `doexperiments` remains planned. It intentionally fails configuration if enabled before its source directory and target exist.
 
-- `GENESYS_BUILD_GUI_GENESYS`, default `ON`, currently builds the existing main GUI through `source/applications/gui/genesys`, which delegates to the historical `qt/GenesysQtGUI` implementation directory.
-- `GENESYS_BUILD_GUI_HTTPWORKER`, default `OFF`, reserved for the future HTTP worker control GUI.
-- `GENESYS_BUILD_GUI_DATAANALYSER`, default `OFF`, reserved for the future Data Analyser GUI application.
-- `GENESYS_BUILD_GUI_OPTIMIZER`, default `OFF`, reserved for the future Optimizer GUI application.
-- `GENESYS_BUILD_GUI_AI_ASSISTANT`, default `OFF`, reserved for the future AI Assistant GUI application.
-- `GENESYS_BUILD_GUI_DOEXPERIMENTS`, default `OFF`, reserved for the future Do Experiments GUI application.
+### Current macro position
 
-Reserved options currently fail configuration intentionally if enabled before their source directories exist. This prevents silent success for not-yet-implemented GUI applications.
+The work is now in macro phase 5 of 6:
 
-### Migration sequence
+1. Separate and validate `source/applications/gui/genesys`. Status: in progress.
+2. Separate `source/applications/gui/httpworker`. Status: complete and build-validated.
+3. Separate `source/applications/gui/dataanalyser`. Status: complete and build-validated.
+4. Separate `source/applications/gui/optimizer`. Status: complete and build-validated.
+5. Separate `source/applications/gui/ai_assistant`. Status: complete and build-validated.
+6. Separate `source/applications/gui/doexperiments`. Status: not started.
 
-1. Add documentation and CMake scaffolding without moving implementation files. Status: completed for the first GUI umbrella scaffold.
-2. Introduce `source/applications/gui/CMakeLists.txt` as the umbrella for GUI applications. Status: completed.
-3. Introduce `source/applications/gui/genesys/CMakeLists.txt` as the logical stable entrypoint for the main GUI. Status: completed; it delegates temporarily to `../qt/GenesysQtGUI`.
-4. Move the main GUI implementation from the current Qt-specific subdirectory to `source/applications/gui/genesys/`, preserving the `genesys_gui` build target and `genesys-gui` installed binary name.
-5. Keep GUI source collection scoped to each application directory. The GUI umbrella must not recursively collect all GUI `.cpp` files.
-6. Rename or mirror `source/applications/web/` as `source/applications/httpworker/`, preserving temporary compatibility aliases for existing web targets and binary names.
-7. Extract the Web Worker control window into `source/applications/gui/httpworker/` and link it to the HTTP worker service/core library.
-8. Change the main GUI from hosting the Web Worker control dialog directly to launching the graphical HTTP worker frontend as a separate process.
-9. Extract Data Analyser as a standalone-leaning graphical application that can run from files/datasets before deeper live-model integration is attempted.
-10. Extract Optimizer as a graphical application only after model/context handoff and backend pointer/lifetime assumptions have been reviewed.
-11. Extract AI Assistant as a graphical application after provider configuration, audit logging, and model-context handoff are reviewed.
-12. Add the future Do Experiments graphical application on top of the FactorialDesign backend when its workflow is specified.
+The next agent should keep the same incremental pattern and move on only after the current extraction is validated.
 
-### Initial inventory result
+### What has been completed in phase 1
 
-The initial GUI-hosted frontend inventory is recorded in `docs/ai_assistants/applications_development.md`.
+- Preserved a local move attempt in branch `wip/gui-genesys-move-local-salvage-20260703-182121`.
+- Opened draft PR #451 against `WiP20261`.
+- Moved the main GUI implementation from `source/applications/gui/qt/GenesysQtGUI` to `source/applications/gui/genesys`.
+- Added a GUI umbrella CMake layer at `source/applications/gui/CMakeLists.txt`.
+- Added a CMake entrypoint for the moved main GUI at `source/applications/gui/genesys/CMakeLists.txt`.
+- Preserved executable target `genesys_qt_gui_application` and compatibility custom target `genesys_gui`.
+- Preserved installed binary output name `genesys-gui`.
+- Added a standalone GUI application target for the WebWorker controller under `source/applications/gui/httpworker`.
+- Added a `ToolLauncher` helper so the main GUI can start the WebWorker app by `QProcess` instead of embedding its dialog.
+- Added the `gui-httpworker` CMake configure/build presets.
+- Removed the direct `MainWindow` ownership of `WebWorkerDialog`.
+- Added a standalone GUI application target for the Data Analyzer workstation under `source/applications/gui/dataanalyser`.
+- Added the `gui-dataanalyser` CMake configure/build presets.
+- Routed the Data Analyzer menu action through `QProcess` instead of constructing its window inside the main GUI.
+- Added a standalone GUI application target for the Optimizer workstation under `source/applications/gui/optimizer`.
+- Added the `gui-optimizer` CMake configure/build presets.
+- Routed the Optimizer menu action through `QProcess` instead of constructing its window inside the main GUI.
+- Added a standalone GUI application target for the AI Assistant workstation under `source/applications/gui/ai_assistant`.
+- Added the `gui-ai-assistant` CMake configure/build preset.
+- Routed the AI Assistant menu action through `QProcess` instead of constructing its window inside the main GUI.
+- Repaired concatenated include lines introduced by the local move.
+- Removed accidentally versioned `.qtc_clangd/` files from the moved GUI tree.
+- Added a `.gitignore` rule under the moved GUI tree for `.qtc_clangd/`.
+- Added temporary `MovedGuiCompatibilityIncludes.h` support to keep the moved GUI buildable while direct includes are cleaned incrementally.
+- Scoped the temporary forced include to GUI test targets in unit-test CMake, not globally.
+- Confirmed that the focused GUI GMDD target can compile.
+- Reached CTest in a full `tests-unit` validation run, meaning the main blocker is currently test behavior, not compilation.
 
-Current inventory conclusions:
+### Current known problems in the active branch
 
-- The main GUI still exposes direct action slots for Web Worker, Optimizer, AI Assistant, and Data Analyzer.
-- `DialogUtilityController` still directly constructs several tool frontends.
-- `WebWorkerDialog` is already more independent than before because it owns its own runtime, but it is still directly hosted by `MainWindow`.
-- Data Analyser, Optimizer, and AI Assistant are already `QMainWindow`-based frontends and are better candidates for eventual standalone GUI applications than small modal dialogs.
-- Expression Builder is out of scope for this GUI-application refactoring. It should not be treated as a tool or application frontend and should be removed or replaced in a dedicated GUI cleanup/property-editor integration change.
-- The GUI umbrella CMake must only delegate to each GUI application CMake file. It must not collect sources recursively across GUI application siblings.
+#### Temporary diagnostic workflow
 
-### Current constraints and validation gates
+`.github/workflows/genesys-ci.yml` is currently a diagnostic workflow focused on the failing GUI GMDD tests. It is not the normal full `tests-unit` CI workflow.
 
-- Application-layer restructuring should not require kernel changes unless an explicit kernel API limitation is documented.
-- Folder moves should be done in small commits, updating CMake in the same commit that moves files.
-- Existing presets and install names should be treated as compatibility surfaces until packaging and CI are updated.
-- Each structural step must validate unit tests first, then the affected application preset, then smoke/startup behavior when the environment supports it.
-- GUI validation requires an environment with Qt dependencies; headless checks should use `QT_QPA_PLATFORM=offscreen` only for startup/smoke scenarios that are compatible with it.
+Before merge readiness, restore the normal CI workflow and remove diagnostic-only artifact logic.
 
-### Open follow-up tasks
+#### GUI GMDD tests still failing
 
-- Validate the full test preset after GUI CMake routing changes.
-- Decide the compatibility period for `web`/`httpworker` CMake target aliases and installed binary names.
-- Define a process-launch service in the main GUI for launching sibling GUI applications consistently.
-- Define model/context handoff mechanisms for Data Analyser, Optimizer, AI Assistant, and future Do Experiments.
-- Update Debian/PPA packaging expectations after executable names and install paths are stable.
-- Prepare the physical move of main GUI implementation files from `qt/GenesysQtGUI` to `gui/genesys`.
+The focused workflow currently exercises these failing tests:
+
+- `GuiGmddLayout.SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRows`.
+- `GuiGmddLayout.SerializerRoundTripRestoresComponentColorAndDataDefinitionPosition`.
+- `GuiGmddLayout.SerializerRoundTripRestoresViewStateGeometriesAndGroups`.
+
+The latest focused run after commit `f4e1b932e41df7cc0f4c0fda733376cfb667975e` still failed all three tests and uploaded a diagnostic artifact.
+
+#### Layout attempts did not resolve the first GUI GMDD failure
+
+Two commits changed `source/applications/gui/genesys/services/GraphicalDataDefinitionLayout.cpp`:
+
+- `fix: separate lower GMDD radial layers`.
+- `fix: split dense lower GMDD arcs into rows`.
+
+These were attempts to separate lower GMDD rows vertically. They did not solve the failing test. A future agent should not keep increasing spacing blindly.
+
+Likely next diagnostic point: `GraphicalModelBuilder.cpp`, specifically how these lists are classified and ordered before layout:
+
+- `upperLinks`;
+- `lowerStatisticsLinks`;
+- `lowerSharedLinks`;
+- child/shared links collected from component and data-definition references.
+
+Observed failure pattern: shared lower GMDDs remain above the expected statistics row bottom. The test expects shared lower definitions to be below the statistics row.
+
+#### Serializer color round-trip failures
+
+Two serializer tests still fail because loaded component color becomes `#828282`, while tests expect different values:
+
+- category color `#008000` in `SerializerRoundTripRestoresComponentColorAndDataDefinitionPosition`;
+- saved visual color `#232b57` in `SerializerRoundTripRestoresViewStateGeometriesAndGroups`.
+
+Do not resolve this by simply changing both expectations to `#828282`.
+
+The intended behavior appears to differ by context:
+
+- ordinary model rebuild should use the plugin category palette;
+- full visual round-trip with explicit saved visual state should preserve the saved component color.
+
+Likely code area: `GraphicalModelSerializer.cpp`, around persisted component state restoration after `_generateGraphicalModelFromModel`.
+
+#### Full CTest has non-GUI failures too
+
+A prior full CTest run reported 16 failures out of 1657 tests:
+
+- 3 GUI GMDD failures;
+- 13 non-GUI runtime/whole-cell/metabolic failures.
+
+Treat the 13 non-GUI failures as outside this GUI separation scope unless evidence proves the GUI move caused them.
+
+### Recommended continuation plan for another AI
+
+1. Reassess whether the two unsuccessful `GraphicalDataDefinitionLayout.cpp` commits should be reverted or replaced.
+2. Inspect `GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer` and trace the failing test's Queue/Resource/Counter/StatisticsCollector/shared Queue items into the lower layout lists.
+3. Fix the GMDD lower-row classification or ordering at the builder level if that is the real cause.
+4. Inspect `GraphicalModelSerializer.cpp` to distinguish category color restoration from persisted visual color restoration.
+5. Rerun only the focused GUI GMDD test target before running the full suite.
+6. Restore the normal `.github/workflows/genesys-ci.yml` after focused GUI diagnostics are no longer needed.
+7. Run full `tests-unit` validation and classify remaining non-GUI failures explicitly as in-scope or out-of-scope.
+8. Validate Debian packaging only after workflow and source state are no longer diagnostic-only.
+
+### Validation order
+
+Recommended order:
+
+1. `cmake --preset tests-unit`.
+2. `cmake --build --preset tests-unit --parallel $(nproc)`.
+3. Run `genesys_test_gui_gmdd_layout` with the three-test filter.
+4. `ctest --preset tests-unit --output-on-failure`.
+5. Check Debian package workflow after normal CI is restored.
+
+### Do not do now
+
+- Do not mark PR #451 ready for review.
+- Do not merge PR #451 into `WiP20261` while diagnostic workflow changes remain.
+- Do not start the next GUI application extraction.
+- Do not fix whole-cell/metabolic tests in this PR unless causality with the GUI move is demonstrated.
+- Do not treat the two layout spacing commits as proven correct; they are unvalidated attempts and may need replacement.
+
+### Acceptable stopping states for phase 1
+
+Preferred stopping state:
+
+- main GUI moved and compiles;
+- GUI GMDD tests pass;
+- normal CI restored;
+- Debian workflow passes;
+- PR #451 is ready for review.
+
+Acceptable WIP stopping state:
+
+- main GUI moved and compiles;
+- GUI GMDD blockers documented;
+- temporary workflow restored or clearly documented;
+- PR #451 remains draft.
+
+Current state at this handoff:
+
+- main GUI moved;
+- build blockers mostly cleared;
+- focused GUI GMDD tests still fail;
+- diagnostic workflow still active;
+- PR #451 must remain draft.
