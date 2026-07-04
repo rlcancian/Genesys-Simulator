@@ -14,9 +14,6 @@
 #include "Util.h"
 #include <typeinfo>
 #include <map>
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
-#endif
 
 //using namespace GenesysKernel;
 
@@ -334,7 +331,9 @@ std::string Util::FilenameFromFullFilename(const std::string& s) {
 }
 
 void Util::FileDelete(const std::string& filename) {
-	std::remove(filename.c_str());
+	char removeFilename[filename.length() + 1];
+	strcpy(removeFilename, filename.c_str());
+	std::remove(removeFilename);
 }
 
 std::string Util::PathFromFullFilename(const std::string& s) {
@@ -346,18 +345,11 @@ std::string Util::RunningPath() {
     char result[PATH_MAX];
 #ifdef __linux__
     ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-	std::string fullfilename = std::string(result, (count > 0) ? count : 0);
 #elif _WIN32
     // @ToDo: (pequena alteração): Get runningPath For windows
     ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-	std::string fullfilename = std::string(result, (count > 0) ? count : 0);
-#elif __APPLE__
-	uint32_t count = sizeof(result);
-	std::string fullfilename =
-		_NSGetExecutablePath(result, &count) == 0 ? std::string(result) : "";
-#else
-	std::string fullfilename = "";
 #endif
+	std::string fullfilename = std::string(result, (count > 0) ? count : 0);
 	return PathFromFullFilename(fullfilename);
 }
 

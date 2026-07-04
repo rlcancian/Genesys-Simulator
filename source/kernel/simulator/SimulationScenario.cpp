@@ -13,7 +13,6 @@
 
 #include "SimulationScenario.h"
 #include <algorithm>
-#include <iterator>
 #include <stdexcept>
 
 SimulationScenario::SimulationScenario() = default;
