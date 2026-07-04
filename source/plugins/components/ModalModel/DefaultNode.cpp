@@ -13,23 +13,8 @@
 
 #include "plugins/components/ModalModel/DefaultNode.h"
 #include "../../../kernel/simulator/model/Model.h"
-#include <algorithm>
-#include <cerrno>
-#include <cstdlib>
 // #include "kernel/simulator/Simulator.h"
 // #include "kernel/simulator/PluginManager.h"
-
-namespace {
-bool IsNumericLiteral(const std::string &value) {
-  if (value.empty()) {
-    return false;
-  }
-  char *end = nullptr;
-  errno = 0;
-  std::strtod(value.c_str(), &end);
-  return errno == 0 && end != value.c_str() && *end == '\0';
-}
-} // namespace
 
 DefaultNodeTransition::DefaultNodeTransition(DefaultNode *source,
                                              DefaultNode *destination,
@@ -77,55 +62,18 @@ void DefaultNodeTransition::setInputEvent(std::string inputEvent) {
 
 std::string DefaultNodeTransition::getInputEvent() const { return _inputEvent; }
 
-void DefaultNodeTransition::setPriority(unsigned int priority) {
-  _priority = priority;
-}
-
-unsigned int DefaultNodeTransition::getPriority() const { return _priority; }
-
-void DefaultNodeTransition::setProbability(double probability) {
-  _probability = probability;
-}
-
-double DefaultNodeTransition::getProbability() const { return _probability; }
-
-void DefaultNodeTransition::setTransitionKind(TransitionKind transitionKind) {
-  _transitionKind = transitionKind;
-}
-
-DefaultNodeTransition::TransitionKind
-DefaultNodeTransition::getTransitionKind() const {
-  return _transitionKind;
-}
-
 bool DefaultNodeTransition::canFire(Model *model, Entity *entity) const {
-  std::string dispatchEvent = "";
-  if (model != nullptr && model->getSimulation() != nullptr &&
-      model->getSimulation()->getCurrentEvent() != nullptr) {
-    dispatchEvent = std::to_string(model->getSimulation()
-                                       ->getCurrentEvent()
-                                       ->getComponentinputPortNumber());
+  (void)entity;
+  if (_guardExpression == "") {
+    return true;
   }
-  return canFire(model, entity, dispatchEvent);
+  return model->parseExpression(_guardExpression) != 0.0;
 }
 
 bool DefaultNodeTransition::canFire(Model *model, Entity *entity,
                                     const std::string &dispatchEvent) const {
   (void)entity;
-  if (_inputEvent != "") {
-    bool eventMatched = _inputEvent == dispatchEvent;
-    const bool numericInputEvent = IsNumericLiteral(_inputEvent);
-    if (!eventMatched && numericInputEvent && IsNumericLiteral(dispatchEvent)) {
-      eventMatched = std::strtod(_inputEvent.c_str(), nullptr) ==
-                     std::strtod(dispatchEvent.c_str(), nullptr);
-    }
-    if (!eventMatched && !numericInputEvent && model != nullptr) {
-      eventMatched = model->parseExpression(_inputEvent) != 0.0;
-    }
-    if (!eventMatched) {
-      return false;
-    }
-  }
+  (void)dispatchEvent;
   if (_guardExpression == "") {
     return true;
   }
@@ -137,13 +85,6 @@ void DefaultNodeTransition::execute(Model *model, Entity *entity) const {
   if (_outputExpression != "") {
     model->parseExpression(_outputExpression);
   }
-}
-
-double DefaultNodeTransition::effectiveProbability(Model *model,
-                                                   Entity *entity) const {
-  (void)model;
-  (void)entity;
-  return _probability;
 }
 
 /// Externalize function GetPluginInformation to be accessible throught dynamic

@@ -1,30 +1,44 @@
 # Mini relatorio: consolidacao EFSM no ModalModel
 
 ## Escopo
-As alteracoes implementam a semantica minima esperada para as classes descritas na secao 6 do enunciado: `ModalModelDefault`, `ModalModelFSM`, `DefaultNode`, `DefaultNodeTransition` e `FSMState`. A implementacao se concentra em EFSM e nao altera a semantica de Petri alem da compatibilidade ja existente.
+As alteracoes consolidam uma EFSM minima para o componente `ModalModelFSM`. O objetivo e oferecer estados, transicoes com evento de disparo, guarda, acao de transicao, acoes de entrada/saida, atualizacao de estado por entidade e parada em estado final.
 
-## Escolhas de projeto
-- O evento de disparo foi integrado ao `DefaultNodeTransition::canFire`. Um `inputEvent` numerico representa a porta de entrada do evento (`inputPortNumber`); um `inputEvent` nao numerico e interpretado como expressao booleana do parser. Essa escolha reaproveita informacao que o simulador ja carrega no evento e evita criar uma infraestrutura paralela de eventos.
-- A guarda continua sendo cumulativa com o evento. Uma transicao so dispara quando o evento bate e a guarda avalia para verdadeiro.
-- A politica de selecao preserva a compatibilidade existente: menor valor de prioridade vence. A selecao probabilistica passa a ocorrer apenas entre transicoes habilitadas com a melhor prioridade.
-- Empates deterministas preservam a ordem de cadastro das transicoes, usando ordenacao estavel. Isso torna o desempate reprodutivel sem introduzir uma nova configuracao.
-- As acoes de estado foram executadas na ordem esperada para EFSM: acao de saida do estado atual, acao da transicao, acao de entrada do estado destino e atualizacao do atributo de estado modal da entidade.
-- O estado modal continua sendo armazenado por indice no atributo `Entity.ModalModel.<Modal>.CurrentNode`, e o ultimo estado por id em `Entity.ModalModel.<Modal>.LastNode`. Durante o despacho, esses atributos sao criados na entidade caso ainda nao existam.
-- No primeiro despacho de uma entidade, quando ainda nao ha estado modal registrado, o componente usa explicitamente o `entryNode`, mesmo que ele nao seja o nodo de indice zero.
-- `ModalModelFSM` nao cria mais um `FSMState` interno implicito no construtor. O estado criado antes nao era inserido no submodelo, nao participava da simulacao e podia vazar memoria.
+Esta implementacao mantem apenas a semantica necessaria para uma EFSM funcional no simulador. Campos antigos de prioridade, probabilidade e tipo de transicao podem existir em arquivos salvos anteriormente, mas sao ignorados no carregamento e nao sao gravados novamente.
 
-## Mudancas por classe
-- `DefaultNodeTransition`: adicionada sobrecarga de `canFire` com evento de despacho, avaliacao de `inputEvent` e metodo virtual `effectiveProbability`.
-- `EFSMTransition`: `triggerEvent` agora alimenta o mesmo campo usado pela transicao base, e `probabilityExpression` pode determinar a probabilidade efetiva em tempo de execucao.
-- `ModalModelDefault`: validacao estrutural mais robusta, validacao de expressoes de guarda/evento/acao/probabilidade, selecao formal por prioridade/probabilidade, persistencia opcional de `EFSMTransition` e execucao das acoes de entrada e saida de `FSMState`.
-- `ModalModelFSM`: validacao especifica para exigir nodos `FSMState` e ao menos um estado inicial.
-- `FSMState`: a persistencia existente foi preservada; suas expressoes agora participam efetivamente do ciclo de execucao.
+## Separacao arquitetural
+- `ModalModelDefault` permanece como base modal generica: cadastro de nodos/transicoes, persistencia comum, validacao estrutural, atributos anexados e hooks protegidos para especializacoes.
+- `ModalModelFSM` concentra a semantica EFSM: despacho por evento de entrada, selecao de transicoes habilitadas, execucao das acoes de estado, tratamento de estado final, validacao de `FSMState` e persistencia dos campos especificos de `EFSMTransition`.
+- `EFSMTransition` concentra o comportamento especifico da transicao EFSM: `triggerEvent`, guarda herdada e expressao de saida herdada.
+- `DefaultNodeTransition` continua sendo uma transicao base generica. O campo `inputEvent` e persistido por compatibilidade, mas a interpretacao EFSM fica em `EFSMTransition`.
+
+## Semantica implementada
+- O primeiro despacho de uma entidade usa o `entryNode` quando ainda nao ha estado modal registrado.
+- O estado atual e armazenado por indice no atributo `Entity.ModalModel.<Modal>.CurrentNode`.
+- O ultimo estado alcancado e armazenado por id no atributo `Entity.ModalModel.<Modal>.LastNode`.
+- Uma transicao EFSM fica habilitada quando o `triggerEvent` corresponde ao evento de despacho e a guarda avalia para verdadeiro.
+- `triggerEvent` numerico representa a porta de entrada do evento. Valor nao numerico e tratado como expressao booleana do parser.
+- Quando mais de uma transicao esta habilitada, dispara a primeira transicao cadastrada na lista de saida do estado atual.
+- Ao disparar uma transicao EFSM, a ordem e: acao de saida do estado atual, acao da transicao, acao de entrada do estado destino e atualizacao dos atributos modais.
+- Estado final interrompe o ciclo de disparos do despacho e direciona a entidade para a porta de saida 1, quando ela existir.
+
+## Limites conhecidos
+Esta e uma EFSM minima. Nao estao implementados:
+- transicoes padrao;
+- transicoes nao deterministicas como construto formal separado;
+- separacao formal entre acoes de saida e acoes de atualizacao de estado.
+
+Esses pontos devem ser tratados como extensoes futuras, nao como comportamento implicito desta entrega.
 
 ## Testes adicionados
-Foi criado `source/tests/unit/test_modal_model_efsm.cpp`, cobrindo:
-- evento de entrada e guarda como condicoes cumulativas;
-- execucao de acao de saida, acao de transicao e acao de entrada durante a simulacao;
-- atualizacao dos atributos `CurrentNode` e `LastNode`;
-- uso correto do `entryNode` no primeiro despacho;
-- preservacao retrocompativel da persistencia de transicoes base e suporte aos campos especificos de `EFSMTransition`;
-- validacao de `ModalModelFSM` exigindo estado inicial.
+`source/tests/unit/test_modal_model_efsm.cpp` cobre:
+- preservacao do tipo `ModalModelFSM`;
+- despacho generico de `ModalModelDefault` sem dependencias EFSM;
+- evento de disparo e guarda como condicoes cumulativas de `EFSMTransition`;
+- ordem de execucao das acoes: saida do estado, transicao e entrada do estado destino;
+- atualizacao de `CurrentNode` e `LastNode`;
+- saida por porta 0 para estado nao final e porta 1 para estado final;
+- manutencao de `LastNode` quando nenhuma transicao esta habilitada;
+- interrupcao do despacho quando o estado atual ja e final;
+- validacao de `ModalModelFSM` exigindo `FSMState`, estado inicial e `EFSMTransition`;
+- persistencia dos campos especificos minimos de `EFSMTransition`;
+- tolerancia de carregamento para campos antigos de prioridade/probabilidade, sem grava-los novamente.

@@ -1,9 +1,37 @@
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include <cerrno>
+#include <cstdlib>
+
+namespace {
+bool IsNumericLiteral(const std::string& value) {
+	if (value.empty()) {
+		return false;
+	}
+	char* end = nullptr;
+	errno = 0;
+	std::strtod(value.c_str(), &end);
+	return errno == 0 && end != value.c_str() && *end == '\0';
+}
+
+bool TriggerEventMatches(Model* model, const std::string& triggerEvent, const std::string& dispatchEvent) {
+	if (triggerEvent == "") {
+		return true;
+	}
+	bool eventMatched = triggerEvent == dispatchEvent;
+	const bool numericTriggerEvent = IsNumericLiteral(triggerEvent);
+	if (!eventMatched && numericTriggerEvent && IsNumericLiteral(dispatchEvent)) {
+		eventMatched = std::strtod(triggerEvent.c_str(), nullptr) == std::strtod(dispatchEvent.c_str(), nullptr);
+	}
+	if (!eventMatched && !numericTriggerEvent && model != nullptr) {
+		eventMatched = model->parseExpression(triggerEvent) != 0.0;
+	}
+	return eventMatched;
+}
+} // namespace
 
 EFSMTransition::EFSMTransition(DefaultNode* source, DefaultNode* destination, std::string name)
 	: DefaultNodeTransition(source, destination, name) {
-	setTransitionKind(TransitionKind::DETERMINISTIC);
 }
 
 void EFSMTransition::setTriggerEvent(std::string triggerEvent) {
@@ -15,34 +43,22 @@ std::string EFSMTransition::getTriggerEvent() const {
 	return _triggerEvent;
 }
 
-void EFSMTransition::setProbabilityExpression(std::string probabilityExpression) {
-	_probabilityExpression = probabilityExpression;
-}
-
-std::string EFSMTransition::getProbabilityExpression() const {
-	return _probabilityExpression;
-}
-
 bool EFSMTransition::canFire(Model* model, Entity* entity) const {
-	bool parentCanFire = DefaultNodeTransition::canFire(model, entity);
-	if (!parentCanFire) {
-		return false;
+	std::string dispatchEvent = "";
+	if (model != nullptr && model->getSimulation() != nullptr && model->getSimulation()->getCurrentEvent() != nullptr) {
+		dispatchEvent = std::to_string(model->getSimulation()->getCurrentEvent()->getComponentinputPortNumber());
 	}
-	if (_probabilityExpression != "") {
-		double p = model->parseExpression(_probabilityExpression);
-		return p > 0.0;
-	}
-	return true;
+	return canFire(model, entity, dispatchEvent);
 }
 
 bool EFSMTransition::canFire(Model* model, Entity* entity, const std::string& dispatchEvent) const {
+	const std::string triggerEvent = _triggerEvent != "" ? _triggerEvent : getInputEvent();
+	if (!TriggerEventMatches(model, triggerEvent, dispatchEvent)) {
+		return false;
+	}
 	bool parentCanFire = DefaultNodeTransition::canFire(model, entity, dispatchEvent);
 	if (!parentCanFire) {
 		return false;
-	}
-	if (_probabilityExpression != "") {
-		double p = model->parseExpression(_probabilityExpression);
-		return p > 0.0;
 	}
 	return true;
 }
@@ -51,17 +67,8 @@ void EFSMTransition::execute(Model* model, Entity* entity) const {
 	DefaultNodeTransition::execute(model, entity);
 }
 
-double EFSMTransition::effectiveProbability(Model* model, Entity* entity) const {
-	(void) entity;
-	if (_probabilityExpression != "") {
-		return model->parseExpression(_probabilityExpression);
-	}
-	return DefaultNodeTransition::effectiveProbability(model, entity);
-}
-
 PetriTransition::PetriTransition(DefaultNode* source, DefaultNode* destination, std::string name)
 	: DefaultNodeTransition(source, destination, name) {
-	//setTransitionKind(TransitionKind::PETRI);
 }
 
 void PetriTransition::setInputArcWeight(std::string color, unsigned int weight) {

@@ -10,7 +10,26 @@
 #include "plugins/components/ModalModel/DefaultNode.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/components/ModalModel/FSMState.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/ModalModel/ModalModelFSM.h"
+#include "plugins/data/Logic/Variable.h"
+
+class ModalModelDefaultProbe : public ModalModelDefault {
+public:
+	ModalModelDefaultProbe(Model* model, const std::string& name = "") : ModalModelDefault(model, name) {}
+
+	void CreateAttachedAttributesProbe() {
+		_createAttachedAttributes();
+	}
+
+	void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = true) {
+		_saveInstance(fields, saveDefaultValues);
+	}
+
+	void DispatchProbe(Entity* entity, unsigned int inputPortNumber) {
+		_onDispatchEvent(entity, inputPortNumber);
+	}
+};
 
 class ModalModelFSMProbe : public ModalModelFSM {
 public:
@@ -91,17 +110,57 @@ TEST(ModalModelEFSMTest, ModalModelFSMKeepsFSMClassname) {
 	EXPECT_NE(modal.getClassname(), Util::TypeOf<ModalModelDefault>());
 }
 
-TEST(ModalModelEFSMTest, TransitionRequiresMatchingInputEventAndGuard) {
+TEST(ModalModelEFSMTest, ModalModelDefaultDispatchesPlainNodesAndTransitions) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	ModalModelDefaultProbe modal(model, "PlainModal");
+	DefaultNode idle(model, "Idle");
+	DefaultNode active(model, "Active");
+	ModalCollectorSinkProbe sink(model, "Sink");
+	DefaultNodeTransition open(&idle, &active, "Open");
+
+	idle.setInitialNode(true);
+	open.setGuardExpression("1");
+
+	modal.addNode(&idle);
+	modal.addNode(&active);
+	modal.setEntryNode(&idle);
+	modal.addTransition(&open);
+	modal.connectTo(&sink);
+	modal.CreateAttachedAttributesProbe();
+
+	Entity* entity = model->createEntity("Order", true);
+	ASSERT_NE(entity, nullptr);
+
+	modal.DispatchProbe(entity, 99);
+
+	ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+	Event* nextEvent = model->getFutureEvents()->front();
+	ASSERT_NE(nextEvent, nullptr);
+	EXPECT_EQ(nextEvent->getEntity(), entity);
+	EXPECT_EQ(nextEvent->getComponent(), &sink);
+	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.PlainModal.CurrentNode"), 1.0);
+	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.PlainModal.LastNode"), static_cast<double>(active.getId()));
+
+	FakeModalPersistence persistence;
+	PersistenceRecord fields(persistence);
+	modal.SaveInstanceProbe(&fields, true);
+	EXPECT_EQ(fields.loadField("transitionTypename[0]", ""), Util::TypeOf<DefaultNodeTransition>());
+}
+
+TEST(ModalModelEFSMTest, EFSMTransitionRequiresMatchingTriggerEventAndGuard) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
 
 	FSMState source(model, "Source");
 	FSMState destination(model, "Destination");
-	DefaultNodeTransition transition(&source, &destination, "Go");
+	EFSMTransition transition(&source, &destination, "Go");
 
-	transition.setInputEvent("2");
-	transition.setGuardExpression("1==1");
+	transition.setTriggerEvent("2");
+	transition.setGuardExpression("1");
 	EXPECT_FALSE(transition.canFire(model, nullptr, "1"));
 	EXPECT_TRUE(transition.canFire(model, nullptr, "2"));
 
@@ -118,10 +177,10 @@ TEST(ModalModelEFSMTest, DispatchUpdatesStateAndSchedulesOutput) {
 	FSMState idle(model, "Idle");
 	FSMState active(model, "Active");
 	ModalCollectorSinkProbe sink(model, "Sink");
-	DefaultNodeTransition open(&idle, &active, "Open");
+	EFSMTransition open(&idle, &active, "Open");
 
 	idle.setInitialNode(true);
-	open.setInputEvent("1");
+	open.setTriggerEvent("1");
 	open.setGuardExpression("1");
 
 	modal.addNode(&active);
@@ -134,6 +193,7 @@ TEST(ModalModelEFSMTest, DispatchUpdatesStateAndSchedulesOutput) {
 
 	Entity* entity = model->createEntity("Order", true);
 	ASSERT_NE(entity, nullptr);
+	ASSERT_TRUE(open.canFire(model, entity, "1"));
 
 	modal.DispatchProbe(entity, 1);
 
@@ -147,6 +207,46 @@ TEST(ModalModelEFSMTest, DispatchUpdatesStateAndSchedulesOutput) {
 	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.DoorFSM.LastNode"), static_cast<double>(active.getId()));
 }
 
+TEST(ModalModelEFSMTest, DispatchExecutesExitTransitionAndEntryActionsInOrder) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	auto* actionOrder = new Variable(model, "actionOrder");
+	ASSERT_NE(actionOrder, nullptr);
+	actionOrder->setValue(0.0);
+
+	ModalModelFSMProbe modal(model, "ActionOrderFSM");
+	FSMState start(model, "Start");
+	FSMState done(model, "Done");
+	ModalCollectorSinkProbe sink(model, "Sink");
+	EFSMTransition finish(&start, &done, "Finish");
+
+	start.setInitialNode(true);
+	start.setExitActionExpression("actionOrder=actionOrder*10+1");
+	finish.setGuardExpression("1");
+	finish.setOutputExpression("actionOrder=actionOrder*10+2");
+	done.setEntryActionExpression("actionOrder=actionOrder*10+3");
+
+	modal.addNode(&start);
+	modal.addNode(&done);
+	modal.setEntryNode(&start);
+	modal.addTransition(&finish);
+	modal.setMaxTransitionsPerDispatch(1);
+	modal.connectTo(&sink);
+	modal.CreateAttachedAttributesProbe();
+
+	Entity* entity = model->createEntity("Order", true);
+	ASSERT_NE(entity, nullptr);
+
+	modal.DispatchProbe(entity, 1);
+
+	EXPECT_DOUBLE_EQ(actionOrder->getValue(), 123.0);
+	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.ActionOrderFSM.CurrentNode"), 1.0);
+	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.ActionOrderFSM.LastNode"), static_cast<double>(done.getId()));
+	EXPECT_EQ(modal.getCurrentNode(), &done);
+}
+
 TEST(ModalModelEFSMTest, DispatchToNonFinalStateUsesOutputPortZero) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -157,7 +257,7 @@ TEST(ModalModelEFSMTest, DispatchToNonFinalStateUsesOutputPortZero) {
 	FSMState active(model, "Active");
 	ModalCollectorSinkProbe normalSink(model, "NormalSink");
 	ModalCollectorSinkProbe finalSink(model, "FinalSink");
-	DefaultNodeTransition open(&idle, &active, "Open");
+	EFSMTransition open(&idle, &active, "Open");
 
 	idle.setInitialNode(true);
 	open.setGuardExpression("1");
@@ -193,8 +293,8 @@ TEST(ModalModelEFSMTest, DispatchToFinalStateUsesOutputPortOneAndStops) {
 	FSMState done(model, "Done");
 	ModalCollectorSinkProbe normalSink(model, "NormalSink");
 	ModalCollectorSinkProbe finalSink(model, "FinalSink");
-	DefaultNodeTransition finish(&start, &done, "Finish");
-	DefaultNodeTransition shouldNotFire(&done, &start, "ShouldNotFire");
+	EFSMTransition finish(&start, &done, "Finish");
+	EFSMTransition shouldNotFire(&done, &start, "ShouldNotFire");
 
 	start.setInitialNode(true);
 	done.setFinalNode(true);
@@ -227,6 +327,43 @@ TEST(ModalModelEFSMTest, DispatchToFinalStateUsesOutputPortOneAndStops) {
 	EXPECT_EQ(modal.getCurrentNode(), &done);
 }
 
+TEST(ModalModelEFSMTest, DispatchWithoutEnabledTransitionStillUpdatesLastNode) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	ModalModelFSMProbe modal(model, "BlockedFSM");
+	FSMState idle(model, "Idle");
+	FSMState next(model, "Next");
+	ModalCollectorSinkProbe sink(model, "Sink");
+	EFSMTransition blocked(&idle, &next, "Blocked");
+
+	idle.setInitialNode(true);
+	blocked.setGuardExpression("0");
+
+	modal.addNode(&idle);
+	modal.addNode(&next);
+	modal.setEntryNode(&idle);
+	modal.addTransition(&blocked);
+	modal.connectTo(&sink);
+	modal.CreateAttachedAttributesProbe();
+
+	Entity* entity = model->createEntity("Order", true);
+	ASSERT_NE(entity, nullptr);
+
+	modal.DispatchProbe(entity, 1);
+
+	ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+	Event* nextEvent = model->getFutureEvents()->front();
+	ASSERT_NE(nextEvent, nullptr);
+	EXPECT_EQ(nextEvent->getEntity(), entity);
+	EXPECT_EQ(nextEvent->getComponent(), &sink);
+	EXPECT_EQ(nextEvent->getComponentinputPortNumber(), 0u);
+	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.BlockedFSM.CurrentNode"), 0.0);
+	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.BlockedFSM.LastNode"), static_cast<double>(idle.getId()));
+	EXPECT_EQ(modal.getCurrentNode(), &idle);
+}
+
 TEST(ModalModelEFSMTest, DispatchStartingAtFinalStateDoesNotFireOutgoingTransition) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -237,7 +374,7 @@ TEST(ModalModelEFSMTest, DispatchStartingAtFinalStateDoesNotFireOutgoingTransiti
 	FSMState next(model, "Next");
 	ModalCollectorSinkProbe normalSink(model, "NormalSink");
 	ModalCollectorSinkProbe finalSink(model, "FinalSink");
-	DefaultNodeTransition shouldNotFire(&done, &next, "ShouldNotFire");
+	EFSMTransition shouldNotFire(&done, &next, "ShouldNotFire");
 
 	done.setInitialNode(true);
 	done.setFinalNode(true);
@@ -264,6 +401,7 @@ TEST(ModalModelEFSMTest, DispatchStartingAtFinalStateDoesNotFireOutgoingTransiti
 	EXPECT_EQ(nextEvent->getComponent(), &finalSink);
 	EXPECT_EQ(nextEvent->getComponentinputPortNumber(), 1u);
 	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.AlreadyFinalFSM.CurrentNode"), 0.0);
+	EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.ModalModel.AlreadyFinalFSM.LastNode"), static_cast<double>(done.getId()));
 	EXPECT_EQ(modal.getCurrentNode(), &done);
 }
 
@@ -286,6 +424,29 @@ TEST(ModalModelEFSMTest, FSMCheckRequiresFSMStatesAndInitialState) {
 	EXPECT_TRUE(modal.CheckProbe(errorMessage));
 }
 
+TEST(ModalModelEFSMTest, FSMCheckRejectsNonEFSMTransitions) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	ModalModelFSMProbe modal(model, "StrictFSM");
+	FSMState source(model, "Source");
+	FSMState destination(model, "Destination");
+	DefaultNodeTransition plainTransition(&source, &destination, "PlainTransition");
+
+	source.setInitialNode(true);
+	plainTransition.setGuardExpression("1");
+
+	modal.addNode(&source);
+	modal.addNode(&destination);
+	modal.setEntryNode(&source);
+	modal.addTransition(&plainTransition);
+
+	std::string errorMessage;
+	EXPECT_FALSE(modal.CheckProbe(errorMessage));
+	EXPECT_NE(errorMessage.find("not an EFSMTransition"), std::string::npos);
+}
+
 TEST(ModalModelEFSMTest, SavePersistsEFSMTransitionSpecificFields) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -299,8 +460,6 @@ TEST(ModalModelEFSMTest, SavePersistsEFSMTransitionSpecificFields) {
 	idle.setInitialNode(true);
 	open.setTriggerEvent("1");
 	open.setGuardExpression("1==1");
-	open.setProbabilityExpression("0.75");
-	open.setTransitionKind(DefaultNodeTransition::TransitionKind::PROBABILISTIC);
 
 	modal.addNode(&idle);
 	modal.addNode(&active);
@@ -315,7 +474,8 @@ TEST(ModalModelEFSMTest, SavePersistsEFSMTransitionSpecificFields) {
 	EXPECT_EQ(fields.loadField("transitionTypename[0]", ""), Util::TypeOf<EFSMTransition>());
 	EXPECT_EQ(fields.loadField("transitionInputEvent[0]", ""), "1");
 	EXPECT_EQ(fields.loadField("transitionTriggerEvent[0]", ""), "1");
-	EXPECT_EQ(fields.loadField("transitionProbabilityExpression[0]", ""), "0.75");
+	EXPECT_EQ(fields.loadField("transitionPriority[0]", 999u), 999u);
+	EXPECT_EQ(fields.loadField("transitionProbabilityExpression[0]", "missing"), "missing");
 }
 
 TEST(ModalModelEFSMTest, LoadAndSavePreservesFSMNodesEntryAndEFSMTransitionFields) {
@@ -335,10 +495,6 @@ TEST(ModalModelEFSMTest, LoadAndSavePreservesFSMNodesEntryAndEFSMTransitionField
 	open.setTriggerEvent("2");
 	open.setGuardExpression("1==1");
 	open.setOutputExpression("y=y+1");
-	open.setProbabilityExpression("0.25");
-	open.setPriority(3);
-	open.setProbability(0.5);
-	open.setTransitionKind(DefaultNodeTransition::TransitionKind::PROBABILISTIC);
 
 	original.addNode(&idle);
 	original.addNode(&active);
@@ -348,6 +504,10 @@ TEST(ModalModelEFSMTest, LoadAndSavePreservesFSMNodesEntryAndEFSMTransitionField
 	FakeModalPersistence persistence;
 	PersistenceRecord saved(persistence);
 	original.SaveInstanceProbe(&saved, true);
+	saved.saveField("transitionPriority[0]", 3u);
+	saved.saveField("transitionProbability[0]", 0.5, 1.0, true);
+	saved.saveField("transitionKind[0]", 1, 0, true);
+	saved.saveField("transitionProbabilityExpression[0]", "0.25");
 
 	ModalModelFSMProbe loaded(model, "LoadedFSM");
 	ASSERT_TRUE(loaded.LoadInstanceProbe(&saved));
@@ -374,10 +534,6 @@ TEST(ModalModelEFSMTest, LoadAndSavePreservesFSMNodesEntryAndEFSMTransitionField
 	EXPECT_EQ(loadedOpen->getInputEvent(), "2");
 	EXPECT_EQ(loadedOpen->getGuardExpression(), "1==1");
 	EXPECT_EQ(loadedOpen->getOutputExpression(), "y=y+1");
-	EXPECT_EQ(loadedOpen->getProbabilityExpression(), "0.25");
-	EXPECT_EQ(loadedOpen->getPriority(), 3u);
-	EXPECT_DOUBLE_EQ(loadedOpen->getProbability(), 0.5);
-	EXPECT_EQ(loadedOpen->getTransitionKind(), DefaultNodeTransition::TransitionKind::PROBABILISTIC);
 
 	PersistenceRecord resaved(persistence);
 	loaded.SaveInstanceProbe(&resaved, true);
@@ -386,5 +542,8 @@ TEST(ModalModelEFSMTest, LoadAndSavePreservesFSMNodesEntryAndEFSMTransitionField
 	EXPECT_EQ(resaved.loadField("entryNode", ""), "Idle");
 	EXPECT_EQ(resaved.loadField("transitionTypename[0]", ""), Util::TypeOf<EFSMTransition>());
 	EXPECT_EQ(resaved.loadField("transitionTriggerEvent[0]", ""), "2");
-	EXPECT_EQ(resaved.loadField("transitionProbabilityExpression[0]", ""), "0.25");
+	EXPECT_EQ(resaved.loadField("transitionPriority[0]", 999u), 999u);
+	EXPECT_EQ(resaved.loadField("transitionProbability[0]", 9.0), 9.0);
+	EXPECT_EQ(resaved.loadField("transitionKind[0]", 9), 9);
+	EXPECT_EQ(resaved.loadField("transitionProbabilityExpression[0]", "missing"), "missing");
 }

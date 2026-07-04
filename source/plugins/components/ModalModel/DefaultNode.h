@@ -24,9 +24,6 @@ class Entity;
 
 class DefaultNodeTransition {
 public:
-	enum class TransitionKind : int { DETERMINISTIC = 0, PROBABILISTIC = 1 };
-
-public:
 	DefaultNodeTransition(DefaultNode* source, DefaultNode* destination, std::string name = "");
 	virtual ~DefaultNodeTransition() = default;
 
@@ -43,18 +40,11 @@ public:
 	std::string getOutputExpression() const;
 	void setInputEvent(std::string inputEvent);
 	std::string getInputEvent() const;
-	void setPriority(unsigned int priority);
-	unsigned int getPriority() const;
-	void setProbability(double probability);
-	double getProbability() const;
-	void setTransitionKind(TransitionKind transitionKind);
-	TransitionKind getTransitionKind() const;
 
 public:
 	virtual bool canFire(Model* model, Entity* entity) const;
 	virtual bool canFire(Model* model, Entity* entity, const std::string& dispatchEvent) const;
 	virtual void execute(Model* model, Entity* entity) const;
-	virtual double effectiveProbability(Model* model, Entity* entity) const;
 
 
 protected:
@@ -66,9 +56,6 @@ private:
 	std::string _guardExpression = "";
 	std::string _outputExpression = "";
 	std::string _inputEvent = "";
-	unsigned int _priority = 0;
-	double _probability = 1.0;
-	TransitionKind _transitionKind = TransitionKind::DETERMINISTIC;
 };
 
 /*!

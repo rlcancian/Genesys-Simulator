@@ -12,18 +12,14 @@ public:
 public:
 	void setTriggerEvent(std::string triggerEvent);
 	std::string getTriggerEvent() const;
-	void setProbabilityExpression(std::string probabilityExpression);
-	std::string getProbabilityExpression() const;
 
 public:
 	virtual bool canFire(Model* model, Entity* entity) const override;
 	virtual bool canFire(Model* model, Entity* entity, const std::string& dispatchEvent) const override;
 	virtual void execute(Model* model, Entity* entity) const override;
-	virtual double effectiveProbability(Model* model, Entity* entity) const override;
 
 private:
 	std::string _triggerEvent = "";
-	std::string _probabilityExpression = "";
 };
 
 class PetriTransition : public DefaultNodeTransition {

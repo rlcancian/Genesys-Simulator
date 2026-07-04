@@ -15,15 +15,10 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
-#include <algorithm>
-#include <cstdlib>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
-#include "plugins/components/ModalModel/FSMState.h"
 // #include "kernel/simulator/Simulator.h"
 // #include "kernel/simulator/PluginManager.h"
 
@@ -45,16 +40,6 @@ int NodeIndex(List<DefaultNode *> *nodes, DefaultNode *node) {
   return -1;
 }
 
-void ExecuteStateAction(Model *model, FSMState *state, bool entryAction) {
-  if (model == nullptr || state == nullptr) {
-    return;
-  }
-  const std::string expression = entryAction ? state->getEntryActionExpression()
-                                             : state->getExitActionExpression();
-  if (expression != "") {
-    model->parseExpression(expression);
-  }
-}
 } // namespace
 
 /// Externalize function GetPluginInformation to be accessible through dynamic
@@ -259,15 +244,15 @@ bool ModalModelDefault::_loadInstance(PersistenceRecord *fields) {
       }
       std::string transitionType = fields->loadField(
           "transitionTypename" + suffix, Util::TypeOf<DefaultNodeTransition>());
-      DefaultNodeTransition *transition = nullptr;
-      if (transitionType == Util::TypeOf<EFSMTransition>()) {
-        transition = new EFSMTransition(
-            sourceIt->second, destinationIt->second,
-            fields->loadField("transitionName" + suffix, "T" + suffix));
-      } else {
-        transition = new DefaultNodeTransition(
-            sourceIt->second, destinationIt->second,
-            fields->loadField("transitionName" + suffix, "T" + suffix));
+      DefaultNodeTransition *transition = _createTransitionForLoad(
+          sourceIt->second, destinationIt->second, transitionType,
+          fields->loadField("transitionName" + suffix, "T" + suffix), fields,
+          suffix);
+      if (transition == nullptr) {
+        traceError("Skipping modal transition \"" +
+                   fields->loadField("transitionName" + suffix, "T" + suffix) +
+                   "\" while loading \"" + getName() + "\"");
+        continue;
       }
       transition->setGuardExpression(
           fields->loadField("transitionGuard" + suffix, ""));
@@ -275,22 +260,7 @@ bool ModalModelDefault::_loadInstance(PersistenceRecord *fields) {
           fields->loadField("transitionOutput" + suffix, ""));
       transition->setInputEvent(
           fields->loadField("transitionInputEvent" + suffix, ""));
-      if (EFSMTransition *efsmTransition =
-              dynamic_cast<EFSMTransition *>(transition)) {
-        efsmTransition->setTriggerEvent(fields->loadField(
-            "transitionTriggerEvent" + suffix, transition->getInputEvent()));
-        efsmTransition->setProbabilityExpression(
-            fields->loadField("transitionProbabilityExpression" + suffix, ""));
-      }
-      transition->setPriority(
-          fields->loadField("transitionPriority" + suffix, 0u));
-      transition->setProbability(
-          fields->loadField("transitionProbability" + suffix, 1.0));
-      transition->setTransitionKind(
-          static_cast<DefaultNodeTransition::TransitionKind>(fields->loadField(
-              "transitionKind" + suffix,
-              static_cast<int>(
-                  DefaultNodeTransition::TransitionKind::DETERMINISTIC))));
+      _loadTransitionSpecificFields(transition, fields, suffix);
       addTransition(transition);
     }
 
@@ -355,9 +325,7 @@ void ModalModelDefault::_saveInstance(PersistenceRecord *fields,
                         saveDefaultValues);
     }
     fields->saveField("transitionTypename" + suffix,
-                      dynamic_cast<EFSMTransition *>(transition) != nullptr
-                          ? Util::TypeOf<EFSMTransition>()
-                          : Util::TypeOf<DefaultNodeTransition>(),
+                      _getTransitionTypename(transition),
                       Util::TypeOf<DefaultNodeTransition>(), saveDefaultValues);
     fields->saveField("transitionName" + suffix, transition->getName(), "",
                       saveDefaultValues);
@@ -367,24 +335,8 @@ void ModalModelDefault::_saveInstance(PersistenceRecord *fields,
                       transition->getOutputExpression(), "", saveDefaultValues);
     fields->saveField("transitionInputEvent" + suffix,
                       transition->getInputEvent(), "", saveDefaultValues);
-    if (EFSMTransition *efsmTransition =
-            dynamic_cast<EFSMTransition *>(transition)) {
-      fields->saveField("transitionTriggerEvent" + suffix,
-                        efsmTransition->getTriggerEvent(), "",
-                        saveDefaultValues);
-      fields->saveField("transitionProbabilityExpression" + suffix,
-                        efsmTransition->getProbabilityExpression(), "",
-                        saveDefaultValues);
-    }
-    fields->saveField("transitionPriority" + suffix, transition->getPriority(),
-                      0u, saveDefaultValues);
-    fields->saveField("transitionProbability" + suffix,
-                      transition->getProbability(), 1.0, saveDefaultValues);
-    fields->saveField(
-        "transitionKind" + suffix,
-        static_cast<int>(transition->getTransitionKind()),
-        static_cast<int>(DefaultNodeTransition::TransitionKind::DETERMINISTIC),
-        saveDefaultValues);
+    _saveTransitionSpecificFields(transition, fields, suffix,
+                                  saveDefaultValues);
     i++;
   }
 }
@@ -426,19 +378,6 @@ bool ModalModelDefault::_check(std::string &errorMessage) {
     }
     nodeNames.insert(node->getName());
 
-    FSMState *fsmState = dynamic_cast<FSMState *>(node);
-    if (fsmState != nullptr) {
-      if (fsmState->getEntryActionExpression() != "") {
-        resultAll &= _parentModel->checkExpression(
-            fsmState->getEntryActionExpression(),
-            "entry action[" + fsmState->getName() + "]", errorMessage);
-      }
-      if (fsmState->getExitActionExpression() != "") {
-        resultAll &= _parentModel->checkExpression(
-            fsmState->getExitActionExpression(),
-            "exit action[" + fsmState->getName() + "]", errorMessage);
-      }
-    }
   }
 
   for (auto transition : *_transitions->list()) {
@@ -457,35 +396,16 @@ bool ModalModelDefault::_check(std::string &errorMessage) {
                       "\" has a destination outside the modal model. ";
       resultAll = false;
     }
-    if (transition->getProbability() < 0.0) {
-      errorMessage += "Transition \"" + transition->getName() +
-                      "\" has negative probability. ";
-      resultAll = false;
-    }
     std::string guard = transition->getGuardExpression();
     if (guard != "") {
       resultAll &= _parentModel->checkExpression(
           guard, "guard expression[" + transition->getName() + "]",
           errorMessage);
     }
-    std::string inputEvent = transition->getInputEvent();
-    if (inputEvent != "") {
-      resultAll &= _parentModel->checkExpression(
-          inputEvent, "input event[" + transition->getName() + "]",
-          errorMessage);
-    }
     std::string output = transition->getOutputExpression();
     if (output != "") {
       resultAll &= _parentModel->checkExpression(
           output, "output expression[" + transition->getName() + "]",
-          errorMessage);
-    }
-    EFSMTransition *efsmTransition = dynamic_cast<EFSMTransition *>(transition);
-    if (efsmTransition != nullptr &&
-        efsmTransition->getProbabilityExpression() != "") {
-      resultAll &= _parentModel->checkExpression(
-          efsmTransition->getProbabilityExpression(),
-          "probability expression[" + transition->getName() + "]",
           errorMessage);
     }
   }
@@ -522,22 +442,17 @@ void ModalModelDefault::setTimeDelayPerDispatchTimeUnit(
 
 void ModalModelDefault::_onDispatchEvent(Entity *entity,
                                          unsigned int inputPortNumber) {
+  (void)inputPortNumber;
   std::string currentNodeAttribute =
       "Entity.ModalModel." + getName() + ".CurrentNode";
   std::string lastNodeAttribute =
       "Entity.ModalModel." + getName() + ".LastNode";
-  const std::string dispatchEvent = std::to_string(inputPortNumber);
 
   DefaultNode *localCurrentNode = nullptr;
   double index = entity->getAttributeValue(currentNodeAttribute);
-  double lastNodeId = entity->getAttributeValue(lastNodeAttribute);
-  if (index == 0.0 && lastNodeId == 0.0 && _entryNode != nullptr) {
-    localCurrentNode = _entryNode;
-  } else {
-    unsigned int currentIdx = static_cast<unsigned int>(index);
-    if (currentIdx < _nodes->size()) {
-      localCurrentNode = _nodes->getAtRank(currentIdx);
-    }
+  unsigned int currentIdx = static_cast<unsigned int>(index);
+  if (currentIdx < _nodes->size()) {
+    localCurrentNode = _nodes->getAtRank(currentIdx);
   }
   if (localCurrentNode == nullptr) {
     localCurrentNode = _entryNode;
@@ -574,17 +489,11 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
                         " transitions fired sor far",
                     TraceManager::Level::L7_internal);
 
-    if (localCurrentNode->isFinalNode()) {
-      traceSimulation(this, "Current node is final; no transition will fire",
-                      TraceManager::Level::L7_internal);
-      break;
-    }
-
     List<DefaultNodeTransition *> *outgoing =
         localCurrentNode->getTransitions();
     std::vector<DefaultNodeTransition *> enabled;
     for (DefaultNodeTransition *transition : *outgoing->list()) {
-      if (transition->canFire(_parentModel, entity, dispatchEvent)) {
+      if (transition->canFire(_parentModel, entity)) {
         enabled.push_back(transition);
       }
     }
@@ -593,60 +502,15 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
                       TraceManager::Level::L7_internal);
       break;
     } else {
-      std::stable_sort(enabled.begin(), enabled.end(),
-                       [](DefaultNodeTransition *a, DefaultNodeTransition *b) {
-                         return a->getPriority() < b->getPriority();
-                       });
-      const unsigned int bestPriority = enabled.front()->getPriority();
-      std::vector<DefaultNodeTransition *> candidates;
-      for (DefaultNodeTransition *option : enabled) {
-        if (option->getPriority() == bestPriority) {
-          candidates.push_back(option);
-        }
-      }
-      DefaultNodeTransition *chosen = candidates.front();
-      bool hasProbabilisticCandidate = false;
-      for (DefaultNodeTransition *option : candidates) {
-        if (option->getTransitionKind() ==
-            DefaultNodeTransition::TransitionKind::PROBABILISTIC) {
-          hasProbabilisticCandidate = true;
-          break;
-        }
-      }
-      if (hasProbabilisticCandidate) {
-        double probabilitySum = 0.0;
-        for (DefaultNodeTransition *option : candidates) {
-          const double p =
-              std::max(0.0, option->effectiveProbability(_parentModel, entity));
-          probabilitySum += p;
-        }
-        if (probabilitySum > 0.0) {
-          double sample = (static_cast<double>(std::rand()) /
-                           static_cast<double>(RAND_MAX)) *
-                          probabilitySum;
-          double accum = 0.0;
-          for (DefaultNodeTransition *option : candidates) {
-            accum += std::max(
-                0.0, option->effectiveProbability(_parentModel, entity));
-            if (sample <= accum) {
-              chosen = option;
-              break;
-            }
-          }
-        }
-      }
+      DefaultNodeTransition *chosen = enabled.front();
       traceSimulation(this,
                       "Transition \"" + chosen->getName() + "\" from \"" +
                           chosen->getSource()->getName() + "\" to \"" +
                           chosen->getDestination()->getName() + "\" fires.",
                       TraceManager::Level::L7_internal);
-      ExecuteStateAction(_parentModel,
-                         dynamic_cast<FSMState *>(localCurrentNode), false);
       chosen->execute(_parentModel, entity);
       transitions++;
       DefaultNode *nextNode = chosen->getDestination();
-      ExecuteStateAction(_parentModel, dynamic_cast<FSMState *>(nextNode),
-                         true);
       localCurrentNode = nextNode;
       if (localCurrentNode != nullptr) {
         _currentNode = localCurrentNode;
@@ -658,14 +522,6 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
         entity->setAttributeValue(
             lastNodeAttribute, static_cast<double>(localCurrentNode->getId()),
             "", true);
-          if (localCurrentNode->isFinalNode()) {
-            traceSimulation(this,
-                            "Reached final node \"" +
-                                localCurrentNode->getName() +
-                                "\"; no more transitions will fire",
-                            TraceManager::Level::L7_internal);
-            break;
-          }
       } else {
         traceError("New current node is unknown");
       }
@@ -685,15 +541,41 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
           ->getReplicationBaseTimeUnit(); // getReplicationLengthTimeUnit();
   waitTime *= Util::TimeUnitConvert(_timeDelayPerDispatchTimeUnit, stu);
 
-  const unsigned int outputPort =
-      localCurrentNode != nullptr && localCurrentNode->isFinalNode() ? 1u : 0u;
-  Connection *connection =
-      this->getConnectionManager()->getConnectionAtPort(outputPort);
-  if (connection == nullptr) {
-    connection = this->getConnectionManager()->getFrontConnection();
-  }
   _parentModel->sendEntityToComponent(
-      entity, connection, waitTime);
+      entity, this->getConnectionManager()->getFrontConnection(), waitTime);
+}
+
+DefaultNodeTransition *ModalModelDefault::_createTransitionForLoad(
+    DefaultNode *source, DefaultNode *destination,
+    const std::string &transitionTypename, const std::string &transitionName,
+    PersistenceRecord *fields, const std::string &suffix) {
+  (void)transitionTypename;
+  (void)fields;
+  (void)suffix;
+  return new DefaultNodeTransition(source, destination, transitionName);
+}
+
+std::string
+ModalModelDefault::_getTransitionTypename(DefaultNodeTransition *transition) const {
+  (void)transition;
+  return Util::TypeOf<DefaultNodeTransition>();
+}
+
+void ModalModelDefault::_loadTransitionSpecificFields(
+    DefaultNodeTransition *transition, PersistenceRecord *fields,
+    const std::string &suffix) {
+  (void)transition;
+  (void)fields;
+  (void)suffix;
+}
+
+void ModalModelDefault::_saveTransitionSpecificFields(
+    DefaultNodeTransition *transition, PersistenceRecord *fields,
+    const std::string &suffix, bool saveDefaultValues) {
+  (void)transition;
+  (void)fields;
+  (void)suffix;
+  (void)saveDefaultValues;
 }
 
 DefaultNode *ModalModelDefault::getCurrentNode() { return _currentNode; }

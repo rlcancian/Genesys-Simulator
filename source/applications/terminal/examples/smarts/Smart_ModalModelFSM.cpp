@@ -45,14 +45,12 @@ int Smart_ModalModelFSM::main(int argc, char** argv) {
 	EFSMTransition* r2g = new EFSMTransition(red, green, "RedToGreen");
 	r2g->setGuardExpression("1");
 	r2g->setOutputExpression("switches=switches+1");
-	r2g->setPriority(0);
 	fsm->addTransition(r2g);
 	fsm->addOutputExpressionReference(plugins->newInstance<Variable>(model, "switches"));
 
 	EFSMTransition* g2f = new EFSMTransition(green, finished, "GreenToFinished");
 	g2f->setGuardExpression("1");
 	g2f->setOutputExpression("switches=switches+1");
-	g2f->setPriority(1);
 	fsm->addTransition(g2f);
 
 	create->getConnectionManager()->insert(fsm);
