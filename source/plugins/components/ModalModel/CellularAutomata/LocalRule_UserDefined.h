@@ -3,7 +3,7 @@
 // LocalRule_UserDefined — a cellular-automaton local rule whose transition function is supplied by
 // the user as C++ source and compiled at runtime to a shared library (via the GenESyS CppCompiler),
 // then loaded and invoked per cell.
-// This is "Linha B" of Tema 6: arbitrary local rules defined by the user, without recompiling GenESyS.
+// Arbitrary local rules defined by the user, without recompiling GenESyS.
 //
 // The user writes one C-linkage function (no GenESyS headers needed). Two contracts are accepted:
 //
@@ -19,8 +19,8 @@
 //   - numDimensions: (extended only) the lattice dimensionality.
 //   - return value : the cell's next state.
 //
-// The extended contract lets a rule depend on the cell's position in the lattice (tema 6 §6: the
-// local rule may need "a posição da célula no lattice ... a dimensão do lattice"). If the compiled
+// The extended contract lets a rule depend on the cell's position in the lattice: a rule may need
+// the cell's position and the lattice dimensionality. If the compiled
 // library exports nextStateEx it is used; otherwise nextState is used. At least one must be present.
 //
 // Example (elementary rule 90, next = left XOR right):
@@ -41,6 +41,8 @@
 
 #include <dlfcn.h>
 
+#include <array>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -81,6 +83,9 @@ public:
 	bool build(const std::string& userSource, std::string& errorMessage) {
 		if (compiler == nullptr) {
 			errorMessage += "LocalRule_UserDefined: no CppCompiler was provided.";
+			return false;
+		}
+		if (!validateUserSource(userSource, errorMessage)) {
 			return false;
 		}
 		// Working directory for the generated source and library. Use the compiler's temp dir (the
@@ -197,7 +202,7 @@ public:
 		long next;
 		if (ruleFunctionEx != nullptr) {
 			// Extended contract: also hand the rule the cell's n-dimensional position so it can be
-			// position-dependent (tema 6 §6). getPosition() is populated by Lattice::init().
+			// position-dependent. getPosition() is populated by Lattice::init().
 			const std::vector<int> position = cell->getPosition();
 			next = ruleFunctionEx(self, neighborStatesBuffer.data(), numNeighbors,
 				position.data(), static_cast<int>(position.size()));
@@ -208,6 +213,76 @@ public:
 	}
 
 private:
+	static constexpr std::size_t maxUserSourceBytes = 64u * 1024u;
+
+	static bool validateUserSource(const std::string& userSource, std::string& errorMessage) {
+		if (userSource.size() > maxUserSourceBytes) {
+			errorMessage += "LocalRule_UserDefined: user source exceeds the 64 KiB safety limit.";
+			return false;
+		}
+		if (containsForbiddenPreprocessorDirective(userSource, "include") ||
+				containsForbiddenPreprocessorDirective(userSource, "pragma")) {
+			errorMessage += "LocalRule_UserDefined: preprocessor include/pragma directives are not allowed "
+				"in user-defined cellular automata rules.";
+			return false;
+		}
+
+		// This is a conservative defense-in-depth gate, not a sandbox. Runtime-compiled C++ must still
+		// be treated as trusted code unless the caller adds process-level isolation.
+		static constexpr std::array<const char*, 16> forbiddenIdentifiers = {{
+			"asm", "connect", "dlopen", "dlsym", "exec", "fopen", "fork", "ifstream",
+			"ofstream", "popen", "remove", "rename", "socket", "system", "unlink", "write"
+		}};
+		for (const char* identifier : forbiddenIdentifiers) {
+			if (containsIdentifier(userSource, identifier)) {
+				errorMessage += "LocalRule_UserDefined: forbidden token '" + std::string(identifier) +
+					"' is not allowed in user-defined cellular automata rules.";
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static bool containsForbiddenPreprocessorDirective(const std::string& source, const std::string& directive) {
+		std::size_t position = 0;
+		while ((position = source.find('#', position)) != std::string::npos) {
+			std::size_t cursor = position + 1;
+			while (cursor < source.size() && isSpace(source[cursor])) {
+				++cursor;
+			}
+			if (source.compare(cursor, directive.size(), directive) == 0 &&
+					(cursor + directive.size() == source.size() ||
+						!isIdentifierCharacter(source[cursor + directive.size()]))) {
+				return true;
+			}
+			++position;
+		}
+		return false;
+	}
+
+	static bool containsIdentifier(const std::string& source, const std::string& identifier) {
+		std::size_t position = 0;
+		while ((position = source.find(identifier, position)) != std::string::npos) {
+			const bool leftBoundary = position == 0 || !isIdentifierCharacter(source[position - 1]);
+			const std::size_t after = position + identifier.size();
+			const bool rightBoundary = after >= source.size() || !isIdentifierCharacter(source[after]);
+			if (leftBoundary && rightBoundary) {
+				return true;
+			}
+			position = after;
+		}
+		return false;
+	}
+
+	static bool isIdentifierCharacter(char value) {
+		const unsigned char ch = static_cast<unsigned char>(value);
+		return std::isalnum(ch) != 0 || ch == '_';
+	}
+
+	static bool isSpace(char value) {
+		return std::isspace(static_cast<unsigned char>(value)) != 0;
+	}
+
 	CppCompiler* compiler = nullptr; // injected, not owned
 	NextStateFunction ruleFunction = nullptr;     // simple contract symbol, or null if the rule uses Ex
 	NextStateExFunction ruleFunctionEx = nullptr; // extended contract symbol (preferred when present)

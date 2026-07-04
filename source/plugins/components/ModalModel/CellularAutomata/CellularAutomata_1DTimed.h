@@ -17,7 +17,7 @@ public:
 protected:
     virtual void applyLocalRule() override {
         Cell* cell;
-		State state; // was an uninitialized State* dereferenced below (wild-pointer write); use a local
+		State state;
         int nextRow;
 		int maxRows = std::min<int>(lattice->getDimension(1)-2, lattice->getDimension(1)-2); // simulatedTime);
         for (int row=maxRows; row>=0; row--) {

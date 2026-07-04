@@ -11,6 +11,8 @@
 #include "kernel/simulator/Persistence.h"
 
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -50,8 +52,21 @@ void configureValidUserDefined(ComponentProbe& comp, const std::string& ruleSour
 
 const std::string kRule90 = LocalRule_UserDefined::wrapBody("return neighbors[0] ^ neighbors[1];");
 
+void configureGenericSpecialLattice(ComponentProbe& comp, CellularAutomataComp::LatticeType latticeType,
+		const std::vector<unsigned short>& dimensions) {
+	comp.setCellularAutomataType(CellularAutomataComp::CellularAutomataType::CLASSIC);
+	comp.setLatticeType(latticeType);
+	comp.getlattice()->setDimensions(dimensions);
+	comp.setBoundaryType(CellularAutomataComp::BoundaryType::FIXED);
+	comp.setStateSetType(CellularAutomataComp::StateSetType::ENUMERATED);
+	comp.setLocalRuleType(CellularAutomataComp::LocalRuleType::BIASED_COMPETITION);
+}
+
 } // namespace
 
+// CheckPassesAndBuildsUserDefinedRule — happy path for a USERDEFINED rule. Configures a valid 1D component
+// with a Rule-90 source, runs _check, and asserts the component installs a LocalRule_UserDefined that is
+// compiled and ready (isReady), proving check both validates and builds the runtime rule.
 TEST(CellularAutomataComponent, CheckPassesAndBuildsUserDefinedRule) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -66,6 +81,8 @@ TEST(CellularAutomataComponent, CheckPassesAndBuildsUserDefinedRule) {
 	EXPECT_TRUE(rule->isReady()) << "the user rule should be compiled and loaded after check";
 }
 
+// CheckRejectsUserDefinedWithoutSource — a USERDEFINED rule with empty source must fail _check with a clear
+// "requires source code" message, not crash or silently pass.
 TEST(CellularAutomataComponent, CheckRejectsUserDefinedWithoutSource) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -77,6 +94,8 @@ TEST(CellularAutomataComponent, CheckRejectsUserDefinedWithoutSource) {
 	EXPECT_NE(error.find("requires source code"), std::string::npos) << error;
 }
 
+// CheckRejectsUserDefinedWithBadSource — source that does not compile must fail _check with a "failed to
+// compile" message. Confirms a compiler error in user code surfaces gracefully instead of crashing.
 TEST(CellularAutomataComponent, CheckRejectsUserDefinedWithBadSource) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -88,6 +107,8 @@ TEST(CellularAutomataComponent, CheckRejectsUserDefinedWithBadSource) {
 	EXPECT_NE(error.find("failed to compile"), std::string::npos) << error;
 }
 
+// CheckRejectsMissingCellularAutomataType — a component left entirely unconfigured (null automaton) must
+// fail _check with a non-empty error, guarding against running an uninitialized component.
 TEST(CellularAutomataComponent, CheckRejectsMissingCellularAutomataType) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -98,6 +119,9 @@ TEST(CellularAutomataComponent, CheckRejectsMissingCellularAutomataType) {
 	EXPECT_FALSE(error.empty());
 }
 
+// PersistenceRoundTripPreservesConfiguration — saves a fully configured component (including non-default
+// update policy, block size and seed) into a PersistenceRecord, loads it into a fresh component, and
+// asserts every field round-trips and the reloaded component still passes _check (recompiling its rule).
 TEST(CellularAutomataComponent, PersistenceRoundTripPreservesConfiguration) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -132,4 +156,108 @@ TEST(CellularAutomataComponent, PersistenceRoundTripPreservesConfiguration) {
 	// The reloaded configuration must still pass the semantic check (rebuilds and recompiles the rule).
 	std::string error;
 	EXPECT_TRUE(loaded.CheckProbe(&error)) << error;
+}
+
+// CheckAcceptsTriangularAndHexagonalLattices — initializes 2D Triangular and Hexagonal lattices and asserts
+// an interior cell has 3 and 6 neighbors respectively, proving the special (non-rectangular) lattices build.
+TEST(CellularAutomataComponent, CheckAcceptsTriangularAndHexagonalLattices) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe triangular(model, "CA_Triangular");
+	configureGenericSpecialLattice(triangular, CellularAutomataComp::LatticeType::TRIANGULAR, {3, 3});
+	std::string error;
+	ASSERT_TRUE(triangular.initializeCellularAutomata(&error)) << error;
+	EXPECT_EQ(triangular.getlattice()->getCell({1, 1})->getNeighbors().size(), 3u);
+
+	ComponentProbe hexagonal(model, "CA_Hexagonal");
+	configureGenericSpecialLattice(hexagonal, CellularAutomataComp::LatticeType::HEXAGONAL, {3, 3});
+	error.clear();
+	ASSERT_TRUE(hexagonal.initializeCellularAutomata(&error)) << error;
+	EXPECT_EQ(hexagonal.getlattice()->getCell({1, 1})->getNeighbors().size(), 6u);
+}
+
+// CheckRejectsInvalidSpecialLattices — the special lattices have constraints: Triangular is 2D-only and
+// Hexagonal supports only radius 1. Asserts _check rejects a 3D triangular ("exactly two dimensions") and a
+// radius-2 hexagonal ("radius-1") with the matching error messages.
+TEST(CellularAutomataComponent, CheckRejectsInvalidSpecialLattices) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe triangular3d(model, "CA_Triangular3D");
+	configureGenericSpecialLattice(triangular3d, CellularAutomataComp::LatticeType::TRIANGULAR, {3, 3, 3});
+	std::string error;
+	EXPECT_FALSE(triangular3d.CheckProbe(&error));
+	EXPECT_NE(error.find("exactly two dimensions"), std::string::npos) << error;
+
+	ComponentProbe hexRadius2(model, "CA_HexRadius2");
+	configureGenericSpecialLattice(hexRadius2, CellularAutomataComp::LatticeType::HEXAGONAL, {3, 3});
+	hexRadius2.getNeighboorhood()->setRadius(2);
+	error.clear();
+	EXPECT_FALSE(hexRadius2.CheckProbe(&error));
+	EXPECT_NE(error.find("radius-1"), std::string::npos) << error;
+}
+
+// CheckAcceptsNetworkLatticeWithEdges — a NETWORK lattice configured with explicit edges initializes, and
+// each node's neighbor count matches its degree in the edge list (node 0 has 2, node 1 has 1).
+TEST(CellularAutomataComponent, CheckAcceptsNetworkLatticeWithEdges) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe network(model, "CA_Network");
+	configureGenericSpecialLattice(network, CellularAutomataComp::LatticeType::NETWORK, {4});
+	network.setNetworkEdges({{0, 1}, {0, 2}, {2, 3}});
+	std::string error;
+	ASSERT_TRUE(network.initializeCellularAutomata(&error)) << error;
+	EXPECT_EQ(network.getlattice()->getCell(0L)->getNeighbors().size(), 2u);
+	EXPECT_EQ(network.getlattice()->getCell(1L)->getNeighbors().size(), 1u);
+}
+
+// CheckRejectsNetworkWithoutOrWithInvalidEdges — a NETWORK lattice needs valid edges. Asserts _check fails
+// with "at least one edge" when none are set, and with "existing cells" when an edge points to a
+// non-existent node (0->4 on a 4-cell lattice).
+TEST(CellularAutomataComponent, CheckRejectsNetworkWithoutOrWithInvalidEdges) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe noEdges(model, "CA_NetworkNoEdges");
+	configureGenericSpecialLattice(noEdges, CellularAutomataComp::LatticeType::NETWORK, {4});
+	std::string error;
+	EXPECT_FALSE(noEdges.CheckProbe(&error));
+	EXPECT_NE(error.find("at least one edge"), std::string::npos) << error;
+
+	ComponentProbe invalidEdges(model, "CA_NetworkInvalidEdges");
+	configureGenericSpecialLattice(invalidEdges, CellularAutomataComp::LatticeType::NETWORK, {4});
+	invalidEdges.setNetworkEdges({{0, 4}});
+	error.clear();
+	EXPECT_FALSE(invalidEdges.CheckProbe(&error));
+	EXPECT_NE(error.find("existing cells"), std::string::npos) << error;
+}
+
+// PersistenceRoundTripPreservesNetworkEdges — saves a NETWORK component with directed edges, reloads it,
+// and asserts the edge list and its directed flag survive, and that the reloaded lattice rebuilds the same
+// one-way adjacency (node 0 has 2 neighbors, node 1 has 0).
+TEST(CellularAutomataComponent, PersistenceRoundTripPreservesNetworkEdges) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe saved(model, "CA_NetworkSaved");
+	configureGenericSpecialLattice(saved, CellularAutomataComp::LatticeType::NETWORK, {4});
+	saved.setNetworkEdges({{0, 1}, {0, 2}, {2, 3}}, false);
+
+	FakePersistence persistence;
+	PersistenceRecord fields(persistence);
+	saved.SaveProbe(&fields, true);
+
+	ComponentProbe loaded(model, "CA_NetworkLoaded");
+	ASSERT_TRUE(loaded.LoadProbe(&fields));
+
+	EXPECT_EQ(loaded.getLatticeType(), CellularAutomataComp::LatticeType::NETWORK);
+	EXPECT_EQ(loaded.getNetworkEdges(), (std::vector<std::pair<unsigned long, unsigned long>>{{0, 1}, {0, 2}, {2, 3}}));
+	EXPECT_FALSE(loaded.getNetworkEdgesUndirected());
+
+	std::string error;
+	ASSERT_TRUE(loaded.initializeCellularAutomata(&error)) << error;
+	EXPECT_EQ(loaded.getlattice()->getCell(0L)->getNeighbors().size(), 2u);
+	EXPECT_EQ(loaded.getlattice()->getCell(1L)->getNeighbors().size(), 0u);
 }
