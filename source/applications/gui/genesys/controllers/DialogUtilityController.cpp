@@ -561,7 +561,7 @@ void DialogUtilityController::onActionAboutAboutTriggered() {
         "<h3>Author</h3>"
         "<p><b>Rafael Luiz Cancian</b><br>"
         "<span class='muted'>Departamento de Informatica e Estatistica, UFSC</span><br>"
-        "<a href='https://ine.ufsc.br/rafael.cancian'>ine.ufsc.br/rafael.cancian</a></p>");
+        "<a href='https://www.inf.ufsc.br/~rafael.cancian/'>www.inf.ufsc.br/~rafael.cancian/</a></p>");
 
     showRichAboutDialog(_ownerWidget,
                         QObject::tr("About Genesys"),
@@ -600,7 +600,7 @@ void DialogUtilityController::onActionAboutGetInvolvedTriggered() {
         "<li><a href='https://github.com/rlcancian/Genesys-Simulator'>GitHub repository</a></li>"
         "<li><a href='https://github.com/rlcancian/Genesys-Simulator/issues'>Issues and bug reports</a></li>"
         "<li><a href='https://github.com/rlcancian/Genesys-Simulator/pulls'>Pull requests</a></li>"
-        "<li><a href='https://ine.ufsc.br/rafael.cancian'>Rafael Cancian professional page</a></li>"
+        "<li><a href='https://www.inf.ufsc.br/~rafael.cancian/'>Rafael Cancian professional page</a></li>"
         "</ul>"
         "<h3>Contact</h3>"
         "<p>For academic collaboration or project questions, contact "

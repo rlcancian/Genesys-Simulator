@@ -27,7 +27,7 @@ void LicenceManager::setDefaultLicenceAndLimits() {
 	_licence += " All changes and improvements must be submitted to the git repository using pull requests.";
 	_licence += " Any commercial application is a violation of the license agreement.";
 	_licence += " Designed and developed by prof. Dr. Ing Rafael Luiz Cancian, 2019-2023.";
-	_licence += " Contacts: rafael.cancian@ufsc.br , cancian@lisha.ufsc.br";
+	_licence += " Contacts: rafael.cancian@ufsc.br";
 	_activationCode = "";
 	_components = 100;
 	_datadefinitions = 300;
