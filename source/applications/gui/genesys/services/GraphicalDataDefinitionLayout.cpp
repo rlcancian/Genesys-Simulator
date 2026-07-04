@@ -35,7 +35,9 @@ QPointF GraphicalDataDefinitionLayout::arcPosition(const QRectF& anchorBounds,
     const qreal verticalGap = std::max<qreal>(30.0, childHeight * 0.5);
     //const qreal arcLift = std::min<qreal>(60.0, std::abs(normalized) < 0.001 ? 44.0 : 18.0);
     const qreal arcLift = std::min<qreal>(30.0, std::abs(normalized) < 0.001 ? 25.0 : 10.0);
-    const qreal radialGap = safeRadialLayer * (childHeight + 10.0);//(childHeight + 30.0)
+    // Keep explicit lower radial layers visually separated. A smaller radial gap lets shared
+    // lower elements overlap the statistics row when both categories are visible.
+    const qreal radialGap = safeRadialLayer * (childHeight + 60.0);
 
     const qreal centerX = anchorBounds.center().x() + horizontalOffset;
     const qreal centerY = upperArc
