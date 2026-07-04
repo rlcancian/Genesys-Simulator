@@ -15,8 +15,10 @@
 #define GENESYSSHELL_H
 
 #include "../../BaseGenesysTerminalApplication.h"
+#include "kernel/simulator/SimulatorFacade.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/util/List.h"
+#include <memory>
 #include <regex>
 #include <fstream>
 #include <assert.h>
@@ -57,6 +59,13 @@ public: // commands
 	void cmdHelp();
 	void cmdQuit();
 	void cmdBash();
+	void cmdFacade();
+	void cmdLicence();
+	void cmdInfo();
+	void cmdSim();
+	void cmdData();
+	void cmdComponent();
+	void cmdExperiment();
 	void cmdParser();
 	void cmdTraceLevel();
 	void cmdPlugin();
@@ -83,8 +92,18 @@ private:
 	//void tryExecuteCommand(std::string inputText, const char* shortPrefix, const char* longPrefix, std::string separator);
 	void tryExecuteCommand(std::string inputText);
 	std::vector<std::string> split(std::string text, std::string separatorRegex);
+	std::string joinArguments(std::size_t firstArgumentIndex = 1) const;
+	std::string lowercase(std::string text) const;
+	bool requireCurrentModel(const std::string& actionDescription);
+	bool parseUnsigned(const std::string& text, unsigned int& value) const;
+	bool parseInt(const std::string& text, int& value) const;
+	bool parseDouble(const std::string& text, double& value) const;
+	bool parseBool(const std::string& text, bool& value) const;
+	bool parseTraceLevel(const std::string& text, TraceManager::Level& level) const;
+	bool parseTimeUnit(const std::string& text, Util::TimeUnit& timeUnit) const;
 private:
-	Simulator* simulator = new Simulator();
+	std::unique_ptr<Simulator> simulator;
+	SimulatorFacade facade;
 	Model* model = nullptr;
 	std::vector<std::string> *_typedWords = new std::vector<std::string>();
 	std::vector<std::string> *_history = new std::vector<std::string>();
@@ -93,4 +112,3 @@ private:
 	bool _exitRequested = false;
 };
 #endif /* GENESYSSHELL_H */
-

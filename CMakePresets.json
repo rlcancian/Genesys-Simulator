@@ -130,6 +130,66 @@
       }
     },
     {
+      "name": "gui-httpworker",
+      "displayName": "Application - GUI HTTP Worker",
+      "description": "Builds the standalone WebWorker control application from the GUI umbrella.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-httpworker",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_GUI_GENESYS": "OFF",
+        "GENESYS_BUILD_GUI_HTTPWORKER": "ON",
+        "GENESYS_BUILD_WEB_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "gui-dataanalyser",
+      "displayName": "Application - GUI Data Analyser",
+      "description": "Builds the standalone Data Analyzer application from the GUI umbrella.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-dataanalyser",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_GUI_GENESYS": "OFF",
+        "GENESYS_BUILD_GUI_DATAANALYSER": "ON",
+        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "gui-optimizer",
+      "displayName": "Application - GUI Optimizer",
+      "description": "Builds the standalone Optimizer application from the GUI umbrella.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-optimizer",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_GUI_GENESYS": "OFF",
+        "GENESYS_BUILD_GUI_OPTIMIZER": "ON",
+        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "gui-ai-assistant",
+      "displayName": "Application - GUI AI Assistant",
+      "description": "Builds the standalone AI Assistant application from the GUI umbrella.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-ai-assistant",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_GUI_GENESYS": "OFF",
+        "GENESYS_BUILD_GUI_AI_ASSISTANT": "ON",
+        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
       "name": "tests-smoke",
       "displayName": "Tests - Smoke",
       "inherits": "debug-base",
@@ -211,6 +271,34 @@
       "configurePreset": "gui-app",
       "targets": [
         "genesys_gui"
+      ]
+    },
+    {
+      "name": "gui-httpworker",
+      "configurePreset": "gui-httpworker",
+      "targets": [
+        "genesys_httpworker_gui_application"
+      ]
+    },
+    {
+      "name": "gui-dataanalyser",
+      "configurePreset": "gui-dataanalyser",
+      "targets": [
+        "genesys_dataanalyser_gui_application"
+      ]
+    },
+    {
+      "name": "gui-optimizer",
+      "configurePreset": "gui-optimizer",
+      "targets": [
+        "genesys_optimizer_gui_application"
+      ]
+    },
+    {
+      "name": "gui-ai-assistant",
+      "configurePreset": "gui-ai-assistant",
+      "targets": [
+        "genesys_ai_assistant_gui_application"
       ]
     },
     {

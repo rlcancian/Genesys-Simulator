@@ -21,19 +21,19 @@ if(GENESYS_BUILD_GUI_GENESYS)
 endif()
 
 if(GENESYS_BUILD_GUI_HTTPWORKER)
-    message(FATAL_ERROR "GENESYS_BUILD_GUI_HTTPWORKER is planned, but source/applications/gui/httpworker is not implemented yet.")
+    add_subdirectory(httpworker)
 endif()
 
 if(GENESYS_BUILD_GUI_DATAANALYSER)
-    message(FATAL_ERROR "GENESYS_BUILD_GUI_DATAANALYSER is planned, but source/applications/gui/dataanalyser is not implemented yet.")
+    add_subdirectory(dataanalyser)
 endif()
 
 if(GENESYS_BUILD_GUI_OPTIMIZER)
-    message(FATAL_ERROR "GENESYS_BUILD_GUI_OPTIMIZER is planned, but source/applications/gui/optimizer is not implemented yet.")
+    add_subdirectory(optimizer)
 endif()
 
 if(GENESYS_BUILD_GUI_AI_ASSISTANT)
-    message(FATAL_ERROR "GENESYS_BUILD_GUI_AI_ASSISTANT is planned, but source/applications/gui/ai_assistant is not implemented yet.")
+    add_subdirectory(ai_assistant)
 endif()
 
 if(GENESYS_BUILD_GUI_DOEXPERIMENTS)
