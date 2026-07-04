@@ -219,6 +219,17 @@ Treat the 13 non-GUI failures as outside this GUI separation scope unless eviden
 
 ### Recommended continuation plan for another AI
 
+## Matrix values and multidimensional assignments
+
+- Date: 2026-07-04
+- Branch: `WiP20261`
+- Status: in progress
+- Scope: parser/runtime coverage for sparse multidimensional variable and
+  attribute reads and indexed assignments.
+- Plan file: [`docs/ai_assistants/matrix_values_and_multidimensional_assignments_plan.md`](/home/rafaelcancian/Laboratory/Software/Educational_Projects/GenESyS/GitHub/WiP20261/Genesys-Simulator/docs/ai_assistants/matrix_values_and_multidimensional_assignments_plan.md)
+- Phase: focused tests added in `source/tests/unit/test_parser_expressions.cpp`; full `tests-unit` validation passed.
+- Next steps: keep the current sparse-index semantics stable, and only open a new phase if a real parser/grammar regression appears.
+
 ## Docker packaging and branch policy
 
 - Date: 2026-07-04
@@ -244,6 +255,22 @@ Treat the 13 non-GUI failures as outside this GUI separation scope unless eviden
   until it is promoted by PR.
 - The development image mounts the local checkout and leaves branch selection to
   the developer.
+
+## Matrix values and multidimensional assignments
+
+- Date: 2026-07-04
+- Branch: `WiP20261`
+- Status: in progress
+- Plan file:
+  `docs/ai_assistants/matrix_values_and_multidimensional_assignments_plan.md`
+- Phase: reproduce and fix scalar reads/writes for multidimensional textual
+  indexes in variables and entity attributes.
+
+### Next steps
+
+- Reproduce the failing `ParserExpressionsTest.*` cases.
+- Isolate parser, sparse store, variable, attribute, or entity behavior.
+- Apply the smallest fix that preserves sparse-key semantics.
 
 1. Reassess whether the two unsuccessful `GraphicalDataDefinitionLayout.cpp` commits should be reverted or replaced.
 2. Inspect `GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer` and trace the failing test's Queue/Resource/Counter/StatisticsCollector/shared Queue items into the lower layout lists.

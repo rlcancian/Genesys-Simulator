@@ -33,6 +33,7 @@ public:
 struct ParserAttributeEventInjector {
     Model* model = nullptr;
     ParserAttributeInternalEventOwner* owner = nullptr;
+    std::string attributeName = "ParserAttrND";
     bool inserted = false;
 
     void OnReplicationStart(SimulationEvent*) {
@@ -40,11 +41,11 @@ struct ParserAttributeEventInjector {
             return;
         }
         Entity* entity = model->createEntity("ParserAttributeEntity", true);
-        entity->setAttributeValue("ParserAttrND", 31.0, "", true);
-        entity->setAttributeValue("ParserAttrND", 32.0, "1");
-        entity->setAttributeValue("ParserAttrND", 33.0, "1,2");
-        entity->setAttributeValue("ParserAttrND", 34.0, "1,2,3");
-        entity->setAttributeValue("ParserAttrND", 35.0, "1,2,3,4,5");
+        entity->setAttributeValue(attributeName, 31.0, "", true);
+        entity->setAttributeValue(attributeName, 32.0, "1");
+        entity->setAttributeValue(attributeName, 33.0, "1,2");
+        entity->setAttributeValue(attributeName, 34.0, "1,2,3");
+        entity->setAttributeValue(attributeName, 35.0, "1,2,3,4,5");
         auto* event = new InternalEvent(0.0, "Parser attribute expression probe");
         event->setEntity(entity);
         event->setEventHandler(owner, &ParserAttributeInternalEventOwner::Noop, nullptr);
@@ -108,8 +109,60 @@ TEST_F(ParserExpressionsTest, VariableIndexesSupportScalarLegacyAndNDReads) {
     delete variable;
 }
 
+TEST_F(ParserExpressionsTest, VariableDirectMethodsSupportScalarLegacyAndNDAssignments) {
+    auto* variable = new Variable(model, "ParserVarDirectND");
+    ASSERT_NE(variable, nullptr);
+
+    variable->setValue(10.0);
+    variable->setValue(11.0, "1");
+    variable->setValue(12.0, "1,2");
+    variable->setValue(13.0, "1,2,3");
+    variable->setValue(14.0, "1,2,3,4,5");
+
+    EXPECT_DOUBLE_EQ(variable->getValue(""), 10.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1"), 11.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2"), 12.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2,3"), 13.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2,3,4,5"), 14.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2,3,4,6"), 0.0);
+
+    delete variable;
+}
+
+TEST_F(ParserExpressionsTest, AttributeDirectMethodsSupportScalarLegacyAndNDAssignments) {
+    auto* attribute = new Attribute(model, "ParserAttrDirectND");
+    ASSERT_NE(attribute, nullptr);
+
+    attribute->setInitialValue(20.0);
+    attribute->setInitialValue(21.0, "1");
+    attribute->setInitialValue(22.0, "1,2");
+    attribute->setInitialValue(23.0, "1,2,3");
+    attribute->setInitialValue(24.0, "1,2,3,4,5");
+
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue(""), 20.0);
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue("1"), 21.0);
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue("1,2"), 22.0);
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue("1,2,3"), 23.0);
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue("1,2,3,4,5"), 24.0);
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue("1,2,3,4,6"), 0.0);
+
+    Entity* entity = model->createEntity("ParserAttrDirectEntity", true);
+    ASSERT_NE(entity, nullptr);
+
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("ParserAttrDirectND", ""), 20.0);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("ParserAttrDirectND", "1,2,3,4,5"), 24.0);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("ParserAttrDirectND", "1,2,3,4,6"), 0.0);
+
+    entity->setAttributeValue("ParserAttrDirectND", 36.0, "1,2,3,4,6");
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("ParserAttrDirectND", "1,2,3,4,6"), 36.0);
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue("1,2,3,4,6"), 0.0);
+
+    model->removeEntity(entity);
+    delete attribute;
+}
+
 TEST_F(ParserExpressionsTest, AttributeIndexesSupportLegacyAndNDReadsAndAssignmentsDuringEvent) {
-    auto* attribute = new ParserAttributeInternalEventOwner(model, "ParserAttrND");
+    auto* attribute = new Attribute(model, "ParserAttrND");
     ASSERT_NE(attribute, nullptr);
 
     bool dispatched = false;
@@ -136,7 +189,8 @@ TEST_F(ParserExpressionsTest, AttributeIndexesSupportLegacyAndNDReadsAndAssignme
         ndAssignedValue = entity->getAttributeValue("ParserAttrND", "1,2,3,4,6");
     };
 
-    ParserAttributeEventInjector injector{model, attribute};
+    auto* owner = new ParserAttributeInternalEventOwner(model, "ParserAttrND");
+    ParserAttributeEventInjector injector{model, owner};
     model->getOnEventManager()->addOnReplicationStartHandler(&injector, &ParserAttributeEventInjector::OnReplicationStart);
     model->getOnEventManager()->addOnProcessEventHandler(&observer, &ParserAttributeProcessObserver::OnProcessEvent);
     model->getSimulation()->setReplicationLength(1.0);
@@ -152,7 +206,75 @@ TEST_F(ParserExpressionsTest, AttributeIndexesSupportLegacyAndNDReadsAndAssignme
     EXPECT_DOUBLE_EQ(ndAssignmentResult, 36.0);
     EXPECT_DOUBLE_EQ(ndAssignedValue, 36.0);
 
+    delete owner;
     delete attribute;
+}
+
+TEST_F(ParserExpressionsTest, ParserAssignmentSupportsIndexedAttributeWritesDuringEventWithAssignName) {
+    auto* attribute = new Attribute(model, "ParserAssignAttrND");
+    ASSERT_NE(attribute, nullptr);
+    ASSERT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), "ParserAssignAttrND"), nullptr);
+
+    bool dispatched = false;
+    double scalarWrite = 0.0;
+    double indexedWrite = 0.0;
+    double missingRead = -1.0;
+
+    ParserAttributeProcessObserver observer;
+    observer.onProcess = [&](Entity* entity) {
+        ASSERT_NE(entity, nullptr);
+        dispatched = true;
+
+        bool success = false;
+        std::string errorMessage;
+        scalarWrite = model->parseExpression("ParserAssignAttrND=31", success, errorMessage);
+        EXPECT_TRUE(success) << errorMessage;
+        EXPECT_TRUE(errorMessage.empty());
+
+        indexedWrite = model->parseExpression("ParserAssignAttrND[1,2,3]=34", success, errorMessage);
+        EXPECT_TRUE(success) << errorMessage;
+        EXPECT_TRUE(errorMessage.empty());
+
+        missingRead = model->parseExpression("ParserAssignAttrND[1,2,3,4,6]");
+        EXPECT_DOUBLE_EQ(entity->getAttributeValue("ParserAssignAttrND", ""), 31.0);
+        EXPECT_DOUBLE_EQ(entity->getAttributeValue("ParserAssignAttrND", "1,2,3"), 34.0);
+        EXPECT_DOUBLE_EQ(entity->getAttributeValue("ParserAssignAttrND", "1,2,3,4,6"), 0.0);
+    };
+
+    auto* owner = new ParserAttributeInternalEventOwner(model, "ParserAssignAttrND");
+    ParserAttributeEventInjector injector{model, owner, "ParserAssignAttrND"};
+    model->getOnEventManager()->addOnReplicationStartHandler(&injector, &ParserAttributeEventInjector::OnReplicationStart);
+    model->getOnEventManager()->addOnProcessEventHandler(&observer, &ParserAttributeProcessObserver::OnProcessEvent);
+    model->getSimulation()->setReplicationLength(1.0);
+    model->getSimulation()->start();
+
+    EXPECT_TRUE(dispatched);
+    EXPECT_DOUBLE_EQ(scalarWrite, 31.0);
+    EXPECT_DOUBLE_EQ(indexedWrite, 34.0);
+    EXPECT_DOUBLE_EQ(missingRead, 0.0);
+
+    delete owner;
+    delete attribute;
+}
+
+TEST_F(ParserExpressionsTest, ParserAssignmentSupportsIndexedVariableWrites) {
+    auto* variable = new Variable(model, "ParserAssignVarND");
+    ASSERT_NE(variable, nullptr);
+
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND=21"), 21.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND[1]=22"), 22.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND[1,2]=23"), 23.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND[1,2,3]=24"), 24.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND[1,2,3,4,5]=25"), 25.0);
+
+    EXPECT_DOUBLE_EQ(variable->getValue(""), 21.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1"), 22.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2"), 23.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2,3"), 24.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2,3,4,5"), 25.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2,3,4,6"), 0.0);
+
+    delete variable;
 }
 
 TEST_F(ParserExpressionsTest, VariableIndexesSupportScalarLegacyAndNDAssignments) {
