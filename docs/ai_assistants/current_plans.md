@@ -219,6 +219,32 @@ Treat the 13 non-GUI failures as outside this GUI separation scope unless eviden
 
 ### Recommended continuation plan for another AI
 
+## Docker packaging and branch policy
+
+- Date: 2026-07-04
+- Branch: `WiP20261`
+- Scope: Docker refactor for runtime/development helpers and the branch promotion
+  policy used by the packaging scripts.
+
+### Decisions recorded
+
+- Keep the public runtime Docker entrypoint on `master`.
+- Treat the active `WiP20261` checkout as the implementation branch for the
+  Docker refactor and current preset validation.
+- Record the repository promotion rule in
+  `docs/ai_assistants/branch_workflow.md`.
+- Document the Docker helper flow in `docs/ai_assistants/docker_packaging.md`.
+
+### Current packaging position
+
+- `packaging/docker/exec-genesys.sh` is the public user-facing runtime helper.
+- `packaging/docker/develop-genesys.sh` is the public developer helper.
+- The runtime image is expected to build the supported application presets from
+  `master` by default, while the WiP branch carries the active packaging work
+  until it is promoted by PR.
+- The development image mounts the local checkout and leaves branch selection to
+  the developer.
+
 1. Reassess whether the two unsuccessful `GraphicalDataDefinitionLayout.cpp` commits should be reverted or replaced.
 2. Inspect `GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer` and trace the failing test's Queue/Resource/Counter/StatisticsCollector/shared Queue items into the lower layout lists.
 3. Fix the GMDD lower-row classification or ordering at the builder level if that is the real cause.

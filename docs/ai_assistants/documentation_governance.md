@@ -15,6 +15,7 @@ Primary documentation areas:
 - `docs/users/`;
 - `docs/developers/`;
 - `docs/ai_assistants/`;
+- `docs/ai_assistants/branch_workflow.md`;
 - temporary historical material under `docs/ai_assistants/oldies/`.
 
 Historical source documents:
@@ -27,6 +28,7 @@ Historical source documents:
 
 - Keep top-level documentation under `docs/`.
 - Keep AI-assistant operational guidance under `docs/ai_assistants/`.
+- Keep repository branch/versioning policy in `docs/ai_assistants/branch_workflow.md`.
 - Keep user-facing Doxygen entrypoints and final PDFs under `docs/users/`.
 - Keep developer-facing Doxygen entrypoints and final PDFs under `docs/developers/`.
 - Do not version Doxygen intermediate output trees.

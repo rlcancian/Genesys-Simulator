@@ -18,6 +18,7 @@ Read this file before using or updating the other files in this directory.
 - `whole_cell_and_sbml.md`: whole-cell, biochemical, and SBML guidance.
 - `python_integration.md`: Python-facing integration guidance.
 - `documentation_governance.md`: documentation retention and governance guidance.
+- `branch_workflow.md`: repository branch/versioning policy and promotion flow.
 - `oldies_inventory.md`: inventory of temporary historical documents retained in `oldies/`.
 - `oldies_review_status.md`: review matrix for historical files before deletion.
 - `consolidation_map.md`: target map for consolidating historical documents into stable AI-assistant documentation.
