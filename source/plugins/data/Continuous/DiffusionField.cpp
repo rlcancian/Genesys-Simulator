@@ -166,7 +166,7 @@ double DiffusionField::getFieldValue(const std::vector<unsigned int>& multiIndex
 	if (multiIndex.size() != _dimensions || _field.empty()) {
 		return 0.0;
 	}
-	std::size_t stride = 1, idx = 0;
+	std::size_t idx = 0;
 	// Row-major: turn the coordinates back into a single flat index.
 	std::vector<std::size_t> strides(_dimensions, 1);
 	for (std::size_t d = _dimensions; d-- > 1;) {
@@ -176,7 +176,6 @@ double DiffusionField::getFieldValue(const std::vector<unsigned int>& multiIndex
 		if (multiIndex[d] >= _pointsPerDimension) return 0.0;
 		idx += static_cast<std::size_t>(multiIndex[d]) * strides[d];
 	}
-	(void) stride;
 	return idx < _field.size() ? _field[idx] : 0.0;
 }
 
@@ -297,6 +296,18 @@ bool DiffusionField::simulate(double startTime, double stopTime, double stepSize
 		if (!advanceOneStep(errorMessage)) {
 			return false;
 		}
+	}
+	// Zero-length window (start == stop): no step ran, but a "Completed" run
+	// should still expose the initial field and its diagnostics.
+	if (_field.empty()) {
+		DiffusionMethodOfLinesSystem system;
+		if (!buildSystem(&system, errorMessage)) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = errorMessage;
+			return false;
+		}
+		buildInitialField(system, _field);
+		refreshDiagnostics(system);
 	}
 	_lastStatus = "Completed";
 	return true;
@@ -433,14 +444,17 @@ bool DiffusionField::_check(std::string& errorMessage) {
 	const std::size_t maxBytes = 512ull * 1024ull * 1024ull;
 	std::size_t totalNodes = 1;
 
-	for (unsigned int d = 0; d < _dimensions; ++d) {
-		if (totalNodes > (maxBytes / sizeof(double)) / _pointsPerDimension) {
-			errorMessage += "DiffusionField \"" + getName() +
-							"\" grid is too large. Reduce Dimensions or PointsPerDimension. ";
-			resultAll = false;
-			break;
+	// Only meaningful (and safe to divide by) when the points check above passed.
+	if (_pointsPerDimension >= 3u) {
+		for (unsigned int d = 0; d < _dimensions; ++d) {
+			if (totalNodes > (maxBytes / sizeof(double)) / _pointsPerDimension) {
+				errorMessage += "DiffusionField \"" + getName() +
+								"\" grid is too large. Reduce Dimensions or PointsPerDimension. ";
+				resultAll = false;
+				break;
+			}
+			totalNodes *= _pointsPerDimension;
 		}
-		totalNodes *= _pointsPerDimension;
 	}
 	if (_diffusionCoefficient < 0.0) {
 		errorMessage += "DiffusionField \"" + getName() + "\" must define DiffusionCoefficient >= 0. ";

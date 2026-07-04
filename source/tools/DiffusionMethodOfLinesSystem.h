@@ -259,6 +259,11 @@ private:
 				return;
 			total *= n;
 		}
+		// dimension() returns unsigned int, so a node count beyond its range
+		// cannot be represented - treat such grids as invalid instead of
+		// silently truncating (which would corrupt every index computation).
+		if (total > std::numeric_limits<unsigned int>::max())
+			return;
 		_totalNodes = static_cast<unsigned int>(total);
 
 		_invH2.assign(N, 0.0);
