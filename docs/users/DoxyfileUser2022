@@ -1,6 +1,0 @@
-
-# Compatibility wrapper.
-# Prefer the canonical Doxygen entrypoint:
-#   docs/users/DoxyfileUser
-
-@INCLUDE = docs/users/DoxyfileUser

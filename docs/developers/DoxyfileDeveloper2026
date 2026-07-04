@@ -1,6 +1,0 @@
-
-# Compatibility wrapper.
-# Prefer the canonical Doxygen entrypoint:
-#   docs/developers/DoxyfileDeveloper
-
-@INCLUDE = docs/developers/DoxyfileDeveloper
