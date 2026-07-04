@@ -16,12 +16,6 @@
 #include "kernel/simulator/Simulator.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Enter::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Enter::NewInstance(Model* model, std::string name) {
 	return new Enter(model, name);

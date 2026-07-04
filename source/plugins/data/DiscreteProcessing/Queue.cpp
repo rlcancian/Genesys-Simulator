@@ -15,12 +15,6 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Queue::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Queue::NewInstance(Model* model, std::string name) {
 	return new Queue(model, name);

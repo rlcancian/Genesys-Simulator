@@ -6,12 +6,6 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &MetabolicReaction::GetPluginInformation;
-// }
-// #endif
 
 namespace {
 

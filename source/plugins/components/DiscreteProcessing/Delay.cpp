@@ -16,12 +16,6 @@
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Delay::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Delay::NewInstance(Model* model, std::string name) {
 	return new Delay(model, name);

@@ -12,12 +12,6 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &BioSteadyState::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* BioSteadyState::NewInstance(Model* model, std::string name) {
 	return new BioSteadyState(model, name);

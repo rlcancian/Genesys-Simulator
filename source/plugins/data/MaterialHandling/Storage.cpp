@@ -14,12 +14,6 @@
 #include "Storage.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Storage::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Storage::NewInstance(Model* model, std::string name) {
 	return new Storage(model, name);

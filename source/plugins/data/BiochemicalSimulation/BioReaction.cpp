@@ -9,12 +9,6 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "tools/BioKineticLawExpression.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &BioReaction::GetPluginInformation;
-// }
-// #endif
 
 namespace {
 

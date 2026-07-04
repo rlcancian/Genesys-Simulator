@@ -21,14 +21,6 @@
 #include <string>
 
 
-// Externalize function GetPluginInformation to be accessible throught dynamic linked library
-// #ifdef PLUGINCONNECT_DYNAMIC
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &DiffEquations::GetPluginInformation;
-// }
-// #endif
-
-
 //
 // public: //! constructors
 //

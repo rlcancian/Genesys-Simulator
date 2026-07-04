@@ -15,12 +15,6 @@
 
 #include "../../../kernel/simulator/model/Model.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC 
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Submodel::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Submodel::NewInstance(Model* model, std::string name) {
 	return new Submodel(model, name);

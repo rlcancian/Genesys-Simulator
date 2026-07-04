@@ -34,12 +34,6 @@ bool containsTypeName(const std::vector<std::string>& typeNames, const std::stri
 }
 }
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-//     return &Set::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Set::NewInstance(Model* model, std::string name) {
     return new Set(model, name);

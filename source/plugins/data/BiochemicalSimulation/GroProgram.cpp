@@ -11,12 +11,6 @@
 
 #include <fstream>
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &GroProgram::GetPluginInformation;
-// }
-// #endif
 
 namespace {
 

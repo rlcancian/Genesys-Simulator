@@ -16,12 +16,6 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Sequence::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Sequence::NewInstance(Model* model, std::string name) {
 	return new Sequence(model, name);

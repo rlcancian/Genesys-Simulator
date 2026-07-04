@@ -15,12 +15,6 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Write::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Write::NewInstance(Model* model, std::string name) {
 	return new Write(model, name);

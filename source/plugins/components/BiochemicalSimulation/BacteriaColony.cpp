@@ -21,12 +21,6 @@
 #include <sstream>
 #include <stdexcept>
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &BacteriaColony::GetPluginInformation;
-// }
-// #endif
 
 namespace {
 

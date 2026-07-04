@@ -15,12 +15,6 @@
 
 #include "../../../kernel/simulator/model/Model.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Start::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Start::NewInstance(Model* model, std::string name) {
 	return new Start(model, name);

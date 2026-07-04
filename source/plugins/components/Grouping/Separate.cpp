@@ -17,12 +17,6 @@
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "../../data/Grouping/EntityGroup.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Separate::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Separate::NewInstance(Model* model, std::string name) {
 	return new Separate(model, name);

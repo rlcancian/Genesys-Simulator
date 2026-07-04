@@ -12,12 +12,6 @@
 #include <sstream>
 #include <stdexcept>
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &BacteriaSignalGrid::GetPluginInformation;
-// }
-// #endif
 
 namespace {
 

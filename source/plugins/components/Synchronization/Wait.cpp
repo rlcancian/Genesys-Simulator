@@ -18,12 +18,6 @@
 #include "kernel/simulator/PluginManager.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Wait::GetPluginInformation;
-// }
-// #endif
 
 // constructors
 

@@ -18,12 +18,6 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/PluginManager.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Signal::GetPluginInformation;
-// }
-// #endif
 
 // constructor
 

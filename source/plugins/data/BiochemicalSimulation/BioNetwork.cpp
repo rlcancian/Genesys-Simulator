@@ -16,12 +16,6 @@
 #include "tools/MassActionOdeSystem.h"
 #include "tools/RungeKutta4OdeSolver.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &BioNetwork::GetPluginInformation;
-// }
-// #endif
 
 namespace {
 

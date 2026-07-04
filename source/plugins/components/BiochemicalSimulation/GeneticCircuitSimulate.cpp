@@ -10,12 +10,6 @@
 #include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
 #include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &GeneticCircuitSimulate::GetPluginInformation;
-// }
-// #endif
 
 namespace {
 

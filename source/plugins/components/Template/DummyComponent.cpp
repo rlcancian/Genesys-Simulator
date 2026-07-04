@@ -17,15 +17,6 @@
 //#include "kernel/simulator/PluginManager.h"
 
 
-
-/// Externalize function GetPluginInformation to be accessible throught dynamic linked library
-// #ifdef PLUGINCONNECT_DYNAMIC
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &DummyComponent::GetPluginInformation;
-// }
-// #endif
-
-
 //
 // public: /// constructors
 //

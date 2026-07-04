@@ -16,12 +16,6 @@
 #include <cmath>
 #include <sstream>
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Schedule::GetPluginInformation;
-// }
-// #endif
 
 //
 // constructors

@@ -4,12 +4,6 @@
 
 #include "../../../kernel/simulator/model/Model.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &BioParameter::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* BioParameter::NewInstance(Model* model, std::string name) {
 	return new BioParameter(model, name);

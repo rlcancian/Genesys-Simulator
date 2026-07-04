@@ -16,12 +16,6 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &PickStation::GetPluginInformation;
-// }
-// #endif
 
 //******************************************
 

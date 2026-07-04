@@ -22,12 +22,6 @@
 #include <algorithm>
 #include <cstdlib>
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Search::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Search::NewInstance(Model* model, std::string name) {
 	return new Search(model, name);

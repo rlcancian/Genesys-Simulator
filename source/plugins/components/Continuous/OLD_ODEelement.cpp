@@ -15,12 +15,6 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &OLD_ODEelement::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* OLD_ODEelement::NewInstance(Model* model, std::string name) {
 	return new OLD_ODEelement(model, name);

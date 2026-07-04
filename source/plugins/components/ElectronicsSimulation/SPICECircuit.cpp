@@ -16,14 +16,6 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 
-
-/// Externalize function GetPluginInformation to be accessible throught dynamic linked library
-// #ifdef PLUGINCONNECT_DYNAMIC
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &SPICECircuit::GetPluginInformation;
-// }
-// #endif
-
 std::vector<std::string> SPICECircuit::split(std::string word, char split_char = ' ') {
 	std::vector<std::string> tokenized_string;
 	std::string token = "";

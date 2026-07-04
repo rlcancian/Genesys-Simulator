@@ -19,12 +19,6 @@
 #include <assert.h>
 #include <cmath>
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Seize::GetPluginInformation;
-// }
-// #endif
 
 // constructors
 

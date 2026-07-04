@@ -20,12 +20,6 @@
 #include <assert.h>
 #include <cmath>
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Release::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Release::NewInstance(Model* model, std::string name) {
 	return new Release(model, name);

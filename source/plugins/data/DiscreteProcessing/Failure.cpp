@@ -15,12 +15,6 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Failure::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Failure::NewInstance(Model* model, std::string name) {
 	return new Failure(model, name);

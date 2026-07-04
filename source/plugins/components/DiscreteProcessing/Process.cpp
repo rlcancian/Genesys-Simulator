@@ -17,12 +17,6 @@
 
 #include "kernel/simulator/Simulator.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &Process::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* Process::NewInstance(Model* model, std::string name) {
 	return new Process(model, name);

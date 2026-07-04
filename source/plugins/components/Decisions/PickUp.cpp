@@ -13,12 +13,6 @@
 
 #include "plugins/components/Decisions/PickUp.h"
 
-// #ifdef PLUGINCONNECT_DYNAMIC
-
-// extern "C" StaticGetPluginInformation GetPluginInformation() {
-// 	return &PickUp::GetPluginInformation;
-// }
-// #endif
 
 ModelDataDefinition* PickUp::NewInstance(Model* model, std::string name) {
 	return new PickUp(model, name);
