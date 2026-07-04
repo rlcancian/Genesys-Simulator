@@ -277,13 +277,16 @@ genesys_add_unit_test(genesys_test_tools_diffusion_mol
     genesys_tools
 )
 
-# DCS: DiffusionField plugin integration (Part 2) — drives the plugin through the real kernel
+# DCS: DiffusionField plugin + DiffusionSimulate component integration (Part 2) —
+# drives the plugin, the discrete->continuous component and the event-clock sync
+# through the real kernel.
 genesys_add_unit_test(genesys_test_plugins_continuous_diffusion
     test_plugins_continuous_diffusion.cpp
     genesys_tools
     genesys_kernel_simulator_runtime
     genesys_kernel_util
     genesys_plugins_data
+    genesys_plugins_components
 )
 
 add_custom_target(genesys_kernel_unit_tests

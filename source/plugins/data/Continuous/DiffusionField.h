@@ -27,6 +27,17 @@ class DiffusionMethodOfLinesSystem;
 // grid doesn't change during a run, so each step just rebuilds the small system
 // object and reuses the stored field. The solver is never hard-coded - it comes
 // from the OdeSolver name through the factory.
+//
+// Equation representation (design choice): the diffusion PDE is encoded as a
+// dedicated C++ class (DiffusionMethodOfLinesSystem), not as a parser expression
+// nor as dynamically compiled C++. This is a deliberate scope decision - a
+// specific, well-tested class for diffusion - leaving a general user-defined
+// equation mechanism (parser or CppCompiler) as a future extension.
+//
+// Time semantics: with AutoSchedule enabled, the field steps once per kernel
+// InternalEvent (see scheduleNextInternalEvent), so the continuous solve advances
+// in sync with the discrete-event clock; otherwise simulate() runs the whole time
+// window synchronously when driven by the DiffusionSimulate component.
 class DiffusionField : public ModelDataDefinition {
 public:
 	DiffusionField(Model* model, std::string name = "");
@@ -61,6 +72,10 @@ public:
 	double getStepSize() const;
 	void setCurrentTime(double currentTime);
 	double getCurrentTime() const;
+	// When true, the field schedules itself on the kernel's event queue and
+	// advances one step per InternalEvent, staying in sync with simulated time.
+	void setAutoSchedule(bool autoSchedule);
+	bool getAutoSchedule() const;
 	void setOdeSolver(std::string odeSolver);
 	std::string getOdeSolver() const;
 	void setLastStatus(std::string lastStatus);
@@ -96,6 +111,10 @@ private:
 	bool buildSystem(DiffusionMethodOfLinesSystem* system, std::string& errorMessage) const;
 	void buildInitialField(const DiffusionMethodOfLinesSystem& system, std::vector<double>& field) const;
 	void refreshDiagnostics(const DiffusionMethodOfLinesSystem& system);
+	// Event-driven advance (mirrors BioNetwork): each InternalEvent advances one
+	// step and reschedules the next, coupling the continuous solve to the kernel clock.
+	void handleInternalEvent(void* parameter);
+	void scheduleNextInternalEvent();
 
 private:
 	const struct DEFAULT_VALUES {
@@ -110,6 +129,7 @@ private:
 		double stopTime = 0.1;
 		double stepSize = 0.01;
 		double currentTime = 0.0;
+		bool autoSchedule = false;
 		std::string odeSolver = "RungeKutta4";
 		std::string lastStatus = "Idle";
 		std::string lastErrorMessage = "";
@@ -126,6 +146,7 @@ private:
 	double _stopTime = DEFAULT.stopTime;
 	double _stepSize = DEFAULT.stepSize;
 	double _currentTime = DEFAULT.currentTime;
+	bool _autoSchedule = DEFAULT.autoSchedule;
 	std::string _odeSolver = DEFAULT.odeSolver;
 	std::string _lastStatus = DEFAULT.lastStatus;
 	std::string _lastErrorMessage = DEFAULT.lastErrorMessage;

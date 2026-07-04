@@ -20,7 +20,9 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/Persistence.h"
+#include "kernel/simulator/Event.h"
 #include "plugins/data/Continuous/DiffusionField.h"
+#include "plugins/components/Continuous/DiffusionSimulate.h"
 
 namespace {
 
@@ -48,6 +50,18 @@ public:
 	bool CheckProbe(std::string& errorMessage) { return _check(errorMessage); }
 	void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) { _saveInstance(fields, saveDefaultValues); }
 	bool LoadInstanceProbe(PersistenceRecord* fields) { return _loadInstance(fields); }
+	// Triggers the kernel's between-replications hook, which (with AutoSchedule)
+	// posts the first InternalEvent onto the model's future-event queue.
+	void InitBetweenReplicationsProbe() { _initBetweenReplications(); }
+};
+
+// Probe exposing DiffusionSimulate's protected check/dispatch hooks so a test can
+// validate the component and drive it as if an entity had arrived.
+class DiffusionSimulateProbe : public DiffusionSimulate {
+public:
+	DiffusionSimulateProbe(Model* model, const std::string& name = "") : DiffusionSimulate(model, name) {}
+	bool CheckProbe(std::string& errorMessage) { return _check(errorMessage); }
+	void DispatchEventProbe(Entity* entity) { _onDispatchEvent(entity, 0u); }
 };
 
 // Decay rate of a sine mode on a uniform N-D grid (from the discrete Laplacian):
@@ -224,4 +238,89 @@ TEST(DiffusionFieldPluginTest, RejectsInvalidSolverAndConfig) {
 	badBoundary.setBoundaryCondition("Periodic"); // unsupported
 	std::string e3;
 	EXPECT_FALSE(badBoundary.CheckProbe(e3));
+}
+
+// --- DiffusionSimulate component (discrete -> continuous bridge) ---
+
+TEST(DiffusionFieldPluginTest, DiffusionSimulateComponentRunsField) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	DiffusionField field(model, "FieldForComponent");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(21u);
+	field.setDomainLength(1.0);
+	field.setDiffusionCoefficient(0.1);
+	field.setInitialCondition("SineMode");
+	field.setInitialParameter(1.0);
+	field.setOdeSolver("DormandPrince54");
+	field.setStartTime(0.0);
+	field.setStopTime(0.1);
+	field.setStepSize(0.05);
+
+	DiffusionSimulateProbe component(model, "DiffusionComp");
+	component.setDiffusionField(&field);
+	component.setUseFieldTimeWindow(true);
+
+	std::string checkError;
+	ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+	// Dispatch with a null entity: the component runs the referenced field and
+	// safely skips forwarding, exactly like BioSimulate.
+	component.DispatchEventProbe(nullptr);
+	EXPECT_TRUE(component.getLastSucceeded());
+	EXPECT_EQ(field.getLastStatus(), "Completed");
+}
+
+TEST(DiffusionFieldPluginTest, DiffusionSimulateRejectsMissingField) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	DiffusionSimulateProbe component(model, "DiffusionCompNoField");
+	std::string checkError;
+	EXPECT_FALSE(component.CheckProbe(checkError)); // no DiffusionField referenced
+
+	component.DispatchEventProbe(nullptr); // must not crash
+	EXPECT_FALSE(component.getLastSucceeded());
+}
+
+// --- Event-clock synchronization (AutoSchedule) ---
+
+TEST(DiffusionFieldPluginTest, AutoScheduleAdvancesWithEventClock) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	DiffusionFieldProbe field(model, "DiffusionAutoSchedule");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(11u);
+	field.setDomainLength(1.0);
+	field.setDiffusionCoefficient(0.1);
+	field.setInitialCondition("SineMode");
+	field.setInitialParameter(1.0);
+	field.setOdeSolver("RungeKutta4");
+	field.setAutoSchedule(true);
+	field.setStartTime(0.0);
+	field.setStopTime(0.15);
+	field.setStepSize(0.05);
+
+	// Between-replications init posts the first InternalEvent at t = start + step.
+	field.InitBetweenReplicationsProbe();
+	ASSERT_FALSE(model->getFutureEvents()->empty());
+	EXPECT_NEAR(model->getFutureEvents()->front()->getTime(), 0.05, 1e-9);
+
+	// Drain the queue like the kernel would: each event advances the field one step
+	// and reschedules the next, so the continuous solve tracks the event clock.
+	unsigned int guard = 0;
+	while (!model->getFutureEvents()->empty() && guard++ < 100u) {
+		Event* event = model->getFutureEvents()->front();
+		model->getFutureEvents()->pop_front();
+		static_cast<InternalEvent*>(event)->dispatchEvent();
+		delete event;
+	}
+
+	EXPECT_GE(field.getCurrentTime(), 0.15);
+	EXPECT_EQ(field.getLastStatus(), "Completed");
 }

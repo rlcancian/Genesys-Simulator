@@ -5,6 +5,7 @@
 #include <functional>
 #include <cstddef>
 
+#include "kernel/simulator/Event.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelDataManager.h"
 #include "kernel/util/Util.h"
@@ -57,6 +58,9 @@ DiffusionField::DiffusionField(Model* model, std::string name)
 	auto* propCurrentTime = new SimulationControlDouble(
 			std::bind(&DiffusionField::getCurrentTime, this), std::bind(&DiffusionField::setCurrentTime, this, std::placeholders::_1),
 			Util::TypeOf<DiffusionField>(), getName(), "CurrentTime", "");
+	auto* propAutoSchedule = new SimulationControlGeneric<bool>(
+			std::bind(&DiffusionField::getAutoSchedule, this), std::bind(&DiffusionField::setAutoSchedule, this, std::placeholders::_1),
+			Util::TypeOf<DiffusionField>(), getName(), "AutoSchedule", "");
 	auto* propOdeSolver = new SimulationControlString(
 			std::bind(&DiffusionField::getOdeSolver, this), std::bind(&DiffusionField::setOdeSolver, this, std::placeholders::_1),
 			Util::TypeOf<DiffusionField>(), getName(), "OdeSolver", "");
@@ -78,6 +82,7 @@ DiffusionField::DiffusionField(Model* model, std::string name)
 	_parentModel->getControls()->insert(propStopTime);
 	_parentModel->getControls()->insert(propStepSize);
 	_parentModel->getControls()->insert(propCurrentTime);
+	_parentModel->getControls()->insert(propAutoSchedule);
 	_parentModel->getControls()->insert(propOdeSolver);
 	_parentModel->getControls()->insert(propLastStatus);
 	_parentModel->getControls()->insert(propLastErrorMessage);
@@ -93,6 +98,7 @@ DiffusionField::DiffusionField(Model* model, std::string name)
 	_addSimulationControl(propStopTime);
 	_addSimulationControl(propStepSize);
 	_addSimulationControl(propCurrentTime);
+	_addSimulationControl(propAutoSchedule);
 	_addSimulationControl(propOdeSolver);
 	_addSimulationControl(propLastStatus);
 	_addSimulationControl(propLastErrorMessage);
@@ -138,6 +144,8 @@ void DiffusionField::setStepSize(double stepSize) { _stepSize = stepSize; }
 double DiffusionField::getStepSize() const { return _stepSize; }
 void DiffusionField::setCurrentTime(double currentTime) { _currentTime = currentTime; }
 double DiffusionField::getCurrentTime() const { return _currentTime; }
+void DiffusionField::setAutoSchedule(bool autoSchedule) { _autoSchedule = autoSchedule; }
+bool DiffusionField::getAutoSchedule() const { return _autoSchedule; }
 void DiffusionField::setOdeSolver(std::string odeSolver) {
 	_odeSolver = odeSolver.empty() ? OdeSolverFactory::defaultKey() : odeSolver;
 }
@@ -354,6 +362,7 @@ std::string DiffusionField::show() {
 			",startTime=" + Util::StrTruncIfInt(std::to_string(_startTime)) +
 			",stopTime=" + Util::StrTruncIfInt(std::to_string(_stopTime)) +
 			",stepSize=" + Util::StrTruncIfInt(std::to_string(_stepSize)) +
+			",autoSchedule=" + std::to_string(_autoSchedule ? 1 : 0) +
 			",odeSolver=\"" + _odeSolver + "\"" +
 			",lastStatus=\"" + _lastStatus + "\"";
 }
@@ -372,6 +381,7 @@ bool DiffusionField::_loadInstance(PersistenceRecord* fields) {
 		_stopTime = fields->loadField("stopTime", DEFAULT.stopTime);
 		_stepSize = fields->loadField("stepSize", DEFAULT.stepSize);
 		_currentTime = fields->loadField("currentTime", _startTime);
+		_autoSchedule = fields->loadField("autoSchedule", DEFAULT.autoSchedule ? 1u : 0u) != 0u;
 		_odeSolver = fields->loadField("odeSolver", DEFAULT.odeSolver);
 		if (_odeSolver.empty()) {
 			_odeSolver = OdeSolverFactory::defaultKey();
@@ -396,6 +406,7 @@ void DiffusionField::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 	fields->saveField("stopTime", _stopTime, DEFAULT.stopTime, saveDefaultValues);
 	fields->saveField("stepSize", _stepSize, DEFAULT.stepSize, saveDefaultValues);
 	fields->saveField("currentTime", _currentTime, DEFAULT.currentTime, saveDefaultValues);
+	fields->saveField("autoSchedule", _autoSchedule ? 1u : 0u, DEFAULT.autoSchedule ? 1u : 0u, saveDefaultValues);
 	fields->saveField("odeSolver", _odeSolver, DEFAULT.odeSolver, saveDefaultValues);
 	fields->saveField("lastStatus", _lastStatus, DEFAULT.lastStatus, saveDefaultValues);
 	fields->saveField("lastErrorMessage", _lastErrorMessage, DEFAULT.lastErrorMessage, saveDefaultValues);
@@ -467,4 +478,28 @@ void DiffusionField::_initBetweenReplications() {
 	_lastTotalMass = _lastMaxValue = _lastL2Norm = 0.0;
 	_lastStatus = "Idle";
 	_lastErrorMessage.clear();
+	if (_autoSchedule) {
+		scheduleNextInternalEvent();
+	}
+}
+
+// Event-driven advance. Each InternalEvent fired by the kernel advances the field
+// one step and, while the run hasn't reached StopTime, schedules the next event.
+// This couples the continuous solve to the kernel's discrete event clock (mirrors
+// BioNetwork's auto-schedule).
+void DiffusionField::handleInternalEvent(void*) {
+	std::string errorMessage;
+	if (advanceOneStep(errorMessage) && _autoSchedule && _currentTime < _stopTime) {
+		scheduleNextInternalEvent();
+	}
+}
+
+void DiffusionField::scheduleNextInternalEvent() {
+	if (_stepSize <= 0.0 || _currentTime >= _stopTime) {
+		return;
+	}
+	const double eventTime = std::min(_currentTime + _stepSize, _stopTime);
+	auto* event = new InternalEvent(eventTime, "DiffusionFieldStep");
+	event->setEventHandler(this, &DiffusionField::handleInternalEvent, nullptr);
+	_parentModel->getFutureEvents()->insert(event);
 }
