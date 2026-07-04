@@ -38,11 +38,16 @@ QPointF GraphicalDataDefinitionLayout::arcPosition(const QRectF& anchorBounds,
     // Keep explicit lower radial layers visually separated. A smaller radial gap lets shared
     // lower elements overlap the statistics row when both categories are visible.
     const qreal radialGap = safeRadialLayer * (childHeight + 60.0);
+    // Dense lower arcs may contain both statistics and shared definitions. Split the second
+    // half into a lower row so shared definitions remain below the statistics row.
+    const qreal lowerDenseRowGap = (!upperArc && count > 2 && index >= (count + 1) / 2)
+                                     ? (childHeight + 60.0)
+                                     : 0.0;
 
     const qreal centerX = anchorBounds.center().x() + horizontalOffset;
     const qreal centerY = upperArc
                               ? anchorBounds.top() - verticalGap - childHeight / 2.0 - arcLift - radialGap
-                              : anchorBounds.bottom() + verticalGap + childHeight / 2.0 + arcLift + radialGap;
+                              : anchorBounds.bottom() + verticalGap + childHeight / 2.0 + arcLift + radialGap + lowerDenseRowGap;
 
     return QPointF(centerX - childWidth / 2.0, centerY - childHeight / 2.0);
 }
