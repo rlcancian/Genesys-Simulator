@@ -1,21 +1,30 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=2 warmUpTimeTimeUnit=9 warmUpTime=0.050000 replicationLength=1.000000 numberOfReplications=3 replicationLengthTimeUnit=9 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=9 warmUpTime=0.050000 replicationLength=1.000000 numberOfReplications=3 replicationLengthTimeUnit=9 
 
 # Model Data Definitions
-62  EntityType "Call" 
-65  Attribute  "Entity.Type" 
-67  Resource   "Operator" 
-72  Queue      "Queue_1" 
-73  Resource   "Accountant" 
-78  Queue      "Queue_2" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+137 EntityType "Call" 
+139 Attribute  "Entity.Type" 
+141 Resource   "Operator" 
+157 Attribute  "Entity.TotalWaitTime" 
+159 Queue      "Queue_1" 
+162 Resource   "Accountant" 
+179 Queue      "Queue_2" 
 
 # Model Components
-61  Create     "Calls_Arrive" entityType="Call" timeBetweenCreationsTimeUnit=7 nextId=63 timeBetweenCreations="expo(1)" 
-63  Assign     "Assign_Module" assignExpr[0]="unif(2,4)" nextId=66 assignDest[0]="Entity.Type" 
-66  Decide     "Root_Call" condition[0]="Entity.Type < 3" conditions=1 nextId[0]=68 nextId[1]=74 nexts=2 
-68  Process    "Costume_Service" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=7 priority==2 queueable="Queue_1" nextId=79 requestSeizable[0]="Operator" 
-74  Process    "Accounting" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=7 priority==2 queueable="Queue_2" nextId=79 requestSeizable[0]="Accountant" 
-79  Dispose    "Calls_Finished" nexts=0 
+132 Create     "Calls_Arrive" entityType="Call" timeBetweenCreationsTimeUnit=7 nextId=138 timeBetweenCreations="expo(1)" 
+138 Assign     "Assign_Module" assignExpr[0]="unif(2,4)" nextId=140 assignDest[0]="Entity.Type" 
+140 Decide     "Root_Call" condition[0]="Entity.Type < 3" conditions=1 nextId[0]=153 nextId[1]=174 nexts=2 
+153 Process    "Costume_Service" delayExpressionTimeUnit=7 delayExpression="tria(0.5,1,1.5)" priority=2 queueable="Queue_1" nextId=182 requestSeizable[0]="Operator" 
+154 Seize      "Costume_Service.Seize" queueable="Queue_1" priority=2 nextId=155 requestSeizable[0]="Operator" 
+155 Delay      "Costume_Service.Delay" delayExpressionTimeUnit=7 delayExpression="tria(0.5,1,1.5)" nextId=158 
+158 Release    "Costume_Service.Release" resquests=0 nexts=0 
+174 Process    "Accounting" delayExpressionTimeUnit=7 delayExpression="tria(0.5,1,1.5)" priority=2 queueable="Queue_2" nextId=182 requestSeizable[0]="Accountant" 
+175 Seize      "Accounting.Seize" queueable="Queue_2" priority=2 nextId=176 requestSeizable[0]="Accountant" 
+176 Delay      "Accounting.Delay" delayExpressionTimeUnit=7 delayExpression="tria(0.5,1,1.5)" nextId=178 
+178 Release    "Accounting.Release" resquests=0 nexts=0 
+182 Dispose    "Calls_Finished" nexts=0 

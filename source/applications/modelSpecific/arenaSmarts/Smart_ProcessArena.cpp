@@ -1,0 +1,70 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   Smart_ProcessArena.cpp
+ * Author: rlcancian
+ * 
+ * Created on 3 de Setembro de 2019, 18:34
+ */
+
+#include "Smart_ProcessArena.h"
+
+// you have to included need libs
+
+#include "kernel/simulator/essentialPlugins/EntityType.h"
+#include "kernel/simulator/model/ModelSimulation.h"
+#include "kernel/simulator/Simulator.h"
+
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/Logic/Dispose.h"
+
+Smart_ProcessArena::Smart_ProcessArena() {
+}
+
+/**
+ * This is the main function of the application. 
+ * It instanciates the simulator, builds a simulation model and then simulate that model.
+ */
+int Smart_ProcessArena::main(int argc, char** argv) {
+	Simulator* genesys = new Simulator();
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
+	plugins->autoInsertPlugins("autoloadplugins.txt");
+	Model* model = genesys->getModelManager()->newModel();
+	// create model
+
+    EntityType* entityType = plugins->newInstance<EntityType>(model, "Entity 1");
+    Create* create = plugins->newInstance<Create>(model);
+    create->setDescription("Create 1");
+    create->setEntityType(entityType);
+    create->setTimeBetweenCreationsExpression("EXPO(1)");
+    create->setTimeUnit(Util::TimeUnit::hour);
+
+    Delay* delay = plugins->newInstance<Delay>(model);
+    delay->setDescription("Process 1");
+    delay->setDelayExpression("tria(0.5, 1, 1.5)");
+    delay->setDelayTimeUnit(Util::TimeUnit::hour);
+    create->connectTo(delay);
+
+    Dispose* dispose = plugins->newInstance<Dispose>(model);
+    dispose->setDescription("Dispose 1");
+    delay->connectTo(dispose);
+
+    ModelSimulation* simulation = model->getSimulation();
+    simulation->setReplicationLength(10);
+    simulation->setReplicationLengthTimeUnit(Util::TimeUnit::minute);
+    simulation->setNumberOfReplications(300);
+    simulation->setWarmUpPeriod(0.05);
+    simulation->setWarmUpPeriodTimeUnit(Util::TimeUnit::minute);
+    model->save("./models/Smart_ProcessArena.gen");
+    model->getSimulation()->start();
+    while (model->getSimulation()-> isPaused());
+    
+    delete genesys;
+    return 0;
+};

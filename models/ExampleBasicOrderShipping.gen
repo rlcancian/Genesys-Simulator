@@ -1,37 +1,43 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Basic Order Shipping" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=3 warmUpTimeTimeUnit=7 warmUpTime=48.000000 replicationLength=4.000000 numberOfReplications=3 replicationLengthTimeUnit=8 
 
 # Model Data Definitions
-61  Resource   "ShippingAgent" 
-62  Resource   "AgentReviewer" 
-64  EntityType "Order" 
-66  Attribute  "Attribute_1" 
-78  Attribute  "Attribute_2" 
-80  Attribute  "Attribute_3" 
-82  Attribute  "Attribute_4" 
-89  EntityType "Entity1" 
-91  Attribute  "v_day" 
+132 Resource   "ShippingAgent" 
+144 Resource   "AgentReviewer" 
+158 EntityType "entitytype" 
+159 Attribute  "Entity.ArrivalTime" 
+160 Attribute  "Entity.Type" 
+161 EntityType "Order" 
+167 Attribute  "Entity.TotalWaitTime" 
+193 EntityType "Entity1" 
+195 Attribute  "v_day" 
 
 # Model Components
-63  Create     "Orders_Arrive_for_Shipping" timeBetweenCreationsTimeUnit=6 entityType="Order" firstCreation=0.001000 nextId=65 timeBetweenCreations="expo(50)" 
-65  Assign     "Assign_1" nextId=67 
-67  Process    "Agent_Reviews_Order" delayExpression="tria(25, 45,60)" delayExpressionTimeUnit=6 allocationType=2 nextId=75 requestSeizable[0]="AgentReviewer" 
-71  Process    "Order_Processing" delayExpression="tria(30, 45, 90)" delayExpressionTimeUnit=6 allocationType=1 nextId=76 requestSeizable[0]="ShippingAgent" 
-75  Decide     "Order_Arrives_to_Costumer?" nextinputPortNumber[3]=1 nextId[3]=77 nextinputPortNumber[1]=1 nextId[2]=71 nextId[0]=94 nextId[1]=94 nexts=4 
-76  Decide     "DataOk?" nextinputPortNumber[1]=1 nextId[0]=83 nextId[1]=84 nexts=2 
-77  Assign     "Order_Leaves_1" nextId=87 
-79  Assign     "Order_Leaves_2" nextId=86 
-81  Assign     "Order_Leaves_3" nextId=85 
-83  Record     "CycleTime" nextId=81 
-84  Record     "TotalFailed" nextId=79 
-85  Dispose    "Orders_Shipping_Success" nexts=0 
-86  Dispose    "Orders_Shipping_Failure" nexts=0 
-87  Dispose    "Invalid_Data" nexts=0 
-88  Create     "Create_control_entity_" entityType="Entity1" maxCreations="1" timeBetweenCreationsTimeUnit=7 nextId=90 timeBetweenCreations="expo(1)" 
-90  Assign     "Assign_2" assignExpr[0]="v_day+1" nextId=92 assignDest[0]="v_day" 
-92  Delay      "Delay_1" delayExpressionTimeUnit=7 delayExpression="24" nextId=75 
-93  Decide     "Decide_1" nexts=0 
-94  Assign     "Assign_3" assignExpr[0]="0" nextId=75 assignDest[0]="v_day" 
+156 Create     "Orders_Arrive_for_Shipping" timeBetweenCreationsTimeUnit=6 entityType="Order" firstCreation=0.001000 nextId=162 timeBetweenCreations="expo(50)" 
+162 Assign     "Assign_1" nextId=163 
+163 Process    "Agent_Reviews_Order" delayExpression="tria(25, 45,60)" delayExpressionTimeUnit=6 allocationType=1 nextId=174 requestSeizable[0]="AgentReviewer" 
+164 Seize      "Agent_Reviews_Order.Seize" allocationType=1 nextId=165 requestSeizable[0]="AgentReviewer" 
+165 Delay      "Agent_Reviews_Order.Delay" delayExpressionTimeUnit=6 delayExpression="tria(25, 45,60)" nextId=168 
+168 Release    "Agent_Reviews_Order.Release" resquests=0 nexts=0 
+169 Process    "Order_Processing" delayExpression="tria(30, 45, 90)" delayExpressionTimeUnit=6 allocationType=0 nextId=175 requestSeizable[0]="ShippingAgent" 
+170 Seize      "Order_Processing.Seize" allocationType=0 nextId=171 requestSeizable[0]="ShippingAgent" 
+171 Delay      "Order_Processing.Delay" delayExpressionTimeUnit=6 delayExpression="tria(30, 45, 90)" nextId=173 
+173 Release    "Order_Processing.Release" resquests=0 nexts=0 
+174 Decide     "Order_Arrives_to_Costumer?" nextinputPortNumber[3]=1 nextId[3]=176 nextinputPortNumber[1]=1 nextId[2]=169 nextId[0]=199 nextId[1]=199 nexts=4 
+175 Decide     "DataOk?" nextinputPortNumber[1]=1 nextId[0]=179 nextId[1]=181 nexts=2 
+176 Assign     "Order_Leaves_1" nextId=189 
+177 Assign     "Order_Leaves_2" nextId=187 
+178 Assign     "Order_Leaves_3" nextId=183 
+179 Record     "CycleTime" description="Cycle time for successfully shipped orders." randomVariableName="Order cycle time" nextId=178 datasetName="Order Cycle Time Dataset" expressionName="Cycle Time" expression="TNOW - a_time_in" 
+181 Record     "TotalFailed" description="One discrete observation for each failed order path." variableType="Discrete numeric" randomVariableName="Failed order count increment" nextId=177 datasetName="Failed Order Count Increment Dataset" expressionName="Failed Order Count Increment" expression="1" 
+183 Dispose    "Orders_Shipping_Success" nexts=0 
+187 Dispose    "Orders_Shipping_Failure" nexts=0 
+189 Dispose    "Invalid_Data" nexts=0 
+191 Create     "Create_control_entity_" entityType="Entity1" maxCreations="1" timeBetweenCreationsTimeUnit=7 nextId=194 timeBetweenCreations="expo(1)" 
+194 Assign     "Assign_2" assignExpr[0]="v_day+1" nextId=196 assignDest[0]="v_day" 
+196 Delay      "Delay_1" delayExpressionTimeUnit=7 delayExpression="24" nextId=174 
+198 Decide     "Decide_1" nexts=0 
+199 Assign     "Assign_3" assignExpr[0]="0" nextId=174 assignDest[0]="v_day" 

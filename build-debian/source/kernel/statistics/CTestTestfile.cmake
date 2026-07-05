@@ -1,0 +1,6 @@
+# CMake generated Testfile for 
+# Source directory: /home/rafaelcancian/Laboratory/Software/Educational_Projects/GenESyS/GitHub/WiP20261/Genesys-Simulator/source/kernel/statistics
+# Build directory: /home/rafaelcancian/Laboratory/Software/Educational_Projects/GenESyS/GitHub/WiP20261/Genesys-Simulator/build-debian/source/kernel/statistics
+# 
+# This file includes the relevant testing commands required for 
+# testing this directory and lists subdirectories to be tested as well.

@@ -1,14 +1,21 @@
-# Genesys Simulation Model 
+# Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220131 
-0   ModelInfo  "Model 1" analystName="" description="" projectTitle="" version="1.0" 
-0   ModelSimulation "" numberOfReplications=5 replicationLength=10.000000 traceLevel=9 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=10.000000 numberOfReplications=5 
 
 # Model Data Definitions
-1980 Resource   "Resource_1" 
-1981 Queue      "Queue_1" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+141 Attribute  "Entity.TotalWaitTime" 
+143 Resource   "Resource_1" 
+155 Queue      "Queue_1" 
 
 # Model Components
-1975 Create     "Create_1" entityType="entitytype" nextId=1976 
-1976 Process    "Process_1" delayExpression="unif(0.7,1.5)" queueable="Queue_1" requestSeizable[0]="Resource_1" nextId=1982 
-1982 Dispose    "Dispose_1" nexts=0 
+132 Create     "Create_1" entityType="entitytype" nextId=137 
+137 Process    "Process_1" delayExpression="unif(0.7,1.5)" queueable="Queue_1" nextId=158 requestSeizable[0]="Resource_1" 
+138 Seize      "Process_1.Seize" queueable="Queue_1" nextId=139 requestSeizable[0]="Resource_1" 
+139 Delay      "Process_1.Delay" delayExpression="unif(0.7,1.5)" nextId=142 
+142 Release    "Process_1.Release" resquests=0 nexts=0 
+158 Dispose    "Dispose_1" nexts=0 

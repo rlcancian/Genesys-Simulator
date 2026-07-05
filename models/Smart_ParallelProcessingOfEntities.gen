@@ -1,27 +1,43 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Parallel Processing of Entities" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=5.000000 replicationLength=179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000 numberOfReplications=3 terminatingCondition="COUNT(disposeEquipmentPlacedInWarehouse.CountNumberIn) > 1000" replicationLengthTimeUnit=9 
 
 # Model Data Definitions
-79  EntityType "Equipment" 
-80  Variable   "Serial" valuePos[0]="" values=1 
-81  Attribute  "Entity.SerialNumber" 
-82  Resource   "clerk_1" 
-83  Queue      "processCleanEquipmentQueue" 
-84  Resource   "clerk_2" 
-85  Queue      "processTestEquipmentQueue" 
-86  Resource   "clerk_3" 
-87  Queue      "processCertifyEquipmentQueue" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+145 Attribute  "Entity.TotalWaitTime" 
+158 Queue      "batchCombinePaperwork.Queue" 
+161 EntityGroup "batchCombinePaperwork.EntiyGroup" 
+163 Attribute  "Entity.Group" 
+168 EntityType "Equipment" 
+169 Variable   "Serial" valuePos[0]="" values=1 
+170 Attribute  "Entity.SerialNumber" 
+171 Resource   "clerk_1" 
+183 Queue      "processCleanEquipmentQueue" 
+186 Resource   "clerk_2" 
+198 Queue      "processTestEquipmentQueue" 
+201 Resource   "clerk_3" 
+213 Queue      "processCertifyEquipmentQueue" 
 
 # Model Components
-61  Create     "createEquipmentArrives" entityType="Equipment" timeBetweenCreationsTimeUnit=6 nextId=78 timeBetweenCreations="NORM(8,9)" 
-62  Clone      "separate_1" nextId[0]=64 nextId[1]=63 nexts=2 reportStatistics=0 
-63  Clone      "separate_2" nextId[0]=72 nextId[1]=68 nexts=2 reportStatistics=0 
-64  Process    "processCleanEquipment" delayExpression="UNIF(10,20)" delayExpressionTimeUnit=6 queueable="processCleanEquipmentQueue" nextId=76 requestSeizable[0]="clerk_1" 
-68  Process    "processTestEquipment" delayExpression="UNIF(5,15)" delayExpressionTimeUnit=6 queueable="processTestEquipmentQueue" nextId=76 requestSeizable[0]="clerk_2" 
-72  Process    "processCertifyEquipment" delayExpression="UNIF(5,10)" delayExpressionTimeUnit=6 queueable="processCertifyEquipmentQueue" nextId=76 requestSeizable[0]="clerk_3" 
-76  Batch      "batchCombinePaperwork" batchSize="3" attributeName="Entity.SerialNumber" groupedAttributes=1 rule=1 nextId=77 
-77  Dispose    "disposeEquipmentPlacedInWarehouse" nexts=0 
-78  Assign     "Assign_serial_number" assignIsAttrib[0]=0 assignExpr[0]="Serial + 1" assignments=2 nextId=62 assignExpr[2]="Serial" assignDest[2]="Entity.SerialNumber" assignDest[0]="Serial" 
+132 Create     "createEquipmentArrives" entityType="Equipment" timeBetweenCreationsTimeUnit=6 nextId=167 timeBetweenCreations="NORM(8,9)" 
+137 Clone      "separate_1" nextId[0]=141 nextId[1]=139 nexts=2 reportStatistics=0 
+139 Clone      "separate_2" nextId[0]=152 nextId[1]=147 nexts=2 reportStatistics=0 
+141 Process    "processCleanEquipment" delayExpression="UNIF(10,20)" delayExpressionTimeUnit=6 queueable="processCleanEquipmentQueue" nextId=157 requestSeizable[0]="clerk_1" 
+142 Seize      "processCleanEquipment.Seize" queueable="processCleanEquipmentQueue" nextId=143 requestSeizable[0]="clerk_1" 
+143 Delay      "processCleanEquipment.Delay" delayExpressionTimeUnit=6 delayExpression="UNIF(10,20)" nextId=146 
+146 Release    "processCleanEquipment.Release" resquests=0 nexts=0 
+147 Process    "processTestEquipment" delayExpression="UNIF(5,15)" delayExpressionTimeUnit=6 queueable="processTestEquipmentQueue" nextId=157 requestSeizable[0]="clerk_2" 
+148 Seize      "processTestEquipment.Seize" queueable="processTestEquipmentQueue" nextId=149 requestSeizable[0]="clerk_2" 
+149 Delay      "processTestEquipment.Delay" delayExpressionTimeUnit=6 delayExpression="UNIF(5,15)" nextId=151 
+151 Release    "processTestEquipment.Release" resquests=0 nexts=0 
+152 Process    "processCertifyEquipment" delayExpression="UNIF(5,10)" delayExpressionTimeUnit=6 queueable="processCertifyEquipmentQueue" nextId=157 requestSeizable[0]="clerk_3" 
+153 Seize      "processCertifyEquipment.Seize" queueable="processCertifyEquipmentQueue" nextId=154 requestSeizable[0]="clerk_3" 
+154 Delay      "processCertifyEquipment.Delay" delayExpressionTimeUnit=6 delayExpression="UNIF(5,10)" nextId=156 
+156 Release    "processCertifyEquipment.Release" resquests=0 nexts=0 
+157 Batch      "batchCombinePaperwork" batchSize="3" attributeName="Entity.SerialNumber" groupedAttributes=1 rule=1 nextId=164 
+164 Dispose    "disposeEquipmentPlacedInWarehouse" nexts=0 
+167 Assign     "Assign_serial_number" assignExpr[1]="Serial" assignIsAttrib[0]=0 assignExpr[0]="Serial + 1" assignments=2 nextId=137 assignDest[0]="Serial" assignDest[1]="Entity.SerialNumber" 

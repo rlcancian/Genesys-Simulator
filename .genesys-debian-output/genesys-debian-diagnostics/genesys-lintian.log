@@ -1,0 +1,6 @@
+W: genesys-gui: copyright-without-copyright-notice
+W: genesys-web: copyright-without-copyright-notice
+W: genesys-gui: initial-upload-closes-no-bugs [usr/share/doc/genesys-gui/changelog.Debian.gz:1]
+W: genesys-web: initial-upload-closes-no-bugs [usr/share/doc/genesys-web/changelog.Debian.gz:1]
+W: genesys-gui: no-manual-page [usr/bin/genesys-gui]
+W: genesys-web: no-manual-page [usr/bin/genesys-web]

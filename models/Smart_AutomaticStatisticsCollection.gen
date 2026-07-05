@@ -1,0 +1,22 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=24.000000 replicationBaseTimeUnit=6 replicationLength=480.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
+
+# Model Data Definitions
+132 EntityType "EntityType_1" 
+135 EntityType "entitytype" 
+136 Attribute  "Entity.ArrivalTime" 
+137 Attribute  "Entity.Type" 
+138 Resource   "Processor" costBusyTimeUnit=5.250000 
+154 Attribute  "Entity.TotalWaitTime" 
+156 Queue      "Queue_1" 
+
+# Model Components
+133 Create     "Equipment_Arrives" entityType="EntityType_1" timeBetweenCreationsTimeUnit=6 nextId=150 timeBetweenCreations="NORM(8,9)" 
+150 Process    "Equipment_is_Processed" delayExpressionTimeUnit=7 delayExpression="tria(1,2,3)" priority=1 queueable="Queue_1" allocationType=0 nextId=159 requestSeizable[0]="Processor" 
+151 Seize      "Equipment_is_Processed.Seize" queueable="Queue_1" priority=1 allocationType=0 nextId=152 requestSeizable[0]="Processor" 
+152 Delay      "Equipment_is_Processed.Delay" delayExpressionTimeUnit=7 delayExpression="tria(1,2,3)" nextId=155 
+155 Release    "Equipment_is_Processed.Release" resquests=0 nexts=0 
+159 Dispose    "Dispose_1" nexts=0 

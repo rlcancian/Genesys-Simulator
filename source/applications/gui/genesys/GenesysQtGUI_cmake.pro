@@ -1,0 +1,115 @@
+# QtCreator helper project for the CMake/Ninja-based GenESyS build.
+#
+# Open this file in QtCreator when you want the old qmake front-end to drive
+# the existing CMake presets directly, without rebuilding the application tree
+# through qmake itself.
+#
+# Default target:
+#   - build_gui_application
+#
+# Available targets:
+#   - configure_gui_application
+#   - build_gui_application
+#   - run_gui_application
+#   - configure_worker_application
+#   - build_worker_application
+#   - run_worker_application
+#   - configure_terminal_application
+#   - build_terminal_application
+#   - run_terminal_application
+#   - configure_terminal_example
+#   - build_terminal_example
+#   - run_terminal_example
+#   - configure_tests_kernel_unit
+#   - build_tests_kernel_unit
+#   - run_tests_kernel_unit
+#   - configure_tests_smoke
+#   - build_tests_smoke
+#   - run_tests_smoke
+#
+# The "run_*" targets are plain shell commands, so they can be used from the
+# QtCreator build step to launch the built executable after the preset build.
+
+TEMPLATE = aux
+CONFIG += ordered
+CONFIG -= qt warn_on
+
+SOURCE_ROOT = $$clean_path($$PWD/../../../../../)
+BUILD_ROOT = $$SOURCE_ROOT/build
+
+CMAKE_BIN = cmake
+
+GUI_BUILD_DIR = $$BUILD_ROOT/gui-app
+GUI_BINARY = $$GUI_BUILD_DIR/source/applications/gui/genesys/genesys-gui
+
+WORKER_BUILD_DIR = $$BUILD_ROOT/genesys_worker_app
+WORKER_BINARY = $$WORKER_BUILD_DIR/source/applications/worker/genesys-worker
+
+TERMINAL_BUILD_DIR = $$BUILD_ROOT/genesys_shell
+TERMINAL_BINARY = $$TERMINAL_BUILD_DIR/source/applications/shell/genesys_shell
+
+TERMINAL_EXAMPLE_BUILD_DIR = $$BUILD_ROOT/terminal-model-specific
+TERMINAL_EXAMPLE_BINARY = $$TERMINAL_EXAMPLE_BUILD_DIR/source/applications/modelSpecific/genesys_terminal_application
+
+TESTS_KERNEL_BUILD_DIR = $$BUILD_ROOT/tests-kernel-unit
+TESTS_SMOKE_BUILD_DIR = $$BUILD_ROOT/tests-smoke
+
+QMAKE_EXTRA_TARGETS += \
+    configure_gui_application \
+    build_gui_application \
+    run_gui_application \
+    configure_worker_application \
+    build_worker_application \
+    run_worker_application \
+    configure_terminal_application \
+    build_terminal_application \
+    run_terminal_application \
+    configure_terminal_example \
+    build_terminal_example \
+    run_terminal_example \
+    configure_tests_kernel_unit \
+    build_tests_kernel_unit \
+    run_tests_kernel_unit \
+    configure_tests_smoke \
+    build_tests_smoke \
+    run_tests_smoke
+
+configure_gui_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset gui-app
+build_gui_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset gui-app
+run_gui_application.commands = cd $$GUI_BUILD_DIR/source/applications/gui/genesys && ./genesys-gui
+build_gui_application.depends = configure_gui_application
+run_gui_application.depends = build_gui_application
+
+configure_worker_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset genesys_worker_app
+build_worker_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset genesys_worker_app
+run_worker_application.commands = cd $$WORKER_BUILD_DIR/source/applications/worker && ./genesys-worker --port 8080
+build_worker_application.depends = configure_worker_application
+run_worker_application.depends = build_worker_application
+
+configure_terminal_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset genesys_shell
+build_terminal_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset genesys_shell
+run_terminal_application.commands = cd $$TERMINAL_BUILD_DIR/source/applications/shell && ./genesys_shell
+build_terminal_application.depends = configure_terminal_application
+run_terminal_application.depends = build_terminal_application
+
+configure_terminal_example.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset terminal-model-specific
+build_terminal_example.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset terminal-model-specific
+run_terminal_example.commands = cd $$TERMINAL_EXAMPLE_BUILD_DIR/source/applications/modelSpecific && ./genesys_terminal_application
+build_terminal_example.depends = configure_terminal_example
+run_terminal_example.depends = build_terminal_example
+
+configure_tests_kernel_unit.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset tests-kernel-unit
+build_tests_kernel_unit.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset tests-kernel-unit
+run_tests_kernel_unit.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset tests-kernel-unit
+build_tests_kernel_unit.depends = configure_tests_kernel_unit
+run_tests_kernel_unit.depends = build_tests_kernel_unit
+
+configure_tests_smoke.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset tests-smoke
+build_tests_smoke.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset tests-smoke
+run_tests_smoke.commands = cd $$SOURCE_ROOT && ctest --preset tests-smoke
+build_tests_smoke.depends = configure_tests_smoke
+run_tests_smoke.depends = build_tests_smoke
+
+TARGET = genesys_gui_application
+DESTDIR = $$GUI_BUILD_DIR/source/applications/gui/genesys
+PRE_TARGETDEPS += build_gui_application

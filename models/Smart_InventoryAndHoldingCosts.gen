@@ -1,0 +1,23 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=50.000000 replicationLength=1000.000000 numberOfReplications=300 terminatingCondition="count(DisposeOfEntity.CountNumberIn)>1000" replicationLengthTimeUnit=6 
+
+# Model Data Definitions
+132 Resource   "Resource_1" costPerUse=0.000000 costIdleTimeUnit=0.000000 costBusyTimeUnit=0.000000 
+146 EntityType "entitytype" 
+147 Attribute  "Entity.ArrivalTime" 
+148 Attribute  "Entity.Type" 
+149 EntityType "Entity_1" 
+154 Attribute  "Entity.TotalWaitTime" 
+156 Queue      "Process_with_Resource_1_Queue" 
+
+# Model Components
+144 Create     "Create_an_Entity" entityType="Entity_1" timeBetweenCreationsTimeUnit=6 nextId=150 timeBetweenCreations="expo(5)" 
+150 Process    "Process_with_Resource_1" delayExpression="tria(5,6,7)" delayExpressionTimeUnit=6 queueable="Process_with_Resource_1_Queue" allocationType=0 nextId=159 requestSeizable[0]="Resource_1" 
+151 Seize      "Process_with_Resource_1.Seize" queueable="Process_with_Resource_1_Queue" allocationType=0 nextId=152 requestSeizable[0]="Resource_1" 
+152 Delay      "Process_with_Resource_1.Delay" delayExpressionTimeUnit=6 delayExpression="tria(5,6,7)" nextId=155 
+155 Release    "Process_with_Resource_1.Release" resquests=0 nexts=0 
+159 Delay      "Delay_1" delayExpression="tria(0.5,1,1.5)" nextId=161 
+161 Dispose    "DisposeOfEntity" nexts=0 

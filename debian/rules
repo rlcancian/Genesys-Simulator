@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh ${@} --buildsystem=cmake+ninja --builddirectory=build-debian
+
+override_dh_auto_configure:
+	dh_auto_configure --buildsystem=cmake+ninja -- \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX=/usr \
+		-DGENESYS_BUILD_GUI_APPLICATION=ON \
+		-DGENESYS_BUILD_WEB_APPLICATION=ON \
+		-DGENESYS_BUILD_TERMINAL_APPLICATION=OFF \
+		-DGENESYS_BUILD_TESTS=OFF \
+		-DGENESYS_ENABLE_PYTHON_INTEGRATION=OFF
+
+override_dh_auto_build:
+	cmake --build build-debian --parallel

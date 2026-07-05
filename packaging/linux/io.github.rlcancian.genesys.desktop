@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GenESyS Simulator
+Comment=Generic and Expansible System Simulator
+Exec=genesys-gui
+Icon=io.github.rlcancian.genesys
+Terminal=false
+Categories=Science;Education;Development;
+StartupNotify=true

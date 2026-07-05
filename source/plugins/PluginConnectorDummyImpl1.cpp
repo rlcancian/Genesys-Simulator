@@ -41,6 +41,7 @@
 #include "plugins/components/DiscreteProcessing/Clone.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
+#include "plugins/components/AI/AIAssistant.h"
 #include "components/Logic/Create.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
@@ -100,6 +101,7 @@
 #include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
 #include "plugins/data/ExternalIntegration/PythonRuntime.h"
+#include "plugins/data/AI/AISupport.h"
 #include "plugins/data/Template/DummyElement.h"
 #include "plugins/data/Grouping/EntityGroup.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
@@ -169,12 +171,14 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("stochastictranscription.so");
     filenames->insert("stochastictranslation.so");
     filenames->insert("wholecellstate.so");
+    filenames->insert("aiassistant.so");
+    filenames->insert("aisupport.so");
     filenames->insert("assign.so");
     filenames->insert("buffer.so");
     filenames->insert("create.so");
     filenames->insert("dispose.so");
-    //filenames->insert("dummy.so");
-    //filenames->insert("dummyelement.so");
+    filenames->insert("dummy.so");
+    filenames->insert("dummyelement.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
     filenames->insert("formula.so");
@@ -327,6 +331,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &StochasticTranslation::GetPluginInformation;
     else if (fn == "wholecellstate.so")
         GetInfo = &WholeCellState::GetPluginInformation;
+    else if (fn == "aiassistant.so")
+        GetInfo = &AIAssistant::GetPluginInformation;
+    else if (fn == "aisupport.so")
+        GetInfo = &AISupport::GetPluginInformation;
     else if (fn == "assign.so")
         GetInfo = &Assign::GetPluginInformation;
     else if (fn == "buffer.so")
@@ -335,10 +343,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Create::GetPluginInformation;
     else if (fn == "dispose.so")
         GetInfo = &Dispose::GetPluginInformation;
-    //else if (fn == "dummy.so")
-    //    GetInfo = &DummyComponent::GetPluginInformation;
-    //else if (fn == "dummyelement.so")
-    //    GetInfo = &DummyElement::GetPluginInformation;
+    else if (fn == "dummy.so")
+        GetInfo = &DummyComponent::GetPluginInformation;
+    else if (fn == "dummyelement.so")
+        GetInfo = &DummyElement::GetPluginInformation;
     else if (fn == "entitygroup.so")
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")

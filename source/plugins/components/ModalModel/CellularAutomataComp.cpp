@@ -20,6 +20,7 @@
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Elementary.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Growty.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_SandRock_Student.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Center.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
@@ -109,6 +110,8 @@ void CellularAutomataComp::setLocalRuleType(CellularAutomataComp::LocalRuleType 
 		_localRule = new LocalRule_GameOfLife(_cellularAutomata);
 	} else if (_localRuleType == LocalRuleType::BIASED_COMPETITION) {
 		_localRule = new LocalRule_Growty(_cellularAutomata);
+	} else if (_localRuleType == LocalRuleType::SAND_ROCK) {
+		_localRule = new LocalRule_SandRock_Student(_cellularAutomata);
 	}
 }
 

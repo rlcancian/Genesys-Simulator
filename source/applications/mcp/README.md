@@ -6,7 +6,7 @@ Python MCP server that exposes GenESyS simulation capabilities to AI assistants
 ## Prerequisites
 
 - Python 3.10+
-- `genesys_web_app` running (see `source/applications/web/README.md`)
+- `genesys-worker` running (see `source/applications/worker/README.md`)
 
 ## Install
 
@@ -26,7 +26,7 @@ python -m genesys_mcp
 ```
 
 The server communicates over stdio (default FastMCP transport).
-Set `GENESYS_URL` to point to a non-default web app address:
+Set `GENESYS_URL` to point to a non-default worker app address:
 
 ```bash
 GENESYS_URL=http://192.168.1.10:8080 genesys-mcp
@@ -98,7 +98,7 @@ to every subsequent tool.
 
 | Tool | Auth required | Description |
 |---|---|---|
-| `genesys_health` | No | Check web app reachability |
+| `genesys_health` | No | Check worker app reachability |
 | `genesys_auth` | No | Create session, returns token |
 | `genesys_info` | Yes | Simulator version and licence |
 | `genesys_new_model` | Yes | Create empty model |

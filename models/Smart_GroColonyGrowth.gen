@@ -1,0 +1,16 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=3.000000 
+
+# Model Data Definitions
+132 GroProgram "GroProgram_Growth" sourceCode="program colony() { tick(); grow(2); }" 
+135 EntityType "entitytype" 
+136 Attribute  "Entity.ArrivalTime" 
+137 Attribute  "Entity.Type" 
+
+# Model Components
+133 Create     "Create_GrowthPulse" entityType="entitytype" maxCreations="3" nextId=138 timeBetweenCreations="1.0" 
+138 BacteriaColony "BacteriaColony_Growth" gridHeight=2 gridWidth=4 initialPopulation=2 simulationStep=0.500000 groProgram="GroProgram_Growth" nextId=139 
+139 Dispose    "Dispose_GrowthPulse" nexts=0 

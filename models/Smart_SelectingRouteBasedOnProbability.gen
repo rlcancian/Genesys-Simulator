@@ -1,0 +1,63 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=250.253816 replicationBaseTimeUnit=6 replicationLength=179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000 numberOfReplications=300 terminatingCondition="(count(SendPartsToDryer1.CountNumberIn)+count(SendPartsToDryer2.CountNumberIn))>1000" replicationLengthTimeUnit=9 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Entity1" 
+140 Station    "Station_1" 
+145 Attribute  "Entity.Station" 
+146 Attribute  "Entity.ArrivalAtStation_1" 
+147 Station    "ArrivalStation" 
+150 Attribute  "Entity.ArrivalAtArrivalStation" 
+153 Station    "Station_2" 
+156 Attribute  "Entity.ArrivalAtStation_2" 
+157 Attribute  "Entity.TotalTransferTime" 
+158 Attribute  "Entity.Sequence" 
+159 Attribute  "Entity.SequenceStep" 
+160 Station    "Decision" 
+163 Attribute  "Entity.ArrivalAtDecision" 
+166 Station    "Station_3" 
+169 Attribute  "Entity.ArrivalAtStation_3" 
+173 Station    "Station_4" 
+176 Attribute  "Entity.ArrivalAtStation_4" 
+177 Station    "PaintMachine1" 
+180 Attribute  "Entity.ArrivalAtPaintMachine1" 
+183 Station    "Station_5" 
+186 Attribute  "Entity.ArrivalAtStation_5" 
+187 Station    "PaintMachine2" 
+190 Attribute  "Entity.ArrivalAtPaintMachine2" 
+191 Resource   "BluePlainter" 
+203 Queue      "Machine1Process.Queue" 
+208 Station    "Station_6" 
+211 Attribute  "Entity.ArrivalAtStation_6" 
+216 Attribute  "Entity.TotalWaitTime" 
+222 Resource   "YellowPlainter" 
+234 Queue      "Machine2Process.Queue" 
+239 Station    "Station_7" 
+242 Attribute  "Entity.ArrivalAtStation_7" 
+
+# Model Components
+132 Create     "PartArrive" entityType="Entity1" timeBetweenCreationsTimeUnit=6 nextId=138 timeBetweenCreations="expo(5.0)" 
+138 Enter      "PartArrival" station="ArrivalStation" nextId=151 
+151 Route      "RouteToDecisionArea" routeTimeTimeUnit=6 station="Decision" routeTimeExpression="5" nexts=0 
+164 Enter      "DecisionArea" station="Decision" nextId=170 
+170 Decide     "WhereShouldThePartsBeProcessed" condition[0]="unif(0.0,1.0)<=0.66" conditions=1 nextId[0]=171 nextId[1]=181 nexts=2 
+171 Route      "RouteToPaintMachine1" routeTimeTimeUnit=6 station="PaintMachine1" routeTimeExpression="2" nexts=0 
+181 Route      "RouteToPaintMachine2" routeTimeTimeUnit=6 station="PaintMachine2" routeTimeExpression="3" nexts=0 
+206 Enter      "MachiningArea1" station="PaintMachine1" nextId=212 
+212 Process    "Machine1Process" delayExpression="norm(5.0,0.6)" delayExpressionTimeUnit=6 queueable="Machine1Process.Queue" nextId=218 requestSeizable[0]="BluePlainter" 
+213 Seize      "Machine1Process.Seize" queueable="Machine1Process.Queue" nextId=214 requestSeizable[0]="BluePlainter" 
+214 Delay      "Machine1Process.Delay" delayExpressionTimeUnit=6 delayExpression="norm(5.0,0.6)" nextId=217 
+217 Release    "Machine1Process.Release" resquests=0 nexts=0 
+218 Dispose    "SendPartsToDryer1" nexts=0 
+237 Enter      "MachiningArea2" station="PaintMachine2" nextId=243 
+243 Process    "Machine2Process" delayExpression="norm(5.0,0.6)" delayExpressionTimeUnit=6 queueable="Machine2Process.Queue" nextId=248 requestSeizable[0]="YellowPlainter" 
+244 Seize      "Machine2Process.Seize" queueable="Machine2Process.Queue" nextId=245 requestSeizable[0]="YellowPlainter" 
+245 Delay      "Machine2Process.Delay" delayExpressionTimeUnit=6 delayExpression="norm(5.0,0.6)" nextId=247 
+247 Release    "Machine2Process.Release" resquests=0 nexts=0 
+248 Dispose    "SendPartsToDryer2" nexts=0 
