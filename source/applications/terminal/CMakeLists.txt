@@ -7,6 +7,7 @@ set_property(CACHE GENESYS_TERMINAL_APP PROPERTY STRINGS
     Smart_SeizeDelayReleaseNoDataDefs
     Smart_PythonForG
     Smart_R_Simulator
+    StartAIAssistant
     AnElectronicAssemblyAndTestSystem
 )
 set(GENESYS_TERMINAL_EXAMPLE "" CACHE STRING "Relative .cpp path under source/applications/terminal/examples to compile as terminal application")
@@ -78,6 +79,12 @@ elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_PythonForG")
 elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_R_Simulator")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         examples/smarts/Smart_R_Simulator.cpp
+    )
+elseif(GENESYS_TERMINAL_APP STREQUAL "StartAIAssistant")
+    set(GENESYS_TERMINAL_SELECTED_CLASS "StartAIAssistant")
+    set(GENESYS_TERMINAL_SELECTED_HEADER "examples/smarts/StartAIAssistant.h")
+    list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
+        examples/smarts/StartAIAssistant.cpp
     )
 elseif(GENESYS_TERMINAL_APP STREQUAL "AnElectronicAssemblyAndTestSystem")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
