@@ -70,15 +70,14 @@
       }
     },
     {
-      "name": "terminal-examples",
+      "name": "terminal-model-specific-base",
       "hidden": true,
       "inherits": "debug-base",
-      "binaryDir": "${sourceDir}/build/terminal-examples",
+      "binaryDir": "${sourceDir}/build/terminal-model-specific-base",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF",
         "GENESYS_BUILD_TERMINAL_EXAMPLES": "ON",
-        "GENESYS_TERMINAL_APP": "GenesysShell",
         "GENESYS_TERMINAL_EXAMPLE": "",
         "GENESYS_TERMINAL_EXAMPLE_CLASS": ""
       }
@@ -98,19 +97,19 @@
     {
       "name": "terminal-smart",
       "displayName": "Application - Terminal Smart",
-      "description": "Builds the terminal application from a smart source under source/applications/terminal/examples/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
-      "inherits": "terminal-examples",
+      "description": "Builds the terminal application from a smart source under source/applications/modelSpecificApplications/examples/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
+      "inherits": "terminal-model-specific-base",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
         "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_CellularAutomata1.cpp"
       }
     },
     {
-      "name": "terminal-example",
-      "displayName": "Application - Terminal Example",
-      "description": "Builds the terminal application from a non-shell example under source/applications/terminal/examples. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
-      "inherits": "terminal-examples",
-      "binaryDir": "${sourceDir}/build/terminal-example",
+      "name": "terminal-model-specific",
+      "displayName": "Application - Terminal Model Specific",
+      "description": "Builds the terminal application from any model-specific example under source/applications/modelSpecificApplications/examples. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
+      "inherits": "terminal-model-specific-base",
+      "binaryDir": "${sourceDir}/build/terminal-model-specific",
       "cacheVariables": {
         "GENESYS_TERMINAL_EXAMPLE": "teaching/AnElectronicAssemblyAndTestSystem.cpp"
       }
@@ -129,11 +128,10 @@
       "name": "terminal-smart-ai-assistant",
       "displayName": "Application - Terminal Smart (StartAIAssistant)",
       "description": "Builds the terminal application directly as the StartAIAssistant smart example.",
-      "inherits": "terminal-examples",
+      "inherits": "terminal-model-specific",
       "binaryDir": "${sourceDir}/build/terminal-smart-ai-assistant",
       "cacheVariables": {
-        "GENESYS_TERMINAL_APP": "StartAIAssistant",
-        "GENESYS_TERMINAL_EXAMPLE": "",
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/StartAIAssistant.cpp",
         "GENESYS_TERMINAL_EXAMPLE_CLASS": ""
       }
     },
@@ -277,8 +275,8 @@
       ]
     },
     {
-      "name": "terminal-example",
-      "configurePreset": "terminal-example",
+      "name": "terminal-model-specific",
+      "configurePreset": "terminal-model-specific",
       "targets": [
         "genesys_terminal_application"
       ]

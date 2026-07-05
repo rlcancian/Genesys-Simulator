@@ -8,8 +8,8 @@
 
 #include <gtest/gtest.h>
 
-#include "../../applications/terminal/examples/smarts/Smart_AssignWriteSeizes.h"
-#include "../../applications/terminal/examples/smarts/Smart_BatchSeparate.h"
+#include "../../applications/modelSpecificApplications/examples/smarts/Smart_AssignWriteSeizes.h"
+#include "../../applications/modelSpecificApplications/examples/smarts/Smart_BatchSeparate.h"
 #include "../../applications/BaseGenesysTerminalApplication.h"
 
 TEST(TerminalApplicationSmokeTest, SmartsExamplesReturnZero) {

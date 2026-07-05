@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "GenesysShell/GenesysShell.h"
+#include "../GenesysShell/GenesysShell.h"
 
 template <typename T>
 struct TraitsTerminalApp {

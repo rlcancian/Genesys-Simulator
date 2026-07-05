@@ -5,7 +5,7 @@
 #include <memory>
 
 #ifndef GENESYS_TERMINAL_APP_HEADER
-#define GENESYS_TERMINAL_APP_HEADER "GenesysShell/GenesysShell.h"
+#define GENESYS_TERMINAL_APP_HEADER "applications/GenesysShell/GenesysShell.h"
 #endif
 
 #ifndef GENESYS_TERMINAL_APP_CLASS

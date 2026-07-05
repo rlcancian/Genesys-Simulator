@@ -48,8 +48,8 @@ WEB_BINARY = $$WEB_BUILD_DIR/source/applications/web/genesys_web_app
 TERMINAL_BUILD_DIR = $$BUILD_ROOT/genesys_shell
 TERMINAL_BINARY = $$TERMINAL_BUILD_DIR/source/applications/GenesysShell/genesys_shell
 
-TERMINAL_EXAMPLE_BUILD_DIR = $$BUILD_ROOT/terminal-example
-TERMINAL_EXAMPLE_BINARY = $$TERMINAL_EXAMPLE_BUILD_DIR/source/applications/terminal/genesys_terminal_application
+TERMINAL_EXAMPLE_BUILD_DIR = $$BUILD_ROOT/terminal-model-specific
+TERMINAL_EXAMPLE_BINARY = $$TERMINAL_EXAMPLE_BUILD_DIR/source/applications/modelSpecificApplications/genesys_terminal_application
 
 TESTS_KERNEL_BUILD_DIR = $$BUILD_ROOT/tests-kernel-unit
 TESTS_SMOKE_BUILD_DIR = $$BUILD_ROOT/tests-smoke
@@ -92,9 +92,9 @@ run_terminal_application.commands = cd $$TERMINAL_BUILD_DIR/source/applications/
 build_terminal_application.depends = configure_terminal_application
 run_terminal_application.depends = build_terminal_application
 
-configure_terminal_example.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset terminal-example
-build_terminal_example.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset terminal-example
-run_terminal_example.commands = cd $$TERMINAL_EXAMPLE_BUILD_DIR/source/applications/terminal && ./genesys_terminal_application
+configure_terminal_example.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset terminal-model-specific
+build_terminal_example.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset terminal-model-specific
+run_terminal_example.commands = cd $$TERMINAL_EXAMPLE_BUILD_DIR/source/applications/modelSpecificApplications && ./genesys_terminal_application
 build_terminal_example.depends = configure_terminal_example
 run_terminal_example.depends = build_terminal_example
 

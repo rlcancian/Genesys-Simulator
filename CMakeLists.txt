@@ -71,7 +71,7 @@ if(GENESYS_BUILD_TERMINAL_APPLICATION)
 endif()
 
 if(GENESYS_BUILD_TERMINAL_EXAMPLES)
-    add_subdirectory(source/applications/terminal)
+    add_subdirectory(source/applications/modelSpecificApplications)
 endif()
 
 if(GENESYS_BUILD_KERNEL AND GENESYS_BUILD_PARSER AND GENESYS_BUILD_PLUGINS)
