@@ -2,10 +2,6 @@ add_library(genesys_tools STATIC
     AIAssistant/AIAssistantDefaultImpl.cpp
     AIAssistant/AIAuditLog.cpp
     AIAssistant/AISecretStore.cpp
-    AIAssistant/AnthropicProviderClientImpl.cpp
-    AIAssistant/HttpProviderClientBase.cpp
-    AIAssistant/LocalProviderClientImpl.cpp
-    AIAssistant/OpenAIProviderClientImpl.cpp
     Statistics/FitterDummyImpl.cpp
     Statistics/HypothesisTesterDefaultImpl1.cpp
     Statistics/ProbabilityDistribution.cpp
@@ -26,6 +22,7 @@ target_link_libraries(genesys_tools
         genesys_kernel_util
         genesys_kernel_statistics
         genesys_kernel_simulator_runtime
+        genesys_ai_provider
 )
 
 target_compile_features(genesys_tools PUBLIC cxx_std_23)

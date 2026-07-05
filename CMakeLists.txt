@@ -47,6 +47,9 @@ else()
     message(STATUS "GenESyS: experimental Python integration disabled by option")
 endif()
 
+# Provider clients are simulator-independent and are shared by tools and AI plugins.
+add_subdirectory(source/tools/AIAssistant)
+
 
 if(GENESYS_BUILD_KERNEL)
     add_subdirectory(source/kernel/util)

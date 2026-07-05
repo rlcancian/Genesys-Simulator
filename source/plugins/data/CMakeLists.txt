@@ -14,6 +14,7 @@ target_include_directories(genesys_plugins_data
 target_link_libraries(genesys_plugins_data
     PUBLIC
         genesys_kernel_util
+        genesys_ai_provider
 )
 
 target_compile_definitions(genesys_plugins_data

@@ -77,6 +77,14 @@ genesys_add_unit_test(genesys_test_runtime_pluginmanager
     genesys_kernel_simulator_runtime
 )
 
+genesys_add_unit_test(genesys_test_ai_plugins
+    test_ai_plugins.cpp
+    genesys_ai_provider
+    genesys_kernel_simulator_runtime
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
 genesys_add_unit_test(genesys_test_wcm_plugins
     test_wcm_plugins.cpp
     genesys_kernel_simulator_runtime
