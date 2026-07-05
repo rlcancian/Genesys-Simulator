@@ -11,7 +11,6 @@
 #include "../services/IssueReportRelayService.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
-#include "../tools/expressionbuilder/ExpressionBuilder.h"
 #include "../services/ToolLauncher.h"
 
 #include "kernel/simulator/Simulator.h"
@@ -1299,15 +1298,6 @@ void DialogUtilityController::onActionToolsAIAssistantTriggered() {
                                  {QStringLiteral(".."),
                                   QStringLiteral("../ai_assistant"),
                                   QStringLiteral("../../../../../gui-ai-assistant/source/applications/gui/ai_assistant")});
-}
-
-// Launch the standalone-leaning Optimizer workstation connected to the current model when available.
-void DialogUtilityController::onActionToolsExpressionBuilderTriggered() {
-    auto* window = new ExpressionBuilder(_ownerWidget);
-    window->setAttribute(Qt::WA_DeleteOnClose, true);
-    window->show();
-    window->raise();
-    window->activateWindow();
 }
 
 // Launch the standalone-leaning Data Analyzer workstation without forcing an initial dataset prompt.

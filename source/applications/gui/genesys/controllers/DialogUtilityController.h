@@ -68,8 +68,6 @@ public:
     void onActionToolsParserGrammarCheckerTriggered();
     /** @brief Opens optimization settings dialog and stores lightweight preferences. */
     void onActionToolsOptimizatorTriggered();
-	/** @brief Opens expressionbuilder dialog */
-	void onActionToolsExpressionBuilderTriggered();
     /** @brief Opens the AI Assistant panel for LLM-driven simulation model generation. */
     void onActionToolsAIAssistantTriggered();
     /** @brief Launches the Data Analyzer workstation using persisted last-path compatibility state. */
