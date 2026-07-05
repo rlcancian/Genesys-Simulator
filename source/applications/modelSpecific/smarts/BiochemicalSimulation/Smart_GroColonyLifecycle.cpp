@@ -39,7 +39,6 @@ int Smart_GroColonyLifecycle::main(int argc, char** argv) {
 	BacteriaColony* colony = plugins->newInstance<BacteriaColony>(model, "BacteriaColony_Lifecycle");
 	colony->setGroProgram(program);
 	colony->setSimulationStep(1.0);
-	colony->setInitialColonyTime(5.0);
 	colony->setInitialPopulation(3);
 	colony->setGridWidth(3);
 	colony->setGridHeight(3);
