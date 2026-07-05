@@ -70,7 +70,7 @@ int Smart_AutomaticStatisticsCollection::main(int argc, char** argv) {
 	sim->setWarmUpPeriod(sim->getReplicationLength()*0.05); 
 	sim->setWarmUpPeriodTimeUnit(Util::TimeUnit::minute);
 	sim->setReplicationReportBaseTimeUnit(Util::TimeUnit::minute);
-	model->save("./models/Smart_EvaluatingConditionsBeforeEnteringQueue.gen");
+	model->save("./models/Smart_AutomaticStatisticsCollection.gen");
 	sim->start();
 
 	for (int i = 0; i < 1e9; i++);

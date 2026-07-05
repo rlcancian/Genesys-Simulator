@@ -110,6 +110,7 @@ int AirportSecurityExampleExtended::main(int argc, char** argv) {
 	model->getSimulation()->setNumberOfReplications(3);
 	model->getSimulation()->setWarmUpPeriod(0.5);
 	model->getSimulation()->setWarmUpPeriodTimeUnit(Util::TimeUnit::hour);
+	model->save("./models/AirportSecurityExampleExtended.gen");
 	model->getSimulation()->start();
 
 	delete genesys;

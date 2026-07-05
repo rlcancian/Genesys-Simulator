@@ -51,6 +51,7 @@ int AirportSecurityExample::main(int argc, char** argv) {
 	model->getSimulation()->setNumberOfReplications(2);
 	model->getSimulation()->setWarmUpPeriod(0.5, Util::TimeUnit::hour);
 
+	model->save("./models/AirportSecurityExample.gen");
 	model->getSimulation()->start();
 	delete genesys;
 	return 0;

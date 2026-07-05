@@ -81,6 +81,7 @@ int Half_Adder::main(int argc, char** argv) {
 	nand->getConnectionManager()->insertAtPort(3, new Connection({b, 0}));
 	nand->getConnectionManager()->insertAtPort(4, new Connection({carry, 0}));
 
+	model->save("./models/Half_Adder.gen");
 	// runner->ConfigSim(sim_time, sim_step, "v("+sum->getNodeName()+")");
 	// runner->Run(runner->CompileSpiceFile());
 

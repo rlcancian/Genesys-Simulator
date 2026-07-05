@@ -43,7 +43,7 @@ int Smart_SimulationControlResponse::main(int argc, char** argv) {
 	process1->connectTo(dispose1);
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(60, Util::TimeUnit::second);
-	//model->save("./models/Smart_SimulationControlResponse.gen");
+	model->save("./models/Smart_SimulationControlResponse.gen");
 	model->check();
 	model->show();
 	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L9_mostDetailed);

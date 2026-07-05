@@ -36,6 +36,7 @@ int Book_Cap02_Example01::main(int argc, char** argv) {
 	delay1->getConnectionManager()->insert(dispose1);
 	model->getSimulation()->setReplicationLength(30, Util::TimeUnit::second);
 	model->getSimulation()->setNumberOfReplications(100);
+	model->save("./models/Book_Cap02_Example01.gen");
 	model->getSimulation()->start();
 	delete genesys;
 	return 0;

@@ -100,7 +100,7 @@ int Loja01::main(int argc, char** argv) {
     //
     // Não é necessário, mas pode salvar o modelo em arquivo. Aí já temos o
     //    modelo em linguagem de simulação do GenESyS, se a extensão GEN for escolhida
-    model->save("./Loja01.gen");
+    model->save("./models/Loja01.gen");
     //
     // Por fim, simula o modelo
     sim->start();

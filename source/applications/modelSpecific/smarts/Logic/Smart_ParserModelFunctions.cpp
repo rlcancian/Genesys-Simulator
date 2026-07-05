@@ -86,6 +86,7 @@ int Smart_ParserModelFunctions::main(int argc, char** argv) {
 	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L9_mostDetailed);
 	model->check();
 	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L4_warning);
+	model->save("./models/Smart_ParserModelFunctions.gen");
 	model->getSimulation()->start();
 	delete genesys;
 	return 0;

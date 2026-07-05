@@ -48,7 +48,7 @@ int Smart_ModalModel::main(int argc, char** argv) {
     // set options, save and simulate
     model->getSimulation()->setReplicationLength(60, Util::TimeUnit::second);
     model->getSimulation()->setTerminatingCondition("count(Dispose_1.CountNumberIn)>30");
-    model->save("./models/Smart_Dummy.gen");
+    model->save("./models/Smart_ModalModel.gen");
     model->getSimulation()->start();
     delete genesys;
     return 0;

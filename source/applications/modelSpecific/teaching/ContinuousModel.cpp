@@ -20,5 +20,6 @@ void ContinuousModel::Simulate(Simulator* genesys, Model* model, PluginManager *
 	create1->getConnectionManager()->insert(ode1);
 	ode1->getConnectionManager()->insert(dispose1);
 
+	model->save("./models/ContinuousModel.gen");
 	model->getSimulation()->start();
 }
