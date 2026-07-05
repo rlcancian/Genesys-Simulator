@@ -237,8 +237,12 @@ registradas naquela tentativa sao removidas.
 
 Na remocao por `PluginManager::remove(Plugin*)`, a desconexao precisa passar.
 Depois disso, as funcoes daquele plugin sao removidas por origem antes de o
-wrapper do plugin ser destruido. Chamadas posteriores, como `PluginAdd(2,3)`,
-passam a falhar com erro semantico controlado de funcao nao registrada.
+wrapper do plugin ser destruido. O overload
+`PluginManager::remove(const std::string&)` recebe o mesmo identificador de
+arquivo usado em `insert(...)`, por exemplo `delay.so`; o `PluginManager`
+resolve esse arquivo para o `pluginTypename` via conector e remove o plugin
+carregado correspondente. Chamadas posteriores, como `PluginAdd(2,3)`, passam a
+falhar com erro semantico controlado de funcao nao registrada.
 
 ## Demonstracao com PluginManager
 
@@ -261,7 +265,10 @@ resolvido pelo `SemanticResolver`.
 
 `PluginManagerRealComponentsTest` cobre a convivencia do novo registry com
 plugins reais existentes do GenESyS carregados pelo fluxo normal de
-`PluginManager` + `PluginConnectorDummyImpl1`.
+`PluginManager` + `PluginConnectorDummyImpl1`. Essa validacao usa plugins reais
+compilados e disponiveis pelo conector estatico/dummy do projeto; ela nao faz
+regeneracao dinamica completa de Flex/Bison nem carregamento dinamico real de
+bibliotecas compartilhadas.
 
 Plugins reais carregados para convivencia, um por grupo solicitado:
 
@@ -273,9 +280,10 @@ Plugins reais carregados para convivencia, um por grupo solicitado:
 
 Esses plugins continuam sem declarar funcoes de parser em `PluginInformation`.
 O teste valida que eles sao inseridos pelo `PluginManager`, que nao adicionam
-entradas ao `FunctionRegistry`, e que expressoes legadas continuam avaliando
-normalmente antes e depois do carregamento/remocao, por exemplo `2+3`, `10/2`
-e `(2+3)*4`.
+entradas ao `FunctionRegistry`, que a remocao por ponteiro e por filename nao
+deixa origem orfa no registry nem remove outros plugins por engano, e que
+expressoes legadas continuam avaliando normalmente antes e depois do
+carregamento/remocao, por exemplo `2+3`, `10/2` e `(2+3)*4`.
 
 A demonstracao de funcao declarada por plugin permanece em
 `ParserFunctionRegistryDemoTest`, com um `PluginConnector_if` fake que passa
@@ -654,6 +662,8 @@ Resultado documentado antes da consolidacao desta documentacao:
 - `PluginAdd(2,3)` retornando `5` depois de
   `PluginManager::insert("parser_function_plugin.so")`;
 - `PluginAdd` indisponivel depois de `PluginManager::remove(...)`;
+- unregister de `PluginAdd` tambem quando a remocao usa
+  `PluginManager::remove("parser_function_plugin.so")`;
 - rejeicao de conflito case-insensitive sem sobrescrever a funcao existente;
 - erro controlado para `PluginAdd(1)`;
 - erro controlado para `FuncaoInexistente(2)`.
@@ -664,6 +674,9 @@ Resultado documentado antes da consolidacao desta documentacao:
 - convivencia de `Delay`, `Dispose`, `Separate`, `Record` e `Exit` com parsing
   legado;
 - remocao desses plugins reais sem deixar funcoes registradas por origem;
+- remocao por filename usando o mesmo identificador de `insert(...)`, como
+  `delay.so`;
+- preservacao dos demais plugins carregados durante unload por filename;
 - parser legado funcionando antes/depois do carregamento e depois do unload.
 
 ## Cobertura de regressao adicionada para DCS

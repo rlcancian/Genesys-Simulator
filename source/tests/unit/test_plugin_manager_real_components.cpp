@@ -144,3 +144,36 @@ TEST_F(PluginManagerRealComponentsTest, UnloadingRealComponentsLeavesRegistryAnd
 
 	EXPECT_EQ(registry->listFunctions().size(), initialRegistrySize);
 }
+
+TEST_F(PluginManagerRealComponentsTest, RemoveByDynamicLibraryFilenameUnloadsRealComponentAndKeepsRegistryConsistent) {
+	const std::size_t initialRegistrySize = registry->listFunctions().size();
+	std::vector<Plugin*> insertedPlugins = insertRepresentativePlugins();
+	ASSERT_EQ(insertedPlugins.size(), representativeComponentPlugins().size());
+
+	const RealComponentPluginCase& removedCase = representativeComponentPlugins().front();
+	ASSERT_NE(pluginManager->find(removedCase.pluginTypename), nullptr);
+
+	ASSERT_TRUE(pluginManager->remove(removedCase.filename)) << removedCase.filename;
+	EXPECT_EQ(pluginManager->find(removedCase.pluginTypename), nullptr) << removedCase.pluginTypename;
+	EXPECT_EQ(countFunctionsFromOrigin(registry, removedCase.pluginTypename), 0u) << removedCase.pluginTypename;
+	EXPECT_EQ(registry->listFunctions().size(), initialRegistrySize);
+	expectLegacyParserExpressionsWork();
+
+	for (std::size_t index = 1; index < representativeComponentPlugins().size(); ++index) {
+		const RealComponentPluginCase& pluginCase = representativeComponentPlugins()[index];
+		Plugin* plugin = pluginManager->find(pluginCase.pluginTypename);
+		ASSERT_NE(plugin, nullptr) << pluginCase.pluginTypename;
+		EXPECT_EQ(countFunctionsFromOrigin(registry, pluginCase.pluginTypename), 0u) << pluginCase.pluginTypename;
+	}
+
+	for (std::size_t index = 1; index < insertedPlugins.size(); ++index) {
+		Plugin* plugin = insertedPlugins[index];
+		ASSERT_NE(plugin, nullptr);
+		ASSERT_NE(plugin->getPluginInfo(), nullptr);
+		const std::string pluginTypename = plugin->getPluginInfo()->getPluginTypename();
+		ASSERT_TRUE(pluginManager->remove(plugin)) << pluginTypename;
+	}
+
+	EXPECT_EQ(registry->listFunctions().size(), initialRegistrySize);
+	expectLegacyParserExpressionsWork();
+}

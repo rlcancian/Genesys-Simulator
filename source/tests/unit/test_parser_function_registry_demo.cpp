@@ -169,6 +169,32 @@ TEST_F(ParserFunctionRegistryDemoTest, PluginManagerRemovalUnregistersPluginFunc
 	EXPECT_EQ(simulator.getFunctionRegistry()->lookup("PluginAdd"), nullptr);
 }
 
+TEST_F(ParserFunctionRegistryDemoTest, PluginManagerRemovalByDynamicLibraryFilenameUnregistersPluginFunction) {
+	Plugin* inserted = pluginManager->insert("parser_function_plugin.so");
+	ASSERT_NE(inserted, nullptr);
+	ASSERT_NE(pluginManager->find("ParserFunctionPlugin"), nullptr);
+
+	bool success = false;
+	std::string errorMessage;
+	EXPECT_DOUBLE_EQ(parse(model, "PluginAdd(2,3)", success, errorMessage), 5.0);
+	ASSERT_TRUE(success) << errorMessage;
+	ASSERT_NE(simulator.getFunctionRegistry()->lookup("PluginAdd"), nullptr);
+
+	ASSERT_TRUE(pluginManager->remove("parser_function_plugin.so"));
+
+	EXPECT_EQ(pluginManager->find("ParserFunctionPlugin"), nullptr);
+	EXPECT_EQ(simulator.getFunctionRegistry()->lookup("PluginAdd"), nullptr);
+
+	success = true;
+	errorMessage.clear();
+	(void)parse(model, "PluginAdd(2,3)", success, errorMessage);
+
+	EXPECT_FALSE(success);
+	EXPECT_FALSE(errorMessage.empty());
+	EXPECT_NE(errorMessage.find("PluginAdd"), std::string::npos);
+	EXPECT_NE(errorMessage.find("function is not registered"), std::string::npos);
+}
+
 TEST_F(ParserFunctionRegistryDemoTest, PluginManagerRejectsConflictingParserFunctionWithoutOverwrite) {
 	Plugin* inserted = pluginManager->insert("parser_function_plugin.so");
 	ASSERT_NE(inserted, nullptr);
