@@ -101,7 +101,7 @@
       "inherits": "terminal-model-specific-base",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
-        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_CellularAutomata1.cpp"
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/ModalModel/Smart_CellularAutomata1.cpp"
       }
     },
     {
@@ -115,13 +115,25 @@
       }
     },
     {
+      "name": "genesys_modelspecific_app",
+      "displayName": "Application - Model Specific App",
+      "description": "Builds the dedicated model-specific application target. Change GENESYS_MODELSPECIFIC_APP to select a different source under source/applications/modelSpecific.",
+      "inherits": "terminal-model-specific-base",
+      "binaryDir": "${sourceDir}/build/genesys_modelspecific_app",
+      "cacheVariables": {
+        "GENESYS_MODELSPECIFIC_APP": "teaching/AnElectronicAssemblyAndTestSystem.cpp",
+        "GENESYS_MODELSPECIFIC_APP_CLASS": "",
+        "GENESYS_MODELSPECIFIC_APP_HEADER": ""
+      }
+    },
+    {
       "name": "terminal-smart-hold-search-remove",
       "displayName": "Application - Terminal Smart (Smart_HoldSearchRemove)",
       "description": "Builds the terminal application directly as the Smart_HoldSearchRemove smart example.",
       "inherits": "terminal-smart",
       "binaryDir": "${sourceDir}/build/terminal-smart-hold-search-remove",
       "cacheVariables": {
-        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_HoldSearchRemove.cpp"
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/DiscreteProcessing/Smart_HoldSearchRemove.cpp"
       }
     },
     {
@@ -131,7 +143,7 @@
       "inherits": "terminal-model-specific",
       "binaryDir": "${sourceDir}/build/terminal-smart-ai-assistant",
       "cacheVariables": {
-        "GENESYS_TERMINAL_EXAMPLE": "smarts/StartAIAssistant.cpp",
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/AI/StartAIAssistant.cpp",
         "GENESYS_TERMINAL_EXAMPLE_CLASS": ""
       }
     },
@@ -279,6 +291,13 @@
       "configurePreset": "terminal-model-specific",
       "targets": [
         "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "genesys_modelspecific_app",
+      "configurePreset": "genesys_modelspecific_app",
+      "targets": [
+        "genesys_modelspecific_app"
       ]
     },
     {
