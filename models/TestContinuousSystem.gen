@@ -1,0 +1,17 @@
+# Genesys Simulation Model 
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220131 
+0   ModelInfo  "Test Continuous System" analystName="" description="Test ContinuousSystemComponent with harmonic oscillator" projectTitle="" version="1.0" 
+0   ModelSimulation "" traceLevel=9 replicationLength=0.500000 numberOfReplications=1 showReportsAfterReplicaton=0 showReportsAfterSimulation=0 
+
+# Model Data Definitions
+1579 Variable   "t" 
+1580 Variable   "x" dimension[0]=2 dimensions=1 valuePos[1]="1" value[0]=1.000000 values=2 
+1581 Variable   "v" dimension[0]=2 dimensions=1 valuePos[1]="1" value[0]=0.000000 values=2 
+1582 ODESolver   "HarmonicOscillator" timeVariableName="t" stateVariableNames="x;v" equationExpressions="v;-x" step=0.010000 precision=0.000001 maxSteps=100000 currentTime=0.000000 
+1583 EntityType  "entitytype" 
+
+# Model Components
+1577 Create     "Create_1" entityType="entitytype" timeBetweenCreations="0.1" maxCreations=5 nextId=1584 
+1584 ContinuousSystemComponent   "ContinuousSystem_1" odeSolver="HarmonicOscillator" nextId=1585 
+1585 Dispose    "Dispose_1" nexts=0 
