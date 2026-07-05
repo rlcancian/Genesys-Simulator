@@ -8,6 +8,7 @@
 - Link: [`models_and_modelspecific_generation.md`](./models_and_modelspecific_generation.md)
 - Scope: regenerate `models/` from `source/applications/modelSpecific/`, preserve legacy preset compatibility, and record which applications build, run, and generate their expected `.gen`.
 - Next step: triage the remaining model-specific runtime failures and the two current Gro colony compile breakages.
+- Integration note: `WiP20261` was merged into a temporary `WorkInProgress` worktree using `ort` with conflict resolution biased toward `WiP20261`; see [`workinprogress_wip20261_integration.md`](./workinprogress_wip20261_integration.md).
 
 ## Matrix values and multidimensional assignments
 
