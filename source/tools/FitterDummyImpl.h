@@ -48,7 +48,6 @@ public:
 public:
 	void setDataFilename(std::string dataFilename);
 	std::string getDataFilename();
-	void setDataValues(const std::vector<double>& values);
 private:
 	std::string _dataFilename = "";
 };

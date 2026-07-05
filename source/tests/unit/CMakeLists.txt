@@ -38,6 +38,7 @@ endif()
 genesys_add_unit_test(genesys_test_data_analyzer
     test_data_analyzer.cpp
     genesys_tools
+    genesys_kernel_statistics
 )
 
 genesys_add_unit_test(genesys_test_simulator_runtime

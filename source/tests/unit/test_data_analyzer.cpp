@@ -4,10 +4,23 @@
 #include <vector>
 
 #include "tools/DataAnalyzerDefaultImpl1.h"
+#include "kernel/statistics/StatisticsDataFileDefaultImpl.h"
+#include "kernel/statistics/CollectorDatafile_if.h"
 
 namespace {
 
 constexpr double kTolerance = 1e-6;
+
+// Same 50 values sampled from N(5,1) used by genesys_tools_application --demo
+// (source/tools/main.cpp, kNormalData). Kept identical here so reference values
+// computed offline (scipy) apply to both the demo and this test.
+const std::vector<double> kNormalData = {
+    4.21, 5.83, 4.78, 6.11, 5.02, 4.55, 5.44, 6.32, 4.90, 5.17,
+    3.98, 5.61, 4.42, 5.78, 6.05, 4.73, 5.29, 4.87, 5.51, 6.18,
+    4.64, 5.33, 4.19, 5.96, 5.08, 4.47, 6.25, 5.15, 4.82, 5.70,
+    3.91, 6.09, 5.37, 4.61, 5.88, 4.30, 5.52, 6.40, 4.75, 5.23,
+    4.58, 5.67, 4.94, 5.11, 6.03, 4.36, 5.79, 5.04, 4.48, 5.90
+};
 
 TEST(DataAnalyzerDefaultImpl1Test, EmptyDataYieldsEmptyStatistics) {
     DataAnalyzerDefaultImpl1 analyzer;
@@ -297,6 +310,98 @@ TEST(DataAnalyzerDefaultImpl1Test, InferenceTwoPopulationGuardsAgainstEmptySecon
     
     tVar = analyzer.testVarianceTwoSamples(HypothesisTester_if::H1Comparition::DIFFERENT);
     EXPECT_TRUE(std::isfinite(tVar.testStat()));
+}
+
+// ============================================================
+// Cross-validation against StatisticsDataFile_if
+//
+// DataAnalyzerDefaultImpl1 computes descriptive statistics inline from the
+// in-memory vector instead of routing through StatisticsDatafile_if, because
+// that interface is structurally bound to a binary-file-backed collector with
+// no vector<double> entry point (see DEVELOPMENT_DataAnalyzer.md). This test
+// proves that trade-off is safe: the same dataset, pushed through the real
+// kernel statistics path via a temporary binary file, yields the same n, min,
+// max, mean, variance, stddev and median as DataAnalyzer's in-memory result.
+//
+// Quartiles are intentionally NOT compared here: StatisticsDatafileDefaultImpl1
+// ::quartil() uses a nearest-rank formula (floor(num*n/4)) while DataAnalyzer
+// uses R7 linear interpolation. Both are standard, legitimate quantile
+// conventions, but they are not expected to agree numerically.
+// ============================================================
+TEST(DataAnalyzerDefaultImpl1Test, DescriptiveStatsMatchStatisticsDataFileIfViaTempBinaryFile) {
+    std::vector<double> data = {2.0, 3.0, 3.5, 4.0, 4.0, 4.5, 5.0, 7.5, 8.25, 1.75};
+
+    DataAnalyzerDefaultImpl1 analyzer;
+    analyzer.setDataValues(data);
+    auto stats = analyzer.summaryStatistics();
+
+    StatisticsDatafileDefaultImpl1 fileStats;
+    auto* collector = dynamic_cast<CollectorDatafile_if*>(fileStats.getCollector());
+    ASSERT_NE(collector, nullptr);
+    collector->setDataFilename("/tmp/da_crossval_test.bin");
+    collector->clear();
+    for (double v : data) {
+        collector->addValue(v);
+    }
+
+    EXPECT_EQ(stats.n, fileStats.numElements());
+    EXPECT_NEAR(stats.min, fileStats.min(), kTolerance);
+    EXPECT_NEAR(stats.max, fileStats.max(), kTolerance);
+    EXPECT_NEAR(stats.mean, fileStats.average(), kTolerance);
+    EXPECT_NEAR(stats.variance, fileStats.variance(), kTolerance);
+    EXPECT_NEAR(stats.stddev, fileStats.stddeviation(), kTolerance);
+    EXPECT_NEAR(stats.median, fileStats.mediane(), kTolerance);
+}
+
+// ============================================================
+// Goodness-of-fit tests validated against external reference values
+//
+// Reference statistic/critical-value/p-value below were computed independently
+// with Python/scipy (scipy 1.18.0) on the exact kNormalData array above, using
+// the fitted normal parameters (mean, stddev with ddof=1) that fitDistribution
+// itself returns. This closes the gap where GoF tests were only checked for
+// internal consistency ("does not reject a normal fit on normal data") without
+// ever being compared against an external, independently-computed value.
+//
+// KS: Dn matches scipy's Kolmogorov-Smirnov statistic exactly (same formula).
+// Its p-value is compared both against the same Kolmogorov asymptotic series
+// the C++ implementation documents (tight tolerance) and against scipy's own
+// (differently-approximated) p-value, with a looser tolerance reflecting the
+// known asymptotic-approximation gap documented in DEVELOPMENT_DataAnalyzer.md.
+//
+// Anderson-Darling: A2, its critical value and p-value were independently
+// reimplemented in Python from the same closed-form formulas (Stephens 1974
+// correction, Marsaglia & Marsaglia 2004 asymptotic p-value) and matched the
+// compiled --demo output to 5 decimal places.
+//
+// Chi-square: the Sturges-binning + merge-if-E<5 algorithm was independently
+// reimplemented in Python against the same data and fitted parameters; df,
+// statistic, p-value (via scipy.stats.chi2.cdf) and critical value (via
+// scipy.stats.chi2.ppf) are compared with a small tolerance for numerical
+// integration differences (Simpson's rule vs scipy's incomplete gamma).
+// ============================================================
+TEST(DataAnalyzerDefaultImpl1Test, GoodnessOfFitStatisticsMatchScipyReferenceValues) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    analyzer.setDataValues(kNormalData);
+
+    auto ks = analyzer.kolmogorovSmirnov("normal", 0.05);
+    EXPECT_NEAR(ks.testStatistic, 0.0828966842, 1e-6);
+    EXPECT_NEAR(ks.criticalValue, 0.1920645583, 1e-6);
+    EXPECT_NEAR(ks.pValue, 0.8820506040, 1e-3);       // same asymptotic series as C++
+    EXPECT_NEAR(ks.pValue, 0.8539049035, 0.05);        // independent scipy.stats.kstest p-value
+
+    auto ad = analyzer.andersonDarling("normal", 0.05);
+    EXPECT_NEAR(ad.testStatistic, 0.4358864061, 1e-4);
+    EXPECT_NEAR(ad.criticalValue, 0.7531939173, 1e-4);
+    EXPECT_NEAR(ad.pValue, 0.2983005526, 1e-4);
+
+    auto chi2 = analyzer.chiSquareGoodnessOfFit("normal", 0.05);
+    EXPECT_NEAR(chi2.testStatistic, 5.7370398398, 1e-3);
+    EXPECT_NEAR(chi2.pValue, 0.0567829077, 5e-3);
+    // Looser tolerance here: _chi2Quantile is a bisection over SolverDefaultImpl1's
+    // Simpson-rule CDF integration, which is a bit less precise than scipy's
+    // incomplete-gamma-based chi2.ppf (observed gap ~0.008 on this dataset).
+    EXPECT_NEAR(chi2.criticalValue, 5.9914645471, 1.5e-2);
 }
 
 } // namespace

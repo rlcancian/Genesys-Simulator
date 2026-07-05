@@ -329,7 +329,14 @@ public:
 		return _dataFilename;
 	}
 
-	virtual void setDataValues(const std::vector<double>& values) override {
+	/**
+	 * @brief Loads the dataset directly from an in-memory vector, bypassing file I/O.
+	 *
+	 * Intentionally not part of Fitter_if: DataAnalyzerDefaultImpl1 holds this class
+	 * concretely (not through the Fitter_if interface), so the in-memory data path
+	 * does not need to widen the shared fitting contract.
+	 */
+	void setDataValues(const std::vector<double>& values) {
 		_invalidateCache();
 		if (values.empty()) {
 			_cacheLoaded = true;
