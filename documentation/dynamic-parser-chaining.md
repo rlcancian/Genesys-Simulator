@@ -395,7 +395,6 @@ Testes:
 - `source/tests/unit/test_parser_expressions.cpp`;
 - `source/tests/unit/test_parser_function_registry_demo.cpp`;
 - `source/tests/unit/test_plugin_manager_real_components.cpp`;
-- `source/tests/unit/fakes/FakePlugin.h`;
 - `source/tests/unit/CMakeLists.txt`.
 
 Principais estruturas criadas:

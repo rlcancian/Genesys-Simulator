@@ -598,16 +598,22 @@ Plugin* PluginManager::insert(const std::string& dynamicLibraryFilename, const P
 }
 
 bool PluginManager::remove(const std::string& dynamicLibraryFilename) {
+	std::string pluginTypename;
 	try {
 		std::unique_ptr<Plugin> checkedPlugin(_pluginConnector->check(dynamicLibraryFilename));
-		if (checkedPlugin != nullptr && checkedPlugin->isIsValidPlugin() && checkedPlugin->getPluginInfo() != nullptr) {
-			Plugin* plugin = this->find(checkedPlugin->getPluginInfo()->getPluginTypename());
-			return remove(plugin);
+		if (checkedPlugin == nullptr || !checkedPlugin->isIsValidPlugin() || checkedPlugin->getPluginInfo() == nullptr) {
+			return false;
 		}
+		pluginTypename = checkedPlugin->getPluginInfo()->getPluginTypename();
 	} catch (...) {
 		return false;
 	}
-	return false;
+
+	Plugin* plugin = this->find(pluginTypename);
+	if (plugin == nullptr) {
+		return false;
+	}
+	return remove(plugin);
 }
 
 bool PluginManager::remove(Plugin* plugin) {
