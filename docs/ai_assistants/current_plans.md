@@ -1,5 +1,14 @@
 # Current Plans
 
+## Model-specific regeneration and validation
+
+- Date: 2026-07-05
+- Branch: `WiP20261`
+- Status: in progress; dedicated preset/script flow implemented and full repository sweep executed with bounded smoke validation.
+- Link: [`models_and_modelspecific_generation.md`](./models_and_modelspecific_generation.md)
+- Scope: regenerate `models/` from `source/applications/modelSpecific/`, preserve legacy preset compatibility, and record which applications build, run, and generate their expected `.gen`.
+- Next step: triage the remaining model-specific runtime failures and the two current Gro colony compile breakages.
+
 ## Matrix values and multidimensional assignments
 
 - Date: 2026-07-04
