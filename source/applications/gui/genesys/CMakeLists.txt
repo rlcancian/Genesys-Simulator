@@ -30,16 +30,10 @@ set(GENESYS_QT_GUI_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/cellular_automata/CellularAutomataViewerController.h
 )
 
-set(GENESYS_QT_GUI_TERMINAL_FALLBACK_SOURCES
-    ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
-    ${CMAKE_SOURCE_DIR}/source/applications/GenesysShell/GenesysShell.cpp
-)
-
 add_executable(genesys_qt_gui_application
     ${GENESYS_QT_GUI_SOURCES}
     ${GENESYS_QT_GUI_HEADERS}
     ${GENESYS_QT_GUI_RESOURCES}
-    ${GENESYS_QT_GUI_TERMINAL_FALLBACK_SOURCES}
 )
 
 target_include_directories(genesys_qt_gui_application

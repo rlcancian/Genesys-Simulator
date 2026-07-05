@@ -64,9 +64,7 @@ SOURCES += \
     $$SOURCE_ROOT/tools/ProbabilityDistributionBase.cpp \
     $$SOURCE_ROOT/tools/SimulationResultsDataset.cpp \
     $$SOURCE_ROOT/tools/SolverDefaultImpl1.cpp \
-    $$SOURCE_ROOT/tools/FactorialDesign/FactorialDesign.cpp \
-    $$SOURCE_ROOT/applications/BaseGenesysTerminalApplication.cpp \
-    $$SOURCE_ROOT/applications/GenesysShell/GenesysShell.cpp
+    $$SOURCE_ROOT/tools/FactorialDesign/FactorialDesign.cpp
 
 # Keep this source set aligned with source/applications/gui/qt/GenesysQtGUI/CMakeLists.txt.
 SOURCES -= \
@@ -84,12 +82,7 @@ HEADERS += \
     $$files($$SOURCE_ROOT/plugins/components/*.h, true) \
     $$files($$SOURCE_ROOT/plugins/data/*.h, true) \
     $$files($$SOURCE_ROOT/tools/*.h, true) \
-    $$SOURCE_ROOT/applications/BaseGenesysTerminalApplication.h \
     $$SOURCE_ROOT/applications/GenesysApplication_if.h \
-    $$SOURCE_ROOT/applications/TraitsApp.h \
-    $$SOURCE_ROOT/applications/GenesysShell/GenesysShell.h \
-    $$SOURCE_ROOT/applications/GenesysShell/GenesysShell_if.h \
-    $$SOURCE_ROOT/applications/terminal/TraitsTerminalApp.h \
     $$GUI_ROOT/propertyeditor/qtpropertybrowser/QtAbstractEditorFactoryBase \
     $$GUI_ROOT/propertyeditor/qtpropertybrowser/QtAbstractPropertyBrowser \
     $$GUI_ROOT/propertyeditor/qtpropertybrowser/QtAbstractPropertyManager \

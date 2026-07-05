@@ -67,11 +67,11 @@ if(GENESYS_BUILD_PARSER)
 endif()
 
 if(GENESYS_BUILD_TERMINAL_APPLICATION)
-    add_subdirectory(source/applications/GenesysShell)
+    add_subdirectory(source/applications/shell)
 endif()
 
 if(GENESYS_BUILD_TERMINAL_EXAMPLES)
-    add_subdirectory(source/applications/modelSpecificApplications)
+    add_subdirectory(source/applications/modelSpecific)
 endif()
 
 if(GENESYS_BUILD_KERNEL AND GENESYS_BUILD_PARSER AND GENESYS_BUILD_PLUGINS)

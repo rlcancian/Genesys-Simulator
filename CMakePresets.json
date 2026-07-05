@@ -97,7 +97,7 @@
     {
       "name": "terminal-smart",
       "displayName": "Application - Terminal Smart",
-      "description": "Builds the terminal application from a smart source under source/applications/modelSpecificApplications/examples/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
+      "description": "Builds the terminal application from a smart source under source/applications/modelSpecific/examples/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
       "inherits": "terminal-model-specific-base",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
@@ -107,7 +107,7 @@
     {
       "name": "terminal-model-specific",
       "displayName": "Application - Terminal Model Specific",
-      "description": "Builds the terminal application from any model-specific example under source/applications/modelSpecificApplications/examples. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
+      "description": "Builds the terminal application from any model-specific example under source/applications/modelSpecific/examples. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
       "inherits": "terminal-model-specific-base",
       "binaryDir": "${sourceDir}/build/terminal-model-specific",
       "cacheVariables": {
