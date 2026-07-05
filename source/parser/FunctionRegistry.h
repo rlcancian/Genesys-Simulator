@@ -39,6 +39,8 @@ using FunctionCallback = std::function<double(const std::vector<double>&)>;
 class FunctionRegistry {
 public:
 	FunctionRegistrationResult registerFunction(FunctionDescriptor descriptor, FunctionCallback callback);
+	bool unregisterFunction(const std::string& name);
+	std::size_t unregisterFunctionsByOrigin(const std::string& originName);
 	const FunctionDescriptor* lookup(const std::string& name) const;
 	bool hasFunction(const std::string& name) const;
 	FunctionCallResult callFunction(const std::string& name, const std::vector<double>& arguments) const;

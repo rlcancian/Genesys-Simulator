@@ -14,6 +14,7 @@
 #include "PluginInformation.h"
 
 #include <cctype>
+#include <utility>
 
 //using namespace GenesysKernel;
 
@@ -135,6 +136,18 @@ std::string PluginInformation::getAuthor() const {
 
 std::string PluginInformation::getPluginTypename() const {
 	return _pluginTypename;
+}
+
+void PluginInformation::insertParserFunction(FunctionDescriptor descriptor, FunctionCallback callback) {
+	_parserFunctions.push_back({std::move(descriptor), std::move(callback)});
+}
+
+const std::vector<ParserFunctionDeclaration>& PluginInformation::getParserFunctions() const {
+	return _parserFunctions;
+}
+
+bool PluginInformation::hasParserFunctions() const {
+	return !_parserFunctions.empty();
 }
 
 void PluginInformation::insertDynamicLibFileDependence(std::string filename) {

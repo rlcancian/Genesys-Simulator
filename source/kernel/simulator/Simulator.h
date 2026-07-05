@@ -29,6 +29,7 @@
 //namespace GenesysKernel {
 
 class PluginManager;
+class FunctionRegistry;
 
 /* https://www.doxygen.nl/manual/commands.html
  * Bried description \class \implements
@@ -92,6 +93,7 @@ public: // only get
 	 * \return
 	 */
     ExperimentManager* getExperimentManager() const;
+	FunctionRegistry* getFunctionRegistry() const;
 
 private:
 	List<Plugin*>* _completePluginsFieldsAndTemplate();
@@ -102,6 +104,7 @@ private: // attributes 1:1 objects
 	PluginManager* _pluginManager;
 	ModelManager* _modelManager;
 	TraceManager* _traceManager;
+	FunctionRegistry* _functionRegistry;
 	ParserManager* _parserManager;
 	ExperimentManager* _experimentManager;
 

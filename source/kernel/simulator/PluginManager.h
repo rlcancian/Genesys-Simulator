@@ -219,6 +219,10 @@ private:
 	void _recordLoadIssue(const PluginLoadIssue& issue);
 	/*! \brief Removes a diagnostic by filename or plugin typename after successful insertion. */
 	void _removeLoadIssue(const std::string& dynamicLibraryFilename, const std::string& pluginTypename);
+	/*! \brief Registers parser functions declared by one plugin into the simulator registry. */
+	bool _registerParserFunctionsForPlugin(Plugin* plugin, std::string* failureMessage = nullptr);
+	/*! \brief Removes parser functions previously registered for one plugin. */
+	void _unregisterParserFunctionsForPlugin(Plugin* plugin);
 	/*! \brief Registers kernel built-in plugins that do not come from dynamic libraries. */
 	void _insertDefaultKernelElements();
 	/*! \brief Finds and attempts to load plugins from connector discovery. */

@@ -79,6 +79,14 @@ genesys_add_unit_test(genesys_test_parser_function_registry_demo
     genesys_kernel_simulator_runtime
 )
 
+genesys_add_unit_test(genesys_test_plugin_manager_real_components
+    test_plugin_manager_real_components.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
 genesys_add_unit_test(genesys_test_support_modelmanager
     test_support_modelmanager.cpp
     genesys_kernel_simulator_support

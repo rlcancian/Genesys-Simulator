@@ -13,12 +13,17 @@
 
 #include "ParserDefaultImpl2.h"
 #include <exception>
+#include "Simulator.h"
 
 //using namespace GenesysKernel;
 
 // Construct parser wrapper in-place to avoid copying partially initialized driver state.
 ParserDefaultImpl2::ParserDefaultImpl2(Model* model, Sampler_if* sampler, bool throws)
-	: _model(model), _wrapper(model, sampler, throws), _ownsSampler(sampler != nullptr) {}
+	: _model(model), _wrapper(model, sampler, throws), _ownsSampler(sampler != nullptr) {
+	if (_model != nullptr && _model->getParentSimulator() != nullptr) {
+		_wrapper.setFunctionRegistry(_model->getParentSimulator()->getFunctionRegistry());
+	}
+}
 
 // Delete sampler only when parser explicitly owns it.
 ParserDefaultImpl2::~ParserDefaultImpl2() {

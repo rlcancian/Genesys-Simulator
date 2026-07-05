@@ -18,6 +18,7 @@
 #include "PluginManager.h"
 #include "Simulator.h"
 #include "../TraitsKernel.h"
+#include "../../parser/FunctionRegistry.h"
 #include "essentialPlugins/Attribute.h"
 #include "essentialPlugins/Counter.h"
 #include "essentialPlugins/EntityType.h"
@@ -124,6 +125,7 @@ PluginManager::PluginManager(Simulator* simulator, PluginConnector_if* pluginCon
 // Release connector and plugin wrappers owned by the manager during simulator teardown.
 PluginManager::~PluginManager() {
 	for (Plugin* const plugin : *_plugins->list()) {
+		_unregisterParserFunctionsForPlugin(plugin);
 		delete plugin;
 	}
 	delete _plugins;
@@ -217,10 +219,19 @@ std::string PluginManager::show() {
 }
 
 void PluginManager::_insertDefaultKernelElements() {
-	_plugins->insert(new Plugin(&EntityType::GetPluginInformation));
-	_plugins->insert(new Plugin(&Attribute::GetPluginInformation));
-	_plugins->insert(new Plugin(&Counter::GetPluginInformation));
-	_plugins->insert(new Plugin(&StatisticsCollector::GetPluginInformation));
+	std::string failureMessage;
+	Plugin* entityType = new Plugin(&EntityType::GetPluginInformation);
+	_registerParserFunctionsForPlugin(entityType, &failureMessage);
+	_plugins->insert(entityType);
+	Plugin* attribute = new Plugin(&Attribute::GetPluginInformation);
+	_registerParserFunctionsForPlugin(attribute, &failureMessage);
+	_plugins->insert(attribute);
+	Plugin* counter = new Plugin(&Counter::GetPluginInformation);
+	_registerParserFunctionsForPlugin(counter, &failureMessage);
+	_plugins->insert(counter);
+	Plugin* statisticsCollector = new Plugin(&StatisticsCollector::GetPluginInformation);
+	_registerParserFunctionsForPlugin(statisticsCollector, &failureMessage);
+	_plugins->insert(statisticsCollector);
 }
 
 List<Plugin*>* PluginManager::completePluginsFieldsAndTemplates() {
@@ -368,6 +379,14 @@ bool PluginManager::_insert(Plugin* plugin, const PluginInsertionOptions& option
 				blockingResult));
 			return false;
 		}
+		if (!_registerParserFunctionsForPlugin(plugin, &failureMessage)) {
+			_recordLoadIssue(PluginLoadIssue(
+				dynamicLibraryFilename,
+				plugInfo->getPluginTypename(),
+				PluginLoadIssue::Reason::InsertionFailure,
+				failureMessage));
+			return false;
+		}
 		_plugins->insert(plugin);
 		_removeLoadIssue(dynamicLibraryFilename, plugInfo->getPluginTypename());
 		Util::IncIndent();
@@ -386,6 +405,55 @@ bool PluginManager::_insert(Plugin* plugin, const PluginInsertionOptions& option
 		Util::DecIndent();
 		return false;
 	}
+}
+
+bool PluginManager::_registerParserFunctionsForPlugin(Plugin* plugin, std::string* failureMessage) {
+	if (plugin == nullptr || plugin->getPluginInfo() == nullptr || !plugin->getPluginInfo()->hasParserFunctions()) {
+		return true;
+	}
+	FunctionRegistry* registry = _simulator != nullptr ? _simulator->getFunctionRegistry() : nullptr;
+	if (registry == nullptr) {
+		if (failureMessage != nullptr) {
+			*failureMessage = "Plugin declares parser functions, but no FunctionRegistry is available.";
+		}
+		return false;
+	}
+
+	PluginInformation* plugInfo = plugin->getPluginInfo();
+	const std::string pluginTypename = plugInfo->getPluginTypename();
+	std::vector<std::string> registeredFunctionNames;
+	for (const ParserFunctionDeclaration& declaration : plugInfo->getParserFunctions()) {
+		FunctionDescriptor descriptor = declaration.descriptor;
+		descriptor.originName = pluginTypename;
+		const FunctionRegistrationResult result = registry->registerFunction(descriptor, declaration.callback);
+		if (!result.success) {
+			for (const std::string& registeredFunctionName : registeredFunctionNames) {
+				registry->unregisterFunction(registeredFunctionName);
+			}
+			const std::string message = "Could not register parser function \"" + descriptor.publicName
+				+ "\" for plugin \"" + pluginTypename + "\": " + result.errorMessage;
+			if (failureMessage != nullptr) {
+				*failureMessage = message;
+			}
+			if (_simulator != nullptr && _simulator->getTraceManager() != nullptr) {
+				_simulator->getTraceManager()->traceError(message, TraceManager::Level::L3_errorRecover);
+			}
+			return false;
+		}
+		registeredFunctionNames.push_back(descriptor.publicName);
+	}
+	return true;
+}
+
+void PluginManager::_unregisterParserFunctionsForPlugin(Plugin* plugin) {
+	if (plugin == nullptr || plugin->getPluginInfo() == nullptr || !plugin->getPluginInfo()->hasParserFunctions()) {
+		return;
+	}
+	FunctionRegistry* registry = _simulator != nullptr ? _simulator->getFunctionRegistry() : nullptr;
+	if (registry == nullptr) {
+		return;
+	}
+	registry->unregisterFunctionsByOrigin(plugin->getPluginInfo()->getPluginTypename());
 }
 
 bool PluginManager::check(const std::string& dynamicLibraryFilename) {
@@ -543,6 +611,7 @@ bool PluginManager::remove(Plugin* plugin) {
 		} catch (...) {
 			return false;
 		}
+		_unregisterParserFunctionsForPlugin(plugin);
 		_plugins->remove(plugin);
 		delete plugin;
 		_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin successfully removed");

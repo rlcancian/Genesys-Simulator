@@ -17,6 +17,9 @@
 #include <map>
 #include <list>
 #include <string>
+#include <vector>
+
+#include "../../parser/FunctionRegistry.h"
 
 //namespace GenesysKernel {
 class ModelDataDefinition;
@@ -30,6 +33,11 @@ typedef ModelDataDefinition* (*StaticLoaderDataDefinitionInstance)(Model*, Persi
 typedef ModelDataDefinition* (*StaticConstructorDataDefinitionInstance)(Model*, std::string);
 class PluginInformation;
 typedef PluginInformation* (*StaticGetPluginInformation)();
+
+struct ParserFunctionDeclaration {
+	FunctionDescriptor descriptor;
+	FunctionCallback callback;
+};
 
 class SystemDependency {
 public:
@@ -81,6 +89,9 @@ public:
 	std::string getDate() const;
 	std::string getAuthor() const;
 	std::string getPluginTypename() const;
+	void insertParserFunction(FunctionDescriptor descriptor, FunctionCallback callback);
+	const std::vector<ParserFunctionDeclaration>& getParserFunctions() const;
+	bool hasParserFunctions() const;
 	// sets
 	void insertDynamicLibFileDependence(std::string filename);
 	// @ToDo: (importante): Clarify ownership for the incoming list pointer.
@@ -135,6 +146,7 @@ private:
 	std::list<std::string>* _dynamicLibFilenameDependencies = new std::list<std::string>();
 	std::list<SystemDependency>* _systemDependencies = new std::list<SystemDependency>();
 	std::map<std::string, std::string>* _fields = new std::map<std::string, std::string>();
+	std::vector<ParserFunctionDeclaration> _parserFunctions;
 	// set from constructor
 	std::string _pluginTypename;
 	bool _isComponent = false;

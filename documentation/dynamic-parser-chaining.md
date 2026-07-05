@@ -9,7 +9,10 @@ A entrega cria uma camada incremental de registro e resolucao de funcoes:
 
 - `FunctionRegistry` armazena descritores e callbacks de funcoes;
 - `SemanticResolver` valida e executa chamadas por nome;
-- `genesyspp_driver` recebe uma referencia opcional para um registry externo;
+- `Simulator` e o dono do `FunctionRegistry` usado pelos modelos;
+- `PluginInformation` permite que plugins declarem funcoes opcionais;
+- `PluginManager` registra e remove funcoes de plugins no ciclo de insert/remove;
+- `genesyspp_driver` recebe uma referencia nao-dona para o registry do simulador;
 - o parser aceita chamadas genericas no formato `IDENTIFIER(...)`;
 - funcoes legadas continuam pelo caminho existente de Flex/Bison.
 
@@ -36,7 +39,7 @@ A estrategia adotada foi incremental:
 5. integrar o registry ao driver do parser;
 6. criar `SemanticResolver`;
 7. adicionar chamada generica de funcao no parser;
-8. demonstrar extensibilidade com `FakePlugin`.
+8. demonstrar extensibilidade com um plugin fixture carregado via `PluginManager`.
 
 ## Contexto do DCS no GenESyS
 
@@ -92,9 +95,12 @@ A implementacao adiciona:
 - `SemanticResolverResult` e `SemanticResolver` para validar registry ausente,
   funcao inexistente, aridade incorreta, erro de callback e retorno nao finito;
 - referencia opcional de `FunctionRegistry` em `genesyspp_driver`;
-- ponte em `ParserDefaultImpl2` para configurar o registry usado pelo parser;
+- ownership do registry em `Simulator`;
+- ponte em `ParserDefaultImpl2` para usar o registry do simulador pai do modelo;
+- declaracao opcional de funcoes em `PluginInformation`;
+- registro e remocao dessas funcoes pelo `PluginManager`;
 - token generico `IDENTIFIER` e producoes para chamadas genericas de funcao;
-- testes unitarios, regressivos e de demonstracao com `FakePlugin`.
+- testes unitarios, regressivos e de integracao atraves do `PluginManager`.
 
 O lookup do registry e case-insensitive, alinhado ao comportamento conceitual do
 lexer atual, que reconhece nomes de funcoes em letras maiusculas ou minusculas.
@@ -117,17 +123,23 @@ Expressao textual
   -> callback registrado retorna double ou erro controlado
 ```
 
-O parser nao conhece a origem concreta da funcao. Na demonstracao, `FakePlugin`
-registra `FakeAdd` e `FakeSquare`, mas Flex/Bison nao possuem tokens especificos
-para esses nomes.
+O parser nao conhece a origem concreta da funcao. Na demonstracao atual, um
+plugin fixture declara `PluginAdd`, mas Flex/Bison nao possui token especifico
+para esse nome.
 
-## Function Registry
+## Function Registry e ownership
 
 O `FunctionRegistry` fica em `source/parser`. A escolha foi manter a primeira
-versao proxima do parser/evaluator, sem transforma-la ainda em servico geral do
-simulador nem acopla-la a plugins concretos.
+versao proxima do parser/evaluator, sem acopla-la a plugins concretos.
 
-A primeira versao registra funcoes numericas simples com:
+O ownership em runtime fica no `Simulator`. Cada simulador possui um registry
+unico, exposto por `Simulator::getFunctionRegistry()`. O `PluginManager` do
+simulador alimenta esse registry quando plugins sao inseridos, e os parsers dos
+modelos recebem uma referencia nao-dona para o mesmo registry. Assim,
+`Model::parseExpression(...)` usa as funcoes registradas pelos plugins
+carregados no simulador, em vez de criar registries isolados por parser.
+
+O registry registra funcoes numericas simples com:
 
 - nome publico;
 - aridade minima;
@@ -140,13 +152,17 @@ A primeira versao registra funcoes numericas simples com:
 Operacoes oferecidas:
 
 - `registerFunction(...)`;
+- `unregisterFunction(...)`;
+- `unregisterFunctionsByOrigin(...)`;
 - `lookup(...)`;
 - `hasFunction(...)`;
 - `callFunction(...)`;
 - `listFunctions()`.
 
 O registry valida entradas invalidas, conflitos de nome, funcao inexistente,
-aridade errada e excecoes de callback.
+aridade errada e excecoes de callback. O lookup e o conflito de nomes sao
+case-insensitive. Um novo registro conflitante e rejeitado; a funcao anterior
+nao e sobrescrita.
 
 ## Integracao com o parser
 
@@ -202,24 +218,70 @@ Metodos adicionados ao driver:
 - `hasFunctionRegistry()`.
 
 `ParserDefaultImpl2` apenas encaminha a referencia externa para o wrapper do
-parser. O ciclo de vida do registry continua sendo responsabilidade do chamador.
+parser. Quando construido para um `Model`, ele usa automaticamente
+`model->getParentSimulator()->getFunctionRegistry()`. O driver e o parser nao
+possuem ownership sobre o registry.
 
-## Demonstracao com FakePlugin
+## Contrato de funcoes em plugins
 
-`FakePlugin` fica em `source/tests/unit/fakes/FakePlugin.h`. Ele nao e um plugin
-real carregado pelo `PluginManager`; e uma classe de teste que valida o contrato
-minimo esperado para um plugin futuro: receber um `FunctionRegistry` externo e
-registrar funcoes publicas nele.
+Plugins declaram funcoes opcionais por `PluginInformation::insertParserFunction(...)`.
+Cada declaracao contem `FunctionDescriptor` e `FunctionCallback`. Plugins que
+nao chamam esse metodo continuam compativeis e nao alteram o parser.
 
-`FakePlugin::registerFunctions(FunctionRegistry&)` registra:
+No momento da insercao, `PluginManager::_insert(...)` valida dependencias
+dinamicas e de sistema primeiro. Somente depois registra as funcoes declaradas
+no registry do `Simulator`, preenchendo `originName` com o `pluginTypename`.
+Se qualquer funcao falhar por conflito, callback vazio, aridade invalida ou
+outro erro de registro, a insercao do plugin e rejeitada e as funcoes ja
+registradas naquela tentativa sao removidas.
 
-- `FakeAdd(a,b)`, que retorna `a+b`;
-- `FakeSquare(x)`, que retorna `x*x`.
+Na remocao por `PluginManager::remove(Plugin*)`, a desconexao precisa passar.
+Depois disso, as funcoes daquele plugin sao removidas por origem antes de o
+wrapper do plugin ser destruido. Chamadas posteriores, como `PluginAdd(2,3)`,
+passam a falhar com erro semantico controlado de funcao nao registrada.
 
-O teste de demonstracao mostra que `FakeAdd(2,3)` falha antes do registro e
-passa depois que `FakePlugin::registerFunctions(...)` popula o registry. O nome
-`FakeAdd` nao possui token especifico no lexer nem producao especifica no Bison:
-ele entra pelo token generico `IDENTIFIER` e e resolvido pelo `SemanticResolver`.
+## Demonstracao com PluginManager
+
+`ParserFunctionRegistryDemoTest` usa um `PluginConnector_if` fake de teste para
+passar pelo fluxo real do `PluginManager`, sem depender de biblioteca dinamica
+no ambiente unitario.
+
+O plugin fixture declara em `PluginInformation`:
+
+- `PluginAdd(a,b)`, que retorna `a+b`.
+
+O teste mostra que `PluginAdd(2,3)` falha antes de
+`PluginManager::insert("parser_function_plugin.so")` e passa depois da insercao.
+Tambem cobre unload/remocao, conflito case-insensitive contra outro plugin e
+aridade incorreta. O nome `PluginAdd` nao possui token especifico no lexer nem
+producao especifica no Bison: ele entra pelo token generico `IDENTIFIER` e e
+resolvido pelo `SemanticResolver`.
+
+## Validacao com plugins reais
+
+`PluginManagerRealComponentsTest` cobre a convivencia do novo registry com
+plugins reais existentes do GenESyS carregados pelo fluxo normal de
+`PluginManager` + `PluginConnectorDummyImpl1`.
+
+Plugins reais carregados para convivencia, um por grupo solicitado:
+
+- `delay.so` -> `Delay` (`DiscreteProcessing`);
+- `dispose.so` -> `Dispose` (`Logic`);
+- `separate.so` -> `Separate` (`Grouping`);
+- `record.so` -> `Record` (`InputOutput`);
+- `exit.so` -> `Exit` (`MaterialHandling`).
+
+Esses plugins continuam sem declarar funcoes de parser em `PluginInformation`.
+O teste valida que eles sao inseridos pelo `PluginManager`, que nao adicionam
+entradas ao `FunctionRegistry`, e que expressoes legadas continuam avaliando
+normalmente antes e depois do carregamento/remocao, por exemplo `2+3`, `10/2`
+e `(2+3)*4`.
+
+A demonstracao de funcao declarada por plugin permanece em
+`ParserFunctionRegistryDemoTest`, com um `PluginConnector_if` fake que passa
+pelo `PluginManager`. Isso mantém os plugins reais como validacao de
+compatibilidade, sem alterar sua semantica. A migracao de funcoes legadas de
+`Queue`, `Resource`, `Set`, `Variable` e `Formula` permanece como etapa futura.
 
 ## Relacao com a infraestrutura original
 
@@ -309,6 +371,12 @@ Infraestrutura do parser:
 
 Ponte com o wrapper do parser:
 
+- `source/kernel/simulator/Simulator.h`;
+- `source/kernel/simulator/Simulator.cpp`;
+- `source/kernel/simulator/PluginInformation.h`;
+- `source/kernel/simulator/PluginInformation.cpp`;
+- `source/kernel/simulator/PluginManager.h`;
+- `source/kernel/simulator/PluginManager.cpp`;
 - `source/kernel/simulator/ParserDefaultImpl2.h`;
 - `source/kernel/simulator/ParserDefaultImpl2.cpp`.
 
@@ -318,6 +386,7 @@ Testes:
 - `source/tests/unit/test_parser_semantic_resolver.cpp`;
 - `source/tests/unit/test_parser_expressions.cpp`;
 - `source/tests/unit/test_parser_function_registry_demo.cpp`;
+- `source/tests/unit/test_plugin_manager_real_components.cpp`;
 - `source/tests/unit/fakes/FakePlugin.h`;
 - `source/tests/unit/CMakeLists.txt`.
 
@@ -330,7 +399,7 @@ Principais estruturas criadas:
 - `FunctionCallRequest`;
 - `SemanticResolverResult`;
 - `SemanticResolver`;
-- `FakePlugin`.
+- `ParserFunctionDeclaration`.
 
 ## Inventario do parser legado
 
@@ -397,26 +466,33 @@ simbolos generica para identificadores, AST explicita ou avaliacao tardia geral.
 
 ## Fluxo de funcionamento
 
-Fluxo para uma funcao nova registrada:
+Fluxo para uma funcao nova registrada por plugin:
 
-1. um componente externo cria ou recebe um `FunctionRegistry`;
-2. esse componente chama `registerFunction(...)` com descritor e callback;
-3. o chamador configura o registry no parser por `ParserDefaultImpl2` ou pelo
-   `genesyspp_driver`;
-4. o lexer encontra um literal nao reconhecido e retorna `IDENTIFIER`;
-5. o Bison reconhece a chamada `IDENTIFIER(...)`;
-6. os argumentos sao avaliados como `double`;
-7. o Bison chama o `SemanticResolver`;
-8. o resolver consulta o registry e valida a chamada;
-9. o callback retorna o valor numerico;
-10. o valor volta para a expressao como resultado da chamada.
+1. o plugin declara uma ou mais funcoes em `PluginInformation`;
+2. `PluginManager::insert(...)` valida o plugin e suas dependencias;
+3. `PluginManager` registra as funcoes no `Simulator::getFunctionRegistry()`;
+4. `ParserDefaultImpl2` usa o registry do simulador pai do modelo;
+5. o lexer encontra um literal nao reconhecido e retorna `IDENTIFIER`;
+6. o Bison reconhece a chamada `IDENTIFIER(...)`;
+7. os argumentos sao avaliados como `double`;
+8. o Bison chama o `SemanticResolver`;
+9. o resolver consulta o registry e valida a chamada;
+10. o callback retorna o valor numerico;
+11. o valor volta para a expressao como resultado da chamada.
 
-Fluxo demonstrado por `FakeAdd(2,3)`:
+Fluxo demonstrado por `PluginAdd(2,3)`:
 
-1. avaliar `FakeAdd(2,3)` antes do registro gera erro controlado;
-2. `FakePlugin::registerFunctions(registry)` registra `FakeAdd` e `FakeSquare`;
-3. o registry e configurado no `ParserDefaultImpl2`;
-4. `FakeAdd(2,3)` retorna `5`.
+1. avaliar `PluginAdd(2,3)` antes da insercao do plugin gera erro controlado;
+2. `PluginManager::insert("parser_function_plugin.so")` conecta o plugin
+   fixture pelo `PluginConnector_if` de teste;
+3. `PluginInformation` declara `PluginAdd`;
+4. `PluginManager` registra `PluginAdd` no registry do `Simulator`;
+5. `Model::parseExpression("PluginAdd(2,3)")` retorna `5`.
+
+Se um modelo salvo contiver uma expressao com funcao de plugin ausente, o parser
+nao cria token especial nem tenta carregar o plugin implicitamente. A expressao
+falha semanticamente como funcao nao registrada ate que o plugin correspondente
+seja inserido no `PluginManager` do simulador.
 
 ## Compatibilidade
 
@@ -466,10 +542,15 @@ Build unitario:
 
 ```bash
 PATH=/tmp/genesys-cmake-venv/bin:$PATH cmake --preset tests-unit
-PATH=/tmp/genesys-cmake-venv/bin:$PATH cmake --build --preset tests-unit
+PATH=/tmp/genesys-cmake-venv/bin:$PATH cmake --build build/tests-unit --target \
+  genesys_test_parser_function_registry \
+  genesys_test_parser_semantic_resolver \
+  genesys_test_parser_function_registry_demo \
+  genesys_test_parser_expressions \
+  genesys_test_plugin_manager_real_components -j2
 ```
 
-Resultado documentado:
+Resultado documentado anteriormente para o build unitario amplo:
 
 - configuracao passou;
 - build passou;
@@ -478,7 +559,7 @@ Resultado documentado:
 Testes focados do DCS:
 
 ```bash
-PATH=/tmp/genesys-cmake-venv/bin:$PATH ctest --test-dir build/tests-unit -R 'ParserExpressionsTest\.(ArithmeticPrecedenceAndParentheses|OperatorAssociativityMatchesCurrentGrammar|PowerIsRightAssociative|MathFunctionsRoundTruncFracAndSqrt|GenericFunctionCallsResolveThroughFunctionRegistry|GenericFunctionCallsReportSemanticErrors|GenericFunctionIntegrationKeepsLegacyArithmeticExpressions)|FunctionRegistryTest|ParserDriverFunctionRegistryTest|SemanticResolverTest|ParserFunctionRegistryDemoTest' --output-on-failure
+PATH=/tmp/genesys-cmake-venv/bin:$PATH ctest --test-dir build/tests-unit -R 'FunctionRegistryTest|ParserDriverFunctionRegistryTest|SemanticResolverTest|ParserFunctionRegistryDemoTest|ParserExpressionsTest|PluginManagerRealComponentsTest|ParserPluginManagerRealComponentsTest' --output-on-failure
 ```
 
 Resultado documentado:
@@ -569,11 +650,21 @@ Resultado documentado antes da consolidacao desta documentacao:
 
 `ParserFunctionRegistryDemoTest` cobre:
 
-- `FakeAdd` indisponivel antes do registro;
-- `FakeAdd(2,3)` retornando `5` depois de
-  `FakePlugin::registerFunctions(...)`;
-- erro controlado para `FakeAdd(1)`;
+- `PluginAdd` indisponivel antes da insercao do plugin;
+- `PluginAdd(2,3)` retornando `5` depois de
+  `PluginManager::insert("parser_function_plugin.so")`;
+- `PluginAdd` indisponivel depois de `PluginManager::remove(...)`;
+- rejeicao de conflito case-insensitive sem sobrescrever a funcao existente;
+- erro controlado para `PluginAdd(1)`;
 - erro controlado para `FuncaoInexistente(2)`.
+
+`PluginManagerRealComponentsTest` cobre:
+
+- plugins reais sem funcoes de parser nao alterando o registry;
+- convivencia de `Delay`, `Dispose`, `Separate`, `Record` e `Exit` com parsing
+  legado;
+- remocao desses plugins reais sem deixar funcoes registradas por origem;
+- parser legado funcionando antes/depois do carregamento e depois do unload.
 
 ## Cobertura de regressao adicionada para DCS
 
@@ -606,3 +697,12 @@ O resultado nao substitui a infraestrutura historica de alteracao dinamica do
 parser. Ele cria uma camada mais simples e verificavel para o caso mais comum:
 registrar uma funcao, validar aridade e executar um callback a partir de uma
 expressao textual.
+
+Limitacoes atuais:
+
+- as funcoes registradas aceitam e retornam apenas `double`;
+- nao ha AST explicita nem avaliacao tardia geral;
+- funcoes legadas de `Queue`, `Resource`, `Set`, `Variable` e `Formula`
+  continuam no caminho historico de Flex/Bison;
+- a migracao dessas funcoes legadas deve ser gradual, uma familia por vez,
+  preservando tokens/producoes atuais ate haver cobertura especifica.

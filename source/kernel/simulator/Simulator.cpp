@@ -16,6 +16,7 @@
 #include <memory>
 
 #include "LicenceManager.h"
+#include "../../parser/FunctionRegistry.h"
 
 extern "C" GenesysSimulator CreateSimulator2() {
 	return new /*GenesysKernel::*/Simulator();
@@ -44,9 +45,10 @@ Simulator::Simulator() {
 	// This is the ONLY method in the entire software where std::cout is allowed.
 	std::cout << "STARTING " << _name << ", version " << getVersion() << "..." << std::endl;
 	_licenceManager = new LicenceManager(this);
+	_traceManager = new TraceManager(this);
+	_functionRegistry = new FunctionRegistry();
 	_pluginManager = new PluginManager(this);
 	_modelManager = new ModelManager(this);
-	_traceManager = new TraceManager(this);
 	_parserManager = new ParserManager();
 	_experimentManager = new ExperimentManager(this);
 	std::cout << '|' << '\t' << _licenceManager->showLicence() << std::endl;
@@ -64,10 +66,12 @@ Simulator::~Simulator() {
 	// Destroy models before tracing infrastructure to avoid late traces using a dead tracer.
 	delete _modelManager;
 	_modelManager = nullptr;
-	delete _traceManager;
-	_traceManager = nullptr;
 	delete _pluginManager;
 	_pluginManager = nullptr;
+	delete _functionRegistry;
+	_functionRegistry = nullptr;
+	delete _traceManager;
+	_traceManager = nullptr;
 	delete _licenceManager;
 	_licenceManager = nullptr;
 }
@@ -90,6 +94,10 @@ ParserManager* Simulator::getParserManager() const {
 
 ExperimentManager* Simulator::getExperimentManager() const {
 	return _experimentManager;
+}
+
+FunctionRegistry* Simulator::getFunctionRegistry() const {
+	return _functionRegistry;
 }
 
 std::string Simulator::getVersion() const {

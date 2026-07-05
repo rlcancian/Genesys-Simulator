@@ -43,6 +43,27 @@ FunctionRegistrationResult FunctionRegistry::registerFunction(FunctionDescriptor
 	return FunctionRegistrationResult::ok();
 }
 
+bool FunctionRegistry::unregisterFunction(const std::string& name) {
+	const std::string normalizedName = normalizeName(name);
+	const auto it = std::find_if(_functions.begin(), _functions.end(), [&](const FunctionEntry& entry) {
+		return normalizeName(entry.descriptor.publicName) == normalizedName;
+	});
+	if (it == _functions.end()) {
+		return false;
+	}
+	_functions.erase(it);
+	return true;
+}
+
+std::size_t FunctionRegistry::unregisterFunctionsByOrigin(const std::string& originName) {
+	const std::string normalizedOrigin = normalizeName(originName);
+	const auto oldSize = _functions.size();
+	_functions.erase(std::remove_if(_functions.begin(), _functions.end(), [&](const FunctionEntry& entry) {
+		return normalizeName(entry.descriptor.originName) == normalizedOrigin;
+	}), _functions.end());
+	return oldSize - _functions.size();
+}
+
 const FunctionDescriptor* FunctionRegistry::lookup(const std::string& name) const {
 	const auto it = findEntry(name);
 	if (it == _functions.end()) {
