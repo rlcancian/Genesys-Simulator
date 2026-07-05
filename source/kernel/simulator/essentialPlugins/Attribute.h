@@ -87,6 +87,8 @@ public:
 	void setInitialValue(double value, std::string index = "");
 	/*! \brief Replaces/extends initial sparse values from textual index/value pairs. */
 	void setInitialValues(const std::vector<std::pair<std::string,double>> values);
+	/*! \brief Copies the full initial sparse store from another attribute. */
+	void copyInitialValuesFrom(const Attribute& source);
 	/*! \brief Appends one dimension size to the attribute definition. */
 	void insertDimentionSize(unsigned int size);
 	/*! \brief Returns dimension sizes for compatibility with existing callers. */

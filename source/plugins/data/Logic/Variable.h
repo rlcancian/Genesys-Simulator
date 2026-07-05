@@ -103,6 +103,8 @@ public:
 	double getValue(std::string index="");
 	/*! \brief Writes the current sparse value at the scalar or indexed position. */
 	void setValue(double value, std::string index="");
+	/*! \brief Copies the full runtime sparse store from another variable. */
+	void copyValuesFrom(const Variable& source);
 	/*! \brief Returns the initial values serialized in bracket notation. */
 	std::string getInitialValuesText() const override;
 	/*! \brief Parses bracket notation and replaces both initial and runtime stores. */

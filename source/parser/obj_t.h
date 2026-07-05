@@ -11,6 +11,8 @@ public:
 	double valor;
 	std::string tipo;
 	unsigned long id;
+	bool isReference;
+	bool isAttributeReference;
 };
 
 #endif

@@ -139,6 +139,8 @@ public:
 	 * \details Assigns an attribute value by attribute identifier.
 	 */
 	void setAttributeValue(Util::identification attributeID, double value, std::string index="");
+	/*! \brief Copies all sparse values from one attribute to another for this entity. */
+	void copyAttributeValues(std::string destinationAttributeName, std::string sourceAttributeName);
 	/*!
 	 * \brief entityNumber
 	 * \return Unique runtime identifier for this entity instance.

@@ -1,5 +1,14 @@
 # Current Plans
 
+## Matrix values and multidimensional assignments
+
+- Date: 2026-07-04
+- Branch: `WiP20261`
+- Status: in progress, but the current parser/kernel validation is green.
+- Link: [`matrix_values_and_multidimensional_assignments_plan.md`](./matrix_values_and_multidimensional_assignments_plan.md)
+- Scope: sparse scalar and N-dimensional reads/writes for `Variable` and `Attribute`, with parser-backed indexed assignment as the main verified path.
+- Next step: keep matrix-to-matrix assignment, shape validation, and typed dimensions deferred to later phases.
+
 ## Documentation directory migration
 
 - Date: 2026-07-03
