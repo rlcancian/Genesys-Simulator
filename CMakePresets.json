@@ -19,6 +19,7 @@
         "GENESYS_BUILD_PLUGINS": "ON",
         "GENESYS_BUILD_PARSER": "ON",
         "GENESYS_BUILD_KERNEL": "ON",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
@@ -41,6 +42,7 @@
         "GENESYS_BUILD_TESTS": "ON",
         "GENESYS_BUILD_WEB_APPLICATION": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
@@ -52,28 +54,52 @@
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
       "name": "terminal-app",
-      "displayName": "Application - Terminal Shell (GenesysShell)",
-      "description": "Builds the terminal application explicitly as GenesysShell. Use this preset when you want the interactive shell behavior.",
+      "hidden": true,
       "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/terminal-app",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF"
+      }
+    },
+    {
+      "name": "terminal-examples",
+      "hidden": true,
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/terminal-examples",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "ON",
         "GENESYS_TERMINAL_APP": "GenesysShell",
         "GENESYS_TERMINAL_EXAMPLE": "",
         "GENESYS_TERMINAL_EXAMPLE_CLASS": ""
       }
     },
     {
+      "name": "genesys_shell",
+      "displayName": "Application - Genesys Shell",
+      "description": "Builds the standalone Genesys shell executable genesys_shell. Use this preset when you want the interactive shell behavior.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/genesys_shell",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF"
+      }
+    },
+    {
       "name": "terminal-smart",
       "displayName": "Application - Terminal Smart",
       "description": "Builds the terminal application from a smart source under source/applications/terminal/examples/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
-      "inherits": "terminal-app",
+      "inherits": "terminal-examples",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
         "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_CellularAutomata1.cpp"
@@ -83,7 +109,7 @@
       "name": "terminal-example",
       "displayName": "Application - Terminal Example",
       "description": "Builds the terminal application from a non-shell example under source/applications/terminal/examples. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
-      "inherits": "terminal-app",
+      "inherits": "terminal-examples",
       "binaryDir": "${sourceDir}/build/terminal-example",
       "cacheVariables": {
         "GENESYS_TERMINAL_EXAMPLE": "teaching/AnElectronicAssemblyAndTestSystem.cpp"
@@ -103,7 +129,7 @@
       "name": "terminal-smart-ai-assistant",
       "displayName": "Application - Terminal Smart (StartAIAssistant)",
       "description": "Builds the terminal application directly as the StartAIAssistant smart example.",
-      "inherits": "terminal-app",
+      "inherits": "terminal-examples",
       "binaryDir": "${sourceDir}/build/terminal-smart-ai-assistant",
       "cacheVariables": {
         "GENESYS_TERMINAL_APP": "StartAIAssistant",
@@ -237,10 +263,10 @@
       ]
     },
     {
-      "name": "terminal-app",
-      "configurePreset": "terminal-app",
+      "name": "genesys_shell",
+      "configurePreset": "genesys_shell",
       "targets": [
-        "genesys_terminal_application"
+        "genesys_shell"
       ]
     },
     {

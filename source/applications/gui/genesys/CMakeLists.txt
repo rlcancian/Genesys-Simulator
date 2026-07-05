@@ -32,7 +32,7 @@ set(GENESYS_QT_GUI_HEADERS
 
 set(GENESYS_QT_GUI_TERMINAL_FALLBACK_SOURCES
     ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
-    ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
+    ${CMAKE_SOURCE_DIR}/source/applications/GenesysShell/GenesysShell.cpp
 )
 
 add_executable(genesys_qt_gui_application

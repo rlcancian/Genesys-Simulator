@@ -45,8 +45,8 @@ GUI_BINARY = $$GUI_BUILD_DIR/source/applications/gui/qt/GenesysQtGUI/genesys_qt_
 WEB_BUILD_DIR = $$BUILD_ROOT/genesys_web_app
 WEB_BINARY = $$WEB_BUILD_DIR/source/applications/web/genesys_web_app
 
-TERMINAL_BUILD_DIR = $$BUILD_ROOT/terminal-app
-TERMINAL_BINARY = $$TERMINAL_BUILD_DIR/source/applications/terminal/genesys_terminal_application
+TERMINAL_BUILD_DIR = $$BUILD_ROOT/genesys_shell
+TERMINAL_BINARY = $$TERMINAL_BUILD_DIR/source/applications/GenesysShell/genesys_shell
 
 TERMINAL_EXAMPLE_BUILD_DIR = $$BUILD_ROOT/terminal-example
 TERMINAL_EXAMPLE_BINARY = $$TERMINAL_EXAMPLE_BUILD_DIR/source/applications/terminal/genesys_terminal_application
@@ -86,9 +86,9 @@ run_web_application.commands = cd $$WEB_BUILD_DIR/source/applications/web && ./g
 build_web_application.depends = configure_web_application
 run_web_application.depends = build_web_application
 
-configure_terminal_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset terminal-app
-build_terminal_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset terminal-app
-run_terminal_application.commands = cd $$TERMINAL_BUILD_DIR/source/applications/terminal && ./genesys_terminal_application
+configure_terminal_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset genesys_shell
+build_terminal_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset genesys_shell
+run_terminal_application.commands = cd $$TERMINAL_BUILD_DIR/source/applications/GenesysShell && ./genesys_shell
 build_terminal_application.depends = configure_terminal_application
 run_terminal_application.depends = build_terminal_application
 

@@ -192,7 +192,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/GenesysQtGUI_resources.qrc
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
         ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
-        ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/GenesysShell/GenesysShell.cpp
     )
 
     target_include_directories(genesys_test_gui_gmdd_layout

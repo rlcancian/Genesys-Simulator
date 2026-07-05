@@ -17,6 +17,7 @@ option(GENESYS_BUILD_KERNEL "Build kernel static libraries" ON)
 option(GENESYS_BUILD_PARSER "Build parser static library" ON)
 option(GENESYS_BUILD_PLUGINS "Build plugins static libraries" ON)
 option(GENESYS_BUILD_TOOLS "Build tools static libraries" OFF)
+option(GENESYS_BUILD_TERMINAL_EXAMPLES "Build terminal example applications" OFF)
 option(GENESYS_ENABLE_PYTHON_INTEGRATION "Enable experimental embedded Python integration" ON)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -66,6 +67,10 @@ if(GENESYS_BUILD_PARSER)
 endif()
 
 if(GENESYS_BUILD_TERMINAL_APPLICATION)
+    add_subdirectory(source/applications/GenesysShell)
+endif()
+
+if(GENESYS_BUILD_TERMINAL_EXAMPLES)
     add_subdirectory(source/applications/terminal)
 endif()
 

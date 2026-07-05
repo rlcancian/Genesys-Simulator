@@ -1,4 +1,5 @@
 /*
+ *
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
@@ -7,7 +8,7 @@
 /* 
  * File:   GenesysShell.cpp
  * Author: rafael.luiz.cancian
- * 
+ * , caso simm, como
  * Created on 23 de Maio de 2019, 13:02
  */
 
@@ -241,20 +242,20 @@ void GenesysShell::defineCommands() {
 	_commands->insert(new ShellCommand("", "parse", "<expression>", "Evaluate or watch an expression", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdParser)));
 	//_commands->insert(new ShellCommand("", "dir", "<path>", "List the files in the <path>", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdListFiles)));
 	_commands->insert(new ShellCommand("", "bash", "<bash command>", "Execute a bash command", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdBash)));
-	_commands->insert(new ShellCommand("", "script", "[-r|--run|-s|--show]=<script filename>", "Execute or show commands in a script file", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdScript)));
-	_commands->insert(new ShellCommand("", "trace", "[-l=<level 1-9>] [-s|--show]", "Set or show current the trace level", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdTraceLevel)));
-	_commands->insert(new ShellCommand("", "plugin", "[-l|--list] [-c|--count] [[-i|--info]=<plugin typename>] [[-a|--autoload]=<filename plugin list>] [-t|--template[=<plugintypename>]", "List, count, load or get information about installed plugins and templates of genesys language", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdPlugin)));
+	_commands->insert(new ShellCommand("", "execute-script", "<filename>", "Execute commands from a GenesysShell script file", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdExecuteScript)));
+	_commands->insert(new ShellCommand("", "trace", "[show|level <level 1-9>]", "Set or show current the trace level", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdTraceLevel)));
+	_commands->insert(new ShellCommand("", "plugin", "[list|count|info <plugin typename>|autoload <filename plugin list>|template [plugintypename]]", "List, count, load or get information about installed plugins and templates of genesys language", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdPlugin)));
 	//_commands->insert(new ShellCommand("", "plugininfo", "<plugin name>", "Show infos about a plugin", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdPluginInfo)));
 	//_commands->insert(new ShellCommand("", "pluginadd", "<plugin filename>", "", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdPluginAdd)));
 	//_commands->insert(new ShellCommand("", "pluginremove", "<classname>", "", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdPluginRemove)));
-	_commands->insert(new ShellCommand("", "simul", "[-s|--start|-p|--step]", "Control simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdSimulation)));
+	_commands->insert(new ShellCommand("", "simul", "[start|step]", "Control simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdSimulation)));
 	//_commands->insert(new ShellCommand("", "step", "", "Step simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdSimulationStep)));
 	//_commands->insert(new ShellCommand("", "stop", "", "Stop simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdSimulationStop)));
-	_commands->insert(new ShellCommand("", "config", "[-r|--replications=<number of repliations>] [-l|--length=<replication length>] [-t|--time=<replication time unit>] [-s|--show]", "Configure simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdReplication)));
+	_commands->insert(new ShellCommand("", "config", "[show|replications <number of replications>|length <replication length> [time unit]|base-length <time unit>|warm-up <value> [time unit]|warm-up-unit <time unit>|terminating-condition <expression>|pause-on-event <true|false>|step-by-step <true|false>|init-statistics <true|false>|init-system <true|false>|pause-on-replication <true|false>|show-reports-after-replication <true|false>|show-reports-after-simulation <true|false>|simulation-controls-in-report <true|false>|simulation-responses-in-report <true|false>]", "Configure simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdReplication)));
 	//_commands->insert(new ShellCommand("", "showsetup", "", "Show simulation info", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdSimulationInfo)));
 	//_commands->insert(new ShellCommand("", "showreport", "", "Show simulation report", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdShowReport)));
 	//_commands->insert(new ShellCommand("", "show", "", "Show the model structure", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModelShow)));
-	_commands->insert(new ShellCommand("", "model", "[-n|--new|-r|--remove|-c|--check|-s|--show]", "Create, check, show or close a model", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModel)));
+	_commands->insert(new ShellCommand("", "model", "[new|remove|check|show|load <filename>|save <filename>]", "Create, check, show or close a model", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModel)));
 	//_commands->insert(new ShellCommand("", "close", "", "Close the odel", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModelClose)));
 	//_commands->insert(new ShellCommand("", "check", "", "Check the model", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModelCheck)));
 	_commands->insert(new ShellCommand("", "load", "<filename>", "Load a model from a file", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdModelLoad)));
@@ -371,14 +372,256 @@ bool GenesysShell::parseTimeUnit(const std::string& text, Util::TimeUnit& timeUn
 }
 
 void GenesysShell::cmdHelp() {
-	cout<<"List of commands:"<<endl;
-	string parameters;
-	for (ShellCommand *command : *_commands->list()) {
-		parameters = command->parameters;
-		if (parameters=="")
-			parameters = "\t\t\t";
-		cout<<command->longname<<"\t"<<parameters<<"\t\t; "<<command->descrition<<endl;
+	const auto printTopic = [](const std::string& name, const std::string& summary, const std::vector<std::string>& lines) {
+		cout << name << " - " << summary << endl;
+		cout << "  help " << name << endl;
+		for (const std::string& line : lines) {
+			cout << "    " << line << endl;
+		}
+	};
+
+	if (_typedWords->size() == 1) {
+		cout << "List of commands:" << endl;
+		cout << "Main commands:" << endl;
+		for (ShellCommand *command : *_commands->list()) {
+			const bool special = command->longname == "plugin" || command->longname == "model" || command->longname == "sim" || command->longname == "config" || command->longname == "trace";
+			if (!special) {
+				cout << command->longname << " - " << command->descrition;
+				if (!command->parameters.empty()) {
+					cout << " (" << command->parameters << ")";
+				}
+				cout << endl;
+			}
+		}
+		cout << "Special commands:" << endl;
+		for (ShellCommand *command : *_commands->list()) {
+			const bool special = command->longname == "plugin" || command->longname == "model" || command->longname == "sim" || command->longname == "config" || command->longname == "trace";
+			if (special) {
+				cout << command->longname << " - " << command->descrition;
+				if (!command->parameters.empty()) {
+					cout << " (" << command->parameters << ")";
+				}
+				cout << endl;
+			}
+		}
+		return;
 	}
+
+	const std::string topic = lowercase(_typedWords->at(1));
+	if (topic == "sim") {
+		printTopic("sim", "inspect or control the current model simulation through SimulatorFacade", {
+			"show - display the current simulation state",
+			"start - start the simulation",
+			"pause - pause a running simulation",
+			"step - process one event and pause again",
+			"stop - stop the current simulation",
+			"get-replications - show the number of replications",
+			"set-replications <number> - change the number of replications",
+			"get-length - show the replication length and time unit",
+			"set-length <value> [time unit] - change the replication length; the unit is optional",
+			"get-base-length - show the base time unit used for reports",
+			"set-base-length <time unit> - change the report base time unit",
+			"get-warm-up - show the warm-up period and time unit",
+			"set-warm-up <value> [time unit] - change the warm-up period; the unit is optional",
+			"get-warm-up-unit - show the warm-up time unit",
+			"set-warm-up-unit <time unit> - change the warm-up time unit",
+			"get-terminating-condition - show the terminating condition expression",
+			"set-terminating-condition <expression> - change the terminating condition",
+			"get-pause-on-event - show whether the simulation pauses on events",
+			"set-pause-on-event <true|false> - enable or disable pause on event",
+			"get-step-by-step - show whether step-by-step mode is enabled",
+			"set-step-by-step <true|false> - enable or disable step-by-step mode",
+			"get-init-statistics - show whether statistics reset between replications",
+			"set-init-statistics <true|false> - enable or disable statistics reset",
+			"get-init-system - show whether the system is reinitialized between replications",
+			"set-init-system <true|false> - enable or disable system reinitialization",
+			"get-pause-on-replication - show whether the simulation pauses between replications",
+			"set-pause-on-replication <true|false> - enable or disable pause between replications",
+			"get-current-time - show the current simulated time",
+			"get-current-replication - show the current replication number",
+			"get-running - show whether the simulation is running",
+			"get-paused - show whether the simulation is paused",
+			"current-event - show the current event, if any",
+			"reporter - show whether a simulation reporter is configured",
+			"breakpoints list time|entity|component - list breakpoints of the selected type",
+			"breakpoints add time <value> - add a time breakpoint",
+			"breakpoints add entity <id|name> - add an entity breakpoint",
+			"breakpoints add component <id|name> - add a component breakpoint",
+			"breakpoints remove time <value> - remove a time breakpoint",
+			"breakpoints remove entity <id|name> - remove an entity breakpoint",
+			"breakpoints remove component <id|name> - remove a component breakpoint",
+			"breakpoints clear time|entity|component - clear the selected breakpoint list",
+			"error-messages - show trace error messages",
+			"show-reports-after-replication - show whether replication reports are enabled",
+			"set-show-reports-after-replication <true|false> - enable or disable replication reports",
+			"show-reports-after-simulation - show whether simulation reports are enabled",
+			"set-show-reports-after-simulation <true|false> - enable or disable simulation reports",
+			"get-simulation-controls-in-report - show whether simulation controls are included in reports",
+			"set-simulation-controls-in-report <true|false> - enable or disable simulation controls in reports",
+			"get-simulation-responses-in-report - show whether simulation responses are included in reports",
+			"set-simulation-responses-in-report <true|false> - enable or disable simulation responses in reports"
+		});
+		return;
+	}
+	if (topic == "config") {
+		printTopic("config", "configure simulation defaults and reporting", {
+			"show - display the current simulation configuration",
+			"replications <number> - change the number of replications",
+			"length <value> [time unit] - change the replication length; the unit is optional",
+			"base-length <time unit> - change the report base time unit",
+			"warm-up <value> [time unit] - change the warm-up period; the unit is optional",
+			"warm-up-unit <time unit> - change the warm-up time unit",
+			"terminating-condition <expression> - change the terminating condition",
+			"pause-on-event <true|false> - enable or disable pause on event",
+			"step-by-step <true|false> - enable or disable step-by-step mode",
+			"init-statistics <true|false> - enable or disable statistics reset between replications",
+			"init-system <true|false> - enable or disable system reinitialization between replications",
+			"pause-on-replication <true|false> - enable or disable pause between replications",
+			"show-reports-after-replication <true|false> - enable or disable replication reports",
+			"show-reports-after-simulation <true|false> - enable or disable simulation reports",
+			"simulation-controls-in-report <true|false> - enable or disable simulation controls in reports",
+			"simulation-responses-in-report <true|false> - enable or disable simulation responses in reports"
+		});
+		return;
+	}
+	if (topic == "plugin") {
+		printTopic("plugin", "inspect and load installed plugins", {
+			"list - show the installed plugins",
+			"count - show how many plugins are installed",
+			"info <plugin typename> - show detailed information for one plugin",
+			"autoload <filename> - load plugins from a plugin list file",
+			"template [plugintypename] - show language templates for plugins; the type filter is optional",
+			"check <dynamic library filename> - validate whether a library looks like a plugin",
+			"check-system-dependencies <dynamic library filename> - inspect missing system dependencies before loading",
+			"discover - discover plugin filenames through the connector",
+			"issues - show stored plugin load diagnostics",
+			"clear-issues - remove all stored plugin load diagnostics",
+			"clear-issue <dynamic library filename> - remove diagnostics for one plugin candidate",
+			"remove <dynamic library filename> - unload a plugin by filename",
+			"rank <n> - show the plugin stored at the given rank",
+			"first - show the first plugin in the list",
+			"next - show the next plugin in the list",
+			"last - show the last plugin in the list"
+		});
+		return;
+	}
+	if (topic == "model") {
+		printTopic("model", "create, inspect, load or save the current model", {
+			"new - create a new current model",
+			"remove - remove the current model",
+			"check - validate the current model",
+			"show - show the current model in language form",
+			"load <filename> - load a model from a file",
+			"save <filename> - save the current model to a file",
+			"count - show how many models exist",
+			"current - show the current model",
+			"first - show the first model in the manager",
+			"last - show the last model in the manager",
+			"next - show the next model in the manager",
+			"previous - show the previous model in the manager",
+			"can-go-next - show whether there is a next model",
+			"can-go-previous - show whether there is a previous model",
+			"at <index> - show the model at a given index",
+			"future-events - list the current model future events",
+			"controls - list the current model simulation controls",
+			"responses - list the current model simulation responses",
+			"persistence - show whether the model has a persistence backend",
+			"level - show the current model level"
+		});
+		return;
+	}
+	if (topic == "trace") {
+		printTopic("trace", "inspect or update the trace level", {
+			"show",
+			"level <level 1-9>"
+		});
+		return;
+	}
+	if (topic == "execute-script") {
+		printTopic("execute-script", "execute commands from a GenesysShell script file", {
+			"<filename> - read the file line by line and execute each non-empty, non-comment line as a GenesysShell command"
+		});
+		return;
+	}
+	if (topic == "load") {
+		printTopic("load", "load a model from a file", {
+			"<filename> - path to the model file to load"
+		});
+		return;
+	}
+	if (topic == "save") {
+		printTopic("save", "save the current model to a file", {
+			"<filename> - path to the destination file"
+		});
+		return;
+	}
+	if (topic == "facade") {
+		printTopic("facade", "query high-level simulator metadata", {
+			"get-version",
+			"get-version-number",
+			"get-name"
+		});
+		return;
+	}
+	if (topic == "licence") {
+		printTopic("licence", "inspect licence information", {
+			"show",
+			"limits",
+			"activation-code",
+			"lookfor-activation-code",
+			"insert-activation-code",
+			"remove-activation-code",
+			"model-components-limit",
+			"model-datas-limit",
+			"entity-limit",
+			"hosts-limit",
+			"threads-limit"
+		});
+		return;
+	}
+	if (topic == "data") {
+		printTopic("data", "inspect current model data definitions", {
+			"count [type] - show the number of data definitions, optionally filtered by type",
+			"show - show all current data definitions",
+			"class-names - list all data definition class names",
+			"list [type] - list definitions grouped by type or list one type; the type filter is optional",
+			"get <type> <id|name> - find one definition by id or name",
+			"rank-of <type> <name> - show the rank of a definition inside its type list",
+			"clear - clear all current data definitions",
+			"has-changed - show whether the data set changed",
+			"set-has-changed <true|false> - change the data changed flag"
+		});
+		return;
+	}
+	if (topic == "component") {
+		printTopic("component", "inspect current model components", {
+			"count - show how many components exist",
+			"show - show all components",
+			"list - list all components",
+			"clear - clear all components",
+			"find <id|name> - find a component by id or name",
+			"front - show the first component in the list",
+			"next - show the next component in the list",
+			"all - list every component using the manager snapshot",
+			"has-changed - show whether the component set changed",
+			"set-has-changed <true|false> - change the component changed flag"
+		});
+		return;
+	}
+	if (topic == "experiment") {
+		printTopic("experiment", "inspect simulation experiments", {
+			"count - show how many experiments exist",
+			"show - show the current experiment",
+			"current - show the current experiment",
+			"new - create a new experiment",
+			"save <filename> - save the current experiment to a file",
+			"load <filename> - load an experiment from a file",
+			"next - show the next experiment",
+			"first - show the first experiment"
+		});
+		return;
+	}
+	cout << "No detailed help available for \"" << _typedWords->at(1) << "\"." << endl;
 }
 
 void GenesysShell::cmdQuit() {
@@ -420,24 +663,24 @@ void GenesysShell::cmdBash() {
 }
 
 void GenesysShell::cmdScript() {
-	if (_typedWords->size()!=2) {
+	if (_typedWords->size() != 3) {
 		cout<<"Wrong number of parameters"<<endl;
 		return;
 	}
-	string parameter = _typedWords->at(1);
-	string key = "";
-	string value = "";
-	Util::SepKeyVal(parameter, key, value);
-	bool run = key=="-r"||key=="-run";
-	bool show = key=="-s"||key=="--show";
+	const std::string action = lowercase(_typedWords->at(1));
+	const std::string value = _typedWords->at(2);
+	const bool run = action == "run" || action == "-r" || action == "-run";
+	const bool show = action == "show" || action == "-s" || action == "--show";
 	if (!run && !show) {
-		cout<<"Syntax error on "<<parameter<<endl;
+		cout<<"Syntax error on "<<_typedWords->at(1)<<endl;
 		return;
 	}
-	if (show)
+	if (show) {
 		cout<<"Showing script "<<value<<endl;
-	if (run)
+	}
+	if (run) {
 		cout<<"Running script "<<value<<endl;
+	}
 	ifstream file(value);
 	if (file.is_open()) {
 		string line;
@@ -461,207 +704,750 @@ void GenesysShell::cmdScript() {
 	}
 }
 
+void GenesysShell::cmdExecuteScript() {
+	if (_typedWords->size() != 2) {
+		cout << "Wrong number of parameters" << endl;
+		return;
+	}
+	const std::string filename = _typedWords->at(1);
+	ifstream file(filename);
+	if (!file.is_open()) {
+		cout << "Error: Could not load the script" << endl;
+		return;
+	}
+	std::string line;
+	while (getline(file, line)) {
+		const std::string trimmed = Util::Trim(line);
+		if (trimmed.empty() || trimmed[0] == '#') {
+			continue;
+		}
+		cout << "$execute-script> " << line << endl;
+		tryExecuteCommand(line);
+	}
+	file.close();
+}
+
 void GenesysShell::cmdTraceLevel() {
-	if (_typedWords->size()<2) {
+	if (_typedWords->size() == 1) {
+		cout<<"Trace level is "<<static_cast<int> (facade.getTraceLevel())<<endl;
+		return;
+	}
+	const std::string action = lowercase(_typedWords->at(1));
+	if (action == "show" || action == "-s" || action == "--show") {
+		cout<<"Trace level is "<<static_cast<int> (facade.getTraceLevel())<<endl;
+		return;
+	}
+	if (action != "level" && action != "-l" && action != "--level") {
+		cout<<"Syntax error on "<<_typedWords->at(1)<<endl;
+		return;
+	}
+	if (_typedWords->size() != 3) {
 		cout<<"Wrong number of parameters"<<endl;
 		return;
 	}
-	string parameter;
-	string key, value;
-	for (unsigned short i = 1; i<_typedWords->size(); i++) {
-		parameter = _typedWords->at(i);
-		key = "";
-		value = "";
-		Util::SepKeyVal(parameter, key, value);
-		if (key=="-l"||key=="--level") {
-			TraceManager::Level level;
-			if (parseTraceLevel(value, level)) {
-				cout<<"Setting tracelevel to "<<value<<endl;
-				facade.setTraceLevel(level);
-			} else {
-				cout<<"Error: "<<value<<" is not a valid level"<<endl;
-			}
-		} else if (key=="-s"||key=="--show") {
-			cout<<"Trace level is "<<static_cast<int> (facade.getTraceLevel())<<endl;
-		} else {
-			cout<<"Syntax error on "<<parameter<<endl;
-		}
+	TraceManager::Level level;
+	if (parseTraceLevel(_typedWords->at(2), level)) {
+		cout<<"Setting trace level to "<<_typedWords->at(2)<<endl;
+		facade.setTraceLevel(level);
+	} else {
+		cout<<"Error: "<<_typedWords->at(2)<<" is not a valid level"<<endl;
 	}
 }
 
 void GenesysShell::cmdPlugin() {
-	if (_typedWords->size()<2) {
-		cout<<"Wrong number of parameters"<<endl;
+	if (_typedWords->size() == 1) {
+		if (facade.pluginCount()==0) {
+			cout<<"There is no installed plugins. Install some using the plugin autoload <filename>"<<endl;
+			return;
+		}
+		cout<<facade.showPlugins()<<endl;
 		return;
 	}
-	string parameter;
-	string key, value;
-	for (unsigned short i = 1; i<_typedWords->size(); i++) {
-		parameter = _typedWords->at(i);
-		key = "";
-		value = "";
-		Util::SepKeyVal(parameter, key, value);
-		if (key=="-l"||key=="--list") {
-			if (facade.pluginCount()==0) {
-				cout<<"There is no installed plugins. Install some using the plugin --autoload=<filename>"<<endl;
-				return;
-			}
-			cout<<facade.showPlugins()<<endl;
-		} else if (key=="-c"||key=="--count") {
-			cout<<"Installed plugins: "<<facade.pluginCount()<<endl;
-		} else if (key=="-a"||key=="--autoload") {
-			cout<<"Loading list of plugins from file "<<value<<endl;
-			facade.autoInsertPlugins(value, true, ShellPluginInsertionOptions());
-		} else if (key=="-i"||key=="--info") {
-			if (facade.pluginCount()==0) {
-				cout<<"There is no installed plugins. Install some using the plugin --autoload=<filename>"<<endl;
-				return;
-			}
-			Plugin* plugin = facade.findPlugin(value);
-			if (plugin != nullptr) {
-				cout<<"Information for plugin "<<value<<":"<<endl;
-				cout<<plugin->show()<<endl;
-			} else {
-				cout<<"Error: Could not find plugin of type "<<value<<endl;
-			}
-		} else if (key=="-t"||key=="--template") {
-			if (facade.pluginCount()==0) {
-				cout<<"There is no installed plugins. Install some using the plugin --autoload=<filename>"<<endl;
-				return;
-			}
-			cout<<"Plugin templates:"<<endl;
-			List<Plugin*>* plugins = facade.completePluginsFieldsAndTemplates();
-			if (plugins != nullptr) {
-				for (Plugin* plugin : *plugins->list()) {
-					if (plugin == nullptr) {
-						continue;
+	const std::string action = lowercase(_typedWords->at(1));
+	if (action == "list") {
+		if (facade.pluginCount()==0) {
+			cout<<"There is no installed plugins. Install some using the plugin autoload <filename>"<<endl;
+			return;
+		}
+		cout<<facade.showPlugins()<<endl;
+		return;
+	}
+	if (action == "count") {
+		cout<<"Installed plugins: "<<facade.pluginCount()<<endl;
+		return;
+	}
+	if (action == "autoload") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		cout<<"Loading list of plugins from file "<<_typedWords->at(2)<<endl;
+		facade.autoInsertPlugins(_typedWords->at(2), true, ShellPluginInsertionOptions());
+		return;
+	}
+	if (action == "info") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		if (facade.pluginCount()==0) {
+			cout<<"There is no installed plugins. Install some using the plugin autoload <filename>"<<endl;
+			return;
+		}
+		Plugin* plugin = facade.findPlugin(_typedWords->at(2));
+		if (plugin != nullptr) {
+			cout<<"Information for plugin "<<_typedWords->at(2)<<":"<<endl;
+			cout<<plugin->show()<<endl;
+		} else {
+			cout<<"Error: Could not find plugin of type "<<_typedWords->at(2)<<endl;
+		}
+		return;
+	}
+	if (action == "template") {
+		const std::string value = _typedWords->size() >= 3 ? _typedWords->at(2) : "";
+		if (facade.pluginCount()==0) {
+			cout<<"There is no installed plugins. Install some using the plugin autoload <filename>"<<endl;
+			return;
+		}
+		cout<<"Plugin templates:"<<endl;
+		List<Plugin*>* plugins = facade.completePluginsFieldsAndTemplates();
+		if (plugins != nullptr) {
+			for (Plugin* plugin : *plugins->list()) {
+				if (plugin == nullptr) {
+					continue;
+				}
+				if (value.empty() || plugin->getPluginInfo()->getPluginTypename() == value) {
+					cout<<"Language syntax for plugin \""<<plugin->getPluginInfo()->getPluginTypename()<<"\":"<<endl;
+					cout<<"Template: "<<plugin->getPluginInfo()->getLanguageTemplate()<<endl;
+					if (!value.empty()) {
+						return;
 					}
-					if (value.empty() || plugin->getPluginInfo()->getPluginTypename() == value) {
-						cout<<"Language syntax for plugin \""<<plugin->getPluginInfo()->getPluginTypename()<<"\":"<<endl;
-						cout<<"Template: "<<plugin->getPluginInfo()->getLanguageTemplate()<<endl;
-						if (!value.empty()) {
-							return;
-						}
-						cout<<endl;
-					}
+					cout<<endl;
 				}
 			}
-			if (value!="")
-				cout<<"Error: Could not find plugin of type "<<value<<endl;
-		} else {
-			cout<<"Syntax error on "<<parameter<<endl;
 		}
+		if (value!="")
+			cout<<"Error: Could not find plugin of type "<<value<<endl;
+		return;
 	}
+	if (action == "check") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		cout << (facade.pluginCheck(_typedWords->at(2)) ? "true" : "false") << endl;
+		return;
+	}
+	if (action == "check-system-dependencies") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		const SystemDependencyCheckResult result = facade.pluginCheckSystemDependencies(_typedWords->at(2));
+		cout << result.diagnosticText() << endl;
+		return;
+	}
+	if (action == "discover") {
+		List<std::string>* files = facade.discoverPluginFilenames();
+		if (files == nullptr || files->size() == 0) {
+			cout << "No plugin filenames discovered." << endl;
+			return;
+		}
+		for (const std::string& file : *files->list()) {
+			cout << file << endl;
+		}
+		return;
+	}
+	if (action == "remove") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		cout << (facade.removePlugin(_typedWords->at(2)) ? "true" : "false") << endl;
+		return;
+	}
+	if (action == "issues") {
+		List<PluginLoadIssue>* issues = facade.getPluginLoadIssues();
+		if (issues == nullptr || issues->size() == 0) {
+			cout << "No plugin load issues." << endl;
+			return;
+		}
+		for (const PluginLoadIssue& issue : *issues->list()) {
+			cout << issue.diagnosticText() << endl;
+		}
+		return;
+	}
+	if (action == "clear-issues") {
+		facade.clearPluginLoadIssues();
+		cout << "Plugin load issues cleared." << endl;
+		return;
+	}
+	if (action == "clear-issue") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		facade.clearPluginLoadIssue(_typedWords->at(2));
+		cout << "Plugin load issue cleared for " << _typedWords->at(2) << endl;
+		return;
+	}
+	if (action == "rank") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		unsigned int rank = 0;
+		if (!parseUnsigned(_typedWords->at(2), rank)) {
+			cout << "Error: " << _typedWords->at(2) << " is not a valid rank" << endl;
+			return;
+		}
+		Plugin* plugin = facade.getPluginAtRank(rank);
+		if (plugin != nullptr) {
+			cout << plugin->show() << endl;
+		} else {
+			cout << "Plugin not found" << endl;
+		}
+		return;
+	}
+	if (action == "front" || action == "next" || action == "last") {
+		Plugin* plugin = nullptr;
+		if (action == "front") {
+			plugin = facade.firstPlugin();
+		} else if (action == "next") {
+			plugin = facade.nextPlugin();
+		} else {
+			plugin = facade.lastPlugin();
+		}
+		if (plugin != nullptr) {
+			cout << plugin->show() << endl;
+		} else {
+			cout << "No plugin available" << endl;
+		}
+		return;
+	}
+	if (action == "first" || action == "next" || action == "last") {
+		Plugin* plugin = nullptr;
+		if (action == "first") {
+			plugin = facade.firstPlugin();
+		} else if (action == "next") {
+			plugin = facade.nextPlugin();
+		} else {
+			plugin = facade.lastPlugin();
+		}
+		if (plugin != nullptr) {
+			cout << plugin->show() << endl;
+		} else {
+			cout << "No plugin available" << endl;
+		}
+		return;
+	}
+	cout<<"Syntax error on "<<_typedWords->at(1)<<endl;
 }
 
 void GenesysShell::cmdSimulation() {
 	if (!requireCurrentModel("control the simulation")) {
 		return;
 	}
-	if (_typedWords->size()!=2) {
+	if (_typedWords->size() != 2) {
 		cout<<"Wrong number of parameters"<<endl;
 		return;
 	}
-	string parameter = _typedWords->at(1);
-	if (parameter=="-s"||parameter=="--start")
+	const std::string parameter = lowercase(_typedWords->at(1));
+	if (parameter=="start"||parameter=="-s"||parameter=="--start")
 		facade.simStart();
-	else if (parameter=="-p"||parameter=="--step")
+	else if (parameter=="step"||parameter=="-p"||parameter=="--step")
 		facade.simStep();
+	else if (parameter=="show")
+		cout<<facade.simShow()<<endl;
+	else if (parameter=="pause")
+		facade.simPause();
+	else if (parameter=="stop")
+		facade.simStop();
+	else if (parameter=="current-event") {
+		Event* event = facade.simGetCurrentEvent();
+		if (event != nullptr) {
+			cout << event->show() << endl;
+		} else {
+			cout << "No current event" << endl;
+		}
+	} else if (parameter=="reporter") {
+		cout << (facade.simGetReporter() != nullptr ? "present" : "not set") << endl;
+	} else if (parameter=="error-messages") {
+		List<std::string>* messages = facade.traceGetErrorMessages();
+		if (messages == nullptr || messages->size() == 0) {
+			cout << "No trace error messages" << endl;
+		} else {
+			for (const std::string& message : *messages->list()) {
+				cout << message << endl;
+			}
+		}
+	} else if (parameter=="breakpoints") {
+		Model* currentModel = facade.currentModel();
+		if (currentModel == nullptr) {
+			cout << "No current model" << endl;
+			return;
+		}
+		ModelSimulation* simulation = currentModel->getSimulation();
+		if (simulation == nullptr) {
+			cout << "No current model simulation" << endl;
+			return;
+		}
+		if (_typedWords->size() == 2) {
+			cout << "Wrong number of parameters" << endl;
+			return;
+		}
+		const std::string breakpointAction = lowercase(_typedWords->at(2));
+		auto printTimeBreakpoints = [&]() {
+			List<double>* items = simulation->getBreakpointsOnTime();
+			if (items == nullptr || items->size() == 0) {
+				cout << "No time breakpoints" << endl;
+				return;
+			}
+			for (double value : *items->list()) {
+				cout << value << endl;
+			}
+		};
+		auto printEntityBreakpoints = [&]() {
+			List<Entity*>* items = simulation->getBreakpointsOnEntity();
+			if (items == nullptr || items->size() == 0) {
+				cout << "No entity breakpoints" << endl;
+				return;
+			}
+			for (Entity* entity : *items->list()) {
+				if (entity != nullptr) {
+					cout << entity->show() << endl;
+				}
+			}
+		};
+		auto printComponentBreakpoints = [&]() {
+			List<ModelComponent*>* items = simulation->getBreakpointsOnComponent();
+			if (items == nullptr || items->size() == 0) {
+				cout << "No component breakpoints" << endl;
+				return;
+			}
+			for (ModelComponent* component : *items->list()) {
+				if (component != nullptr) {
+					cout << component->show() << endl;
+				}
+			}
+		};
+		auto parseBreakpointTarget = [&](const std::string& kind, const std::string& valueText, bool add) -> bool {
+			if (kind == "time") {
+				double value = 0.0;
+				if (!parseDouble(valueText, value)) {
+					cout << "Error: " << valueText << " is not a valid time value" << endl;
+					return false;
+				}
+				List<double>* items = simulation->getBreakpointsOnTime();
+				if (add) items->insert(value); else items->remove(value);
+				return true;
+			}
+			if (kind == "entity") {
+				unsigned int id = 0;
+				Entity* entity = nullptr;
+				if (parseUnsigned(valueText, id)) {
+					entity = dynamic_cast<Entity*>(facade.dataGetDataDefinition("Entity", id));
+				} else {
+					entity = dynamic_cast<Entity*>(facade.dataGetDataDefinition("Entity", valueText));
+				}
+				if (entity == nullptr) {
+					cout << "Entity not found" << endl;
+					return false;
+				}
+				List<Entity*>* items = simulation->getBreakpointsOnEntity();
+				if (add) items->insert(entity); else items->remove(entity);
+				return true;
+			}
+			if (kind == "component") {
+				unsigned int id = 0;
+				ModelComponent* component = nullptr;
+				if (parseUnsigned(valueText, id)) {
+					component = facade.componentFind(id);
+				} else {
+					component = facade.componentFind(valueText);
+				}
+				if (component == nullptr) {
+					cout << "Component not found" << endl;
+					return false;
+				}
+				List<ModelComponent*>* items = simulation->getBreakpointsOnComponent();
+				if (add) items->insert(component); else items->remove(component);
+				return true;
+			}
+			cout << "Syntax error on " << kind << endl;
+			return false;
+		};
+
+		if (breakpointAction == "list") {
+			if (_typedWords->size() != 4) {
+				cout << "Wrong number of parameters" << endl;
+				return;
+			}
+			const std::string kind = lowercase(_typedWords->at(3));
+			if (kind == "time") printTimeBreakpoints();
+			else if (kind == "entity") printEntityBreakpoints();
+			else if (kind == "component") printComponentBreakpoints();
+			else cout << "Syntax error on " << _typedWords->at(3) << endl;
+			return;
+		}
+		if (breakpointAction == "clear") {
+			if (_typedWords->size() != 4) {
+				cout << "Wrong number of parameters" << endl;
+				return;
+			}
+			const std::string kind = lowercase(_typedWords->at(3));
+			if (kind == "time") simulation->getBreakpointsOnTime()->clear();
+			else if (kind == "entity") simulation->getBreakpointsOnEntity()->clear();
+			else if (kind == "component") simulation->getBreakpointsOnComponent()->clear();
+			else cout << "Syntax error on " << _typedWords->at(3) << endl;
+			return;
+		}
+		if (breakpointAction == "add" || breakpointAction == "remove") {
+			if (_typedWords->size() != 5) {
+				cout << "Wrong number of parameters" << endl;
+				return;
+			}
+			const std::string kind = lowercase(_typedWords->at(3));
+			if (!parseBreakpointTarget(kind, _typedWords->at(4), breakpointAction == "add")) {
+				return;
+			}
+			return;
+		}
+		if (breakpointAction == "time") {
+			printTimeBreakpoints();
+			return;
+		}
+		if (breakpointAction == "entity") {
+			printEntityBreakpoints();
+			return;
+		}
+		if (breakpointAction == "component") {
+			printComponentBreakpoints();
+			return;
+		}
+		cout << "Syntax error on " << _typedWords->at(2) << endl;
+	}
 	else
-		cout<<"Syntax error on "+parameter<<endl;
+		cout<<"Syntax error on "+_typedWords->at(1)<<endl;
 }
 
 void GenesysShell::cmdReplication() {
 	if (!requireCurrentModel("setup the simulation")) {
 		return;
 	}
-	if (_typedWords->size()<2) {
+	if (_typedWords->size() == 1) {
+		cout<<facade.simShow()<<endl;
+		return;
+	}
+	const std::string action = lowercase(_typedWords->at(1));
+	if (action == "show" || action == "-s" || action == "--show") {
+		cout<<facade.simShow()<<endl;
+		return;
+	}
+	if (action == "replications") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		unsigned int replications = 0;
+		if (!parseUnsigned(_typedWords->at(2), replications)) {
+			cout<<"Error: "<<_typedWords->at(2)<<" is not a valid number of replications"<<endl;
+			return;
+		}
+		cout<<"Setting number of replications to "<<replications<<endl;
+		facade.simSetNumberOfReplications(replications);
+		return;
+	}
+	if (action == "length") {
+		if (_typedWords->size() < 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		double length = 0.0;
+		if (!parseDouble(_typedWords->at(2), length)) {
+			cout<<"Error: "<<_typedWords->at(2)<<" is not a valid replication length"<<endl;
+			return;
+		}
+		Util::TimeUnit timeUnit;
+		if (_typedWords->size() >= 4 && parseTimeUnit(_typedWords->at(3), timeUnit)) {
+			cout<<"Setting replication length to "<<length<<" "<<_typedWords->at(3)<<endl;
+			facade.simSetReplicationLength(length, timeUnit);
+			return;
+		}
+		cout<<"Setting replication length to "<<length<<endl;
+		facade.simSetReplicationLength(length);
+		return;
+	}
+	if (action == "base-length") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		Util::TimeUnit timeUnit;
+		if (!parseTimeUnit(_typedWords->at(2), timeUnit)) {
+			cout<<"Error: "<<_typedWords->at(2)<<" is not a valid time unit"<<endl;
+			return;
+		}
+		facade.simSetReplicationReportBaseTimeUnit(timeUnit);
+		return;
+	}
+	if (action == "warm-up") {
+		if (_typedWords->size() < 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		double value = 0.0;
+		if (!parseDouble(_typedWords->at(2), value)) {
+			cout<<"Error: "<<_typedWords->at(2)<<" is not a valid warm-up value"<<endl;
+			return;
+		}
+		Util::TimeUnit timeUnit = Util::TimeUnit::unknown;
+		if (_typedWords->size() >= 4 && parseTimeUnit(_typedWords->at(3), timeUnit)) {
+			facade.simSetWarmUpPeriod(value, timeUnit);
+			return;
+		}
+		facade.simSetWarmUpPeriod(value);
+		return;
+	}
+	if (action == "warm-up-unit") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		Util::TimeUnit timeUnit;
+		if (!parseTimeUnit(_typedWords->at(2), timeUnit)) {
+			cout<<"Error: "<<_typedWords->at(2)<<" is not a valid time unit"<<endl;
+			return;
+		}
+		facade.simSetWarmUpPeriodTimeUnit(timeUnit);
+		return;
+	}
+	if (action == "terminating-condition") {
+		const std::string value = joinArguments(2);
+		if (value.empty()) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		facade.simSetTerminatingCondition(value);
+		return;
+	}
+	const auto parseBoolAction = [this](const std::string& valueText, void (SimulatorFacade::*setter)(bool)) -> bool {
+		bool value = false;
+		if (!parseBool(valueText, value)) {
+			cout<<"Error: "<<valueText<<" is not a valid boolean"<<endl;
+			return false;
+		}
+		(facade.*setter)(value);
+		return true;
+	};
+	if (_typedWords->size() != 3) {
 		cout<<"Wrong number of parameters"<<endl;
 		return;
 	}
-	string parameter;
-	string key, value;
-	for (unsigned short i = 1; i<_typedWords->size(); i++) {
-		parameter = _typedWords->at(i);
-		//vector<string> keyvalue = split(parameter, "=");
-		key = "";
-		value = "";
-		//cout<<parameter<<endl;
-		Util::SepKeyVal(parameter, key, value);
-		if (key=="-r"||key=="--replications") {
-			unsigned int replications = 0;
-			if (!parseUnsigned(value, replications)) {
-				cout<<"Error: "<<value<<" is not a valid number of replications"<<endl;
-				continue;
-			}
-			cout<<"Setting number of replications to "<<replications<<endl;
-			facade.simSetNumberOfReplications(replications);
-		} else if (key=="-l"||key=="--length") {
-			double length = 0.0;
-			if (!parseDouble(value, length)) {
-				cout<<"Error: "<<value<<" is not a valid replication length"<<endl;
-				continue;
-			}
-			cout<<"Setting replication length to "<<length<<endl;
-			facade.simSetReplicationLength(length);
-		} else if (key=="-t"||key=="--time") {
-			Util::TimeUnit timeUnit;
-			if (!parseTimeUnit(value, timeUnit)) {
-				cout<<"Error: "<<value<<" is not a valid time unit"<<endl;
-				continue;
-			}
-			cout<<"Setting replication time unit to "<<value<<endl;
-			facade.simSetReplicationLengthTimeUnit(timeUnit);
-		} else if (key=="-s"||key=="--show") {
-			cout<<facade.simShow()<<endl;
-		} else {
-			cout<<"Syntax error on "<<parameter<<endl;
-		}
+	if (action == "pause-on-event") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetPauseOnEvent)) return;
+	} else if (action == "step-by-step") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetStepByStep)) return;
+	} else if (action == "init-statistics") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetInitializeStatistics)) return;
+	} else if (action == "init-system") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetInitializeSystem)) return;
+	} else if (action == "pause-on-replication") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetPauseOnReplication)) return;
+	} else if (action == "show-reports-after-replication") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetShowReportsAfterReplication)) return;
+	} else if (action == "show-reports-after-simulation") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetShowReportsAfterSimulation)) return;
+	} else if (action == "simulation-controls-in-report") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetShowSimulationControlsInReport)) return;
+	} else if (action == "simulation-responses-in-report") {
+		if (!parseBoolAction(_typedWords->at(2), &SimulatorFacade::simSetShowSimulationResposesInReport)) return;
+	} else if (action == "replications" || action == "length" || action == "base-length" || action == "warm-up" || action == "warm-up-unit" || action == "terminating-condition" || action == "pause-on-event" || action == "step-by-step" || action == "init-statistics" || action == "init-system" || action == "pause-on-replication" || action == "show-reports-after-replication" || action == "show-reports-after-simulation" || action == "simulation-controls-in-report" || action == "simulation-responses-in-report") {
+		cout<<"Wrong number of parameters"<<endl;
+		return;
+	} else if (action == "-r" || action == "--replications" || action == "-l" || action == "--length" || action == "-t" || action == "--time" || action == "-s" || action == "--show") {
+		cout<<"Legacy option syntax is no longer supported in this form. Use subcommands like config show, config replications 10, or config length 20 h."<<endl;
+		return;
 	}
+	cout<<"Syntax error on "<<_typedWords->at(1)<<endl;
 }
 
 void GenesysShell::cmdModel() {
-	if (_typedWords->size()!=2) {
-		cout<<"Wrong number of parameters"<<endl;
+	if (_typedWords->size() == 1) {
+		if (!requireCurrentModel("show the model")) {
+			return;
+		}
+		cout<<facade.modelShowLanguage()<<endl;
 		return;
 	}
-
-	string parameter;
-	string key, value;
-	for (unsigned short i = 1; i<_typedWords->size(); i++) {
-		parameter = _typedWords->at(i);
-		if (parameter=="-n"||parameter=="--new") {
-			Model* currentModel = facade.currentModel();
-			if (currentModel != nullptr) {
-				facade.removeModel(currentModel);
-				model = nullptr;
-			}
-			cout<<"Creating a new model"<<endl;
-			model = facade.newModel();
-		} else if (parameter=="-r"||parameter=="--remove") {
-			if (!requireCurrentModel("close the model")) {
-				return;
-			}
-			cout<<"Closing the model"<<endl;
-			facade.removeModel(model);
+	const std::string action = lowercase(_typedWords->at(1));
+	if (action == "new" || action == "-n" || action == "--new") {
+		Model* currentModel = facade.currentModel();
+		if (currentModel != nullptr) {
+			facade.removeModel(currentModel);
 			model = nullptr;
-		} else if (parameter=="-c"||parameter=="--check") {
-			if (!requireCurrentModel("check the model")) {
-				return;
-			}
-			if (!facade.modelCheck()) {
-				cout<<"Model check returned errors."<<endl;
-			}
-		} else if (parameter=="-s"||parameter=="--show") {
-			if (!requireCurrentModel("show the model")) {
-				return;
-			}
-			cout<<facade.modelShowLanguage()<<endl;
-		} else {
-			cout<<"Syntax error on "+parameter<<endl;
 		}
+		cout<<"Creating a new model"<<endl;
+		model = facade.newModel();
+		return;
 	}
-
+	if (action == "remove" || action == "-r" || action == "--remove") {
+		if (!requireCurrentModel("close the model")) {
+			return;
+		}
+		cout<<"Closing the model"<<endl;
+		facade.removeModel(model);
+		model = nullptr;
+		return;
+	}
+	if (action == "check" || action == "-c" || action == "--check") {
+		if (!requireCurrentModel("check the model")) {
+			return;
+		}
+		if (!facade.modelCheck()) {
+			cout<<"Model check returned errors."<<endl;
+		}
+		return;
+	}
+	if (action == "show" || action == "-s" || action == "--show") {
+		if (!requireCurrentModel("show the model")) {
+			return;
+		}
+		cout<<facade.modelShowLanguage()<<endl;
+		return;
+	}
+	if (action == "load") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		const std::string parameter = _typedWords->at(2);
+		cout<<"Loading model "<<parameter<<endl;
+		model = facade.loadModel(parameter);
+		if (model==nullptr) {
+			cout<<"Error: Could not load the model"<<endl;
+		} else {
+			cout<<"Model loaded"<<endl;
+		}
+		return;
+	}
+	if (action == "save") {
+		if (!requireCurrentModel("save the model")) {
+			return;
+		}
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		const std::string parameter = _typedWords->at(2);
+		cout<<"Saving model "<<parameter<<endl;
+		if (facade.saveModel(parameter)) {
+			cout<<"Model saved"<<endl;
+		} else {
+			cout<<"Error: Could not save the model"<<endl;
+		}
+		return;
+	}
+	if (action == "count") {
+		cout << facade.modelCount() << endl;
+		return;
+	}
+	if (action == "current") {
+		Model* current = facade.currentModel();
+		if (current != nullptr) {
+			cout << current->showLanguage() << endl;
+		} else {
+			cout << "No current model" << endl;
+		}
+		return;
+	}
+	if (action == "first" || action == "last" || action == "next" || action == "previous") {
+		Model* selected = nullptr;
+		if (action == "first") selected = facade.firstModel();
+		else if (action == "last") selected = facade.lastModel();
+		else if (action == "next") selected = facade.nextModel();
+		else selected = facade.previousModel();
+		if (selected != nullptr) {
+			cout << selected->showLanguage() << endl;
+		} else {
+			cout << "No model available" << endl;
+		}
+		return;
+	}
+	if (action == "can-go-next") {
+		cout << (facade.canGoNextModel() ? "true" : "false") << endl;
+		return;
+	}
+	if (action == "can-go-previous") {
+		cout << (facade.canGoPreviousModel() ? "true" : "false") << endl;
+		return;
+	}
+	if (action == "at") {
+		if (_typedWords->size() != 3) {
+			cout<<"Wrong number of parameters"<<endl;
+			return;
+		}
+		unsigned int index = 0;
+		if (!parseUnsigned(_typedWords->at(2), index)) {
+			cout << "Error: " << _typedWords->at(2) << " is not a valid index" << endl;
+			return;
+		}
+		Model* selected = facade.modelAt(index);
+		if (selected != nullptr) {
+			cout << selected->showLanguage() << endl;
+		} else {
+			cout << "Model not found" << endl;
+		}
+		return;
+	}
+	if (action == "future-events") {
+		List<Event*>* events = facade.modelGetFutureEvents();
+		if (events == nullptr || events->size() == 0) {
+			cout << "No future events" << endl;
+			return;
+		}
+		for (Event* event : *events->list()) {
+			if (event != nullptr) {
+				cout << event->show() << endl;
+			}
+		}
+		return;
+	}
+	if (action == "controls") {
+		List<SimulationControl*>* controls = facade.modelGetControls();
+		if (controls == nullptr || controls->size() == 0) {
+			cout << "No simulation controls" << endl;
+			return;
+		}
+		for (SimulationControl* control : *controls->list()) {
+			if (control != nullptr) {
+				cout << control->show() << endl;
+			}
+		}
+		return;
+	}
+	if (action == "responses") {
+		List<SimulationResponse*>* responses = facade.modelGetResponses();
+		if (responses == nullptr || responses->size() == 0) {
+			cout << "No simulation responses" << endl;
+			return;
+		}
+		for (SimulationResponse* response : *responses->list()) {
+			if (response != nullptr) {
+				cout << response->show() << endl;
+			}
+		}
+		return;
+	}
+	if (action == "persistence") {
+		cout << (facade.modelGetPersistence() != nullptr ? "present" : "not set") << endl;
+		return;
+	}
+	if (action == "level") {
+		cout << facade.modelGetLevel() << endl;
+		return;
+	}
+	cout<<"Syntax error on "<<_typedWords->at(1)<<endl;
 }
 
 void GenesysShell::cmdModelLoad() {
@@ -1133,6 +1919,33 @@ void GenesysShell::cmdData() {
 				}
 			}
 			return;
+		} else if (parameter == "get") {
+			if (i + 2 >= _typedWords->size()) {
+				cout << "Wrong number of parameters" << endl;
+				return;
+			}
+			const std::string type = _typedWords->at(i + 1);
+			const std::string key = _typedWords->at(i + 2);
+			ModelDataDefinition* item = nullptr;
+			unsigned int id = 0;
+			if (parseUnsigned(key, id)) {
+				item = facade.dataGetDataDefinition(type, id);
+			} else {
+				item = facade.dataGetDataDefinition(type, key);
+			}
+			if (item != nullptr) {
+				cout << item->show() << endl;
+			} else {
+				cout << "Data definition not found" << endl;
+			}
+			return;
+		} else if (parameter == "rank-of") {
+			if (i + 2 >= _typedWords->size()) {
+				cout << "Wrong number of parameters" << endl;
+				return;
+			}
+			cout << facade.dataGetRankOf(_typedWords->at(i + 1), _typedWords->at(i + 2)) << endl;
+			return;
 		} else if (parameter == "clear") {
 			facade.dataClear();
 		} else if (parameter == "has-changed") {
@@ -1191,6 +2004,34 @@ void GenesysShell::cmdComponent() {
 				cout << component->show() << endl;
 			} else {
 				cout << "Component not found" << endl;
+			}
+			return;
+		} else if (parameter == "front") {
+			ModelComponent* component = facade.componentFront();
+			if (component != nullptr) {
+				cout << component->show() << endl;
+			} else {
+				cout << "No component available" << endl;
+			}
+			return;
+		} else if (parameter == "next") {
+			ModelComponent* component = facade.componentNext();
+			if (component != nullptr) {
+				cout << component->show() << endl;
+			} else {
+				cout << "No next component" << endl;
+			}
+			return;
+		} else if (parameter == "all") {
+			std::list<ModelComponent*>* components = facade.componentGetAllComponents();
+			if (components == nullptr || components->size() == 0) {
+				cout << "No components in current model" << endl;
+				return;
+			}
+			for (ModelComponent* component : *components) {
+				if (component != nullptr) {
+					cout << component->show() << endl;
+				}
 			}
 			return;
 		} else if (parameter == "clear") {

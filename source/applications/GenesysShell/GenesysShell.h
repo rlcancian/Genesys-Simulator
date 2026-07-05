@@ -14,7 +14,7 @@
 #ifndef GENESYSSHELL_H
 #define GENESYSSHELL_H
 
-#include "../../BaseGenesysTerminalApplication.h"
+#include "../BaseGenesysTerminalApplication.h"
 #include "kernel/simulator/SimulatorFacade.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/util/List.h"
@@ -56,6 +56,7 @@ public:
 	virtual int main(int argc, char** argv) override;
 public: // commands
 	void cmdScript();
+	void cmdExecuteScript();
 	void cmdHelp();
 	void cmdQuit();
 	void cmdBash();
