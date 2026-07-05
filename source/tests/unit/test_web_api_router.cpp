@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
-#include "applications/web/api/ApiRouter.h"
-#include "applications/web/auth/TokenService.h"
-#include "applications/web/service/SimulatorSessionService.h"
-#include "applications/web/worker/WorkerJobManager.h"
-#include "applications/web/session/SessionManager.h"
+#include "applications/worker/api/ApiRouter.h"
+#include "applications/worker/auth/TokenService.h"
+#include "applications/worker/service/SimulatorSessionService.h"
+#include "applications/worker/worker/WorkerJobManager.h"
+#include "applications/worker/session/SessionManager.h"
 
 #include <array>
 #include <memory>

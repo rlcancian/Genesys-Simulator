@@ -13,7 +13,7 @@ case "${1:-}" in
     ;;
   gui)
     export QT_X11_NO_MITSHM=1
-    exec "$(find_executable build/gui-app genesys_qt_gui_application)"
+    exec "$(find_executable build/gui-app genesys-gui)"
     ;;
   httpworker)
     export QT_X11_NO_MITSHM=1

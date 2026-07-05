@@ -1,4 +1,4 @@
-"""HTTP client wrapping the Genesys Web Application REST API."""
+"""HTTP client wrapping the Genesys Worker Application REST API."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ class GenesysClientError(Exception):
 
 
 class GenesysClient:
-    """Stateful HTTP client for one Genesys web-app session."""
+    """Stateful HTTP client for one Genesys worker-app session."""
 
     def __init__(self, base_url: str = "http://localhost:8080", timeout: float = 30.0) -> None:
         self._base_url = base_url.rstrip("/")

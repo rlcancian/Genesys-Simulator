@@ -198,7 +198,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     target_include_directories(genesys_test_gui_gmdd_layout
         PRIVATE
             ${CMAKE_SOURCE_DIR}/source
-            ${CMAKE_SOURCE_DIR}/source/applications/web
+            ${CMAKE_SOURCE_DIR}/source/applications/worker
             ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys
             ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/codeeditor
             ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/propertyeditor
@@ -212,7 +212,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             ${GENESYS_QT_TEST_PACKAGE}::Gui
             ${GENESYS_QT_TEST_PACKAGE}::Widgets
             "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
-            genesys_web_core
+            genesys_worker_core
             genesys_tools
     )
 
@@ -302,13 +302,13 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_wcm_plugins
 )
 
-if(GENESYS_BUILD_WEB_APPLICATION)
-    genesys_add_unit_test(genesys_test_web_api_router
+if(GENESYS_BUILD_WORKER_APPLICATION)
+    genesys_add_unit_test(genesys_test_worker_api_router
         test_web_api_router.cpp
-        genesys_web_core
+        genesys_worker_core
     )
 
-    add_dependencies(genesys_kernel_unit_tests genesys_test_web_api_router)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_worker_api_router)
 endif()
 
 if(TARGET genesys_test_gui_render_strategy)
@@ -386,10 +386,10 @@ add_custom_target(genesys_kernel_unit_tests_run
     USES_TERMINAL
 )
 
-if(GENESYS_BUILD_WEB_APPLICATION)
+if(GENESYS_BUILD_WORKER_APPLICATION)
     add_custom_command(TARGET genesys_kernel_unit_tests_run
         POST_BUILD
-        COMMAND $<TARGET_FILE:genesys_test_web_api_router>
+        COMMAND $<TARGET_FILE:genesys_test_worker_api_router>
     )
 endif()
 

@@ -66,7 +66,7 @@ SOURCES += \
     $$SOURCE_ROOT/tools/SolverDefaultImpl1.cpp \
     $$SOURCE_ROOT/tools/FactorialDesign/FactorialDesign.cpp
 
-# Keep this source set aligned with source/applications/gui/qt/GenesysQtGUI/CMakeLists.txt.
+# Keep this source set aligned with source/applications/gui/genesys/CMakeLists.txt.
 SOURCES -= \
     $$GUI_ROOT/qcustomplot.cpp \
     $$files($$GUI_ROOT/build/*.cpp, true) \
@@ -159,7 +159,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 
 DISTFILES += \
     ../../../../tools/README_tools.md \
-    ../../../terminal/examples/arenaSmarts/Arrivals Element Stops Entities Arriving After a Set Time Modificado.doe \
+    ../../../modelSpecific/arenaSmarts/Arrivals Element Stops Entities Arriving After a Set Time Modificado.doe \
     propertyeditor/qtpropertybrowser/CMakeLists.txt \
     propertyeditor/qtpropertybrowser/images/cursor-arrow.png \
     propertyeditor/qtpropertybrowser/images/cursor-busy.png \

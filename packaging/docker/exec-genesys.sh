@@ -17,7 +17,7 @@ APP_MENU=(
 app_binary_path() {
   case "$1" in
     terminal) printf '%s\n' 'build/terminal-app genesys_terminal_application' ;;
-    gui) printf '%s\n' 'build/gui-app genesys_qt_gui_application' ;;
+    gui) printf '%s\n' 'build/gui-app genesys-gui' ;;
     httpworker) printf '%s\n' 'build/gui-httpworker genesys_httpworker_gui_application' ;;
     dataanalyser) printf '%s\n' 'build/gui-dataanalyser genesys_dataanalyser_gui_application' ;;
     optimizer) printf '%s\n' 'build/gui-optimizer genesys_optimizer_gui_application' ;;

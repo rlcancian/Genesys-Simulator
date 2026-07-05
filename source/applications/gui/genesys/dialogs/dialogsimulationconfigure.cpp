@@ -24,7 +24,7 @@ DialogSimulationConfigure::DialogSimulationConfigure(QWidget *parent) :
 		QMessageBox::information(
 			this,
 			tr("Distributed Parallelization"),
-			tr("This button is a placeholder for a future Genesys distributed execution service or web application. "
+			tr("This button is a placeholder for a future Genesys distributed execution service or worker application. "
 			   "For now, local parallelization settings can be saved in this dialog."));
 	});
 }

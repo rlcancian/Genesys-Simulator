@@ -6,14 +6,14 @@ IFS=$'\n\t'
 #
 # Presets:
 #   terminal-app
-#   web-app
+#   worker-app
 #   gui-app
 #   smart:<Classe>
 #   example:<caminho-relativo.cpp>
 #
 # Exemplos:
 #   ./build-gcc.sh terminal-app
-#   ./build-gcc.sh web-app
+#   ./build-gcc.sh worker-app
 #   ./build-gcc.sh gui-app
 #   ./build-gcc.sh smart:Smart_SeizeDelayRelease
 #   ./build-gcc.sh example:smarts/Smart_SeizeDelayRelease.cpp
@@ -24,8 +24,8 @@ IFS=$'\n\t'
 #
 # Saídas:
 #   build-gcc/terminal-app/genesys_terminal_application
-#   build-gcc/web-app/genesys_web_app
-#   build-gcc/gui-app/genesys_qt_gui_application
+#   build-gcc/worker-app/genesys_worker
+#   build-gcc/gui-app/genesys-gui
 #
 # Requisitos mínimos:
 #   - bash, find, grep, sed, sort, tr
@@ -48,20 +48,20 @@ Presets:
   terminal-app
       Compila a aplicação terminal padrão: GenesysShell.
 
-  web-app
-      Compila a aplicação web: genesys_web_app.
+  worker-app
+      Compila a aplicação worker: genesys_worker.
 
   gui-app
-      Compila a GUI Qt: genesys_qt_gui_application.
+      Compila a GUI Qt: genesys_gui_application.
       Requer Qt5 ou Qt6 development tools.
 
   smart:<Classe>
-      Compila um exemplo smart de source/applications/terminal/examples/smarts.
+      Compila um exemplo smart de source/applications/modelSpecific/smarts.
       Exemplo:
         ./build-gcc.sh smart:Smart_SeizeDelayRelease
 
   example:<relative.cpp>
-      Compila um exemplo em source/applications/terminal/examples.
+      Compila um exemplo em source/applications/modelSpecific.
       Exemplo:
         ./build-gcc.sh example:smarts/Smart_SeizeDelayRelease.cpp
         ./build-gcc.sh example:teaching/AnElectronicAssemblyAndTestSystem.cpp --class AnElectronicAssemblyAndTestSystem
@@ -82,7 +82,7 @@ Environment:
 
 Examples:
   ./build-gcc.sh terminal-app
-  ./build-gcc.sh web-app
+  ./build-gcc.sh worker-app
   ./build-gcc.sh gui-app
   ./build-gcc.sh smart:Smart_ModalModelFSM
   ./build-gcc.sh example:smarts/Smart_PythonForG.cpp --class Smart_PythonForG
@@ -97,7 +97,7 @@ list_presets() {
   cat <<'HELP'
 Presets:
   terminal-app
-  web-app
+  worker-app
   gui-app
   smart:Smart_ModalModelFSM
   smart:Smart_SeizeDelayRelease
@@ -109,7 +109,7 @@ Presets:
 
 Examples:
   ./build-gcc.sh terminal-app
-  ./build-gcc.sh web-app
+  ./build-gcc.sh worker-app
   ./build-gcc.sh gui-app
   ./build-gcc.sh smart:Smart_SeizeDelayRelease
   ./build-gcc.sh example:teaching/AnElectronicAssemblyAndTestSystem.cpp --class AnElectronicAssemblyAndTestSystem
@@ -198,11 +198,11 @@ case "$PRESET" in
   terminal-app)
     OUT="${BUILD_DIR}/genesys_terminal_application"
     ;;
-  web-app)
-    OUT="${BUILD_DIR}/genesys_web_app"
+  worker-app)
+    OUT="${BUILD_DIR}/genesys_worker"
     ;;
   gui-app)
-    OUT="${BUILD_DIR}/genesys_qt_gui_application"
+    OUT="${BUILD_DIR}/genesys-gui"
     ;;
   smart:*)
     OUT="${BUILD_DIR}/genesys_terminal_application"
@@ -383,7 +383,7 @@ add_terminal_application_sources() {
   local header_path="$2"
   local source_path="$3"
 
-  add_source "source/applications/terminal/main.cpp"
+  add_source "source/applications/shell/main.cpp"
   add_source "source/applications/BaseGenesysTerminalApplication.cpp"
   add_source "$source_path"
 
@@ -391,19 +391,19 @@ add_terminal_application_sources() {
   COMMON_FLAGS+=("-DGENESYS_TERMINAL_APP_HEADER=\"${header_path}\"")
 }
 
-add_web_sources() {
-  COMMON_FLAGS+=("-Isource/applications/web")
+add_worker_sources() {
+  COMMON_FLAGS+=("-Isource/applications/worker")
 
-  add_source "source/applications/web/api/ApiRouter.cpp"
-  add_source "source/applications/web/auth/TokenService.cpp"
-  add_source "source/applications/web/http/SimpleHttpServer.cpp"
-  add_source "source/applications/web/service/WebWorkerRuntime.cpp"
-  add_source "source/applications/web/service/SimulatorSessionService.cpp"
-  add_source "source/applications/web/session/SessionManager.cpp"
-  add_source "source/applications/web/worker/WorkerJobManager.cpp"
+  add_source "source/applications/worker/api/ApiRouter.cpp"
+  add_source "source/applications/worker/auth/TokenService.cpp"
+  add_source "source/applications/worker/http/SimpleHttpServer.cpp"
+  add_source "source/applications/worker/service/WebWorkerRuntime.cpp"
+  add_source "source/applications/worker/service/SimulatorSessionService.cpp"
+  add_source "source/applications/worker/session/SessionManager.cpp"
+  add_source "source/applications/worker/worker/WorkerJobManager.cpp"
 
-  add_source "source/applications/web/main.cpp"
-  add_source "source/applications/web/BaseGenesysWebApplication.cpp"
+  add_source "source/applications/worker/main.cpp"
+  add_source "source/applications/worker/BaseGenesysWebApplication.cpp"
 }
 
 add_tools_sources() {
@@ -546,7 +546,7 @@ generated_cpp_name_for() {
 }
 
 add_qt_generated_sources() {
-  local gui_dir="source/applications/gui/qt/GenesysQtGUI"
+  local gui_dir="source/applications/gui/genesys"
   local src out stem
 
   mkdir -p "$GEN_DIR/ui"
@@ -601,7 +601,7 @@ add_qt_generated_sources() {
 }
 
 add_gui_sources() {
-  local gui_dir="source/applications/gui/qt/GenesysQtGUI"
+  local gui_dir="source/applications/gui/genesys"
 
   detect_qt
 
@@ -611,7 +611,7 @@ add_gui_sources() {
     "-I${gui_dir}/propertyeditor"
     "-I${gui_dir}/propertyeditor/qtpropertybrowser"
     "-I${gui_dir}/dialogs"
-    "-Isource/applications/web"
+    "-Isource/applications/worker"
     "-I${GEN_DIR}"
   )
 
@@ -623,22 +623,22 @@ add_gui_sources() {
   add_source "source/applications/terminal/GenesysShell/GenesysShell.cpp"
 
   # GUI também linka web_core e tools no CMake.
-  add_web_core_only_sources
+  add_worker_core_only_sources
   add_tools_sources
 
   add_qt_generated_sources
 }
 
-add_web_core_only_sources() {
-  COMMON_FLAGS+=("-Isource/applications/web")
+add_worker_core_only_sources() {
+  COMMON_FLAGS+=("-Isource/applications/worker")
 
-  add_source "source/applications/web/api/ApiRouter.cpp"
-  add_source "source/applications/web/auth/TokenService.cpp"
-  add_source "source/applications/web/http/SimpleHttpServer.cpp"
-  add_source "source/applications/web/service/WebWorkerRuntime.cpp"
-  add_source "source/applications/web/service/SimulatorSessionService.cpp"
-  add_source "source/applications/web/session/SessionManager.cpp"
-  add_source "source/applications/web/worker/WorkerJobManager.cpp"
+  add_source "source/applications/worker/api/ApiRouter.cpp"
+  add_source "source/applications/worker/auth/TokenService.cpp"
+  add_source "source/applications/worker/http/SimpleHttpServer.cpp"
+  add_source "source/applications/worker/service/WebWorkerRuntime.cpp"
+  add_source "source/applications/worker/service/SimulatorSessionService.cpp"
+  add_source "source/applications/worker/session/SessionManager.cpp"
+  add_source "source/applications/worker/worker/WorkerJobManager.cpp"
 }
 
 # ----------------------------------------------------------------------
@@ -655,8 +655,8 @@ case "$PRESET" in
       "source/applications/terminal/GenesysShell/GenesysShell.cpp"
     ;;
 
-  web-app)
-    add_web_sources
+  worker-app)
+    add_worker_sources
     ;;
 
   gui-app)
@@ -664,17 +664,19 @@ case "$PRESET" in
     ;;
 
   smart:*)
-    smart_class="${PRESET#smart:}"
-    [[ -n "$smart_class" ]] || err "Preset smart sem classe."
+  smart_class="${PRESET#smart:}"
+  [[ -n "$smart_class" ]] || err "Preset smart sem classe."
 
-    smart_source="source/applications/terminal/examples/smarts/${smart_class}.cpp"
-    smart_header="examples/smarts/${smart_class}.h"
+  smart_source="$(find source/applications/modelSpecific/smarts -type f -name "${smart_class}.cpp" -print -quit)"
+  smart_header="${smart_source%.cpp}.h"
+  smart_header="${smart_header#source/applications/modelSpecific/}"
 
-    [[ -f "$smart_source" ]] || err "Smart example não encontrado: $smart_source"
+  [[ -n "$smart_source" && -f "$smart_source" ]] || err "Smart example não encontrado: ${smart_class}.cpp"
+  [[ -f "source/applications/modelSpecific/${smart_header}" ]] || err "Smart header não encontrado: source/applications/modelSpecific/${smart_header}"
 
-    add_terminal_application_sources \
+  add_terminal_application_sources \
       "$smart_class" \
-      "$smart_header" \
+      "applications/modelSpecific/${smart_header}" \
       "$smart_source"
     ;;
 
@@ -684,17 +686,17 @@ case "$PRESET" in
 
     case "$example_rel" in
       /*|*..*)
-        err "example deve ser caminho relativo seguro dentro de source/applications/terminal/examples"
-        ;;
+      err "example deve ser caminho relativo seguro dentro de source/applications/modelSpecific"
+      ;;
     esac
 
     [[ "$example_rel" == *.cpp ]] || err "example deve apontar para arquivo .cpp"
 
-    example_source="source/applications/terminal/examples/${example_rel}"
-    example_header="examples/${example_rel%.cpp}.h"
+    example_source="source/applications/modelSpecific/${example_rel}"
+    example_header="applications/modelSpecific/${example_rel%.cpp}.h"
 
     [[ -f "$example_source" ]] || err "Example source não encontrado: $example_source"
-    [[ -f "source/applications/terminal/${example_header}" ]] || warn "Header esperado não encontrado: source/applications/terminal/${example_header}"
+    [[ -f "source/${example_header}" ]] || warn "Header esperado não encontrado: source/${example_header}"
 
     if [[ -n "$EXAMPLE_CLASS" ]]; then
       example_class="$EXAMPLE_CLASS"

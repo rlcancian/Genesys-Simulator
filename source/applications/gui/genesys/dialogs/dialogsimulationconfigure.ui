@@ -390,7 +390,7 @@
       <item>
        <widget class="QLabel" name="labelParallelizationStatus">
         <property name="text">
-         <string>Local settings are stored in the GUI session. Distributed settings are a planned integration point for the Genesys web application.</string>
+         <string>Local settings are stored in the GUI session. Distributed settings are a planned integration point for the Genesys worker application.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>

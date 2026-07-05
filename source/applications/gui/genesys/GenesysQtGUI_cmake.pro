@@ -11,9 +11,9 @@
 #   - configure_gui_application
 #   - build_gui_application
 #   - run_gui_application
-#   - configure_web_application
-#   - build_web_application
-#   - run_web_application
+#   - configure_worker_application
+#   - build_worker_application
+#   - run_worker_application
 #   - configure_terminal_application
 #   - build_terminal_application
 #   - run_terminal_application
@@ -40,10 +40,10 @@ BUILD_ROOT = $$SOURCE_ROOT/build
 CMAKE_BIN = cmake
 
 GUI_BUILD_DIR = $$BUILD_ROOT/gui-app
-GUI_BINARY = $$GUI_BUILD_DIR/source/applications/gui/qt/GenesysQtGUI/genesys_qt_gui_application
+GUI_BINARY = $$GUI_BUILD_DIR/source/applications/gui/genesys/genesys-gui
 
-WEB_BUILD_DIR = $$BUILD_ROOT/genesys_web_app
-WEB_BINARY = $$WEB_BUILD_DIR/source/applications/web/genesys_web_app
+WORKER_BUILD_DIR = $$BUILD_ROOT/genesys_worker_app
+WORKER_BINARY = $$WORKER_BUILD_DIR/source/applications/worker/genesys-worker
 
 TERMINAL_BUILD_DIR = $$BUILD_ROOT/genesys_shell
 TERMINAL_BINARY = $$TERMINAL_BUILD_DIR/source/applications/shell/genesys_shell
@@ -58,9 +58,9 @@ QMAKE_EXTRA_TARGETS += \
     configure_gui_application \
     build_gui_application \
     run_gui_application \
-    configure_web_application \
-    build_web_application \
-    run_web_application \
+    configure_worker_application \
+    build_worker_application \
+    run_worker_application \
     configure_terminal_application \
     build_terminal_application \
     run_terminal_application \
@@ -76,15 +76,15 @@ QMAKE_EXTRA_TARGETS += \
 
 configure_gui_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset gui-app
 build_gui_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset gui-app
-run_gui_application.commands = cd $$GUI_BUILD_DIR/source/applications/gui/qt/GenesysQtGUI && ./genesys_qt_gui_application
+run_gui_application.commands = cd $$GUI_BUILD_DIR/source/applications/gui/genesys && ./genesys-gui
 build_gui_application.depends = configure_gui_application
 run_gui_application.depends = build_gui_application
 
-configure_web_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset genesys_web_app
-build_web_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset genesys_web_app
-run_web_application.commands = cd $$WEB_BUILD_DIR/source/applications/web && ./genesys_web_app --port 8080
-build_web_application.depends = configure_web_application
-run_web_application.depends = build_web_application
+configure_worker_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset genesys_worker_app
+build_worker_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset genesys_worker_app
+run_worker_application.commands = cd $$WORKER_BUILD_DIR/source/applications/worker && ./genesys-worker --port 8080
+build_worker_application.depends = configure_worker_application
+run_worker_application.depends = build_worker_application
 
 configure_terminal_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --preset genesys_shell
 build_terminal_application.commands = cd $$SOURCE_ROOT && $$CMAKE_BIN --build --preset genesys_shell
@@ -110,6 +110,6 @@ run_tests_smoke.commands = cd $$SOURCE_ROOT && ctest --preset tests-smoke
 build_tests_smoke.depends = configure_tests_smoke
 run_tests_smoke.depends = build_tests_smoke
 
-TARGET = genesys_qt_gui_application
-DESTDIR = $$GUI_BUILD_DIR/source/applications/gui/qt/GenesysQtGUI
+TARGET = genesys_gui_application
+DESTDIR = $$GUI_BUILD_DIR/source/applications/gui/genesys
 PRE_TARGETDEPS += build_gui_application

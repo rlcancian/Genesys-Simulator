@@ -1,6 +1,6 @@
 #include "WebWorkerDialog.h"
 
-#include "applications/web/service/WebWorkerRuntime.h"
+#include "applications/worker/service/WebWorkerRuntime.h"
 
 #include <QCloseEvent>
 #include <QFormLayout>

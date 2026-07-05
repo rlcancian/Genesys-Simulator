@@ -1,4 +1,4 @@
-set(GENESYS_TERMINAL_EXAMPLE "" CACHE STRING "Relative .cpp path under source/applications/modelSpecific/examples to compile as terminal application")
+set(GENESYS_TERMINAL_EXAMPLE "" CACHE STRING "Relative .cpp path under source/applications/modelSpecific to compile as terminal application")
 set(GENESYS_TERMINAL_EXAMPLE_CLASS "" CACHE STRING "Optional class name override for GENESYS_TERMINAL_EXAMPLE")
 
 set(GENESYS_TERMINAL_APPLICATION_SOURCES
@@ -10,18 +10,18 @@ set(GENESYS_TERMINAL_SELECTED_CLASS "")
 set(GENESYS_TERMINAL_SELECTED_HEADER "")
 
 if(GENESYS_TERMINAL_EXAMPLE)
-    string(REGEX REPLACE "^examples/" "" GENESYS_TERMINAL_EXAMPLE_RELATIVE "${GENESYS_TERMINAL_EXAMPLE}")
+    set(GENESYS_TERMINAL_EXAMPLE_RELATIVE "${GENESYS_TERMINAL_EXAMPLE}")
 
     if(GENESYS_TERMINAL_EXAMPLE_RELATIVE MATCHES "(^|/)\\.\\.(/|$)")
-        message(FATAL_ERROR "GENESYS_TERMINAL_EXAMPLE must stay inside source/applications/modelSpecific/examples")
+        message(FATAL_ERROR "GENESYS_TERMINAL_EXAMPLE must stay inside source/applications/modelSpecific")
     endif()
     if(NOT GENESYS_TERMINAL_EXAMPLE_RELATIVE MATCHES "\\.cpp$")
-        message(FATAL_ERROR "GENESYS_TERMINAL_EXAMPLE must point to a .cpp file relative to source/applications/modelSpecific/examples")
+        message(FATAL_ERROR "GENESYS_TERMINAL_EXAMPLE must point to a .cpp file relative to source/applications/modelSpecific")
     endif()
 
-    set(GENESYS_TERMINAL_EXAMPLE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/examples/${GENESYS_TERMINAL_EXAMPLE_RELATIVE}")
+    set(GENESYS_TERMINAL_EXAMPLE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/${GENESYS_TERMINAL_EXAMPLE_RELATIVE}")
     string(REGEX REPLACE "\\.cpp$" ".h" GENESYS_TERMINAL_EXAMPLE_HEADER_RELATIVE "${GENESYS_TERMINAL_EXAMPLE_RELATIVE}")
-    set(GENESYS_TERMINAL_EXAMPLE_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/examples/${GENESYS_TERMINAL_EXAMPLE_HEADER_RELATIVE}")
+    set(GENESYS_TERMINAL_EXAMPLE_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/${GENESYS_TERMINAL_EXAMPLE_HEADER_RELATIVE}")
 
     if(NOT EXISTS "${GENESYS_TERMINAL_EXAMPLE_SOURCE}")
         message(FATAL_ERROR "Selected model-specific example source does not exist: ${GENESYS_TERMINAL_EXAMPLE_SOURCE}")
@@ -36,7 +36,7 @@ if(GENESYS_TERMINAL_EXAMPLE)
     else()
         set(GENESYS_TERMINAL_SELECTED_CLASS "${GENESYS_TERMINAL_EXAMPLE_STEM}")
     endif()
-    set(GENESYS_TERMINAL_SELECTED_HEADER "applications/modelSpecific/examples/${GENESYS_TERMINAL_EXAMPLE_HEADER_RELATIVE}")
+    set(GENESYS_TERMINAL_SELECTED_HEADER "applications/modelSpecific/${GENESYS_TERMINAL_EXAMPLE_HEADER_RELATIVE}")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         "${GENESYS_TERMINAL_EXAMPLE_SOURCE}"
     )

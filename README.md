@@ -223,7 +223,7 @@ This area contains plugin-related code, including components and data definition
 ### 5.4 Applications
 
 - `source/applications/terminal`
-- `source/applications/gui/qt/GenesysQtGUI`
-- `source/applications/web`
+- `source/applications/gui/genesys`
+- `source/applications/worker`
 
 These are optional front-ends or execution interfaces layered on top of the core platform.

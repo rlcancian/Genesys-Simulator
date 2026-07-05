@@ -15,7 +15,7 @@
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
         "CMAKE_CXX_EXTENSIONS": "OFF",
         "GENESYS_BUILD_GUI_APPLICATION": "OFF",
-        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
         "GENESYS_BUILD_PLUGINS": "ON",
         "GENESYS_BUILD_PARSER": "ON",
         "GENESYS_BUILD_KERNEL": "ON",
@@ -40,7 +40,7 @@
       "binaryDir": "${sourceDir}/build/tests-unit",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
-        "GENESYS_BUILD_WEB_APPLICATION": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "OFF",
         "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
@@ -97,7 +97,7 @@
     {
       "name": "terminal-smart",
       "displayName": "Application - Terminal Smart",
-      "description": "Builds the terminal application from a smart source under source/applications/modelSpecific/examples/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
+      "description": "Builds the terminal application from a smart source under source/applications/modelSpecific/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
       "inherits": "terminal-model-specific-base",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
@@ -107,7 +107,7 @@
     {
       "name": "terminal-model-specific",
       "displayName": "Application - Terminal Model Specific",
-      "description": "Builds the terminal application from any model-specific example under source/applications/modelSpecific/examples. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
+      "description": "Builds the terminal application from any model-specific source under source/applications/modelSpecific. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
       "inherits": "terminal-model-specific-base",
       "binaryDir": "${sourceDir}/build/terminal-model-specific",
       "cacheVariables": {
@@ -136,22 +136,22 @@
       }
     },
     {
-      "name": "web-app",
-      "displayName": "Application - Web",
+      "name": "worker-app",
+      "displayName": "Application - Worker",
       "inherits": "debug-base",
-      "binaryDir": "${sourceDir}/build/web-app",
+      "binaryDir": "${sourceDir}/build/worker-app",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "OFF",
-        "GENESYS_BUILD_WEB_APPLICATION": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
-      "name": "genesys_web_app",
-      "displayName": "Application - Web",
-      "description": "Builds the web application executable genesys_web_app using the Web application tree.",
-      "inherits": "web-app",
-      "binaryDir": "${sourceDir}/build/genesys_web_app"
+      "name": "genesys_worker_app",
+      "displayName": "Application - Worker",
+      "description": "Builds the worker application executable genesys_worker_app using the Worker application tree.",
+      "inherits": "worker-app",
+      "binaryDir": "${sourceDir}/build/genesys_worker_app"
     },
     {
       "name": "gui-app",
@@ -161,7 +161,7 @@
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "OFF",
         "GENESYS_BUILD_GUI_APPLICATION": "ON",
-        "GENESYS_BUILD_WEB_APPLICATION": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
@@ -176,7 +176,7 @@
         "GENESYS_BUILD_GUI_APPLICATION": "ON",
         "GENESYS_BUILD_GUI_GENESYS": "OFF",
         "GENESYS_BUILD_GUI_HTTPWORKER": "ON",
-        "GENESYS_BUILD_WEB_APPLICATION": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
@@ -191,7 +191,7 @@
         "GENESYS_BUILD_GUI_APPLICATION": "ON",
         "GENESYS_BUILD_GUI_GENESYS": "OFF",
         "GENESYS_BUILD_GUI_DATAANALYSER": "ON",
-        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
@@ -206,7 +206,7 @@
         "GENESYS_BUILD_GUI_APPLICATION": "ON",
         "GENESYS_BUILD_GUI_GENESYS": "OFF",
         "GENESYS_BUILD_GUI_OPTIMIZER": "ON",
-        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
@@ -221,7 +221,7 @@
         "GENESYS_BUILD_GUI_APPLICATION": "ON",
         "GENESYS_BUILD_GUI_GENESYS": "OFF",
         "GENESYS_BUILD_GUI_AI_ASSISTANT": "ON",
-        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
@@ -232,7 +232,7 @@
       "binaryDir": "${sourceDir}/build/tests-smoke",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
-        "GENESYS_BUILD_WEB_APPLICATION": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "ON",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
@@ -296,17 +296,17 @@
       ]
     },
     {
-      "name": "web-app",
-      "configurePreset": "web-app",
+      "name": "worker-app",
+      "configurePreset": "worker-app",
       "targets": [
-        "genesys_web_app"
+        "genesys_worker_app"
       ]
     },
     {
-      "name": "genesys_web_app",
-      "configurePreset": "genesys_web_app",
+      "name": "genesys_worker_app",
+      "configurePreset": "genesys_worker_app",
       "targets": [
-        "genesys_web_app"
+        "genesys_worker_app"
       ]
     },
     {

@@ -30,49 +30,49 @@ set(GENESYS_QT_GUI_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/cellular_automata/CellularAutomataViewerController.h
 )
 
-add_executable(genesys_qt_gui_application
+add_executable(genesys_gui_application
     ${GENESYS_QT_GUI_SOURCES}
     ${GENESYS_QT_GUI_HEADERS}
     ${GENESYS_QT_GUI_RESOURCES}
 )
 
-target_include_directories(genesys_qt_gui_application
+target_include_directories(genesys_gui_application
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
-        ${CMAKE_SOURCE_DIR}/source/applications/web
+        ${CMAKE_SOURCE_DIR}/source/applications/worker
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/codeeditor
         ${CMAKE_CURRENT_SOURCE_DIR}/propertyeditor
         ${CMAKE_CURRENT_SOURCE_DIR}/propertyeditor/qtpropertybrowser
 )
 
-target_link_libraries(genesys_qt_gui_application
+target_link_libraries(genesys_gui_application
     PRIVATE
         ${GENESYS_QT_PACKAGE}::Core
         ${GENESYS_QT_PACKAGE}::Gui
         ${GENESYS_QT_PACKAGE}::Widgets
         ${GENESYS_QT_PACKAGE}::PrintSupport
         ${GENESYS_QT_PACKAGE}::Network
-        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_web_core,genesys_tools>"
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_worker_core,genesys_tools>"
 )
 
-target_compile_features(genesys_qt_gui_application PRIVATE cxx_std_23)
-target_compile_options(genesys_qt_gui_application
+target_compile_features(genesys_gui_application PRIVATE cxx_std_23)
+target_compile_options(genesys_gui_application
     PRIVATE
         -include ${CMAKE_CURRENT_SOURCE_DIR}/MovedGuiCompatibilityIncludes.h
 )
 
-set_target_properties(genesys_qt_gui_application
+set_target_properties(genesys_gui_application
     PROPERTIES
         OUTPUT_NAME genesys-gui
         AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_SOURCE_DIR}/dialogs"
 )
 
 if(TARGET genesys_kernel)
-    add_dependencies(genesys_qt_gui_application genesys_kernel)
+    add_dependencies(genesys_gui_application genesys_kernel)
 endif()
 
-install(TARGETS genesys_qt_gui_application
+install(TARGETS genesys_gui_application
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
@@ -88,4 +88,4 @@ install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/icons/hicolor/scalable/apps/io
     DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
 )
 
-add_custom_target(genesys_gui DEPENDS genesys_qt_gui_application)
+add_custom_target(genesys_gui DEPENDS genesys_gui_application)

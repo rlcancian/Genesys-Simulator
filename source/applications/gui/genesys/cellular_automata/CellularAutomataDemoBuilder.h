@@ -20,9 +20,9 @@
   2) Registrar essa regra no builder da GUI
 
   - O ponto de montagem do demo fica em:
-      - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+      - source/applications/gui/genesys/cellular_automata/
         CellularAutomataDemoBuilder.h
-      - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+      - source/applications/gui/genesys/cellular_automata/
         CellularAutomataDemoBuilder.cpp
   - É aqui que a GUI escolhe qual regra concreta instanciar.
   - Você precisa:
@@ -34,14 +34,14 @@
   3) Expor a escolha na janela
 
   - A UI de seleção fica em:
-      - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+      - source/applications/gui/genesys/cellular_automata/
         CellularAutomataViewerWindow.cpp
-      - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+      - source/applications/gui/genesys/cellular_automata/
         CellularAutomataViewerWindow.h
   - Você precisa adicionar o novo preset ao combo de regra em
     _syncControlsFromController().
   - Se quiser salvar/restaurar essa escolha no JSON, ajuste também:
-      - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+      - source/applications/gui/genesys/cellular_automata/
         CellularAutomataViewerController.cpp
 
   Se a nova regra exigir outro tipo de vizinhança ou estado
@@ -75,13 +75,13 @@
     LocalRule_MyRule.h
   - source/plugins/components/ModalModel/CellularAutomata/
     LocalRule_MyRule.cpp se necessário
-  - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+  - source/applications/gui/genesys/cellular_automata/
     CellularAutomataDemoBuilder.h
-  - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+  - source/applications/gui/genesys/cellular_automata/
     CellularAutomataDemoBuilder.cpp
-  - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+  - source/applications/gui/genesys/cellular_automata/
     CellularAutomataViewerWindow.cpp
-  - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
+  - source/applications/gui/genesys/cellular_automata/
     CellularAutomataViewerController.cpp
 
 */
