@@ -1,0 +1,22 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=7 warmUpTime=0.350000 replicationLength=7.000000 numberOfReplications=300 replicationLengthTimeUnit=9 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Entity_1" 
+142 Attribute  "Entity.TotalWaitTime" 
+144 Resource   "Resource_1" 
+156 Queue      "Queue_1" 
+
+# Model Components
+132 Create     "Create_1" entityType="Entity_1" timeBetweenCreationsTimeUnit=7 nextId=138 timeBetweenCreations="expo(1)" 
+138 Process    "Process_1" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=7 queueable="Queue_1" nextId=159 requestSeizable[0]="Resource_1" 
+139 Seize      "Process_1.Seize" queueable="Queue_1" nextId=140 requestSeizable[0]="Resource_1" 
+140 Delay      "Process_1.Delay" delayExpressionTimeUnit=7 delayExpression="tria(0.5,1,1.5)" nextId=143 
+143 Release    "Process_1.Release" resquests=0 nexts=0 
+159 Dispose    "Dispose_1" nexts=0 

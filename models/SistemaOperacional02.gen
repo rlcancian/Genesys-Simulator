@@ -1,36 +1,56 @@
-# Genesys Simulation Model 
+# Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220131 
-0   ModelInfo  "Model 1" analystName="" description="" projectTitle="" version="1.0" 
-0   ModelSimulation "" numberOfReplications=30 replicationLength=1000.000000 replicationLengthTimeUnit=4 traceLevel=2 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=1000.000000 numberOfReplications=30 replicationLengthTimeUnit=4 pauseOnReplication=1 
 
 # Model Data Definitions
-3898 EntityType "processo" 
-3900 Attribute  "memoriaOcupada" 
-3901 Attribute  "tempoExecucao" 
-3902 Resource   "memoria" capacity=64 
-3903 Queue      "Fila_Alocacao_Memoria" 
-3905 Station    "Estacao_de_Execucao" 
-3908 Resource   "CPU" 
-3909 Queue      "Fila_CPU" 
-3913 Attribute  "fatiaTempo" 
-3919 Station    "Estacao_de_liberacao_de_memoria" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "processo" 
+139 Attribute  "memoriaOcupada" 
+140 Attribute  "tempoExecucao" 
+141 Resource   "memoria" capacity=64 
+153 Queue      "Fila_Alocacao_Memoria" 
+157 Station    "Estacao_de_Execucao" 
+162 Attribute  "Entity.Station" 
+163 Attribute  "Entity.ArrivalAtEstacao_de_Execucao" 
+166 Station    "Station_1" 
+169 Attribute  "Entity.ArrivalAtStation_1" 
+170 Attribute  "Entity.TotalTransferTime" 
+171 Attribute  "Entity.Sequence" 
+172 Attribute  "Entity.SequenceStep" 
+175 Station    "Station_2" 
+178 Attribute  "Entity.ArrivalAtStation_2" 
+179 Resource   "CPU" 
+191 Queue      "Fila_CPU" 
+197 Attribute  "fatiaTempo" 
+201 Attribute  "Entity.TotalWaitTime" 
+206 Station    "Station_3" 
+209 Attribute  "Entity.ArrivalAtStation_3" 
+210 Station    "Estacao_de_liberacao_de_memoria" 
+213 Attribute  "Entity.ArrivalAtEstacao_de_liberacao_de_memoria" 
+216 Station    "Station_4" 
+219 Attribute  "Entity.ArrivalAtStation_4" 
+222 Station    "Station_5" 
+225 Attribute  "Entity.ArrivalAtStation_5" 
 
 # Model Components
-3897 Create     "Create_1" caption="Processo é criado no computador" entityType="processo" timeBetweenCreations="expo(10)" timeBetweenCreationsTimeUnit=4 nextId=3899 
-3899 Assign     "Assign_1" assignDest[0]="memoriaOcupada" assignDest[2]="tempoExecucao" assignExpr[0]="TRUNC(UNIF(2,32))" assignExpr[2]="NORM(5,1) * memoriaOcupada/10" assignments=2 caption="Define tempo de execução e memória ocupada" nextId=3904 
-3904 Seize      "Seize_1" caption="Processo aloca memória" queueable="Fila_Alocacao_Memoria" requestQuantityExpression[0]="memoriaOcupada" requestSeizable[0]="memoria" nextId=3906 
-3906 Route      "Route_1" caption="Processo é enviado para execução na CPU" station="Estacao_de_Execucao" nexts=0 
-3907 Enter      "Enter_1" caption="Processo chega para ser executado" station="Estacao_de_Execucao" nextId=3910 
-3910 Seize      "Seize_2" caption="Processo aloca CPU" queueable="Fila_CPU" requestSeizable[0]="CPU" nextId=3911 
-3911 Decide     "Decide_1" caption="Define tempo de execução da fatia de tempo atual" condition[0]="tempoExecucao >= 1" conditions=1 nexts=2 nextId[0]=3912 nextId[1]=3914 
-3912 Assign     "Assign_2" assignDest[0]="fatiaTempo" assignDest[2]="tempoExecucao" assignExpr[0]="1" assignExpr[2]="tempoExecucao-fatiaTempo" assignments=2 caption="Define execucao por um quantum de tempo" nextId=3915 
-3914 Assign     "Assign_3" assignDest[0]="fatiaTempo" assignDest[2]="tempoExecucao" assignExpr[0]="tempoExecucao" assignExpr[2]="tempoExecucao - fatiaTempo" assignments=2 caption="Executa até o final" nextId=3915 
-3915 Delay      "Delay_1" caption="Processo executa na CPU" delayExpression="fatiaTempo" delayExpressionTimeUnit=4 nextId=3916 
-3916 Release    "Release_1" caption="Processo libera CPU" requestSeizable[0]="CPU" nextId=3917 
-3917 Decide     "Decide_2" caption="Se processo ainda precisa executar então vai para estação de execução" condition[0]="tempoExecucao > 0" conditions=1 nexts=2 nextId[0]=3918 nextId[1]=3920 
-3918 Route      "Route_2" caption="Processo é enviado de volta para execução" station="Estacao_de_Execucao" nexts=0 
-3920 Route      "Route_3" caption="Processo é enviado para liberar memória" station="Estacao_de_liberacao_de_memoria" nexts=0 
-3921 Enter      "Enter_2" caption="Processo chega para liberar memória" station="Estacao_de_liberacao_de_memoria" nextId=3922 
-3922 Release    "Release_2" caption="Processo libera memória" requestQuantityExpression[0]="memoriaOcupada" requestSeizable[0]="memoria" nextId=3923 
-3923 Dispose    "Dispose_1" caption="Processo é encerrado" nexts=0 
+132 Create     "Create_1" entityType="processo" timeBetweenCreationsTimeUnit=4 nextId=138 caption="Processo é criado no computador" timeBetweenCreations="expo(10)" 
+138 Assign     "Assign_1" assignExpr[1]="NORM(5,1) * memoriaOcupada/10" assignExpr[0]="TRUNC(UNIF(2,32))" assignments=2 nextId=156 caption="Define tempo de execução e memória ocupada" assignDest[0]="memoriaOcupada" assignDest[1]="tempoExecucao" 
+156 Seize      "Seize_1" requestQuantityExpression[0]="memoriaOcupada" nextId=164 queueable="Fila_Alocacao_Memoria" caption="Processo aloca memória" requestSeizable[0]="memoria" 
+164 Route      "Route_1" station="Estacao_de_Execucao" nexts=0 caption="Processo é enviado para execução na CPU" 
+173 Enter      "Enter_1" station="Estacao_de_Execucao" nextId=194 caption="Processo chega para ser executado" 
+194 Seize      "Seize_2" nextId=195 queueable="Fila_CPU" caption="Processo aloca CPU" requestSeizable[0]="CPU" 
+195 Decide     "Decide_1" condition[0]="tempoExecucao >= 1" nextId[0]=196 nextId[1]=198 nexts=2 conditions=1 caption="Define tempo de execução da fatia de tempo atual" 
+196 Assign     "Assign_2" assignExpr[1]="tempoExecucao-fatiaTempo" assignExpr[0]="1" assignments=2 nextId=199 caption="Define execucao por um quantum de tempo" assignDest[0]="fatiaTempo" assignDest[1]="tempoExecucao" 
+198 Assign     "Assign_3" assignExpr[1]="tempoExecucao - fatiaTempo" assignExpr[0]="tempoExecucao" assignments=2 nextId=199 caption="Executa até o final" assignDest[0]="fatiaTempo" assignDest[1]="tempoExecucao" 
+199 Delay      "Delay_1" delayExpressionTimeUnit=4 delayExpression="fatiaTempo" nextId=202 caption="Processo executa na CPU" 
+202 Release    "Release_1" nextId=203 caption="Processo libera CPU" requestSeizable[0]="CPU" 
+203 Decide     "Decide_2" condition[0]="tempoExecucao > 0" nextId[0]=204 nextId[1]=214 nexts=2 conditions=1 caption="Se processo ainda precisa executar então vai para estação de execução" 
+204 Route      "Route_2" station="Estacao_de_Execucao" nexts=0 caption="Processo é enviado de volta para execução" 
+214 Route      "Route_3" station="Estacao_de_liberacao_de_memoria" nexts=0 caption="Processo é enviado para liberar memória" 
+220 Enter      "Enter_2" station="Estacao_de_liberacao_de_memoria" nextId=226 caption="Processo chega para liberar memória" 
+226 Release    "Release_2" requestQuantityExpression[0]="memoriaOcupada" nextId=227 caption="Processo libera memória" requestSeizable[0]="memoria" 
+227 Dispose    "Dispose_1" nexts=0 caption="Processo é encerrado" 

@@ -1,17 +1,21 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=2 warmUpTimeTimeUnit=6 warmUpTime=0.050000 replicationLength=10.000000 numberOfReplications=30 replicationLengthTimeUnit=6 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=0.050000 replicationLength=10.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-61  EntityType "Package" 
-64  Attribute  "productWeight" 
+132 EntityType "Package" 
+135 EntityType "entitytype" 
+136 Attribute  "Entity.ArrivalTime" 
+137 Attribute  "Entity.Type" 
+139 Attribute  "productWeight" 
+142 Attribute  "Entity.TotalWaitTime" 
 
 # Model Components
-62  Create     "Create_1" entityType="Package" timeBetweenCreationsTimeUnit=6 nextId=63 caption="Packages Arrive" timeBetweenCreations="EXPO(1)" 
-63  Assign     "Assign_1" assignExpr[0]="NORM(100, 5)" nextId=65 caption="The packages are weighted" assignDest[0]="productWeight" 
-65  Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="productWeight * 0.33 + 5" nextId=66 caption="The packages are processed" 
-66  Decide     "Decide_1" condition[0]="productWeight > 100" nextId[0]=67 nextId[1]=68 nexts=2 conditions=1 caption="Send Package to correct department" 
-67  Dispose    "Dispose_1" nexts=0 caption="Department 1" 
-68  Dispose    "Dispose_2" nexts=0 caption="Department 2" 
+133 Create     "Create_1" entityType="Package" timeBetweenCreationsTimeUnit=6 nextId=138 caption="Packages Arrive" timeBetweenCreations="EXPO(1)" 
+138 Assign     "Assign_1" assignExpr[0]="NORM(100, 5)" nextId=140 caption="The packages are weighted" assignDest[0]="productWeight" 
+140 Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="productWeight * 0.33 + 5" nextId=143 caption="The packages are processed" 
+143 Decide     "Decide_1" condition[0]="productWeight > 100" nextId[0]=144 nextId[1]=148 nexts=2 conditions=1 caption="Send Package to correct department" 
+144 Dispose    "Dispose_1" nexts=0 caption="Department 1" 
+148 Dispose    "Dispose_2" nexts=0 caption="Department 2" 

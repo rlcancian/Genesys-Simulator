@@ -1,46 +1,86 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Public Transport" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=3 warmUpTimeTimeUnit=7 warmUpTime=0.200000 replicationLength=4.000000 numberOfReplications=3 replicationLengthTimeUnit=7 
 
 # Model Data Definitions
-62  EntityType "Entity)_1" 
-67  Queue      "HoldQueue1" 
-69  Queue      "HoldQueue2" 
-71  Queue      "HoldQueue3" 
-73  Attribute  "destination" 
-77  Station    "Departure_Station" 
-79  Station    "InitialPoint" 
-81  Station    "Point2" 
-83  Station    "Point3" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Entity)_1" 
+145 Queue      "Wait_1.Queue" 
+148 SignalData "SignalData_1" 
+149 Queue      "HoldQueue1" 
+153 Queue      "Wait_2.Queue" 
+156 SignalData "SignalData_2" 
+157 Queue      "HoldQueue2" 
+161 Queue      "Wait_3.Queue" 
+164 SignalData "SignalData_3" 
+165 Queue      "HoldQueue3" 
+169 Attribute  "destination" 
+174 Station    "Station_1" 
+179 Attribute  "Entity.Station" 
+180 Attribute  "Entity.ArrivalAtStation_1" 
+181 Station    "Departure_Station" 
+184 Attribute  "Entity.ArrivalAtDeparture_Station" 
+187 Station    "Station_2" 
+190 Attribute  "Entity.ArrivalAtStation_2" 
+191 Station    "InitialPoint" 
+194 Attribute  "Entity.ArrivalAtInitialPoint" 
+197 Station    "Station_3" 
+200 Attribute  "Entity.ArrivalAtStation_3" 
+201 Station    "Point2" 
+204 Attribute  "Entity.ArrivalAtPoint2" 
+207 Station    "Station_4" 
+210 Attribute  "Entity.ArrivalAtStation_4" 
+211 Station    "Point3" 
+214 Attribute  "Entity.ArrivalAtPoint3" 
+217 Station    "Station_5" 
+220 Attribute  "Entity.ArrivalAtStation_5" 
+221 Attribute  "Entity.TotalTransferTime" 
+222 Attribute  "Entity.Sequence" 
+223 Attribute  "Entity.SequenceStep" 
+226 Station    "Station_6" 
+229 Attribute  "Entity.ArrivalAtStation_6" 
+232 Station    "Station_7" 
+235 Attribute  "Entity.ArrivalAtStation_7" 
+238 Station    "Station_8" 
+241 Attribute  "Entity.ArrivalAtStation_8" 
+243 Attribute  "Attribute_1" 
+244 Queue      "Search_1.Queue" 
+248 Attribute  "Attribute_2" 
+249 Queue      "Search_2.Queue" 
+253 Attribute  "Attribute_3" 
+254 Queue      "Search_3.Queue" 
+262 Attribute  "Entity.TotalWaitTime" 
 
 # Model Components
-61  Create     "Initial_Point_Passengers" entityType="Entity)_1" timeBetweenCreationsTimeUnit=6 nextId=72 timeBetweenCreations="expo(7)" 
-63  Create     "Create_Passengers_at_Point_2" entityType="Entity)_1" timeBetweenCreationsTimeUnit=6 nextId=74 timeBetweenCreations="expo(5)" 
-64  Create     "Create_Passengers_at_Point_3" entityType="Entity)_1" timeBetweenCreationsTimeUnit=6 nextId=75 timeBetweenCreations="expo(8)" 
-65  Create     "Create_the_Bus" entityType="Entity)_1" maxCreations="2" timeBetweenCreationsTimeUnit=6 nextId=88 timeBetweenCreations="25" 
-66  Wait       "Wait_1" nextId=66 
-68  Wait       "Wait_2" nextId=68 
-70  Wait       "Wait_3" nextId=70 
-72  Assign     "Assign_1" assignExpr[0]="DISC(0.3,2,1,3)" assignDest[4]="destination" assignments=3 nextId=66 assignExpr[4]="DISC(0.2,1,1,2)" assignExpr[2]="DISC(0.4,3,1,1)" assignDest[2]="destination" assignDest[0]="destination" 
-74  Assign     "Assign_2" assignments=0 nextId=68 
-75  Assign     "Assign_3" assignments=0 nextId=70 
-76  Enter      "Enter_1" station="Departure_Station" nextId=97 
-78  Enter      "Enter_2" station="InitialPoint" nextId=88 
-80  Enter      "Enter_3" station="Point2" nextId=89 
-82  Enter      "Enter_4" station="Point3" nextId=90 
-84  Route      "Route_1" routeTimeTimeUnit=6 station="Departure_Station" routeTimeExpression="expo(3)" nexts=0 
-85  Route      "Route_2" routeTimeTimeUnit=6 station="Point2" routeTimeExpression="norm(10,2)" nexts=0 
-86  Route      "Route_3" routeTimeTimeUnit=6 station="Point3" routeTimeExpression="norm(20,2)" nexts=0 
-87  Route      "Route_4" routeTimeTimeUnit=6 station="InitialPoint" routeTimeExpression="norm(12,2)" nexts=0 
-88  Search     "Search_1" nextId[0]=91 nextId[1]=94 nexts=2 
-89  Search     "Search_2" nextId[0]=92 nextId[1]=95 nexts=2 
-90  Search     "Search_3" nextId[0]=93 nextId[1]=96 nexts=2 
-91  DropOff    "DropOff_1" nextId[0]=88 nextId[1]=84 nexts=2 
-92  DropOff    "DropOff_2" nextId[0]=89 nextId[1]=84 nexts=2 
-93  DropOff    "DropOff_3" nextId[0]=90 nextId[1]=84 nexts=2 
-94  Delay      "Delay_1" delayExpression="TRIA(0.5,1,3)" nextId=85 
-95  Delay      "Delay_2" delayExpression="TRIA(0.5,1,3)" nextId=86 
-96  Delay      "Delay_3" delayExpression="TRIA(0.5,1,3)" nextId=87 
-97  Dispose    "Dispose_1" nexts=0 
+132 Create     "Initial_Point_Passengers" entityType="Entity)_1" timeBetweenCreationsTimeUnit=6 nextId=168 timeBetweenCreations="expo(7)" 
+138 Create     "Create_Passengers_at_Point_2" entityType="Entity)_1" timeBetweenCreationsTimeUnit=6 nextId=170 timeBetweenCreations="expo(5)" 
+140 Create     "Create_Passengers_at_Point_3" entityType="Entity)_1" timeBetweenCreationsTimeUnit=6 nextId=171 timeBetweenCreations="expo(8)" 
+142 Create     "Create_the_Bus" entityType="Entity)_1" maxCreations="2" timeBetweenCreationsTimeUnit=6 nextId=242 timeBetweenCreations="25" 
+144 Wait       "Wait_1" queue="HoldQueue1" waitType=1 nextId=144 
+152 Wait       "Wait_2" queue="HoldQueue2" waitType=1 nextId=152 
+160 Wait       "Wait_3" queue="HoldQueue3" waitType=1 nextId=160 
+168 Assign     "Assign_1" assignExpr[1]="DISC(0.4,3,1,1)" assignExpr[0]="DISC(0.3,2,1,3)" assignments=3 nextId=144 assignExpr[2]="DISC(0.2,1,1,2)" assignDest[2]="destination" assignDest[0]="destination" assignDest[1]="destination" 
+170 Assign     "Assign_2" assignments=0 nextId=152 
+171 Assign     "Assign_3" assignments=0 nextId=160 
+172 Enter      "Enter_1" station="Departure_Station" nextId=267 
+185 Enter      "Enter_2" station="InitialPoint" nextId=242 
+195 Enter      "Enter_3" station="Point2" nextId=247 
+205 Enter      "Enter_4" station="Point3" nextId=252 
+215 Route      "Route_1" routeTimeTimeUnit=6 station="Departure_Station" routeTimeExpression="expo(3)" nexts=0 
+224 Route      "Route_2" routeTimeTimeUnit=6 station="Point2" routeTimeExpression="norm(10,2)" nexts=0 
+230 Route      "Route_3" routeTimeTimeUnit=6 station="Point3" routeTimeExpression="norm(20,2)" nexts=0 
+236 Route      "Route_4" routeTimeTimeUnit=6 station="InitialPoint" routeTimeExpression="norm(12,2)" nexts=0 
+242 Search     "Search_1" nextId[0]=257 searchIn="HoldQueue1" saveFounRankAttribute="rankFound" searchCondition="destination==1" startRank="1" nextId[1]=260 nexts=2 endRank="NQ(HoldQueue1)-1" 
+247 Search     "Search_2" nextId[0]=258 searchIn="HoldQueue2" saveFounRankAttribute="rankFound" searchCondition="destination==2" startRank="1" nextId[1]=263 nexts=2 endRank="NQ(HoldQueue2)-1" 
+252 Search     "Search_3" nextId[0]=259 searchIn="HoldQueue3" saveFounRankAttribute="rankFound" searchCondition="destination==3" startRank="1" nextId[1]=265 nexts=2 endRank="NQ(HoldQueue3)-1" 
+257 DropOff    "DropOff_1" nextId[0]=242 nextId[1]=215 nexts=2 
+258 DropOff    "DropOff_2" nextId[0]=247 nextId[1]=215 nexts=2 
+259 DropOff    "DropOff_3" nextId[0]=252 nextId[1]=215 nexts=2 
+260 Delay      "Delay_1" delayExpression="TRIA(0.5,1,3)" nextId=224 
+263 Delay      "Delay_2" delayExpression="TRIA(0.5,1,3)" nextId=230 
+265 Delay      "Delay_3" delayExpression="TRIA(0.5,1,3)" nextId=236 
+267 Dispose    "Dispose_1" nexts=0 

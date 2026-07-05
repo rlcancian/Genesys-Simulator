@@ -1,0 +1,49 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "An Electronic Assembly and Test System" version="1.0" projectTitle="" description="B14 Chap 04 Modeling Basic Operations ans Inputs. Example section 4.1" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=7 warmUpTime=1.000000 replicationBaseTimeUnit=6 replicationLength=8.000000 numberOfReplications=10 replicationLengthTimeUnit=7 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+144 Attribute  "Entity.TotalWaitTime" 
+173 EntityType "Part_A" 
+174 EntityType "Part_B" 
+175 Attribute  "Sealer_Time" 
+176 Attribute  "Arrive_Time" 
+177 Resource   "PrepA" 
+189 Queue      "QueuePrepA" 
+192 Resource   "PrepB" 
+204 Queue      "QueuePrepB" 
+207 Resource   "Sealer" 
+219 Queue      "QueueSealer" 
+222 Resource   "Rework" 
+234 Queue      "QueueRework" 
+
+# Model Components
+132 Create     "Part_A_Arrive" entityType="Part_A" timeBetweenCreationsTimeUnit=6 nextId=139 timeBetweenCreations="expo(5)" 
+137 Create     "Part_B_Arrive" entityType="Part_B" timeBetweenCreationsTimeUnit=6 nextId=140 timeBetweenCreations="expo(30)" 
+139 Assign     "Assign_Part_A_Sealer_and_Arrivel_Time" assignExpr[1]="tnow" assignExpr[0]="tria(1,3,4)" assignments=2 nextId=141 assignDest[0]="Sealer_Time" assignDest[1]="Arrive_Time" 
+140 Assign     "Assign_Part_B_Sealer_and_Arrivel_Time" assignExpr[1]="tnow" assignExpr[0]="weib(2.5, 5.3)" assignments=2 nextId=146 assignDest[0]="Sealer_Time" assignDest[1]="Arrive_Time" 
+141 Seize      "Prep_A_Process_Seize" queueable="QueuePrepA" nextId=142 requestSeizable[0]="PrepA" 
+142 Delay      "Prep_A_Process_Delay" delayExpressionTimeUnit=6 delayExpression="tria(1,4,8)" nextId=145 
+145 Release    "Prep_A_Process_Relase" nextId=150 requestSeizable[0]="PrepA" 
+146 Seize      "Prep_B_Process_Seize" queueable="QueuePrepB" nextId=147 requestSeizable[0]="PrepB" 
+147 Delay      "Prep_B_Process_Delay" delayExpressionTimeUnit=6 delayExpression="tria(3,5,10)" nextId=149 
+149 Release    "Prep_B_Process_Releese" nextId=150 requestSeizable[0]="PrepB" 
+150 Seize      "Sealer_Seize" queueable="QueueSealer" nextId=151 requestSeizable[0]="Sealer" 
+151 Delay      "Sealer_Delay" delayExpressionTimeUnit=6 delayExpression="Sealer_Time" nextId=153 
+153 Release    "Sealer_Release" nextId=158 requestSeizable[0]="Sealer" 
+154 Seize      "Rework_Seize" queueable="QueueRework" nextId=155 requestSeizable[0]="Rework" 
+155 Delay      "Rework_Delay" delayExpressionTimeUnit=6 delayExpression="45" nextId=157 
+157 Release    "Rework_Release" nextId=159 requestSeizable[0]="Rework" 
+158 Decide     "Failed_Sealer_Inspector" condition[0]="unif(0,1)<0.09" conditions=1 nextId[0]=154 nextId[1]=164 nexts=2 
+159 Decide     "Failed_Rework_Inspection" condition[0]="unif(0,1)<0.20" conditions=1 nextId[0]=160 nextId[1]=162 nexts=2 
+160 Record     "Record_Screpped_Parts" description="Total time in system for scrapped parts." randomVariableName="Scrapped parts total time" nextId=166 datasetName="Scrapped Parts Total Time Dataset" expressionName="Scrapped Parts Total Time" expression="tnow - Arrive_Time" 
+162 Record     "Record_Salvaged_Parts" description="Total time in system for salvaged parts." randomVariableName="Salvaged parts total time" nextId=169 datasetName="Salvaged Parts Total Time Dataset" expressionName="Salvaged Parts Total Time" expression="tnow - Arrive_Time" 
+164 Record     "Recorded_Shipped_Parts" description="Total time in system for shipped parts." randomVariableName="Shipped parts total time" nextId=171 datasetName="Shipped Parts Total Time Dataset" expressionName="Shipped Parts Total Time" expression="tnow - Arrive_Time" 
+166 Dispose    "Scrapped" nexts=0 
+169 Dispose    "Salvaged" nexts=0 
+171 Dispose    "Shipped" nexts=0 

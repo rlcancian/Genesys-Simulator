@@ -1,19 +1,29 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=2 warmUpTimeTimeUnit=6 warmUpTime=2.550000 replicationBaseTimeUnit=6 replicationLength=51.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=2.550000 replicationBaseTimeUnit=6 replicationLength=51.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-61  EntityType "EntityType_1" 
-63  Resource   "Teller" 
-68  Queue      "Queue_1" 
-70  Resource   "Supervisor" 
-75  Queue      "Queue_2" 
+132 EntityType "EntityType_1" 
+135 EntityType "entitytype" 
+136 Attribute  "Entity.ArrivalTime" 
+137 Attribute  "Entity.Type" 
+138 Resource   "Teller" 
+154 Attribute  "Entity.TotalWaitTime" 
+156 Queue      "Queue_1" 
+160 Resource   "Supervisor" 
+177 Queue      "Queue_2" 
 
 # Model Components
-62  Create     "Create_1" entityType="EntityType_1" timeBetweenCreationsTimeUnit=6 nextId=64 timeBetweenCreations="EXPO(5)" 
-64  Process    "Work_with_Teller" delayExpression="tria(1,2,3)" delayExpressionTimeUnit=6 priority==2 queueable="Queue_1" allocationType=1 nextId=69 requestSeizable[0]="Teller" 
-69  Decide     "Decide_1" condition[0]="UNIF(0,1)<0.25" conditions=1 nextId[0]=71 nextId[1]=76 nexts=2 
-71  Process    "Work_with_Supervisor" delayExpression="tria(5,10,15)" delayExpressionTimeUnit=6 priority==2 queueable="Queue_2" allocationType=1 nextId=64 requestSeizable[0]="Supervisor" 
-76  Dispose    "Dispose_1" nexts=0 
+133 Create     "Create_1" entityType="EntityType_1" timeBetweenCreationsTimeUnit=6 nextId=150 timeBetweenCreations="EXPO(5)" 
+150 Process    "Work_with_Teller" delayExpressionTimeUnit=6 delayExpression="tria(1,2,3)" priority=2 queueable="Queue_1" allocationType=0 nextId=159 requestSeizable[0]="Teller" 
+151 Seize      "Work_with_Teller.Seize" queueable="Queue_1" priority=2 allocationType=0 nextId=152 requestSeizable[0]="Teller" 
+152 Delay      "Work_with_Teller.Delay" delayExpressionTimeUnit=6 delayExpression="tria(1,2,3)" nextId=155 
+155 Release    "Work_with_Teller.Release" resquests=0 nexts=0 
+159 Decide     "Decide_1" condition[0]="UNIF(0,1)<0.25" conditions=1 nextId[0]=172 nextId[1]=180 nexts=2 
+172 Process    "Work_with_Supervisor" delayExpressionTimeUnit=6 delayExpression="tria(5,10,15)" priority=2 queueable="Queue_2" allocationType=0 nextId=150 requestSeizable[0]="Supervisor" 
+173 Seize      "Work_with_Supervisor.Seize" queueable="Queue_2" priority=2 allocationType=0 nextId=174 requestSeizable[0]="Supervisor" 
+174 Delay      "Work_with_Supervisor.Delay" delayExpressionTimeUnit=6 delayExpression="tria(5,10,15)" nextId=176 
+176 Release    "Work_with_Supervisor.Release" resquests=0 nexts=0 
+180 Dispose    "Dispose_1" nexts=0 

@@ -1,0 +1,17 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 showReportsAfterReplicaton=0 replicationLength=5.000000 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "RJob" 
+139 RSimulatorRunner "RSimulator_1.RSimulatorRunner" preludeScript="genesys_label <- 'RSimulator'" 
+
+# Model Components
+132 Create     "Create_1" entityType="RJob" maxCreations="3" nextId=138 timeBetweenCreations="1" 
+138 RSimulator "RSimulator_1" command[1]="cat('R mean example =', mean(c(10, 20, 30)), '\n')" command[0]="cat(genesys_label, ': entity command 1 executed\n')" commands=2 preludeScript="genesys_label <- 'RSimulator'" nextId=140 
+140 Dispose    "Dispose_1" nexts=0 

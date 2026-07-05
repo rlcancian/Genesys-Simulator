@@ -1,18 +1,18 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 
 
 # Model Data Definitions
-103 Attribute  "Entity.ArrivalTime" 
-104 Attribute  "Entity.Type" 
-105 EntityType "entitytype" 
-107 Variable   "MarkovTransitionMatrix" valuePos[0]="0,1" value[1]=1.000000 valuePos[1]="1,2" valuePos[3]="3,0" value[2]=1.000000 valuePos[2]="2,3" dimensions=2 values=4 dimension[0]=4 value[0]=1.000000 dimension[1]=4 value[3]=1.000000 
-108 Variable   "MarkovInitialDistribution" value[0]=1.000000 values=1 dimensions=1 dimension[0]=4 
-109 Attribute  "Entity.CurrentMarkovState" values=1 valuePos[0]="" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 Variable   "MarkovTransitionMatrix" valuePos[9]="2,1" valuePos[8]="2,0" valuePos[4]="1,0" valuePos[3]="0,3" valuePos[12]="3,0" value[10]=0.100000 value[4]=0.100000 valuePos[2]="0,2" dimension[0]=4 values=16 valuePos[1]="0,1" value[1]=0.700000 valuePos[5]="1,1" valuePos[6]="1,2" dimension[1]=4 value[3]=0.100000 value[7]=0.100000 value[0]=0.100000 value[6]=0.700000 valuePos[7]="1,3" value[5]=0.100000 value[9]=0.100000 valuePos[10]="2,2" valuePos[15]="3,3" valuePos[11]="2,3" value[13]=0.100000 value[2]=0.100000 valuePos[0]="0,0" value[11]=0.700000 dimensions=2 valuePos[13]="3,1" valuePos[14]="3,2" value[8]=0.100000 value[12]=0.700000 value[14]=0.100000 value[15]=0.100000 
+138 Variable   "MarkovInitialDistribution" value[3]=0.250000 valuePos[3]="3" value[1]=0.250000 valuePos[1]="1" value[0]=0.250000 values=4 dimensions=1 dimension[0]=4 valuePos[2]="2" value[2]=0.250000 
+139 Variable   "CurrentMarkovState" valuePos[0]="" values=1 
 
 # Model Components
-102 Create     "Create_1" entityType="entitytype" nextId=110 
-110 MarkovChain "MarkovChain_1" currentState="Entity.CurrentMarkovState" currentStateRef="Attribute:Entity.CurrentMarkovState" initialDistributionRef="Variable:MarkovInitialDistribution" initialDistribution="MarkovInitialDistribution" transitionMatrixRef="Variable:MarkovTransitionMatrix" nextId=111 transitionMatrix="MarkovTransitionMatrix" 
-111 Dispose    "Dispose_1" nexts=0 
+132 Create     "Create_1" entityType="entitytype" nextId=140 
+140 MarkovChain "MarkovChain_1" currentState="CurrentMarkovState" currentStateRef="Variable:CurrentMarkovState" initialDistributionRef="Variable:MarkovInitialDistribution" initialDistribution="MarkovInitialDistribution" transitionMatrix="MarkovTransitionMatrix" nextId=141 transitionMatrixRef="Variable:MarkovTransitionMatrix" 
+141 Dispose    "Dispose_1" nexts=0 

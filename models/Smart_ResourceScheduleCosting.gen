@@ -1,18 +1,28 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=75.000000 replicationLength=1500.000000 numberOfReplications=300 terminatingCondition="count(Depart.CountNumberIn)>1000" replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-61  Schedule   "Schedule" 
-62  Resource   "Biller" 
-63  Resource   "Mailer" 
-70  Queue      "BillingQueue" 
-75  Queue      "MailRoomQueue" 
+132 Schedule   "Schedule" itemExpression[0]="1" items=8 itemExpression[5]="0" itemDuration[2]=90.000000 itemExpression[6]="1" itemDuration[3]=60.000000 itemDuration[1]=15.000000 itemExpression[2]="1" itemExpression[1]="0" itemDuration[5]=15.000000 itemExpression[3]="0" itemDuration[0]=135.000000 itemDuration[7]=9999999999999.000000 itemExpression[4]="1" itemExpression[7]="1" itemDuration[6]=45.000000 itemDuration[4]=90.000000 
+133 Resource   "Biller" capacitySchedule="Schedule" costIdleTimeUnit=7.750000 costBusyTimeUnit=7.750000 costPerUse=0.020000 
+145 Resource   "Mailer" capacitySchedule="Schedule" costIdleTimeUnit=5.150000 costBusyTimeUnit=5.150000 costPerUse=0.020000 
+159 EntityType "entitytype" 
+160 Attribute  "Entity.ArrivalTime" 
+161 Attribute  "Entity.Type" 
+167 Attribute  "Entity.TotalWaitTime" 
+169 Queue      "BillingQueue" 
+177 Queue      "MailRoomQueue" 
 
 # Model Components
-64  Create     "Arrival" entityType="Arrival" timeBetweenCreationsTimeUnit=6 nextId=66 timeBetweenCreations="expo(1.5)" 
-66  Process    "Billing" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=6 queueable="BillingQueue" allocationType=1 nextId=71 requestSeizable[0]="Biller" 
-71  Process    "MailRoom" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=6 queueable="MailRoomQueue" allocationType=1 nextId=76 requestSeizable[0]="Mailer" 
-76  Dispose    "Depart" nexts=0 
+157 Create     "Arrival" entityType="Arrival" timeBetweenCreationsTimeUnit=6 timeBetweenCreations="expo(1.5)" nextId=163 
+163 Process    "Billing" delayExpression="tria(0.5,1,1.5)" requestSeizable[0]="Biller" allocationType=0 queueable="BillingQueue" nextId=172 delayExpressionTimeUnit=6 
+164 Seize      "Billing.Seize" requestSeizable[0]="Biller" queueable="BillingQueue" allocationType=0 nextId=165 
+165 Delay      "Billing.Delay" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=6 nextId=168 
+168 Release    "Billing.Release" resquests=0 nexts=0 
+172 Process    "MailRoom" delayExpression="tria(0.5,1,1.5)" requestSeizable[0]="Mailer" allocationType=0 queueable="MailRoomQueue" nextId=180 delayExpressionTimeUnit=6 
+173 Seize      "MailRoom.Seize" requestSeizable[0]="Mailer" queueable="MailRoomQueue" allocationType=0 nextId=174 
+174 Delay      "MailRoom.Delay" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=6 nextId=176 
+176 Release    "MailRoom.Release" resquests=0 nexts=0 
+180 Dispose    "Depart" nexts=0 
