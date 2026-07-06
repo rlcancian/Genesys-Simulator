@@ -179,8 +179,8 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
         "${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/*.cpp"
     )
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/build/")
-    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/main\\.cpp$")
-    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/qcustomplot\\.cpp$")
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/main\.cpp$")
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/qcustomplot\.cpp$")
 
     if(NOT TARGET genesys_tools)
         add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-gui-tests)
@@ -280,6 +280,16 @@ genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
     genesys_tools
 )
 
+genesys_add_unit_test(genesys_test_tools_ode_solver_factory
+    test_tools_ode_solver_factory.cpp
+    genesys_tools
+)
+
+genesys_add_unit_test(genesys_test_tools_diffusion_mol
+    test_tools_diffusion_mol.cpp
+    genesys_tools
+)
+
 add_custom_target(genesys_kernel_unit_tests
     DEPENDS
         genesys_test_util
@@ -299,6 +309,8 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_statistics
         genesys_test_tools_hypothesistester
         genesys_test_tools_simulation_results_dataset
+        genesys_test_tools_ode_solver_factory
+        genesys_test_tools_diffusion_mol
         genesys_test_wcm_plugins
 )
 
@@ -379,6 +391,8 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
     COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
+    COMMAND $<TARGET_FILE:genesys_test_tools_ode_solver_factory>
+    COMMAND $<TARGET_FILE:genesys_test_tools_diffusion_mol>
     COMMAND $<TARGET_FILE:genesys_test_wcm_plugins>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
