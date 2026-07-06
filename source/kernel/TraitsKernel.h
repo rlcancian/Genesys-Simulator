@@ -16,6 +16,7 @@
 #define TRAITSKERNEL_H
 
 
+#include "kernel/simulator/model/ModelComponent.h"
 #include "simulator/persistence/PersistenceDefaultImpl2.h"
 #include "simulator/persistence/PersistencePartialLoadImpl1.h"
 #include "simulator/SimulationReporterDefaultImpl1.h"
