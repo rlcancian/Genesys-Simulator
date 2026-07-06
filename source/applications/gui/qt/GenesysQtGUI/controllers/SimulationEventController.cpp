@@ -427,70 +427,77 @@ void SimulationEventController::onEntityRemoveHandler(SimulationEvent* re) const
     Q_UNUSED(re)
 }
 
-// Preserve entity-move animation pipeline behavior.
+// Preserve entity-move animation pipeline behavior by delegating to the event-only overload.
 void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
+    Event* currentEvent = re ? re->getCurrentEvent() : nullptr;
+    ModelComponent* destinationComponent = re ? re->getDestinationComponent() : nullptr;
+    updateMoveEntityAnimations(currentEvent, destinationComponent);
+}
+
+// Preserve entity-move animation pipeline behavior.
+void SimulationEventController::updateMoveEntityAnimations(Event* currentEvent, ModelComponent* destinationComponent) const {
     if (!animationsEnabled() || _activateGraphicalSimulation == nullptr
         || !_activateGraphicalSimulation->isChecked()) {
         return;
     }
-    ModelComponent* sourceComponent = (re && re->getCurrentEvent()) ? re->getCurrentEvent()->getComponent() : nullptr;
-    ModelComponent* destinationComponent = re ? re->getDestinationComponent() : nullptr;
+    ModelComponent* sourceComponent = currentEvent ? currentEvent->getComponent() : nullptr;
     // Log move-event correlation context before dispatching transition animation.
     qInfo() << "GUI SimulationEvent onMoveEntityEvent begin graphicalSimulationChecked="
             << (_activateGraphicalSimulation ? _activateGraphicalSimulation->isChecked() : false)
-            << "eventPtr=" << (re ? re->getCurrentEvent() : nullptr)
+            << "eventPtr=" << currentEvent
             << "sourceId=" << (sourceComponent ? sourceComponent->getId() : 0)
             << "sourceName=" << (sourceComponent ? QString::fromStdString(sourceComponent->getName()) : QStringLiteral("<null>"))
             << "destinationId=" << (destinationComponent ? destinationComponent->getId() : 0)
             << "destinationName=" << (destinationComponent ? QString::fromStdString(destinationComponent->getName()) : QStringLiteral("<null>"));
     _scene->animateCounter();
     _scene->animateStatistics();
-    _scene->animateVariable(re != nullptr && re->getCurrentEvent() != nullptr ? re->getCurrentEvent()->getEntity() : nullptr);
+    _scene->animateVariable(currentEvent != nullptr ? currentEvent->getEntity() : nullptr);
 
-    if (re) {
-        if (re->getCurrentEvent()) {
-            if (re->getCurrentEvent()->getComponent()) {
-                ModelComponent* source = re->getCurrentEvent()->getComponent();
-                ModelComponent* destination = re->getDestinationComponent();
-                // Log event and endpoint identifiers used to correlate with scene/animation logs.
-                qInfo() << "GUI SimulationEvent onMoveEntityEvent sourceId="
-                        << (source ? source->getId() : 0)
-                        << "sourceName=" << (source ? QString::fromStdString(source->getName()) : QStringLiteral("<null>"))
-                        << "destinationId="
-                        << (destination ? destination->getId() : 0)
-                        << "destinationName=" << (destination ? QString::fromStdString(destination->getName()) : QStringLiteral("<null>"))
-                        << "eventPtr=" << re->getCurrentEvent();
+    if (currentEvent && currentEvent->getComponent()) {
+        ModelComponent* source = currentEvent->getComponent();
+        ModelComponent* destination = destinationComponent;
+        // Log event and endpoint identifiers used to correlate with scene/animation logs.
+        qInfo() << "GUI SimulationEvent onMoveEntityEvent sourceId="
+                << (source ? source->getId() : 0)
+                << "sourceName=" << (source ? QString::fromStdString(source->getName()) : QStringLiteral("<null>"))
+                << "destinationId="
+                << (destination ? destination->getId() : 0)
+                << "destinationName=" << (destination ? QString::fromStdString(destination->getName()) : QStringLiteral("<null>"))
+                << "eventPtr=" << currentEvent;
 
-                _scene->animateQueueRemove(source);
+        _scene->animateQueueRemove(source);
 
-                Entity* entity = re->getCurrentEvent()->getEntity();
-                _scene->notifyEntityMovePluginAnimations(source, entity);
+        Entity* entity = currentEvent->getEntity();
+        _scene->notifyEntityMovePluginAnimations(source, entity);
 
-                _scene->animateTransition(
-                    source,
-                    destination,
-                    true,
-                    re->getCurrentEvent());
-            }
-        }
+        _scene->animateTransition(
+            source,
+            destination,
+            true,
+            currentEvent);
     }
     // Log move-entity handler exit after animation pipeline delegation.
     qInfo() << "GUI SimulationEvent onMoveEntityEvent end";
 }
 
-// Preserve after-process animation update behavior.
+// Preserve after-process animation update behavior by delegating to the event-only overload.
 void SimulationEventController::onAfterProcessEvent(SimulationEvent* re) const {
+    updateAfterProcessAnimations(re ? re->getCurrentEvent() : nullptr);
+}
+
+// Preserve after-process animation update behavior.
+void SimulationEventController::updateAfterProcessAnimations(Event* currentEvent) const {
     if (!animationsEnabled()) {
         return;
     }
     _scene->animateCounter();
     _scene->animateStatistics();
-    _scene->animateVariable(re != nullptr && re->getCurrentEvent() != nullptr ? re->getCurrentEvent()->getEntity() : nullptr);
+    _scene->animateVariable(currentEvent != nullptr ? currentEvent->getEntity() : nullptr);
     _scene->animateTimer(_simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
 
-    if (_scene != nullptr && re != nullptr && re->getCurrentEvent() != nullptr) {
-        ModelComponent* processedComponent = re->getCurrentEvent()->getComponent();
-        Entity* entity = re->getCurrentEvent()->getEntity();
+    if (_scene != nullptr && currentEvent != nullptr) {
+        ModelComponent* processedComponent = currentEvent->getComponent();
+        Entity* entity = currentEvent->getEntity();
         _scene->notifyAfterProcessPluginAnimations(processedComponent, entity);
     }
 }

@@ -15,14 +15,6 @@
 
 //using namespace GenesysKernel;
 
-SimulationEvent* SimulationEvent::NewUnsetInstance() {
-	return new SimulationEvent();
-}
-
-void SimulationEvent::DeleteInstance(SimulationEvent* instance) {
-	delete instance;
-}
-
 OnEventManager::OnEventManager() {
 }
 

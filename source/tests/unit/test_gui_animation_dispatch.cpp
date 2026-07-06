@@ -1,4 +1,6 @@
+#include "animations/AnimationCounter.h"
 #include "animations/AnimationPlaceholder.h"
+#include "animations/AnimationTimer.h"
 #include "controllers/SimulationEventController.h"
 #include "extensions/GuiExtensionManager.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
@@ -6,8 +8,11 @@
 
 #include "kernel/simulator/Event.h"
 #include "kernel/simulator/OnEventManager.h"
+#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/PluginInformation.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/essentialPlugins/Counter.h"
 #include "kernel/simulator/essentialPlugins/Entity.h"
 #include "kernel/simulator/essentialPlugins/StatisticsCollector.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
@@ -31,8 +36,30 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace {
+
+// Mirror MainWindow::collectLoadedModelPluginIds so the extension manager can filter
+// animation contributions by the model plugins actually loaded in the simulator.
+std::vector<std::string> collectLoadedModelPluginIds(const Simulator* simulator) {
+    std::vector<std::string> ids;
+    if (simulator == nullptr || simulator->getPluginManager() == nullptr) {
+        return ids;
+    }
+    PluginManager* pluginManager = simulator->getPluginManager();
+    for (unsigned int index = 0; index < pluginManager->size(); ++index) {
+        Plugin* plugin = pluginManager->getAtRank(index);
+        if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+            continue;
+        }
+        const std::string pluginTypename = plugin->getPluginInfo()->getPluginTypename();
+        if (!pluginTypename.empty()) {
+            ids.push_back(pluginTypename);
+        }
+    }
+    return ids;
+}
 
 class AnimationDispatchTestFixture : public ::testing::Test {
 protected:
@@ -49,6 +76,9 @@ protected:
         _context.graphicsScene = &_scene;
 
         _extensionManager.setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
+        // autoInsertPlugins() loaded the Queue/Resource/Station model plugins, so their
+        // animation extensions must see those dependencies satisfied on rebuild.
+        _extensionManager.setLoadedModelPluginIds(collectLoadedModelPluginIds(&_simulator));
         _extensionManager.rebuild(_context);
         _scene.setGuiExtensionManager(&_extensionManager);
     }
@@ -161,12 +191,6 @@ protected:
     SimulationEventController* controller() { return _controller.get(); }
     SimulationControllerUi* controllerUi() { return _controllerUi.get(); }
 
-    SimulationEvent* makeSimulationEvent(Event* kernelEvent) {
-        SimulationEvent* simulationEvent = SimulationEvent::NewUnsetInstance();
-        simulationEvent->setCurrentEvent(kernelEvent);
-        return simulationEvent;
-    }
-
     std::unique_ptr<SimulationControllerUi> _controllerUi;
     std::unique_ptr<SimulationEventController> _controller;
 };
@@ -178,6 +202,19 @@ TEST_F(AnimationDispatchTestFixture, AnimationPluginsRegisterQueueResourceAndSta
     EXPECT_TRUE(hasAnimationContribution(*extensionManager(), "Resource"));
     EXPECT_TRUE(hasAnimationContribution(*extensionManager(), "Station"));
     EXPECT_GE(extensionManager()->animationContributions().size(), 3u);
+}
+
+TEST_F(AnimationDispatchTestFixture, AnimationPluginsAreFilteredOutWhenModelPluginsNotLoaded) {
+    // With no loaded model plugins, the declared requiredModelPlugins() dependencies of the
+    // Queue/Resource/Station animation extensions are unsatisfied, so they must not register.
+    GuiExtensionManager isolatedManager(&_mainWindow);
+    isolatedManager.setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
+    isolatedManager.setLoadedModelPluginIds({});
+    isolatedManager.rebuild(_context);
+
+    EXPECT_FALSE(hasAnimationContribution(isolatedManager, "Queue"));
+    EXPECT_FALSE(hasAnimationContribution(isolatedManager, "Resource"));
+    EXPECT_FALSE(hasAnimationContribution(isolatedManager, "Station"));
 }
 
 TEST_F(AnimationDispatchTestFixture, CreateAnimationPlaceholderReturnsTypedPlaceholders) {
@@ -372,9 +409,9 @@ TEST_F(SimulationEventControllerE2EFixture, SimulationStartHandlerResetsOverlays
     ASSERT_EQ(resourcePlaceholder->overlayBusyCount(), 1);
     ASSERT_EQ(stats->getCollector(), nullptr);
 
-    SimulationEvent* startEvent = SimulationEvent::NewUnsetInstance();
-    controller()->onSimulationStartHandler(startEvent);
-    SimulationEvent::DeleteInstance(startEvent);
+    // onSimulationStartHandler ignores its SimulationEvent argument (Q_UNUSED), so the
+    // run-start reset path can be exercised without constructing a kernel SimulationEvent.
+    controller()->onSimulationStartHandler(nullptr);
 
     EXPECT_EQ(resourcePlaceholder->overlayBusyCount(), 0);
     EXPECT_NE(stats->getCollector(), nullptr);
@@ -393,18 +430,13 @@ TEST_F(SimulationEventControllerE2EFixture, SimulationEventControllerUpdatesReso
 
     Entity* entity = model()->createEntity("Entity_1");
     Event seizeEvent(0.0, entity, seize);
-    SimulationEvent* seizeSimulationEvent = makeSimulationEvent(&seizeEvent);
-    controller()->onMoveEntityEvent(seizeSimulationEvent);
+    controller()->updateMoveEntityAnimations(&seizeEvent, nullptr);
     EXPECT_EQ(placeholder->overlayBusyCount(), 1);
 
     Event releaseEvent(1.0, entity, release);
-    SimulationEvent* releaseSimulationEvent = makeSimulationEvent(&releaseEvent);
-    controller()->onMoveEntityEvent(releaseSimulationEvent);
+    controller()->updateMoveEntityAnimations(&releaseEvent, nullptr);
 
     EXPECT_EQ(placeholder->overlayBusyCount(), 0);
-
-    SimulationEvent::DeleteInstance(seizeSimulationEvent);
-    SimulationEvent::DeleteInstance(releaseSimulationEvent);
 }
 
 TEST_F(SimulationEventControllerE2EFixture, SimulationEventControllerUpdatesStationOverlayOnAfterProcess) {
@@ -419,17 +451,12 @@ TEST_F(SimulationEventControllerE2EFixture, SimulationEventControllerUpdatesStat
 
     Entity* entity = model()->createEntity("Entity_1");
     Event enterEvent(0.0, entity, enter);
-    SimulationEvent* enterSimulationEvent = makeSimulationEvent(&enterEvent);
-    controller()->onAfterProcessEvent(enterSimulationEvent);
+    controller()->updateAfterProcessAnimations(&enterEvent);
     EXPECT_EQ(placeholder->overlayBusyCount(), 1);
 
     Event leaveEvent(1.0, entity, leave);
-    SimulationEvent* leaveSimulationEvent = makeSimulationEvent(&leaveEvent);
-    controller()->onAfterProcessEvent(leaveSimulationEvent);
+    controller()->updateAfterProcessAnimations(&leaveEvent);
     EXPECT_EQ(placeholder->overlayBusyCount(), 0);
-
-    SimulationEvent::DeleteInstance(enterSimulationEvent);
-    SimulationEvent::DeleteInstance(leaveSimulationEvent);
 }
 
 TEST_F(SimulationEventControllerE2EFixture, MoveEntityEventSkippedWhenGraphicalSimulationDisabled) {
@@ -444,12 +471,9 @@ TEST_F(SimulationEventControllerE2EFixture, MoveEntityEventSkippedWhenGraphicalS
 
     Entity* entity = model()->createEntity("Entity_1");
     Event seizeEvent(0.0, entity, seize);
-    SimulationEvent* seizeSimulationEvent = makeSimulationEvent(&seizeEvent);
-    controller()->onMoveEntityEvent(seizeSimulationEvent);
+    controller()->updateMoveEntityAnimations(&seizeEvent, nullptr);
 
     EXPECT_EQ(placeholder->overlayBusyCount(), 0);
-
-    SimulationEvent::DeleteInstance(seizeSimulationEvent);
 }
 
 TEST(GuiAnimationDispatch, NotifyWithNullExtensionManagerDoesNotCrash) {
@@ -474,6 +498,77 @@ TEST(GuiAnimationDispatch, NotifyWithNullExtensionManagerDoesNotCrash) {
 
     scene.notifyEntityMovePluginAnimations(seize, nullptr);
     scene.notifyAfterProcessPluginAnimations(enter, nullptr);
+}
+
+// Nuclear (core) animations — clock, counters and statistics collectors — belong to the GUI
+// base and must keep working even when no domain graphical plugin is loaded. This guards the
+// Theme 5 requirement of consolidating core animations independently of the plugin extensions.
+TEST(GuiCoreAnimations, NuclearAnimationsRunWithoutDomainPluginsLoaded) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    QMainWindow mainWindow;
+    ModelGraphicsScene scene(0, 0, 2000, 2000);
+    scene.setSimulator(&simulator);
+
+    // Report no loaded model plugins, so the domain-specific animation extensions
+    // (Queue/Resource/Station) are filtered out of the extension manager.
+    GuiExtensionManager extensionManager(&mainWindow);
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.mainWindow = &mainWindow;
+    context.graphicsScene = &scene;
+    extensionManager.setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
+    extensionManager.setLoadedModelPluginIds({});
+    extensionManager.rebuild(context);
+    scene.setGuiExtensionManager(&extensionManager);
+
+    // Precondition: no domain plugins loaded => no domain animation contributions registered.
+    ASSERT_FALSE(hasAnimationContribution(extensionManager, "Queue"));
+    ASSERT_FALSE(hasAnimationContribution(extensionManager, "Resource"));
+    ASSERT_FALSE(hasAnimationContribution(extensionManager, "Station"));
+
+    // Nuclear animation: counter reflects the kernel Counter value.
+    auto* counter = new Counter(model, "Counter_1");
+    counter->clear();
+    counter->incCountValue(7.0);
+    auto* animationCounter = new AnimationCounter();
+    animationCounter->setCounter(counter);
+    animationCounter->setRect(0.0, 0.0, 80.0, 40.0);
+    scene.addItem(animationCounter);
+    ASSERT_TRUE(scene.addDrawingAnimation(animationCounter));
+
+    scene.animateCounter();
+    EXPECT_DOUBLE_EQ(animationCounter->getValue(), counter->getCountValue());
+    EXPECT_DOUBLE_EQ(animationCounter->getValue(), 7.0);
+
+    // Nuclear animation: clock/timer reflects the simulated time it is fed.
+    auto* animationTimer = new AnimationTimer(&scene);
+    animationTimer->setRect(0.0, 0.0, 80.0, 40.0);
+    scene.addItem(animationTimer);
+    ASSERT_TRUE(scene.addDrawingAnimation(animationTimer));
+
+    scene.animateTimer(240.0);
+    EXPECT_DOUBLE_EQ(animationTimer->getTime(), 240.0);
+
+    // Nuclear animation: statistics collector links by target name and refreshes.
+    auto* collectorDefinition = new StatisticsCollector(model, "WaitTimeCollector");
+    ASSERT_NE(collectorDefinition->getStatistics(), nullptr);
+    auto* stats = new AnimationStatistics();
+    stats->setTargetName(QStringLiteral("WaitTimeCollector"));
+    stats->setRect(0.0, 0.0, 80.0, 40.0);
+    scene.addItem(stats);
+    ASSERT_TRUE(scene.addDrawingAnimation(stats));
+
+    scene.setStatisticsCollectors();
+    scene.animateStatistics();
+    EXPECT_NE(stats->getCollector(), nullptr);
+    EXPECT_EQ(stats->getCollector(), collectorDefinition->getStatistics()->getCollector());
 }
 
 int main(int argc, char** argv) {

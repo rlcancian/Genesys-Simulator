@@ -81,7 +81,8 @@ public:
 	}
 
 	std::vector<std::string> requiredModelPlugins() const override {
-		return {};
+		// Resource animation only makes sense when the Resource model plugin is loaded.
+		return {"Resource"};
 	}
 
 	void registerContributions(GuiExtensionRegistry* registry) const override {

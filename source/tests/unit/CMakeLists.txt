@@ -282,7 +282,13 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             FOLDER tests/unit
     )
 
+    # Prefix discovered ctest names with the target name so filters such as
+    # `ctest -R 'gui_animation_dispatch|animation'` select this suite, and defer
+    # discovery to test time (PRE_TEST) so the binary's offscreen Qt platform is
+    # active when GoogleTest enumerates the cases.
     gtest_discover_tests(genesys_test_gui_animation_dispatch
+        TEST_PREFIX "gui_animation_dispatch."
+        DISCOVERY_MODE PRE_TEST
         PROPERTIES
             LABELS "unit;gui;animation"
     )

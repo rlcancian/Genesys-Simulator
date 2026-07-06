@@ -23,7 +23,8 @@ public:
 	}
 
 	std::vector<std::string> requiredModelPlugins() const override {
-		return {};
+		// Queue animation only makes sense when the Queue model plugin is loaded.
+		return {"Queue"};
 	}
 
 	void registerContributions(GuiExtensionRegistry* registry) const override {

@@ -81,7 +81,8 @@ public:
 	}
 
 	std::vector<std::string> requiredModelPlugins() const override {
-		return {};
+		// Station animation only makes sense when the Station model plugin is loaded.
+		return {"Station"};
 	}
 
 	void registerContributions(GuiExtensionRegistry* registry) const override {

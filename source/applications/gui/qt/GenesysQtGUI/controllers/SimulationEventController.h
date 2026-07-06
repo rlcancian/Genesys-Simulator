@@ -10,6 +10,8 @@
 class MainWindow;
 class ModelGraphicsScene;
 class ModelGraphicsView;
+class Event;
+class ModelComponent;
 class QLabel;
 class QProgressBar;
 class QTableWidget;
@@ -90,6 +92,20 @@ public:
     void onMoveEntityEvent(SimulationEvent* re) const;
     /** @brief Handles after-process event updates used by animation/frame synchronization. */
     void onAfterProcessEvent(SimulationEvent* re) const;
+    /**
+     * @brief Runs the entity-move animation pipeline from the kernel event alone.
+     *
+     * Extracted from onMoveEntityEvent so the animation dispatch can be exercised with a
+     * plain kernel Event, without constructing a replication-scoped SimulationEvent.
+     */
+    void updateMoveEntityAnimations(Event* currentEvent, ModelComponent* destinationComponent) const;
+    /**
+     * @brief Runs the after-process animation pipeline from the kernel event alone.
+     *
+     * Extracted from onAfterProcessEvent for the same testability reason as
+     * updateMoveEntityAnimations.
+     */
+    void updateAfterProcessAnimations(Event* currentEvent) const;
     /** @brief Registers kernel on-event callbacks through MainWindow compatibility façade wrappers. */
     void setOnEventHandlers(MainWindow* owner) const;
 
