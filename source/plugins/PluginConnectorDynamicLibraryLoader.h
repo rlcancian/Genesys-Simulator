@@ -18,9 +18,9 @@
 #include <map>
 #include <string>
 
-#include "../kernel/simulator/Plugin.h"
-#include "../kernel/simulator/PluginConnector_if.h"
-#include "../kernel/util/List.h"
+#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/PluginConnector_if.h"
+#include "kernel/util/List.h"
 
 class PluginConnectorDynamicLibraryLoader : public PluginConnector_if {
 public:

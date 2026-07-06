@@ -7,7 +7,6 @@
 
 #include <dlfcn.h>
 
-#include "../kernel/TraitsKernel.h"
 #include "../kernel/simulator/PluginInformation.h"
 #include "./PluginConnectorDynamicLibraryLoader.h"
 #include "StaticCppCompiler.h"
@@ -57,16 +56,21 @@ List<Plugin*>* PluginConnectorDynamicLibraryLoader::connect(
   auto *plugins = new List<Plugin*>();
   for (int i = 0;; ++i) {
     std::string symbol = "GetPluginInformation_" + std::to_string(i);
-    dlerror();
+    dlerror(); // clear old dlerror
     auto fn = reinterpret_cast<StaticGetPluginInformation>(
         dlsym(handle, symbol.c_str()));
-    if (!fn) break;
+
+    // TODO: Find a way to differentiate between end of search
+    // and missing symbols. Maybe the SO can also expose the
+    // expected number of plugins it contains?
+    if (!fn) break; 
 
     PluginInformation *info = fn();
     std::string typeName = info->getPluginTypename();
     if (_pluginRegistry.find(typeName) != _pluginRegistry.end())
       continue;
 
+    // Save handle for later clean up.
     _pluginRegistry[typeName] = handle;
     plugins->insert(new Plugin(fn));
   }
@@ -75,6 +79,7 @@ List<Plugin*>* PluginConnectorDynamicLibraryLoader::connect(
 
 List<std::string>* PluginConnectorDynamicLibraryLoader::find() {
   namespace fs = std::filesystem;
+
   std::vector<std::string> names;
   auto scan = [&](const fs::path &dir) {
     if (!fs::exists(dir)) return;
@@ -110,6 +115,15 @@ bool PluginConnectorDynamicLibraryLoader::disconnect(
 }
 
 bool PluginConnectorDynamicLibraryLoader::disconnect(Plugin *plugin) {
+  std::string typeName = plugin->getPluginInfo()->getPluginTypename();
+  if (_pluginRegistry.find(typeName) != _pluginRegistry.end()) {
+    void* handle = _pluginRegistry[typeName];
+    _pluginRegistry.erase(typeName);
+
+    int closed = dlclose(handle);
+    if (closed != 0)
+      throw PluginConnectorDynamicLibraryLoaderError(dlerror());
+  }
   return true;
 }
 
@@ -117,8 +131,10 @@ std::string
 PluginConnectorDynamicLibraryLoader::_stripDynamicLibraryFileExtension(
     std::string filename) const {
   std::string stripped;
+  // Unix
   if (filename.substr(filename.size() - 3, filename.size()) == ".so") {
     stripped = filename.substr(0, filename.size() - 3);
+  // Windows
   } else if (filename.substr(filename.size() - 4, filename.size()) == ".dll") {
     stripped = filename.substr(0, filename.size() - 4);
   }

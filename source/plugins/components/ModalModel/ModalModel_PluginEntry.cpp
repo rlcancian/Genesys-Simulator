@@ -3,7 +3,6 @@
 #include "kernel/simulator/PluginInformation.h"
 #include "plugins/components/ModalModel/CellularAutomataComp.h"
 #include "plugins/components/ModalModel/DefaultNode.h"
-#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/ModalModel/ModalModelFSM.h"
@@ -13,7 +12,6 @@
 
 extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &CellularAutomataComp::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_1() { return &DefaultNode::GetPluginInformation; }
-// extern "C" StaticGetPluginInformation GetPluginInformation_2() { return &DefaultTransitionExtensions::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_2() { return &FSMState::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_3() { return &ModalModelDefault::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_4() { return &ModalModelFSM::GetPluginInformation; }

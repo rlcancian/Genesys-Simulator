@@ -5,7 +5,6 @@
 #include "plugins/components/MaterialHandling/Enter.h"
 #include "plugins/components/MaterialHandling/Exit.h"
 #include "plugins/components/MaterialHandling/Leave.h"
-#include "plugins/components/MaterialHandling/PickableStationItem.h"
 #include "plugins/components/MaterialHandling/PickStation.h"
 #include "plugins/components/MaterialHandling/Route.h"
 #include "plugins/components/MaterialHandling/Start.h"
@@ -17,7 +16,6 @@ extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &Access:
 extern "C" StaticGetPluginInformation GetPluginInformation_1() { return &Enter::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_2() { return &Exit::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_3() { return &Leave::GetPluginInformation; }
-// extern "C" StaticGetPluginInformation GetPluginInformation_4() { return &PickableStationItem::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_4() { return &PickStation::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_5() { return &Route::GetPluginInformation; }
 extern "C" StaticGetPluginInformation GetPluginInformation_6() { return &Start::GetPluginInformation; }
