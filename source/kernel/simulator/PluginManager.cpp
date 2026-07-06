@@ -133,15 +133,13 @@ PluginManager::~PluginManager() {
 }
 
 List<Plugin*>* PluginManager::_autoFindPlugins(const PluginInsertionOptions& options) {
-	if (_pluginConnector == nullptr) {
-		return completePluginsFieldsAndTemplates();
-	}
-	std::unique_ptr<List<std::string>> filenames(_pluginConnector->find());
-	if (filenames == nullptr) {
-		return completePluginsFieldsAndTemplates();
-	}
-	for (const std::string& filename : *filenames->list()) {
-		insert(filename, options);
+	if (_pluginConnector != nullptr) {
+		std::unique_ptr<List<std::string>> filenames(_pluginConnector->find());
+		if (filenames != nullptr) {
+			for (const std::string& filename : *filenames->list()) {
+				insert(filename, options);
+			}
+		}
 	}
 	return completePluginsFieldsAndTemplates();
 }
@@ -164,6 +162,7 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string& pluginsListFi
 		fullFilename = pluginsListFilename;
 	else	// relative path
 		fullFilename = Util::RunningPath()+Util::DirSeparator()+pluginsListFilename;
+
 	std::ifstream file(fullFilename, std::ifstream::in);
 	if (file.is_open()) {
 		while (std::getline(file, line)) {
