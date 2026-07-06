@@ -17,7 +17,7 @@
 #include <utility>
 #include "PluginManager.h"
 #include "Simulator.h"
-#include "../TraitsKernel.h"
+#include "kernel/TraitsKernel.h"
 #include "essentialPlugins/Attribute.h"
 #include "essentialPlugins/Counter.h"
 #include "essentialPlugins/EntityType.h"
@@ -144,21 +144,6 @@ List<Plugin*>* PluginManager::_autoFindPlugins(const PluginInsertionOptions& opt
 		insert(filename, options);
 	}
 	return completePluginsFieldsAndTemplates();
-}
-
-List<Plugin*>* PluginManager::autoInsertPlugins() {
-	PluginInsertionOptions options;
-    return autoInsertPlugins("", true, options);
-}
-
-List<Plugin*>* PluginManager::autoInsertPlugins(const PluginInsertionOptions& options) {
-    return autoInsertPlugins("", true, options);
-}
-
-List<Plugin*>* PluginManager::autoInsertPlugins(const std::string& pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)
-{
-	PluginInsertionOptions options;
-	return autoInsertPlugins(pluginsListFilename, lookForPluginsIfFilenameNotFound, options);
 }
 
 List<Plugin*>* PluginManager::autoInsertPlugins(const std::string& pluginsListFilename,

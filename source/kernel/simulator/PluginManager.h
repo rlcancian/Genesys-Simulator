@@ -156,17 +156,10 @@ public:
 	std::vector<std::string> getDataDefinitionPluginTypenames() const;
 	/*! \brief Returns the source include path for a connected plugin type. */
 	std::string sourceIncludePathFor(const std::string& pluginTypeName);
-	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */
-	List<Plugin*>* autoInsertPlugins(const std::string& pluginsListFilename,
-	                                 const bool lookForPluginsIfFilenameNotFound = true);
 	/*! \brief Auto-loads plugins listed in file using insertion policy hooks. */
-	List<Plugin*>* autoInsertPlugins(const std::string& pluginsListFilename,
-	                                 const bool lookForPluginsIfFilenameNotFound,
-	                                 const PluginInsertionOptions& options);
-	/*! \brief Auto-loads plugins discovered automatically). */
-	List<Plugin*>* autoInsertPlugins();
-	/*! \brief Auto-loads plugins discovered automatically using insertion policy hooks. */
-	List<Plugin*>* autoInsertPlugins(const PluginInsertionOptions& options);
+	List<Plugin*>* autoInsertPlugins(const std::string& pluginsListFilename="",
+	                                 const bool lookForPluginsIfFilenameNotFound=true,
+	                                 const PluginInsertionOptions& options=PluginInsertionOptions());
 
 public:
 	/*! \brief Returns the first plugin in the internal plugin list. */
