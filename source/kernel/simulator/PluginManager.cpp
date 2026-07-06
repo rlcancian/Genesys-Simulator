@@ -446,7 +446,7 @@ void PluginManager::_removeLoadIssue(const std::string& dynamicLibraryFilename, 
 	}
 }
 
-Plugin* PluginManager::insert(const std::string& dynamicLibraryFilename) {
+List<Plugin*>* PluginManager::insert(const std::string& dynamicLibraryFilename) {
 	PluginInsertionOptions options;
 	return insert(dynamicLibraryFilename, options);
 }

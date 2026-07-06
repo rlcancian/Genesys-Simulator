@@ -139,9 +139,9 @@ public:
 	/*! \brief Removes stored diagnostics for one plugin candidate filename. */
 	void clearPluginLoadIssue(const std::string& dynamicLibraryFilename);
 	/*! \brief Loads and inserts a plugin from a dynamic library file. */
-	Plugin* insert(const std::string& dynamicLibraryFilename);
+	List<Plugin*>* insert(const std::string& dynamicLibraryFilename);
 	/*! \brief Loads and inserts a plugin, optionally asking the caller to authorize dependency installation. */
-	Plugin* insert(const std::string& dynamicLibraryFilename, const PluginInsertionOptions& options);
+	List<Plugin*>* insert(const std::string& dynamicLibraryFilename, const PluginInsertionOptions& options);
 	/*! \brief Removes/disconnects a plugin by its dynamic library filename. */
 	bool remove(const std::string& dynamicLibraryFilename);
 	/*! \brief Removes/disconnects a plugin by pointer. */
