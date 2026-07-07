@@ -31,6 +31,12 @@ set(GENESYS_QT_GUI_TERMINAL_FALLBACK_SOURCES
     ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
 )
 
+set(GENESYS_EXTRA_PLUGIN_LIB "")
+if(GENESYS_DYNAMIC_PLUGINS)
+    set_target_properties(genesys_terminal_application PROPERTIES ENABLE_EXPORTS ON)
+    set(GENESYS_EXTRA_PLUGIN_LIB genesys_plugins_data_shared)
+endif()
+
 add_executable(genesys_qt_gui_application
     ${GENESYS_QT_GUI_SOURCES}
     ${GENESYS_QT_GUI_HEADERS}
@@ -55,7 +61,7 @@ target_link_libraries(genesys_qt_gui_application
         ${GENESYS_QT_PACKAGE}::Widgets
         ${GENESYS_QT_PACKAGE}::PrintSupport
         ${GENESYS_QT_PACKAGE}::Network
-        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_web_core,genesys_tools>"
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,${GENESYS_EXTRA_PLUGIN_LIB}genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_web_core,genesys_tools>"
 )
 
 target_compile_features(genesys_qt_gui_application PRIVATE cxx_std_23)

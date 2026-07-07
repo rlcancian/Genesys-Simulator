@@ -8,13 +8,23 @@
 #include "plugins/components/BiochemicalSimulation/GeneticCircuitSimulate.h"
 #include "plugins/components/BiochemicalSimulation/GeneticExpressionStep.h"
 #include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
+#include <vector>
 
-extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &BacteriaColony::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_1() { return &BioRunnerCommand::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_2() { return &BioSimulate::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_3() { return &BioSteadyState::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_4() { return &GeneticCircuitSimulate::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_5() { return &GeneticExpressionStep::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_6() { return &MetabolicFluxBalance::GetPluginInformation; }
+extern "C" std::vector<StaticGetPluginInformation> GetAllDataPluginInformation();
+
+extern "C" std::vector<StaticGetPluginInformation> GetAllPluginInformation() {
+    std::vector<StaticGetPluginInformation> plugins = {
+        &BacteriaColony::GetPluginInformation,
+        &BioRunnerCommand::GetPluginInformation,
+        &BioSimulate::GetPluginInformation,
+        &BioSteadyState::GetPluginInformation,
+        &GeneticCircuitSimulate::GetPluginInformation,
+        &GeneticExpressionStep::GetPluginInformation,
+        &MetabolicFluxBalance::GetPluginInformation
+    };
+    auto dataPlugins = GetAllDataPluginInformation();
+    plugins.insert(plugins.end(), dataPlugins.begin(), dataPlugins.end());
+    return plugins;
+}
 
 #endif // PLUGINCONNECT_DYNAMIC

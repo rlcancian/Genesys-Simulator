@@ -162,7 +162,8 @@
       "name": "terminal-app",
       "configurePreset": "terminal-app",
       "targets": [
-        "genesys_terminal_application"
+        "genesys_terminal_application",
+        "genesys_plugins_dynamic"
       ]
     },
     {

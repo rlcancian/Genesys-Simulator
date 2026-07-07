@@ -29,17 +29,17 @@ List<Plugin*>* PluginConnectorDynamicLibraryLoader::check(
     throw PluginConnectorDynamicLibraryLoaderError(
         ("Unable to check plugin: " + std::string(err.what())).c_str());
   }
-
   auto *plugins = new List<Plugin*>();
-  for (int i = 0;; ++i) {
-    std::string symbol = "GetPluginInformation_" + std::to_string(i);
-    dlerror();
-    auto fn = reinterpret_cast<StaticGetPluginInformation>(
-        dlsym(handle, symbol.c_str()));
-    if (!fn) break;
-    plugins->insert(new Plugin(fn));
+  using GetAllPluginInformation = std::vector<StaticGetPluginInformation> (*)();
+  dlerror();
+  auto getAll = reinterpret_cast<GetAllPluginInformation>(
+      dlsym(handle, "GetAllPluginInformation"));
+  if (getAll) {
+    for (auto fn : getAll()) {
+      plugins->insert(new Plugin(fn));
+    }
   }
-  dlclose(handle); 
+  dlclose(handle);
   return plugins;
 }
 
@@ -52,27 +52,20 @@ List<Plugin*>* PluginConnectorDynamicLibraryLoader::connect(
     throw PluginConnectorDynamicLibraryLoaderError(
         ("Unable to connect to plugin: " + std::string(err.what())).c_str());
   }
-
   auto *plugins = new List<Plugin*>();
-  for (int i = 0;; ++i) {
-    std::string symbol = "GetPluginInformation_" + std::to_string(i);
-    dlerror(); // clear old dlerror
-    auto fn = reinterpret_cast<StaticGetPluginInformation>(
-        dlsym(handle, symbol.c_str()));
-
-    // TODO: Find a way to differentiate between end of search
-    // and missing symbols. Maybe the SO can also expose the
-    // expected number of plugins it contains?
-    if (!fn) break; 
-
-    PluginInformation *info = fn();
-    std::string typeName = info->getPluginTypename();
-    if (_pluginRegistry.find(typeName) != _pluginRegistry.end())
-      continue;
-
-    // Save handle for later clean up.
-    _pluginRegistry[typeName] = handle;
-    plugins->insert(new Plugin(fn));
+  using GetAllPluginInformation = std::vector<StaticGetPluginInformation> (*)();
+  dlerror();
+  auto getAll = reinterpret_cast<GetAllPluginInformation>(
+      dlsym(handle, "GetAllPluginInformation"));
+  if (getAll) {
+    for (auto fn : getAll()) {
+      PluginInformation *info = fn();
+      std::string typeName = info->getPluginTypename();
+      if (_pluginRegistry.find(typeName) != _pluginRegistry.end())
+        continue;
+      _pluginRegistry[typeName] = handle;
+      plugins->insert(new Plugin(fn));
+    }
   }
   return plugins;
 }

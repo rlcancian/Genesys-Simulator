@@ -2,7 +2,10 @@
 
 #include "kernel/simulator/PluginInformation.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
+#include <vector>
 
-extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &MarkovChain::GetPluginInformation; }
+extern "C" std::vector<StaticGetPluginInformation> GetAllPluginInformation() {
+    return { &MarkovChain::GetPluginInformation };
+}
 
 #endif // PLUGINCONNECT_DYNAMIC

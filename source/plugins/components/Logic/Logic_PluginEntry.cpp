@@ -4,9 +4,14 @@
 #include "plugins/components/Logic/Assign.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
+#include <vector>
 
-extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &Assign::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_1() { return &Create::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_2() { return &Dispose::GetPluginInformation; }
+extern "C" std::vector<StaticGetPluginInformation> GetAllPluginInformation() {
+    return {
+        &Assign::GetPluginInformation,
+        &Create::GetPluginInformation,
+        &Dispose::GetPluginInformation
+    };
+}
 
 #endif // PLUGINCONNECT_DYNAMIC

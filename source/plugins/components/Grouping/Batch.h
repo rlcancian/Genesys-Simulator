@@ -14,9 +14,9 @@
 #ifndef BATCH_H
 #define BATCH_H
 
-#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "kernel/simulator/model/ModelComponent.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "../../data/Grouping/EntityGroup.h"
+#include "plugins/data/Grouping/EntityGroup.h"
 /*!
 Batch module
 DESCRIPTION

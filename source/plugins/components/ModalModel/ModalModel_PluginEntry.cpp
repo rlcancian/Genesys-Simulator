@@ -9,14 +9,19 @@
 #include "plugins/components/ModalModel/ModalModelPetriNet.h"
 #include "plugins/components/ModalModel/PetriPlace.h"
 #include "plugins/components/ModalModel/Submodel.h"
+#include <vector>
 
-extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &CellularAutomataComp::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_1() { return &DefaultNode::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_2() { return &FSMState::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_3() { return &ModalModelDefault::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_4() { return &ModalModelFSM::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_5() { return &ModalModelPetriNet::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_6() { return &PetriPlace::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_7() { return &Submodel::GetPluginInformation; }
+extern "C" std::vector<StaticGetPluginInformation> GetAllPluginInformation() {
+    return {
+        &CellularAutomataComp::GetPluginInformation,
+        &DefaultNode::GetPluginInformation,
+        &FSMState::GetPluginInformation,
+        &ModalModelDefault::GetPluginInformation,
+        &ModalModelFSM::GetPluginInformation,
+        &ModalModelPetriNet::GetPluginInformation,
+        &PetriPlace::GetPluginInformation,
+        &Submodel::GetPluginInformation
+    };
+}
 
 #endif // PLUGINCONNECT_DYNAMIC

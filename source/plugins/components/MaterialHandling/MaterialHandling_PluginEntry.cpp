@@ -11,16 +11,26 @@
 #include "plugins/components/MaterialHandling/Stop.h"
 #include "plugins/components/MaterialHandling/Store.h"
 #include "plugins/components/MaterialHandling/Unstore.h"
+#include <vector>
 
-extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &Access::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_1() { return &Enter::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_2() { return &Exit::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_3() { return &Leave::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_4() { return &PickStation::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_5() { return &Route::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_6() { return &Start::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_7() { return &Stop::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_8() { return &Store::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_9() { return &Unstore::GetPluginInformation; }
+extern "C" std::vector<StaticGetPluginInformation> GetAllDataPluginInformation();
+
+extern "C" std::vector<StaticGetPluginInformation> GetAllPluginInformation() {
+    std::vector<StaticGetPluginInformation> plugins = {
+        &Access::GetPluginInformation,
+        &Enter::GetPluginInformation,
+        &Exit::GetPluginInformation,
+        &Leave::GetPluginInformation,
+        &PickStation::GetPluginInformation,
+        &Route::GetPluginInformation,
+        &Start::GetPluginInformation,
+        &Stop::GetPluginInformation,
+        &Store::GetPluginInformation,
+        &Unstore::GetPluginInformation
+    };
+    auto dataPlugins = GetAllDataPluginInformation();
+    plugins.insert(plugins.end(), dataPlugins.begin(), dataPlugins.end());
+    return plugins;
+}
 
 #endif // PLUGINCONNECT_DYNAMIC

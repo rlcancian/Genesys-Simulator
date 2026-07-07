@@ -91,8 +91,10 @@ add_executable(genesys_terminal_application
     ${GENESYS_TERMINAL_APPLICATION_SOURCES}
 )
 
+set(GENESYS_EXTRA_PLUGIN_LIB "")
 if(GENESYS_DYNAMIC_PLUGINS)
     set_target_properties(genesys_terminal_application PROPERTIES ENABLE_EXPORTS ON)
+    set(GENESYS_EXTRA_PLUGIN_LIB genesys_plugins_data_shared)
 endif()
 
 target_include_directories(genesys_terminal_application
@@ -108,7 +110,7 @@ target_compile_definitions(genesys_terminal_application
 
 target_link_libraries(genesys_terminal_application
     PRIVATE
-        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_plugin_connector,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,${GENESYS_EXTRA_PLUGIN_LIB},genesys_plugins_components_minimal,genesys_plugin_connector,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
 )
 
 target_compile_features(genesys_terminal_application PRIVATE cxx_std_23)

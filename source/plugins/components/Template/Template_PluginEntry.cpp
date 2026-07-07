@@ -2,7 +2,10 @@
 
 #include "kernel/simulator/PluginInformation.h"
 #include "plugins/components/Template/DummyComponent.h"
+#include <vector>
 
-extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &DummyComponent::GetPluginInformation; }
+extern "C" std::vector<StaticGetPluginInformation> GetAllPluginInformation() {
+    return { &DummyComponent::GetPluginInformation };
+}
 
 #endif // PLUGINCONNECT_DYNAMIC

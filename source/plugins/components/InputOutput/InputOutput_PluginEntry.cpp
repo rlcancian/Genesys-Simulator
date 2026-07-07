@@ -3,8 +3,18 @@
 #include "kernel/simulator/PluginInformation.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
+#include <vector>
 
-extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &Record::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_1() { return &Write::GetPluginInformation; }
+extern "C" std::vector<StaticGetPluginInformation> GetAllDataPluginInformation();
+
+extern "C" std::vector<StaticGetPluginInformation> GetAllPluginInformation() {
+    std::vector<StaticGetPluginInformation> plugins = {
+        &Record::GetPluginInformation,
+        &Write::GetPluginInformation
+    };
+    auto dataPlugins = GetAllDataPluginInformation();
+    plugins.insert(plugins.end(), dataPlugins.begin(), dataPlugins.end());
+    return plugins;
+}
 
 #endif // PLUGINCONNECT_DYNAMIC

@@ -1,15 +1,21 @@
 #ifdef PLUGINCONNECT_DYNAMIC
 
+#include "kernel/simulator/PluginInformation.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/Decisions/DropOff.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/Decisions/Search.h"
+#include <vector>
 
-extern "C" StaticGetPluginInformation GetPluginInformation_0() { return &Decide::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_1() { return &PickUp::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_2() { return &DropOff::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_3() { return &Remove::GetPluginInformation; }
-extern "C" StaticGetPluginInformation GetPluginInformation_4() { return &Search::GetPluginInformation; }
+extern "C" std::vector<StaticGetPluginInformation> GetAllPluginInformation() {
+    return {
+        &Decide::GetPluginInformation,
+        &PickUp::GetPluginInformation,
+        &DropOff::GetPluginInformation,
+        &Remove::GetPluginInformation,
+        &Search::GetPluginInformation
+    };
+}
 
-#endif
+#endif // PLUGINCONNECT_DYNAMIC
