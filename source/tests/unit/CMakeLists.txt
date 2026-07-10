@@ -35,6 +35,12 @@ if(NOT TARGET genesys_tools)
     add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-unit-tests)
 endif()
 
+genesys_add_unit_test(genesys_test_data_analyzer
+    test_data_analyzer.cpp
+    genesys_tools
+    genesys_kernel_statistics
+)
+
 genesys_add_unit_test(genesys_test_simulator_runtime
     test_simulator_runtime.cpp
     genesys_tools
