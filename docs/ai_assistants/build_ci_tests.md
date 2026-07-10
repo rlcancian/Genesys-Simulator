@@ -66,7 +66,7 @@ The current GitHub Actions workflow is `.github/workflows/genesys-ci.yml`.
 
 It runs on Ubuntu 24.04 for pull requests targeting `2026-1`, `WorkInProgress`, `WiP20261`, `currentStable`, and `master`. It also supports manual workflow dispatch.
 
-The workflow installs build-essential, CMake, Ninja, Python 3, Qt6 base/tools packages, and OpenGL development dependencies. It then lists presets, configures `tests-unit`, builds `tests-unit`, and runs CTest with the `tests-unit` preset.
+The workflow installs build-essential, CMake, Ninja, Python 3, Qt6 base/tools packages, OpenGL development dependencies, and the plugin-runtime dependencies used by the unit tests: `libsbml5-dev`, `ngspice`, `r-base`, and `octave`. It then lists presets, configures `tests-unit`, builds `tests-unit`, and runs CTest with the `tests-unit` preset.
 
 ## Historical notes consolidated from oldies
 
