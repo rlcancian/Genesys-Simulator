@@ -1,0 +1,36 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=215.640660 replicationBaseTimeUnit=6 replicationLength=179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000 numberOfReplications=300 terminatingCondition="count(DeliverOrder.CountNumberIn)>1000 or (((count(OrdersArrive.CountNumberOut)-count(DeliverOrder.CountNumberIn))*2)>=150)" replicationLengthTimeUnit=9 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Entity1" 
+138 Variable   "Serial" valuePos[0]="" values=1 
+139 Attribute  "SerialNumber" 
+143 Resource   "Clerk1" capacity=2 
+155 Queue      "FillOrder.Queue" 
+162 Attribute  "Entity.TotalWaitTime" 
+164 Resource   "Clerk2" capacity=2 
+176 Queue      "ProcessBillingInformation.Queue" 
+185 Queue      "AttachBillToOrder.Queue" 
+188 EntityGroup "AttachBillToOrder.EntiyGroup" 
+190 Attribute  "Entity.Group" 
+
+# Model Components
+132 Create     "OrdersArrive" entityType="Entity1" timeBetweenCreationsTimeUnit=6 nextId=140 timeBetweenCreations="expo(5.0)" 
+140 Assign     "Assign_serial_number" assignExpr[1]="Serial" assignIsAttrib[0]=0 assignExpr[0]="Serial + 1" assignments=2 nextId=141 assignDest[0]="Serial" assignDest[1]="SerialNumber" 
+141 Clone      "DuplicateTheOrderEntity" nextId[0]=158 nextId[1]=179 nexts=2 reportStatistics=0 
+158 Process    "FillOrder" delayExpression="unif(5.0,15.0)" delayExpressionTimeUnit=6 queueable="FillOrder.Queue" nextId=184 requestSeizable[0]="Clerk1" 
+159 Seize      "FillOrder.Seize" queueable="FillOrder.Queue" nextId=160 requestSeizable[0]="Clerk1" 
+160 Delay      "FillOrder.Delay" delayExpressionTimeUnit=6 delayExpression="unif(5.0,15.0)" nextId=163 
+163 Release    "FillOrder.Release" resquests=0 nexts=0 
+179 Process    "ProcessBillingInformation" delayExpression="unif(8.0,15.0)" delayExpressionTimeUnit=6 queueable="ProcessBillingInformation.Queue" nextId=184 requestSeizable[0]="Clerk2" 
+180 Seize      "ProcessBillingInformation.Seize" queueable="ProcessBillingInformation.Queue" nextId=181 requestSeizable[0]="Clerk2" 
+181 Delay      "ProcessBillingInformation.Delay" delayExpressionTimeUnit=6 delayExpression="unif(8.0,15.0)" nextId=183 
+183 Release    "ProcessBillingInformation.Release" resquests=0 nexts=0 
+184 Batch      "AttachBillToOrder" groupedEntityType="Entity1" attributeName="SerialNumber" groupedAttributes=1 rule=1 nextId=191 
+191 Dispose    "DeliverOrder" nexts=0 

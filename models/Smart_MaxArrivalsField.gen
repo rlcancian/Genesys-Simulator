@@ -1,0 +1,16 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=6.000000 replicationBaseTimeUnit=6 replicationLength=120.000000 numberOfReplications=300 replicationLengthTimeUnit=6 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Create1" 
+
+# Model Components
+132 Create     "Create_1" entityType="Create1" maxCreations="MAX ( (TNOW < 120) * 10000 , (TNOW >= 120) * 1 )" timeBetweenCreationsTimeUnit=6 nextId=138 timeBetweenCreations="expo(2)" 
+138 Record     "HowMany" fileName="./temp/Smart_MaxArrivalsField_Record.txt" timeDependent=1 description="Number of entities observed by the Record component." randomVariableName="Arrivals observed" nextId=140 datasetName="Arrivals Observed Dataset" expressionName="Arrivals observed" expression="COUNT(HowMany.CountNumberIn)" 
+140 Dispose    "Dispose_1" nexts=0 

@@ -55,6 +55,9 @@ public:
 	/*! \brief Replaces all sparse values with a copy of the provided values. */
 	void setValues(const std::map<std::string, double>& values);
 
+	/*! \brief Replaces this store with a deep copy of another store. */
+	void copyFrom(const SparseValueStore& other);
+
 	/*! \brief Inserts one dimension size at the end of the dimension list. */
 	void insertDimensionSize(unsigned int size);
 
@@ -400,6 +403,10 @@ inline void SparseValueStore::setValues(const std::map<std::string, double>& val
 		return;
 	}
 	rebuildDenseFromCache();
+}
+
+inline void SparseValueStore::copyFrom(const SparseValueStore& other) {
+	*this = other;
 }
 
 inline void SparseValueStore::insertDimensionSize(unsigned int size) {

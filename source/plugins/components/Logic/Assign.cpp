@@ -124,15 +124,7 @@ ModelComponent* Assign::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	for (Assignment* let : *_assignments->list()) {
-		bool expressionOk = false;
-		std::string expressionError;
-		const double value = _parentModel->parseExpression(let->getExpression(), expressionOk, expressionError);
-		if (!expressionOk) {
-			traceError("Assignment expression \"" + let->getExpression() + "\" failed: " + expressionError,
-			           TraceManager::Level::L3_errorRecover);
-			continue;
-		}
-
+		double value = 0.0;
 		const std::string baseDestination = _destinationBaseName(let->getDestination());
 		const std::string indexDestination = _destinationIndex(let->getDestination());
 		if (baseDestination.empty()) {
@@ -150,12 +142,14 @@ void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			if (data == nullptr) {
 				data = new Attribute(_parentModel, baseDestination);
 			}
+			value = _parentModel->parseExpression(let->getExpression());
 			entity->setAttributeValue(baseDestination, value, indexDestination);
 		} else {
 			ModelDataDefinition* data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), baseDestination);
 			if (data == nullptr) {
 				data = new Variable(_parentModel, baseDestination);
 			}
+			value = _parentModel->parseExpression(let->getExpression());
 			static_cast<Variable*>(data)->setValue(value, indexDestination);
 		}
 

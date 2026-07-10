@@ -63,6 +63,10 @@ void Variable::setValue(double value, std::string index) {
 	_values->setValue(value, index);
 }
 
+void Variable::copyValuesFrom(const Variable& source) {
+	_values->copyFrom(*source._values);
+}
+
 std::string Variable::getInitialValuesText() const {
 	return Attribute::getInitialValuesText();
 }

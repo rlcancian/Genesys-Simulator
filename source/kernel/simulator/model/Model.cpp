@@ -27,6 +27,8 @@
 #include "../OnEventManager.h"
 #include "../essentialPlugins/StatisticsCollector.h"
 #include "../../TraitsKernel.h"
+#include "../essentialPlugins/Counter.h"
+#include "../essentialPlugins/StatisticsCollector.h"
 //#include "Access.h"
 
 //using namespace GenesysKernel;
@@ -576,11 +578,21 @@ void Model::_destroyModelDataDefinitions() {
     if (_modeldataManager == nullptr) {
         return;
     }
+    auto isOwnedInternalData = [](ModelDataDefinition* data) -> bool {
+        if (auto* counter = dynamic_cast<Counter*>(data)) {
+            return counter->getParent() != nullptr;
+        }
+        if (auto* collector = dynamic_cast<StatisticsCollector*>(data)) {
+            return collector->getParent() != nullptr;
+        }
+        return false;
+    };
     bool hasPendingNonEntity = true;
     while (hasPendingNonEntity) {
         hasPendingNonEntity = false;
         // Re-evaluate the current class-name snapshot each pass while deleting non-entity data definitions.
         std::list<std::string> types = _modeldataManager->getDataDefinitionClassnames();
+        ModelDataDefinition* fallbackOwnedChild = nullptr;
         for (const std::string& type : types) {
             if (type == Util::TypeOf<Entity>()) {
                 continue;
@@ -589,9 +601,19 @@ void Model::_destroyModelDataDefinitions() {
             if (datadefs != nullptr && !datadefs->empty()) {
                 hasPendingNonEntity = true;
                 ModelDataDefinition* data = datadefs->front();
+                if (isOwnedInternalData(data)) {
+                    if (fallbackOwnedChild == nullptr) {
+                        fallbackOwnedChild = data;
+                    }
+                    continue;
+                }
                 delete data;
+                fallbackOwnedChild = nullptr;
                 break;
             }
+        }
+        if (hasPendingNonEntity && fallbackOwnedChild != nullptr) {
+            delete fallbackOwnedChild;
         }
     }
 }

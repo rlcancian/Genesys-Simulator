@@ -7,7 +7,7 @@ This document describes a **ready-to-use CMake/CLion setup** for running all uni
 Use these presets from `CMakePresets.json`:
 
 - **Configure preset:** `tests-kernel-unit`
-- **Build preset:** `tests-kernel-unit-run`
+- **Build preset:** `tests-kernel-unit`
 - **Build target (executed by the preset):** `genesys_kernel_unit_tests_run`
 
 The `genesys_kernel_unit_tests_run` target:
@@ -21,7 +21,7 @@ The `genesys_kernel_unit_tests_run` target:
 1. Open **Settings/Preferences > Build, Execution, Deployment > CMake**.
 2. Enable **Load CMake presets** (if not already enabled).
 3. Select **Configure preset = `tests-kernel-unit`**.
-4. In the run/build target selector, choose **Build preset = `tests-kernel-unit-run`**.
+4. In the run/build target selector, choose **Build preset = `tests-kernel-unit`**.
 5. Build that preset.
 
 Expected behavior: CLion builds everything required and then runs all kernel unit-test binaries automatically in sequence.
@@ -32,7 +32,7 @@ Expected behavior: CLion builds everything required and then runs all kernel uni
 
 ```bash
 cmake --preset tests-kernel-unit
-cmake --build --preset tests-kernel-unit-run
+cmake --build --preset tests-kernel-unit
 ```
 
 This is equivalent to running the single target `genesys_kernel_unit_tests_run`.

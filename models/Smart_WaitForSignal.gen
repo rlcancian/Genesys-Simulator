@@ -1,0 +1,29 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=462.007714 replicationBaseTimeUnit=6 replicationLength=179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000 numberOfReplications=300 terminatingCondition="(count(Dispose1.CountNumberIn)+count(Dispose2.CountNumberIn))>1000" replicationLengthTimeUnit=9 
+
+# Model Data Definitions
+133 Resource   "Processor" 
+150 EntityType "entitytype" 
+151 Attribute  "Entity.ArrivalTime" 
+152 Attribute  "Entity.Type" 
+153 EntityType "Entity1" 
+157 Queue      "Hold1.Queue" 
+160 SignalData "SignalData_1" 
+162 SignalData "SignalData_2" 
+167 Attribute  "Entity.TotalWaitTime" 
+169 Queue      "Queue_1" 
+
+# Model Components
+148 Create     "Create1" entityType="Entity1" maxCreations="50" timeBetweenCreationsTimeUnit=6 nextId=156 timeBetweenCreations="expo(10)" 
+154 Create     "Create2" entityType="Entity1" maxCreations="50" timeBetweenCreationsTimeUnit=6 nextId=161 timeBetweenCreations="60" 
+156 Wait       "Hold1" signalData="Signal1" queue="Hold1.Queue" nextId=163 
+161 Signal     "Signal1" signalData="Signal1" nextId=176 
+163 Process    "Process1" delayExpression="unif(120.0,240.0)" delayExpressionTimeUnit=6 queueable="Queue_1" allocationType=0 nextId=172 requestSeizable[0]="Processor" 
+164 Seize      "Process1.Seize" queueable="Queue_1" allocationType=0 nextId=165 requestSeizable[0]="Processor" 
+165 Delay      "Process1.Delay" delayExpressionTimeUnit=6 delayExpression="unif(120.0,240.0)" nextId=168 
+168 Release    "Process1.Release" resquests=0 nexts=0 
+172 Dispose    "Dispose1" nexts=0 
+176 Dispose    "Dispose2" nexts=0 

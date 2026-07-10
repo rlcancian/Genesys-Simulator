@@ -1,26 +1,39 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=2 warmUpTimeTimeUnit=7 warmUpTime=0.400000 replicationBaseTimeUnit=6 replicationLength=8.000000 numberOfReplications=3 replicationLengthTimeUnit=7 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=7 warmUpTime=0.400000 replicationBaseTimeUnit=6 replicationLength=8.000000 numberOfReplications=3 replicationLengthTimeUnit=7 
 
 # Model Data Definitions
-61  Attribute  "Wait_Time" 
-62  Attribute  "j" 
-63  Queue      "queue1" 
-64  Resource   "Machine" 
-65  Resource   "Machine_2" 
-76  Queue      "Queue_1" 
+132 Attribute  "Wait_Time" 
+133 Attribute  "j" 
+134 Queue      "queue1" 
+137 Resource   "Machine" 
+149 Resource   "Machine_2" 
+163 EntityType "entitytype" 
+164 Attribute  "Entity.ArrivalTime" 
+165 Attribute  "Entity.Type" 
+171 Attribute  "Entity.TotalWaitTime" 
+178 Queue      "Queue_1" 
+188 Attribute  "Attribute_1" 
+189 Queue      "Search_Queue_for_entities_waiting_more_than_20_time_units.Queue" 
+193 Queue      "Remove_entity_if_in_queue_longer_than_20_time_units.Queue" 
 
 # Model Components
-66  Create     "Entity_Create" entityType="entitytype" maxCreations="200" timeBetweenCreationsTimeUnit=6 nextId=67 timeBetweenCreations="tria(6,7,8)" 
-67  Assign     "Mark_the_time_before_it_enters_the_queue" assignExpr[0]="TNOW" nextId=68 assignDest[0]="Wait_Time" 
-68  Process    "Processing_On_Machine" delayExpression="unif(7,10)" delayExpressionTimeUnit=6 queueable="queue1" nextId=72 requestSeizable[0]="Machine" 
-72  Process    "Secondary_Process" delayExpression="unif(6,9)" delayExpressionTimeUnit=7 queueable="Queue_1" nextId=77 requestSeizable[0]="Machine_2" 
-77  Dispose    "Dispose_Entity" nexts=0 
-78  Create     "Create_Control_Entity" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=79 timeBetweenCreations="1" 
-79  Assign     "assign1" assignExpr[0]="0" nextId=80 assignDest[0]="j" 
-80  Search     "Search_Queue_for_entities_waiting_more_than_20_time_units" nextId[0]=81 nextId[1]=83 nexts=2 
-81  Remove     "Remove_entity_if_in_queue_longer_than_20_time_units" nextId[0]=83 nextId[1]=82 nexts=2 
-82  Assign     "Reassign_Picture_Priority_and_Attribute_Wait_Time" assignExpr[0]="1" assignments=2 nextId=68 assignExpr[2]="TNOW" assignDest[2]="Wait_Time" assignDest[0]="Priority" 
-83  Dispose    "Dispose_of_Control_Entity" nexts=0 
+161 Create     "Entity_Create" entityType="entitytype" maxCreations="200" timeBetweenCreationsTimeUnit=6 nextId=166 timeBetweenCreations="tria(6,7,8)" 
+166 Assign     "Mark_the_time_before_it_enters_the_queue" assignExpr[0]="TNOW" nextId=167 assignDest[0]="Wait_Time" 
+167 Process    "Processing_On_Machine" delayExpression="unif(7,10)" delayExpressionTimeUnit=6 queueable="queue1" nextId=173 requestSeizable[0]="Machine" 
+168 Seize      "Processing_On_Machine.Seize" queueable="queue1" nextId=169 requestSeizable[0]="Machine" 
+169 Delay      "Processing_On_Machine.Delay" delayExpressionTimeUnit=6 delayExpression="unif(7,10)" nextId=172 
+172 Release    "Processing_On_Machine.Release" resquests=0 nexts=0 
+173 Process    "Secondary_Process" delayExpression="unif(6,9)" delayExpressionTimeUnit=7 queueable="Queue_1" nextId=181 requestSeizable[0]="Machine_2" 
+174 Seize      "Secondary_Process.Seize" queueable="Queue_1" nextId=175 requestSeizable[0]="Machine_2" 
+175 Delay      "Secondary_Process.Delay" delayExpressionTimeUnit=7 delayExpression="unif(6,9)" nextId=177 
+177 Release    "Secondary_Process.Release" resquests=0 nexts=0 
+181 Dispose    "Dispose_Entity" nexts=0 
+184 Create     "Create_Control_Entity" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=186 timeBetweenCreations="1" 
+186 Assign     "assign1" assignExpr[0]="0" nextId=187 assignDest[0]="j" 
+187 Search     "Search_Queue_for_entities_waiting_more_than_20_time_units" nextId[0]=192 searchIn="queue1" saveFounRankAttribute="j" searchCondition="( TNOW - 20 ) > Wait_Time" startRank="0" nextId[1]=197 nexts=2 endRank="NQ(queue1)" 
+192 Remove     "Remove_entity_if_in_queue_longer_than_20_time_units" removeEndRank="j" removeFrom="queue1" nextId[0]=197 nextId[1]=196 nexts=2 removeStartRank="j" 
+196 Assign     "Reassign_Picture_Priority_and_Attribute_Wait_Time" assignExpr[1]="TNOW" assignExpr[0]="1" assignments=2 nextId=167 assignDest[0]="Priority" assignDest[1]="Wait_Time" 
+197 Dispose    "Dispose_of_Control_Entity" nexts=0 

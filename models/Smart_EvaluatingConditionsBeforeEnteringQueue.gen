@@ -1,25 +1,29 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=240.000000 replicationBaseTimeUnit=6 replicationLength=4800.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-61  Variable   "procstarttime" 
-62  Variable   "proctime" 
-63  EntityType "Entity_1" 
-65  Attribute  "Time_In" 
-68  Resource   "Resource_1" 
-70  Queue      "Queue_1" 
+132 Variable   "procstarttime" 
+133 Variable   "proctime" 
+134 EntityType "Entity_1" 
+137 EntityType "entitytype" 
+138 Attribute  "Entity.ArrivalTime" 
+139 Attribute  "Entity.Type" 
+140 Attribute  "Time_In" 
+143 Resource   "Resource_1" 
+156 Queue      "Queue_1" 
+161 Attribute  "Entity.TotalWaitTime" 
 
 # Model Components
-64  Create     "Create_Entity" entityType="Entity_1" timeBetweenCreationsTimeUnit=6 nextId=66 timeBetweenCreations="60" 
-66  Assign     "Assign_attribute_time_in_equal_to_current_time_variable_TNOW" assignExpr[0]="TNOW" nextId=67 assignDest[0]="Time_In" 
-67  Decide     "Is_the_remaining_process_time_less_than_20?" condition[0]="mx(0,(proctime - (TNOW - procstarttime))) < 20" conditions=1 nextId[0]=69 nextId[1]=76 nexts=2 
-69  Seize      "Seize_1" queueable="Queue_1" priority==2 allocationType=1 nextId=71 requestSeizable[0]="Resource_1" 
-71  Delay      "Delay_1" allocation=1 delayExpressionTimeUnit=6 delayExpression="0.000000" nextId=72 
-72  Assign     "Assign_variables_Procstarttime_and_Proctime" assignIsAttrib[0]=0 assignExpr[0]="TNOW" assignments=2 nextId=73 assignExpr[2]="expo(480)" assignDest[2]="proctime" assignIsAttrib[2]=0 assignDest[0]="procstarttime" 
-73  Delay      "Delay_2" allocation=1 delayExpressionTimeUnit=6 delayExpression="proctime" nextId=74 
-74  Release    "Release_1" nextId=75 requestSeizable[0]="Resource_1" 
-75  Dispose    "Dispose_of_entity" nexts=0 
-76  Dispose    "Dispose_of_entity_if_condition_not_met" nexts=0 
+135 Create     "Create_Entity" entityType="Entity_1" timeBetweenCreationsTimeUnit=6 nextId=141 timeBetweenCreations="60" 
+141 Assign     "Assign_attribute_time_in_equal_to_current_time_variable_TNOW" assignExpr[0]="TNOW" nextId=142 assignDest[0]="Time_In" 
+142 Decide     "Is_the_remaining_process_time_less_than_20?" condition[0]="mx(0,(proctime - (TNOW - procstarttime))) < 20" conditions=1 nextId[0]=155 nextId[1]=170 nexts=2 
+155 Seize      "Seize_1" queueable="Queue_1" priority=2 allocationType=0 nextId=159 requestSeizable[0]="Resource_1" 
+159 Delay      "Delay_1" allocation=0 delayExpressionTimeUnit=6 delayExpression="0.000000" nextId=162 
+162 Assign     "Assign_variables_Procstarttime_and_Proctime" assignIsAttrib[1]=0 assignExpr[1]="expo(480)" assignIsAttrib[0]=0 assignExpr[0]="TNOW" assignments=2 nextId=163 assignDest[0]="procstarttime" assignDest[1]="proctime" 
+163 Delay      "Delay_2" allocation=0 delayExpressionTimeUnit=6 delayExpression="proctime" nextId=165 
+165 Release    "Release_1" nextId=166 requestSeizable[0]="Resource_1" 
+166 Dispose    "Dispose_of_entity" nexts=0 
+170 Dispose    "Dispose_of_entity_if_condition_not_met" nexts=0 

@@ -54,7 +54,7 @@ def _conn_err(e: httpx.RequestError) -> dict[str, str]:
 
 @mcp.tool()
 def genesys_health(base_url: str = _DEFAULT_URL) -> dict[str, Any]:
-    """Check that the Genesys web application is reachable.
+    """Check that the Genesys worker application is reachable.
 
     Returns the health status object from GET /health.
     No authentication required.
@@ -248,7 +248,7 @@ def genesys_configure_simulation(
         pause_on_replication: Pause between replications.
         initialize_statistics: Reset statistics counters at start of each replication.
         initialize_system: Reset system state at start of each replication.
-        base_url: Genesys web app base URL.
+        base_url: Genesys worker app base URL.
     """
     try:
         with _client(base_url, token) as c:

@@ -1,0 +1,28 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=30.000000 replicationLength=10.000000 numberOfReplications=50 replicationLengthTimeUnit=7 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Customer" 
+138 Resource   "Transportation_Security_Officer" costIdleTimeUnit=12.000000 costBusyTimeUnit=12.000000 
+150 Queue      "Fila_Officer" 
+156 Attribute  "Entity.TotalWaitTime" 
+159 Resource   "X-Ray_Machine" capacity=2 
+171 Queue      "Fila_X-ray" 
+
+# Model Components
+132 Create     "Create_1" entityType="Customer" timeBetweenCreationsTimeUnit=6 nextId=153 timeBetweenCreations="expo(2)" 
+153 Seize      "Seize_1" queueable="Fila_Officer" nextId=154 requestSeizable[0]="Transportation_Security_Officer" 
+154 Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="TRIA(0.75, 1.5, 3)" nextId=157 
+157 Release    "Release_1" nextId=158 requestSeizable[0]="Transportation_Security_Officer" 
+158 Decide     "Decide_1" condition[0]="UNIF(0,1) > 0.04" conditions=1 nextId[0]=174 nextId[1]=182 nexts=2 
+174 Seize      "Seize_2" queueable="Fila_X-ray" nextId=175 requestSeizable[0]="X-Ray_Machine" 
+175 Delay      "Delay_2" delayExpressionTimeUnit=6 delayExpression="TRIA(1.5, 2.5, 7)" nextId=177 
+177 Release    "Release_2" nextId=178 requestSeizable[0]="X-Ray_Machine" 
+178 Dispose    "Cleared" nexts=0 
+182 Dispose    "Denied" nexts=0 

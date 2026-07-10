@@ -562,6 +562,13 @@ void Attribute::setInitialValues(const std::vector<std::pair<std::string, double
 	}
 }
 
+void Attribute::copyInitialValuesFrom(const Attribute& source) {
+	_initialValues->copyFrom(*source._initialValues);
+	_initialValuesTextValid = source._initialValuesTextValid;
+	_initialValuesTextErrorMessage = source._initialValuesTextErrorMessage;
+	_syncInitialValuesTextFromStore();
+}
+
 void Attribute::insertDimentionSize(unsigned int size) {
 	_initialValues->insertDimensionSize(size);
 	_initialValuesTextValid = true;

@@ -64,12 +64,13 @@ private: // attributes 1:1
 
 	const struct DEFAULT_VALUES {
 		const std::string filename = "";
+		const double step = 0.0;
 	} DEFAULT;
 	List<std::string>* _diffEquations = new List<std::string>();
-	Variable* _variable;
-	Variable* _timeVariable;
+	Variable* _variable = nullptr;
+	Variable* _timeVariable = nullptr;
 	std::string _filename = DEFAULT.filename;
-	double _step;
+	double _step = DEFAULT.step;
 private: // attributes 1:n
 };
 

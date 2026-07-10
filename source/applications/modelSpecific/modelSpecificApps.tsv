@@ -1,0 +1,5 @@
+# app|class|header|should_generate|should_validate|expected_model|note
+smarts/Logic/Smart_Parser.cpp|Smart_Parser|smarts/Logic/Smart_Parser.h|no|yes||Parser expression exerciser; no model save by design.
+smarts/Logic/Smart_Plugin.cpp|Smart_Plugin|smarts/Logic/Smart_Plugin.h|no|yes||Plugin inventory exerciser; no model save by design.
+smarts/ModalModel/Smart_Modalmodel.cpp|Smart_ModalModel|smarts/ModalModel/Smart_Modalmodel.h|yes|yes|./models/Smart_ModalModel.gen|Class name differs from the source stem.
+smarts/ModalModel/Smaty_DefaultModalModel.cpp|Smart_DefaultModalModel|smarts/ModalModel/Smart_DefaultModalModel.h|yes|yes|./models/Smart_DefaultModalModel.gen|Historical source stem typo requires header/class override.

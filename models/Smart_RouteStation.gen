@@ -1,22 +1,45 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 replicationLength=20.000000 
 
 # Model Data Definitions
-63  Station    "station1" 
-67  Station    "station2" 
-71  Station    "station3" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+139 Station    "Station_1" 
+143 Attribute  "Entity.Station" 
+144 Attribute  "Entity.ArrivalAtStation_1" 
+145 Attribute  "Entity.TotalTransferTime" 
+146 Attribute  "Entity.Sequence" 
+147 Attribute  "Entity.SequenceStep" 
+148 Station    "station1" 
+151 Attribute  "Entity.ArrivalAtstation1" 
+154 Station    "Station_2" 
+157 Attribute  "Entity.ArrivalAtStation_2" 
+160 Attribute  "Entity.TotalWaitTime" 
+163 Station    "Station_3" 
+166 Attribute  "Entity.ArrivalAtStation_3" 
+167 Station    "station2" 
+170 Attribute  "Entity.ArrivalAtstation2" 
+173 Station    "Station_4" 
+176 Attribute  "Entity.ArrivalAtStation_4" 
+181 Station    "Station_5" 
+184 Attribute  "Entity.ArrivalAtStation_5" 
+185 Station    "station3" 
+188 Attribute  "Entity.ArrivalAtstation3" 
+191 Station    "Station_6" 
+194 Attribute  "Entity.ArrivalAtStation_6" 
 
 # Model Components
-61  Create     "Create_1" entityType="entitytype" nextId=62 timeBetweenCreations="4.0" 
-62  Route      "Route_1" station="station1" routeTimeExpression="0.1" nexts=0 
-64  Enter      "Enter_1" station="station1" nextId=65 
-65  Delay      "Delay_1" nextId=66 
-66  Route      "Route_2" station="station2" routeTimeExpression="0.2" nexts=0 
-68  Enter      "Enter_2" station="station2" nextId=69 
-69  Delay      "Delay_2" nextId=70 
-70  Route      "Route_3" station="station3" routeTimeExpression="0.3" nexts=0 
-72  Enter      "Enter_3" station="station3" nextId=73 
-73  Dispose    "Dispose_1" nexts=0 
+132 Create     "Create_1" entityType="entitytype" nextId=137 timeBetweenCreations="4.0" 
+137 Route      "Route_1" station="station1" routeTimeExpression="0.1" nexts=0 
+152 Enter      "Enter_1" station="station1" nextId=158 
+158 Delay      "Delay_1" nextId=161 
+161 Route      "Route_2" station="station2" routeTimeExpression="0.2" nexts=0 
+171 Enter      "Enter_2" station="station2" nextId=177 
+177 Delay      "Delay_2" nextId=179 
+179 Route      "Route_3" station="station3" routeTimeExpression="0.3" nexts=0 
+189 Enter      "Enter_3" station="station3" nextId=195 
+195 Dispose    "Dispose_1" nexts=0 
