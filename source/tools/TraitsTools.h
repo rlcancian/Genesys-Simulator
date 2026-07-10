@@ -14,11 +14,13 @@
 #define TRAITSTOOLS_H
 
 // TOOLS
-#include "SolverDefaultImpl1.h"
-#include "HypothesisTesterDefaultImpl1.h"
-#include "HypothesisTester_if.h"
-#include "FitterDefaultImpl.h"
-#include "Fitter_if.h"
+#include "AIAssistant/AIAssistant_if.h"
+#include "AIAssistant/AIAssistantDefaultImpl.h"
+#include "Continuous/SolverDefaultImpl1.h"
+#include "Statistics/HypothesisTesterDefaultImpl1.h"
+#include "Statistics/HypothesisTester_if.h"
+#include "Statistics/FitterDefaultImpl.h"
+#include "Statistics/Fitter_if.h"
 
 /**
  * @brief Registry-like traits to bind abstractions to concrete tools classes.
@@ -60,6 +62,13 @@ template <> struct TraitsTools<HypothesisTester_if> {
  */
 template <> struct TraitsTools<Fitter_if> {
 	typedef FitterDefaultImpl Implementation;
+};
+
+/*!
+ *  Configure the AI Assistant to be used
+ */
+template <> struct TraitsTools<AIAssistant_if> {
+	typedef AIAssistantDefaultImpl Implementation;
 };
 
 #endif /* TRAITSTOOLS_H */

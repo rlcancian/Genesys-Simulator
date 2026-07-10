@@ -13,8 +13,8 @@
 #ifndef SIGNALDATA_H
 #define SIGNALDATA_H
 
-#include "kernel/simulator/ModelDataDefinition.h"
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/util/List.h"
 
 class SignalData : public ModelDataDefinition {

@@ -9,6 +9,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdlib>
 
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
@@ -35,30 +36,38 @@ public:
         std::vector<Cell*> neighbors;
         unsigned short numDimensions = parentCellularAutomata->getLattice()->getNumDimensions();
 		std::vector<int> cellPosition = cell->getPosition();
-        // TODO: Redo for n-dims, not switch for every case
-        switch (numDimensions) {
-            case 1:
-                for (int r = 1; r <= radius; r++) {
-                    neighbors.emplace_back(getNeighborCell(cellPosition,{{0, -r}}));
-                    neighbors.emplace_back(getNeighborCell(cellPosition,{{0, -r}}));
-                }
-                break;
-            case 2:
-                for (int r = 1; r <= radius; r++) {
-                    neighbors.emplace_back(getNeighborCell(cellPosition,{{0, -r}}));
-                    neighbors.emplace_back(getNeighborCell(cellPosition,{{0, r}}));
-                    neighbors.emplace_back(getNeighborCell(cellPosition,{{1, -r}}));
-                    neighbors.emplace_back(getNeighborCell(cellPosition,{{1, r}}));
-                    // TODO Só funcina para r=1
-                }
-                break;
-            case 3:
-                break;
-            default:
-                break;
-        }
+
+        std::vector<int> offset(numDimensions, 0);
+        collectNeighbors(cellPosition, offset, 0, neighbors);
+
         if (includeCellItself)
             neighbors.emplace_back(cell);
         return neighbors;
+    }
+private:
+    void collectNeighbors(const std::vector<int>& cellPosition, std::vector<int>& offset, unsigned short dimension, std::vector<Cell*>& neighbors) {
+        if (dimension == offset.size()) {
+            bool isZeroOffset = true;
+            unsigned int manhattanDistance = 0;
+            std::vector<std::pair<unsigned short, int>> dimensionChanges;
+            for (unsigned short dim = 0; dim < offset.size(); ++dim) {
+                int delta = offset.at(dim);
+                manhattanDistance += static_cast<unsigned int>(std::abs(delta));
+                if (delta != 0) {
+                    isZeroOffset = false;
+                    dimensionChanges.emplace_back(dim, delta);
+                }
+            }
+            if (!isZeroOffset && manhattanDistance <= radius) {
+                // Offsets are visited from dimension 0 to n-1.
+                neighbors.emplace_back(getNeighborCell(cellPosition, dimensionChanges));
+            }
+            return;
+        }
+
+        for (int delta = -static_cast<int>(radius); delta <= static_cast<int>(radius); ++delta) {
+            offset.at(dimension) = delta;
+            collectNeighbors(cellPosition, offset, dimension + 1, neighbors);
+        }
     }
 };

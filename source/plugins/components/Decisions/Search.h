@@ -14,7 +14,7 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
 Search module

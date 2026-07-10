@@ -13,7 +13,7 @@
 #ifndef DUMMYELEMENT_H
 #define DUMMYELEMENT_H
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
 class DummyElement : public ModelDataDefinition {

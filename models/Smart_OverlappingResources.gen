@@ -1,21 +1,25 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=2 warmUpTimeTimeUnit=7 warmUpTime=0.400000 replicationBaseTimeUnit=6 replicationLength=8.000000 numberOfReplications=3 replicationLengthTimeUnit=7 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=7 warmUpTime=0.400000 replicationBaseTimeUnit=6 replicationLength=8.000000 numberOfReplications=3 replicationLengthTimeUnit=7 
 
 # Model Data Definitions
-61  Resource   "Resource_3" 
-62  Resource   "Resource_4" 
-63  Queue      "Seize_Resource_3.Queue" 
-64  Queue      "Seize_Resource_4.Queue" 
+132 Resource   "Resource_3" 
+144 Resource   "Resource_4" 
+156 Queue      "Seize_Resource_3.Queue" 
+159 Queue      "Seize_Resource_4.Queue" 
+164 EntityType "entitytype" 
+165 Attribute  "Entity.ArrivalTime" 
+166 Attribute  "Entity.Type" 
+170 Attribute  "Entity.TotalWaitTime" 
 
 # Model Components
-65  Create     "Create_2" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=66 timeBetweenCreations="expo(5)" 
-66  Seize      "Seize_Resource_3" queueable="Seize_Resource_3.Queue" nextId=67 requestSeizable[0]="Resource_3" 
-67  Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="expo(3)" nextId=68 
-68  Seize      "Seize_Resource_4" queueable="Seize_Resource_4.Queue" nextId=69 requestSeizable[0]="Resource_4" 
-69  Release    "Release_Resource_3" nextId=70 requestSeizable[0]="Resource_3" 
-70  Delay      "Delay_2" delayExpressionTimeUnit=6 delayExpression="expo(4)" nextId=71 
-71  Release    "Release_Resource_4" nextId=72 requestSeizable[0]="Resource_4" 
-72  Dispose    "Dispose_2" nexts=0 
+162 Create     "Create_2" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=167 timeBetweenCreations="expo(5)" 
+167 Seize      "Seize_Resource_3" queueable="Seize_Resource_3.Queue" nextId=168 requestSeizable[0]="Resource_3" 
+168 Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="expo(3)" nextId=171 
+171 Seize      "Seize_Resource_4" queueable="Seize_Resource_4.Queue" nextId=172 requestSeizable[0]="Resource_4" 
+172 Release    "Release_Resource_3" nextId=173 requestSeizable[0]="Resource_3" 
+173 Delay      "Delay_2" delayExpressionTimeUnit=6 delayExpression="expo(4)" nextId=175 
+175 Release    "Release_Resource_4" nextId=176 requestSeizable[0]="Resource_4" 
+176 Dispose    "Dispose_2" nexts=0 

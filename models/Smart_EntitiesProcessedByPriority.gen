@@ -1,21 +1,31 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=13.500000 replicationLength=270.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=12.000000 replicationLength=240.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-61  Resource   "Packer" 
-63  EntityType "Regular_Job" 
-69  Queue      "Process1.Queue" 
-71  EntityType "Rush_Job" 
-77  Queue      "Process2.Queue" 
+132 Resource   "Packer" capacity=5 
+146 EntityType "entitytype" 
+147 Attribute  "Entity.ArrivalTime" 
+148 Attribute  "Entity.Type" 
+149 EntityType "Regular_Job" 
+155 Attribute  "Entity.TotalWaitTime" 
+157 Queue      "Process1.Queue" 
+162 EntityType "Rush_Job" 
+169 Queue      "Process2.Queue" 
 
 # Model Components
-62  Create     "Create_1" entityType="Regular_Job" timeBetweenCreationsTimeUnit=6 nextId=64 timeBetweenCreations="expo(3)" 
-64  Assign     "Assign_1" assignExpr[0]="2" nextId=65 assignDest[0]="priority" 
-65  Process    "Process_1" delayExpression="expo(5)" delayExpressionTimeUnit=6 queueable="Process1.Queue" nextId=78 priorityExpression=="priority" requestSeizable[0]="Packer" 
-70  Create     "Create_2" entityType="Rush_Job" timeBetweenCreationsTimeUnit=6 nextId=72 timeBetweenCreations="expo(10)" 
-72  Assign     "Assign_2" assignExpr[0]="1" nextId=73 assignDest[0]="priority" 
-73  Process    "Process_2" delayExpression="expo(5)" delayExpressionTimeUnit=6 queueable="Process2.Queue" nextId=78 priorityExpression=="priority" requestSeizable[0]="Packer" 
-78  Dispose    "Dispose_1" nexts=0 
+144 Create     "Create_1" entityType="Regular_Job" timeBetweenCreationsTimeUnit=6 nextId=150 timeBetweenCreations="expo(3)" 
+150 Assign     "Assign_1" assignExpr[0]="2" nextId=151 assignDest[0]="priority" 
+151 Process    "Process_1" delayExpressionTimeUnit=6 delayExpression="expo(5)" priorityExpression="priority" queueable="Process1.Queue" nextId=172 requestSeizable[0]="Packer" 
+152 Seize      "Process_1.Seize" queueable="Process1.Queue" priorityExpression="priority" nextId=153 requestSeizable[0]="Packer" 
+153 Delay      "Process_1.Delay" delayExpressionTimeUnit=6 delayExpression="expo(5)" nextId=156 
+156 Release    "Process_1.Release" resquests=0 nexts=0 
+160 Create     "Create_2" entityType="Rush_Job" timeBetweenCreationsTimeUnit=6 nextId=163 timeBetweenCreations="expo(10)" 
+163 Assign     "Assign_2" assignExpr[0]="1" nextId=164 assignDest[0]="priority" 
+164 Process    "Process_2" delayExpressionTimeUnit=6 delayExpression="expo(5)" priorityExpression="priority" queueable="Process2.Queue" nextId=172 requestSeizable[0]="Packer" 
+165 Seize      "Process_2.Seize" queueable="Process2.Queue" priorityExpression="priority" nextId=166 requestSeizable[0]="Packer" 
+166 Delay      "Process_2.Delay" delayExpressionTimeUnit=6 delayExpression="expo(5)" nextId=168 
+168 Release    "Process_2.Release" resquests=0 nexts=0 
+172 Dispose    "Dispose_1" nexts=0 

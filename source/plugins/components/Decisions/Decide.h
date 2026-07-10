@@ -14,8 +14,8 @@
 #ifndef DECIDE_H
 #define DECIDE_H
 
-#include "kernel/simulator/ModelComponent.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
 /*!
  Decide module
@@ -74,7 +74,7 @@ evaluator (for example, Color<>Red).
 class Decide : public ModelComponent {
 public:
 	Decide(Model* model, std::string name = "");
-	virtual ~Decide() = default;
+	virtual ~Decide() override;
 public:
 	List<std::string>* getConditions() const;
 	void addConditions(std::string newCondition);

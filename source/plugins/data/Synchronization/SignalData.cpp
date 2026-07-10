@@ -11,7 +11,7 @@
  */
 
 #include "SignalData.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -93,7 +93,7 @@ ModelDataDefinition* SignalData::LoadInstance(Model* model, PersistenceRecord *f
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load SignalData instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -107,6 +107,7 @@ PluginInformation* SignalData::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("Synchronization");
 	return info;
 }
 

@@ -12,8 +12,8 @@
  */
 
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -177,6 +177,7 @@ double Queue::getAttributeFromWaitingRank(unsigned int rank, Util::identificatio
 
 PluginInformation* Queue::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Queue>(), &Queue::LoadInstance, &Queue::NewInstance);
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 
@@ -185,7 +186,7 @@ ModelDataDefinition* Queue::LoadInstance(Model* model, PersistenceRecord *fields
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Queue instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

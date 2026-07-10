@@ -1,0 +1,20 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 showReportsAfterSimulation=0 showReportsAfterReplicaton=0 replicationLength=5.000000 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+138 PythonRuntime "PythonForG_1.PythonRuntime" 
+
+# Model Components
+132 Create     "Create_1" entityType="entitytype" nextId=137 
+137 PythonForG "PythonForG_1" onDispatchEventCode="context.log('dispatching entity ' + entity.getName())
+context.log('sim time=' + str(simulator.simGetSimulatedTime()))
+" initBetweenReplicationCode="context.log('PythonForG init hook running')
+simulator.infoSetDescription('initialized from PythonForG')
+" nextId=139 
+139 Dispose    "Dispose_1" nexts=0 

@@ -30,7 +30,7 @@
  */
 
 #include "plugins/data/Logic/AssignmentItem.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "Variable.h"
 
 Assignment::Assignment(Model* model, std::string destination, std::string expression, bool isAttributeNotVariable) {

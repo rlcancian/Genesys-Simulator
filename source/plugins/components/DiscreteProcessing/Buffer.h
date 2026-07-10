@@ -14,7 +14,7 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/Synchronization/SignalData.h"
 
 /*!
@@ -32,7 +32,7 @@ public:
 	static std::string convertEnumToStr(ArrivalOnFullBufferRule arrival);
 public: // constructors
 	Buffer(Model* model, std::string name = "");
-	virtual ~Buffer() = default;
+	virtual ~Buffer() override;
 public: // virtual
 	virtual std::string show() override;
 public: // static

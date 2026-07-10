@@ -14,7 +14,7 @@
 #ifndef START_H
 #define START_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
 Start module

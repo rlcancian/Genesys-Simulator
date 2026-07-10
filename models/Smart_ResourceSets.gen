@@ -1,33 +1,43 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Resources Sets" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=150.000000 replicationBaseTimeUnit=6 replicationLength=3000.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-77  EntityType "Mail_Loan" 
-78  EntityType "Internet_Loan" 
-79  EntityType "Phone_Loan" 
-80  Resource   "Loan_Officer_1" 
-81  Resource   "Loan_Officer_2" 
-82  Resource   "Loan_Officer_3" 
-83  Resource   "Loan_Officer_4" 
-84  Resource   "Loan_Officer_5" 
-85  Resource   "Senior_Officer_1" 
-86  Resource   "Senior_Officer_2" 
-87  Queue      "Use_Loan_Queue" 
-88  Set        "Loan_Officers" member[5]="Senior_Officer_1" member[4]="Loan_Officer_5" member[3]="Loan_Officer_4" member[1]="Loan_Officer_2" member[0]="Loan_Officer_1" member[2]="Loan_Officer_3" members=7 type="Resource" member[6]="Senior_Officer_2" 
-89  Queue      "Use_Senior_Queue" 
-90  Set        "Senior_Approval_Officers" member[1]="Senior_Officer_2" member[0]="Senior_Officer_1" members=2 type="Resource" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+145 Attribute  "Entity.TotalWaitTime" 
+162 EntityType "Mail_Loan" 
+163 EntityType "Internet_Loan" 
+164 EntityType "Phone_Loan" 
+165 Resource   "Loan_Officer_1" 
+177 Resource   "Loan_Officer_2" 
+189 Resource   "Loan_Officer_3" 
+201 Resource   "Loan_Officer_4" 
+213 Resource   "Loan_Officer_5" 
+225 Resource   "Senior_Officer_1" 
+237 Resource   "Senior_Officer_2" 
+249 Queue      "Use_Loan_Queue" 
+252 Set        "Loan_Officers" member[5]="Senior_Officer_1" member[4]="Loan_Officer_5" member[3]="Loan_Officer_4" member[1]="Loan_Officer_2" member[0]="Loan_Officer_1" member[2]="Loan_Officer_3" members=7 type="Resource" member[6]="Senior_Officer_2" 
+253 Queue      "Use_Senior_Queue" 
+256 Set        "Senior_Approval_Officers" member[1]="Senior_Officer_2" member[0]="Senior_Officer_1" members=2 type="Resource" 
 
 # Model Components
-61  Create     "Mail_Loans_Arrive" entityType="Mail_Loan" timeBetweenCreationsTimeUnit=6 nextId=64 timeBetweenCreations="EXPO(20)" 
-62  Create     "Internet_Loans_Arrive" entityType="Internet_Loan" timeBetweenCreationsTimeUnit=7 nextId=64 timeBetweenCreations="EXPO(2)" 
-63  Create     "Phone_Loans_Arrive" entityType="Phone_Loan" timeBetweenCreationsTimeUnit=7 nextId=64 timeBetweenCreations="EXPO(1)" 
-64  Process    "Use_Loan_Approval_Officer_Set" delayExpression="NORM(7, 2)" delayExpressionTimeUnit=6 queueable="Use_Loan_Queue" requestSeizableType[0]=2 requestSelectionRule[0]=6 nextId=68 requestSeizable[0]="Loan_Officers" 
-68  Process    "Use_Senior_Approval_Officer_Set" delayExpression="TRIA(2, 3, 4)" delayExpressionTimeUnit=7 queueable="Use_Senior_Queue" requestSeizableType[0]=2 requestSelectionRule[0]=1 nextId=72 requestSeizable[0]="Senior_Approval_Officers" 
-72  Decide     "Determine_if_loan_is_approved" condition[0]="UNIF(0, 1) < 0.8" conditions=1 nextId[0]=73 nextId[1]=74 nexts=2 
-73  Delay      "Send_Approval" delayExpressionTimeUnit=6 delayExpression="UNIF(0.5, 2.0)" nextId=75 
-74  Delay      "Send_Denial" delayExpressionTimeUnit=6 delayExpression="TRIA(0.5, 1, 1.5)" nextId=76 
-75  Dispose    "File_Loan" nexts=0 
-76  Dispose    "Dispose_of_Application" nexts=0 
+132 Create     "Mail_Loans_Arrive" entityType="Mail_Loan" timeBetweenCreationsTimeUnit=6 nextId=141 timeBetweenCreations="EXPO(20)" 
+137 Create     "Internet_Loans_Arrive" entityType="Internet_Loan" timeBetweenCreationsTimeUnit=7 nextId=141 timeBetweenCreations="EXPO(2)" 
+139 Create     "Phone_Loans_Arrive" entityType="Phone_Loan" timeBetweenCreationsTimeUnit=7 nextId=141 timeBetweenCreations="EXPO(1)" 
+141 Process    "Use_Loan_Approval_Officer_Set" delayExpression="NORM(7, 2)" delayExpressionTimeUnit=6 queueable="Use_Loan_Queue" requestSeizableType[0]=1 requestSelectionRule[0]=5 nextId=147 requestSeizable[0]="Loan_Officers" 
+142 Seize      "Use_Loan_Approval_Officer_Set.Seize" requestSelectionRule[0]=5 requestSeizableType[0]=1 queueable="Use_Loan_Queue" nextId=143 requestSeizable[0]="Loan_Officers" 
+143 Delay      "Use_Loan_Approval_Officer_Set.Delay" delayExpressionTimeUnit=6 delayExpression="NORM(7, 2)" nextId=146 
+146 Release    "Use_Loan_Approval_Officer_Set.Release" resquests=0 nexts=0 
+147 Process    "Use_Senior_Approval_Officer_Set" delayExpression="TRIA(2, 3, 4)" delayExpressionTimeUnit=7 queueable="Use_Senior_Queue" requestSeizableType[0]=1 requestSelectionRule[0]=0 nextId=152 requestSeizable[0]="Senior_Approval_Officers" 
+148 Seize      "Use_Senior_Approval_Officer_Set.Seize" requestSelectionRule[0]=0 requestSeizableType[0]=1 queueable="Use_Senior_Queue" nextId=149 requestSeizable[0]="Senior_Approval_Officers" 
+149 Delay      "Use_Senior_Approval_Officer_Set.Delay" delayExpressionTimeUnit=7 delayExpression="TRIA(2, 3, 4)" nextId=151 
+151 Release    "Use_Senior_Approval_Officer_Set.Release" resquests=0 nexts=0 
+152 Decide     "Determine_if_loan_is_approved" condition[0]="UNIF(0, 1) < 0.8" conditions=1 nextId[0]=153 nextId[1]=155 nexts=2 
+153 Delay      "Send_Approval" delayExpressionTimeUnit=6 delayExpression="UNIF(0.5, 2.0)" nextId=157 
+155 Delay      "Send_Denial" delayExpressionTimeUnit=6 delayExpression="TRIA(0.5, 1, 1.5)" nextId=160 
+157 Dispose    "File_Loan" nexts=0 
+160 Dispose    "Dispose_of_Application" nexts=0 

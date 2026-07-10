@@ -14,7 +14,7 @@
 #ifndef MATCH_H
 #define MATCH_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 
 /*!
@@ -55,7 +55,7 @@ public:
 	static std::string convertEnumToStr(Rule rule);
 public: // constructors
 	Match(Model* model, std::string name = "");
-	virtual ~Match() = default;
+	virtual ~Match() override;
 public: // virtual
 	virtual std::string show() override;
 public: // static

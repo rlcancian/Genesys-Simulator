@@ -1,6 +1,6 @@
 /*
  * File:   BioRunnerCommand.h
- * Author: GenESyS
+ * Author: rlcancian
  *
  * Component that executes BioSimulatorRunner commands when entities arrive.
  */
@@ -10,7 +10,7 @@
 
 #include <string>
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
 

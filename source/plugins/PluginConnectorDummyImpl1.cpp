@@ -16,6 +16,23 @@
 
 // Model Components
 
+#include "plugins/components/WholeCellModeling/CellDivisionEvent.h"
+#include "plugins/components/WholeCellModeling/CellCycleCheckpointComponent.h"
+#include "plugins/components/WholeCellModeling/CellFateDecisionComponent.h"
+#include "plugins/components/WholeCellModeling/CellGrowthComponent.h"
+#include "plugins/components/WholeCellModeling/CompartmentExchangeComponent.h"
+#include "plugins/components/WholeCellModeling/EukaryoticCellCycleComponent.h"
+#include "plugins/components/WholeCellModeling/PathwayStressResponseComponent.h"
+#include "plugins/components/WholeCellModeling/BioStateProjectionComponent.h"
+#include "plugins/components/WholeCellModeling/MetabolicStateProjectionComponent.h"
+#include "plugins/components/WholeCellModeling/FtsZPolymerizationComponent.h"
+#include "plugins/components/WholeCellModeling/MetabolicSubmodelComponent.h"
+#include "plugins/components/WholeCellModeling/ResourceAllocationComponent.h"
+#include "plugins/components/WholeCellModeling/StochasticReactionComponent.h"
+#include "plugins/components/BiochemicalSimulation/BioSimulate.h"
+#include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
+#include "plugins/components/WholeCellModeling/StochasticTranscription.h"
+#include "plugins/components/WholeCellModeling/StochasticTranslation.h"
 #include "plugins/components/MaterialHandling/Access.h"
 #include "components/Logic/Assign.h"
 #include "plugins/components/Grouping/Batch.h"
@@ -23,6 +40,8 @@
 #include "plugins/components/ModalModel/CellularAutomataComp.h"
 #include "plugins/components/DiscreteProcessing/Clone.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
+#include "plugins/components/ExternalIntegration/PythonForG.h"
+#include "plugins/components/AI/AIAssistant.h"
 #include "components/Logic/Create.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
@@ -37,7 +56,7 @@
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 //#include "../../plugins/components/Octave.h"
-#include "plugins/components/Decisions/PickStation.h"
+#include "components/MaterialHandling/PickStation.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/ModalModel/ModalModelFSM.h"
@@ -62,6 +81,7 @@
 #include "plugins/components/Synchronization/Wait.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/Continuous/LSODE.h"
+#include "plugins/components/Continuous/ContinuousSystemComponent.h"
 #include "plugins/components/Continuous/OLD_ODEelement.h"
 #include "components/BiochemicalSimulation/BacteriaColony.h"
 #include "plugins/components/ModalModel/DefaultNode.h"
@@ -69,12 +89,21 @@
 
 
 // Model data definitions
+#include "plugins/data/WholeCellModeling/BioCompartment.h"
+#include "plugins/data/WholeCellModeling/MolecularSpecies.h"
+#include "plugins/data/WholeCellModeling/StochasticReactionRule.h"
+#include "plugins/data/WholeCellModeling/WholeCellState.h"
 #include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/BiochemicalSimulation/MetabolicNetwork.h"
+#include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
+#include "plugins/data/ExternalIntegration/PythonRuntime.h"
+#include "plugins/data/AI/AISupport.h"
+#include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/data/Template/DummyElement.h"
 #include "plugins/data/Grouping/EntityGroup.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
@@ -123,12 +152,35 @@ bool PluginConnectorDummyImpl1::disconnect(Plugin* plugin) {
 
 List<std::string>* PluginConnectorDummyImpl1::find() {
     List<std::string>* filenames = new List<std::string>();
+	    filenames->insert("celldivisionevent.so");
+	    filenames->insert("cellcyclecheckpointcomponent.so");
+	    filenames->insert("cellfatedecisioncomponent.so");
+	    filenames->insert("cellgrowthcomponent.so");
+    filenames->insert("compartmentexchangecomponent.so");
+    filenames->insert("eukaryoticcellcyclecomponent.so");
+    filenames->insert("pathwaystressresponsecomponent.so");
+    filenames->insert("biostateprojectioncomponent.so");
+    filenames->insert("metabolicstateprojectioncomponent.so");
+    filenames->insert("biosimulate.so");
+    filenames->insert("metabolicfluxbalance.so");
+    filenames->insert("ftszpolymerizationcomponent.so");
+    filenames->insert("metabolicsubmodelcomponent.so");
+    filenames->insert("resourceallocationcomponent.so");
+    filenames->insert("biocompartment.so");
+    filenames->insert("molecularspecies.so");
+    filenames->insert("stochasticreactioncomponent.so");
+    filenames->insert("stochasticreactionrule.so");
+    filenames->insert("stochastictranscription.so");
+    filenames->insert("stochastictranslation.so");
+    filenames->insert("wholecellstate.so");
+    filenames->insert("aiassistant.so");
+    filenames->insert("aisupport.so");
     filenames->insert("assign.so");
     filenames->insert("buffer.so");
     filenames->insert("create.so");
     filenames->insert("dispose.so");
-    //filenames->insert("dummy.so");
-    //filenames->insert("dummyelement.so");
+    filenames->insert("dummy.so");
+    filenames->insert("dummyelement.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
     filenames->insert("formula.so");
@@ -144,6 +196,8 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("bioparameter.so");
     filenames->insert("bioreaction.so");
     filenames->insert("biospecies.so");
+    filenames->insert("metabolicnetwork.so");
+    filenames->insert("metabolicreaction.so");
     filenames->insert("biosimulatorrunner.so");
     filenames->insert("cellularautomata.so");
     filenames->insert("clone.so");
@@ -172,6 +226,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("signaldata.so");
     filenames->insert("diffequations.so");
     filenames->insert("lsode.so");
+    filenames->insert("continuoussystemcomponent.so");
     //filenames->insert("finiteelement.so");
     filenames->insert("old_odeelement.so");
     filenames->insert("modalmodelfsm.so");
@@ -179,7 +234,10 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("modalmodelpetrinet.so");
     //filenames->insert("finitevolume.so");
     filenames->insert("cppcompiler.so");
+    filenames->insert("odesolver.so");
     filenames->insert("cppforg.so");
+    filenames->insert("pythonruntime.so");
+    filenames->insert("pythonforg.so");
     filenames->insert("spicecircuit.so");
     filenames->insert("spicenode.so");
     filenames->insert("spicerunner.so");
@@ -235,7 +293,53 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
 	StaticGetPluginInformation GetInfo = nullptr;
     // @TODO: Dummy connections basically does nothing but give access to PluginInformation already compiled
 
-    if (fn == "assign.so")
+	    if (fn == "celldivisionevent.so")
+	        GetInfo = &CellDivisionEvent::GetPluginInformation;
+	    else if (fn == "cellcyclecheckpointcomponent.so")
+	        GetInfo = &CellCycleCheckpointComponent::GetPluginInformation;
+	    else if (fn == "cellfatedecisioncomponent.so")
+	        GetInfo = &CellFateDecisionComponent::GetPluginInformation;
+	    else if (fn == "cellgrowthcomponent.so")
+        GetInfo = &CellGrowthComponent::GetPluginInformation;
+    else if (fn == "compartmentexchangecomponent.so")
+        GetInfo = &CompartmentExchangeComponent::GetPluginInformation;
+    else if (fn == "eukaryoticcellcyclecomponent.so")
+        GetInfo = &EukaryoticCellCycleComponent::GetPluginInformation;
+    else if (fn == "pathwaystressresponsecomponent.so")
+        GetInfo = &PathwayStressResponseComponent::GetPluginInformation;
+    else if (fn == "biostateprojectioncomponent.so")
+        GetInfo = &BioStateProjectionComponent::GetPluginInformation;
+    else if (fn == "metabolicstateprojectioncomponent.so")
+        GetInfo = &MetabolicStateProjectionComponent::GetPluginInformation;
+    else if (fn == "biosimulate.so")
+        GetInfo = &BioSimulate::GetPluginInformation;
+    else if (fn == "metabolicfluxbalance.so")
+        GetInfo = &MetabolicFluxBalance::GetPluginInformation;
+    else if (fn == "ftszpolymerizationcomponent.so")
+        GetInfo = &FtsZPolymerizationComponent::GetPluginInformation;
+    else if (fn == "metabolicsubmodelcomponent.so")
+        GetInfo = &MetabolicSubmodelComponent::GetPluginInformation;
+    else if (fn == "resourceallocationcomponent.so")
+        GetInfo = &ResourceAllocationComponent::GetPluginInformation;
+    else if (fn == "biocompartment.so")
+        GetInfo = &BioCompartment::GetPluginInformation;
+    else if (fn == "molecularspecies.so")
+        GetInfo = &MolecularSpecies::GetPluginInformation;
+    else if (fn == "stochasticreactioncomponent.so")
+        GetInfo = &StochasticReactionComponent::GetPluginInformation;
+    else if (fn == "stochasticreactionrule.so")
+        GetInfo = &StochasticReactionRule::GetPluginInformation;
+    else if (fn == "stochastictranscription.so")
+        GetInfo = &StochasticTranscription::GetPluginInformation;
+    else if (fn == "stochastictranslation.so")
+        GetInfo = &StochasticTranslation::GetPluginInformation;
+    else if (fn == "wholecellstate.so")
+        GetInfo = &WholeCellState::GetPluginInformation;
+    else if (fn == "aiassistant.so")
+        GetInfo = &AIAssistant::GetPluginInformation;
+    else if (fn == "aisupport.so")
+        GetInfo = &AISupport::GetPluginInformation;
+    else if (fn == "assign.so")
         GetInfo = &Assign::GetPluginInformation;
     else if (fn == "buffer.so")
         GetInfo = &Buffer::GetPluginInformation;
@@ -243,10 +347,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Create::GetPluginInformation;
     else if (fn == "dispose.so")
         GetInfo = &Dispose::GetPluginInformation;
-    //else if (fn == "dummy.so")
-    //    GetInfo = &DummyComponent::GetPluginInformation;
-    //else if (fn == "dummyelement.so")
-    //    GetInfo = &DummyElement::GetPluginInformation;
+    else if (fn == "dummy.so")
+        GetInfo = &DummyComponent::GetPluginInformation;
+    else if (fn == "dummyelement.so")
+        GetInfo = &DummyElement::GetPluginInformation;
     else if (fn == "entitygroup.so")
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")
@@ -277,6 +381,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &BioReaction::GetPluginInformation;
     else if (fn == "biospecies.so")
         GetInfo = &BioSpecies::GetPluginInformation;
+    else if (fn == "metabolicnetwork.so")
+        GetInfo = &MetabolicNetwork::GetPluginInformation;
+    else if (fn == "metabolicreaction.so")
+        GetInfo = &MetabolicReaction::GetPluginInformation;
     else if (fn == "biosimulatorrunner.so")
         GetInfo = &BioSimulatorRunner::GetPluginInformation;
     else if (fn == "cellularautomata.so")
@@ -333,6 +441,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &DiffEquations::GetPluginInformation;
     else if (fn == "lsode.so")
         GetInfo = &LSODE::GetPluginInformation;
+    else if (fn == "continuoussystemcomponent.so")
+        GetInfo = &ContinuousSystemComponent::GetPluginInformation;
     //else if (fn == "finiteelement.so")
     else if (fn == "old_odeelement.so")
         GetInfo = &OLD_ODEelement::GetPluginInformation;
@@ -347,8 +457,14 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
     //    GetInfo = &LSODE::GetPluginInformation;
     else if (fn == "cppcompiler.so")
         GetInfo = &CppCompiler::GetPluginInformation;
+    else if (fn == "odesolver.so")
+        GetInfo = &ODESolver::GetPluginInformation;
     else if (fn == "cppforg.so")
         GetInfo = &CppForG::GetPluginInformation;
+    else if (fn == "pythonruntime.so")
+        GetInfo = &PythonRuntime::GetPluginInformation;
+    else if (fn == "pythonforg.so")
+        GetInfo = &PythonForG::GetPluginInformation;
     else if (fn == "spicecircuit.so")
         GetInfo = &SPICECircuit::GetPluginInformation;
     else if (fn == "spicenode.so")

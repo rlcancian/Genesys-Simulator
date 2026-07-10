@@ -14,10 +14,10 @@
 #ifndef VARIABLE_H
 #define VARIABLE_H
 
-#include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/Plugin.h"
-#include "kernel/simulator/SparseValueStore.h"
+#include "../../../kernel/simulator/essentialPlugins/SparseValueStore.h"
 
 /*!
 Variable module
@@ -103,6 +103,8 @@ public:
 	double getValue(std::string index="");
 	/*! \brief Writes the current sparse value at the scalar or indexed position. */
 	void setValue(double value, std::string index="");
+	/*! \brief Copies the full runtime sparse store from another variable. */
+	void copyValuesFrom(const Variable& source);
 	/*! \brief Returns the initial values serialized in bracket notation. */
 	std::string getInitialValuesText() const override;
 	/*! \brief Parses bracket notation and replaces both initial and runtime stores. */

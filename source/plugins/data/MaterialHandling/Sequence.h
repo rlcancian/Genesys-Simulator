@@ -14,8 +14,8 @@
 #ifndef SEQUENCE_H
 #define SEQUENCE_H
 
-#include "kernel/simulator/ModelDataDefinition.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/PluginInformation.h"
 #include "Station.h"
 #include "../Logic/Label.h"

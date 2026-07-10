@@ -1,0 +1,34 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=3.000000 numberOfReplications=300 replicationLengthTimeUnit=6 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Entity_1" 
+139 Attribute  "aCustomerType" 
+140 Queue      "Queue_for_Customer_Type_1" 
+143 Queue      "Queue_for_Customer_Type_2" 
+146 Queue      "Queue_for_Customer_Type_3" 
+149 Queue      "Queue_for_Customer_Type_4" 
+154 Queue      "Wait_1.Queue" 
+157 SignalData "SignalData_1" 
+159 Queue      "Wait_2.Queue" 
+162 SignalData "SignalData_2" 
+164 Queue      "Wait_3.Queue" 
+167 SignalData "SignalData_3" 
+169 Queue      "Wait_4.Queue" 
+172 SignalData "SignalData_4" 
+
+# Model Components
+132 Create     "Create_1" entityType="Entity_1" maxCreations="1" timeBetweenCreationsTimeUnit=6 entitiesPerCreation=20 nextId=138 timeBetweenCreations="tria(6,7,8)" 
+138 Assign     "Assign_1" assignExpr[0]="trunc(unif(1, 5))" nextId=152 assignDest[0]="aCustomerType" 
+152 Decide     "Decide_1" condition[3]="aCustomerType == 4" condition[2]="aCustomerType == 3" condition[1]="aCustomerType == 2" condition[0]="aCustomerType == 1" conditions=4 nextId[3]=168 nextId[2]=163 nextId[0]=153 nextId[1]=158 nexts=4 
+153 Wait       "Wait_1" queue="Queue_for_Customer_Type_1" waitType=1 nextId=173 
+158 Wait       "Wait_2" queue="Queue_for_Customer_Type_2" waitType=1 nextId=173 
+163 Wait       "Wait_3" queue="Queue_for_Customer_Type_3" waitType=1 nextId=173 
+168 Wait       "Wait_4" queue="Queue_for_Customer_Type_4" waitType=1 nextId=173 
+173 Dispose    "Dummy_Dispose" nexts=0 

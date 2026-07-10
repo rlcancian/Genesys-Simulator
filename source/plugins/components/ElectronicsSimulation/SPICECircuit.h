@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/ExternalIntegration/SPICERunner.h"
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
 

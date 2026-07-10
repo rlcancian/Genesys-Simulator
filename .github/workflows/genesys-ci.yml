@@ -173,3 +173,71 @@ jobs:
                 echo "::endgroup::"
               ' sh {} \;
           fi
+
+  gui-gmdd-diagnostics:
+    name: Diagnose GUI GMDD tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Install build dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            qt6-base-dev \
+            qt6-tools-dev \
+            qt6-tools-dev-tools \
+            libgl1-mesa-dev
+
+      - name: Build and run GUI GMDD diagnostics
+        run: |
+          set -Eeuo pipefail
+          mkdir -p genesys-ci-diagnostics
+          out=genesys-ci-diagnostics/gui-gmdd-test-failures.txt
+          echo "HEAD=$(git rev-parse HEAD)" > "${out}"
+          set +e
+          cmake --preset "${CMAKE_CONFIGURE_PRESET}" >/tmp/genesys-configure.log 2>&1
+          configure_rc=$?
+          set -e
+          echo "CONFIGURE_RC=${configure_rc}" >> "${out}"
+          if [[ "${configure_rc}" -ne 0 ]]; then
+            tail -n 120 /tmp/genesys-configure.log >> "${out}"
+            exit "${configure_rc}"
+          fi
+          set +e
+          cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout --parallel "$(nproc)" >/tmp/genesys-build-gui-gmdd.log 2>&1
+          build_rc=$?
+          set -e
+          echo "BUILD_RC=${build_rc}" >> "${out}"
+          if [[ "${build_rc}" -ne 0 ]]; then
+            tail -n 180 /tmp/genesys-build-gui-gmdd.log >> "${out}"
+            exit "${build_rc}"
+          fi
+          exe=$(find build/tests-unit -type f -name genesys_test_gui_gmdd_layout | head -n 1)
+          echo "EXE=${exe}" >> "${out}"
+          set +e
+          "${exe}" --gtest_filter='GuiGmddLayout.SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRows:GuiGmddLayout.SerializerRoundTripRestoresComponentColorAndDataDefinitionPosition:GuiGmddLayout.SerializerRoundTripRestoresViewStateGeometriesAndGroups' > /tmp/gui-gmdd-tests.log 2>&1
+          rc=$?
+          set -e
+          echo "GTEST_RC=${rc}" >> "${out}"
+          cat /tmp/gui-gmdd-tests.log >> "${out}"
+          exit "${rc}"
+
+      - name: Upload GUI GMDD diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-gui-gmdd-diagnostics
+          path: genesys-ci-diagnostics
+          if-no-files-found: error

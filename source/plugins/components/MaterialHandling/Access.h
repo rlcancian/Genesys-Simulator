@@ -14,7 +14,7 @@
 #ifndef ACCESS_H
 #define ACCESS_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
 Access module

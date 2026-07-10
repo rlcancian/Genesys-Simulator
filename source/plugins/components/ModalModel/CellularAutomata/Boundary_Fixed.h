@@ -41,11 +41,11 @@ public:
     }
 public:
 
-	void setFixedState(State fixedState) {
+	void setFixedState(const State& fixedState) {
         fixedCell->setCurrentState(fixedState);
     }
 
-	State getFixedState() const {
+	const State& getFixedState() const {
         return fixedCell->getCurrentState();
     }
 private:

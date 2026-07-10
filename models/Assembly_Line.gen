@@ -1,0 +1,87 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=7 warmUpTime=3.000000 numberOfReplications=50 replicationLengthTimeUnit=7 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Peca" 
+138 Attribute  "a_time" 
+139 Variable   "v_WIP" 
+140 Variable   "countProducts" 
+142 Station    "Estacao_de_Entrada" 
+147 Attribute  "Entity.Station" 
+148 Attribute  "Entity.ArrivalAtEstacao_de_Entrada" 
+151 Station    "Station_1" 
+154 Attribute  "Entity.ArrivalAtStation_1" 
+155 Station    "Estacao_1" 
+158 Attribute  "Entity.ArrivalAtEstacao_1" 
+161 Station    "Station_2" 
+164 Attribute  "Entity.ArrivalAtStation_2" 
+167 Station    "Station_3" 
+170 Attribute  "Entity.ArrivalAtStation_3" 
+171 Attribute  "Entity.TotalTransferTime" 
+172 Attribute  "Entity.Sequence" 
+173 Attribute  "Entity.SequenceStep" 
+174 Resource   "operador_1" 
+186 Queue      "Fila_Operador1" 
+192 Attribute  "Entity.TotalWaitTime" 
+194 Station    "Estacao_2" 
+197 Attribute  "Entity.ArrivalAtEstacao_2" 
+200 Station    "Station_4" 
+203 Attribute  "Entity.ArrivalAtStation_4" 
+206 Station    "Station_5" 
+209 Attribute  "Entity.ArrivalAtStation_5" 
+210 Resource   "operador_2" 
+222 Queue      "Fila_Operador2" 
+229 Station    "Estacao_3" 
+232 Attribute  "Entity.ArrivalAtEstacao_3" 
+235 Station    "Station_6" 
+238 Attribute  "Entity.ArrivalAtStation_6" 
+241 Station    "Station_7" 
+244 Attribute  "Entity.ArrivalAtStation_7" 
+245 Resource   "operador_3" 
+257 Queue      "Fila_Operador3" 
+272 Station    "Estacao_4" 
+275 Attribute  "Entity.ArrivalAtEstacao_4" 
+278 Station    "Station_8" 
+281 Attribute  "Entity.ArrivalAtStation_8" 
+284 Station    "Station_9" 
+287 Attribute  "Entity.ArrivalAtStation_9" 
+288 Resource   "operador_4" 
+300 Queue      "Fila_Operador4" 
+
+# Model Components
+132 Create     "Create_1" entityType="Peca" timeBetweenCreationsTimeUnit=6 nextId=141 timeBetweenCreations="TRIA(0,3,7)" 
+141 Assign     "Assign_1" assignExpr[1]="v_WIP+1" assignExpr[0]="TNOW" assignments=2 nextId=149 assignDest[0]="a_time" assignDest[1]="v_WIP" 
+149 Enter      "Enter_1" station="Estacao_de_Entrada" nextId=165 
+159 Enter      "Enter_2" station="Estacao_1" nextId=189 
+165 Route      "Route_1" station="Estacao_1" routeTimeExpression="30" nexts=0 
+189 Seize      "Seize_1" queueable="Fila_Operador1" nextId=190 requestSeizable[0]="operador_1" 
+190 Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="NORM(2,1)" nextId=193 
+193 Release    "Release_1" nextId=204 requestSeizable[0]="operador_1" 
+198 Enter      "Enter_3" station="Estacao_2" nextId=225 
+204 Route      "Route_2" station="Estacao_2" routeTimeExpression="40" nexts=0 
+225 Seize      "Seize_2" queueable="Fila_Operador2" nextId=226 requestSeizable[0]="operador_2" 
+226 Delay      "Delay_2" delayExpressionTimeUnit=6 delayExpression="NORM(2.5,1)" nextId=228 
+228 Release    "Release_2" nextId=239 requestSeizable[0]="operador_2" 
+233 Enter      "Enter_4" station="Estacao_3" nextId=260 
+239 Route      "Route_3" station="Estacao_3" routeTimeExpression="60" nexts=0 
+260 Seize      "Seize_3" queueable="Fila_Operador3" nextId=261 requestSeizable[0]="operador_3" 
+261 Delay      "Delay_3" delayExpressionTimeUnit=6 delayExpression="NORM(2.5,1)" nextId=263 
+263 Release    "Release_3" nextId=264 requestSeizable[0]="operador_3" 
+264 Decide     "Decide_1" condition[0]="UNIF(0,1) < 0.11" conditions=1 nextId[0]=265 nextId[1]=282 nexts=2 
+265 Assign     "Assign_2" assignExpr[1]="countProducts+1" assignExpr[0]="v_WIP-1" assignments=2 nextId=266 assignDest[0]="v_WIP" assignDest[1]="countProducts" 
+266 Record     "Record_Cycle_Time1" description="Cycle time observations for products leaving through path 1." randomVariableName="Cycle time path 1" nextId=268 datasetName="Cycle Time Path 1 Dataset" expressionName="Cycle Time Path 1" expression="TNOW - a_time" 
+268 Dispose    "Dispose_1" nexts=0 
+276 Enter      "Enter_5" station="Estacao_4" nextId=303 
+282 Route      "Route_4" station="Estacao_4" routeTimeExpression="40" nexts=0 
+303 Seize      "Seize_4" queueable="Fila_Operador4" nextId=304 requestSeizable[0]="operador_4" 
+304 Delay      "Delay_4" delayExpressionTimeUnit=6 delayExpression="NORM(3,1.5)" nextId=306 
+306 Release    "Release_4" nextId=307 requestSeizable[0]="operador_4" 
+307 Assign     "Assign_3" assignExpr[1]="countProducts+1" assignExpr[0]="v_WIP-1" assignments=2 nextId=308 assignDest[0]="v_WIP" assignDest[1]="countProducts" 
+308 Record     "Record_Cycle_Time2" description="Cycle time observations for products leaving through path 2." randomVariableName="Cycle time path 2" nextId=310 datasetName="Cycle Time Path 2 Dataset" expressionName="Cycle Time Path 2" expression="TNOW - a_time" 
+310 Dispose    "Dispose_2" nexts=0 

@@ -3,7 +3,6 @@
 /out/
 /cmake-build-*/
 build/
-/documentation/AI
 build-gui/
 
 # CMake
@@ -26,6 +25,12 @@ CMakeLists.txt.user
 .qtcreator/
 .qtc_clangd/
 
+# Local IDE and AI assistant metadata
+/.idea/
+/.aider*
+/.claude*
+/.codex*
+
 # Generic
 *.o
 *.obj
@@ -42,5 +47,4 @@ temp*
 # Logs
 *.log
 
-.idea/
-.aider*
+documentation/diagrams/

@@ -16,7 +16,7 @@
 
 #include <list>
 #include <fstream>
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
  This component ...
@@ -30,7 +30,7 @@ public:
 	static std::string convertEnumToStr(WriteToType type);
 public: // constructors
 	Write(Model* model, std::string name = "");
-	virtual ~Write() = default;
+	virtual ~Write() override;
 
 public:
 	void insertText(std::list<std::string> texts);

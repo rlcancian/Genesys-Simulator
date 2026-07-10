@@ -1,6 +1,7 @@
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 
 #include <algorithm>
+#include <cctype>
 #include <functional>
 #include <iomanip>
 #include <map>
@@ -10,11 +11,11 @@
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "kernel/simulator/Event.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
-#include "tools/BioKineticLawExpression.h"
-#include "tools/MassActionOdeSystem.h"
-#include "tools/RungeKutta4OdeSolver.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
+#include "tools/Biochemical/BioKineticLawExpression.h"
+#include "tools/Biochemical/MassActionOdeSystem.h"
+#include "tools/Continuous/RungeKutta4OdeSolver.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -24,6 +25,10 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 #endif
 
 namespace {
+
+constexpr const char* kNetworkSpeciesAttachmentPrefix = "Species";
+constexpr const char* kNetworkReactionAttachmentPrefix = "Reaction";
+constexpr const char* kNetworkParameterAttachmentPrefix = "Parameter";
 
 std::string jsonEscape(const std::string& value) {
 	std::string escaped;
@@ -56,6 +61,38 @@ std::string formatDouble(double value) {
 	std::ostringstream out;
 	out << std::setprecision(15) << value;
 	return out.str();
+}
+
+bool isSupportedKineticLawFunction(const std::string& name) {
+	return name == "abs" || name == "exp" || name == "log" || name == "sqrt" ||
+	       name == "min" || name == "max" || name == "pow";
+}
+
+void collectKineticLawIdentifiers(const std::string& expression, std::vector<std::string>* identifiers) {
+	if (identifiers == nullptr) {
+		return;
+	}
+	for (size_t i = 0; i < expression.size();) {
+		const unsigned char ch = static_cast<unsigned char>(expression[i]);
+		if (std::isalpha(ch) == 0 && expression[i] != '_') {
+			++i;
+			continue;
+		}
+		const size_t start = i++;
+		while (i < expression.size()) {
+			const unsigned char current = static_cast<unsigned char>(expression[i]);
+			if (std::isalnum(current) == 0 && expression[i] != '_' && expression[i] != '.') {
+				break;
+			}
+			++i;
+		}
+		const std::string identifier = expression.substr(start, i - start);
+		if (isSupportedKineticLawFunction(identifier) ||
+		    std::find(identifiers->begin(), identifiers->end(), identifier) != identifiers->end()) {
+			continue;
+		}
+		identifiers->push_back(identifier);
+	}
 }
 
 std::vector<std::pair<std::string, double>> collectParameterValues(ModelDataManager* dataManager) {
@@ -202,7 +239,7 @@ BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(mod
 
 PluginInformation* BioNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioNetwork>(), &BioNetwork::LoadInstance, &BioNetwork::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setDescriptionHelp("Native biochemical network runner. It advances BioSpecies and BioReaction data definitions with mass-action kinetics using a fixed-step RK4 solver, optionally constrained to explicit network membership.");
 	return info;
 }
@@ -212,6 +249,7 @@ ModelDataDefinition* BioNetwork::LoadInstance(Model* model, PersistenceRecord *f
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load BioNetwork instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -271,6 +309,61 @@ void BioNetwork::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues
 	fields->saveField("reactions", static_cast<unsigned int>(_reactionNames.size()), 0u, saveDefaultValues);
 	for (unsigned int i = 0; i < _reactionNames.size(); ++i) {
 		fields->saveField("reactionName" + Util::StrIndex(i), _reactionNames[i], "", saveDefaultValues);
+	}
+}
+
+void BioNetwork::_createEditableDataDefinitions() {
+	auto removeAttachedDataWithPrefix = [this](const std::string& prefix) {
+		std::vector<std::string> keysToRemove;
+		for (const auto& attachedEntry : *getAttachedData()) {
+			if (attachedEntry.first.rfind(prefix, 0) == 0) {
+				keysToRemove.push_back(attachedEntry.first);
+			}
+		}
+		for (const std::string& key : keysToRemove) {
+			_optionalEditableDataDefinitionRemove(key);
+		}
+	};
+
+	removeAttachedDataWithPrefix(kNetworkSpeciesAttachmentPrefix);
+	removeAttachedDataWithPrefix(kNetworkReactionAttachmentPrefix);
+	removeAttachedDataWithPrefix(kNetworkParameterAttachmentPrefix);
+
+	if (_parentModel == nullptr || _parentModel->getDataManager() == nullptr) {
+		return;
+	}
+
+	ModelDataManager* dataManager = _parentModel->getDataManager();
+	for (unsigned int i = 0; i < _speciesNames.size(); ++i) {
+		auto* species = dynamic_cast<BioSpecies*>(dataManager->getDataDefinition(Util::TypeOf<BioSpecies>(), _speciesNames[i]));
+		_optionalEditableDataDefinitionInsert(std::string(kNetworkSpeciesAttachmentPrefix) + Util::StrIndex(i), species);
+	}
+
+	std::vector<std::string> parameterNames;
+	for (unsigned int i = 0; i < _reactionNames.size(); ++i) {
+		auto* reaction = dynamic_cast<BioReaction*>(dataManager->getDataDefinition(Util::TypeOf<BioReaction>(), _reactionNames[i]));
+		_optionalEditableDataDefinitionInsert(std::string(kNetworkReactionAttachmentPrefix) + Util::StrIndex(i), reaction);
+		if (reaction == nullptr) {
+			continue;
+		}
+		if (!reaction->getRateConstantParameterName().empty()) {
+			parameterNames.push_back(reaction->getRateConstantParameterName());
+		}
+		if (!reaction->getReverseRateConstantParameterName().empty()) {
+			parameterNames.push_back(reaction->getReverseRateConstantParameterName());
+		}
+		collectKineticLawIdentifiers(reaction->getKineticLawExpression(), &parameterNames);
+		collectKineticLawIdentifiers(reaction->getReverseKineticLawExpression(), &parameterNames);
+	}
+
+	unsigned int parameterIndex = 0;
+	for (const std::string& parameterName : parameterNames) {
+		auto* parameter = dynamic_cast<BioParameter*>(dataManager->getDataDefinition(Util::TypeOf<BioParameter>(), parameterName));
+		if (parameter == nullptr) {
+			continue;
+		}
+		_optionalEditableDataDefinitionInsert(
+				std::string(kNetworkParameterAttachmentPrefix) + Util::StrIndex(parameterIndex++), parameter);
 	}
 }
 

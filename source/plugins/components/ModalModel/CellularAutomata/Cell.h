@@ -3,6 +3,8 @@
 
 
 #include "plugins/components/ModalModel/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/StateSet.h"
+#include <memory>
 #include <vector>
 #include <string>
 
@@ -10,8 +12,10 @@ class State;
 
 class Cell {
 public:  // constructors
-	Cell(/*StateSet* stateSet = nullptr, */long cellNum=0, std::vector<int> position={});
+	Cell(StateSet* stateSet = nullptr, long cellNum=0, std::vector<int> position={});
+	Cell(long cellNum, std::vector<int> position);
     Cell(const Cell& orig);
+	Cell& operator=(const Cell& orig);
     virtual ~Cell()=default;
 public: // methods
     virtual std::string show();
@@ -23,17 +27,21 @@ public: // getters
     long getCellNumber() const;
 	void setPosition(std::vector<int> position);
 	std::vector<int> getPosition() const; ///< n-dimensional position
-	State getPreviousState() const;
-	void setCurrentState(State currentState);
-	State getCurrentState() const;
-	void setNextState(State nextState);
-	State getNextState() const;
+	void setStateSet(StateSet* stateSet);
+	StateSet* getStateSet() const;
+	const State& getPreviousState() const;
+	bool setCurrentState(const State& currentState);
+	const State& getCurrentState() const;
+	bool setNextState(const State& nextState);
+	const State& getNextState() const;
     void setNeighbors(std::vector<Cell*> neighbors);
     std::vector<Cell*> getNeighbors() const;
 protected:
-	State previousState;
-	State currentState;
-	State nextState;
+	bool acceptsState(const State& state) const;
+	std::unique_ptr<State> previousState;
+	std::unique_ptr<State> currentState;
+	std::unique_ptr<State> nextState;
+	StateSet* stateSet = nullptr;
 	bool updatePending;
 	std::vector<int> position;
     long cellNum;

@@ -12,8 +12,8 @@
  */
 
 #include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
-#include "kernel/simulator/ModelDataDefinition.h"
-#include "kernel/simulator/Model.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include <cassert>
 
@@ -362,6 +362,6 @@ unsigned int SeizableItem::getLastPreferedOrder() const {
     return _lastPreferedOrder;
 }
 
-//void SeizableItem::setComponentManager(ComponentManager* _componentManager) {
+//void SeizableItem::setComponentManager(ModelComponentManager* _componentManager) {
 //	_componentManager = _componentManager;
 //}

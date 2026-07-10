@@ -16,7 +16,7 @@
 
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "../../../data/Logic/Set.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
 
 // @TODO should inhere from a common base to QueueableItem
 
@@ -73,7 +73,7 @@ public:
 	void setElementManager(ModelDataManager* modeldataManager);
 	void setLastPreferedOrder(unsigned int lastPreferedOrder);
 	unsigned int getLastPreferedOrder() const;
-	//void setComponentManager(ComponentManager* _componentManager);
+	//void setComponentManager(ModelComponentManager* _componentManager);
 	List<SimulationControl*>* getSimulationControls() const;
 	void _addSimulationControl(SimulationControl* control);
 

@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include <functional>
 #include <string>
 //#include "plugins/data/Template/DummyElement.h"

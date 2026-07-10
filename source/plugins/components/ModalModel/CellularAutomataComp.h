@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
@@ -47,7 +47,7 @@ public: //! enums
 	};
 
 	enum class LocalRuleType : int {
-		ELEMENTAR_CA = 1, GAME_OF_LIFE = 2, BIASED_COMPETITION = 3, HPP = 4, USERDEFINED = 5
+		ELEMENTAR_CA = 1, GAME_OF_LIFE = 2, BIASED_COMPETITION = 3, HPP = 4, SAND_ROCK = 5, USERDEFINED = 99
 	};
 
 	enum class AutomataType : int {

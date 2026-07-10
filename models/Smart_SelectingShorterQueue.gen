@@ -1,0 +1,28 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=160.000000 replicationBaseTimeUnit=6 replicationLength=3200.000000 numberOfReplications=300 replicationLengthTimeUnit=6 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+143 Attribute  "Entity.TotalWaitTime" 
+150 Resource   "Machine_1" 
+162 Resource   "Machine_2" 
+174 Queue      "QueueResource1" 
+177 Queue      "QueueResource2" 
+
+# Model Components
+132 Create     "Create_1" entityType="Create_1" timeBetweenCreationsTimeUnit=6 nextId=138 timeBetweenCreations="3" 
+138 Decide     "Decide_1" condition[0]="NQ(QueueResource1) < NQ(QueueResource2)" conditions=1 nextId[0]=139 nextId[1]=145 nexts=2 
+139 Process    "Process_1" delayExpression="NORM(4,4)" delayExpressionTimeUnit=6 queueable="QueueResource1" allocationType=0 nextId=180 requestSeizable[0]="Machine_1" 
+140 Seize      "Process_1.Seize" queueable="QueueResource1" allocationType=0 nextId=141 requestSeizable[0]="Machine_1" 
+141 Delay      "Process_1.Delay" delayExpressionTimeUnit=6 delayExpression="NORM(4,4)" nextId=144 
+144 Release    "Process_1.Release" resquests=0 nexts=0 
+145 Process    "Process_2" delayExpression="NORM(4,4)" delayExpressionTimeUnit=6 queueable="QueueResource2" allocationType=0 nextId=180 requestSeizable[0]="Machine_2" 
+146 Seize      "Process_2.Seize" queueable="QueueResource2" allocationType=0 nextId=147 requestSeizable[0]="Machine_2" 
+147 Delay      "Process_2.Delay" delayExpressionTimeUnit=6 delayExpression="NORM(4,4)" nextId=149 
+149 Release    "Process_2.Release" resquests=0 nexts=0 
+180 Dispose    "Dispose_1" nexts=0 

@@ -14,7 +14,7 @@
 #ifndef SEPARATE_H
 #define SEPARATE_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
  Separate module

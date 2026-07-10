@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "kernel/simulator/ModelManager.h"
+#include "../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/TraceManager.h"
 

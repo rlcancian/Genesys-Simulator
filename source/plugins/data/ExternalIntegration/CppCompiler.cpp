@@ -37,7 +37,7 @@
 #include <thread>
 
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -119,7 +119,7 @@ ModelDataDefinition* CppCompiler::LoadInstance(Model* model, PersistenceRecord *
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load CppCompiler instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -132,6 +132,7 @@ PluginInformation* CppCompiler::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("ExternalIntegration");
 	return info;
 }
 
