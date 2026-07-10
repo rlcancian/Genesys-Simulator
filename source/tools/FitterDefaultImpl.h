@@ -329,6 +329,32 @@ public:
 		return _dataFilename;
 	}
 
+	/**
+	 * @brief Loads the dataset directly from an in-memory vector, bypassing file I/O.
+	 *
+	 * Intentionally not part of Fitter_if: DataAnalyzerDefaultImpl1 holds this class
+	 * concretely (not through the Fitter_if interface), so the in-memory data path
+	 * does not need to widen the shared fitting contract.
+	 */
+	void setDataValues(const std::vector<double>& values) {
+		_invalidateCache();
+		if (values.empty()) {
+			_cacheLoaded = true;
+			return;
+		}
+		for (double v : values) {
+			if (!std::isfinite(v)) {
+				_cacheLoaded = true;
+				return;
+			}
+		}
+		_data = values;
+		_sortedData = _data;
+		std::sort(_sortedData.begin(), _sortedData.end());
+		_cacheUsable = _computeStatsFromLoadedData();
+		_cacheLoaded = true;
+	}
+
 private:
 	void _invalidateCache() {
 		_cacheLoaded = false;
@@ -385,17 +411,19 @@ private:
 		_data = values;
 		_sortedData = _data;
 		std::sort(_sortedData.begin(), _sortedData.end());
+		return _computeStatsFromLoadedData();
+	}
+
+	bool _computeStatsFromLoadedData() {
 		_count = _data.size();
 		if (_count == 0) {
 			return false;
 		}
-
 		_sampleMin = _sortedData.front();
 		_sampleMax = _sortedData.back();
 		const double sum = std::accumulate(_data.begin(), _data.end(), 0.0);
 		_sampleMean = sum / static_cast<double>(_count);
 		_hasNegativeData = (_sampleMin < 0.0);
-
 		if (_count >= 2) {
 			double sq = 0.0;
 			for (double x : _data) {

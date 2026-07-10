@@ -35,6 +35,12 @@ if(NOT TARGET genesys_tools)
     add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-unit-tests)
 endif()
 
+genesys_add_unit_test(genesys_test_data_analyzer
+    test_data_analyzer.cpp
+    genesys_tools
+    genesys_kernel_statistics
+)
+
 genesys_add_unit_test(genesys_test_simulator_runtime
     test_simulator_runtime.cpp
     genesys_tools
@@ -52,9 +58,50 @@ genesys_add_unit_test(genesys_test_parser_expressions
     genesys_kernel_simulator_runtime
 )
 
+genesys_add_unit_test(genesys_test_modal_model_efsm
+    test_modal_model_efsm.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
 genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
     test_cellular_automata_neighborhood.cpp
     genesys_plugins_components_minimal
+)
+
+# Sutter (universal CA): component-level behaviour — boundaries, state sets, update policies, N-D.
+genesys_add_unit_test(genesys_test_cellular_automata
+    test_cellular_automata.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+)
+
+# Pedro (Linha B): engine ground truth, user-defined rule via CppCompiler, component integration.
+genesys_add_unit_test(genesys_test_cellular_automata_elementary
+    test_cellular_automata_elementary.cpp
+    genesys_plugins_components_minimal
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata_user_defined
+    test_cellular_automata_user_defined.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    ${CMAKE_DL_LIBS}
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata_component
+    test_cellular_automata_component.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components
+    ${CMAKE_DL_LIBS}
 )
 
 genesys_add_unit_test(genesys_test_support_modelmanager
@@ -191,16 +238,38 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser
     )
 
+    set(GENESYS_TEST_GUI_GMDD_LAYOUT_LINK_LIBRARIES
+        genesys_kernel_util
+        genesys_kernel_statistics
+        genesys_parser
+        genesys_plugins_data
+        genesys_plugins_components_minimal
+        genesys_kernel_simulator_support
+        genesys_kernel_simulator_runtime
+    )
+
     target_link_libraries(genesys_test_gui_gmdd_layout
         PRIVATE
             GTest::gtest
             ${GENESYS_QT_TEST_PACKAGE}::Core
             ${GENESYS_QT_TEST_PACKAGE}::Gui
             ${GENESYS_QT_TEST_PACKAGE}::Widgets
-            "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
             genesys_web_core
             genesys_tools
     )
+
+    if(CMAKE_CXX_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED)
+        target_link_libraries(genesys_test_gui_gmdd_layout
+            PRIVATE
+                "$<LINK_GROUP:RESCAN,${GENESYS_TEST_GUI_GMDD_LAYOUT_LINK_LIBRARIES}>"
+        )
+    else()
+        target_link_libraries(genesys_test_gui_gmdd_layout
+            PRIVATE
+                ${GENESYS_TEST_GUI_GMDD_LAYOUT_LINK_LIBRARIES}
+                ${GENESYS_TEST_GUI_GMDD_LAYOUT_LINK_LIBRARIES}
+        )
+    endif()
 
     if(TARGET ${GENESYS_QT_TEST_PACKAGE}::PrintSupport)
         target_link_libraries(genesys_test_gui_gmdd_layout
@@ -303,7 +372,12 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_simulator_support
         genesys_test_simulator_runtime
         genesys_test_parser_expressions
+        genesys_test_modal_model_efsm
         genesys_test_cellular_automata_neighborhood
+        genesys_test_cellular_automata
+        genesys_test_cellular_automata_elementary
+        genesys_test_cellular_automata_user_defined
+        genesys_test_cellular_automata_component
         genesys_test_support_modelmanager
         genesys_test_support_persistence
         genesys_test_runtime_pluginmanager
@@ -386,7 +460,12 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_simulator_support>
     COMMAND $<TARGET_FILE:genesys_test_simulator_runtime>
     COMMAND $<TARGET_FILE:genesys_test_parser_expressions>
+    COMMAND $<TARGET_FILE:genesys_test_modal_model_efsm>
     COMMAND $<TARGET_FILE:genesys_test_cellular_automata_neighborhood>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_elementary>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_user_defined>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_component>
     COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_persistence>
     COMMAND $<TARGET_FILE:genesys_test_runtime_pluginmanager>

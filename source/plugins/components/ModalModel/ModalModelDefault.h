@@ -53,9 +53,14 @@ public: /// static public methods that must have implementations (Load and New j
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected: /// virtual protected method that must be overriden
+	ModalModelDefault(Model* model, std::string componentTypename, std::string name);
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override; ///< This method is only for ModelComponents, not ModelDataElements
+	virtual DefaultNodeTransition* _createTransitionForLoad(DefaultNode* source, DefaultNode* destination, const std::string& transitionTypename, const std::string& transitionName, PersistenceRecord* fields, const std::string& suffix);
+	virtual std::string _getTransitionTypename(DefaultNodeTransition* transition) const;
+	virtual void _loadTransitionSpecificFields(DefaultNodeTransition* transition, PersistenceRecord* fields, const std::string& suffix);
+	virtual void _saveTransitionSpecificFields(DefaultNodeTransition* transition, PersistenceRecord* fields, const std::string& suffix, bool saveDefaultValues);
 
 protected: /// virtual protected methods that could be overriden by derived classes, if needed
 	/*! This method is called by ModelChecker during model check. The component should check itself to verify if user parameters are ok (ex: correct syntax for the parser) and everithing in its parameters allow the model too run without errors in this component */
