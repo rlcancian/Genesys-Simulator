@@ -13,11 +13,11 @@ public:
     virtual void applyRule(Cell* cell) override {
         unsigned int sum = 0;
         for (Cell* neigh : cell->getNeighbors()) {
-			sum += neigh->getCurrentState().getValue();
+			sum += stateValue(neigh);
         }
         if (sum <= 3 || sum == 5)
-			cell->setNextState(State(0));
+			setNextStateFromValue(cell, 0);
         else
-			cell->setNextState(State(1));
+			setNextStateFromValue(cell, 1);
     }
 };

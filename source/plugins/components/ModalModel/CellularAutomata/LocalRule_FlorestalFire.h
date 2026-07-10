@@ -31,8 +31,9 @@ public:
             return;
         }
 
-        std::random_device randomDevice;
-        std::default_random_engine engine(randomDevice());
+        // Reproducible RNG: a single fixed-seed engine (member), not a fresh std::random_device-seeded
+        // engine per cell per step (which made every run different — uncomprovável — and was a heavy
+        // per-cell allocation). For a stochastic rule, a fixed seed makes results repeatable (REGRA 3).
         std::uniform_real_distribution<double> uniform(0.0, 1.0);
         std::vector<unsigned int> sumNeighStates(enumerableStateSet->getStatesSize(), 0);
 
@@ -77,6 +78,7 @@ public:
     }
 protected:
 private:
+    std::default_random_engine engine{12345u}; // fixed seed -> reproducible runs (was reseeded per cell)
     double pSoil2Grass = 0.001;
     double pGrass2Tree = 0.0001;
     double pGrass2Fire = 0.00001;

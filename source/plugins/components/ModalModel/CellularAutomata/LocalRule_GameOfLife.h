@@ -14,15 +14,15 @@ public:
     virtual void applyRule(Cell* cell) override {
         unsigned int living = 0;
         for (Cell* neigh : cell->getNeighbors()) {
-			living += neigh->getCurrentState().getValue();
+			living += stateValue(neigh);
         }
-		if (cell->getCurrentState().getValue() == 1) {
+		if (stateValue(cell) == 1) {
             if (living < 2 || living > 3)
-				cell->setNextState(State(0));
+				setNextStateFromValue(cell, 0);
             else
                 cell->setNextState(cell->getCurrentState());
         } else if (living == 3)
-			cell->setNextState(State(1));
+			setNextStateFromValue(cell, 1);
         else 
             cell->setNextState(cell->getCurrentState());
     }
