@@ -19,6 +19,8 @@
 #include "HypothesisTester_if.h"
 #include "FitterDefaultImpl.h"
 #include "Fitter_if.h"
+#include "DataAnalyzerDefaultImpl1.h"
+#include "DataAnalyzer_if.h"
 
 /**
  * @brief Registry-like traits to bind abstractions to concrete tools classes.
@@ -60,6 +62,13 @@ template <> struct TraitsTools<HypothesisTester_if> {
  */
 template <> struct TraitsTools<Fitter_if> {
 	typedef FitterDefaultImpl Implementation;
+};
+
+/*!
+ *  Configure the DataAnalyzer to be used
+ */
+template <> struct TraitsTools<DataAnalyzer_if> {
+	typedef DataAnalyzerDefaultImpl1 Implementation;
 };
 
 #endif /* TRAITSTOOLS_H */

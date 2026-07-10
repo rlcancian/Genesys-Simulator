@@ -3,6 +3,7 @@
 /out/
 /cmake-build-*/
 build/
+build-*/
 /documentation/AI
 build-gui/
 
