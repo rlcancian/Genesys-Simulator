@@ -280,14 +280,28 @@ genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
     genesys_tools
 )
 
+# DCS: ODE solver factory + Dormand-Prince 5(4) (Part 1)
 genesys_add_unit_test(genesys_test_tools_ode_solver_factory
     test_tools_ode_solver_factory.cpp
     genesys_tools
 )
 
+# DCS: N-D diffusion Method of Lines core (Part 2)
 genesys_add_unit_test(genesys_test_tools_diffusion_mol
     test_tools_diffusion_mol.cpp
     genesys_tools
+)
+
+# DCS: DiffusionField plugin + DiffusionSimulate component integration (Part 2)
+# drives the plugin, the discrete->continuous component and the event-clock sync
+# through the real kernel.
+genesys_add_unit_test(genesys_test_plugins_continuous_diffusion
+    test_plugins_continuous_diffusion.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_data
+    genesys_plugins_components
 )
 
 add_custom_target(genesys_kernel_unit_tests
@@ -312,6 +326,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_tools_ode_solver_factory
         genesys_test_tools_diffusion_mol
         genesys_test_wcm_plugins
+        genesys_test_plugins_continuous_diffusion
 )
 
 if(GENESYS_BUILD_WORKER_APPLICATION)
@@ -394,6 +409,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_tools_ode_solver_factory>
     COMMAND $<TARGET_FILE:genesys_test_tools_diffusion_mol>
     COMMAND $<TARGET_FILE:genesys_test_wcm_plugins>
+    COMMAND $<TARGET_FILE:genesys_test_plugins_continuous_diffusion>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests

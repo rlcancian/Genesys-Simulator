@@ -14,3 +14,20 @@ add_custom_target(genesys_tests
 if(GENESYS_BUILD_SMOKE_TESTS)
     add_dependencies(genesys_tests genesys_smoke_tests)
 endif()
+
+add_executable(genesys_diffusion_ascii_demo
+    diffusion_demo.cpp
+)
+
+target_include_directories(genesys_diffusion_ascii_demo
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+)
+
+target_link_libraries(genesys_diffusion_ascii_demo
+    PRIVATE
+        genesys_tools
+        genesys_kernel_simulator_runtime
+        genesys_kernel_util
+        genesys_plugins_data
+)

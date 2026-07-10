@@ -81,6 +81,7 @@
 #include "plugins/components/Synchronization/Wait.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/Continuous/LSODE.h"
+#include "plugins/components/Continuous/ContinuousSystemComponent.h"
 #include "plugins/components/Continuous/OLD_ODEelement.h"
 #include "components/BiochemicalSimulation/BacteriaColony.h"
 #include "plugins/components/ModalModel/DefaultNode.h"
@@ -102,6 +103,7 @@
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
 #include "plugins/data/ExternalIntegration/PythonRuntime.h"
 #include "plugins/data/AI/AISupport.h"
+#include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/data/Template/DummyElement.h"
 #include "plugins/data/Grouping/EntityGroup.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
@@ -224,6 +226,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("signaldata.so");
     filenames->insert("diffequations.so");
     filenames->insert("lsode.so");
+    filenames->insert("continuoussystemcomponent.so");
     //filenames->insert("finiteelement.so");
     filenames->insert("old_odeelement.so");
     filenames->insert("modalmodelfsm.so");
@@ -231,6 +234,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("modalmodelpetrinet.so");
     //filenames->insert("finitevolume.so");
     filenames->insert("cppcompiler.so");
+    filenames->insert("odesolver.so");
     filenames->insert("cppforg.so");
     filenames->insert("pythonruntime.so");
     filenames->insert("pythonforg.so");
@@ -437,6 +441,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &DiffEquations::GetPluginInformation;
     else if (fn == "lsode.so")
         GetInfo = &LSODE::GetPluginInformation;
+    else if (fn == "continuoussystemcomponent.so")
+        GetInfo = &ContinuousSystemComponent::GetPluginInformation;
     //else if (fn == "finiteelement.so")
     else if (fn == "old_odeelement.so")
         GetInfo = &OLD_ODEelement::GetPluginInformation;
@@ -451,6 +457,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
     //    GetInfo = &LSODE::GetPluginInformation;
     else if (fn == "cppcompiler.so")
         GetInfo = &CppCompiler::GetPluginInformation;
+    else if (fn == "odesolver.so")
+        GetInfo = &ODESolver::GetPluginInformation;
     else if (fn == "cppforg.so")
         GetInfo = &CppForG::GetPluginInformation;
     else if (fn == "pythonruntime.so")
