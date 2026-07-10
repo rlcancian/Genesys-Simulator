@@ -1,7 +1,7 @@
 #include "Persistence.h"
 
 
-PersistenceRecord::PersistenceRecord(ModelPersistence_if& config) :
+PersistenceRecord::PersistenceRecord(Persistence_if& config) :
 _fields{}
 
 , _config(config) {

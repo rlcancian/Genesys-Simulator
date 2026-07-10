@@ -1,0 +1,37 @@
+# GenESyS developer Doxygen configuration
+# Run from the repository root with:
+#   doxygen docs/developers/DoxyfileDeveloper
+#
+# Policy:
+# - Doxygen working files are generated under build/doxygen/developers.
+# - Intermediate HTML, LaTeX, image, index, man-page, and auxiliary files are not versioned.
+# - The final PDF, when generated, should be copied to docs/developers/GenESyS-Developer-Documentation.pdf.
+# - Man pages are generated under build/doxygen/developers/man for Debian/PPA packaging workflows.
+# - The compatibility files DoxyfileDeveloper2022 and DoxyfileDeveloper2026 exist only because they were historical entrypoints.
+
+@INCLUDE = docs/developers/DoxyfileDeveloper2026.legacy
+
+PROJECT_LOGO           = source/applications/gui/qt/GenesysQtGUI/resources/software_genesys.gif
+OUTPUT_DIRECTORY       = build/doxygen/developers
+INPUT                  = source/applications \
+                         source/kernel \
+                         source/plugins
+STRIP_FROM_PATH        = source
+STRIP_FROM_INC_PATH    = source
+
+GENERATE_HTML          = NO
+GENERATE_LATEX         = YES
+LATEX_OUTPUT           = latex
+USE_PDFLATEX           = YES
+PDF_HYPERLINKS         = YES
+
+GENERATE_MAN           = YES
+MAN_OUTPUT             = man
+MAN_EXTENSION          = .3
+MAN_SUBDIR             =
+
+GENERATE_XML           = NO
+GENERATE_RTF           = NO
+GENERATE_DOCBOOK       = NO
+GENERATE_HTMLHELP      = NO
+GENERATE_TREEVIEW      = NO

@@ -15,8 +15,8 @@
 #define SEIZE_H
 
 #include <string>
-#include "kernel/simulator/ModelComponent.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "kernel/simulator/Plugin.h"
@@ -128,7 +128,7 @@ which queue is to be used.
 class Seize : public ModelComponent {
 public:
 	Seize(Model* model, std::string name = "");
-	virtual ~Seize() = default;
+	virtual ~Seize() override;
 public:
 	virtual std::string show() override;
 public:

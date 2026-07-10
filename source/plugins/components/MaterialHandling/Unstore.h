@@ -14,7 +14,7 @@
 #ifndef UNSTORE_H
 #define UNSTORE_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
 Unstore module

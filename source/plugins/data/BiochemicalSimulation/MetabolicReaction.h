@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
 /**
@@ -50,11 +50,11 @@ protected:
 	virtual bool _loadInstance(PersistenceRecord* fields) override;
 	virtual void _saveInstance(PersistenceRecord* fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createEditableDataDefinitions() override;
 
 protected:
 	// virtual void _createInternalStatisticReporters() override;
 	// virtual void _createNonEditableDataDefinitions() override;
-	// virtual void _createEditableDataDefinitions() override;
 	// virtual void _createAttachedAttributes() override;
 
 private:

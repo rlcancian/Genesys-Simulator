@@ -12,8 +12,8 @@
  */
 
 #include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
-#include "kernel/simulator/ModelDataDefinition.h"
-#include "kernel/simulator/Model.h"
+#include "../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include <cassert>
 
@@ -224,6 +224,6 @@ void QueueableItem::setElementManager(ModelDataManager* modeldataManager) {
 	_modeldataManager = modeldataManager;
 }
 
-//void QueueableItem::setComponentManager(ComponentManager* componentManager) {
+//void QueueableItem::setComponentManager(ModelComponentManager* componentManager) {
 //    this->_componentManager = componentManager;
 //}

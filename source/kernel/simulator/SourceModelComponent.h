@@ -14,7 +14,7 @@
 #ifndef SOURCEMODELCOMPONENT_H
 #define SOURCEMODELCOMPONENT_H
 
-#include "ModelComponent.h"
+#include "model/ModelComponent.h"
 #include <string>
 #include <limits>
 //namespace GenesysKernel {

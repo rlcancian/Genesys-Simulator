@@ -9,10 +9,8 @@
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
-#include "kernel/simulator/ModelInfo.h"
-#include "kernel/simulator/ModelManager.h"
-#include "kernel/simulator/PropertyManager.h"
-#include "kernel/simulator/Property.h"
+#include "../../kernel/simulator/model/ModelInfo.h"
+#include "../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationScenario.h"
@@ -135,14 +133,14 @@ struct KernelAccessorProbe {
     }
 };
 
-class FakeModelPersistence : public ModelPersistence_if {
+class FakeModelPersistence : public Persistence_if {
 public:
     bool save(std::string) override { return false; }
     bool load(std::string) override { return false; }
     bool hasChanged() override { return false; }
     void setHasChanged(bool) override {}
-    bool getOption(ModelPersistence_if::Options) override { return false; }
-    void setOption(ModelPersistence_if::Options, bool) override {}
+    bool getOption(Persistence_if::Options) override { return false; }
+    void setOption(Persistence_if::Options, bool) override {}
     std::string getFormatedField(PersistenceRecord*) override { return ""; }
 };
 
@@ -328,11 +326,6 @@ TEST(SimulatorSupportTest, ParserChangesInformationSupportsMultilineAndOverwrite
     EXPECT_EQ(info.getincludes(), "just-one");
     EXPECT_EQ(info.gettokens(), "TOK_A TOK_B");
     EXPECT_EQ(info.getfunctionProdutions(), "f1\nf2");
-}
-
-TEST(SimulatorSupportTest, PropertyManagerCanBeConstructed) {
-    PropertyManager manager;
-    SUCCEED();
 }
 
 TEST(SimulatorSupportTest, PluginInformationComponentConstructorConfiguresComponentMode) {
@@ -761,27 +754,4 @@ TEST(SimulatorSupportTest, SimulationResponseDoubleIsNotAWritableControl) {
 
     SimulationResponse* base = &response;
     EXPECT_EQ(dynamic_cast<SimulationControl*>(base), nullptr);
-}
-
-TEST(SimulatorSupportTest, LegacyPropertyBaseCanCoexistWithKernelPropertyBaseAlias) {
-    PropertyT<int> property(
-        "LegacyPropertyClass",
-        "LegacyValue",
-        []() { return 7; },
-        [](int) {}
-    );
-
-    EXPECT_EQ(property.getClassname(), "LegacyPropertyClass");
-    EXPECT_EQ(property.getName(), "LegacyValue");
-
-    SimulationControlInt control(
-        []() { return 3; },
-        [](int) {},
-        "KernelControlClass",
-        "KernelElement",
-        "KernelValue"
-    );
-
-    SimulationResponse* response = &control;
-    EXPECT_NE(response, nullptr);
 }

@@ -14,10 +14,10 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
 
-#include "kernel/simulator/ModelDataDefinition.h"
-#include "kernel/simulator/StatisticsCollector.h"
-#include "kernel/simulator/ModelDataManager.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/OnEventManager.h"
 

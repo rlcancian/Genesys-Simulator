@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/ModalModel/CellularAutomataComp.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
@@ -20,6 +20,7 @@
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Elementary.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Growty.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_SandRock_Student.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Center.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
@@ -48,7 +49,7 @@ ModelComponent* CellularAutomataComp::LoadInstance(Model* model, PersistenceReco
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load CellularAutomataComp instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -109,6 +110,8 @@ void CellularAutomataComp::setLocalRuleType(CellularAutomataComp::LocalRuleType 
 		_localRule = new LocalRule_GameOfLife(_cellularAutomata);
 	} else if (_localRuleType == LocalRuleType::BIASED_COMPETITION) {
 		_localRule = new LocalRule_Growty(_cellularAutomata);
+	} else if (_localRuleType == LocalRuleType::SAND_ROCK) {
+		_localRule = new LocalRule_SandRock_Student(_cellularAutomata);
 	}
 }
 

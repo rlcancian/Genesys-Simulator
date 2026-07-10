@@ -1,0 +1,26 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Loja 01" version="1.0" projectTitle="" description="Primeiro exemplo da lista de exercícios do Professor Cancian" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=8.000000 numberOfReplications=10 replicationLengthTimeUnit=7 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+140 Attribute  "Entity.TotalWaitTime" 
+145 EntityType "Cliente" 
+146 Set        "SetFuncionarios" member[4]="Funcionario5" member[3]="Funcionario4" member[1]="Funcionario2" member[0]="Funcionario1" member[2]="Funcionario3" members=5 type="Resource" 
+147 Resource   "Funcionario1" 
+159 Resource   "Funcionario2" 
+171 Resource   "Funcionario3" 
+183 Resource   "Funcionario4" 
+195 Resource   "Funcionario5" 
+207 Queue      "QueueEsperaFuncionario" 
+
+# Model Components
+132 Create     "Clientes_chegam" entityType="Cliente" timeBetweenCreationsTimeUnit=6 nextId=137 timeBetweenCreations="expo(4)" 
+137 Seize      "São_atendidos_por_um_dos_5_funcionários" requestSelectionRule[0]=4 requestSeizableType[0]=1 queueable="QueueEsperaFuncionario" nextId=138 requestSaveAttribute[0]="meuFuncionario" requestSeizable[0]="SetFuncionarios" 
+138 Delay      "Tempo_de_Atendimento" delayExpressionTimeUnit=6 delayExpression="norm(20,10)" nextId=141 
+141 Release    "Liberam_o_funcionário" requestSelectionRule[0]=2 requestSeizableType[0]=1 nextId=142 requestSaveAttribute[0]="meuFuncionario" requestSeizable[0]="SetFuncionarios" 
+142 Dispose    "Saem_do_sistema" nexts=0 

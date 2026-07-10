@@ -13,8 +13,8 @@
 
 #include "plugins/data/Logic/Formula.h"
 #include <iostream>
-#include "kernel/simulator/ModelDataManager.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/TraitsKernel.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -32,6 +32,10 @@ ModelDataDefinition* Formula::NewInstance(Model* model, std::string name) {
 
 Formula::Formula(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<Formula>(), name) {
 	//_myPrivateParser = new TraitsKernel<Parser_if>::Implementation(_parentModel, new TraitsKernel<Sampler_if>::Implementation()); //@TODO: !! Really, really BAD. 
+}
+
+Formula::~Formula() {
+	delete _formulaExpressions;
 }
 
 std::string Formula::show() {
@@ -79,6 +83,7 @@ double Formula::getValue(std::string index) {
 
 PluginInformation* Formula::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Formula>(), &Formula::LoadInstance, &Formula::NewInstance);
+	info->setCategory("Logic");
 	return info;
 }
 
@@ -87,7 +92,7 @@ ModelDataDefinition* Formula::LoadInstance(Model* model, PersistenceRecord *fiel
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Formula instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

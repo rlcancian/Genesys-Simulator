@@ -1,19 +1,22 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 warmUpTime=3.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-62  EntityType "Entity_1" 
-64  Variable   "serialNumber" 
-65  Attribute  "isEven" 
-68  EntityType "typeA" 
-69  EntityType "typeB" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Entity_1" 
+139 Variable   "serialNumber" 
+140 Attribute  "isEven" 
+143 EntityType "typeA" 
+144 EntityType "typeB" 
 
 # Model Components
-61  Create     "Create_1" entityType="Entity_1" maxCreations="99999999999999" timeBetweenCreationsTimeUnit=6 nextId=63 timeBetweenCreations="EXPO(1)" 
-66  Decide     "Decide_1" condition[1]="isEven==1" condition[0]="isEven==0" conditions=2 nextId[0]=67 nextId[1]=70 nexts=2 
-70  Assign     "Assign_1" assignExpr[0]="69" nextId=72 assignDest[0]="Entity.Type" 
-71  Dispose    "Dispose_1" nexts=0 
-72  Dispose    "Dispose_2" nexts=0 
+132 Create     "Create_1" entityType="Entity_1" maxCreations="99999999999999" timeBetweenCreationsTimeUnit=6 nextId=138 timeBetweenCreations="EXPO(1)" 
+141 Decide     "Decide_1" condition[1]="isEven==1" condition[0]="isEven==0" conditions=2 nextId[0]=142 nextId[1]=145 nexts=2 
+145 Assign     "Assign_1" assignExpr[0]="144" nextId=152 assignDest[0]="Entity.Type" 
+146 Dispose    "Dispose_1" nexts=0 
+152 Dispose    "Dispose_2" nexts=0 

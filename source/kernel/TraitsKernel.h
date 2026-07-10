@@ -16,11 +16,11 @@
 #define TRAITSKERNEL_H
 
 
-#include "simulator/ModelPersistenceDefaultImpl2.h"
-#include "simulator/ModelPersistencePartialLoadImpl1.h"
+#include "simulator/persistence/PersistenceDefaultImpl2.h"
+#include "simulator/persistence/PersistencePartialLoadImpl1.h"
 #include "simulator/SimulationReporterDefaultImpl1.h"
-#include "simulator/Counter.h"
-#include "simulator/ModelCheckerDefaultImpl1.h"
+#include "simulator/essentialPlugins/Counter.h"
+#include "simulator/model/ModelCheckerDefaultImpl1.h"
 #include "simulator/ParserDefaultImpl2.h"
 #include "simulator/SimulationReporter_if.h"
 
@@ -99,8 +99,8 @@ struct TraitsKernel<ModelChecker_if> {
 };
 
 template <>
-struct TraitsKernel<ModelPersistence_if> {
-	typedef ModelPersistencePartialLoadImpl1 Implementation;
+struct TraitsKernel<Persistence_if> {
+	typedef PersistencePartialLoadImpl1 Implementation;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L2_results;
 };
 

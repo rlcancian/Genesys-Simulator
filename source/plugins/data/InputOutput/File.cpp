@@ -12,7 +12,7 @@
  */
 
 #include "File.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -49,6 +49,7 @@ std::string File::show() {
 PluginInformation* File::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<File>(), &File::LoadInstance, &File::NewInstance);
 	info->setDescriptionHelp("Defines metadata for external files used by model elements that read/write structured data.");
+	info->setCategory("InputOutput");
 	return info;
 }
 
@@ -57,7 +58,7 @@ ModelDataDefinition* File::LoadInstance(Model* model, PersistenceRecord *fields)
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load File instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

@@ -12,9 +12,9 @@
  */
 
 #include "plugins/components/Decisions/Search.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Event.h"
 #include "../../data/Grouping/EntityGroup.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
@@ -164,7 +164,7 @@ ModelComponent* Search::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Search instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

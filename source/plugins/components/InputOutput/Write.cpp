@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/InputOutput/Write.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -24,6 +24,10 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 
 ModelDataDefinition* Write::NewInstance(Model* model, std::string name) {
 	return new Write(model, name);
+}
+
+Write::~Write() {
+	delete _writeElements;
 }
 
 std::string Write::convertEnumToStr(WriteToType type) {
@@ -61,7 +65,7 @@ ModelComponent* Write::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Write instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

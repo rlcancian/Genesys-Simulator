@@ -1,0 +1,76 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   Smart_Create.cpp
+ * Author: rlcancian
+ * 
+ * Created on 3 de Setembro de 2019, 18:34
+ */
+
+#include "Smart_Create.h"
+
+#include "kernel/simulator/essentialPlugins/EntityType.h"
+#include "kernel/simulator/model/ModelSimulation.h"
+#include "kernel/simulator/Simulator.h"
+
+// Model Components
+#include "plugins/components/Logic/Assign.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/Logic/Dispose.h"
+
+Smart_Create::Smart_Create() {
+}
+
+/** 
+ * This is the main function of the application. 
+ * It instanciates the simulator, builds a simulation model and then simulate that model.
+ */
+int Smart_Create::main(int argc, char** argv) {
+	Simulator* genesys = new Simulator();
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
+	plugins->autoInsertPlugins("autoloadplugins.txt");
+	Model* model = genesys->getModelManager()->newModel();
+	// create model
+	EntityType* entityType = plugins->newInstance<EntityType>(model, "Customers");
+    Create* create = plugins->newInstance<Create>(model);
+    create->setDescription("Create Module");
+    create->setEntityType(entityType);
+    create->setTimeBetweenCreationsExpression("EXPO(1)");
+    create->setTimeUnit(Util::TimeUnit::minute);
+    
+    Assign* assign = plugins->newInstance<Assign>(model);
+    assign->setDescription("Assign");
+    Assignment* assignment = new Assignment("processTime", "NORM(10, 2)");
+    assign->getAssignments()->insert(assignment);
+    plugins->newInstance<Attribute>(model, "processTime");
+    create->connectTo(assign);
+    
+    Delay* delay = plugins->newInstance<Delay>(model);
+    delay->setDescription("Process");
+    delay->setDelayExpression("processTime");
+    delay->setDelayTimeUnit(Util::TimeUnit::minute);
+    assign->connectTo(delay);
+    
+    Dispose* dispose = plugins->newInstance<Dispose>(model);
+    dispose->setDescription("Dispose");
+    delay->connectTo(dispose);
+    
+    ModelSimulation* simulation = model->getSimulation();
+    simulation->setReplicationLength(10);
+    simulation->setReplicationLengthTimeUnit(Util::TimeUnit::minute);
+    simulation->setNumberOfReplications(3);
+    simulation->setWarmUpPeriod(0.05);
+    simulation->setWarmUpPeriodTimeUnit(Util::TimeUnit::minute);
+    model->save("./models/Smart_Create.gen");
+    model->getSimulation()->start();
+    while (model->getSimulation()-> isPaused());
+    
+    delete genesys;
+    return 0;
+};

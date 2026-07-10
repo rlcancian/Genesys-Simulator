@@ -1,9 +1,10 @@
 #include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
 
+#include <cctype>
 #include <functional>
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -12,6 +13,48 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 	return &GeneticCircuitPart::GetPluginInformation;
 }
 #endif
+
+namespace {
+
+std::string toLowerCopy(const std::string& text) {
+	std::string lowered;
+	lowered.reserve(text.size());
+	for (unsigned char ch : text) {
+		lowered += static_cast<char>(std::tolower(ch));
+	}
+	return lowered;
+}
+
+std::string classifyPartRole(const std::string& partType) {
+	const std::string lowered = toLowerCopy(partType);
+	if (lowered.find("promoter") != std::string::npos || lowered.find("tata") != std::string::npos) {
+		return "Pre-gene regulatory";
+	}
+	if (lowered.find("operator") != std::string::npos || lowered.find("enhancer") != std::string::npos ||
+	    lowered.find("insulator") != std::string::npos || lowered.find("silencer") != std::string::npos ||
+	    lowered.find("regulatory") != std::string::npos) {
+		return "Regulatory";
+	}
+	if (lowered.find("rbs") != std::string::npos || lowered.find("ribosome") != std::string::npos) {
+		return "Translation initiation";
+	}
+	if (lowered.find("cds") != std::string::npos || lowered.find("orf") != std::string::npos ||
+	    lowered.find("coding") != std::string::npos || lowered.find("gene") != std::string::npos) {
+		return "Coding";
+	}
+	if (lowered.find("terminator") != std::string::npos) {
+		return "Termination";
+	}
+	if (lowered.find("region") != std::string::npos || lowered.find("utr") != std::string::npos ||
+	    lowered.find("leader") != std::string::npos || lowered.find("trailer") != std::string::npos ||
+	    lowered.find("pre gene") != std::string::npos || lowered.find("pre-gene") != std::string::npos ||
+	    lowered.find("pregene") != std::string::npos) {
+		return "Pre-gene region";
+	}
+	return "Other";
+}
+
+} // namespace
 
 ModelDataDefinition* GeneticCircuitPart::NewInstance(Model* model, std::string name) {
 	return new GeneticCircuitPart(model, name);
@@ -60,8 +103,8 @@ GeneticCircuitPart::GeneticCircuitPart(Model* model, std::string name)
 
 PluginInformation* GeneticCircuitPart::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GeneticCircuitPart>(), &GeneticCircuitPart::LoadInstance, &GeneticCircuitPart::NewInstance);
-	info->setCategory("BiochemicalSimulation");
-	info->setDescriptionHelp("Genetic circuit part definition (promoter/RBS/CDS/terminator, sequence, copy number, and expression defaults).");
+	info->setCategory("Biologic/Biochemical/Genetic");
+	info->setDescriptionHelp("Genetic circuit part definition with role classification for promoters, regulatory parts, coding parts, and terminators.");
 	return info;
 }
 
@@ -70,6 +113,7 @@ ModelDataDefinition* GeneticCircuitPart::LoadInstance(Model* model, PersistenceR
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load GeneticCircuitPart instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -77,7 +121,9 @@ ModelDataDefinition* GeneticCircuitPart::LoadInstance(Model* model, PersistenceR
 std::string GeneticCircuitPart::show() {
 	return ModelDataDefinition::show() +
 	       ",partType=\"" + _partType + "\"" +
+	       ",role=\"" + classifyPartRole(_partType) + "\"" +
 	       ",sequence=\"" + _sequence + "\"" +
+	       ",sequenceLength=" + std::to_string(_sequence.size()) +
 	       ",productSpeciesName=\"" + _productSpeciesName + "\"" +
 	       ",copyNumber=" + Util::StrTruncIfInt(std::to_string(_copyNumber)) +
 	       ",basalExpressionRate=" + Util::StrTruncIfInt(std::to_string(_basalExpressionRate)) +

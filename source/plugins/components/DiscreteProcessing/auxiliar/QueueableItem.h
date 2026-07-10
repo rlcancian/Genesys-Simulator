@@ -16,7 +16,7 @@
 
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "../../../data/Logic/Set.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
 
 // @TODO should inhere from a common base to SeizeableItem
 
@@ -49,7 +49,7 @@ public:
 	QueueableType getQueueableType() const;
 	ModelDataDefinition* getQueueable() const;
 	void setElementManager(ModelDataManager* _modeldataManager);
-	//void setComponentManager(ComponentManager* _componentManager);
+	//void setComponentManager(ModelComponentManager* _componentManager);
 	List<SimulationControl*>* getSimulationControls() const;
 	void _addSimulationControl(SimulationControl* control);
 
@@ -72,7 +72,7 @@ private:
 	std::string _index = DEFAULT.index;
 	std::string _typeDC = Util::TypeOf<Queue>();
 private:
-	//ComponentManager* _componentManager;
+	//ModelComponentManager* _componentManager;
 	ModelDataManager* _modeldataManager = nullptr;
 	List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
 };

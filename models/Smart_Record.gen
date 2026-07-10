@@ -1,7 +1,24 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=230914 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 0   ModelSimulation "" traceLevel=9 replicationLength=1000.000000 numberOfReplications=30 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=1000.000000 numberOfReplications=30 
+
 # Model Data Definitions
-68  Resource   "Resource_1" capacity=5 69  Queue      "Queue_1" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+141 Attribute  "Entity.TotalWaitTime" 
+143 Resource   "Resource_1" capacity=5 
+155 Queue      "Queue_1" 
+
 # Model Components
-63  Create     "Create_1" entityType="entitytype" nextId=64 64  Process    "Process_1" delayExpression="unif(2, 6)" queueable="Queue_1" nextId=70 requestSeizable[0]="Resource_1" 70  Record     "Record_1" fileName="recordNumberInQueue.txt" nextId=71 expressionName="Number in queue" expression="nq(Queue_1)" 71  Record     "Record_2" fileName="recordNumberBusy.txt" nextId=72 expressionName="resource_1 number busy" expression="NR(Resource_1)" 72  Record     "Record_3" fileName="recordBeta.txt" nextId=73 expressionName="Just a Beta distribution" expression="beta(2,8,0,100)" 73  Dispose    "Dispose_1" nexts=0 
+132 Create     "Create_1" entityType="entitytype" nextId=137 
+137 Process    "Process_1" delayExpression="unif(2, 6)" queueable="Queue_1" nextId=158 requestSeizable[0]="Resource_1" 
+138 Seize      "Process_1.Seize" queueable="Queue_1" nextId=139 requestSeizable[0]="Resource_1" 
+139 Delay      "Process_1.Delay" delayExpression="unif(2, 6)" nextId=142 
+142 Release    "Process_1.Release" resquests=0 nexts=0 
+158 Record     "Record_1" fileName="recordNumberInQueue.txt" timeDependent=1 description="Time-dependent queue length observations recorded from Queue_1." randomVariableName="Number in queue" nextId=160 datasetName="Queue Length Time Series" expressionName="Number in queue" expression="nq(Queue_1)" 
+160 Record     "Record_2" fileName="recordNumberBusy.txt" timeDependent=1 description="Time-dependent number-busy observations recorded from Resource_1." randomVariableName="Resource_1 number busy" nextId=162 datasetName="Resource Busy Time Series" expressionName="resource_1 number busy" expression="NR(Resource_1)" 
+162 Record     "Record_3" fileName="recordBeta.txt" description="Independent samples from beta(2,8,0,100)." randomVariableName="Beta sample" nextId=164 datasetName="Beta Distribution Samples" expressionName="Just a Beta distribution" expression="beta(2,8,0,100)" 
+164 Dispose    "Dispose_1" nexts=0 

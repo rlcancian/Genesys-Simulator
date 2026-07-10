@@ -12,7 +12,7 @@
  */
 
 #include "plugins/data/Logic/Variable.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #include <exception>
 
@@ -51,6 +51,7 @@ std::string Variable::show() {
 
 PluginInformation* Variable::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Variable>(), &Variable::LoadInstance, &Variable::NewInstance);
+	info->setCategory("Logic");
 	return info;
 }
 
@@ -60,6 +61,10 @@ double Variable::getValue(std::string index) {
 
 void Variable::setValue(double value, std::string index) {
 	_values->setValue(value, index);
+}
+
+void Variable::copyValuesFrom(const Variable& source) {
+	_values->copyFrom(*source._values);
 }
 
 std::string Variable::getInitialValuesText() const {
@@ -83,7 +88,8 @@ ModelDataDefinition* Variable::LoadInstance(Model* model, PersistenceRecord *fie
 	Variable* newElement = new Variable(model);
 	try {
 		newElement->_loadInstance(fields);
-	} catch (const std::exception&) {
+	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load Variable instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

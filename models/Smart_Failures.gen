@@ -1,0 +1,22 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=1000.000000 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 Failure    "failure_by_time" failingResource[0]="Machine_1" failingResources=1 upTimeExpression="norm(50,2)" downTimeExpression="5" 
+138 Failure    "failure_by_count" failingResource[0]="Machine_1" failingResources=1 failureType=0 downTimeExpression="2" countExpression="10" 
+139 Resource   "Machine_1" failure[0]="failure_by_time" failures=2 failure[1]="failure_by_count" 
+151 Queue      "Seize_1.Queue" 
+157 Attribute  "Entity.TotalWaitTime" 
+
+# Model Components
+132 Create     "Create_1" entityType="entitytype" nextId=154 
+154 Seize      "Seize_1" queueable="Seize_1.Queue" nextId=155 requestSeizable[0]="Machine_1" 
+155 Delay      "Delay_1" nextId=158 
+158 Release    "Release_1" nextId=159 requestSeizable[0]="Machine_1" 
+159 Dispose    "Dispose_1" nexts=0 

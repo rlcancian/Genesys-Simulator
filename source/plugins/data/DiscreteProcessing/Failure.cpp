@@ -12,7 +12,7 @@
  */
 
 #include "plugins/data/DiscreteProcessing/Failure.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -202,6 +202,7 @@ PluginInformation* Failure::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Failure>(), &Failure::LoadInstance, &Failure::NewInstance);
 	//info->insertDynamicLibFileDependence("resource.so"); -- Circular dependence!! Do not add it
 	info->setDescriptionHelp("Defines failure behavior (time-based or count-based) that can be attached to one or more Resources.");
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 
@@ -210,7 +211,7 @@ ModelDataDefinition* Failure::LoadInstance(Model* model, PersistenceRecord *fiel
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Failure instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

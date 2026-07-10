@@ -1,7 +1,24 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=230914 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 0   ModelSimulation "" traceLevel=9 replicationLength=10.000000 numberOfReplications=3 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" replicationLength=10.000000 numberOfReplications=3 
+
 # Model Data Definitions
-64  Resource   "Resource_1" 65  Resource   "Resource_2" 66  Resource   "Resource_3" 67  Resource   "Resource_4" 68  Resource   "Resource_5" 69  Queue      "Queue_1" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 Resource   "Resource_1" 
+149 Resource   "Resource_2" 
+161 Resource   "Resource_3" 
+173 Resource   "Resource_4" 
+185 Resource   "Resource_5" 
+197 Queue      "Queue_1" 
+203 Attribute  "Entity.TotalWaitTime" 
+
 # Model Components
-63  Create     "Create_1" entityType="entitytype" entitiesPerCreation=2 nextId=70 70  Seize      "Seize_1" requestSeizable[4]="Resource_5" requestSeizable[3]="Resource_4" requestSeizable[1]="Resource_2" queueable="Queue_1" resquests=5 nextId=71 requestSeizable[0]="Resource_1" requestSeizable[2]="Resource_3" 71  Delay      "Delay_1" allocation=1 delayExpression="unif(0.6,1.5)" nextId=72 72  Release    "Release_1" requestSeizable[4]="Resource_5" requestSeizable[3]="Resource_4" requestSeizable[1]="Resource_2" resquests=5 nextId=73 requestSeizable[0]="Resource_1" requestSeizable[2]="Resource_3" 73  Dispose    "Dispose_1" nexts=0 
+132 Create     "Create_1" entityType="entitytype" entitiesPerCreation=2 nextId=200 
+200 Seize      "Seize_1" requestSeizable[4]="Resource_5" requestSeizable[3]="Resource_4" requestSeizable[1]="Resource_2" queueable="Queue_1" resquests=5 nextId=201 requestSeizable[0]="Resource_1" requestSeizable[2]="Resource_3" 
+201 Delay      "Delay_1" allocation=0 delayExpression="unif(0.6,1.5)" nextId=204 
+204 Release    "Release_1" requestSeizable[4]="Resource_5" requestSeizable[3]="Resource_4" requestSeizable[1]="Resource_2" resquests=5 nextId=205 requestSeizable[0]="Resource_1" requestSeizable[2]="Resource_3" 
+205 Dispose    "Dispose_1" nexts=0 

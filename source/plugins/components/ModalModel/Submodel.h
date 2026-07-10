@@ -14,7 +14,7 @@
 #ifndef SUBMODEL_H
 #define SUBMODEL_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
  This component ...

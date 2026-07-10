@@ -1,20 +1,27 @@
-# Genesys Simulation Model 
+# Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220131 
-0   ModelInfo  "Model 1" analystName="" description="" projectTitle="" version="1.0" 
-0   ModelSimulation "" replicationLength=10.000000 traceLevel=8 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=10.000000 
 
 # Model Data Definitions
-2129 EntityType "Client" 
-2131 Set        "Set_1" member[0]="Resource_1" member[1]="Resource_2" member[2]="Resource_3" member[3]="Resource_4" member[4]="Resource_5" members=5 type="Resource" 
-2132 Resource   "Resource_1" 
-2133 Resource   "Resource_2" 
-2134 Resource   "Resource_3" 
-2135 Resource   "Resource_4" 
-2136 Resource   "Resource_5" 
-2141 Queue      "myqueue" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Client" 
+142 Set        "Set_1" member[4]="Resource_5" member[3]="Resource_4" member[1]="Resource_2" member[0]="Resource_1" member[2]="Resource_3" members=5 type="Resource" 
+143 Resource   "Resource_1" 
+155 Resource   "Resource_2" 
+167 Resource   "Resource_3" 
+179 Resource   "Resource_4" 
+191 Resource   "Resource_5" 
+207 Attribute  "Entity.TotalWaitTime" 
+209 Queue      "myqueue" 
 
 # Model Components
-2128 Create     "Create_1" entityType="Client" timeBetweenCreations="1" nextId=2137 
-2130 Dispose    "Dispose_1" nexts=0 
-2137 Process    "Process_1" delayExpression="unif(0.6,1.4)" queueable="myqueue" requestSeizableType[0]=2 requestSeizable[0]="Set_1" nextId=2130 
+132 Create     "Create_1" entityType="Client" nextId=203 timeBetweenCreations="1" 
+138 Dispose    "Dispose_1" nexts=0 
+203 Process    "Process_1" delayExpression="unif(0.6,1.4)" queueable="myqueue" requestSeizableType[0]=1 nextId=138 requestSeizable[0]="Set_1" 
+204 Seize      "Process_1.Seize" requestSeizableType[0]=1 queueable="myqueue" nextId=205 requestSeizable[0]="Set_1" 
+205 Delay      "Process_1.Delay" delayExpression="unif(0.6,1.4)" nextId=208 
+208 Release    "Process_1.Release" resquests=0 nexts=0 

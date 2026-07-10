@@ -5,7 +5,7 @@
 #include <fstream>
 #include <string>
 
-#include "tools/SimulationResultsDataset.h"
+#include "tools/Statistics/SimulationResultsDataset.h"
 
 namespace {
 	std::filesystem::path writeDatasetFile(const std::string& name, const std::string& contents) {
@@ -31,6 +31,15 @@ TEST(SimulationResultsDatasetParserTest, LoadsRawNumericDataset) {
 	EXPECT_DOUBLE_EQ(dataset.observations.at(0).value, 2.1);
 	EXPECT_EQ(dataset.observations.at(0).replication, 1u);
 	EXPECT_FALSE(dataset.observations.at(0).hasTime);
+}
+
+TEST(SimulationResultsDatasetParserTest, RejectsCommaDecimalRawNumericDataset) {
+	const std::filesystem::path path = writeDatasetFile("raw_numeric_comma", "21,01\n");
+	SimulationResultsDataset dataset;
+	std::string errorMessage;
+
+	EXPECT_FALSE(SimulationResultsDatasetParser::loadFromTextFile(path.string(), &dataset, &errorMessage));
+	EXPECT_NE(errorMessage.find("Invalid raw numeric observation"), std::string::npos);
 }
 
 TEST(SimulationResultsDatasetParserTest, RejectsEmptyRawNumericDataset) {

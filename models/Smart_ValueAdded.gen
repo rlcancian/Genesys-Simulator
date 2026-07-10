@@ -1,0 +1,28 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=7 warmUpTime=50.000000 replicationLength=1000.000000 numberOfReplications=300 terminatingCondition="count(SendContract.CountNumberIn)>1000" replicationLengthTimeUnit=7 
+
+# Model Data Definitions
+132 Resource   "Processor" costPerUse=0.000000 costIdleTimeUnit=8.000000 costBusyTimeUnit=8.000000 
+144 Resource   "Notary" costPerUse=10.000000 costIdleTimeUnit=0.000000 costBusyTimeUnit=0.000000 
+158 EntityType "entitytype" 
+159 Attribute  "Entity.ArrivalTime" 
+160 Attribute  "Entity.Type" 
+161 EntityType "Contract" 
+166 Attribute  "Entity.TotalWaitTime" 
+168 Queue      "AddContractAddendumQueue" 
+176 Queue      "SignandNotorizeContractQueue" 
+
+# Model Components
+156 Create     "ContractArrives" entityType="Contract" timeBetweenCreationsTimeUnit=7 nextId=162 timeBetweenCreations="expo(1)" 
+162 Process    "AddContractAddendum" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=7 queueable="AddContractAddendumQueue" allocationType=0 nextId=171 requestSeizable[0]="Processor" 
+163 Seize      "AddContractAddendum.Seize" queueable="AddContractAddendumQueue" allocationType=0 nextId=164 requestSeizable[0]="Processor" 
+164 Delay      "AddContractAddendum.Delay" delayExpressionTimeUnit=7 delayExpression="tria(0.5,1,1.5)" nextId=167 
+167 Release    "AddContractAddendum.Release" resquests=0 nexts=0 
+171 Process    "SignandNotorizeContract" delayExpression="tria(0.5,1,1.5)" delayExpressionTimeUnit=7 queueable="SignandNotorizeContractQueue" allocationType=0 nextId=179 requestSeizable[0]="Notary" 
+172 Seize      "SignandNotorizeContract.Seize" queueable="SignandNotorizeContractQueue" allocationType=0 nextId=173 requestSeizable[0]="Notary" 
+173 Delay      "SignandNotorizeContract.Delay" delayExpressionTimeUnit=7 delayExpression="tria(0.5,1,1.5)" nextId=175 
+175 Release    "SignandNotorizeContract.Release" resquests=0 nexts=0 
+179 Dispose    "SendContract" nexts=0 

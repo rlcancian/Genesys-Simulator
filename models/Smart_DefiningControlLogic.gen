@@ -1,23 +1,27 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=9 warmUpTime=3.000000 numberOfReplications=5 replicationLengthTimeUnit=6 
+0   ModelSimulation "" traceLevel=9 warmUpTime=3.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-62  EntityType "Entity_2" 
-63  Variable   "process_time" value[0]=2.000000 valuePos[0]="" values=1 
-69  EntityType "Entity_1" 
-70  Resource   "Resource_1" 
-71  Queue      "Seize_1.Queue" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+137 EntityType "Entity_2" 
+138 Variable   "process_time" value[0]=2.000000 valuePos[0]="" values=1 
+142 Attribute  "Entity.TotalWaitTime" 
+150 EntityType "Entity_1" 
+151 Resource   "Resource_1" 
+163 Queue      "Seize_1.Queue" 
 
 # Model Components
-61  Create     "Create_1" maxCreations="1" timeBetweenCreationsTimeUnit=6 entityType="Entity_2" firstCreation=120.000000 nextId=64 timeBetweenCreations="EXPO(1)" 
-64  Assign     "var_assign1" assignIsAttrib[0]=0 assignExpr[0]="2" nextId=65 assignDest[0]="process_time" 
-65  Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="240.000000" nextId=66 
-66  Assign     "var_assign2" assignIsAttrib[0]=0 assignExpr[0]="1" nextId=67 assignDest[0]="process_time" 
-68  Create     "Mail_Arrival" entityType="Entity_1" timeBetweenCreationsTimeUnit=6 nextId=72 timeBetweenCreations="EXPO(2)" 
-72  Seize      "Seize_1" queueable="Seize_1.Queue" nextId=73 requestSeizable[0]="Resource_1" 
-73  Delay      "Delay_2" delayExpressionTimeUnit=6 delayExpression="process_time" nextId=74 
-74  Release    "Release_1" nextId=75 requestSeizable[0]="Resource_1" 
-75  Dispose    "Dispose_1" nexts=0 
+132 Create     "Create_1" maxCreations="1" timeBetweenCreationsTimeUnit=6 entityType="Entity_2" firstCreation=120.000000 nextId=139 timeBetweenCreations="EXPO(1)" 
+139 Assign     "var_assign1" assignIsAttrib[0]=0 assignExpr[0]="2" nextId=140 assignDest[0]="process_time" 
+140 Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="240.000000" nextId=143 
+143 Assign     "var_assign2" assignIsAttrib[0]=0 assignExpr[0]="1" nextId=144 assignDest[0]="process_time" 
+148 Create     "Mail_Arrival" entityType="Entity_1" timeBetweenCreationsTimeUnit=6 nextId=166 timeBetweenCreations="EXPO(2)" 
+166 Seize      "Seize_1" queueable="Seize_1.Queue" nextId=167 requestSeizable[0]="Resource_1" 
+167 Delay      "Delay_2" delayExpressionTimeUnit=6 delayExpression="process_time" nextId=169 
+169 Release    "Release_1" nextId=170 requestSeizable[0]="Resource_1" 
+170 Dispose    "Dispose_1" nexts=0 

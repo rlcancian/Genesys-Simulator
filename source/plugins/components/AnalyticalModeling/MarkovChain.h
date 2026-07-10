@@ -14,7 +14,7 @@
 #ifndef MARKOVCHAIN_H
 #define MARKOVCHAIN_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/statistics/Sampler_if.h"
 
 class MarkovChain : public ModelComponent {

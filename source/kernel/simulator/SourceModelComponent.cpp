@@ -12,7 +12,7 @@
  */
 
 #include "SourceModelComponent.h"
-#include "Model.h"
+#include "model/Model.h"
 #include "PropertyGenesys.h"
 
 //using namespace GenesysKernel;

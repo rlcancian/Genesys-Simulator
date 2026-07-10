@@ -13,11 +13,11 @@
 
 #pragma once
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/ExternalIntegration/CppCompiler.h"
 
 //extern "C" typedef void (*initBetweenReplications_t)(Model* model);
-extern "C" typedef void (*onDispatchEvent_t)(Simulator* simulator, Model* model, Entity* entity);
+extern "C" typedef void (*diffEquationsOnDispatchEvent_t)(double* stateVars, int n, double t0, double tTarget, double step);
 
 /*!
  This component ...
@@ -25,10 +25,11 @@ extern "C" typedef void (*onDispatchEvent_t)(Simulator* simulator, Model* model,
 class DiffEquations : public ModelComponent {
 public: //! constructors
 	DiffEquations(Model* model, std::string name = "");
-	virtual ~DiffEquations() = default;
+	virtual ~DiffEquations() override;
 
 public: //! new public user methods for this component
-	List<std::string> *getEquations() const; //!< equations should be in terms of x[i] ; f[i](x[],t)
+	List<std::string> *getEquations() const; //!< equations should be in terms of state variable names and t
+	List<std::string> *getStateVariableNames() const;
 	double getprecision() const;
 	void setPrecision(double newPrecision);
 	double getmaxSteps() const;
@@ -70,9 +71,10 @@ protected:
 
 private: //! new private user methods
 	List<std::string> *_equations = new List<std::string>();
+	List<std::string> *_stateVariableNames = new List<std::string>();
 	List<double> *_valuesOnFinalTime = new List<double>();
 	// pointers to functions on a shared libraty
-	onDispatchEvent_t dispatchEvent_SharedLibHandler;
+	diffEquationsOnDispatchEvent_t dispatchEvent_SharedLibHandler;
 	//initBetweenReplications_t initBetweenReplications_SharedLibHandler;
 	// ...
 

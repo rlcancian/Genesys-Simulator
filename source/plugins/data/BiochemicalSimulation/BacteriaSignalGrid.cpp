@@ -1,12 +1,12 @@
 /*
  * File:   BacteriaSignalGrid.cpp
- * Author: GRO
+ * Author: rlcancian
  *
- * Created on 28 de Abril de 2026
+ * Created on 28 de Abril de 2022
  */
 
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #include <cctype>
 #include <sstream>
@@ -123,7 +123,7 @@ PluginInformation* BacteriaSignalGrid::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BacteriaSignalGrid>(),
 	                                                &BacteriaSignalGrid::LoadInstance,
 	                                                &BacteriaSignalGrid::NewInstance);
-	info->setCategory("BiologicalModeling");
+	info->setCategory("Biologic/OrganicSystem");
 	info->setDescriptionHelp("Stores the reusable spatial configuration of a discrete bacteria signal field, "
 	                         "including dimensions, initial values, and simple diffusion/decay parameters.");
 	return info;
@@ -134,6 +134,7 @@ ModelDataDefinition* BacteriaSignalGrid::LoadInstance(Model* model, PersistenceR
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load BacteriaSignalGrid instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

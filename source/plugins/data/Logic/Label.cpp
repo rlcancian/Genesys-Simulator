@@ -11,7 +11,7 @@
  */
 
 #include "plugins/data/Logic/Label.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -46,7 +46,7 @@ ModelDataDefinition* Label::LoadInstance(Model* model, PersistenceRecord *fields
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Label instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -64,6 +64,7 @@ PluginInformation* Label::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("Logic");
 	return info;
 }
 

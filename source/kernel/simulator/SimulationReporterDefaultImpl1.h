@@ -15,8 +15,8 @@
 #define SIMULATIONREPORTERDEFAULTIMPL1_H
 
 #include "SimulationReporter_if.h"
-#include "ModelSimulation.h"
-#include "Model.h"
+#include "model/ModelSimulation.h"
+#include "model/Model.h"
 
 //namespace GenesysKernel {
 

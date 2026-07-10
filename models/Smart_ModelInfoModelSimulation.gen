@@ -1,12 +1,16 @@
-# Genesys Simulation Model 
+# Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220131 
-0   ModelInfo  "Model 1" analystName="Your name" description="This simulation model tests one of the most basic models possible." projectTitle="The title of the project" version="1.0" 
-0   ModelSimulation "" numberOfReplications=2 replicationBaseTimeUnit=6 replicationLength=15.000000 replicationLengthTimeUnit=6 showReportsAfterReplicaton=0 traceLevel=6 warmUpTime=1.000000 warmUpTimeTimeUnit=6 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="The title of the project" description="This simulation model tests one of the most basic models possible." analystName="Your name" 
+0   ModelSimulation "" traceLevel=9 showReportsAfterReplicaton=0 warmUpTimeTimeUnit=6 warmUpTime=1.000000 replicationBaseTimeUnit=6 replicationLength=15.000000 numberOfReplications=2 replicationLengthTimeUnit=6 pauseOnReplication=1 stepByStep=1 
 
 # Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+139 Attribute  "Entity.TotalWaitTime" 
 
 # Model Components
-1480 Create     "Create_1" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=1481 
-1481 Delay      "Delay_1" delayExpression="NORM(1,0.2)" delayExpressionTimeUnit=6 nextId=1482 
-1482 Dispose    "Dispose_1" nexts=0 
+132 Create     "Create_1" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=137 
+137 Delay      "Delay_1" delayExpressionTimeUnit=6 delayExpression="NORM(1,0.2)" nextId=140 
+140 Dispose    "Dispose_1" nexts=0 

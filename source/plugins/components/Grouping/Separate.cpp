@@ -13,8 +13,8 @@
 
 #include "plugins/components/Grouping/Separate.h"
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "../../data/Grouping/EntityGroup.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -40,7 +40,7 @@ ModelComponent* Separate::LoadInstance(Model* model, PersistenceRecord *fields) 
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Separate instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

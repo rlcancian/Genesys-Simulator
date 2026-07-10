@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
 /**

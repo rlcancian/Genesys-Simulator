@@ -12,8 +12,8 @@
 	#include <algorithm>
 	#include "obj_t.h"
 	#include "kernel/util/Util.h"
-	#include "kernel/simulator/Attribute.h"
-	#include "kernel/simulator/Counter.h"
+	#include "kernel/simulator/essentialPlugins/Attribute.h"
+	#include "kernel/simulator/essentialPlugins/Counter.h"
 
 	/****begin_Includes_plugins****/
 
@@ -80,6 +80,29 @@ std::string parserIndexPart(double value) {
 
 std::string appendParserIndex(const std::string& currentKey, double value) {
 	return SparseValueStore::appendIndexKeyFromDouble(currentKey, value);
+}
+
+void copyAttributeStore(genesyspp_driver& driver, const obj_t& destination, const obj_t& source) {
+	Model* model = driver.getModel();
+	auto* entity = model != nullptr && model->getSimulation() != nullptr && model->getSimulation()->getCurrentEvent() != nullptr
+		? model->getSimulation()->getCurrentEvent()->getEntity()
+		: nullptr;
+	auto* destinationAttribute = dynamic_cast<Attribute*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), destination.id));
+	auto* sourceAttribute = dynamic_cast<Attribute*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), source.id));
+	if (entity == nullptr || destinationAttribute == nullptr || sourceAttribute == nullptr) {
+		return;
+	}
+	entity->copyAttributeValues(destinationAttribute->getName(), sourceAttribute->getName());
+}
+
+void copyVariableStore(genesyspp_driver& driver, const obj_t& destination, const obj_t& source) {
+	Model* model = driver.getModel();
+	auto* destinationVariable = dynamic_cast<Variable*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), destination.id));
+	auto* sourceVariable = dynamic_cast<Variable*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), source.id));
+	if (destinationVariable == nullptr || sourceVariable == nullptr) {
+		return;
+	}
+	destinationVariable->copyValuesFrom(*sourceVariable);
 }
 
 }
@@ -278,31 +301,31 @@ input:
     ;
 
 expression:
-      assigment                        {$$.valor = $1.valor;}
-    | command                          {$$.valor = $1.valor;}
-    | logicalOr                        {$$.valor = $1.valor;}
+      assigment                        {$$ = $1;}
+    | command                          {$$ = $1;}
+    | logicalOr                        {$$ = $1;}
     | illegal                           {$$.valor = -1;}
     ;
 
 logicalOr:
       logicalOr oOR logicalXor          { $$.valor = (int)$1.valor || (int)$3.valor; }
-    | logicalXor                        { $$.valor = $1.valor; }
+    | logicalXor                        { $$ = $1; }
     ;
 
 logicalXor:
       logicalXor oXOR logicalAnd        { $$.valor = (!(int)$1.valor && (int)$3.valor) || ((int)$1.valor && !(int)$3.valor); }
-    | logicalAnd                        { $$.valor = $1.valor; }
+    | logicalAnd                        { $$ = $1; }
     ;
 
 logicalAnd:
       logicalAnd oAND logicalNot        { $$.valor = (int)$1.valor && (int)$3.valor; }
     | logicalAnd oNAND logicalNot       { $$.valor = !((int)$1.valor && (int)$3.valor); }
-    | logicalNot                        { $$.valor = $1.valor; }
+    | logicalNot                        { $$ = $1; }
     ;
 
 logicalNot:
       oNOT logicalNot                   { $$.valor = !(int)$2.valor; }
-    | relational                        { $$.valor = $1.valor; }
+    | relational                        { $$ = $1; }
     ;
 
 relational:
@@ -312,48 +335,48 @@ relational:
     | relational oGE additive           { $$.valor = $1.valor >= $3.valor ? 1 : 0; }
     | relational oEQ additive           { $$.valor = $1.valor == $3.valor ? 1 : 0; }
     | relational oNE additive           { $$.valor = $1.valor != $3.valor ? 1 : 0; }
-    | additive                          { $$.valor = $1.valor; }
+    | additive                          { $$ = $1; }
     ;
 
 additive:
       additive PLUS multiplicative      { $$.valor = $1.valor + $3.valor; }
     | additive MINUS multiplicative     { $$.valor = $1.valor - $3.valor; }
-    | multiplicative                    { $$.valor = $1.valor; }
+    | multiplicative                    { $$ = $1; }
     ;
 
 multiplicative:
       multiplicative STAR power         { $$.valor = $1.valor * $3.valor; }
     | multiplicative SLASH power        { $$.valor = $1.valor / $3.valor; }
-    | power                             { $$.valor = $1.valor; }
+    | power                             { $$ = $1; }
     ;
 
 power:
       unary POWER power                 { $$.valor = pow($1.valor, $3.valor); }
-    | unary                             { $$.valor = $1.valor; }
+    | unary                             { $$ = $1; }
     ;
 
 unary:
       MINUS unary                        { $$.valor = -$2.valor; }
     | PLUS unary                         { $$.valor = +$2.valor; }
-    | primary                            { $$.valor = $1.valor; }
+    | primary                            { $$ = $1; }
     ;
 
 primary:
-      number                             {$$.valor = $1.valor;}
-    | function                           {$$.valor = $1.valor;}
-    | LPAREN expression RPAREN           {$$.valor = $2.valor;}
-    | attribute                          {$$.valor = $1.valor;}
-    | simulationResponse                 {$$.valor = $1.valor;}
-    | simulationControl                  {$$.valor = $1.valor;}
+      number                             {$$ = $1;}
+    | function                           {$$ = $1;}
+    | LPAREN expression RPAREN           {$$ = $2;}
+    | attribute                          {$$ = $1;}
+    | simulationResponse                 {$$ = $1;}
+    | simulationControl                  {$$ = $1;}
 
 /****begin_Expression_plugins****/
 
 	/**begin_Expression:Variable**/
-	| variable                            {$$.valor = $1.valor;}
+	| variable                            {$$ = $1;}
 	/**end_Expression:Variable**/
 
 	/**begin_Expression:Formula**/
-	| formula                             {$$.valor = $1.valor;}
+	| formula                             {$$ = $1;}
 	/**end_Expression:Formula**/
 
 /****end_Expression_plugins****/
@@ -666,7 +689,7 @@ illegal:
 
 
 // 20181003  ATRIB now returns the attribute ID not the attribute value anymore. So, now get the attribute value for the current entity
-attribute:
+	attribute:
 	ATRIB      {  
 		double attributeValue = 0.0;
 		//std::cout << "Tentando..." << std::endl;
@@ -675,7 +698,9 @@ attribute:
 			attributeValue = driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->getAttributeValue($1.id);
 		}
 		//std::cout << "Passei" << std::endl;
-		$$.valor = attributeValue; 
+		$$.valor = attributeValue;
+		$$.isReference = true;
+		$$.isAttributeReference = true;
 	}
 	| ATRIB LBRACKET indexList RBRACKET  {
 		double attributeValue = 0.0;
@@ -683,7 +708,9 @@ attribute:
 			// it could crach because there may be no current entity, if the parse is running before simulation and therefore there is no CurrentEntity
 			attributeValue = driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->getAttributeValue($1.id, $3);
 		}
-		$$.valor = attributeValue; 
+		$$.valor = attributeValue;
+		$$.isReference = false;
+		$$.isAttributeReference = true;
 	}
 	;
 
@@ -702,9 +729,16 @@ simulationControl:
 /****begin_ExpressionProdution_plugins****/
 
 	/**begin_ExpressionProdution:Variable**/
-	variable    : VARI  {$$.valor = ((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->getValue();} 
+	variable    : VARI  {
+					$$.valor = ((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->getValue();
+					$$.isReference = true;
+					$$.isAttributeReference = false;
+				} 
 				| VARI LBRACKET indexList RBRACKET	    {
-					$$.valor = ((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->getValue($3); }
+					$$.valor = ((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->getValue($3);
+					$$.isReference = false;
+					$$.isAttributeReference = false;
+				}
 				;
 	/**end_ExpressionProdution:Variable**/
 
@@ -745,7 +779,11 @@ simulationControl:
 	//Check if want to set the attribute or variable with expression or just return the expression value, for now just returns expression value
 	assigment  : ATRIB ASSIGN expression    { 
 					// @TODO: getCurrentEvent()->getEntity() may be nullptr if simulation hasn't started yet
-					driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->setAttributeValue($1.id, $3.valor);
+					if ($3.isReference && $3.isAttributeReference) {
+						copyAttributeStore(driver, $1, $3);
+					} else {
+						driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->setAttributeValue($1.id, $3.valor);
+					}
 					$$.valor = $3.valor; }
 				| ATRIB LBRACKET indexList RBRACKET ASSIGN expression    {
 					driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->setAttributeValue($1.id, $6.valor, $3);
@@ -753,7 +791,11 @@ simulationControl:
 	/****begin_Assignment_plugins****/
 	/**begin_Assignment:Variable**/
 				| VARI ASSIGN expression        {
-					((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->setValue($3.valor);
+					if ($3.isReference && !$3.isAttributeReference) {
+						copyVariableStore(driver, $1, $3);
+					} else {
+						((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->setValue($3.valor);
+					}
 					$$.valor = $3.valor; 
 					}
 				| VARI LBRACKET indexList RBRACKET ASSIGN expression    {

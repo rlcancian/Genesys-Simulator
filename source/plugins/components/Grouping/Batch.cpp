@@ -13,8 +13,8 @@
 
 #include "plugins/components/Grouping/Batch.h"
 #include <cassert>
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "../../data/Grouping/EntityGroup.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -107,7 +107,7 @@ ModelComponent* Batch::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Batch instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -304,6 +304,7 @@ void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		} else { // by entity type
 		}
 	}
+	delete entitiesToGroup;
 }
 
 bool Batch::_loadInstance(PersistenceRecord *fields) {

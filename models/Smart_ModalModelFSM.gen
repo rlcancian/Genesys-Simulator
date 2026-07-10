@@ -1,0 +1,18 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=30.000000 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+144 Variable   "switches" 
+
+# Model Components
+132 Create     "Create_1" entityType="entitytype" maxCreations="1" nextId=137 
+137 ModalModelDefault "TrafficFSM" node[0].name="Red" transitionOutput[0]="switches=switches+1" transitionName[0]="RedToGreen" transitionGuard[0]="1" transitionSource[0]="Red" node[1].nexts=0 node[1].entryActionExpression="signal=1" transitionOutput[1]="switches=switches+1" nexts=2 nextId[1]=139 node[0].nexts=0 transitionsSize=2 nodesSize=2 node[1].name="Green" nextId[0]=137 transitionPriority[1]=1 transitionGuard[1]="1" transitionSource[1]="Green" node[1].typename="FSMState" transitionDestination[1]="Red" node[1].id=143 transitionDestination[0]="Green" node[0].initialNode=1 node[0].entryActionExpression="signal=0" entryNode="Red" node[0].id=142 timeDelayExpressionPerDispatch="1.0" node[0].typename="FSMState" transitionName[1]="GreenToRed" 
+139 Dispose    "Dispose_1" nexts=0 
+142 FSMState   "Red" entryActionExpression="signal=0" initialNode=1 nexts=0 
+143 FSMState   "Green" entryActionExpression="signal=1" nexts=0 

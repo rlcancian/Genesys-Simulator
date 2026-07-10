@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -47,7 +47,7 @@ BioSpecies::BioSpecies(Model* model, std::string name) : ModelDataDefinition(mod
 
 PluginInformation* BioSpecies::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioSpecies>(), &BioSpecies::LoadInstance, &BioSpecies::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setDescriptionHelp("Biochemical species with initial amount, current amount, units, and SBML-like constant/boundary flags.");
 	return info;
 }
@@ -57,6 +57,7 @@ ModelDataDefinition* BioSpecies::LoadInstance(Model* model, PersistenceRecord *f
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load BioSpecies instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

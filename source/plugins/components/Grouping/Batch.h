@@ -14,7 +14,7 @@
 #ifndef BATCH_H
 #define BATCH_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "../../data/Grouping/EntityGroup.h"
 /*!

@@ -1,0 +1,40 @@
+name: GenESyS Docker Images
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - WiP20261
+
+permissions:
+  contents: read
+
+jobs:
+  build-images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Build runtime image
+        run: |
+          set -Eeuo pipefail
+          docker build \
+            -f packaging/docker/dockerfiles/runtime.Dockerfile \
+            --build-arg GENESYS_REPOSITORY_URL=https://github.com/rlcancian/Genesys-Simulator.git \
+            --build-arg GENESYS_RUNTIME_BRANCH=master \
+            -t genesys-simulator-runtime \
+            packaging/docker
+
+      - name: Build development image
+        run: |
+          set -Eeuo pipefail
+          docker build \
+            -f packaging/docker/dockerfiles/development.Dockerfile \
+            -t genesys-simulator-development \
+            packaging/docker

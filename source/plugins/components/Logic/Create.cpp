@@ -12,9 +12,9 @@
  */
 
 #include "plugins/components/Logic/Create.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/EntityType.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/EntityType.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include <cassert>
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -133,7 +133,7 @@ ModelComponent* Create::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Create instance: " + std::string(e.what()));
 	}
 
 	return newComponent;

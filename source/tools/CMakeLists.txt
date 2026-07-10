@@ -1,11 +1,14 @@
 add_library(genesys_tools STATIC
-    FitterDummyImpl.cpp
-    HypothesisTesterDefaultImpl1.cpp
-    OptimizerDefaultImpl1.cpp
-    ProbabilityDistribution.cpp
-    ProbabilityDistributionBase.cpp
-    SimulationResultsDataset.cpp
-    SolverDefaultImpl1.cpp
+    AIAssistant/AIAssistantDefaultImpl.cpp
+    AIAssistant/AIAuditLog.cpp
+    AIAssistant/AISecretStore.cpp
+    Statistics/FitterDummyImpl.cpp
+    Statistics/HypothesisTesterDefaultImpl1.cpp
+    Statistics/ProbabilityDistribution.cpp
+    Statistics/ProbabilityDistributionBase.cpp
+    Statistics/SimulationResultsDataset.cpp
+    Optimization/OptimizerDefaultImpl1.cpp
+    Continuous/SolverDefaultImpl1.cpp
     FactorialDesign/FactorialDesign.cpp
 )
 
@@ -19,6 +22,7 @@ target_link_libraries(genesys_tools
         genesys_kernel_util
         genesys_kernel_statistics
         genesys_kernel_simulator_runtime
+        genesys_ai_provider
 )
 
 target_compile_features(genesys_tools PUBLIC cxx_std_23)
