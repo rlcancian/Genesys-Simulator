@@ -8,7 +8,7 @@ on:
     branches:
       - WiP20261
     paths:
-      - 'debian/**'
+      - '../../packaging/debian/**'
       - 'packaging/linux/**'
       - 'source/**/CMakeLists.txt'
       - 'CMakeLists.txt'
@@ -18,7 +18,7 @@ on:
       - WiP20261
       - 2026-1
     paths:
-      - 'debian/**'
+      - '../../packaging/debian/**'
       - 'packaging/linux/**'
       - 'source/**/CMakeLists.txt'
       - 'CMakeLists.txt'
