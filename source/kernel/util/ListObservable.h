@@ -23,26 +23,33 @@
 #include "Util.h"
 #include "../simulator/ModelElement.h"
 
-//class Simulator;
-
 #include "List.h"
 
 /*!
- * ListObservable corresponds to an extended version of the List that allows other classes to be notified when the list has changed.
+ * \brief Observable-oriented list variant used by kernel structures.
+ *
+ * This template specializes \c List behavior for contexts where list mutations are
+ * relevant to external observers/managers, while preserving familiar list helpers.
  */
 template <typename T>
 class ListObservable : public List {
 public:
 	using CompFunct = std::function<bool(const T, const T) >;
 public:
+	/*! \brief Initializes an empty observable list. */
 	ListObservable();
 	virtual ~ListObservable() = default;
 public: // direct access to list
+	/*! \brief Removes all elements from the observable list. */
 	void clear();
+	/*! \brief Removes the first element from the observable list. */
 	void pop_front();
 public: // improved (easier) methods
+	/*! \brief Inserts an element respecting the configured ordering. */
 	void insert(T element);
+	/*! \brief Removes an element from the observable list. */
 	void remove(T element);
+	/*! \brief Sets the element at a specific list index. */
 	void setAtRank(unsigned int rank, T element);
 };
 
@@ -96,7 +103,7 @@ template <typename T>
 void ListObservable<T>::pop_front() {
 	typename std::list<T>::iterator itTemp = _list->begin();
 	_list->pop_front();
-	if (_it == itTemp) { /*  \todo: +: check this */
+	if (_it == itTemp) { /* @ToDo: (importante): check this */
 		_it = _list->begin(); // if it points to the removed element, then changes to begin
 	}
 }
@@ -104,7 +111,7 @@ void ListObservable<T>::pop_front() {
 template <typename T>
 void ListObservable<T>::remove(T element) {
 	_list->remove(element);
-	if ((*_it) == element) { /*  \todo: +: check this */
+	if ((*_it) == element) { /* @ToDo: (importante): check this */
 		_it = _list->begin(); // if it points to the removed element, then changes to begin
 	}
 }
@@ -129,7 +136,7 @@ T ListObservable<T>::getAtRank(unsigned int rank) {
 			thisRank++;
 		}
 	}
-	return 0; /* \todo: Invalid return depends on T. If T is pointer, nullptr works fine. If T is double, it does not. I just let (*it), buut it is not nice*/
+	return 0; /* @ToDo: (importante): Invalid return depends on T. If T is pointer, nullptr works fine. If T is double, it does not. I just let (*it), buut it is not nice */
 }
 
 template <typename T>
@@ -166,7 +173,7 @@ typename std::list<T>::iterator ListObservable<T>::find(T element) {
 			return it;
 		}
 	}
-	return _list->end(); /*  \todo:+-: check nullptr or invalid iterator when not found */
+	return _list->end(); /* @ToDo: (importante): check nullptr or invalid iterator when not found */
 	//return nullptr;
 }
 
@@ -197,20 +204,20 @@ template <typename T>
 T ListObservable<T>::last() {
 	_it = _list->end();
 	_it--;
-	//if (_it != _list->end()) // \todo: CHECK!!!
+	//if (_it != _list->end()) // @ToDo: (importante): CHECK!!!
 	return (*_it);
 	//else return nullptr;
 }
 
 template <typename T>
 T ListObservable<T>::previous() {
-	_it--; // \todo: CHECK!!!
+	_it--; // @ToDo: (importante): CHECK!!!
 	return (*_it);
 }
 
 template <typename T>
 T ListObservable<T>::current() {
-	/* \todo: To implement (i thing it's just to check). Must actualize _it on other methods when other elements are accessed */
+	/* @ToDo: (importante): To implement (i thing it's just to check). Must actualize _it on other methods when other elements are accessed */
 	return (*_it);
 }
 
@@ -232,4 +239,3 @@ void ListObservable<T>::sort(Compare comp) {
 }
 
 #endif /* LISTOBSERVABLE_H */
-

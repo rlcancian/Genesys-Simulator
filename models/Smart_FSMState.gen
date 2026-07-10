@@ -1,0 +1,16 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=10.000000 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+
+# Model Components
+132 Create     "Create_1" entityType="entitytype" nextId=137 
+137 ModalModelDefault "SingleStateFSM" transitionsSize=1 node[0].typename="FSMState" nodesSize=1 node[0].id=142 entryNode="Idle" node[0].name="Idle" node[0].entryActionExpression="enteredIdle=1" nextId=139 transitionSource[0]="Idle" transitionGuard[0]="1" transitionName[0]="StayIdle" transitionOutput[0]="visits=visits+1" node[0].exitActionExpression="leftIdle=1" transitionDestination[0]="Idle" node[0].initialNode=1 node[0].nexts=0 
+139 Dispose    "Dispose_1" nexts=0 
+142 FSMState   "Idle" exitActionExpression="leftIdle=1" entryActionExpression="enteredIdle=1" initialNode=1 nexts=0 

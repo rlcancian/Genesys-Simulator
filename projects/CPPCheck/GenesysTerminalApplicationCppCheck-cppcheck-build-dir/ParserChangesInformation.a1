@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<analyzerinfo checksum="1102602207">
-  <FileInfo check="CheckUnusedFunctions">
-    <functioncall functionName="ParserChangesInformation"/>
-    <functioncall functionName="default"/>
-  </FileInfo>
-</analyzerinfo>

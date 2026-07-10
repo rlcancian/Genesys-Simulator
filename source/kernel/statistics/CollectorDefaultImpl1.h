@@ -17,17 +17,30 @@
 #include "Collector_if.h"
 //namespace GenesysKernel {
 
+/*!
+ * \brief Default in-memory implementation of \c Collector_if.
+ *
+ * Maintains minimal aggregate state (last value and count) and supports
+ * optional callbacks for add/clear events.
+ */
 class CollectorDefaultImpl1 : public Collector_if {
 public:
+	/*! \brief Creates an empty collector. */
 	CollectorDefaultImpl1();
 	virtual ~CollectorDefaultImpl1() = default;
 public:
+	/*! \brief Clears all collected data and resets counters. */
 	virtual void clear() override;
+	/*! \brief Adds a new observation to the collector. */
 	virtual void addValue(double value, double weight=1) override;
+	/*! \brief Returns the latest observed value. */
 	virtual double getLastValue() override;
+	/*! \brief Returns total number of observed values. */
 	virtual unsigned long numElements() override;
 public:
+	/*! \brief Registers callback notified after each \c addValue call. */
 	virtual void setAddValueHandler(CollectorAddValueHandler addValueHandler) override;
+	/*! \brief Registers callback notified when \c clear is invoked. */
 	virtual void setClearHandler(CollectorClearHandler clearHandler) override;
 private:
 	double _lastValue;
@@ -37,4 +50,3 @@ private:
 };
 //namespace\\}
 #endif /* COLLECTORDEFAULTIMPL1_H */
-

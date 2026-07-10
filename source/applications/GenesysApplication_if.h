@@ -16,8 +16,8 @@
 
 class GenesysApplication_if {
 public:
+	virtual ~GenesysApplication_if() = default;
 	virtual int main(int argc, char** argv) = 0;
 };
 
 #endif /* GENESYSAPPLICATION_IF_H */
-

@@ -1,2 +1,0 @@
-#!/bin/bash
-cd /home/Genesys-Simulator/source/applications/gui/qt/GenesysQtGUI && cp /home/Genesys-Simulator/autoloadplugins.txt . && qmake && make QMAKE=qmake && ./GenesysQtGUI 2> /dev/null

@@ -18,6 +18,43 @@
 OnEventManager::OnEventManager() {
 }
 
+// Releases all heap-allocated listener containers while preserving handler registration semantics.
+OnEventManager::~OnEventManager() {
+	delete _onModelCheckSuccessHandlers;
+	delete _onModelLoadHandlers;
+	delete _onModelSaveHandlers;
+	delete _onReplicationStartHandlers;
+	delete _onReplicationStepHandlers;
+	delete _onReplicationEndHandlers;
+	delete _onProcessEventHandlers;
+	delete _onAfterProcessEventHandlers;
+	delete _onEntityCreateHandlers;
+	delete _onEntityMoveHandlers;
+	delete _onEntityRemoveHandlers;
+	delete _onSimulationStartHandlers;
+	delete _onSimulationPausedHandlers;
+	delete _onSimulationResumeHandlers;
+	delete _onSimulationEndHandlers;
+	delete _onBreakpointHandlers;
+
+	delete _onModelCheckSuccessHandlerMethods;
+	delete _onModelLoadHandlerMethods;
+	delete _onModelSaveHandlerMethods;
+	delete _onReplicationStartHandlerMethods;
+	delete _onReplicationStepHandlerMethods;
+	delete _onReplicationEndHandlerMethods;
+	delete _onProcessEventHandlerMethods;
+	delete _onAfterProcessEventHandlerMethods;
+	delete _onEntityCreateHandlerMethods;
+	delete _onEntityMoveHandlerMethods;
+	delete _onEntityRemoveHandlerMethods;
+	delete _onSimulationStartHandlerMethods;
+	delete _onSimulationPausedHandlerMethods;
+	delete _onSimulationResumeHandlerMethods;
+	delete _onSimulationEndHandlerMethods;
+	delete _onBreakpointHandlerMethods;
+}
+
 void OnEventManager::_addOnHandler(List<simulationEventHandler>* list, simulationEventHandler EventHandler) {
 	if (list->find(EventHandler) == list->list()->end())
 		list->insert(EventHandler);
@@ -94,26 +131,26 @@ void OnEventManager::addOnBreakpointHandler(simulationEventHandler EventHandler)
 }
 
 void OnEventManager::_NotifyHandlers(List<simulationEventHandler>* list, SimulationEvent* se) {
-	for (std::list<simulationEventHandler>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		(*it)(se);
+	for (auto handler : *list->list()) {
+		handler(se);
 	}
 }
 
 void OnEventManager::_NotifyHandlerMethods(List<simulationEventHandlerMethod>* list, SimulationEvent* se) {
-	for (std::list<simulationEventHandlerMethod>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		(*it)(se);
+	for (auto& handler : *list->list()) {
+		handler(se);
 	}
 }
 
 void OnEventManager::_NotifyHandlers(List<modelEventHandler>* list, ModelEvent* se) {
-	for (std::list<modelEventHandler>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		(*it)(se);
+	for (auto handler : *list->list()) {
+		handler(se);
 	}
 }
 
 void OnEventManager::_NotifyHandlerMethods(List<modelEventHandlerMethod>* list, ModelEvent* se) {
-	for (std::list<modelEventHandlerMethod>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		(*it)(se);
+	for (auto& handler : *list->list()) {
+		handler(se);
 	}
 }
 

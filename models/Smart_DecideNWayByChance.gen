@@ -1,18 +1,22 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Decide N-way By Chance" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 
 
 # Model Data Definitions
-69  EntityType "Entity_1" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+139 Attribute  "Entity.TotalWaitTime" 
+152 EntityType "Entity_1" 
 
 # Model Components
-61  Create     "Create_1" entityType="Entity_1" timeBetweenCreationsTimeUnit=6 nextId=62 timeBetweenCreations="EXPO(9)" 
-62  Delay      "Process_1" delayExpression="TRIA(8, 10, 12)" delayExpressionTimeUnit=6 nextId=63 
-63  Decide     "5_Way_Decide_By_Chance" condition[1]="UNIF(0, 1) < 0.1" condition[0]="UNIF(0, 1) < 0.5" nextId[1]=65 nexts=5 nextId[2]=66 conditions=4 nextId[4]=68 nextId[3]=67 nextId[0]=64 condition[3]="UNIF(0, 1) < 0.1" condition[2]="UNIF(0, 1) < 0.1" 
-64  Dispose    "Send_to_Warehouse" nexts=0 
-65  Dispose    "Send_to_Rebuild" nexts=0 
-66  Dispose    "Send_to_Refinish" nexts=0 
-67  Dispose    "Send_to_Repackage" nexts=0 
-68  Dispose    "Scrap" nexts=0 
+132 Create     "Create_1" entityType="Entity_1" timeBetweenCreationsTimeUnit=6 nextId=137 timeBetweenCreations="EXPO(9)" 
+137 Delay      "Process_1" delayExpression="TRIA(8, 10, 12)" delayExpressionTimeUnit=6 nextId=140 
+140 Decide     "5_Way_Decide_By_Chance" condition[1]="UNIF(0, 1) < 0.1" condition[0]="UNIF(0, 1) < 0.5" nextId[1]=144 nexts=5 nextId[2]=146 conditions=4 nextId[4]=150 nextId[3]=148 nextId[0]=141 condition[3]="UNIF(0, 1) < 0.1" condition[2]="UNIF(0, 1) < 0.1" 
+141 Dispose    "Send_to_Warehouse" nexts=0 
+144 Dispose    "Send_to_Rebuild" nexts=0 
+146 Dispose    "Send_to_Refinish" nexts=0 
+148 Dispose    "Send_to_Repackage" nexts=0 
+150 Dispose    "Scrap" nexts=0 

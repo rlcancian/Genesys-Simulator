@@ -14,7 +14,6 @@
 #include "SimulationExperiment.h"
 
 SimulationExperiment::SimulationExperiment() {
-	/// @todo Implement higher-level experiment composition and scenario orchestration here.
+	// @ToDo: (importante): Implement higher-level experiment composition and scenario orchestration here.
 }
-
 

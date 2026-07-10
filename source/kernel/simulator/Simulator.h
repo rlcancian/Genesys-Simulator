@@ -16,17 +16,19 @@
 
 #include <string>
 #include <iostream>
-#include "Model.h"
+#include "model/Model.h"
 #include "Plugin.h"
 #include "../util/List.h"
 #include "LicenceManager.h"
 #include "PluginManager.h"
-#include "ModelManager.h"
+#include "model/ModelManager.h"
 //#include "ToolManager.h"
 #include "ParserManager.h"
 #include "ExperimentManager.h"
 
 //namespace GenesysKernel {
+
+class PluginManager;
 
 /* https://www.doxygen.nl/manual/commands.html
  * Bried description \class \implements
@@ -92,8 +94,8 @@ public: // only get
     ExperimentManager* getExperimentManager() const;
 
 private:
-	bool _completePluginsFieldsAndTemplate();
-	friend class PluginManager; //@TODO: should be only member function PluginManager::completePluginsFieldsAndTemplate()
+	List<Plugin*>* _completePluginsFieldsAndTemplate();
+	friend class PluginManager; // @ToDo: (pequena alteração): should be only member function PluginManager::completePluginsFieldsAndTemplate()
 
 private: // attributes 1:1 objects
 	LicenceManager* _licenceManager;
@@ -105,12 +107,11 @@ private: // attributes 1:1 objects
 
 private: // attributes 1:1 native
 	const std::string _name = "GenESyS - GENeric and Expansible SYstem Simulator";
-    const std::string _versionName = "thestrech";
-    const unsigned int _versionNumber = 260330;
+    const std::string _versionName = "anaiera";
+    const unsigned int _versionNumber = 260705;
 };
 //namespace\\}
 
 // passing a "C" class factory function which instantiates the class. 
 typedef /*GenesysKernel::*/Simulator* GenesysSimulator;
 #endif /* GENESYS_H */
-

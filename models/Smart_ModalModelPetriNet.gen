@@ -1,0 +1,17 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=20.000000 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+
+# Model Components
+132 Create     "Create_1" entityType="entitytype" nextId=137 
+137 ModalModelDefault "PetriFlow" transitionsSize=1 node[0].typename="PetriPlace" nodesSize=2 node[0].id=141 entryNode="P_In" node[1].name="P_Out" node[0].name="P_In" transitionSource[0]="P_In" nextId=138 node[0].petriTokens[0]=5 node[1].nexts=0 transitionName[0]="MoveRedToken" transitionDestination[0]="P_Out" node[1].id=142 node[0].initialNode=1 node[1].typename="PetriPlace" node[0].nexts=0 node[0].petriColor[0]="red" node[0].petriColors=1 
+138 Dispose    "Dispose_1" nexts=0 
+141 PetriPlace "P_In" petriTokens[0]=5 petriColor[0]="red" petriColors=1 initialNode=1 nexts=0 
+142 PetriPlace "P_Out" nexts=0 

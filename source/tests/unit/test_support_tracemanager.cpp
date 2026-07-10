@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <stdexcept>
+
 #include "kernel/simulator/TraceManager.h"
 
 namespace {
@@ -23,4 +25,25 @@ TEST(SupportTraceManagerClassTest, TraceErrorPreservesExplicitLevel) {
     tm.traceError("fatal", TraceManager::Level::L1_errorFatal);
 
     EXPECT_EQ(g_last_trace_error_level, TraceManager::Level::L1_errorFatal);
+}
+
+TEST(SupportTraceManagerClassTest, TraceErrorStoresMessageInErrorList) {
+    TraceManager tm(nullptr);
+
+    tm.traceError("tracked-error", TraceManager::Level::L3_errorRecover);
+
+    ASSERT_NE(tm.errorMessages(), nullptr);
+    ASSERT_EQ(tm.errorMessages()->size(), 1u);
+    EXPECT_NE(tm.errorMessages()->front().find("tracked-error"), std::string::npos);
+}
+
+TEST(SupportTraceManagerClassTest, TraceErrorWithExceptionStoresMessageInErrorList) {
+    TraceManager tm(nullptr);
+
+    std::runtime_error ex("boom");
+    tm.traceError("exception-error", ex);
+
+    ASSERT_NE(tm.errorMessages(), nullptr);
+    ASSERT_EQ(tm.errorMessages()->size(), 1u);
+    EXPECT_NE(tm.errorMessages()->front().find("exception-error"), std::string::npos);
 }

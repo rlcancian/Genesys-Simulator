@@ -2,6 +2,8 @@
 /build/
 /out/
 /cmake-build-*/
+build/
+build-gui/
 
 # CMake
 CMakeCache.txt
@@ -23,10 +25,11 @@ CMakeLists.txt.user
 .qtcreator/
 .qtc_clangd/
 
-# NetBeans legacy
-/projects/**/build/
-/projects/**/dist/
-/projects/**/nbproject/private/
+# Local IDE and AI assistant metadata
+/.idea/
+/.aider*
+/.claude*
+/.codex*
 
 # Generic
 *.o
@@ -37,6 +40,11 @@ CMakeLists.txt.user
 *.dll
 *.dylib
 *.exe
+*.tmp
+temp*
+.temp*
 
 # Logs
 *.log
+
+documentation/diagrams/

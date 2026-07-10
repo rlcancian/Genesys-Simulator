@@ -3,7 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/file.h to edit this template
  */
 
-/* 
+/*
  * File:   TraitsTools.h
  * Author: rlcancian
  *
@@ -14,12 +14,28 @@
 #define TRAITSTOOLS_H
 
 // TOOLS
-#include "SolverDefaultImpl1.h"
-#include "HypothesisTesterDefaultImpl1.h"
-#include "HypothesisTester_if.h"
-#include "FitterDummyImpl.h"
-#include "Fitter_if.h"
+#include "AIAssistant/AIAssistant_if.h"
+#include "AIAssistant/AIAssistantDefaultImpl.h"
+#include "Continuous/SolverDefaultImpl1.h"
+#include "Statistics/HypothesisTesterDefaultImpl1.h"
+#include "Statistics/HypothesisTester_if.h"
+#include "Statistics/FitterDefaultImpl.h"
+#include "Statistics/Fitter_if.h"
 
+/**
+ * @brief Registry-like traits to bind abstractions to concrete tools classes.
+ *
+ * Architectural role:
+ * - Central selection point for concrete implementations used by this package.
+ *
+ * Implementation status:
+ * - Currently covers only a subset of tool abstractions.
+ *
+ * Planned evolution:
+ * - Extend bindings as new stable interfaces receive concrete implementations.
+ * - New abstractions without safe concrete implementations should remain
+ *   documented-only for now to avoid build instability.
+ */
 template <typename T>
 struct TraitsTools {
 };
@@ -45,8 +61,14 @@ template <> struct TraitsTools<HypothesisTester_if> {
  *  Configure the Fitter to be used
  */
 template <> struct TraitsTools<Fitter_if> {
-	typedef FitterDummyImpl Implementation;
+	typedef FitterDefaultImpl Implementation;
+};
+
+/*!
+ *  Configure the AI Assistant to be used
+ */
+template <> struct TraitsTools<AIAssistant_if> {
+	typedef AIAssistantDefaultImpl Implementation;
 };
 
 #endif /* TRAITSTOOLS_H */
-

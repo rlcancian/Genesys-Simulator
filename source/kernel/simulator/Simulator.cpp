@@ -56,12 +56,20 @@ Simulator::Simulator() {
 
 
 Simulator::~Simulator() {
+	// Keep teardown deterministic and avoid dangling manager pointers after deletion.
 	delete _experimentManager;
+	_experimentManager = nullptr;
 	delete _parserManager;
-	delete _traceManager;
+	_parserManager = nullptr;
+	// Destroy models before tracing infrastructure to avoid late traces using a dead tracer.
 	delete _modelManager;
+	_modelManager = nullptr;
+	delete _traceManager;
+	_traceManager = nullptr;
 	delete _pluginManager;
+	_pluginManager = nullptr;
 	delete _licenceManager;
+	_licenceManager = nullptr;
 }
 
 PluginManager* Simulator::getPluginManager() const {
@@ -100,13 +108,15 @@ LicenceManager* Simulator::getLicenceManager() const {
 	return _licenceManager;
 }
 
-bool Simulator::_completePluginsFieldsAndTemplate() {
+List<Plugin*>* Simulator::_completePluginsFieldsAndTemplate() {
+	// @ToDo: (importante): NOT THRE RIGHT PLACE TO BE
 	TraceManager::Level savedTraceLevel = _traceManager->getTraceLevel();
 	// this crap stuff should not been shown
 	_traceManager->trace("Completing plugins and templates", TraceManager::Level::L8_detailed);
 	_traceManager->setTraceLevel(TraceManager::Level::L0_noTraces); // this crap stuff should not been shown
+	List<Plugin*>* completedPlugins = new List<Plugin*>();
 	Model* tempModel = new Model(this);
-	tempModel->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
+	tempModel->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, true);
 	auto fields = std::make_unique<PersistenceRecord>(*tempModel->getPersistence());
 	Plugin* plugin;
 	PluginInformation* info;
@@ -137,7 +147,7 @@ bool Simulator::_completePluginsFieldsAndTemplate() {
 						datum->SaveInstance(fields.get(), datum);
 					}
 				} catch (...) {
-					//@TODO
+					// @ToDo: (importante): preserve plugin field/template completion diagnostics
 					//std::cout << "ERROR completing plugin " << info->getPluginTypename() << std::endl;
 				}
 				for (auto& field : *fields.get()) {
@@ -147,12 +157,12 @@ bool Simulator::_completePluginsFieldsAndTemplate() {
 					std::string templateLanguage = tempModel->getPersistence()->getFormatedField(fields.get());
 					info->setLanguageTemplate(templateLanguage);
 				}
+				completedPlugins->insert(plugin);
 			}
 		} catch (...) {
-			result = false;
 		}
 	}
 	Util::ResetAllIds();
 	_traceManager->setTraceLevel(savedTraceLevel);
-	return result;
+	return completedPlugins;
 }

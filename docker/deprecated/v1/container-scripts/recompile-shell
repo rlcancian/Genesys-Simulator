@@ -1,2 +1,0 @@
-#!/bin/bash
-cd /home/Genesys-Simulator/projects/GenesysTerminalApplication && make QMAKE=qmake && cd dist && cp /home/Genesys-Simulator/autoloadplugins.txt . && ./genesysterminalapplication

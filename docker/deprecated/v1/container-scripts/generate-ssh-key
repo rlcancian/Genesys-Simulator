@@ -1,3 +1,0 @@
-#!/bin/bash
-mkdir ~/.ssh 2> /dev/null && ssh-keygen -q -t rsa -N '' <<< $'\ny' >/dev/null 2>&1
-cat ~/.ssh/id_rsa.pub
