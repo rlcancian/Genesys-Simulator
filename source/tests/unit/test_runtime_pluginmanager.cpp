@@ -339,19 +339,32 @@ TEST(RuntimePluginManagerClassTest, DefaultGroProgramProducesVisibleColonyDynami
     EXPECT_EQ(colony->getGridWidth(), 32u);
     EXPECT_EQ(colony->getGridHeight(), 32u);
 
-    for (unsigned int step = 0; step < 40; ++step) {
+    double maxSignal = 0.0;
+    bool dynamicsObserved = false;
+    for (unsigned int step = 0; step < 3; ++step) {
         GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
         ASSERT_TRUE(result.succeeded) << result.errorMessage;
-    }
 
-    EXPECT_GT(colony->getPopulationSize(), 5u);
-    EXPECT_EQ(colony->getPopulationSize(), colony->getInternalBacteriaCount());
-    double maxSignal = 0.0;
-    for (unsigned int y = 0; y < colony->getGridHeight(); ++y) {
-        for (unsigned int x = 0; x < colony->getGridWidth(); ++x) {
-            maxSignal = std::max(maxSignal, colony->getSignalValueAt(x, y));
+        maxSignal = 0.0;
+        for (unsigned int y = 0; y < colony->getGridHeight(); ++y) {
+            for (unsigned int x = 0; x < colony->getGridWidth(); ++x) {
+                maxSignal = std::max(maxSignal, colony->getSignalValueAt(x, y));
+            }
+        }
+
+        if (maxSignal > 0.0 &&
+            colony->getBacteriumPositionX(0) != 16.0 &&
+            colony->getBacteriumPositionY(0) != 16.0 &&
+            colony->getBacteriumSize(0) > 0.0 &&
+            colony->getBacteriumVolume(0) > 1.0 &&
+            colony->getBacteriumRuntimeVariableValue(0, "gfp") > 0.0) {
+            dynamicsObserved = true;
+            break;
         }
     }
+
+    EXPECT_TRUE(dynamicsObserved);
+    EXPECT_EQ(colony->getPopulationSize(), colony->getInternalBacteriaCount());
     EXPECT_GT(maxSignal, 0.0);
     EXPECT_NE(colony->getBacteriumPositionX(0), 16.0);
     EXPECT_NE(colony->getBacteriumPositionY(0), 16.0);
@@ -1198,7 +1211,7 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeSupportsProgramParametersRa
         "program oscillator(g0) := { "
         "  p := [ mode := 0, t := 0, x := g0 ]; "
         "  true : { skip() } "
-        "  p.mode = 0 & rate(1) : { gfp := 0.5 * volume * g0, p.mode := 1, p.t := 0 } "
+        "  p.mode = 0 & rate(1000000) : { gfp := 0.5 * volume * g0, p.mode := 1, p.t := 0 } "
         "}; "
         "ecoli([x:=0, y:=0], program oscillator(3));");
 

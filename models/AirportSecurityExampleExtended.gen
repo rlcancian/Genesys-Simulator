@@ -1,0 +1,43 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Airport Security Example Extended" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=2 warmUpTimeTimeUnit=7 warmUpTime=0.500000 replicationLength=12.000000 numberOfReplications=3 replicationLengthTimeUnit=7 
+
+# Model Data Definitions
+132 Attribute  "a_Time_in" 
+133 Variable   "v_Counter" 
+136 EntityType "entitytype" 
+137 Attribute  "Entity.ArrivalTime" 
+138 Attribute  "Entity.Type" 
+139 EntityType "Passenger" 
+140 Resource   "Officer" costIdleTimeUnit=12.000000 costBusyTimeUnit=12.000000 
+152 Resource   "XRay_Machine" capacity=2 
+169 Attribute  "Entity.TotalWaitTime" 
+171 Queue      "Identification.Queue" 
+186 Queue      "XRay.Queue" 
+197 Queue      "Additional.Queue" 
+
+# Model Components
+134 Create     "Create_1" entityType="Passenger" timeBetweenCreationsTimeUnit=6 nextId=164 caption="Passengers arrive to security" timeBetweenCreations="expo(2)" 
+164 Assign     "Assign_1" assignExpr[0]="tnow" nextId=165 assignDest[0]="a_Time_in" 
+165 Process    "Process_1" delayExpression="tria(0.75, 1.5, 3)" delayExpressionTimeUnit=6 nextId=174 queueable="Identification.Queue" caption="Check for proper identification" requestSeizable[0]="Officer" 
+166 Seize      "Process_1.Seize" queueable="Identification.Queue" nextId=167 requestSeizable[0]="Officer" 
+167 Delay      "Process_1.Delay" delayExpressionTimeUnit=6 delayExpression="tria(0.75, 1.5, 3)" nextId=170 
+170 Release    "Process_1.Release" resquests=0 nexts=0 
+174 Decide     "Decide_1" condition[0]="unif(0, 1) < 0.96" nextId[0]=181 nextId[1]=179 nexts=2 conditions=1 caption="Pass security?" 
+175 Dispose    "Dispose_1" nexts=0 caption="Cleared" 
+179 Dispose    "Dispose_2" nexts=0 caption="Denied" 
+181 Process    "Process_2" delayExpression="tria(1.75, 2.5, 7)" delayExpressionTimeUnit=6 nextId=189 queueable="XRay.Queue" caption="XRay Baggage Check" requestSeizable[0]="XRay_Machine" 
+182 Seize      "Process_2.Seize" queueable="XRay.Queue" nextId=183 requestSeizable[0]="XRay_Machine" 
+183 Delay      "Process_2.Delay" delayExpressionTimeUnit=6 delayExpression="tria(1.75, 2.5, 7)" nextId=185 
+185 Release    "Process_2.Release" resquests=0 nexts=0 
+189 Assign     "Assign_2" assignIsAttrib[0]=0 assignExpr[0]="v_Counter + 1" nextId=190 assignDest[0]="v_Counter" 
+190 Decide     "Decide_2" condition[0]="v_Counter == 15" nextId[0]=191 nextId[1]=175 nexts=2 conditions=1 caption="Extra screening for 15th?" 
+191 Assign     "Assign_3" assignIsAttrib[0]=0 assignExpr[0]="0" nextId=192 assignDest[0]="v_Counter" 
+192 Process    "Process_3" delayExpression="tria(3, 5, 10)" delayExpressionTimeUnit=6 resquests=0 nextId=200 queueable="Additional.Queue" caption="Additional Security Check" 
+193 Seize      "Process_3.Seize" queueable="Additional.Queue" resquests=0 nextId=194 
+194 Delay      "Process_3.Delay" delayExpressionTimeUnit=6 delayExpression="tria(3, 5, 10)" nextId=196 
+196 Release    "Process_3.Release" resquests=0 nexts=0 
+200 Record     "Record_1" description="Cycle time for passengers that receive the extra security check." randomVariableName="Selected passenger cycle time" nextId=202 datasetName="Selected Passenger Cycle Time Dataset" expressionName="Cycle Time for Selected Passengers" expression="TNOW - a_Time_in" 
+202 Dispose    "Dispose_3" nexts=0 caption="Cleared with extra check" 

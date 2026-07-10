@@ -138,6 +138,24 @@ void Entity::setAttributeValue(Util::identification attributeID, double value, s
 	}
 }
 
+void Entity::copyAttributeValues(std::string destinationAttributeName, std::string sourceAttributeName) {
+	int destinationRank = _parentModel->getDataManager()->getRankOf(Util::TypeOf<Attribute>(), destinationAttributeName);
+	int sourceRank = _parentModel->getDataManager()->getRankOf(Util::TypeOf<Attribute>(), sourceAttributeName);
+	if (destinationRank < 0) {
+		traceError("Attribute \"" + destinationAttributeName + "\" not found", TraceManager::Level::L3_errorRecover);
+		return;
+	}
+	if (sourceRank < 0) {
+		traceError("Attribute \"" + sourceAttributeName + "\" not found", TraceManager::Level::L3_errorRecover);
+		return;
+	}
+	SparseValueStore* destinationStore = _ensureAttributeStore(static_cast<unsigned int>(destinationRank));
+	SparseValueStore* sourceStore = _ensureAttributeStore(static_cast<unsigned int>(sourceRank));
+	if (destinationStore != nullptr && sourceStore != nullptr) {
+		destinationStore->copyFrom(*sourceStore);
+	}
+}
+
 Util::identification Entity::entityNumber() const {
 	return _entityNumber;
 }

@@ -84,7 +84,11 @@ bool Lattice::init() {
 		//                << std::endl;
 	}
 	Neighborhood* neighb = parentCellularAutomata->getNeighborhood();
-	neighb->getBoundary()->setLattice(this);
+	BoundaryCondition* boundary = neighb->getBoundary();
+	if (boundary==nullptr) {
+		boundary=parentCellularAutomata->getNeighborhood()->getBoundary();
+	}
+	boundary->setLattice(this);
 	for (Cell* cell : cells) {
 		std::vector<Cell*> neighbors = neighb->getNeighbors(cell);
 		cell->setNeighbors(neighbors);

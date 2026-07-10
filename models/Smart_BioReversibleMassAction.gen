@@ -1,0 +1,15 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 
+
+# Model Data Definitions
+132 BioSpecies "A" amount=4.820868 initialAmount=10.000000 
+133 BioSpecies "B" amount=5.179132 
+134 BioParameter "kForward" value=0.100000 
+135 BioParameter "kReverse" value=0.050000 
+136 BioReaction "A_to_B" reversible=1 reverseRateConstantParameterName="kReverse" rateConstantParameterName="kForward" reactants=1 reactantSpecies[0]="A" productSpecies[0]="B" products=1 
+137 BioNetwork "ReversibleMassActionNetwork" reactionName[0]="A_to_B" reactions=1 lastStatus="Completed" currentTime=10.000000 speciesName[0]="A" stepSize=0.010000 lastResponsePayload="{"status":"Completed","time":10,"species":{"A":4.82086773432292,"B":5.17913226567708}}" stopTime=10.000000 species=2 speciesName[1]="B" 
+
+# Model Components

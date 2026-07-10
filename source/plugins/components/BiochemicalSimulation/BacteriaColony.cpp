@@ -1532,7 +1532,16 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			result.succeeded = false;
 			return false;
 		}
-		if (!_applyColonyMutations(preludeResult.colonyMutations, result, true, result.errorMessage)) {
+		std::vector<GroProgramRuntime::ColonyMutation> runtimePreludeMutations;
+		runtimePreludeMutations.reserve(preludeResult.colonyMutations.size());
+		for (const auto& mutation : preludeResult.colonyMutations) {
+			if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SpawnSeed) {
+				continue;
+			}
+			runtimePreludeMutations.push_back(mutation);
+		}
+		if (!runtimePreludeMutations.empty() &&
+		    !_applyColonyMutations(runtimePreludeMutations, result, true, result.errorMessage)) {
 			result.succeeded = false;
 			return false;
 		}
