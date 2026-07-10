@@ -18,11 +18,28 @@ Lattice::Lattice(CellularAutomataBase* parentCellularAutomata, Cell *progenitorC
 	this->progenitorCell = progenitorCell;
 	this->dimensions = dimensions;
 	this->latticeType = latticeType;
+	this->networkEdgesUndirected = true;
 	hasBeenInit = false;
+	totalCells = 0;
 }
 
 Lattice::Lattice(const Lattice& orig) {
+	parentCellularAutomata = orig.parentCellularAutomata;
+	dimensions = orig.dimensions;
+	networkEdges = orig.networkEdges;
+	progenitorCell = orig.progenitorCell;
+	latticeType = orig.latticeType;
+	networkEdgesUndirected = orig.networkEdgesUndirected;
+	hasBeenInit = false;
+	totalCells = orig.totalCells;
+}
 
+Lattice::~Lattice() {
+	// init() fills `cells` with new Cell objects owned by this lattice; free them here so a lattice
+	// does not leak its whole grid on teardown. The empty copy constructor leaves a copy's `cells`
+	// empty, so a copied lattice frees nothing — no double free.
+	for (Cell* cell : cells)
+		delete cell;
 }
 
 /* **************
@@ -103,11 +120,13 @@ void Lattice::setCell(const std::vector<int> position, Cell* cell) {
 		Cell* oldCell = cells.at(cellNumber);
 		cells.at(cellNumber) = cell;
 		if (oldCell != nullptr)
-			oldCell->~Cell();
+			delete oldCell;
 	}
 }
 
 bool Lattice::setCellState(long cellNumber, State* state, Cell* cell) {
+	if (cellNumber < 0)
+		return false;
 	if (cells.size() <= cellNumber)
 		cells.resize(cellNumber + 1);
 	Cell* newCell = cell;
@@ -130,6 +149,8 @@ bool Lattice::setCellState(long cellNumber, State* state, Cell* cell) {
 
 bool Lattice::setCellState(std::vector<int> position, State* state, Cell* cell) {
 	long cellNumber = cellNDimPosition2Number(position);
+	if (cellNumber < 0)
+		return false;
 	return setCellState(cellNumber, state, cell);
 }
 
@@ -173,11 +194,15 @@ std::vector<int> Lattice::cellNumber2NDimPosition(const long cellNumber) {
 }
 
 Cell* Lattice::getCell(const long cellNumber) {
+	if (cellNumber < 0 || static_cast<unsigned long>(cellNumber) >= cells.size())
+		return nullptr;
 	return cells.at(cellNumber);
 }
 
 Cell* Lattice::getCell(const std::vector<int> position) {
-	unsigned int cellNumber = this->cellNDimPosition2Number(position);
+	long cellNumber = this->cellNDimPosition2Number(position);
+	if (cellNumber < 0)
+		return nullptr;
 	return getCell(cellNumber);
 }
 
@@ -206,6 +231,10 @@ unsigned int Lattice::getNumCell(unsigned short dimension) {
 
 LatticeType Lattice::getLatticeType() const {
 	return latticeType;
+}
+
+void Lattice::setLatticeType(LatticeType latticeType) {
+	this->latticeType = latticeType;
 }
 
 unsigned long Lattice::getCellsSize() const {
@@ -245,6 +274,58 @@ unsigned short Lattice::getDimension(unsigned short dimensionNumber) const {
 
 std::vector<Cell*> Lattice::getCells() const {
 	return cells;
+}
+
+void Lattice::setNetworkEdges(const std::vector<std::pair<unsigned long, unsigned long>>& edges, bool undirected) {
+	networkEdges = edges;
+	networkEdgesUndirected = undirected;
+}
+
+std::vector<std::pair<unsigned long, unsigned long>> Lattice::getNetworkEdges() const {
+	return networkEdges;
+}
+
+bool Lattice::getNetworkEdgesUndirected() const {
+	return networkEdgesUndirected;
+}
+
+bool Lattice::hasNetworkEdges() const {
+	return !networkEdges.empty();
+}
+
+bool Lattice::networkEdgesAreValid() const {
+	unsigned long total = 1;
+	for (unsigned int dimension : dimensions)
+		total *= dimension;
+	for (const auto& edge : networkEdges) {
+		if (edge.first >= total || edge.second >= total)
+			return false;
+	}
+	return true;
+}
+
+std::vector<unsigned long> Lattice::getNetworkNeighborCellNumbers(unsigned long cellNumber) const {
+	std::vector<unsigned long> neighbors;
+	const unsigned long total = cells.empty() ? totalCells : cells.size();
+	if (total > 0 && cellNumber >= total)
+		return neighbors;
+	for (const auto& edge : networkEdges) {
+		if (edge.first == cellNumber)
+			neighbors.emplace_back(edge.second);
+		if (networkEdgesUndirected && edge.second == cellNumber)
+			neighbors.emplace_back(edge.first);
+	}
+	return neighbors;
+}
+
+std::vector<Cell*> Lattice::getNetworkNeighbors(unsigned long cellNumber) const {
+	std::vector<Cell*> neighbors;
+	for (unsigned long neighborCellNumber : getNetworkNeighborCellNumbers(cellNumber)) {
+		Cell* neighbor = const_cast<Lattice*>(this)->getCell(static_cast<long>(neighborCellNumber));
+		if (neighbor != nullptr)
+			neighbors.emplace_back(neighbor);
+	}
+	return neighbors;
 }
 //std::vector<Cell*>* Lattice::getCells() const {
 //    return cells;

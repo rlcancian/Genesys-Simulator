@@ -17,7 +17,7 @@ public:
 protected:
     virtual void applyLocalRule() override {
         Cell* cell;
-		State* state;
+		State state;
         int nextRow;
 		int maxRows = std::min<int>(lattice->getDimension(1)-2, lattice->getDimension(1)-2); // simulatedTime);
         for (int row=maxRows; row>=0; row--) {
@@ -25,8 +25,8 @@ protected:
             // move cell states to the next row 
 			for (int col=0; col<lattice->getDimension(0); col++) { // move to row bellow
 				cell = lattice->getCell({col,row});
-				*state = cell->getCurrentState();
-				lattice->setCellState({col,nextRow}, state);
+				state = cell->getCurrentState();
+				lattice->setCellState({col,nextRow}, &state);
             }
             if (row==0) {
                 // apply the same local rule for all unidimensional cells at the same time
