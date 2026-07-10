@@ -1,21 +1,27 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=2 warmUpTimeTimeUnit=9 warmUpTime=0.050000 replicationLength=1.000000 numberOfReplications=3 replicationLengthTimeUnit=9 
+0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=9 warmUpTime=0.050000 replicationLength=1.000000 numberOfReplications=3 replicationLengthTimeUnit=9 
 
 # Model Data Definitions
-63  Attribute  "Entity.Type" 
-67  Attribute  "Weight" 
-72  Resource   "Resource_1" 
-73  Queue      "Queue_1" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+142 Attribute  "Weight" 
+147 Attribute  "Entity.TotalWaitTime" 
+149 Resource   "Resource_1" 
+161 Queue      "Queue_1" 
 
 # Model Components
-61  Create     "Create1" entityType="entitytype" timeBetweenCreationsTimeUnit=7 nextId=62 timeBetweenCreations="expo(1)" 
-64  Create     "Create2" entityType="entitytype" timeBetweenCreationsTimeUnit=7 nextId=65 timeBetweenCreations="expo(1)" 
-65  Assign     "Assign_2" assignExpr[0]="2" nextId=66 assignDest[0]="Entity.Type" 
-66  Assign     "Assign_1" assignExpr[0]="unif(0.2,1)" nextId=68 assignDest[0]="Weight" 
-68  Process    "Process_1" delayExpression="Weight * 5" delayExpressionTimeUnit=7 queueable="Queue_1" nextId=74 requestSeizable[0]="Resource_1" 
-74  Decide     "Decide_1" condition[0]="Entity.Type == 2" conditions=1 nextId[0]=75 nextId[1]=76 nexts=2 
-75  Dispose    "Dispose_1" nexts=0 
-76  Dispose    "Dispose_2" nexts=0 
+132 Create     "Create1" entityType="entitytype" timeBetweenCreationsTimeUnit=7 nextId=137 timeBetweenCreations="expo(1)" 
+138 Create     "Create2" entityType="entitytype" timeBetweenCreationsTimeUnit=7 nextId=140 timeBetweenCreations="expo(1)" 
+140 Assign     "Assign_2" assignExpr[0]="2" nextId=141 assignDest[0]="Entity.Type" 
+141 Assign     "Assign_1" assignExpr[0]="unif(0.2,1)" nextId=143 assignDest[0]="Weight" 
+143 Process    "Process_1" delayExpression="Weight * 5" delayExpressionTimeUnit=7 queueable="Queue_1" nextId=164 requestSeizable[0]="Resource_1" 
+144 Seize      "Process_1.Seize" queueable="Queue_1" nextId=145 requestSeizable[0]="Resource_1" 
+145 Delay      "Process_1.Delay" delayExpressionTimeUnit=7 delayExpression="Weight * 5" nextId=148 
+148 Release    "Process_1.Release" resquests=0 nexts=0 
+164 Decide     "Decide_1" condition[0]="Entity.Type == 2" conditions=1 nextId[0]=165 nextId[1]=168 nexts=2 
+165 Dispose    "Dispose_1" nexts=0 
+168 Dispose    "Dispose_2" nexts=0 

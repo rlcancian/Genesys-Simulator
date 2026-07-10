@@ -12,7 +12,7 @@
  */
 
 #include "SourceModelComponent.h"
-#include "Model.h"
+#include "model/Model.h"
 #include "PropertyGenesys.h"
 
 //using namespace GenesysKernel;
@@ -40,6 +40,11 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 				std::bind(&SourceModelComponent::getTimeUnit, this),
 				std::bind(&SourceModelComponent::setTimeUnit, this, std::placeholders::_1),
 				className, name, "TimeUnit", "The time unit of time between arrivals");
+	SimulationControlGenericClass<EntityType*, Model*, EntityType>* propEntityType = new SimulationControlGenericClass<EntityType*, Model*, EntityType>(
+				_parentModel,
+				std::bind(&SourceModelComponent::getEntityType, this),
+				std::bind(&SourceModelComponent::setEntityType, this, std::placeholders::_1),
+				className, name, "EntityType", "The entity type created by this source component");
 
 
 	_parentModel->getControls()->insert(propFirstCreation);
@@ -47,13 +52,15 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 	// _parentModel->getControls()->insert(propMaxCreation);
 	_parentModel->getControls()->insert(propTimeBetweenCreations);
 	_parentModel->getControls()->insert(propTimeUnit);
+	_parentModel->getControls()->insert(propEntityType);
 
 	// setting properties
-	_addProperty(propFirstCreation);
-	_addProperty(propEntitiesPerCreation);
-	// _addProperty(propMaxCreation);
-	_addProperty(propTimeBetweenCreations);
-	_addProperty(propTimeUnit);
+	_addSimulationControl(propFirstCreation);
+	_addSimulationControl(propEntitiesPerCreation);
+	// _addSimulationControl(propMaxCreation);
+	_addSimulationControl(propTimeBetweenCreations);
+	_addSimulationControl(propTimeUnit);
+	_addSimulationControl(propEntityType);
 }
 
 std::string SourceModelComponent::show() {
@@ -116,19 +123,31 @@ bool SourceModelComponent::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void SourceModelComponent::_createInternalAndAttachedData() {
-	_attachedAttributesInsert({"Entity.ArrivalTime", "Entity.Type"});
+// void SourceModelComponent::_createInternalStatisticReporters() { }
+
+void SourceModelComponent::_createEditableDataDefinitions() {
 	if (this->_entityType == nullptr) {
 		std::string defaulName = DEFAULT.entityTypename;
 		for (ModelDataDefinition* elem : *_parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list()) {
 			if (elem->getName() == defaulName) { // there is an entitytype wich the same default name.
 				_entityType = static_cast<EntityType*>(elem);
-				return;
+				break;
 			}
 		}
-		_entityType = new EntityType(_parentModel, DEFAULT.entityTypename);
+		if (_entityType == nullptr) {
+			_entityType = new EntityType(_parentModel, DEFAULT.entityTypename);
+		}
 	}
-	_attachedDataInsert("EntityType", _entityType);
+	if (_entityType != nullptr) {
+		_mandatoryEditableDataDefinitionInsert("EntityType", _entityType);
+	}
+	else {
+		_mandatoryEditableDataDefinitionRemove("EntityType");
+	}
+}
+
+void SourceModelComponent::_createAttachedAttributes() {
+	_attachedAttributesInsert({"Entity.ArrivalTime", "Entity.Type"});
 }
 
 void SourceModelComponent::setFirstCreation(double _firstCreation) {

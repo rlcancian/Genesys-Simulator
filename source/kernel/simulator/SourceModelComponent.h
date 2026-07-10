@@ -14,7 +14,7 @@
 #ifndef SOURCEMODELCOMPONENT_H
 #define SOURCEMODELCOMPONENT_H
 
-#include "ModelComponent.h"
+#include "model/ModelComponent.h"
 #include <string>
 #include <limits>
 //namespace GenesysKernel {
@@ -111,14 +111,18 @@ public: // get & set
 	 */
 	unsigned int getEntitiesPerCreation() const;
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 
 protected:
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _initBetweenReplications();
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-    virtual bool _check(std::string& errorMessage);
-	virtual void _createInternalAndAttachedData();
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+protected:
+	virtual void _initBetweenReplications() override;
+    virtual bool _check(std::string& errorMessage) override;
+protected:
+	//virtual void _createInternalStatisticReporters();
+	virtual void _createEditableDataDefinitions();
+	virtual void _createAttachedAttributes();
 protected: // get & set
 	EntityType* _entityType = nullptr;
 
@@ -140,4 +144,3 @@ protected: // get & set
 };
 //namespace\\}
 #endif /* SOURCEMODELCOMPONENT_H */
-

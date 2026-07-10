@@ -1,21 +1,30 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=8 replicationLength=20.000000 
 
 # Model Data Definitions
-65  SignalData "sinalD1" 
-66  SignalData "sinalD2" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+143 SignalData "sinalD1" 
+144 SignalData "sinalD2" 
+146 Queue      "Wait_1.Queue" 
+149 SignalData "SignalData_1" 
+151 Queue      "Wait_2.Queue" 
+154 SignalData "SignalData_2" 
+156 SignalData "SignalData_3" 
+158 SignalData "SignalData_4" 
 
 # Model Components
-61  Create     "Create_1" entityType="entitytype" nextId=67 timeBetweenCreations="1" 
-62  Create     "Create_2" entityType="entitytype" nextId=68 timeBetweenCreations="2" 
-63  Create     "Create_3" entityType="entitytype" firstCreation=5.000000 nextId=69 timeBetweenCreations="5" 
-64  Create     "Create_4" entityType="entitytype" firstCreation=15.000000 nextId=70 timeBetweenCreations="15" 
-67  Wait       "Wait_1" nextId=71 
-68  Wait       "Wait_2" nextId=71 
-69  Signal     "Signal_1" limitExpression="3" nextId=72 
-70  Signal     "Signal_2" limitExpression="1e3" nextId=72 
-71  Dispose    "Dispose_1" nexts=0 
-72  Dispose    "Dispose_2" nexts=0 
+132 Create     "Create_1" entityType="entitytype" nextId=145 timeBetweenCreations="1" 
+137 Create     "Create_2" entityType="entitytype" nextId=150 timeBetweenCreations="2" 
+139 Create     "Create_3" entityType="entitytype" firstCreation=5.000000 nextId=155 timeBetweenCreations="5" 
+141 Create     "Create_4" entityType="entitytype" firstCreation=15.000000 nextId=157 timeBetweenCreations="15" 
+145 Wait       "Wait_1" signalData="sinalD1" queue="Wait_1.Queue" nextId=159 
+150 Wait       "Wait_2" signalData="sinalD2" queue="Wait_2.Queue" nextId=159 
+155 Signal     "Signal_1" signalData="sinalD1" limitExpression="3" nextId=162 
+157 Signal     "Signal_2" signalData="sinalD2" limitExpression="1e3" nextId=162 
+159 Dispose    "Dispose_1" nexts=0 
+162 Dispose    "Dispose_2" nexts=0 

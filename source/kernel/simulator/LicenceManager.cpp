@@ -24,10 +24,10 @@ void LicenceManager::setDefaultLicenceAndLimits() {
 	_licence = "LICENCE: Academic Mode.";
 	_licence += " In academic mode this software has full functionality and executing training-size simulation models. ";
 	_licence += " This software may be duplicated and used for educational purposes only;";
-	_licence += " All changes and improvements must be submitted to the git repository using pull requests.";
+	_licence += " All changes and improvements must be submitted to the git repository https://github.com/rlcancian/Genesys-Simulator/ branch 'WorkInProgress' using pull requests.";
 	_licence += " Any commercial application is a violation of the license agreement.";
-	_licence += " Designed and developed by prof. Dr. Ing Rafael Luiz Cancian, 2019-2023.";
-	_licence += " Contacts: rafael.cancian@ufsc.br , cancian@lisha.ufsc.br";
+	_licence += " Designed and developed by prof. Dr. Ing Rafael Luiz Cancian, 2019-2026.";
+	_licence += " Contacts: mailto:rafael.cancian@ufsc.br  https://www.inf.ufsc.br/~rafael.cancian/";
 	_activationCode = "";
 	_components = 100;
 	_datadefinitions = 300;
@@ -58,12 +58,12 @@ const std::string LicenceManager::showActivationCode() const {
 }
 
 bool LicenceManager::lookforActivationCode() {
-	// @TODO: Not implemented yet
-    return true; // if not implemented then return true, as if found an activation code
+	// @ToDo: (importante): Not implemented yet
+    return false;
 }
 
 bool LicenceManager::insertActivationCode() {
-	// @TODO: Not implemented yet
+	// @ToDo: (importante): Not implemented yet
     return false;
 }
 

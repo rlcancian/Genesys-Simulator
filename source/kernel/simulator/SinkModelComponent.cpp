@@ -30,7 +30,7 @@ void SinkModelComponent::_saveInstance(PersistenceRecord *fields, bool saveDefau
 }
 
 bool SinkModelComponent::_check(std::string& errorMessage) {
-	// @TODO: To implement!
+	// @ToDo: (pequena alteração): To implement!
 	errorMessage += "";
 	return true;
 }

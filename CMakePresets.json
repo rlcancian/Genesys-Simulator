@@ -7,78 +7,398 @@
   },
   "configurePresets": [
     {
-      "name": "debug",
-      "displayName": "Debug",
+      "name": "base",
+      "hidden": true,
       "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "OFF",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
+        "GENESYS_BUILD_PLUGINS": "ON",
+        "GENESYS_BUILD_PARSER": "ON",
+        "GENESYS_BUILD_KERNEL": "ON",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "debug-base",
+      "hidden": true,
+      "inherits": "base",
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
-        "GENESYS_BUILD_GUI": "OFF",
-        "GENESYS_BUILD_TESTS": "ON",
-        "GENESYS_BUILD_PLUGINS": "OFF"
+        "GENESYS_BUILD_TESTS": "ON"
       }
     },
     {
-      "name": "release",
-      "displayName": "Release",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/release",
+      "name": "tests-unit",
+      "displayName": "Tests - Unit",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/tests-unit",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
-        "GENESYS_BUILD_GUI": "OFF",
         "GENESYS_BUILD_TESTS": "ON",
-        "GENESYS_BUILD_PLUGINS": "OFF"
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
+        "GENESYS_BUILD_SMOKE_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
-      "name": "asan",
-      "displayName": "AddressSanitizer",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/asan",
+      "name": "tests-kernel-unit",
+      "displayName": "Tests - Kernel Unit",
+      "inherits": "tests-unit",
+      "binaryDir": "${sourceDir}/build/tests-kernel-unit",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
-        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g3 -fsanitize=address,undefined -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=address,undefined",
-        "GENESYS_BUILD_GUI": "OFF",
         "GENESYS_BUILD_TESTS": "ON",
-        "GENESYS_BUILD_PLUGINS": "OFF"
+        "GENESYS_BUILD_SMOKE_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "terminal-app",
+      "hidden": true,
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/terminal-app",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF"
+      }
+    },
+    {
+      "name": "terminal-model-specific-base",
+      "hidden": true,
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/terminal-model-specific-base",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "ON",
+        "GENESYS_TERMINAL_EXAMPLE": "",
+        "GENESYS_TERMINAL_EXAMPLE_CLASS": ""
+      }
+    },
+    {
+      "name": "genesys_shell",
+      "displayName": "Application - Genesys Shell",
+      "description": "Builds the standalone Genesys shell executable genesys_shell. Use this preset when you want the interactive shell behavior.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/genesys_shell",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF"
+      }
+    },
+    {
+      "name": "terminal-smart",
+      "displayName": "Application - Terminal Smart",
+      "description": "Builds the terminal application from a smart source under source/applications/modelSpecific/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
+      "inherits": "terminal-model-specific-base",
+      "binaryDir": "${sourceDir}/build/terminal-smart",
+      "cacheVariables": {
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/ModalModel/Smart_CellularAutomata1.cpp"
+      }
+    },
+    {
+      "name": "terminal-model-specific",
+      "displayName": "Application - Terminal Model Specific",
+      "description": "Builds the terminal application from any model-specific source under source/applications/modelSpecific. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
+      "inherits": "terminal-model-specific-base",
+      "binaryDir": "${sourceDir}/build/terminal-model-specific",
+      "cacheVariables": {
+        "GENESYS_TERMINAL_EXAMPLE": "teaching/AnElectronicAssemblyAndTestSystem.cpp"
+      }
+    },
+    {
+      "name": "genesys_modelspecific_app",
+      "displayName": "Application - Model Specific App",
+      "description": "Builds the dedicated model-specific application target. Change GENESYS_MODELSPECIFIC_APP to select a different source under source/applications/modelSpecific.",
+      "inherits": "terminal-model-specific-base",
+      "binaryDir": "${sourceDir}/build/genesys_modelspecific_app",
+      "cacheVariables": {
+        "GENESYS_MODELSPECIFIC_APP": "teaching/AnElectronicAssemblyAndTestSystem.cpp",
+        "GENESYS_MODELSPECIFIC_APP_CLASS": "",
+        "GENESYS_MODELSPECIFIC_APP_HEADER": ""
+      }
+    },
+    {
+      "name": "terminal-smart-hold-search-remove",
+      "displayName": "Application - Terminal Smart (Smart_HoldSearchRemove)",
+      "description": "Builds the terminal application directly as the Smart_HoldSearchRemove smart example.",
+      "inherits": "terminal-smart",
+      "binaryDir": "${sourceDir}/build/terminal-smart-hold-search-remove",
+      "cacheVariables": {
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/DiscreteProcessing/Smart_HoldSearchRemove.cpp"
+      }
+    },
+    {
+      "name": "terminal-smart-ai-assistant",
+      "displayName": "Application - Terminal Smart (StartAIAssistant)",
+      "description": "Builds the terminal application directly as the StartAIAssistant smart example.",
+      "inherits": "terminal-model-specific",
+      "binaryDir": "${sourceDir}/build/terminal-smart-ai-assistant",
+      "cacheVariables": {
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/AI/StartAIAssistant.cpp",
+        "GENESYS_TERMINAL_EXAMPLE_CLASS": ""
+      }
+    },
+    {
+      "name": "worker-app",
+      "displayName": "Application - Worker",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/worker-app",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "genesys_worker_app",
+      "displayName": "Application - Worker",
+      "description": "Builds the worker application executable genesys_worker_app using the Worker application tree.",
+      "inherits": "worker-app",
+      "binaryDir": "${sourceDir}/build/genesys_worker_app"
+    },
+    {
+      "name": "gui-app",
+      "displayName": "Application - GUI",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-app",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "gui-httpworker",
+      "displayName": "Application - GUI HTTP Worker",
+      "description": "Builds the standalone WebWorker control application from the GUI umbrella.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-httpworker",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_GUI_GENESYS": "OFF",
+        "GENESYS_BUILD_GUI_HTTPWORKER": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "gui-dataanalyser",
+      "displayName": "Application - GUI Data Analyser",
+      "description": "Builds the standalone Data Analyzer application from the GUI umbrella.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-dataanalyser",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_GUI_GENESYS": "OFF",
+        "GENESYS_BUILD_GUI_DATAANALYSER": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "gui-optimizer",
+      "displayName": "Application - GUI Optimizer",
+      "description": "Builds the standalone Optimizer application from the GUI umbrella.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-optimizer",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_GUI_GENESYS": "OFF",
+        "GENESYS_BUILD_GUI_OPTIMIZER": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "gui-ai-assistant",
+      "displayName": "Application - GUI AI Assistant",
+      "description": "Builds the standalone AI Assistant application from the GUI umbrella.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-ai-assistant",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_GUI_GENESYS": "OFF",
+        "GENESYS_BUILD_GUI_AI_ASSISTANT": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "tests-smoke",
+      "displayName": "Tests - Smoke",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/tests-smoke",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_WORKER_APPLICATION": "ON",
+        "GENESYS_BUILD_SMOKE_TESTS": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "debug",
-      "configurePreset": "debug"
+      "name": "tests-unit",
+      "configurePreset": "tests-unit",
+      "targets": [
+        "genesys_kernel_unit_tests"
+      ]
     },
     {
-      "name": "release",
-      "configurePreset": "release"
+      "name": "tests-kernel-unit-run",
+      "configurePreset": "tests-kernel-unit",
+      "targets": [
+        "genesys_kernel_unit_tests_run"
+      ]
     },
     {
-      "name": "asan",
-      "configurePreset": "asan"
+      "name": "tests-kernel-unit",
+      "configurePreset": "tests-kernel-unit",
+      "targets": [
+        "genesys_kernel_unit_tests_run"
+      ]
+    },
+    {
+      "name": "genesys_shell",
+      "configurePreset": "genesys_shell",
+      "targets": [
+        "genesys_shell"
+      ]
+    },
+    {
+      "name": "terminal-smart",
+      "configurePreset": "terminal-smart",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "terminal-model-specific",
+      "configurePreset": "terminal-model-specific",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "genesys_modelspecific_app",
+      "configurePreset": "genesys_modelspecific_app",
+      "targets": [
+        "genesys_modelspecific_app"
+      ]
+    },
+    {
+      "name": "terminal-smart-hold-search-remove",
+      "configurePreset": "terminal-smart-hold-search-remove",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "terminal-smart-ai-assistant",
+      "configurePreset": "terminal-smart-ai-assistant",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "worker-app",
+      "configurePreset": "worker-app",
+      "targets": [
+        "genesys_worker_app"
+      ]
+    },
+    {
+      "name": "genesys_worker_app",
+      "configurePreset": "genesys_worker_app",
+      "targets": [
+        "genesys_worker_app"
+      ]
+    },
+    {
+      "name": "gui-app",
+      "configurePreset": "gui-app",
+      "targets": [
+        "genesys_gui"
+      ]
+    },
+    {
+      "name": "gui-httpworker",
+      "configurePreset": "gui-httpworker",
+      "targets": [
+        "genesys_httpworker_gui_application"
+      ]
+    },
+    {
+      "name": "gui-dataanalyser",
+      "configurePreset": "gui-dataanalyser",
+      "targets": [
+        "genesys_dataanalyser_gui_application"
+      ]
+    },
+    {
+      "name": "gui-optimizer",
+      "configurePreset": "gui-optimizer",
+      "targets": [
+        "genesys_optimizer_gui_application"
+      ]
+    },
+    {
+      "name": "gui-ai-assistant",
+      "configurePreset": "gui-ai-assistant",
+      "targets": [
+        "genesys_ai_assistant_gui_application"
+      ]
+    },
+    {
+      "name": "tests-smoke",
+      "configurePreset": "tests-smoke",
+      "targets": [
+        "genesys_smoke_tests"
+      ]
     }
   ],
   "testPresets": [
     {
-      "name": "debug",
-      "configurePreset": "debug",
+      "name": "tests-unit",
+      "configurePreset": "tests-unit",
+      "filter": {
+        "include": {
+          "label": "unit"
+        }
+      },
       "output": {
         "outputOnFailure": true
       }
     },
     {
-      "name": "asan",
-      "configurePreset": "asan",
+      "name": "tests-kernel-unit",
+      "configurePreset": "tests-kernel-unit",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tests-smoke",
+      "configurePreset": "tests-smoke",
+      "filter": {
+        "include": {
+          "label": "smoke"
+        }
+      },
       "output": {
         "outputOnFailure": true
       }

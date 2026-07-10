@@ -1,26 +1,49 @@
-# Genesys Simulation Model 
+# Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220131 
-0   ModelInfo  "Model 1" analystName="" description="" projectTitle="" version="1.0" 
-0   ModelSimulation "" showReportsAfterReplicaton=0 showReportsAfterSimulation=0 traceLevel=9 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 showReportsAfterSimulation=0 showReportsAfterReplicaton=0 
 
 # Model Data Definitions
-2655 Station    "s1" 
-2660 Station    "s2" 
-2665 Station    "s3" 
-2667 Sequence   "mysequence" stepStation[0]="s1" stepStation[1]="s2" stepStation[2]="s1" stepStation[3]="s1" stepStation[4]="s3" steps=5 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+139 Station    "Station_1" 
+143 Attribute  "Entity.Station" 
+144 Attribute  "Entity.ArrivalAtStation_1" 
+145 Attribute  "Entity.TotalTransferTime" 
+146 Attribute  "Entity.Sequence" 
+147 Attribute  "Entity.SequenceStep" 
+150 Station    "Station_2" 
+153 Attribute  "Entity.ArrivalAtStation_2" 
+154 Station    "s1" 
+157 Attribute  "Entity.ArrivalAts1" 
+160 Attribute  "Entity.TotalWaitTime" 
+165 Station    "Station_3" 
+168 Attribute  "Entity.ArrivalAtStation_3" 
+171 Station    "Station_4" 
+174 Attribute  "Entity.ArrivalAtStation_4" 
+175 Station    "s2" 
+178 Attribute  "Entity.ArrivalAts2" 
+185 Station    "Station_5" 
+188 Attribute  "Entity.ArrivalAtStation_5" 
+191 Station    "Station_6" 
+194 Attribute  "Entity.ArrivalAtStation_6" 
+195 Station    "s3" 
+198 Attribute  "Entity.ArrivalAts3" 
+202 Sequence   "mysequence" stepStation[3]="s1" stepStation[2]="s1" stepStation[1]="s2" steps=5 stepStation[0]="s1" stepStation[4]="s3" 
 
 # Model Components
-2652 Create     "Create_1" entityType="entitytype" timeBetweenCreations="10" nextId=2668 
-2653 Route      "Route_1" destinationType=1 routeTimeExpression="0.1" nexts=0 
-2654 Enter      "Enter_1" station="s1" nextId=2656 
-2656 Delay      "Delay_1" nextId=2657 
-2657 Leave      "Leave_1" station="s1" nextId=2658 
-2658 Route      "Route_2" destinationType=1 routeTimeExpression="0.2" nexts=0 
-2659 Enter      "Enter_2" station="s2" nextId=2661 
-2661 Delay      "Delay_2" delayExpression="2" nextId=2662 
-2662 Leave      "Leave_2" station="s2" nextId=2663 
-2663 Route      "Route_3" destinationType=1 routeTimeExpression="0.3" nexts=0 
-2664 Enter      "Enter_3" station="s3" nextId=2666 
-2666 Dispose    "Dispose_1" nexts=0 
-2668 Assign     "Assign_1" assignDest[0]="Entity.Sequence" assignExpr[0]="2667" nextId=2653 
+132 Create     "Create_1" entityType="entitytype" nextId=203 timeBetweenCreations="10" 
+137 Route      "Route_1" destinationType=1 routeTimeExpression="0.1" nexts=0 
+148 Enter      "Enter_1" station="s1" nextId=158 
+158 Delay      "Delay_1" nextId=161 
+161 Leave      "Leave_1" station="s1" nextId=163 
+163 Route      "Route_2" destinationType=1 routeTimeExpression="0.2" nexts=0 
+169 Enter      "Enter_2" station="s2" nextId=179 
+179 Delay      "Delay_2" delayExpression="2" nextId=181 
+181 Leave      "Leave_2" station="s2" nextId=183 
+183 Route      "Route_3" destinationType=1 routeTimeExpression="0.3" nexts=0 
+189 Enter      "Enter_3" station="s3" nextId=199 
+199 Dispose    "Dispose_1" nexts=0 
+203 Assign     "Assign_1" assignExpr[0]="202" nextId=137 assignDest[0]="Entity.Sequence" 

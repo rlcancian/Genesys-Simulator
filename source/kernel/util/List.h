@@ -21,50 +21,71 @@
 #include <iterator>
 #include <functional>
 #include <algorithm>
-#include "Util.h"
-//#include "../simulator/ModelDataDefinition.h"
 
-//class Simulator;
 
 /*!
- * List corresponds to an extended version of the list that must guarantee the consistency of the elements that make up the simulation model.
+ * \brief Lightweight wrapper around \c std::list with convenience helpers used by the kernel.
+ *
+ * The class centralizes insertion/removal, rank-based access and iterator-like
+ * navigation patterns heavily used in simulator internals and plugin infrastructure.
  */
 template <typename T>
 class List {
 public:
 	using CompFunct = std::function<bool(const T, const T) >;
 public:
+	/*! \brief Creates an empty list and positions the internal iterator at the beginning. */
 	List();
-	List(List<T> &origin);
-	virtual ~List() = default;
+	/*! \brief Creates a copy of the source list. */
+	List(const List<T>& origin);
+	List<T>& operator=(const List<T>& origin);
+	virtual ~List();
 public: // direct access to list
+	/*! \brief Returns the number of stored elements. */
 	unsigned int size();
+	/*! \brief Indicates whether the list is empty. */
 	bool empty();
+	/*! \brief Removes all elements from the list. */
 	void clear();
+	/*! \brief Removes the first element from the list. */
 	void pop_front();
 	template<class Compare>
+	/*! \brief Sorts elements using the provided comparator. */
 	void sort(Compare comp);
+	/*! \brief Returns direct access to the encapsulated \c std::list structure. */
 	std::list<T>* list() const;
 public: // new methods
+	/*! \brief Creates a new default element of type \c T. */
 	T create();
 	template<typename U>
+	/*! \brief Creates a new \c T element using a construction argument. */
 	T create(U arg);
+	/*! \brief Generates a textual representation of elements for debugging. */
 	std::string show();
+	/*! \brief Searches for an element and returns an iterator to it (or \c end()). */
 	typename std::list<T>::iterator find(T element);
 	//int rankOf(T modeldatum); //!< returns the position (1st position=0) of the modeldatum if found, or negative value if not found
 public: // improved (easier) methods
+	/*! \brief Inserts an element preserving the current ordering policy. */
 	void insert(T element);
+	/*! \brief Removes all occurrences of the provided element. */
 	void remove(T element);
+	/*! \brief Replaces (or appends) an element at a specific rank. */
 	void setAtRank(unsigned int rank, T element);
+	/*! \brief Returns the element at the provided rank. */
 	T getAtRank(unsigned int rank);
+	/*! \brief Advances the internal iterator and returns the next element. */
 	T next();
+	/*! \brief Moves to the beginning and returns the first element. */
 	T front();
+	/*! \brief Moves to the end and returns the last element. */
 	T last();
+	/*! \brief Moves the internal iterator backward and returns the previous element. */
 	T previous();
+	/*! \brief Returns the element at the current internal iterator position. */
 	T current(); // get current modeldatum on the list (the last used)
+	/*! \brief Sets the comparison function used for ordered insertions. */
 	void setSortFunc(CompFunct _sortFunc);
-	//public: // @TODO: Shoul in a specialized class classed ObservableList
-	//	void addObserverHandler();
 protected:
 	//std::map<Util::identitifcation, T>* _map;
 	std::list<T>* _list;
@@ -82,9 +103,25 @@ List<T>::List() {
 }
 
 template <typename T>
-List<T>::List(List<T> &origin) {
-	_list = new std::list<T>(origin);
-	_it = _list->begin(); // todo: check. end()? 2210
+List<T>::List(const List<T>& origin) {
+	_list = new std::list<T>(*origin._list);
+	_sortFunc = origin._sortFunc;
+	_it = _list->begin();
+}
+
+template <typename T>
+List<T>& List<T>::operator=(const List<T>& origin) {
+	if (this != &origin) {
+		*_list = *origin._list;
+		_sortFunc = origin._sortFunc;
+		_it = _list->begin();
+	}
+	return *this;
+}
+
+template <typename T>
+List<T>::~List() {
+	delete _list;
 }
 
 template <typename T>
@@ -118,7 +155,11 @@ std::string List<T>::show() {
 
 template <typename T>
 void List<T>::insert(T element) {
+	const bool wasEmpty = _list->empty();
 	_list->insert(std::upper_bound(_list->begin(), _list->end(), element, _sortFunc), element);
+	if (wasEmpty) {
+		_it = _list->begin();
+	}
 }
 
 template <typename T>
@@ -128,19 +169,21 @@ bool List<T>::empty() {
 
 template <typename T>
 void List<T>::pop_front() {
-	typename std::list<T>::iterator itTemp = _list->begin();
+	if (_list->empty()) {
+		return;
+	}
+	const bool cursorAtFront = _it == _list->begin();
 	_list->pop_front();
-	if (_it == itTemp) { /*  @TODO: +: check this */
+	if (cursorAtFront) {
 		_it = _list->begin(); // if it points to the removed modeldatum, then changes to begin
 	}
 }
 
 template <typename T>
 void List<T>::remove(T element) {
+	// Reset the internal cursor after erasure to avoid dereferencing a stale iterator during recursive removals.
 	_list->remove(element);
-	if ((*_it) == element) { /*  @TODO: +: check this */
-		_it = _list->begin(); // if it points to the removed modeldatum, then changes to begin
-	}
+	_it = _list->begin();
 }
 
 template <typename T>
@@ -151,6 +194,7 @@ T List<T>::create() {
 template <typename T>
 void List<T>::clear() {
 	_list->clear();
+	_it = _list->begin();
 }
 
 template <typename T>
@@ -163,7 +207,7 @@ T List<T>::getAtRank(unsigned int rank) {
 			thisRank++;
 		}
 	}
-	return 0; /* @TODO: Invalid return depends on T. If T is pointer, nullptr works fine. If T is double, it does not. I just let (*it), but it is not nice*/
+	return T{};
 }
 
 template <typename T>
@@ -185,11 +229,14 @@ void List<T>::setAtRank(unsigned int rank, T element) {
 
 template <typename T>
 T List<T>::next() {
+	if (_list->empty() || _it == _list->end()) {
+		return T{};
+	}
 	_it++;
 	if (_it != _list->end())
 		return (*_it);
 	else
-		return nullptr;
+		return T{};
 
 }
 
@@ -200,8 +247,7 @@ typename std::list<T>::iterator List<T>::find(const T element) {
 			return it;
 		}
 	}
-	return _list->end(); /*  @TODO:+-: check nullptr or invalid iterator when not found */
-	//return nullptr;
+	return _list->end();
 }
 
 /*
@@ -220,6 +266,9 @@ int List<T>::rankOf(T modeldatum) {
 
 template <typename T>
 T List<T>::front() {
+	if (_list->empty()) {
+		return T{};
+	}
 	_it = _list->begin();
 	//if (_it != _list->end())
 	return (*_it);
@@ -229,22 +278,29 @@ T List<T>::front() {
 
 template <typename T>
 T List<T>::last() {
+	if (_list->empty()) {
+		return T{};
+	}
 	_it = _list->end();
 	_it--;
-	//if (_it != _list->end()) // @TODO: CHECK!!!
 	return (*_it);
 	//else return nullptr;
 }
 
 template <typename T>
 T List<T>::previous() {
-	_it--; // @TODO: CHECK!!!
+	if (_list->empty() || _it == _list->begin()) {
+		return T{};
+	}
+	_it--;
 	return (*_it);
 }
 
 template <typename T>
 T List<T>::current() {
-	/* @TODO: To implement (i thing it's just to check). Must actualize _it on other methods when other elements are accessed */
+	if (_list->empty() || _it == _list->end()) {
+		return T{};
+	}
 	return (*_it);
 }
 

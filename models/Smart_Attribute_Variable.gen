@@ -1,0 +1,25 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+138 Attribute  "atrScalar" 
+139 Attribute  "atr2" value[2]=0.300000 value[1]=0.200000 valuePos[1]="1" value[0]=0.100000 dimension[0]=3 values=3 dimensions=1 valuePos[2]="2" 
+140 Attribute  "atrVecCopy" 
+141 Attribute  "atrMat" 
+142 Attribute  "atrMatCopy" 
+143 Variable   "varScalar" 
+144 Variable   "var2" 
+145 Variable   "varVecCopy" 
+146 Variable   "varMat" 
+147 Variable   "varMatCopy" 
+
+# Model Components
+132 Create     "Create_1" entityType="entitytype" nextId=137 
+137 Assign     "Assign_1" assignDest[19]="varVecCopy" assignDest[20]="varMat[0,0]" assignIsAttrib[18]=0 assignDest[18]="var2[2]" assignExpr[12]="3.2" assignExpr[17]="var2[1]" assignExpr[11]="3.1" assignDest[21]="varMat[0,1]" assignIsAttrib[16]=0 assignDest[16]="var2[0]" assignExpr[14]="atrMat[2,0]" assignDest[12]="atrMat[2,1]" assignExpr[15]="7.5 + varScalar" assignDest[3]="atr2[2]" assignExpr[0]="3.14" assignExpr[4]="atr2[1]" assignDest[22]="varMat[1,0]" assignIsAttrib[24]=0 nextId=148 assignExpr[2]="1.2 + atr2[0]" assignExpr[21]="2 + varMat[0,1]" assignIsAttrib[20]=0 assignDest[2]="atr2[1]" assignDest[8]="atrMat[1,0]" assignDest[15]="varScalar" assignExpr[6]="1.2" assignExpr[18]="var2[2] + var2[0]" assignments=25 assignDest[17]="var2[1]" assignExpr[7]="1.3" assignExpr[10]="2.3" assignIsAttrib[23]=0 assignIsAttrib[21]=0 assignExpr[9]="2.2" assignDest[7]="atrMat[0,2]" assignExpr[8]="2.1" assignIsAttrib[15]=0 assignExpr[23]="2 + varMat[1,1]" assignDest[0]="atrScalar" assignExpr[5]="1.1" assignDest[24]="varMatCopy[0,0]" assignIsAttrib[19]=0 assignDest[4]="atrVecCopy" assignExpr[24]="varMat[1,1]" assignDest[10]="atrMat[1,2]" assignDest[14]="atrMatCopy[0,0]" assignDest[5]="atrMat[0,0]" assignDest[1]="atr2[0]" assignExpr[19]="var2[1]" assignDest[23]="varMat[1,1]" assignDest[11]="atrMat[2,0]" assignDest[6]="atrMat[0,1]" assignIsAttrib[17]=0 assignExpr[16]="var2[0] + 1" assignExpr[3]="1.3 + atr2[1]" assignExpr[1]="1.1 + atr2[0]" assignDest[9]="atrMat[1,1]" assignExpr[13]="3.3" assignExpr[20]="21" assignDest[13]="atrMat[2,2]" assignExpr[22]="1 + varMat[1,1]" assignIsAttrib[22]=0 
+148 Dispose    "Dispose_1" nexts=0 

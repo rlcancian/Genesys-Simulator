@@ -9,15 +9,16 @@
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
-#include "kernel/simulator/ModelInfo.h"
-#include "kernel/simulator/ModelManager.h"
-#include "kernel/simulator/PropertyManager.h"
-#include "kernel/simulator/Property.h"
+#include "../../kernel/simulator/model/ModelInfo.h"
+#include "../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationScenario.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/SystemDependencyResolver.h"
+#include <map>
 #include <type_traits>
+#include <vector>
 
 
 // Test-only link shim:
@@ -32,6 +33,12 @@ TraceManager* Simulator::getTraceManager() const {
 Model::Model(Simulator* simulator, unsigned int level) {
     (void)simulator;
     (void)level;
+}
+
+// Provides a trivial out-of-line destructor for the test double after Model gained an explicit virtual destructor.
+Model::~Model() = default;
+
+void ModelDataDefinition::CreateInternalData(ModelDataDefinition*) {
 }
 
 bool Model::save(std::string filename) {
@@ -126,15 +133,53 @@ struct KernelAccessorProbe {
     }
 };
 
-class FakeModelPersistence : public ModelPersistence_if {
+class FakeModelPersistence : public Persistence_if {
 public:
     bool save(std::string) override { return false; }
     bool load(std::string) override { return false; }
     bool hasChanged() override { return false; }
-    bool getOption(ModelPersistence_if::Options) override { return false; }
-    void setOption(ModelPersistence_if::Options, bool) override {}
+    void setHasChanged(bool) override {}
+    bool getOption(Persistence_if::Options) override { return false; }
+    void setOption(Persistence_if::Options, bool) override {}
     std::string getFormatedField(PersistenceRecord*) override { return ""; }
 };
+
+class FakeSystemCommandExecutor : public SystemCommandExecutor_if {
+public:
+    std::map<std::string, SystemCommandResult> results;
+    std::vector<std::string> commands;
+
+    SystemCommandResult run(const std::string& command) override {
+        commands.push_back(command);
+        auto it = results.find(command);
+        if (it != results.end()) {
+            return it->second;
+        }
+        return {};
+    }
+};
+
+SystemCommandResult CommandResultWithExitCode(int exitCode) {
+    SystemCommandResult result;
+    result.started = true;
+    result.exitCode = exitCode;
+    return result;
+}
+
+SystemDependency::OS NonHostOS() {
+    switch (SystemDependencyResolver::currentOS()) {
+        case SystemDependency::OS::Linux:
+            return SystemDependency::OS::Windows;
+        case SystemDependency::OS::Windows:
+            return SystemDependency::OS::Linux;
+        case SystemDependency::OS::MacOS:
+            return SystemDependency::OS::Linux;
+        case SystemDependency::OS::Any:
+        case SystemDependency::OS::Unknown:
+            return SystemDependency::OS::Linux;
+    }
+    return SystemDependency::OS::Linux;
+}
 
 
 
@@ -155,12 +200,35 @@ TEST(SimulatorSupportTest, DefaultActivationCodeReportsNotFound) {
     EXPECT_EQ(lm.showActivationCode(), "ACTIVATION CODE: Not found.");
 }
 
+TEST(SimulatorSupportTest, LicenceManagerDefaultLimitsAndResetAreStable) {
+    LicenceManager lm(nullptr);
+
+    EXPECT_EQ(lm.getModelComponentsLimit(), 100u);
+    EXPECT_EQ(lm.getModelDatasLimit(), 300u);
+    EXPECT_EQ(lm.getEntityLimit(), 300u);
+    EXPECT_EQ(lm.getHostsLimit(), 1u);
+    EXPECT_EQ(lm.getThreadsLimit(), 1u);
+    EXPECT_NE(lm.showLimits().find("100 components"), std::string::npos);
+    EXPECT_NE(lm.showLimits().find("300 elements"), std::string::npos);
+    EXPECT_FALSE(lm.insertActivationCode());
+    EXPECT_FALSE(lm.lookforActivationCode());
+
+    lm.removeActivationCode();
+
+    EXPECT_EQ(lm.showActivationCode(), "ACTIVATION CODE: Not found.");
+    EXPECT_EQ(lm.getModelComponentsLimit(), 100u);
+}
+
 // ExperimentManager class-focused tests moved to test_support_experimentmanager.cpp
 
 TEST(SimulatorSupportTest, ModelInfoStartsMarkedAsUnchanged) {
     ModelInfo info;
     EXPECT_FALSE(info.hasChanged());
     EXPECT_FALSE(info.getName().empty());
+    EXPECT_EQ(info.getAnalystName(), "");
+    EXPECT_EQ(info.getDescription(), "");
+    EXPECT_EQ(info.getProjectTitle(), "");
+    EXPECT_EQ(info.getVersion(), "1.0");
 }
 
 TEST(SimulatorSupportTest, ModelInfoSettersMarkObjectAsChanged) {
@@ -193,6 +261,20 @@ TEST(SimulatorSupportTest, ModelInfoSaveAndLoadRoundTrip) {
     EXPECT_EQ(loaded.getProjectTitle(), "Project_W");
     EXPECT_EQ(loaded.getVersion(), "2.5");
     EXPECT_FALSE(loaded.hasChanged());
+}
+
+TEST(SimulatorSupportTest, ModelInfoShowReflectsConfiguredFields) {
+    ModelInfo info;
+    info.setName("Model_S");
+    info.setAnalystName("Analyst_S");
+    info.setDescription("Desc_S");
+    info.setVersion("9.8");
+
+    const std::string shown = info.show();
+    EXPECT_NE(shown.find("analystName=\"Analyst_S\""), std::string::npos);
+    EXPECT_NE(shown.find("description=\"Desc_S\""), std::string::npos);
+    EXPECT_NE(shown.find("name=\"Model_S\""), std::string::npos);
+    EXPECT_NE(shown.find("version=9.8"), std::string::npos);
 }
 
 // ModelManager class-focused tests moved to test_support_modelmanager.cpp
@@ -233,9 +315,17 @@ TEST(SimulatorSupportTest, ParserChangesInformationStoresAllConfiguredSections) 
     EXPECT_EQ(info.getfunctionProdutions(), "func");
 }
 
-TEST(SimulatorSupportTest, PropertyManagerCanBeConstructed) {
-    PropertyManager manager;
-    SUCCEED();
+TEST(SimulatorSupportTest, ParserChangesInformationSupportsMultilineAndOverwrite) {
+    ParserChangesInformation info;
+
+    info.setIncludes("#include <x>\n#include <y>");
+    info.setTokens("TOK_A TOK_B");
+    info.setIncludes("just-one");
+    info.setFunctionProdutions("f1\nf2");
+
+    EXPECT_EQ(info.getincludes(), "just-one");
+    EXPECT_EQ(info.gettokens(), "TOK_A TOK_B");
+    EXPECT_EQ(info.getfunctionProdutions(), "f1\nf2");
 }
 
 TEST(SimulatorSupportTest, PluginInformationComponentConstructorConfiguresComponentMode) {
@@ -299,6 +389,182 @@ TEST(SimulatorSupportTest, PluginInformationStoresMetadataAndLimits) {
     EXPECT_EQ(info.getDynamicLibFilenameDependencies()->size(), 1u);
 }
 
+TEST(SimulatorSupportTest, SystemDependencyStoresDeclarativeCommands) {
+    SystemDependency dependency(
+        SystemDependency::OS::Linux,
+        "libSBML",
+        "sudo apt install libsbml5-dev -y",
+        "pkg-config --exists libsbml");
+
+    EXPECT_EQ(dependency.getOS(), SystemDependency::OS::Linux);
+    EXPECT_EQ(dependency.getName(), "libSBML");
+    EXPECT_EQ(dependency.getInstallCommand(), "sudo apt install libsbml5-dev -y");
+    EXPECT_EQ(dependency.getCheckCommand(), "pkg-config --exists libsbml");
+    EXPECT_EQ(SystemDependency::osToString(SystemDependency::OS::Linux), "Linux");
+    EXPECT_NE(dependency.show().find("name=\"libSBML\""), std::string::npos);
+    EXPECT_NE(dependency.show().find("checkCommand=\"pkg-config --exists libsbml\""), std::string::npos);
+}
+
+TEST(SimulatorSupportTest, PluginInformationStoresSystemDependenciesInOrder) {
+    PluginInformation info("BioSimulatorRunner", static_cast<StaticLoaderDataDefinitionInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+
+    EXPECT_FALSE(info.hasSystemDependencies());
+    ASSERT_NE(info.getSystemDependencies(), nullptr);
+    EXPECT_TRUE(info.getSystemDependencies()->empty());
+
+    info.insertSystemDependency(SystemDependency(
+        SystemDependency::OS::Linux,
+        "libSBML",
+        "sudo apt install libsbml5-dev -y",
+        "pkg-config --exists libsbml"));
+    info.insertSystemDependency(SystemDependency(
+        SystemDependency::OS::Linux,
+        "COPASI",
+        "sudo apt install copasi -y",
+        "CopasiSE --version"));
+
+    ASSERT_TRUE(info.hasSystemDependencies());
+    ASSERT_NE(info.getSystemDependencies(), nullptr);
+    ASSERT_EQ(info.getSystemDependencies()->size(), 2u);
+
+    auto it = info.getSystemDependencies()->begin();
+    EXPECT_EQ(it->getName(), "libSBML");
+    ++it;
+    EXPECT_EQ(it->getName(), "COPASI");
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksSatisfiedDependency) {
+    FakeSystemCommandExecutor executor;
+    executor.results["pkg-config --exists libsbml"] = CommandResultWithExitCode(0);
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "libSBML",
+        "sudo apt install libsbml5-dev -y",
+        "pkg-config --exists libsbml");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_TRUE(result.canInsertPlugin());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::Satisfied);
+    ASSERT_EQ(executor.commands.size(), 1u);
+    EXPECT_EQ(executor.commands.front(), "pkg-config --exists libsbml");
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksMissingDependency) {
+    FakeSystemCommandExecutor executor;
+    SystemCommandResult failedCheck = CommandResultWithExitCode(1);
+    failedCheck.output = "missing-tool: command not found\n";
+    executor.results["missing-tool --version"] = failedCheck;
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "MissingTool",
+        "sudo apt install missing-tool -y",
+        "missing-tool --version");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_FALSE(result.canInsertPlugin());
+    EXPECT_TRUE(result.hasBlockingEntries());
+    EXPECT_TRUE(result.canAttemptInstallForAllMissing());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::Missing);
+    EXPECT_NE(result.diagnosticText(false).find("Check command: missing-tool --version"), std::string::npos);
+    EXPECT_NE(result.diagnosticText(false).find("Install command: sudo apt install missing-tool -y"), std::string::npos);
+    EXPECT_NE(result.diagnosticText(false).find("missing-tool: command not found"), std::string::npos);
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverIgnoresDifferentOperatingSystem) {
+    FakeSystemCommandExecutor executor;
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        NonHostOS(),
+        "OtherOSTool",
+        "install-other-os-tool",
+        "other-os-tool --version");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_TRUE(result.canInsertPlugin());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::IgnoredDifferentOS);
+    EXPECT_TRUE(executor.commands.empty());
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksApplicableDependencyWithoutCheckCommandAsNotVerifiable) {
+    FakeSystemCommandExecutor executor;
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "ManualOnlyTool",
+        "sudo apt install manual-only-tool -y",
+        "");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_FALSE(result.canInsertPlugin());
+    EXPECT_FALSE(result.canAttemptInstallForAllMissing());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::NotVerifiable);
+    EXPECT_TRUE(executor.commands.empty());
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverInstallDiagnosticIncludesCommandAndOutput) {
+    FakeSystemCommandExecutor executor;
+    executor.results["missing-tool --version"] = CommandResultWithExitCode(1);
+    SystemCommandResult failedInstall = CommandResultWithExitCode(100);
+    failedInstall.output = "package not found\n";
+    failedInstall.errorMessage = "apt failed\n";
+    executor.results["sudo apt install missing-tool -y"] = failedInstall;
+
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "MissingTool",
+        "sudo apt install missing-tool -y",
+        "missing-tool --version");
+
+    const SystemDependencyCheckResult check = SystemDependencyResolver::evaluate(&dependencies, executor);
+    const SystemDependencyInstallResult result = SystemDependencyResolver::installMissingDependencies(check, executor);
+    const std::string diagnostic = result.diagnosticText();
+
+    EXPECT_FALSE(result.succeeded());
+    EXPECT_NE(diagnostic.find("Dependency: MissingTool"), std::string::npos);
+    EXPECT_NE(diagnostic.find("Install command: sudo apt install missing-tool -y"), std::string::npos);
+    EXPECT_NE(diagnostic.find("Install exit code: 100"), std::string::npos);
+    EXPECT_NE(diagnostic.find("package not found"), std::string::npos);
+    EXPECT_NE(diagnostic.find("apt failed"), std::string::npos);
+    ASSERT_EQ(executor.commands.size(), 2u);
+    EXPECT_EQ(executor.commands.at(0), "missing-tool --version");
+    EXPECT_EQ(executor.commands.at(1), "sudo apt install missing-tool -y");
+}
+
+TEST(SimulatorSupportTest, PluginInformationDefaultsAndContainerReplacementWork) {
+    PluginInformation info("Delay", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+
+    EXPECT_EQ(info.getCategory(), "DiscreteProcessing");
+    EXPECT_FALSE(info.isGenerateReport());
+    EXPECT_FALSE(info.isSource());
+    EXPECT_FALSE(info.isSink());
+    EXPECT_EQ(info.getMinimumInputs(), 1u);
+    EXPECT_EQ(info.getMaximumInputs(), 1u);
+    EXPECT_EQ(info.getMinimumOutputs(), 1u);
+    EXPECT_EQ(info.getMaximumOutputs(), 1u);
+
+    auto* deps = new std::list<std::string>{"dep1.so", "dep2.so"};
+    auto* fields = new std::map<std::string, std::string>{{"k1", "v1"}, {"k2", "v2"}};
+    info.setDynamicLibFilenameDependencies(deps);
+    info.setFields(fields);
+
+    ASSERT_NE(info.getDynamicLibFilenameDependencies(), nullptr);
+    EXPECT_EQ(info.getDynamicLibFilenameDependencies()->size(), 2u);
+    ASSERT_NE(info.getFields(), nullptr);
+    EXPECT_EQ(info.getFields()->at("k1"), "v1");
+    EXPECT_EQ(info.getFields()->at("k2"), "v2");
+}
+
 TEST(SimulatorSupportTest, PluginConstructedFromFactoryCanExposePluginInformation) {
     Plugin plugin(&GetTestComponentPluginInformation);
 
@@ -328,6 +594,9 @@ TEST(SimulatorSupportTest, PluginCanRepresentElementPluginKind) {
     ASSERT_TRUE(plugin.isIsValidPlugin());
     ASSERT_NE(plugin.getPluginInfo(), nullptr);
     EXPECT_FALSE(plugin.getPluginInfo()->isComponent());
+    const std::string text = plugin.show();
+    EXPECT_NE(text.find("Element"), std::string::npos);
+    EXPECT_NE(text.find("\"TestElement\""), std::string::npos);
 }
 
 TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
@@ -369,6 +638,75 @@ TEST(SimulatorSupportTest, SimulationControlInheritsReadPathAndAddsWritePath) {
     EXPECT_EQ(control.getValue(), "beta");
 }
 
+TEST(SimulatorSupportTest, SimulationControlStringReadOnlyRejectsWrites) {
+    std::string value = "alpha";
+    SimulationControlString control(
+        [&]() { return value; },
+        nullptr,
+        "C",
+        "E",
+        "P"
+    );
+
+    EXPECT_TRUE(control.isReadOnly());
+    EXPECT_THROW(control.setValue("beta"), std::logic_error);
+    EXPECT_EQ(control.getValue(), "alpha");
+}
+
+TEST(SimulatorSupportTest, SimulationControlGenericStringPreservesWhitespace) {
+    std::string value = "initial";
+    SimulationControlGeneric<std::string> control(
+        [&]() { return value; },
+        [&](std::string newValue) { value = newValue; },
+        "C",
+        "E",
+        "Expression"
+    );
+
+    control.setValue("1 + 34");
+
+    EXPECT_EQ(value, "1 + 34");
+    EXPECT_EQ(control.getValue(), "1 + 34");
+}
+
+TEST(SimulatorSupportTest, SimulationControlGenericStringListPreservesWhitespace) {
+    List<std::string> values;
+    SimulationControlGenericList<std::string, void*, std::string> control(
+        nullptr,
+        [&]() { return &values; },
+        [&](std::string value) { values.insert(value); },
+        [&](std::string value) { values.remove(value); },
+        "C",
+        "E",
+        "Expressions"
+    );
+
+    control.setValue("Entity.Attribute + 34");
+
+    ASSERT_EQ(values.size(), 1u);
+    EXPECT_EQ(values.front(), "Entity.Attribute + 34");
+
+    control.setValue("Entity.Attribute + 34", true);
+
+    EXPECT_TRUE(values.empty());
+}
+
+TEST(SimulatorSupportTest, SimulationControlBoolParsesTextAndNumericValues) {
+    bool value = false;
+    SimulationControlBool control(
+        [&]() { return value; },
+        [&](bool newValue) { value = newValue; },
+        "C",
+        "E",
+        "B"
+    );
+
+    control.setValue("true");
+    EXPECT_TRUE(value);
+    control.setValue("0");
+    EXPECT_FALSE(value);
+}
+
 TEST(SimulatorSupportTest, DefineSimulationGetterAndSetterBindKernelMethods) {
     KernelAccessorProbe probe;
 
@@ -386,7 +724,7 @@ TEST(SimulatorSupportTest, DefineSimulationGetterAndSetterBindKernelMethods) {
 }
 
 TEST(SimulatorSupportTest, ModelDataDefinitionGetPropertiesNowReturnsSimulationControlList) {
-    using ReturnType = decltype(std::declval<const ModelDataDefinition*>()->getProperties());
+    using ReturnType = decltype(std::declval<const ModelDataDefinition*>()->getSimulationControls());
     constexpr bool is_expected = std::is_same_v<ReturnType, List<SimulationControl*>*>;
     EXPECT_TRUE(is_expected);
 }
@@ -417,27 +755,3 @@ TEST(SimulatorSupportTest, SimulationResponseDoubleIsNotAWritableControl) {
     SimulationResponse* base = &response;
     EXPECT_EQ(dynamic_cast<SimulationControl*>(base), nullptr);
 }
-
-TEST(SimulatorSupportTest, LegacyPropertyBaseCanCoexistWithKernelPropertyBaseAlias) {
-    PropertyT<int> property(
-        "LegacyPropertyClass",
-        "LegacyValue",
-        []() { return 7; },
-        [](int) {}
-    );
-
-    EXPECT_EQ(property.getClassname(), "LegacyPropertyClass");
-    EXPECT_EQ(property.getName(), "LegacyValue");
-
-    SimulationControlInt control(
-        []() { return 3; },
-        [](int) {},
-        "KernelControlClass",
-        "KernelElement",
-        "KernelValue"
-    );
-
-    SimulationResponse* response = &control;
-    EXPECT_NE(response, nullptr);
-}
-

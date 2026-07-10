@@ -15,7 +15,8 @@
 #define SCENARIOEXPERIMENT_IF_H
 
 class ScenarioExperiment_if {
+public:
+	virtual ~ScenarioExperiment_if() = default;
 };
 
 #endif /* SCENARIOEXPERIMENT_IF_H */
-

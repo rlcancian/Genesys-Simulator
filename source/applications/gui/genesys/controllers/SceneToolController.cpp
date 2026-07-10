@@ -1,0 +1,633 @@
+#include "SceneToolController.h"
+
+#include "ui_mainwindow.h"
+#include "../TraitsGUI.h"
+#include "../graphicals/ModelGraphicsView.h"
+#include "../graphicals/ModelGraphicsScene.h"
+#include "../graphicals/GraphicalModelComponent.h"
+#include "../graphicals/GraphicalModelDataDefinition.h"
+#include "../animations/AnimationTransition.h"
+
+#include <QGraphicsItem>
+#include <QLabel>
+#include <QSignalBlocker>
+#include <QDebug>
+#include <Qt>
+#include <algorithm>
+#include <cmath>
+
+/**
+ * @brief Stores only the narrow collaborators needed for scene-tool orchestration.
+ */
+SceneToolController::SceneToolController(ModelGraphicsView* graphicsView,
+                                         Ui::MainWindow* ui,
+                                         std::function<ModelGraphicsScene*()> currentScene,
+                                         std::function<bool()> createModelImage,
+                                         std::function<void()> unselectDrawIcons,
+                                         std::function<bool()> checkSelectedDrawIcons,
+                                         std::function<void(double)> gentleZoom,
+                                         std::function<void()> actualizeActions,
+                                         std::function<void()> actualizeTabPanes,
+                                         int& zoomValue,
+                                         bool& firstClickShowConnection)
+    : _graphicsView(graphicsView),
+      _ui(ui),
+      _currentScene(std::move(currentScene)),
+      _createModelImage(std::move(createModelImage)),
+      _unselectDrawIcons(std::move(unselectDrawIcons)),
+      _checkSelectedDrawIcons(std::move(checkSelectedDrawIcons)),
+      _gentleZoom(std::move(gentleZoom)),
+      _actualizeActions(std::move(actualizeActions)),
+      _actualizeTabPanes(std::move(actualizeTabPanes)),
+      _zoomValue(zoomValue),
+      _firstClickShowConnection(firstClickShowConnection) {
+}
+
+void SceneToolController::activateAnimationDrawingTool(QAction* action, void (ModelGraphicsScene::*drawingFunction)()) {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr || action == nullptr || drawingFunction == nullptr) {
+        return;
+    }
+
+    if (!_checkSelectedDrawIcons() && action->isChecked()) {
+        _graphicsView->setCursor(Qt::CrossCursor);
+        scene->setAction(action);
+        (scene->*drawingFunction)();
+    }
+    else {
+        _unselectDrawIcons();
+    }
+}
+
+/** @brief Synchronizes the grid action with the current scene state. */
+void SceneToolController::onActionShowGridTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setGridVisible(_ui->actionShowGrid->isChecked());
+    }
+}
+
+// Preserve ruler state synchronization between QAction and graphics view backend.
+void SceneToolController::onActionShowRuleTriggered() {
+    const bool requestedVisible = _ui->actionShowRule->isChecked();
+    _graphicsView->setRuleVisible(requestedVisible);
+    _ui->actionShowRule->setChecked(_graphicsView->isRuleVisible());
+}
+
+// Preserve guides state synchronization between QAction and graphics view backend.
+void SceneToolController::onActionShowGuidesTriggered() {
+    const bool requestedVisible = _ui->actionShowGuides->isChecked();
+    _graphicsView->setGuidesVisible(requestedVisible);
+    _ui->actionShowGuides->setChecked(_graphicsView->isGuidesVisible());
+}
+
+// Preserve deterministic snap-to-grid synchronization from QAction to scene.
+void SceneToolController::onActionShowSnapTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setSnapToGrid(_ui->actionShowSnap->isChecked());
+    }
+}
+
+// Preserve zoom-in command behavior through the graphical zoom slider.
+void SceneToolController::onActionZoomInTriggered() {
+    const int value = _ui->horizontalSlider_ZoomGraphical->value();
+    _ui->horizontalSlider_ZoomGraphical->setValue(value + TraitsGUI<GMainWindow>::zoomButtonChange);
+}
+
+// Preserve zoom-out command behavior through the graphical zoom slider.
+void SceneToolController::onActionZoomOutTriggered() {
+    const int value = _ui->horizontalSlider_ZoomGraphical->value();
+    _ui->horizontalSlider_ZoomGraphical->setValue(value - TraitsGUI<GMainWindow>::zoomButtonChange);
+}
+
+QRectF SceneToolController::_zoomableModelBounds() const {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr || scene->items().isEmpty()) {
+        return {};
+    }
+
+    QList<QGraphicsItem*> userItems = scene->userOperableItems(scene->items());
+    if (scene->getAllDataDefinitions() != nullptr) {
+        for (GraphicalModelDataDefinition* dataDefinition : *scene->getAllDataDefinitions()) {
+            if (dataDefinition != nullptr && !userItems.contains(dataDefinition)) {
+                userItems.append(dataDefinition);
+            }
+        }
+    }
+
+    QRectF bounds;
+    for (QGraphicsItem* item : userItems) {
+        if (item == nullptr || !item->isVisible() || item->scene() != scene) {
+            continue;
+        }
+        bounds = bounds.united(item->sceneBoundingRect());
+    }
+    if (!bounds.isValid() || bounds.isEmpty()) {
+        bounds = scene->itemsBoundingRect();
+    }
+    return bounds;
+}
+
+double SceneToolController::_currentViewScale() const {
+    return _graphicsView != nullptr ? _graphicsView->transform().m11() : 1.0;
+}
+
+double SceneToolController::_minimumZoomScale() const {
+    return 1.0e-3;
+}
+
+double SceneToolController::_maximumZoomScale() const {
+    return 2.0;
+}
+
+double SceneToolController::_zoomScaleFromSliderValue(int value) const {
+    if (_ui == nullptr || _ui->horizontalSlider_ZoomGraphical == nullptr) {
+        return _currentViewScale();
+    }
+
+    const int sliderMin = _ui->horizontalSlider_ZoomGraphical->minimum();
+    const int sliderMax = _ui->horizontalSlider_ZoomGraphical->maximum();
+    const double t = (sliderMax <= sliderMin)
+                         ? 0.0
+                         : static_cast<double>(value - sliderMin) / static_cast<double>(sliderMax - sliderMin);
+    const double minScale = _minimumZoomScale();
+    const double maxScale = _maximumZoomScale();
+    return minScale * std::pow(maxScale / minScale, std::clamp(t, 0.0, 1.0));
+}
+
+int SceneToolController::_sliderValueForZoomScale(double scale) const {
+    if (_ui == nullptr || _ui->horizontalSlider_ZoomGraphical == nullptr) {
+        return 0;
+    }
+
+    const int sliderMin = _ui->horizontalSlider_ZoomGraphical->minimum();
+    const int sliderMax = _ui->horizontalSlider_ZoomGraphical->maximum();
+    const double minScale = _minimumZoomScale();
+    const double maxScale = _maximumZoomScale();
+    const double safeScale = std::clamp(scale, minScale, maxScale);
+    const double t = (maxScale <= minScale)
+                         ? 0.0
+                         : std::log(safeScale / minScale) / std::log(maxScale / minScale);
+    const double sliderPosition = static_cast<double>(sliderMin)
+                                  + std::clamp(t, 0.0, 1.0) * static_cast<double>(sliderMax - sliderMin);
+    return static_cast<int>(std::lround(sliderPosition));
+}
+
+void SceneToolController::_syncZoomWidgetsForCurrentScale() {
+    if (_ui == nullptr || _ui->horizontalSlider_ZoomGraphical == nullptr) {
+        return;
+    }
+
+    const double scale = _currentViewScale();
+    const int sliderValue = _sliderValueForZoomScale(scale);
+    {
+        const QSignalBlocker blocker(_ui->horizontalSlider_ZoomGraphical);
+        _zoomValue = sliderValue;
+        _ui->horizontalSlider_ZoomGraphical->setValue(sliderValue);
+    }
+    if (_ui->label_ZoomValue != nullptr) {
+        _ui->label_ZoomValue->setText(QStringLiteral("%1x").arg(scale, 0, 'f', 2));
+    }
+}
+
+void SceneToolController::syncZoomWidgetsForCurrentScale() {
+    _syncZoomWidgetsForCurrentScale();
+}
+
+/**
+ * @brief Fits the scene to view and resets the zoom slider baseline.
+ */
+void SceneToolController::onActionZoomAllTriggered() {
+    const QRectF bounds = _zoomableModelBounds();
+    if (!bounds.isValid() || bounds.isEmpty()) {
+        return;
+    }
+
+    _graphicsView->resetTransform();
+    _graphicsView->fitInView(bounds.adjusted(-20.0, -20.0, 20.0, 20.0), Qt::KeepAspectRatio);
+    _syncZoomWidgetsForCurrentScale();
+    _graphicsView->centerOn(bounds.center());
+}
+
+/**
+ * @brief Restores the graphics view to the 1:1 zoom level and re-synchronizes the slider.
+ */
+void SceneToolController::onActionZoomActualSizeTriggered() {
+    const QRectF bounds = _zoomableModelBounds();
+    if (_graphicsView == nullptr || !bounds.isValid() || bounds.isEmpty()) {
+        return;
+    }
+
+    _graphicsView->resetTransform();
+    _graphicsView->scale(1.0, 1.0);
+    _graphicsView->centerOn(bounds.center());
+    _syncZoomWidgetsForCurrentScale();
+}
+
+/**
+ * @brief Applies the zoom slider value to the graphics view transform.
+ */
+void SceneToolController::onHorizontalSliderZoomGraphicalValueChanged(int value) {
+    if (_graphicsView == nullptr || _graphicsView->scene() == nullptr) {
+        return;
+    }
+
+    const QRectF sceneRect = _graphicsView->scene()->sceneRect();
+    if (!sceneRect.isValid() || sceneRect.isEmpty()) {
+        return;
+    }
+
+    const QRect viewportRect = _graphicsView->viewport()->rect();
+    if (viewportRect.width() <= 0 || viewportRect.height() <= 0) {
+        return;
+    }
+
+    const double desiredScale = _zoomScaleFromSliderValue(value);
+    const QPoint viewportCenter = _graphicsView->viewport()->rect().center();
+    const QPointF targetSceneCenter = _graphicsView->mapToScene(viewportCenter);
+
+    _graphicsView->resetTransform();
+    _graphicsView->scale(desiredScale, desiredScale);
+    _graphicsView->centerOn(targetSceneCenter);
+    _zoomValue = value;
+    if (_ui->label_ZoomValue != nullptr) {
+        _ui->label_ZoomValue->setText(QStringLiteral("%1x").arg(desiredScale, 0, 'f', 2));
+    }
+}
+
+/** @brief Activates the line drawing tool while preserving cursor semantics. */
+void SceneToolController::onActionDrawLineTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    if (!_checkSelectedDrawIcons() && _ui->actionDrawLine->isChecked()) {
+        _graphicsView->setCursor(Qt::SizeHorCursor);
+        _ui->actionDrawLine->setChecked(true);
+        scene->setAction(_ui->actionDrawLine);
+        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::LINE);
+    }
+    else {
+        _unselectDrawIcons();
+    }
+}
+
+// Preserve rectangle-drawing tool activation and cursor semantics.
+void SceneToolController::onActionDrawRectangleTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    if (!_checkSelectedDrawIcons() && _ui->actionDrawRectangle->isChecked()) {
+        _graphicsView->setCursor(Qt::CrossCursor);
+        _ui->actionDrawRectangle->setChecked(true);
+        scene->setAction(_ui->actionDrawRectangle);
+        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::RECTANGLE);
+    }
+    else {
+        _unselectDrawIcons();
+    }
+}
+
+// Preserve ellipse-drawing tool activation and cursor semantics.
+void SceneToolController::onActionDrawEllipseTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    if (!_checkSelectedDrawIcons() && _ui->actionDrawEllipse->isChecked()) {
+        _graphicsView->setCursor(Qt::CrossCursor);
+        _ui->actionDrawEllipse->setChecked(true);
+        scene->setAction(_ui->actionDrawEllipse);
+        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::ELLIPSE);
+    }
+    else {
+        _unselectDrawIcons();
+    }
+}
+
+// Preserve text-drawing tool activation semantics.
+void SceneToolController::onActionDrawTextTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    if (!_checkSelectedDrawIcons() && _ui->actionDrawText->isChecked()) {
+        _ui->actionDrawText->setChecked(true);
+        scene->setAction(_ui->actionDrawText);
+        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::TEXT);
+    }
+    else {
+        _unselectDrawIcons();
+    }
+}
+
+// Preserve polygon-drawing tool activation and cursor semantics.
+void SceneToolController::onActionDrawPoligonTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    if (!_checkSelectedDrawIcons() && _ui->actionDrawPoligon->isChecked()) {
+        _graphicsView->setCursor(Qt::ArrowCursor);
+        _ui->actionDrawPoligon->setChecked(true);
+        scene->setAction(_ui->actionDrawPoligon);
+        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::POLYGON);
+    }
+    else {
+        _unselectDrawIcons();
+    }
+}
+
+// Preserve simulated-time animation tool activation behavior.
+void SceneToolController::onActionAnimateSimulatedTimeTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateSimulatedTime, &ModelGraphicsScene::drawingTimer);
+}
+
+// Preserve variable animation tool activation behavior.
+void SceneToolController::onActionAnimateVariableTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateVariable, &ModelGraphicsScene::drawingVariable);
+}
+
+// Preserve counter animation tool activation behavior.
+void SceneToolController::onActionAnimateCounterTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateCounter, &ModelGraphicsScene::drawingCounter);
+}
+
+void SceneToolController::onActionAnimateAttributeTriggered() {
+    onActionAnimateVariableTriggered();
+}
+
+void SceneToolController::onActionAnimateEntityTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateEntity, &ModelGraphicsScene::drawingEntity);
+}
+
+void SceneToolController::onActionAnimateEventTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateEvent, &ModelGraphicsScene::drawingEvent);
+}
+
+void SceneToolController::onActionAnimateExpressionTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateExpression, &ModelGraphicsScene::drawingExpression);
+}
+
+void SceneToolController::onActionAnimatePlotTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimatePlot, &ModelGraphicsScene::drawingPlot);
+}
+
+void SceneToolController::onActionAnimateQueueTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateQueue, &ModelGraphicsScene::drawingQueue);
+}
+
+void SceneToolController::onActionAnimateResourceTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateResource, &ModelGraphicsScene::drawingResource);
+}
+
+void SceneToolController::onActionAnimateStationTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateStation, &ModelGraphicsScene::drawingStation);
+}
+
+void SceneToolController::onActionAnimateStatisticsTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateStatistics, &ModelGraphicsScene::drawingStatistics);
+}
+
+// Preserve connect-tool activation through the existing graphics-view flow.
+void SceneToolController::onActionConnectTriggered() {
+    _graphicsView->beginConnection();
+}
+
+// Preserve left arrange command semantics.
+void SceneToolController::onActionArranjeLeftTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->arranjeModels(0);
+    }
+}
+
+// Preserve right arrange command semantics.
+void SceneToolController::onActionArranjeRightTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->arranjeModels(1);
+    }
+}
+
+// Preserve top arrange command semantics.
+void SceneToolController::onActionArranjeTopTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->arranjeModels(2);
+    }
+}
+
+// Preserve bottom arrange command semantics.
+void SceneToolController::onActionArranjeBototmTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->arranjeModels(3);
+    }
+}
+
+// Preserve center arrange command semantics.
+void SceneToolController::onActionArranjeCenterTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->arranjeModels(4);
+    }
+}
+
+// Preserve middle arrange command semantics.
+void SceneToolController::onActionArranjeMiddleTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->arranjeModels(5);
+    }
+}
+
+// Preserve graphical simulation visibility toggle and animation running state.
+void SceneToolController::onActionActivateGraphicalSimulationTriggered() {
+    bool visivible = true;
+
+    if (!_ui->actionActivateGraphicalSimulation->isChecked()) {
+        AnimationTransition::setRunning(false);
+        visivible = false;
+    }
+    else {
+        AnimationTransition::setRunning(true);
+    }
+
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    QList<QGraphicsItem*>* componentes = scene->getGraphicalModelComponents();
+    for (QGraphicsItem* item : *componentes) {
+        if (GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(item)) {
+            component->visivibleImageQueue(visivible);
+        }
+    }
+}
+
+// Preserve animation speed slider conversion to execution time value.
+void SceneToolController::onHorizontalSliderAnimationSpeedValueChanged(int value) {
+    const double newValue = static_cast<double>(value) / 75.0; // 100/50 = max 2 seconds per animation
+    AnimationTransition::setTimeExecution(newValue);
+}
+
+// Preserve select-all semantics while ignoring non-operable internal infrastructure items.
+void SceneToolController::onActionSelectAllTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    const QList<QGraphicsItem*> itemsToScene = scene->userOperableItems(scene->items());
+    for (QGraphicsItem* item : itemsToScene) {
+        item->setSelected(true);
+    }
+}
+
+// Preserve action-checkbox synchronization for statistics data-definition visibility.
+void SceneToolController::onActionShowInternalElementsTriggered() {
+    const bool checked = _ui->actionShowInternalElements->isChecked();
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowStatisticsDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    if (_ui->checkBox_ShowInternals->isChecked() != checked) {
+        _ui->checkBox_ShowInternals->setChecked(checked);
+    }
+    else {
+        _createModelImage();
+    }
+}
+
+// Preserve action synchronization for editable data-definition visibility.
+void SceneToolController::onActionShowEditableElementsTriggered() {
+    const bool checked = _ui->actionShowEditableElements->isChecked();
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowEditableDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    if (_ui->checkBox_ShowEditableElements->isChecked() != checked) {
+        _ui->checkBox_ShowEditableElements->setChecked(checked);
+    }
+    else {
+        _createModelImage();
+    }
+}
+
+// Preserve action-checkbox synchronization for shared data-definition visibility.
+void SceneToolController::onActionShowAttachedElementsTriggered() {
+    const bool checked = _ui->actionShowAttachedElements->isChecked();
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowSharedDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    if (_ui->checkBox_ShowElements->isChecked() != checked) {
+        _ui->checkBox_ShowElements->setChecked(checked);
+    }
+    else {
+        _createModelImage();
+    }
+}
+
+// Preserve checkbox-to-action synchronization for shared-elements visibility.
+void SceneToolController::onCheckBoxShowElementsStateChanged(int arg1) {
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowAttachedElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowSharedDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    _createModelImage();
+}
+
+// Preserve checkbox-to-action synchronization for statistics visibility.
+void SceneToolController::onCheckBoxShowInternalsStateChanged(int arg1) {
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowInternalElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowStatisticsDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    _createModelImage();
+}
+
+// Preserve checkbox-to-action synchronization for editable data-definition visibility.
+void SceneToolController::onCheckBoxShowEditableElementsStateChanged(int arg1) {
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowEditableElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowEditableDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    _createModelImage();
+}
+
+// Preserve action-checkbox synchronization for recursive data-definition expansion.
+void SceneToolController::onActionShowRecursiveElementsTriggered() {
+    const bool checked = _ui->actionShowRecursiveElements->isChecked();
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowRecursiveDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    if (_ui->checkBox_ShowRecursive->isChecked() != checked) {
+        _ui->checkBox_ShowRecursive->setChecked(checked);
+    }
+    else {
+        _createModelImage();
+    }
+}
+
+// Preserve checkbox-to-action synchronization for recursive visibility.
+void SceneToolController::onCheckBoxShowRecursiveStateChanged(int arg1) {
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowRecursiveElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowRecursiveDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    _createModelImage();
+}
+
+// Preserve levels image-toggle behavior by regenerating model image.
+void SceneToolController::onCheckBoxShowLevelsStateChanged(int arg1) {
+    Q_UNUSED(arg1)
+    _createModelImage();
+}
+
+// Preserve legacy connect-step toggle semantics and first-click synchronization.
+void SceneToolController::onActionGModelShowConnectTriggered() {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    if (!_ui->actionGModelShowConnect->isChecked() && !_firstClickShowConnection) {
+        qInfo() << "Connection tool deactivated";
+        _ui->actionGModelShowConnect->setChecked(false);
+        scene->setConnectingStep(0);
+        _graphicsView->setCursor(Qt::ArrowCursor);
+    }
+    else {
+        qInfo() << "Connection tool activated";
+        _ui->actionGModelShowConnect->setChecked(true);
+        scene->beginConnection();
+        _firstClickShowConnection = false;
+    }
+}

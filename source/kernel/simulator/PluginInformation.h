@@ -31,10 +31,40 @@ typedef ModelDataDefinition* (*StaticConstructorDataDefinitionInstance)(Model*, 
 class PluginInformation;
 typedef PluginInformation* (*StaticGetPluginInformation)();
 
+class SystemDependency {
+public:
+	enum class OS {
+		Any,
+		Linux,
+		Windows,
+		MacOS,
+		Unknown
+	};
+
+	SystemDependency() = default;
+	SystemDependency(OS os, std::string name, std::string installCommand = "", std::string checkCommand = "");
+
+	OS getOS() const;
+	std::string getName() const;
+	std::string getInstallCommand() const;
+	std::string getCheckCommand() const;
+	std::string show() const;
+
+	static std::string osToString(OS os);
+
+private:
+	OS _os = OS::Any;
+	std::string _name = "";
+	std::string _installCommand = "";
+	std::string _checkCommand = "";
+};
+
 class PluginInformation {
 public:
 	PluginInformation(std::string pluginTypename, StaticLoaderComponentInstance componentloader, StaticConstructorDataDefinitionInstance elementConstructor);
 	PluginInformation(std::string pluginTypename, StaticLoaderDataDefinitionInstance elementloader, StaticConstructorDataDefinitionInstance elementConstructor);
+	// Release owned metadata containers allocated alongside plugin-information objects.
+	virtual ~PluginInformation();
 public:
 	// gets
 	StaticLoaderDataDefinitionInstance getDataDefinitionLoader() const;
@@ -53,10 +83,13 @@ public:
 	std::string getPluginTypename() const;
 	// sets
 	void insertDynamicLibFileDependence(std::string filename);
-	// TODO(genesys|plugin-information|ownership): Clarify ownership for the incoming list pointer.
+	// @ToDo: (importante): Clarify ownership for the incoming list pointer.
 	// This setter currently replaces the internal raw pointer without documenting transfer semantics.
 	void setDynamicLibFilenameDependencies(std::list<std::string>* dynamicLibFilenameDependencies);
 	std::list<std::string>* getDynamicLibFilenameDependencies() const;
+	void insertSystemDependency(const SystemDependency& dependency);
+	const std::list<SystemDependency>* getSystemDependencies() const;
+	bool hasSystemDependencies() const;
 	void setGenerateReport(bool generateReport);
 	void setSendTransfer(bool sendTransfer);
 	void setReceiveTransfer(bool receiveTransfer);
@@ -76,7 +109,7 @@ public:
 	unsigned short getMinimumInputs() const;
 	void setDescriptionHelp(std::string _descriptionHelp);
 	std::string getDescriptionHelp() const;
-	// TODO(genesys|plugin-information|ownership): Clarify ownership for the incoming fields map.
+	// @ToDo: (importante): Clarify ownership for the incoming fields map.
 	// This setter currently replaces the internal raw pointer without documenting lifetime expectations.
 	void setFields(std::map<std::string, std::string>* _fiewlds);
 	std::map<std::string, std::string>* getFields() const;
@@ -84,12 +117,13 @@ public:
 	std::string getLanguageTemplate() const;
 	void setCategory(std::string _category);
 	std::string getCategory() const;
+	static std::string categoryFolderName(const std::string& category);
 public:
 private:
 	std::string _author = "prof. Dr. Ing. Rafael Luiz Cancian";
 	std::string _date = "01/08/2018";
 	std::string _version = "0.9.1";
-	std::string _category = "Discrete Processing";
+	std::string _category = "DiscreteProcessing";
 	std::string _observation = "First implementation not fully completed nor tested. Use with caution.";
 	std::string _descriptionHelp = "";
 	std::string _languageTemplate = "";
@@ -99,6 +133,7 @@ private:
 	bool _sendTransfer = false; /*!< If true, an entity can be sent from this component to another one without a phisical connection. In terms of model connection check, it is just like a Sink component, since it does not need to have a sucessor */
 	bool _generateReport = false;
 	std::list<std::string>* _dynamicLibFilenameDependencies = new std::list<std::string>();
+	std::list<SystemDependency>* _systemDependencies = new std::list<SystemDependency>();
 	std::map<std::string, std::string>* _fields = new std::map<std::string, std::string>();
 	// set from constructor
 	std::string _pluginTypename;
@@ -114,4 +149,3 @@ private:
 //namespace\\}
 
 #endif /* PLUGININFORMATION_H */
-

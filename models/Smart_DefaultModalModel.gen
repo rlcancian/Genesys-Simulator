@@ -1,0 +1,21 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationBaseTimeUnit=3 replicationLength=100.000000 replicationLengthTimeUnit=3 
+
+# Model Data Definitions
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+138 Attribute  "Entity.ModalModel.ModalModelDefault_1.CurrentNode" 
+139 Attribute  "Entity.ModalModel.ModalModelDefault_1.LastNode" 
+
+# Model Components
+132 Create     "Create_1" entityType="entitytype" timeBetweenCreationsTimeUnit=3 nextId=137 timeBetweenCreations="1" 
+137 ModalModelDefault "ModalModelDefault_1" nextId=144 
+140 DefaultNode "DefaultNode_1" nexts=0 
+141 DefaultNode "DefaultNode_2" nexts=0 
+142 DefaultNode "DefaultNode_3" nexts=0 
+143 DefaultNode "DefaultNode_4" nexts=0 
+144 Dispose    "Dispose_1" nexts=0 

@@ -1,0 +1,752 @@
+#include "ApiRouter.h"
+
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <regex>
+#include <string_view>
+
+/**
+ * @brief Dispatches HTTP routes for the Genesys web API.
+ *
+ * The router keeps request parsing, token extraction, payload decoding and JSON
+ * formatting in one place so the HTTP server can stay transport-only.
+ */
+ApiRouter::ApiRouter(SimulatorSessionService& simulatorService) : _simulatorService(simulatorService) {}
+
+/**
+ * @brief Resolves a request into one of the public API operations.
+ *
+ * The route chain stays intentionally explicit so the generated PDF makes the
+ * supported endpoints and their validation rules easy to audit.
+ */
+HttpResponse ApiRouter::handle(const HttpRequest& request) const {
+    if (request.method.empty() || request.path.empty()) {
+        return _jsonError(400, "BAD_REQUEST", "Missing HTTP method or path");
+    }
+
+    if (request.path == "/health") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /health");
+        }
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"status\":\"up\"}"};
+    }
+
+    if (request.path == "/api/v1/worker/info") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/worker/info");
+        }
+
+        const auto info = _simulatorService.getWorkerInfo();
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _workerInfoDataJson(info) + "}"};
+    }
+
+    if (request.path == "/api/v1/worker/capabilities") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/worker/capabilities");
+        }
+
+        const auto capabilities = _simulatorService.getWorkerCapabilities();
+        return HttpResponse{
+            200,
+            "application/json",
+            "{\"ok\":true,\"data\":" + _workerCapabilitiesDataJson(capabilities) + "}"
+        };
+    }
+
+    if (request.path == "/api/v1/worker/models/import-language") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/worker/models/import-language");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.importModelFromLanguage(token, request.body);
+        if (!result.success) {
+            return _mapModelImportError(result);
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _modelInfoDataJson(result.modelInfo) + "}"};
+    }
+
+
+    if (request.path == "/api/v1/worker/jobs") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/worker/jobs");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.createWorkerJob(token);
+        if (!result.success) {
+            return _mapWorkerJobError(result.error, true);
+        }
+
+        return HttpResponse{201, "application/json", "{\"ok\":true,\"data\":" + _workerJobDataJson(result.jobInfo) + "}"};
+    }
+
+    // Stage 5 adds explicit terminal worker job result retrieval.
+    std::string workerResultJobId;
+    if (_tryExtractWorkerJobResultIdFromPath(request.path, workerResultJobId)) {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/worker/jobs/{jobId}/result");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.getWorkerJobResult(token, workerResultJobId);
+        if (!result.success) {
+            return _mapWorkerJobError(result.error, false);
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _workerJobResultDataJson(result.jobResult) + "}"};
+    }
+
+    // Stage 4 adds explicit synchronous worker job execution.
+    std::string workerRunJobId;
+    if (_tryExtractWorkerJobRunIdFromPath(request.path, workerRunJobId)) {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/worker/jobs/{jobId}/run");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.runWorkerJob(token, workerRunJobId);
+        if (!result.success) {
+            return _mapWorkerJobError(result.error, false);
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _workerJobDataJson(result.jobInfo) + "}"};
+    }
+
+    // Stage 3 and stage 4 use this endpoint as basic job metadata inspection/polling.
+    std::string workerJobId;
+    if (_tryExtractWorkerJobIdFromPath(request.path, workerJobId)) {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/worker/jobs/{jobId}");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.getWorkerJob(token, workerJobId);
+        if (!result.success) {
+            return _mapWorkerJobError(result.error, false);
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _workerJobDataJson(result.jobInfo) + "}"};
+    }
+
+    if (request.path == "/api/v1/auth/session") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/auth/session");
+        }
+
+        const auto session = _simulatorService.createSession();
+        const std::string body =
+            "{\"ok\":true,\"data\":{"
+            "\"sessionId\":\"" + _escapeJson(session.sessionId) + "\","
+            "\"accessToken\":\"" + _escapeJson(session.accessToken) + "\","
+            "\"tokenType\":\"Bearer\"}}";
+
+        return HttpResponse{201, "application/json", body};
+    }
+
+    if (request.path == "/api/v1/simulator/info") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/simulator/info");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        SimulatorSessionService::SimulatorInfoResult info{};
+        if (!_simulatorService.tryGetSimulatorInfo(token, info)) {
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        }
+
+        const std::string body =
+            "{\"ok\":true,\"data\":{"
+            "\"name\":\"" + _escapeJson(info.name) + "\","
+            "\"versionName\":\"" + _escapeJson(info.versionName) + "\","
+            "\"versionNumber\":" + std::to_string(info.versionNumber) + "}}";
+
+        return HttpResponse{200, "application/json", body};
+    }
+
+    if (request.path == "/api/v1/models") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/models");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        SimulatorSessionService::ModelInfoResult info{};
+        if (!_simulatorService.tryCreateModel(token, info)) {
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        }
+
+        return HttpResponse{201, "application/json", "{\"ok\":true,\"data\":" + _modelInfoDataJson(info) + "}"};
+    }
+
+    if (request.path == "/api/v1/models/current") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/models/current");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        SimulatorSessionService::ModelInfoResult info{};
+        if (!_simulatorService.tryGetCurrentModelInfo(token, info)) {
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _modelInfoDataJson(info) + "}"};
+    }
+
+    if (request.path == "/api/v1/models/save") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/models/save");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        std::string filename;
+        if (!_tryExtractFilenameFromBody(request.body, filename)) {
+            return _jsonError(400, "BAD_REQUEST", "Invalid request body: expected JSON with filename");
+        }
+
+        const auto result = _simulatorService.saveCurrentModel(token, filename);
+        if (!result.success) {
+            return _mapPersistenceError(result);
+        }
+
+        const std::string body =
+            "{\"ok\":true,\"data\":{"
+            "\"filename\":\"" + _escapeJson(result.filename) + "\","
+            "\"model\":" + _modelInfoDataJson(result.modelInfo) + "}}";
+        return HttpResponse{200, "application/json", body};
+    }
+
+    if (request.path == "/api/v1/models/load") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/models/load");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        std::string filename;
+        if (!_tryExtractFilenameFromBody(request.body, filename)) {
+            return _jsonError(400, "BAD_REQUEST", "Invalid request body: expected JSON with filename");
+        }
+
+        const auto result = _simulatorService.loadModel(token, filename);
+        if (!result.success) {
+            return _mapPersistenceError(result);
+        }
+
+        const std::string body =
+            "{\"ok\":true,\"data\":{"
+            "\"filename\":\"" + _escapeJson(result.filename) + "\","
+            "\"model\":" + _modelInfoDataJson(result.modelInfo) + "}}";
+        return HttpResponse{200, "application/json", body};
+    }
+
+    if (request.path == "/api/v1/simulation/status") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/simulation/status");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.getSimulationStatus(token);
+        if (!result.success) {
+            if (result.invalidToken) {
+                return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+            }
+            return _jsonError(500, "INTERNAL_ERROR", "Unable to query simulation status");
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _simulationStatusDataJson(result) + "}"};
+    }
+
+    if (request.path == "/api/v1/simulation/config") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/simulation/config");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto config = _parseSimulationConfigBody(request.body);
+        if (!config.has_value()) {
+            return _jsonError(
+                400,
+                "INVALID_SIMULATION_CONFIG",
+                "Invalid request body: required fields are numberOfReplications, replicationLength, warmUpPeriod, pauseOnEvent, pauseOnReplication, initializeStatistics, initializeSystem"
+            );
+        }
+
+        const auto result = _simulatorService.configureSimulation(token, config.value());
+        if (!result.success) {
+            if (result.invalidToken) {
+                return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+            }
+            if (result.missingCurrentModel) {
+                return _jsonError(409, "NO_CURRENT_MODEL", "No current model available to configure simulation");
+            }
+            return _jsonError(500, "INTERNAL_ERROR", "Unable to configure simulation");
+        }
+
+        return HttpResponse{
+            200,
+            "application/json",
+            "{\"ok\":true,\"data\":" + _simulationStatusDataJson(result.status) + "}"
+        };
+    }
+
+    if (request.path == "/api/v1/simulation/run") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/simulation/run");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.runSimulation(token);
+        if (!result.success) {
+            if (result.invalidToken) {
+                return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+            }
+            if (result.missingCurrentModel) {
+                return _jsonError(409, "NO_CURRENT_MODEL", "No current model available to run simulation");
+            }
+            return _jsonError(500, "INTERNAL_ERROR", "Unable to run simulation");
+        }
+
+        return HttpResponse{
+            200,
+            "application/json",
+            "{\"ok\":true,\"data\":" + _simulationStatusDataJson(result.status) + "}"
+        };
+    }
+
+    if (request.path == "/api/v1/simulation/step") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/simulation/step");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.stepSimulation(token);
+        if (!result.success) {
+            if (result.invalidToken) {
+                return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+            }
+            if (result.missingCurrentModel) {
+                return _jsonError(409, "NO_CURRENT_MODEL", "No current model available to step simulation");
+            }
+            return _jsonError(500, "INTERNAL_ERROR", "Unable to step simulation");
+        }
+
+        return HttpResponse{
+            200,
+            "application/json",
+            "{\"ok\":true,\"data\":" + _simulationStatusDataJson(result.status) + "}"
+        };
+    }
+
+    return _jsonError(404, "NOT_FOUND", "Route not found");
+}
+
+/** @brief Builds a standard JSON error response for API failures. */
+HttpResponse ApiRouter::_jsonError(int status, const char* code, const char* message) {
+    return HttpResponse{
+        status,
+        "application/json",
+        "{\"ok\":false,\"error\":{\"code\":\"" + std::string(code) + "\",\"message\":\"" + std::string(message) + "\"}}"
+    };
+}
+
+/** @brief Extracts and trims a Bearer token from the Authorization header. */
+std::string ApiRouter::_extractBearerToken(const HttpRequest& request) {
+    const std::string header = request.header("authorization");
+    constexpr const char* prefix = "Bearer ";
+    if (header.size() <= 7 || header.rfind(prefix, 0) != 0) {
+        return {};
+    }
+
+    std::string token = header.substr(7);
+    token.erase(token.begin(), std::find_if(token.begin(), token.end(), [](unsigned char c) { return !std::isspace(c); }));
+    token.erase(std::find_if(token.rbegin(), token.rend(), [](unsigned char c) { return !std::isspace(c); }).base(), token.end());
+    return token;
+}
+
+/** @brief Parses the minimal JSON body used by model import and persistence routes. */
+bool ApiRouter::_tryExtractFilenameFromBody(const std::string& body, std::string& outFilename) {
+    static const std::regex filenameRegex("\"filename\"\\s*:\\s*\"([^\"]+)\"");
+    std::smatch match;
+    if (!std::regex_search(body, match, filenameRegex) || match.size() < 2) {
+        return false;
+    }
+    outFilename = match[1].str();
+    return !outFilename.empty();
+}
+
+/** @brief Parses an unsigned integer field from a JSON request body. */
+bool ApiRouter::_tryExtractUnsignedIntField(const std::string& body, const std::string& fieldName, unsigned int& outValue) {
+    const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*([0-9]+)");
+    std::smatch match;
+    if (!std::regex_search(body, match, pattern) || match.size() < 2) {
+        return false;
+    }
+
+    const std::string value = match[1].str();
+    char* endPtr = nullptr;
+    const unsigned long parsed = std::strtoul(value.c_str(), &endPtr, 10);
+    if (endPtr == nullptr || *endPtr != '\0') {
+        return false;
+    }
+
+    outValue = static_cast<unsigned int>(parsed);
+    return true;
+}
+
+/** @brief Parses a floating-point field from a JSON request body. */
+bool ApiRouter::_tryExtractDoubleField(const std::string& body, const std::string& fieldName, double& outValue) {
+    const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*(-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)");
+    std::smatch match;
+    if (!std::regex_search(body, match, pattern) || match.size() < 2) {
+        return false;
+    }
+
+    const std::string value = match[1].str();
+    char* endPtr = nullptr;
+    const double parsed = std::strtod(value.c_str(), &endPtr);
+    if (endPtr == nullptr || *endPtr != '\0') {
+        return false;
+    }
+
+    outValue = parsed;
+    return true;
+}
+
+/** @brief Parses a boolean field from a JSON request body. */
+bool ApiRouter::_tryExtractBooleanField(const std::string& body, const std::string& fieldName, bool& outValue) {
+    const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*(true|false)");
+    std::smatch match;
+    if (!std::regex_search(body, match, pattern) || match.size() < 2) {
+        return false;
+    }
+
+    outValue = match[1].str() == "true";
+    return true;
+}
+
+/** @brief Parses the simulation configuration payload expected by `/simulation/config`. */
+std::optional<SimulatorSessionService::SimulationConfigInput> ApiRouter::_parseSimulationConfigBody(const std::string& body) {
+    SimulatorSessionService::SimulationConfigInput config{};
+    if (!_tryExtractUnsignedIntField(body, "numberOfReplications", config.numberOfReplications) ||
+        !_tryExtractDoubleField(body, "replicationLength", config.replicationLength) ||
+        !_tryExtractDoubleField(body, "warmUpPeriod", config.warmUpPeriod) ||
+        !_tryExtractBooleanField(body, "pauseOnEvent", config.pauseOnEvent) ||
+        !_tryExtractBooleanField(body, "pauseOnReplication", config.pauseOnReplication) ||
+        !_tryExtractBooleanField(body, "initializeStatistics", config.initializeStatistics) ||
+        !_tryExtractBooleanField(body, "initializeSystem", config.initializeSystem)) {
+        return std::nullopt;
+    }
+
+    return config;
+}
+
+/** @brief Serializes simulation status into a compact JSON object. */
+std::string ApiRouter::_simulationStatusDataJson(const SimulatorSessionService::SimulationStatusResult& status) {
+    std::string json = "{\"hasCurrentModel\":" + std::string(status.hasCurrentModel ? "true" : "false");
+    if (!status.hasCurrentModel) {
+        json += "}";
+        return json;
+    }
+
+    json += ",\"isRunning\":" + std::string(status.isRunning ? "true" : "false");
+    json += ",\"isPaused\":" + std::string(status.isPaused ? "true" : "false");
+    json += ",\"simulatedTime\":" + std::to_string(status.simulatedTime);
+    json += ",\"currentReplicationNumber\":" + std::to_string(status.currentReplicationNumber);
+    json += ",\"numberOfReplications\":" + std::to_string(status.numberOfReplications);
+    json += ",\"replicationLength\":" + std::to_string(status.replicationLength);
+    json += ",\"warmUpPeriod\":" + std::to_string(status.warmUpPeriod);
+    json += ",\"pauseOnEvent\":" + std::string(status.pauseOnEvent ? "true" : "false");
+    json += ",\"pauseOnReplication\":" + std::string(status.pauseOnReplication ? "true" : "false");
+    json += ",\"initializeStatistics\":" + std::string(status.initializeStatistics ? "true" : "false");
+    json += ",\"initializeSystem\":" + std::string(status.initializeSystem ? "true" : "false");
+    json += "}";
+    return json;
+}
+
+/** @brief Maps persistence-layer errors into API-level HTTP responses. */
+HttpResponse ApiRouter::_mapPersistenceError(const SimulatorSessionService::ModelPersistenceResult& result) {
+    switch (result.error) {
+        case SimulatorSessionService::PersistenceError::InvalidToken:
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        case SimulatorSessionService::PersistenceError::InvalidFilename:
+            return _jsonError(400, "INVALID_FILENAME", "Filename must be a safe basename using [A-Za-z0-9._-]");
+        case SimulatorSessionService::PersistenceError::MissingCurrentModel:
+            return _jsonError(409, "NO_CURRENT_MODEL", "No current model available to save");
+        case SimulatorSessionService::PersistenceError::FileNotFound:
+            return _jsonError(404, "MODEL_FILE_NOT_FOUND", "Model file not found in session workspace");
+        case SimulatorSessionService::PersistenceError::OperationFailed:
+            return _jsonError(500, "MODEL_PERSISTENCE_FAILED", "Model persistence operation failed");
+        case SimulatorSessionService::PersistenceError::None:
+        default:
+            return _jsonError(500, "INTERNAL_ERROR", "Unexpected persistence error state");
+    }
+}
+
+/** @brief Maps model-import errors into API-level HTTP responses. */
+HttpResponse ApiRouter::_mapModelImportError(const SimulatorSessionService::ModelImportResult& result) {
+    switch (result.error) {
+        case SimulatorSessionService::ModelImportError::InvalidToken:
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        case SimulatorSessionService::ModelImportError::EmptySpecification:
+            return _jsonError(400, "EMPTY_MODEL_SPECIFICATION", "Model specification body cannot be empty");
+        case SimulatorSessionService::ModelImportError::InvalidSpecification:
+            return _jsonError(400, "INVALID_MODEL_SPECIFICATION", "Model specification could not be parsed");
+        case SimulatorSessionService::ModelImportError::OperationFailed:
+            return _jsonError(500, "MODEL_IMPORT_FAILED", "Unable to import model specification");
+        case SimulatorSessionService::ModelImportError::None:
+        default:
+            return _jsonError(500, "INTERNAL_ERROR", "Unexpected model import error state");
+    }
+}
+
+/** @brief Escapes strings that are embedded directly in JSON payloads. */
+std::string ApiRouter::_escapeJson(const std::string& value) {
+    std::string out;
+    out.reserve(value.size());
+    for (char c : value) {
+        if (c == '\\') {
+            out += "\\\\";
+        } else if (c == '"') {
+            out += "\\\"";
+        } else {
+            out += c;
+        }
+    }
+    return out;
+}
+
+/** @brief Serializes model metadata to the public JSON wire format. */
+std::string ApiRouter::_modelInfoDataJson(const SimulatorSessionService::ModelInfoResult& info) {
+    if (!info.exists) {
+        return "{\"exists\":false}";
+    }
+
+    return "{\"exists\":true,"
+           "\"modelId\":" + std::to_string(info.modelId) + ","
+           "\"hasChanged\":" + std::string(info.hasChanged ? "true" : "false") + ","
+           "\"level\":" + std::to_string(info.level) + ","
+           "\"name\":\"" + _escapeJson(info.name) + "\","
+           "\"analystName\":\"" + _escapeJson(info.analystName) + "\","
+           "\"projectTitle\":\"" + _escapeJson(info.projectTitle) + "\","
+           "\"version\":\"" + _escapeJson(info.version) + "\","
+           "\"description\":\"" + _escapeJson(info.description) + "\","
+           "\"componentCount\":" + std::to_string(info.componentCount) + "}";
+}
+
+/** @brief Serializes worker discovery metadata to JSON. */
+std::string ApiRouter::_workerInfoDataJson(const SimulatorSessionService::WorkerInfoResult& info) {
+    return "{\"role\":\"" + _escapeJson(info.role) + "\","
+           "\"application\":\"" + _escapeJson(info.application) + "\","
+           "\"apiFamily\":\"" + _escapeJson(info.apiFamily) + "\","
+           "\"apiVersion\":\"" + _escapeJson(info.apiVersion) + "\","
+           "\"simulatorName\":\"" + _escapeJson(info.simulatorName) + "\","
+           "\"simulatorVersionName\":\"" + _escapeJson(info.simulatorVersionName) + "\","
+           "\"simulatorVersionNumber\":" + std::to_string(info.simulatorVersionNumber) + "}";
+}
+
+/** @brief Serializes worker capability flags to JSON. */
+std::string ApiRouter::_workerCapabilitiesDataJson(const SimulatorSessionService::WorkerCapabilitiesResult& capabilities) {
+    return "{\"supportsSessionApi\":" + std::string(capabilities.supportsSessionApi ? "true" : "false") + ","
+           "\"supportsSessionScopedSimulator\":" + std::string(capabilities.supportsSessionScopedSimulator ? "true" : "false") +
+           ","
+           "\"supportsModelCreation\":" + std::string(capabilities.supportsModelCreation ? "true" : "false") + ","
+           "\"supportsModelPersistence\":" + std::string(capabilities.supportsModelPersistence ? "true" : "false") + ","
+           "\"supportsSimulationStatus\":" + std::string(capabilities.supportsSimulationStatus ? "true" : "false") + ","
+           "\"supportsSimulationConfig\":" + std::string(capabilities.supportsSimulationConfig ? "true" : "false") + ","
+           "\"supportsSynchronousRun\":" + std::string(capabilities.supportsSynchronousRun ? "true" : "false") + ","
+           "\"supportsSynchronousStep\":" + std::string(capabilities.supportsSynchronousStep ? "true" : "false") + ","
+           "\"supportsDistributedJobs\":" + std::string(capabilities.supportsDistributedJobs ? "true" : "false") + ","
+           "\"supportsJobPolling\":" + std::string(capabilities.supportsJobPolling ? "true" : "false") + ","
+           "\"supportsBackgroundExecution\":" + std::string(capabilities.supportsBackgroundExecution ? "true" : "false") +
+           ","
+           "\"supportsModelUpload\":" + std::string(capabilities.supportsModelUpload ? "true" : "false") + ","
+           "\"supportsStreamingEvents\":" + std::string(capabilities.supportsStreamingEvents ? "true" : "false") + ","
+           "\"supportsJobResultRetrieval\":" + std::string(capabilities.supportsJobResultRetrieval ? "true" : "false") +
+           "}";
+}
+
+/** @brief Extracts a job identifier from `/api/v1/worker/jobs/{jobId}`. */
+bool ApiRouter::_tryExtractWorkerJobIdFromPath(const std::string& path, std::string& outJobId) {
+    constexpr std::string_view prefix = "/api/v1/worker/jobs/";
+    if (path.rfind(prefix, 0) != 0 || path.size() <= prefix.size()) {
+        return false;
+    }
+
+    outJobId = path.substr(prefix.size());
+    if (outJobId.empty() || outJobId.find('/') != std::string::npos) {
+        return false;
+    }
+    return true;
+}
+
+/** @brief Extracts a job identifier from `/api/v1/worker/jobs/{jobId}/run`. */
+bool ApiRouter::_tryExtractWorkerJobRunIdFromPath(const std::string& path, std::string& outJobId) {
+    constexpr std::string_view prefix = "/api/v1/worker/jobs/";
+    constexpr std::string_view suffix = "/run";
+
+    if (path.rfind(prefix, 0) != 0 || path.size() <= prefix.size() + suffix.size()) {
+        return false;
+    }
+
+    if (path.compare(path.size() - suffix.size(), suffix.size(), suffix) != 0) {
+        return false;
+    }
+
+    outJobId = path.substr(prefix.size(), path.size() - prefix.size() - suffix.size());
+    if (outJobId.empty() || outJobId.find('/') != std::string::npos) {
+        return false;
+    }
+
+    return true;
+}
+
+/** @brief Extracts a job identifier from `/api/v1/worker/jobs/{jobId}/result`. */
+bool ApiRouter::_tryExtractWorkerJobResultIdFromPath(const std::string& path, std::string& outJobId) {
+    constexpr std::string_view prefix = "/api/v1/worker/jobs/";
+    constexpr std::string_view suffix = "/result";
+
+    if (path.rfind(prefix, 0) != 0 || path.size() <= prefix.size() + suffix.size()) {
+        return false;
+    }
+
+    if (path.compare(path.size() - suffix.size(), suffix.size(), suffix) != 0) {
+        return false;
+    }
+
+    outJobId = path.substr(prefix.size(), path.size() - prefix.size() - suffix.size());
+    if (outJobId.empty() || outJobId.find('/') != std::string::npos) {
+        return false;
+    }
+
+    return true;
+}
+
+/** @brief Converts worker-job states to lowercase API strings. */
+const char* ApiRouter::_workerJobStateToString(WorkerJobState state) {
+    switch (state) {
+        case WorkerJobState::Queued:
+            return "queued";
+        case WorkerJobState::Running:
+            return "running";
+        case WorkerJobState::Finished:
+            return "finished";
+        case WorkerJobState::Failed:
+            return "failed";
+        default:
+            return "queued";
+    }
+}
+
+/** @brief Serializes worker-job metadata to JSON. */
+std::string ApiRouter::_workerJobDataJson(const SimulatorSessionService::WorkerJobInfoResult& job) {
+    return "{\"jobId\":\"" + _escapeJson(job.jobId) + "\","
+           "\"state\":\"" + std::string(_workerJobStateToString(job.state)) + "\","
+           "\"sessionId\":\"" + _escapeJson(job.sessionId) + "\","
+           "\"snapshotFilename\":\"" + _escapeJson(job.snapshotFilename) + "\","
+           "\"createdMarker\":\"" + _escapeJson(job.createdMarker) + "\","
+           "\"message\":\"" + _escapeJson(job.message) + "\"}";
+}
+
+/** @brief Serializes the terminal result payload returned by `/result`. */
+std::string ApiRouter::_workerJobResultDataJson(const SimulatorSessionService::WorkerJobResultInfo& result) {
+    std::string json = "{\"jobId\":\"" + _escapeJson(result.jobId) + "\","
+                       "\"state\":\"" + std::string(_workerJobStateToString(result.state)) + "\","
+                       "\"message\":\"" + _escapeJson(result.message) + "\","
+                       "\"simulatedTime\":" + std::to_string(result.simulatedTime) + ","
+                       "\"currentReplicationNumber\":" + std::to_string(result.currentReplicationNumber) + ","
+                       "\"numberOfReplications\":" + std::to_string(result.numberOfReplications) + ","
+                       "\"replicationLength\":" + std::to_string(result.replicationLength) + ","
+                       "\"warmUpPeriod\":" + std::to_string(result.warmUpPeriod);
+
+    if (result.hasIsPaused) {
+        json += ",\"isPaused\":" + std::string(result.isPaused ? "true" : "false");
+    }
+
+    json += "}";
+    return json;
+}
+
+/** @brief Maps worker-job errors into the public HTTP error model. */
+HttpResponse ApiRouter::_mapWorkerJobError(
+    SimulatorSessionService::WorkerJobError error,
+    bool includeMissingModelMessage
+) {
+    switch (error) {
+        case SimulatorSessionService::WorkerJobError::InvalidToken:
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        case SimulatorSessionService::WorkerJobError::MissingCurrentModel:
+            return _jsonError(
+                409,
+                "NO_CURRENT_MODEL",
+                includeMissingModelMessage ? "No current model available to create worker job" : "No current model available"
+            );
+        case SimulatorSessionService::WorkerJobError::JobNotFound:
+            return _jsonError(404, "WORKER_JOB_NOT_FOUND", "Worker job was not found");
+        case SimulatorSessionService::WorkerJobError::AccessDenied:
+            return _jsonError(404, "WORKER_JOB_NOT_FOUND", "Worker job was not found");
+        case SimulatorSessionService::WorkerJobError::OperationFailed:
+            return _jsonError(500, "WORKER_JOB_FAILED", "Unable to process worker job request");
+        case SimulatorSessionService::WorkerJobError::ResultNotReady:
+            return _jsonError(409, "WORKER_JOB_RESULT_NOT_READY", "Worker job result is not available yet");
+        case SimulatorSessionService::WorkerJobError::None:
+        default:
+            return _jsonError(500, "INTERNAL_ERROR", "Unexpected worker job error state");
+    }
+}

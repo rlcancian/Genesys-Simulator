@@ -1,0 +1,103 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   Smart_ModelRunUntil1000Parts.cpp
+ * Author: guifrrs and LuizValdiero
+ * 
+ * Created on December 10, 2022, 8:04 PM
+ */
+
+#include "./Smart_ModelRunUntil1000Parts.h"
+
+// Including the GEnSys Simulator
+#include "kernel/simulator/Simulator.h"
+
+// Components for the model
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/InputOutput/Record.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/Logic/Assign.h"
+
+#include "plugins/data/Logic/Variable.h"
+#include "kernel/simulator/essentialPlugins/Attribute.h"
+
+
+Smart_ModelRunUntil1000Parts::Smart_ModelRunUntil1000Parts() {
+
+}
+
+/**
+ * This is the main function of the application. 
+ * It create a new simulator instance, 
+ * builds a simulation model and 
+ * then simulate that model.
+*/
+int Smart_ModelRunUntil1000Parts::main(int argc, char** argv) {
+	Simulator* genesys = new Simulator();
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
+	plugins->autoInsertPlugins("autoloadplugins.txt");
+	Model* model = genesys->getModelManager()->newModel();
+	// create model
+
+    Create* create_1 = plugins->newInstance<Create>(model, "Create_1");
+    Process* process_1 = plugins->newInstance<Process>(model, "Process_1");
+    Record* record_1 = plugins->newInstance<Record>(model, "Record_1");
+    Dispose* dispose_1 = plugins->newInstance<Dispose>(model, "Dispose_1");
+
+    // Create 1
+    create_1->getConnectionManager()->insert(process_1);
+    create_1->setEntityTypeName("Entity 1");
+    create_1->setTimeBetweenCreationsExpression("EXPO(8)");
+    create_1->setTimeUnit(Util::TimeUnit::minute);
+
+    // Process 1
+    process_1->getConnectionManager()->insert(record_1);
+    process_1->setDelayExpression("TRIA(4, 8, 10)");
+    process_1->setDelayTimeUnit(Util::TimeUnit::minute);
+
+    Resource* resource_1 = plugins->newInstance<Resource>(model);
+	process_1->getSeizeRequests()->insert(new SeizableItem(resource_1));
+
+    Queue* process1Queue = plugins->newInstance<Queue>(model);
+    process1Queue->setName("Process1Queue");
+    process_1->setQueueableItem(new QueueableItem(process1Queue));
+
+    // Record
+    record_1->getConnectionManager()->insert(dispose_1);
+    record_1->setName("Record_1");
+    record_1->setExpressionName("How_Many");
+    record_1->setDatasetName("Produced Parts Count Dataset");
+    record_1->setRandomVariableName("Produced parts count");
+    record_1->setDatasetDescription("Count of disposed parts observed when each entity reaches the Record component.");
+    record_1->setExpression("COUNT(Dispose_1.CountNumberIn)");
+    record_1->setFilename("./temp/Smart_ModelRunUntil1000Parts_Record.txt");
+
+    // Set options, save and run simulation.
+    model->getInfos()->setName("Model Run Until 1000 Parts Produced");
+    model->save("./models/Smart_ModelRunUntil1000Parts.gen");
+
+	model->getSimulation()->setReplicationLength(std::numeric_limits<double>::max(), Util::TimeUnit::week); // This is a "infinity" value.
+
+    model->getSimulation()->setNumberOfReplications(3);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::minute);
+
+    // Warmup should be 5% of replication length
+    auto replicationLength = 80; 
+    model->getSimulation()->setWarmUpPeriod(replicationLength * 0.05);
+    model->getSimulation()->setWarmUpPeriodTimeUnit(Util::TimeUnit::minute);
+
+    model->getSimulation()->setTerminatingCondition("COUNT(Dispose_1.CountNumberIn) > 1000");
+
+    model->getSimulation()->start();
+
+	for (int i = 0; i < 1e9; i++);
+
+    delete genesys;
+    return 0;
+}

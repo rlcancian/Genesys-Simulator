@@ -1,21 +1,25 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260705 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 warmUpTimeTimeUnit=6 warmUpTime=34.000000 replicationLength=690.000000 numberOfReplications=3 replicationLengthTimeUnit=6 
 
 # Model Data Definitions
-70  Resource   "Doctor" 
-71  Queue      "Queue_Seize_1" 
-72  Queue      "Queue_Seize_2" 
+134 EntityType "entitytype" 
+135 Attribute  "Entity.ArrivalTime" 
+136 Attribute  "Entity.Type" 
+140 Attribute  "Entity.TotalWaitTime" 
+151 Resource   "Doctor" costIdleTimeUnit=50.000000 costBusyTimeUnit=50.000000 
+163 Queue      "Queue_Seize_1" 
+166 Queue      "Queue_Seize_2" 
 
 # Model Components
-61  Create     "GP" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=62 timeBetweenCreations="EXPO(10)" 
-62  Seize      "General_Triage" queueable="Queue_Seize_1" priority==2 nextId=63 requestSeizable[0]="Doctor" 
-63  Delay      "General_Triage_Delay" delayExpressionTimeUnit=6 delayExpression="TRIA(0.5, 1, 1.5)" nextId=64 
-64  Release    "General_Triage_Release" nextId=69 requestSeizable[0]="Doctor" 
-65  Create     "CIP" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=66 timeBetweenCreations="EXPO(15)" 
-66  Seize      "Emergency_Procedure" queueable="Queue_Seize_2" priority==1 nextId=67 requestSeizable[0]="Doctor" 
-67  Delay      "Emergency_Procedure_Delay" delayExpressionTimeUnit=6 delayExpression="TRIA(0.5, 1, 2)" nextId=68 
-68  Release    "Emergency_Procedure_Release" nextId=69 requestSeizable[0]="Doctor" 
-69  Dispose    "Patient_is_discharged_or_admitted" nexts=0 
+132 Create     "GP" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=137 timeBetweenCreations="EXPO(10)" 
+137 Seize      "General_Triage" queueable="Queue_Seize_1" priority=2 nextId=138 requestSeizable[0]="Doctor" 
+138 Delay      "General_Triage_Delay" delayExpressionTimeUnit=6 delayExpression="TRIA(0.5, 1, 1.5)" nextId=141 
+141 Release    "General_Triage_Release" nextId=148 requestSeizable[0]="Doctor" 
+142 Create     "CIP" entityType="entitytype" timeBetweenCreationsTimeUnit=6 nextId=144 timeBetweenCreations="EXPO(15)" 
+144 Seize      "Emergency_Procedure" queueable="Queue_Seize_2" priority=1 nextId=145 requestSeizable[0]="Doctor" 
+145 Delay      "Emergency_Procedure_Delay" delayExpressionTimeUnit=6 delayExpression="TRIA(0.5, 1, 2)" nextId=147 
+147 Release    "Emergency_Procedure_Release" nextId=148 requestSeizable[0]="Doctor" 
+148 Dispose    "Patient_is_discharged_or_admitted" nexts=0 

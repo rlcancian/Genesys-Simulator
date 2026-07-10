@@ -15,10 +15,10 @@
 #define BaseGenesysTerminalApplication_H
 
 #include "GenesysApplication_if.h"
-#include "../kernel/simulator/TraceManager.h"
-#include "../kernel/simulator/OnEventManager.h"
-#include "../kernel/simulator/PluginManager.h"
-#include "../kernel/simulator/Model.h"
+#include "kernel/simulator/TraceManager.h"
+#include "kernel/simulator/OnEventManager.h"
+#include "kernel/simulator/PluginManager.h"
+#include "../kernel/simulator/model/Model.h"
 
 #include <thread>
 
@@ -27,7 +27,7 @@ public:
 	BaseGenesysTerminalApplication();
 	virtual ~BaseGenesysTerminalApplication() = default;
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 	virtual void Simulate(Simulator* genesys, Model* model, PluginManager *plugins);
 public:
 	void setDefaultTraceHandlers(TraceManager* tm);
