@@ -2,126 +2,148 @@
 
 ## 1. Purpose
 
-Record the executed Phase 0 evidence available through GitHub Actions and the first two bounded corrections integrated into `WorkInProgress`.
+Record the complete executed evidence for the three primary GenESyS Phase 0 presets and the bounded corrections integrated during consolidation.
 
-This document supersedes older statements that treated the three GUI GMDD tests as currently failing, the ordinary pull-request CI as unknown, or the AI plugin test omission as unresolved.
+This evidence establishes a reproducible software baseline. It does not establish release readiness, security readiness, package lifecycle correctness, application usability, or scientific validity.
 
-It does not establish release readiness or scientific correctness.
-
-## 2. Repository and branch identity
+## 2. Integrated checkpoint
 
 - Repository: `rlcancian/Genesys-Simulator`.
-- Consolidation PR: #469.
-- Consolidation branch: `audit/genesys-2026-consolidation-plan-20260720`.
-- Base branch: `WorkInProgress`.
-- Original inspected base: `b25a4d2ec31abe27f1bf3597a5135fa4828fbc35`.
+- Branch: `WorkInProgress`.
+- Consolidation documentation merge: `9c52b61532b847668adc3be92c780966301bcf7c`.
+- Phase 0 workflow merge: `802b8aec7ac129559692bd574e70fd9991aaec1d`.
 - Semester branch: `20261`, renamed from historical `2026-1`.
-- Future stable branch: `20262`, intended for end-of-semester promotion only.
+- Future stable branch: `20262`, reserved for end-of-semester promotion.
 
-## 3. Executed checkpoints
+## 3. Ordinary baseline
 
-### 3.1 Consolidation documentation
+PR #472 ordinary CI:
 
-- PR: #469.
-- Workflow run: `29772903692`, run 115.
-- Tested merge commit: `bf8bfd93a2b002c2098811cc339900eef516942d`.
-- Configure preset `tests-unit`: passed.
-- Build preset `tests-unit`: passed.
-- CTest preset `tests-unit`: passed.
-- Focused GUI GMDD job: passed.
+- workflow run: `29780136801`, run 121;
+- tested merge commit: `0d5f32b48510f6c1776ccfb1572f51fb452a6538`;
+- `tests-unit` configure: passed;
+- `tests-unit` build: passed;
+- `tests-unit` CTest: passed;
+- focused GUI GMDD job: passed.
 
-### 3.2 Workflow trigger correction
+The three focused GUI tests remain green; older failing records are historical snapshots unless reproduced on a newer identified commit.
 
-- PR: #470.
-- Head: `4dfeca8723ce2f2170c0d304768f0c95aa00857e`.
-- Workflow run: `29772492281`, run 113.
-- Tested merge commit: `c30139e8ff06111f91d95b7f69a863aaf203d219`.
-- Configure/build/CTest `tests-unit`: passed.
-- Focused GUI GMDD job: passed.
-- Integrated into `WorkInProgress` as `5b24c1e4f31f1b001cd0bd6910fb2c134108fc77`.
+## 4. Kernel-focused baseline
 
-Integrated corrections:
+Phase 0 workflow:
 
-- ordinary CI PR target `2026-1` → `20261`;
-- Debian workflow PR target `2026-1` → `20261`;
-- Debian path filter `../../packaging/debian/**` → `debian/**`.
+- run: `29780136722`, run 1;
+- job: `Validate tests-kernel-unit`;
+- configure: passed;
+- build preset and direct runner: passed;
+- CTest inventory: 1,696 registered tests;
+- CTest execution: 1,692 passed, 0 failed, 4 disabled;
+- total CTest time: 26.90 seconds.
 
-The Debian package job itself was not executed by this PR because the PR base was `WorkInProgress`, which is not an eligible Debian workflow PR target.
+Artifact:
 
-### 3.3 AI plugin test aggregation
+- name: `genesys-phase0-tests-kernel-unit`;
+- ID: `8476435822`;
+- digest: `sha256:bf803a8432328e0bb7555d61c4c01d72e6cafe20391b57380099a8db440bc673`;
+- expiration: 2026-10-18.
 
-- PR: #471.
-- Final head: `5783c7166f9623aa3c42a92a6ef2bdcc0bdce436`.
-- Workflow run: `29773299985`, run 117.
-- Tested merge commit: `7ee8eeb73490da5fb1aae3cb256a9339f2da7f59`.
-- Configure/build/CTest `tests-unit`: passed.
-- Focused GUI GMDD job: passed.
-- Integrated into `WorkInProgress` as `1fca8763cb7a6449cab719950ff74fb59e149b1e`.
+Toolchain captured:
 
-The correction:
+- Ubuntu 24.04;
+- CMake 3.31.6;
+- Ninja 1.13.2;
+- G++ 13.3.0.
 
-- adds `genesys_test_ai_plugins` to the ordinary aggregate dependencies;
-- creates `genesys_test_ai_plugins_run` for the direct runner path;
-- adds that run target to `genesys_kernel_unit_tests_run` dependencies.
+AI plugin tests explicitly registered and passed:
 
-The test source uses a local fake provider and dummy connector; it performs no network call and uses no credential.
+- #495 `AIConversationServiceTest.KeepsIndependentBoundedHistories`;
+- #496 `AIPluginTest.BuiltInConnectorExposesSupportAndComponentMetadata`;
+- #497 `AIPluginTest.PromptTemplateEvaluatesExpressionsAndEscapesLiteralBraces`.
 
-## 4. GUI GMDD status
+Disabled tests:
 
-The current focused job executes:
+- #225 `SimulatorRuntimeTest.SearchQueueFindsEntityInRangeSavesRankAndRoutesToFoundPort`;
+- #226 `SimulatorRuntimeTest.SearchQueueNotFoundRoutesToPortZeroAndSavesZeroRank`;
+- #229 `SimulatorRuntimeTest.RemoveEqualStartAndEndRankRemovesExactlyOneAndRoutesCorrectly`;
+- #230 `SimulatorRuntimeTest.RemoveRangeRemovesOnlyEntitiesInsideConfiguredInterval`.
 
-1. `GuiGmddLayout.SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRows`;
-2. `GuiGmddLayout.SerializerRoundTripRestoresComponentColorAndDataDefinitionPosition`;
-3. `GuiGmddLayout.SerializerRoundTripRestoresViewStateGeometriesAndGroups`.
+## 5. Smoke baseline
 
-All three passed in the current successful checkpoints. Older failure reports are historical snapshots unless reproduced on a specified newer commit.
+Phase 0 workflow job `Validate tests-smoke`:
 
-## 5. Status changes justified
+- configure: passed;
+- build: passed;
+- CTest inventory: 3;
+- executed/passed: 3/3;
+- failed: 0;
+- total time: 0.68 seconds.
 
-| Concern | Current status | Evidence |
-|---|---|---|
-| Ordinary `tests-unit` | `validated` for identified runs | configure/build/CTest passed |
-| Focused GUI GMDD | `validated` for identified runs | 3/3 tests passed |
-| Active branch trigger `20261` | `implemented-and-validated` | PR #470 merged |
-| Debian root path filter | `implemented`; package execution pending | PR #470 merged |
-| AI plugin inclusion in ordinary aggregate | `implemented-and-validated` | PR #471 merged and CTest passed |
-| AI plugin direct kernel runner | `implemented`; explicit preset execution pending | target graph corrected |
-| Full Phase 0 | `partially-validated` | kernel/smoke/inventory/application/package paths missing |
-| Historical 16/1657 failures | `not-reproduced-in-current-tests-unit` | current ordinary runs passed |
+Tests:
 
-## 6. Validation not yet performed
+1. `smoke_simulator_start`;
+2. `test_continuous_system`;
+3. `test_lsode`.
 
-- `tests-kernel-unit` configure/build/CTest;
-- `tests-smoke` configure/build/CTest;
-- exact `ctest -N` counts and complete target inventory;
-- shell/worker/GUI application startup;
-- independent GUI application presets;
-- model-specific application sweep;
-- ASan/LSan/UBSan/Valgrind;
+Artifact:
+
+- name: `genesys-phase0-tests-smoke`;
+- ID: `8476325130`;
+- digest: `sha256:3d0f40bb68d05ec0c738c8a34d92d2f4380cf743323015220c25706157871776`;
+- expiration: 2026-10-18.
+
+## 6. Integrated bounded corrections
+
+PR #470, merge `5b24c1e4f31f1b001cd0bd6910fb2c134108fc77`:
+
+- ordinary CI target branch corrected to `20261`;
+- Debian workflow target branch corrected to `20261`;
+- Debian path filter corrected to `debian/**`.
+
+PR #471, merge `1fca8763cb7a6449cab719950ff74fb59e149b1e`:
+
+- AI plugin tests added to ordinary aggregate;
+- dedicated AI direct-runner target added to kernel runner graph;
+- ordinary and kernel executions passed.
+
+PR #472, merge `802b8aec7ac129559692bd574e70fd9991aaec1d`:
+
+- added reusable `genesys-phase0-validation.yml`;
+- captures kernel/smoke inventories, executions, versions, diagnostics, and artifacts.
+
+## 7. Status justified by the evidence
+
+| Concern | Status |
+|---|---|
+| `tests-unit` | `validated` for recorded commits |
+| focused GUI GMDD | `validated` |
+| `tests-kernel-unit` configure/build/direct runner/CTest | `validated` |
+| `tests-smoke` configure/build/CTest | `validated` |
+| ordinary and kernel AI plugin test inclusion | `validated` |
+| exact kernel inventory | `validated`: 1,696 registered |
+| exact smoke inventory | `validated`: 3 registered |
+| core Phase 0 baseline | `validated` |
+| four disabled runtime tests | explicit coverage gap |
+| application/package/sanitizer/security/scientific validation | pending |
+
+## 8. Validation not performed
+
+- standalone shell, worker, main GUI, and independent GUI startup/workflows;
+- representative model-specific application sweep;
 - Debian package build/install/start/uninstall after trigger correction;
+- ASan, LSan, UBSan, Valgrind, and profiling;
+- worker networking/authentication/security controls;
 - Qt5 fallback removal;
-- worker authentication, CSPRNG, resource controls, and secret handling;
-- numerical/statistical authoritative-reference validation;
-- whole-cell/biochemical benchmark validity;
-- future dynamic plugin ABI implementation.
+- dynamic plugin ABI/lifecycle implementation;
+- authoritative numerical/statistical reference validation;
+- biochemical/whole-cell benchmark validation.
 
-## 7. Remaining Phase 0 actions
+## 9. Next safe technical step
 
-1. Execute `tests-kernel-unit` on Ubuntu 24.04/Qt6.
-2. Execute `tests-smoke` on the same baseline.
-3. Capture `ctest -N` and exact execution counts for all three presets.
-4. Confirm `genesys_test_ai_plugins_run` through the explicit kernel preset.
-5. Execute the Debian packaging workflow and package lifecycle.
-6. Build representative application presets independently.
-7. Preserve all branch, commit, run, job, dependency-mode, and artifact identifiers.
+Open a test-only PR for `SolverDefaultImpl1` that:
 
-## 8. Next safe technical steps
+1. adds direct regression tests for each overload and precondition;
+2. demonstrates the uninitialized-step/RK4/Simpson/unimplemented-path defects;
+3. records analytical or independently generated expected values;
+4. does not modify the implementation until the failures are isolated.
 
-After the missing baseline presets:
-
-- open a focused regression-test PR for `SolverDefaultImpl1` before changing it;
-- create the exact static plugin source-to-target/link map;
-- remove Qt5 fallback in a dedicated PR;
-- harden worker tokens and secret handling in separate security PRs.
-
-No broad plugin, namespace, ownership, optimizer, or scientific-model refactoring is authorized by these green ordinary CI results.
+The disabled Search/Remove tests, Qt6-only cleanup, plugin target mapping, worker security, and application/package validation should remain separate bounded workstreams.
