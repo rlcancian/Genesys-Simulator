@@ -33,6 +33,67 @@ That means the promotion chain is intentionally conservative:
 feature branches -> WorkInProgress -> semester stable branch -> currentStable -> master
 ```
 
+## Promotion gate terminology
+
+A promotion gate is the documented go/no-go checklist that must be satisfied before moving code to a more stable branch. It is not a single test. It combines build/test evidence, unresolved-risk review, application/package readiness, documentation, and explicit approval.
+
+A mandatory gate failure blocks promotion unless an authorized waiver records:
+
+- the failed criterion;
+- evidence and impact;
+- containment or disabled scope;
+- responsible owner;
+- expiration/review condition;
+- explicit human approval.
+
+Possible gate levels:
+
+### Minimal gate
+
+- canonical configure/build succeeds;
+- primary unit tests pass;
+- no known P0 blocker;
+- known limitations are documented.
+
+Use only for an internal snapshot, not a strong stable-release claim.
+
+### Standard gate
+
+- clean build on the supported Ubuntu/Qt6 baseline;
+- required unit and smoke tests pass;
+- supported applications build and have startup/smoke checks;
+- no open P0;
+- P1 issues are resolved or explicitly waived with rationale and containment;
+- representative model compatibility fixtures pass;
+- required packages build and pass basic install/run checks;
+- network-facing behavior matches the approved security profile;
+- documentation, release notes, known limitations, and rollback procedure are current;
+- branch, commit, toolchain, and CI evidence are recorded;
+- promotion is explicitly approved by the professor/maintainer.
+
+This is the proposed default gate for promotion from `WorkInProgress` to `2026-2`.
+
+### Strict gate
+
+Includes the standard gate plus:
+
+- sanitizer/Valgrind or equivalent diagnostic matrix;
+- broader application/platform matrix;
+- numerical/scientific benchmark suites;
+- performance/regression thresholds;
+- release-candidate observation period;
+- all P1 issues resolved rather than waived.
+
+A strict gate is a candidate for later promotion toward `currentStable` or `master`, depending on the release objective and available infrastructure.
+
+Status:
+
+- promotion-gate concept: `decided`;
+- standard gate as the default for `2026-2`: `proposed`, pending explicit approval;
+- exact required checks and waiver authority: `needs-human-decision`.
+
+See `genesys_2026_human_decisions.md` for the proposed `2026-2` checklist.
+
 ## Docker and preset implications
 
 The Docker packaging in this repository intentionally uses `master` as the
@@ -56,3 +117,5 @@ change the formal release policy above.
   branch (`master`) from the active implementation branch (`WiP20261`).
 - If a release or packaging workflow needs a temporary override, document the
   override and the reason in the relevant task note.
+- Do not promote a branch merely because it is mergeable; record the applicable promotion-gate evidence.
+- Never silently waive a P0/P1 gate criterion.
