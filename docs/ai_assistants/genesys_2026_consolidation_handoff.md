@@ -1,340 +1,311 @@
-# Handoff — GenESyS post-2026-1 consolidation plan
+# Handoff — GenESyS 2026 consolidation
 
 ## 1. Final task state
 
-- Status: `partially-validated`.
-- Base branch inspected: `WorkInProgress`.
-- Base commit inspected: `b25a4d2ec31abe27f1bf3597a5135fa4828fbc35`.
-- Work branch created: `audit/genesys-2026-consolidation-plan-20260720`.
-- Commits created: documentation-only commits on the work branch.
+- Overall status: `partially-validated`.
+- Repository: `rlcancian/Genesys-Simulator`.
+- Consolidation base branch: `WorkInProgress`.
+- Original inspected base commit: `b25a4d2ec31abe27f1bf3597a5135fa4828fbc35`.
+- Work branch: `audit/genesys-2026-consolidation-plan-20260720`.
 - Pull request: draft PR #469, `docs: add GenESyS 2026 consolidation plan`, targeting `WorkInProgress`.
-- Main documents generated:
-  - `docs/ai_assistants/genesys_2026_consolidation_plan.md`;
-  - `docs/ai_assistants/genesys_2026_test_matrix.md`;
-  - `docs/ai_assistants/genesys_2026_module_inventory.md`;
-  - `docs/ai_assistants/genesys_2026_consolidation_handoff.md`.
-- Existing documents updated:
-  - `docs/ai_assistants/current_plans.md`.
-- Local validation executed: none; audit performed through GitHub repository/PR inspection only.
-- CI validation: pending for PR #469 at this handoff update.
-- Short observation: the plan and inventories are ready for review, but all configure/build/test results require local or CI execution before status can become `validated`.
+- Changes in the PR remain documentation-only.
+- Local configure/build/test execution: not available to this ChatGPT Web session.
+- Remote CI checkpoint validated:
+  - head commit: `a60ca65aae4147a7d9b14bdadd9e8d39958bcaaf`;
+  - merge commit: `67d895f67307a6ba614e0c4cc5be88fbf24390ab`;
+  - workflow run: `29771060564`, run number 107;
+  - conclusion: `success`.
+- `tests-unit`: configure, build, and CTest passed.
+- GUI GMDD focused diagnostics: configure/build passed and all three focused tests passed.
+- `tests-kernel-unit` and `tests-smoke`: still not executed in the available CI checkpoint.
+- Release readiness: not established.
 
 ## 2. What was done
 
-- Read the mandatory `docs/ai_assistants/README.md` and stable operational guides.
-- Confirmed the canonical root CMake/Ninja/C++23 build structure.
-- Confirmed the current `WorkInProgress` base commit.
-- Inspected CMake target composition for kernel, parser, plugins, tools, applications, tests, and CI.
-- Mapped current configure/build/test presets from `CMakePresets.json`.
-- Inspected unit/smoke aggregation and detected test-target omissions/overlap risks.
-- Inspected selected numerical, ownership, security-sensitive, and incomplete implementations.
-- Sampled 2026 CMake/bootstrap and DCS pull requests.
-- Distinguished historical PR claims from code confirmed in `WorkInProgress`.
-- Created a prioritized consolidation plan with P0/P1/P2/P3 backlog and Phases 0–9.
-- Created a test matrix with commands, dependencies, gaps, priorities, and acceptance criteria.
-- Created a module inventory with status and future ownership by humans/AI.
-- Added a minimal reference entry to `current_plans.md`.
-- Created this operational handoff for future assistants.
-- Opened draft PR #469 against `WorkInProgress`.
+- Read the root `README.md` and mandatory `docs/ai_assistants/README.md`.
+- Inspected the root CMake/Ninja/C++23 build graph, presets, applications, plugins, tools, tests, and CI.
+- Inspected selected numerical, ownership, security-sensitive, incomplete, and scientific areas.
+- Sampled relevant 2026 pull requests while separating historical claims from current branch evidence.
+- Created the main consolidation plan, module inventory, test matrix, handoff, human-decision record, and later decision addendum.
+- Recorded future plans for numerical/statistical references, multiobjective optimization, and AI virtual-cell research.
+- Recorded the Qt6-only decision, stable C ABI decision for future dynamic plugins, controlled-intranet worker profile, and Level 3 minimum maturity policy.
+- Verified that `20261` exists and is the renamed former `2026-1` branch.
+- Compared `20261` to `WorkInProgress`: at the checkpoint, `WorkInProgress` was 29 commits ahead and 0 behind.
+- Inspected the latest PR CI and downloaded the GUI GMDD diagnostic artifact.
+- Created `genesys_2026_phase0_ci_evidence_20260720.md` with the executed evidence and remaining validation gaps.
+- Updated this handoff to replace historical CI assumptions with current evidence.
 
-## 3. Relevant comments made during execution
+## 3. Relevant technical comments
 
-- [Environment] The task was adapted from a local Codex prompt to a GitHub-only ChatGPT Web audit; no local build/test result was invented.
-- [Branches] `WorkInProgress` resolved directly, while historical `2026-1` and requested `build/cmake-bootstrap` did not resolve as current refs through the connector; historical PRs were not treated as current branch state.
-- [Build] Root CMake is the canonical entry point, requires CMake 3.24/Ninja/C++23, and does not use `/projects` as its main graph.
-- [Plugins] The current runtime links a static connector and static plugin libraries; the production build is not a dynamic-plugin architecture.
-- [Plugins] The same component source tree is recursively compiled into full and minimal static plugin libraries; this must be mapped before any dynamic migration.
-- [Tests] `genesys_test_ai_plugins` exists but is omitted from the inspected main unit aggregate/runner.
-- [CI] The GUI GMDD diagnostics job executes known failing tests and can keep the PR baseline red until fixed or made intentionally non-blocking.
-- [Numerics] `SolverDefaultImpl1` has confirmed correctness/undefined-behavior defects and is used by hypothesis-test CDF integration.
-- [Optimization] `OptimizerDefaultImpl1` is an explicit scaffold, not a functioning optimization algorithm.
-- [Security] Worker tokens use a non-cryptographic PRNG, and AI secret storage embeds the secret in a shell command string.
-- [Ownership] Plugin template completion allocates a temporary `Model` without an observed release.
-- [DCS] Several contributions were evaluated through controlled PRs; merge/evaluation history must not be confused with code present in the current branch.
-- [Documentation] Root README and stable guides contain stale names, paths, presets, qmake statements, and sanitizer commands.
-- [Oldies] All historical documents remain `needs-review`; none is deletion-ready merely because a stable guide exists.
+- [Build] The canonical build remains CMake + Ninja with C++23.
+- [Branches] Historical references to `2026-1` refer to the branch now named `20261`; the future second-semester stable branch is `20262`.
+- [Promotion] Promotion to `20262` is planned only near the end of the second semester of 2026.
+- [CI] A green `tests-unit` run proves the current registered/executed unit baseline for the validated head, but does not prove that every declared executable is included in the aggregate.
+- [CI] The previously reported 16 failures out of 1657 tests are historical and were not reproduced by workflow run `29771060564`.
+- [GUI] The three GMDD tests previously documented as failing all passed in the current focused diagnostic artifact.
+- [Plugins] Plugins remain compiled together during consolidation; future independent dynamic plugins must use a stable C ABI with opaque handles and versioned function tables.
+- [Qt] Qt6-only is decided; remaining Qt5 fallback removal is an implementation task.
+- [Numerics] `SolverDefaultImpl1` still contains confirmed correctness/UB concerns that are not invalidated by a green aggregate test run.
+- [Statistics] Current tests passing does not establish scientific validity without authoritative references and reference-backed vectors.
+- [Optimizer] Current backend remains an internal scaffold. Supported functionality must eventually reach at least Level 3 — Beta.
+- [Worker] Intended deployment is a controlled academic intranet, not direct public-Internet exposure.
+- [Whole-cell] Future direction is neuro-symbolic-mechanistic AI virtual-cell research; current functionality must not overclaim predictive biological validity.
 
 ## 4. Problems encountered
 
 ### 4.1 No local execution environment
 
 - Type: environment.
-- Where it occurred: CMake/Ninja/CTest, GUI, worker, sanitizer, packaging, and runtime validation.
-- Evidence summarized: this assistant had GitHub connector access only.
-- Impact: build/test statuses cannot be promoted to `validated`.
-- Decision taken: record repository evidence and exact recommended commands without asserting execution.
+- Impact: no local `tests-kernel-unit`, `tests-smoke`, application startup, sanitizer, package, or network validation.
 - Status: `needs-local-validation`.
-- Next recommended action: execute Phase 0 in a clean Ubuntu 24.04 checkout or through controlled CI.
+- Mitigation: use GitHub Actions evidence where available and preserve exact run/head identifiers.
 
-### 4.2 Historical branches not resolvable
+### 4.2 Partial Phase 0 coverage
 
-- Type: Git/history.
-- Where it occurred: attempts to inspect/compare `2026-1` and `build/cmake-bootstrap` as current refs.
-- Evidence summarized: direct current-file/ref lookup failed, while historical PR metadata still references `2026-1`.
-- Impact: no reliable current branch diff could be produced.
-- Decision taken: use PRs as historical evidence only and confirm current implementation directly in `WorkInProgress`.
+- Type: build/test coverage.
+- Evidence: the current workflow executes `tests-unit` plus the focused GUI GMDD job.
+- Missing: `tests-kernel-unit`, `tests-smoke`, application presets, sanitizers, packages.
 - Status: `partially-validated`.
-- Next recommended action: run local `git branch -a` and `git log --all` if full historical reconstruction is required.
+- Next action: execute the two missing baseline presets before claiming Phase 0 complete.
 
-### 4.3 Current CI baseline is ambiguous
+### 4.3 Aggregate completeness remains uncertain
 
-- Type: CI/test.
-- Where it occurred: `.github/workflows/genesys-ci.yml` and `current_plans.md`.
-- Evidence summarized: one normal unit job coexists with a GUI GMDD diagnostic job that returns the known failing test result; prior plans report 16/1657 failures.
-- Impact: a PR can remain red even when ordinary unit compilation succeeds; release readiness cannot be inferred.
-- Decision taken: classify CI as P0 and require reproduction before other large work.
-- Status: `blocked`.
-- Next recommended action: run PR #469, inspect both jobs, and decide which jobs are required status checks.
+- Type: CMake/test aggregation.
+- Evidence: `genesys_test_ai_plugins` was declared but not found in the inspected aggregate dependencies/direct runner.
+- Impact: a green aggregate can omit a declared test executable.
+- Status: `blocked` until explicit target/CTest inclusion is inspected or corrected.
 
-### 4.4 Plugin target overlap
-
-- Type: build/architecture.
-- Where it occurred: `source/plugins/CMakeLists.txt`, `source/plugins/components/CMakeLists.txt`, simulator runtime and continuous-diffusion test linkage.
-- Evidence summarized: full and minimal targets recursively compile the same `.cpp` tree; some executables may link both transitively/directly.
-- Impact: duplicate symbols, ODR/link-order behavior, increased build cost, and unclear future plugin boundaries.
-- Decision taken: do not implement dynamic loading yet; first create an exact source-to-target/link map.
-- Status: `blocked`.
-- Next recommended action: generate link maps and redesign targets to be non-overlapping.
-
-### 4.5 Numerical correctness blocker
-
-- Type: code/scientific correctness.
-- Where it occurred: `source/tools/Continuous/SolverDefaultImpl1.h/.cpp` and callers in hypothesis testing.
-- Evidence summarized: `_stepSize` is uninitialized; RK4-like staging/state use is incorrect; three overloads return `0.0`; Simpson requirements are not enforced; non-standard VLA is used.
-- Impact: undefined behavior and invalid numerical/statistical results.
-- Decision taken: classify as P0; require tests before patch.
-- Status: `blocked`.
-- Next recommended action: add focused analytical regression tests, then apply the minimum correction or quarantine legacy calls.
-
-### 4.6 Security-sensitive implementations
-
-- Type: security.
-- Where it occurred: worker token generation and AI secret storage.
-- Evidence summarized: `std::mt19937_64` is used for access tokens; the secret is interpolated into a command string executed by the shell.
-- Impact: predictable authorization material and possible same-user secret exposure through process command information.
-- Decision taken: classify as P1 before network-facing/public deployment.
-- Status: `blocked` for public deployment.
-- Next recommended action: define secure OS-backed randomness and remove secret-bearing shell command composition.
-
-### 4.7 Documentation drift
+### 4.4 Historical status drift
 
 - Type: documentation.
-- Where it occurred: root README and stable application/build guidance.
-- Evidence summarized: obsolete terminal/web paths and target names, qmake delegation claims, missing current presets, and sanitizer presets that do not exist in current `CMakePresets.json`.
-- Impact: developers and assistants can execute invalid workflows or misunderstand architecture.
-- Decision taken: document the drift but defer broad correction until the build baseline is rerun.
-- Status: `in-progress`.
-- Next recommended action: update docs against actual target/preset output after Phase 0.
+- Evidence: older files describe three GUI GMDD failures and 13 non-GUI failures.
+- Current evidence: the current `tests-unit` job and the three-test GUI diagnostic passed.
+- Decision: treat old failure lists as historical snapshots unless reproduced on a specified current commit.
+- Status: `partially-corrected`; additional historical documents may remain stale.
 
-## 5. Corrections or adjustments made
+### 4.5 Numerical correctness remains unresolved
 
-> No functional correction was made; this round was limited to analysis, documentation, planning, and a minimal current-plan reference.
+- Type: code/scientific correctness.
+- Area: `source/tools/Continuous/SolverDefaultImpl1.*` and statistical callers.
+- Evidence previously confirmed: uninitialized `_stepSize`, incomplete/incorrect RK4/Simpson behavior, overloads returning `0.0`, non-standard VLA.
+- Impact: unit success does not prove untested mathematical paths correct.
+- Status: `blocked` for scientific validity.
 
-Documentation adjustments:
+### 4.6 Plugin target overlap
 
-- File: `docs/ai_assistants/genesys_2026_consolidation_plan.md`.
-  - Change: created the main evidence-based plan, backlog, phases, governance, and prompts.
-  - Reason: provide a bounded consolidation roadmap.
-  - Risk: low; claims still require local validation where marked.
-  - Validation: Markdown review, path/ref review, PR review.
+- Type: build architecture.
+- Evidence: component sources are recursively compiled into full and minimal static targets.
+- Decision: keep current static architecture temporarily, but first produce an exact source-to-target/link map and eliminate unjustified overlap.
+- Status: `in-progress` planning; implementation not started.
 
-- File: `docs/ai_assistants/genesys_2026_test_matrix.md`.
-  - Change: created test/preset/module matrix with acceptance criteria.
-  - Reason: make validation executable and auditable.
-  - Risk: low; current results are not claimed.
-  - Validation: compare with `CMakePresets.json`, CMake test registration, and actual local/CI runs.
+### 4.7 Security-sensitive implementation
 
-- File: `docs/ai_assistants/genesys_2026_module_inventory.md`.
-  - Change: created module/build/test/documentation/risk inventory.
-  - Reason: prevent broad work without impact mapping.
-  - Risk: low; inventory is intentionally explicit about evidence level.
-  - Validation: compare with current repository tree and build graph.
+- Type: security.
+- Evidence: worker token generation uses a non-cryptographic PRNG; AI secret storage composes a secret-bearing shell command string.
+- Deployment impact: blocks approved intranet deployment until hardened.
+- Status: `needs-implementation`.
 
-- File: `docs/ai_assistants/current_plans.md`.
-  - Change: appended a small entry referencing the new plan, matrix, inventory, and handoff.
-  - Reason: make the consolidation effort discoverable.
-  - Risk: low; existing content was preserved.
-  - Validation: internal links resolve in the PR branch.
+## 5. Corrections and adjustments made
+
+No functional source, CMake, test, workflow, packaging, or historical file was changed.
+
+Documentation changes include:
+
+- main consolidation plan;
+- test matrix;
+- module inventory;
+- operational handoff;
+- human decisions and later addendum;
+- branch policy correction for `20261`/`20262`;
+- plugin stable-C-ABI direction;
+- Qt6-only policy;
+- controlled-intranet worker policy;
+- Level 3 minimum maturity policy;
+- deferred numerical/statistical reference plan;
+- multiobjective Optimizer research plan;
+- AI virtual-cell research direction;
+- executed Phase 0 CI evidence.
+
+Current CI-status corrections:
+
+- ordinary `tests-unit` CI changed from unknown/needs-CI-validation to `validated` for head `a60ca65...`;
+- three GUI GMDD tests changed from historical blocked status to `validated` for that head;
+- full Phase 0 remains `partially-validated` because two baseline presets were not run.
 
 ## 6. Files created or changed
 
-| File | Type | Purpose | Status |
-|---|---|---|---|
-| `docs/ai_assistants/genesys_2026_consolidation_plan.md` | new | main consolidation plan | created |
-| `docs/ai_assistants/genesys_2026_test_matrix.md` | new | build/test/application/scientific validation matrix | created |
-| `docs/ai_assistants/genesys_2026_module_inventory.md` | new | module and risk inventory | created |
-| `docs/ai_assistants/genesys_2026_consolidation_handoff.md` | new | operational memory for future assistants | created |
-| `docs/ai_assistants/current_plans.md` | changed | references to all consolidation artifacts | updated |
+Principal consolidation artifacts:
+
+- `docs/ai_assistants/genesys_2026_consolidation_plan.md`;
+- `docs/ai_assistants/genesys_2026_test_matrix.md`;
+- `docs/ai_assistants/genesys_2026_module_inventory.md`;
+- `docs/ai_assistants/genesys_2026_consolidation_handoff.md`;
+- `docs/ai_assistants/genesys_2026_phase0_ci_evidence_20260720.md`;
+- `docs/ai_assistants/genesys_2026_human_decisions.md`;
+- `docs/ai_assistants/genesys_2026_decisions_addendum_20260720.md`;
+- `docs/ai_assistants/genesys_numerical_statistical_references_plan.md`;
+- `docs/ai_assistants/genesys_multiobjective_optimizer_future_plan.md`;
+- `docs/ai_assistants/genesys_ai_virtual_cell_research_direction.md`.
+
+Stable guides updated include:
+
+- `docs/ai_assistants/README.md`;
+- `docs/ai_assistants/current_plans.md`;
+- `docs/ai_assistants/branch_workflow.md`;
+- `docs/ai_assistants/plugins_development.md`;
+- `docs/ai_assistants/applications_development.md`;
+- `docs/ai_assistants/tools_and_statistics.md`;
+- `docs/ai_assistants/whole_cell_and_sbml.md`.
 
 ## 7. Validation performed
 
-- Presets detected: `tests-unit`, `tests-kernel-unit`, `tests-smoke`, shell/model-specific, worker, main GUI, HTTP worker GUI, Data Analyser GUI, Optimizer GUI, and AI Assistant GUI variants.
-- Unit build/test: `not-executed`; repository structure inspected.
-- Kernel build/test: `not-executed`; repository structure inspected.
-- GUI: `not-executed`; prior repository evidence reports three GMDD failures.
-- Web/worker: `not-executed`; current executable is worker-oriented, and security risks were identified by source inspection.
-- Shell/modelSpecific: `not-executed`; presets/targets inspected.
-- CI/GitHub Actions: workflow inspected; PR #469 opened and initial run status pending.
-- Limitations: GitHub-only environment, no compiler, no Qt runtime, no sanitizer, no package installation, no local branch graph.
+### 7.1 Current successful workflow
 
-## 8. State of the created plan
+Workflow run `29771060564`:
 
-- Phases defined: 0 through 9.
-- Priorities defined: P0, P1, P2, P3.
-- Most critical modules/concerns:
-  - CI and current failing tests;
-  - legacy continuous solver/statistical integration;
-  - whole-cell/runtime/metabolic failures;
-  - overlapping/static plugin build architecture;
-  - worker/AI security;
-  - optimizer incompleteness/ownership;
-  - parser FunctionRegistry status;
-  - GUI GMDD behavior.
-- First recommended actions:
-  1. reproduce baseline;
-  2. isolate P0 failures;
-  3. repair aggregate test coverage;
-  4. map plugin link graph;
-  5. add regression tests before code changes.
-- Main risks: scientific invalidity, undefined behavior, permanent red CI, ABI/lifecycle breakage, security exposure, misleading incomplete capabilities.
-- Human decisions required: required CI checks, dynamic plugin ABI/API, Qt5 compatibility, optimizer algorithm/product status, biological/statistical acceptance criteria, release promotion.
+- event: pull request;
+- validated PR merge commit: `67d895f67307a6ba614e0c4cc5be88fbf24390ab`;
+- validated branch head: `a60ca65aae4147a7d9b14bdadd9e8d39958bcaaf`;
+- runner: Ubuntu 24.04.4 LTS / `ubuntu-24.04` image;
+- `QT_QPA_PLATFORM=offscreen`;
+- `tests-unit` configure: passed;
+- `tests-unit` build: passed;
+- `tests-unit` CTest: passed;
+- workflow conclusion: success.
+
+### 7.2 GUI GMDD evidence
+
+Artifact `genesys-gui-gmdd-diagnostics`, ID `8472919224`:
+
+- `CONFIGURE_RC=0`;
+- `BUILD_RC=0`;
+- `GTEST_RC=0`;
+- 3 tests executed;
+- 3 tests passed;
+- total Google Test time reported: 542 ms.
+
+Passing tests:
+
+- `GuiGmddLayout.SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRows`;
+- `GuiGmddLayout.SerializerRoundTripRestoresComponentColorAndDataDefinitionPosition`;
+- `GuiGmddLayout.SerializerRoundTripRestoresViewStateGeometriesAndGroups`.
+
+### 7.3 Not yet validated
+
+- exact current CTest count;
+- explicit inclusion of every declared unit target;
+- `tests-kernel-unit`;
+- `tests-smoke`;
+- shell/worker/GUI standalone startup;
+- all independent GUI presets;
+- model-specific sweep;
+- ASan/LSan/UBSan/Valgrind;
+- Debian package lifecycle;
+- Qt5 removal;
+- worker security controls;
+- numerical/statistical reference correctness;
+- whole-cell scientific benchmark validity;
+- stable C ABI implementation.
+
+## 8. State of the consolidation plan
+
+- Phase 0: `partially-validated`.
+  - ordinary `tests-unit` CI: validated for one specified head;
+  - focused GUI GMDD tests: validated for the same head;
+  - `tests-kernel-unit`: pending;
+  - `tests-smoke`: pending;
+  - aggregate completeness: pending.
+- Phase 1: not started as a bounded implementation phase.
+- Dynamic plugin implementation: deferred; ABI direction decided as stable C.
+- Qt5 removal: policy decided, implementation pending.
+- Numerical/statistical references: deferred acquisition plan recorded.
+- Optimizer: Level 3 target recorded; exact thesis-derived initial algorithm pending future material.
+- Worker: controlled-intranet profile decided; exact authentication and hardening implementation pending.
+- Whole-cell/AI virtual-cell: research direction recorded; project-specific scientific scope pending.
+- `20262` promotion: future end-of-semester activity, not a current gate.
 
 ## 9. Pending work
 
-### 9.1 Technical pending work
+### 9.1 Immediate validation work
 
-- Correct or quarantine `SolverDefaultImpl1` after tests.
-- Remove overlapping plugin source compilation.
-- Define dynamic plugin ABI/API/version/lifecycle policy.
-- Resolve optimizer ownership/copy semantics and implementation status.
-- Fix secret/token security boundaries.
-- Determine current parser FunctionRegistry implementation decision.
-- Map ownership in Model/ModelSimulation/SimulationScenario/TraceManager/PluginManager.
+1. Run `tests-kernel-unit`.
+2. Run `tests-smoke`.
+3. Capture `ctest -N` and exact test/target inclusion.
+4. Verify `genesys_test_ai_plugins` inclusion.
+5. Build representative application presets.
 
-### 9.2 Test pending work
+### 9.2 Priority technical work after baseline
 
-- Execute `tests-unit`, `tests-kernel-unit`, and `tests-smoke`.
-- Reproduce the 16 previously reported failures.
-- Add AI plugin test to aggregate baseline.
-- Add direct legacy solver and trusted statistical reference tests.
-- Add WCM with/without GLPK matrix.
-- Add plugin ABI/load/unload tests after design.
-- Add worker auth/security tests.
-- Add application startup smoke tests.
+- add focused failing regression tests for `SolverDefaultImpl1`;
+- apply the minimum solver correction or quarantine invalid APIs;
+- map and then remove unjustified full/minimal plugin source overlap;
+- correct worker CSPRNG and secret handling;
+- close optimizer copy/ownership hazards without falsely claiming algorithm maturity;
+- verify the temporary `Model` allocation/lifetime finding;
+- decide parser `FunctionRegistry` disposition.
 
-### 9.3 Documentation pending work
+### 9.3 Deferred research inputs
 
-- Reconcile root README with actual presets/targets/layout.
-- Correct application guide references to obsolete terminal/web paths.
-- Review all `oldies/` files by theme.
-- Validate Doxygen generation and internal links.
-- Document supported SBML/whole-cell/parser/plugin contracts.
+- numerical/statistical bibliography, converted PDFs, datasets, parameterizations, and expected values;
+- professor's thesis chapters, pseudocode/source, algorithm variants, benchmarks, and licensing status;
+- detailed AI virtual-cell project scope, modules, reference models, datasets, and validation claims.
 
-### 9.4 Governance pending work
+### 9.4 Remaining human choices
 
-- Decide required CI jobs and branch protection checks.
-- Decide whether the audit PR should remain draft until CI evidence exists.
-- Create issues or bounded branches for P0/P1 items.
-- Update this handoff after every consolidation round.
+Already decided:
 
-### 9.5 Pending human decisions
+- stable C ABI for future dynamic plugins;
+- Qt6-only;
+- minimum Level 3 target for supported functionality;
+- controlled academic intranet worker profile;
+- future end-of-semester `20262` promotion timing.
 
-- Dynamic plugin ABI/toolchain compatibility policy.
-- Whether Qt5 fallback remains supported.
-- Which statistical/numerical reference standards are authoritative.
-- Optimizer algorithm and user-visible maturity label.
-- Network-facing worker deployment/security policy.
-- Whole-cell/biochemical semantic acceptance criteria.
-- Branch promotion/release gate for 2026-2.
+Still pending when implementation approaches:
+
+- exact worker authentication mechanism, preferably mTLS or short-lived signed tokens over TLS;
+- exact first Optimizer algorithm and benchmark package from the professor's research;
+- method-specific numerical/statistical references;
+- initial whole-cell scientific claim level and benchmark package;
+- final `20262` promotion checklist near the end of the semester.
 
 ## 10. Recommended next actions
 
-1. Reproduce the ordinary baseline.
-   - Objective: determine exact current configure/build/test state.
-   - Module: build/tests/CI.
-   - Reference: `genesys_2026_test_matrix.md`.
-   - Acceptance: exact failing tests and first failures recorded for all three baseline presets.
-   - Execution: autonomous AI locally; no functional changes.
-
-2. Inspect PR #469 CI.
-   - Objective: determine whether the normal unit job and GUI diagnostic job behave as documented.
-   - Module: GitHub Actions.
-   - Reference: plan Phase 0.
-   - Acceptance: run URLs/artifacts and required-check impact recorded.
-   - Execution: AI; human decision if required checks change.
-
-3. Add regression tests for the legacy solver.
-   - Objective: prove each current numerical defect before correction.
-   - Module: `source/tools/Continuous`.
-   - Reference: test matrix P0 rows.
-   - Acceptance: tests fail for the identified reasons on the unmodified implementation.
-   - Execution: AI with numerical review.
-
-4. Apply the minimum solver correction or quarantine.
-   - Objective: eliminate UB and invalid results without rewriting the continuous subsystem.
-   - Module: continuous/statistics.
-   - Reference: plan Phase 1.
-   - Acceptance: analytical and trusted-reference tests pass.
-   - Execution: AI; scientific review required.
-
-5. Repair unit-test aggregation.
-   - Objective: ensure declared test targets, especially AI plugins, execute in CI.
-   - Module: `source/tests/unit/CMakeLists.txt`.
-   - Reference: test matrix aggregation section.
-   - Acceptance: target appears in aggregate and CTest run.
-   - Execution: autonomous AI.
-
-6. Reproduce WCM/runtime/metabolic failures.
-   - Objective: separate code defect, dependency mode, nondeterminism, and test defect.
-   - Module: whole-cell/runtime/plugins.
-   - Reference: plan P0 backlog.
-   - Acceptance: each failure has a minimal filter, cause classification, and owner.
-   - Execution: AI + domain review.
-
-7. Generate the plugin source-to-target/link map.
-   - Objective: eliminate uncertainty around full/minimal overlap.
-   - Module: plugin CMake/runtime linkage.
-   - Reference: plan Phase 2.
-   - Acceptance: every plugin source maps to intended target(s), and overlaps are justified or removed.
-   - Execution: autonomous AI; architecture review before edits.
-
-8. Harden worker tokens and AI secret handling.
-   - Objective: remove security blockers before public/network deployment.
-   - Module: worker/AI tools.
-   - Reference: plan P1 backlog.
-   - Acceptance: OS-backed secure randomness and no secret in argv/logs.
-   - Execution: AI with human security review.
-
-9. Decide parser FunctionRegistry disposition.
-   - Objective: determine whether #429 was rejected, renamed, superseded, or should be reintroduced.
-   - Module: parser.
-   - Reference: plan Phase 3.
-   - Acceptance: explicit decision and compatibility test plan.
-   - Execution: AI analysis; human semantic decision.
-
-10. Reconcile documentation after baseline.
-    - Objective: make all documented paths/presets/targets executable.
-    - Module: README/stable guides.
-    - Reference: plan Phase 8.
-    - Acceptance: no stale command/path identified in this audit remains.
-    - Execution: autonomous AI with review.
+1. Complete Phase 0 by executing `tests-kernel-unit` and `tests-smoke` without functional changes.
+2. Inspect CMake/CTest aggregation and ensure every intended test target executes.
+3. Preserve the green run as a checkpoint; do not continue citing old GUI failures as current.
+4. Open a separate bounded implementation branch for legacy solver regression tests.
+5. Keep Qt5 removal, plugin target cleanup, worker hardening, and optimizer development in separate reviewable PRs.
+6. Do not begin dynamic plugin implementation until the current static target graph is non-overlapping and lifecycle contracts are mapped.
 
 ## 11. Guidance for the next AI assistant
 
-Next assistant: first read `docs/ai_assistants/README.md`, then `genesys_2026_consolidation_plan.md`, `genesys_2026_test_matrix.md`, `genesys_2026_module_inventory.md`, and this handoff. The current state is a GitHub-only, documentation-level audit; it is not a validated build baseline. The safest next action is Phase 0: reproduce `tests-unit`, `tests-kernel-unit`, and `tests-smoke` on a clean branch from the designated base commit, record exact failures, and make no functional changes. Do not delete `oldies/`, do not migrate all plugins/namespaces/ownership at once, do not change scientific algorithms without failing regression tests and reference values, and do not alter stable branches directly. Preserve compiler/build/test logs, branch/commit identifiers, CTest names, dependency modes, and all evidence supporting status changes.
+First read:
+
+1. `docs/ai_assistants/README.md`;
+2. `genesys_2026_decisions_addendum_20260720.md`;
+3. `genesys_2026_phase0_ci_evidence_20260720.md`;
+4. `genesys_2026_consolidation_plan.md`;
+5. `genesys_2026_test_matrix.md`;
+6. `genesys_2026_module_inventory.md`;
+7. this handoff.
+
+Use `20261`, not `2026-1`, when referring to the current semester-stable branch. Treat old names only as historical identifiers.
+
+Do not claim Phase 0 complete until `tests-kernel-unit`, `tests-smoke`, and aggregate inclusion are verified. Do not infer scientific correctness from green unit tests. Do not modify the legacy solver before adding tests that demonstrate each defect. Do not implement dynamic plugins yet. Do not weaken the Qt6-only, Level 3, controlled-intranet, or no-overclaim scientific policies.
 
 ## 12. Limitations and uncertainties
 
-- No local build/test/runtime/package execution was possible.
-- No full local Git history/branch graph was available.
-- The historical `2026-1` ref was not available for a current comparison through the connector.
-- PR descriptions may contain unverified claims.
-- Only selected high-risk sources were inspected deeply.
-- Ownership candidates outside explicit source findings remain hypotheses to validate.
-- Current exact test count/failure count is unknown until rerun.
-- Qt GUI behavior, dynamic loading, external compilers, Python integration, and worker networking were not executed.
-- Statistical, numerical, biological, and biochemical correctness requires independent reference validation and human domain review.
+- No local compiler/runtime was available to this assistant.
+- The current workflow does not run all baseline presets.
+- Exact current unit-test count was not extracted through the connector.
+- A green aggregate does not prove omitted targets are executed.
+- Historical PR descriptions may contain unverified claims.
+- Only selected high-risk code was deeply inspected.
+- Numerical, statistical, biochemical, and biological correctness still require independent references and domain review.
+- GUI application startup was not executed; only the focused GUI test binary was validated.
+- Worker networking and authentication were not executed.
+- New documentation-only commits after validated head `a60ca65...` may trigger a newer CI run that must be checked separately.
 
 ## 13. Operational result
 
-Result: consolidation plan created and ready for review in draft PR #469, with local/CI validation pending.
+Result: the consolidation plan and human decisions are documented in draft PR #469; the ordinary `tests-unit` CI and all three focused GUI GMDD tests are now confirmed green for head `a60ca65aae4147a7d9b14bdadd9e8d39958bcaaf`. Phase 0 is partially validated, with `tests-kernel-unit`, `tests-smoke`, exact aggregate inclusion, application presets, sanitizers, and packaging still pending.
