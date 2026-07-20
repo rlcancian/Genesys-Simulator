@@ -5,7 +5,7 @@ run-name: GenESyS CI | ${{ github.event_name }} | ref=${{ github.ref_name }} | s
 on:
   pull_request:
     branches:
-      - 2026-1
+      - 20261
       - WorkInProgress
       - WiP20261
       - currentStable
