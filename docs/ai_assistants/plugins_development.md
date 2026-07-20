@@ -40,15 +40,38 @@ Status:
 
 - current static aggregation policy: `decided`;
 - dynamic plugin migration: `deferred`;
-- exact future ABI/toolchain policy: `needs-human-decision`.
+- future ABI architecture: `decided` as a stable C ABI boundary, implementation deferred.
 
-See `genesys_2026_human_decisions.md` for the future options:
+## Future dynamic-plugin ABI decision
 
-- same-toolchain C++ ABI;
-- stable C ABI with opaque handles and versioned function tables;
-- out-of-process plugin/service protocol.
+The selected long-term in-process dynamic-plugin boundary is:
 
-No assistant should implement one of these alternatives until the requirements and compatibility horizon documented there are answered.
+> Stable C ABI with opaque handles and versioned function tables.
+
+Future design requirements:
+
+- `extern "C"` entry points;
+- fixed-width scalar types;
+- opaque handles rather than exposed C++ object layouts;
+- explicit create/destroy ownership functions;
+- versioned capability/function tables;
+- no STL or Qt types crossing the ABI;
+- no C++ exceptions crossing the ABI;
+- explicit string, array, callback, buffer, and allocator conventions;
+- structured error/diagnostic results;
+- API/ABI version negotiation and deprecation policy;
+- plugin metadata and dependency declarations;
+- lifecycle, unload, callback, and thread-safety contracts;
+- compatibility tests for supported operating-system/toolchain/package baselines.
+
+This decision does not authorize immediate implementation. The static graph must first be stabilized and made non-overlapping.
+
+Out-of-process services remain appropriate for coarse-grained external solvers, AI services, distributed workers, or untrusted extensions, but they are not the selected replacement for ordinary in-process plugin components.
+
+See:
+
+- `genesys_2026_decisions_addendum_20260720.md`;
+- `genesys_2026_human_decisions.md` for the earlier option analysis.
 
 ## Source areas
 
@@ -81,7 +104,8 @@ Primary historical sources for plugin work:
 - Keep plugin architecture changes separate from ordinary bug fixes.
 - Validate load/save symmetry when persistence changes.
 - Validate GUI dependency gating when GUI contributions depend on model plugins.
-- Do not pass ownership of STL/Qt/C++ objects across a future binary boundary without an approved ABI and lifecycle contract.
+- Do not pass ownership of STL/Qt/C++ objects across a future binary boundary.
+- Do not allow one module to allocate an object that another module destroys unless the ABI contract explicitly supplies the matching destroy function.
 
 ## Validation checklist
 
@@ -95,3 +119,4 @@ For plugin changes, prefer this order:
 6. Validate dependency gating if GUI contributions depend on model plugins.
 7. Inspect link maps when modifying plugin target composition.
 8. Run ASan/LSan or equivalent diagnostics for plugin ownership/lifecycle changes when a validated diagnostic configuration exists.
+9. For future dynamic plugins, validate ABI version negotiation, invalid-version rejection, load/unload, error propagation, ownership, and cross-build compatibility.
