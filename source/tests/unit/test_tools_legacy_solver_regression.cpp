@@ -2,6 +2,8 @@
 
 #include "tools/Continuous/SolverDefaultImpl1.h"
 
+#include <stdexcept>
+
 namespace {
 
 double quadratic2(double x, double) {
@@ -90,26 +92,34 @@ TEST(LegacySolverQuadratureRegression, OddStepCountPreservesSimpsonContractForFi
                 kTolerance);
 }
 
-TEST(LegacySolverDerivativeRegression, ZeroDerivativePreservesInitialValueForTwoArgumentFunction) {
+TEST(LegacySolverDerivativeRegression, RejectsUndefinedTwoArgumentDerivativeContract) {
     SolverDefaultImpl1 solver;
 
-    EXPECT_DOUBLE_EQ(solver.derivate(0.0, 42.0, zeroDerivative2, 7.0), 42.0);
+    EXPECT_THROW(
+        solver.derivate(0.0, 42.0, zeroDerivative2, 7.0),
+        std::logic_error);
 }
 
-TEST(LegacySolverDerivativeRegression, ZeroDerivativePreservesInitialValueForThreeArgumentFunction) {
+TEST(LegacySolverDerivativeRegression, RejectsUndefinedThreeArgumentDerivativeContract) {
     SolverDefaultImpl1 solver;
 
-    EXPECT_DOUBLE_EQ(solver.derivate(0.0, 42.0, zeroDerivative3, 7.0, 11.0), 42.0);
+    EXPECT_THROW(
+        solver.derivate(0.0, 42.0, zeroDerivative3, 7.0, 11.0),
+        std::logic_error);
 }
 
-TEST(LegacySolverDerivativeRegression, ZeroDerivativePreservesInitialValueForFourArgumentFunction) {
+TEST(LegacySolverDerivativeRegression, RejectsUndefinedFourArgumentDerivativeContract) {
     SolverDefaultImpl1 solver;
 
-    EXPECT_DOUBLE_EQ(solver.derivate(0.0, 42.0, zeroDerivative4, 7.0, 11.0, 13.0), 42.0);
+    EXPECT_THROW(
+        solver.derivate(0.0, 42.0, zeroDerivative4, 7.0, 11.0, 13.0),
+        std::logic_error);
 }
 
-TEST(LegacySolverDerivativeRegression, ZeroDerivativePreservesInitialValueForFiveArgumentFunction) {
+TEST(LegacySolverDerivativeRegression, RejectsUndefinedFiveArgumentDerivativeContract) {
     SolverDefaultImpl1 solver;
 
-    EXPECT_DOUBLE_EQ(solver.derivate(0.0, 42.0, zeroDerivative5, 7.0, 11.0, 13.0, 17.0), 42.0);
+    EXPECT_THROW(
+        solver.derivate(0.0, 42.0, zeroDerivative5, 7.0, 11.0, 13.0, 17.0),
+        std::logic_error);
 }
