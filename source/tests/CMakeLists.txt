@@ -7,10 +7,12 @@ if(TARGET genesys_kernel_unit_tests AND TARGET genesys_test_ai_plugins)
 endif()
 
 if(TARGET genesys_kernel_unit_tests_run AND TARGET genesys_test_ai_plugins)
-    add_custom_command(TARGET genesys_kernel_unit_tests_run
-        POST_BUILD
+    add_custom_target(genesys_test_ai_plugins_run
         COMMAND $<TARGET_FILE:genesys_test_ai_plugins>
+        DEPENDS genesys_test_ai_plugins
+        USES_TERMINAL
     )
+    add_dependencies(genesys_kernel_unit_tests_run genesys_test_ai_plugins_run)
 endif()
 
 option(GENESYS_BUILD_SMOKE_TESTS "Build smoke tests under source/tests/smoke" ON)
