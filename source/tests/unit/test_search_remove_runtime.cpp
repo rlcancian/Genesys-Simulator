@@ -9,7 +9,6 @@
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Waiting.h"
 
 #include <vector>
 
