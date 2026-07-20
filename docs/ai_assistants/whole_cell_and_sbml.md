@@ -53,10 +53,105 @@ Whole-cell modeling is a domain-specific layer above biochemical and simulation 
 
 Guidance:
 
-- Preserve the distinction between biochemical infrastructure and whole-cell orchestration.
+- Preserve the distinction between biochemical infrastructure and whole-cell modeling orchestration.
 - Validate mathematical and biological semantics before behavior changes.
 - Treat GLPK/FBA-related behavior and fallback logic as correctness-sensitive.
 - Keep whole-cell state serialization explicit and testable.
+
+## Scientific validation criteria
+
+Decision date: 2026-07-20.
+
+Scientific validity is not established by successful compilation, a passing smoke test, or plausible-looking output. Evidence must match the level of claim made by the feature/model.
+
+Validation must be considered across these dimensions:
+
+### 1. Software correctness
+
+- lifecycle and ownership;
+- persistence and load/save symmetry;
+- deterministic/error behavior;
+- invalid-input handling;
+- absence of known UB/leaks in validated paths;
+- reproducible tests.
+
+### 2. Mathematical correctness
+
+- declared equations and algorithms;
+- reaction stoichiometry and propensity definitions;
+- constraints, conservation laws, units, dimensions, initial conditions, and boundary conditions;
+- explicit parameterization when multiple conventions exist.
+
+### 3. Numerical correctness
+
+- solver order and convergence;
+- tolerance and step-size policy;
+- stability and stiffness behavior;
+- non-negativity and conservation policy;
+- stochastic sampling and statistical consistency;
+- failure and non-finite-value behavior.
+
+### 4. Biochemical/biological semantic correctness
+
+- explicit meaning of species, compartments, reactions, gene-expression events, cell-cycle rules, resource budgets, and states;
+- valid domains and biological assumptions;
+- distinction between mechanistic representation and empirical approximation.
+
+### 5. Interoperability correctness
+
+- declared SBML level/version/packages and supported construct matrix;
+- explicit diagnostics for unsupported constructs;
+- preservation of identifiers, units, compartments, reactions, parameters, events, rules, and annotations within the supported subset;
+- no silent semantic loss during import/export;
+- round-trip tests for supported constructs.
+
+### 6. Empirical or benchmark validation
+
+- analytical cases where available;
+- published/curated biochemical or whole-cell models;
+- comparator simulators with documented versions/settings;
+- laboratory/experimental datasets when the claim is quantitative;
+- uncertainty, sensitivity, and parameter-identifiability evidence when applicable.
+
+### 7. Reproducibility and provenance
+
+- model and code version;
+- source of parameters and units;
+- random seeds;
+- solver configuration;
+- optional dependency versions;
+- calibration/validation datasets;
+- result and transformation provenance.
+
+## Scientific claim levels
+
+1. **Educational/demonstrative**
+   - illustrates a mechanism or architecture;
+   - does not claim quantitative reproduction of a biological system.
+
+2. **Mechanistic research prototype**
+   - equations/interactions are meaningful and reference-backed;
+   - selected benchmark behavior is validated;
+   - quantitative generalization remains limited.
+
+3. **Quantitatively validated model**
+   - calibrated and validated against declared data/protocols;
+   - uncertainty, sensitivity, parameter identifiability, and prediction intervals are addressed when relevant.
+
+4. **Predictive biological model**
+   - prospective prediction claims require strong independent validation;
+   - this is a substantially higher bar than software/mathematical correctness.
+
+## Current claim policy
+
+Until an explicit domain-specific validation package is approved, biochemical and whole-cell functionality must be described as experimental/research-oriented. GenESyS must not make a general predictive-validity claim for these features.
+
+Status:
+
+- validation dimensions and no-overclaim policy: `decided`;
+- exact initial claim level, benchmark suite, supported scientific scope, and authoritative references: `needs-human-decision`.
+
+See `genesys_2026_human_decisions.md` for the detailed decision record.
 
 ## GUI integration policy
 
@@ -70,10 +165,14 @@ For whole-cell or SBML changes, prefer this order:
 
 1. Run unit-test validation.
 2. Validate affected plugin load/save behavior.
-3. Validate import/export round trip when SBML is involved.
-4. Validate diagnostics for unsupported constructs.
-5. Validate GUI dependency gating when user-facing workflows are affected.
-6. Validate optional numerical dependencies separately.
+3. Validate mathematical invariants, units, conservation, and invalid-domain behavior.
+4. Validate numerical convergence/stability/tolerance behavior.
+5. Validate import/export round trip when SBML is involved.
+6. Validate diagnostics for unsupported constructs and semantic loss.
+7. Validate GUI dependency gating when user-facing workflows are affected.
+8. Validate optional numerical dependencies separately, including GLPK and fallback behavior.
+9. Compare with declared analytical, published, dataset, or simulator references.
+10. Record reproducibility/provenance information for benchmark results.
 
 ## Open follow-up tasks
 
@@ -81,4 +180,8 @@ For whole-cell or SBML changes, prefer this order:
 - Revalidate SBML import/export implementation status against current code.
 - Define minimal SBML fixtures for import/export regression tests.
 - Decide which SBML constructs are explicitly supported, ignored, or rejected.
+- Select the initial scientific claim level: educational/demonstrative or mechanistic research prototype.
+- Define canonical units, conservation invariants, solver/tolerance policy, and stochastic-validation methodology.
+- Select reference models, datasets, publications, and comparator simulators.
+- Define acceptance criteria for GLPK-backed and fallback solver behavior.
 - Consolidate TinkerCell context into current GUI/SBML integration policy.
