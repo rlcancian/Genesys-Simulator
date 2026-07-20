@@ -46,20 +46,15 @@ The current architectural direction is:
 
 ## GUI frontend mapping
 
-Planned GUI frontend mapping:
-
 ```text
 source/tools/Statistics/        -> source/applications/gui/dataanalyser/
 source/tools/Optimization/      -> source/applications/gui/optimizer/
 source/tools/AIAssistant/       -> source/applications/gui/ai_assistant/
 source/tools/FactorialDesign/   -> source/applications/gui/doexperiments/
-```
-
-The HTTP/background worker is not a statistical/tool backend. Its runtime belongs to the application layer, and its graphical control frontend belongs under the GUI applications area:
-
-```text
 source/applications/worker/     -> source/applications/gui/httpworker/
 ```
+
+The worker is an application runtime, not a statistical/tool backend.
 
 ## Data Analyzer concepts
 
@@ -97,8 +92,6 @@ Decision date: 2026-07-20.
 
 An authoritative reference is the declared oracle for the exact mathematical formulation and parameterization implemented by GenESyS. Another software package may corroborate a result, but it is not automatically the specification.
 
-The professor may provide bibliographic references, thesis material, equations, algorithms, datasets, source code, and benchmark results. Those materials are preferred when they define the intended GenESyS behavior.
-
 Validation evidence should be ordered as follows:
 
 1. analytical invariants or closed-form solutions;
@@ -123,12 +116,16 @@ For each algorithm, document:
 
 R, SciPy, Boost.Math, GNU Scientific Library, or another independent package may be used as a comparator, but the test/documentation must state whether the package is normative or merely corroborating.
 
-Status:
+Current status:
 
 - validation framework: `decided`;
-- authoritative bibliography per method: `needs-human-decision`.
+- bibliography, PDFs, converted material, datasets, parameterizations, and expected results: `deferred` for a future acquisition round;
+- provisional methods must not be reclassified as scientifically validated without a declared reference package.
 
-See `genesys_2026_human_decisions.md` for the complete record.
+See:
+
+- `genesys_numerical_statistical_references_plan.md`;
+- `genesys_2026_decisions_addendum_20260720.md`.
 
 ## DOE and optimization policy
 
@@ -145,9 +142,18 @@ A robust flow should eventually include:
 - desirability functions;
 - candidate solution search and confirmation.
 
-## Optimizer maturity policy
+## Project maturity policy
 
-User-visible maturity describes what GenESyS claims the Optimizer can reliably do. A class compiling or a GUI starting does not establish algorithmic maturity.
+The project-wide target is:
+
+1. bring all supported functionality to at least **Level 3 — Beta**;
+2. after the supported set reaches Level 3, promote prioritized functionality to **Level 4 — Stable user feature**.
+
+Levels 1 and 2 remain accurate diagnostic states for current incomplete functionality, but they are not accepted final delivery states for supported features.
+
+A feature may be removed from the supported set or explicitly deferred instead of being falsely labelled Beta.
+
+## Optimizer maturity and research direction
 
 Maturity levels:
 
@@ -159,22 +165,41 @@ Maturity levels:
 Current classification:
 
 - `OptimizerDefaultImpl1`: internal scaffold / `partially-implemented`;
-- stable user-facing optimizer claim: not authorized;
-- initial real algorithm: `needs-human-decision`.
+- Level 3 claim: not yet authorized;
+- minimum target for supported Optimizer functionality: Level 3;
+- later prioritized target: Level 4.
 
-The professor's multiobjective optimization techniques from his doctoral research are a preferred candidate source. Before implementation, record the relevant thesis chapters/papers, algorithm/pseudocode/source, licensing/ownership, supported variables/objectives/constraints, simulation-noise policy, archive/dominance/diversity rules, stopping criteria, reproducibility policy, and benchmark problems.
+Initial future research will cover:
+
+- evolutionary multiobjective optimization;
+- Pareto dominance and external archives;
+- hypervolume and hypervolume contribution;
+- ETH Zürich / Eckart Zitzler research lineage;
+- PISA;
+- HypE;
+- SPEA/SPEA2;
+- IBEA;
+- ZDT and related benchmarks;
+- statistical performance assessment of stochastic optimizers.
+
+The professor's doctoral multiobjective optimization techniques, code, references, and benchmark results are preferred inputs for the first GenESyS algorithm implementation.
 
 Recommended implementation sequence:
 
-1. define backend-neutral contracts for decision variables, model mutation, simulation evaluation, objective/constraint evaluation, algorithm state, archive, cancellation, reporting, and persistence;
-2. select one reference algorithm from the professor's research;
-3. unit-test dominance, constraints, archives, operators/search steps, and stopping rules;
-4. validate against declared thesis/reference benchmarks;
-5. add stochastic simulation replication/noise handling;
-6. expose it as a research prototype only after end-to-end validation;
-7. add additional algorithms behind the same backend interface.
+1. acquire thesis/research material and external references;
+2. define backend-neutral contracts for decisions, model mutation, simulation evaluation, objectives, constraints, archive, indicators, cancellation, reporting, and persistence;
+3. unit-test dominance, constraints, archive behavior, indicators, operators/search steps, and stopping rules;
+4. implement one real reference algorithm;
+5. validate against declared benchmarks;
+6. add stochastic simulation replication/noise handling;
+7. integrate realistic GenESyS model evaluation;
+8. complete the Level 3 GUI/workflow;
+9. only then prioritize Level 4 algorithms/workflows.
 
-See `genesys_2026_human_decisions.md` for the detailed maturity and input checklist.
+See:
+
+- `genesys_multiobjective_optimizer_future_plan.md`;
+- `genesys_2026_decisions_addendum_20260720.md`.
 
 ## GUI extraction policy
 
@@ -190,7 +215,7 @@ When extracting a GUI tool into its own graphical application:
 
 Data Analyser is the preferred first tool extraction candidate because file/dataset workflows can be validated without requiring full live-model process sharing.
 
-Optimizer and AI Assistant require additional context-handoff review before extraction because they depend more directly on the current simulator/model context, provider configuration, secret handling, or backend object lifetime assumptions.
+Optimizer and AI Assistant require additional context-handoff review because they depend directly on simulator/model context, provider configuration, secret handling, or backend lifetime assumptions.
 
 Do Experiments should be introduced only after the FactorialDesign workflow and GUI requirements are specified.
 
@@ -206,15 +231,16 @@ For tools/statistics changes, prefer this order:
 6. Validate empty data, one observation, repeated values, non-finite values, incompatible dataset groups, and invalid parameters.
 7. Record comparator versions, tolerances, and exact reference provenance.
 8. For stochastic algorithms, record seed, replication, confidence, and noise-handling policy.
+9. Verify the Level 3 acceptance checklist before labelling a supported workflow Beta.
 
 ## Open follow-up tasks
 
 - Inventory current Data Analyzer and Optimizer source files.
 - Separate GUI prototype code from backend numerical/statistical classes.
+- Execute `genesys_numerical_statistical_references_plan.md` when the professor can provide source material.
 - Add reference-backed tests for exploratory statistics and distribution fitting.
-- Define a precise policy for chi-square and Kolmogorov-Smirnov diagnostics.
-- Collect professor-approved numerical/statistical bibliography and benchmark values.
-- Define how Genesys simulation responses become datasets in an Analysis Study.
+- Define a precise policy for chi-square and Kolmogorov–Smirnov diagnostics.
+- Define how GenESyS simulation responses become datasets in an Analysis Study.
 - Define model/context handoff for standalone Data Analyser and Optimizer executions.
-- Select and specify the first real optimization algorithm, preferably from the professor's multiobjective research.
+- Execute the research and architecture phases in `genesys_multiobjective_optimizer_future_plan.md`.
 - Define the future Do Experiments GUI workflow on top of FactorialDesign.
