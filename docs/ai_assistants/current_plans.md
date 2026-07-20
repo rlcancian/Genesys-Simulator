@@ -342,3 +342,16 @@ Current state at this handoff:
 - focused GUI GMDD tests still fail;
 - diagnostic workflow still active;
 - PR #451 must remain draft.
+
+## GenESyS 2026 consolidation audit
+
+- Date: 2026-07-20.
+- Base branch: `WorkInProgress`.
+- Base commit: `b25a4d2ec31abe27f1bf3597a5135fa4828fbc35`.
+- Status: `needs-local-validation`.
+- Plan: [`genesys_2026_consolidation_plan.md`](./genesys_2026_consolidation_plan.md).
+- Test matrix: [`genesys_2026_test_matrix.md`](./genesys_2026_test_matrix.md).
+- Module inventory: [`genesys_2026_module_inventory.md`](./genesys_2026_module_inventory.md).
+- Operational handoff: [`genesys_2026_consolidation_handoff.md`](./genesys_2026_consolidation_handoff.md).
+- Scope: evidence-based consolidation of build/CI/tests, numerical correctness, ownership, plugins, applications, scientific tooling, documentation, and release readiness.
+- Next step: execute Phase 0 locally or in CI without functional changes, reproduce the unit/kernel/smoke baseline, and record exact failures in the handoff.

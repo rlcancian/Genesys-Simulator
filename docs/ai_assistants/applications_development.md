@@ -10,10 +10,11 @@ Historical notes from `oldies/` must be checked against current source files bef
 
 Primary source areas:
 
-- `source/applications/terminal/`
-- `source/applications/web/`
+- `source/applications/shell/`
+- `source/applications/worker/`
 - `source/applications/gui/`
-- future application folders such as HTTP worker, MCP, or GUI variants when introduced
+- `source/applications/modelSpecific/`
+- future application folders such as MCP or additional GUI variants when introduced
 
 ## General policy
 
@@ -21,20 +22,41 @@ Application-level changes should remain isolated from the kernel unless a kernel
 
 Before changing kernel code for an application need, document the requirement, the existing API limitation, affected callers, and required tests.
 
+## Qt baseline policy
+
+Decision date: 2026-07-20.
+
+GenESyS supports Qt6 only. Qt5 compatibility is no longer part of the intended platform contract.
+
+Status:
+
+- Qt6-only policy: `decided`;
+- removal of remaining Qt5 fallback code and documentation: `needs-implementation`.
+
+Implementation implications:
+
+- GUI targets should use `find_package(Qt6 REQUIRED ...)` without Qt5 fallback;
+- active Qt5 compatibility branches, build-script references, tests, README instructions, and packaging dependencies should be removed in a bounded change;
+- retained historical documents under `oldies/` may continue to mention Qt5 when clearly historical;
+- all GUI targets and GUI tests must be validated after the removal;
+- no assistant should preserve a Qt5 fallback merely because it still exists in current CMake/source files.
+
+The acceptance criteria and currently known Qt5 reference areas are recorded in `genesys_2026_human_decisions.md`.
+
 ## Terminal application
 
 Guidance:
 
-- Prefer preset-based terminal validation.
+- Prefer preset-based terminal/shell validation.
 - Keep terminal example selection explicit and reproducible.
 - Avoid compiling every example by default unless build-time impact is acceptable.
-- Keep terminal changes separate from GUI and web assumptions.
+- Keep terminal changes separate from GUI and worker assumptions.
 
-## Web application
+## Worker HTTP/API application
 
 Guidance:
 
-- Treat the current web application as an existing application layer, not as a pending skeleton.
+- Treat the current worker as an existing application layer, not as a pending skeleton.
 - Keep HTTP/API behavior decoupled from GUI behavior.
 - Prefer service-layer changes over direct route-to-kernel coupling.
 - Validate API changes with minimal integration or smoke tests when possible.
@@ -43,19 +65,54 @@ Known follow-up candidates:
 
 - confirm whether plugin autoload remains part of the target API contract;
 - evaluate pause, resume, and stop endpoints if simulation control requires them;
-- review JSON parsing, payload-size, timeout, and error-handling behavior before public deployment.
+- review JSON parsing, payload-size, timeout, authentication, and error-handling behavior before intranet deployment.
 
 ## HTTP worker application direction
 
-The current `source/applications/web/` tree is planned to become semantically clearer as an HTTP/background worker application area.
+The current `source/applications/worker/` tree is the HTTP/background worker application area.
 
-Planned direction:
+Direction:
 
-- prefer the name `httpworker` for the application concept when folder and target migrations begin;
 - keep the HTTP/API runtime decoupled from any graphical frontend;
 - treat the graphical Web Worker control window as a GUI application frontend, not as part of `source/tools/`;
-- preserve compatibility aliases for existing `web` CMake targets and installed binary names until CI, packaging, documentation, and user workflows have been updated;
-- avoid changing HTTP/API behavior during pure folder-renaming commits.
+- preserve compatibility aliases for existing `web` CMake options/target names only until CI, packaging, documentation, and user workflows have been updated;
+- avoid changing HTTP/API behavior during pure folder/target-renaming commits.
+
+## Worker deployment and exposure policy
+
+The intended primary deployment profile is a controlled academic intranet: a worker in a computer laboratory accepts parallel simulation requests from authorized computers on the private institutional/laboratory network.
+
+Public Internet exposure is not an approved default.
+
+Supported planning profiles are:
+
+1. local-only loopback execution;
+2. controlled academic intranet;
+3. hardened Internet-facing service;
+4. outbound/pull worker connected to a coordinator.
+
+For the controlled-intranet profile, the minimum security direction is:
+
+- explicit private-interface binding and firewall allowlists;
+- TLS for credentials and simulation data;
+- unique, expiring, rotatable, revocable client/user credentials;
+- preferably mutual TLS for managed laboratory machines, or short-lived signed tokens over TLS;
+- OS-backed cryptographically secure randomness;
+- request/job quotas, timeouts, payload limits, and concurrent-job limits;
+- no arbitrary shell command or unrestricted user code execution through the worker API;
+- dedicated service identity, restricted filesystem access, controlled temporary directories, and CPU/RAM/time limits;
+- authenticated job ownership, audit logging, request IDs, result provenance, and API versioning;
+- deny-by-default behavior when authentication or required security configuration is missing;
+- secrets absent from command-line arguments, logs, models, and client-visible configuration.
+
+Status:
+
+- intended controlled-intranet profile: recorded;
+- public Internet exposure by default: not approved;
+- security hardening for intranet deployment: `needs-implementation`;
+- exact authentication choice: `needs-human-decision`.
+
+See `genesys_2026_human_decisions.md` for the tradeoffs among static bearer tokens, short-lived signed tokens, mutual TLS, institutional identity, and outbound/pull deployment.
 
 ## GUI application
 
@@ -123,33 +180,20 @@ Each GUI application may decide whether to use explicit source lists or a scoped
 
 - Date: 2026-07-03
 - Branch: `WiP20261`
-- Status: initial inventory; revalidate before moving files.
+- Status: historical initial inventory; revalidate against the current branch before using paths or implementation status.
 
-Confirmed current entry points:
+The original inventory recorded direct hosting of Web Worker, Data Analyzer, Optimizer, and AI Assistant windows in the main GUI. Current branch structure and CMake targets must take precedence over that historical inventory.
 
-- `MainWindow` exposes tool/action slots for parser grammar checking, Web Worker, experimentation, optimizer, AI assistant, and data analyzer.
-- `DialogUtilityController` directly includes and constructs `AIAssistantWindow`, `DataAnalyzerWindow`, and `OptimizerWindow`.
-- `MainWindow` directly owns a modeless `WebWorkerDialog` through `QPointer<WebWorkerDialog>`.
-- The current GUI CMake file gathers all `.cpp` files under the current main GUI directory using broad recursive source collection. This is safe only while the collection remains scoped to that single application tree.
+Current conceptual classifications remain:
 
-Initial classification:
-
-| Current artifact | Current location | Current type | Planned classification | Extraction priority |
-| --- | --- | --- | --- | --- |
-| Main GenESyS GUI | `source/applications/gui/qt/GenesysQtGUI/` | `QMainWindow` application | `source/applications/gui/genesys/` | first structural move after CMake source scoping is safe |
-| Web Worker control window | `source/applications/gui/qt/GenesysQtGUI/dialogs/WebWorkerDialog.*` | `QDialog` owning its own `WebWorkerRuntime` | `source/applications/gui/httpworker/` | after HTTP worker application/core naming is stabilized |
-| Data Analyzer | `source/applications/gui/qt/GenesysQtGUI/tools/dataanalyzer/` | `QMainWindow` with file/dataset and optional simulator snapshot workflows | `source/applications/gui/dataanalyser/` | preferred first tool frontend extraction |
-| Optimizer | `source/applications/gui/qt/GenesysQtGUI/tools/optimizer/` | `QMainWindow` tied to current simulator/model controls and responses | `source/applications/gui/optimizer/` | after model/context handoff and backend lifetime review |
-| AI Assistant | `source/applications/gui/qt/GenesysQtGUI/tools/aiassistant/` | `QMainWindow` using AI assistant backend, simulator facade, secrets, and provider configuration | `source/applications/gui/ai_assistant/` | after secret/configuration/model-context review |
-| Expression Builder | `source/applications/gui/qt/GenesysQtGUI/tools/expressionbuilder/` | `QDialog` utility | out of scope for this GUI-application refactoring | remove from this plan; future replacement should be integrated with the Property Editor |
-| Experimentation / Do Experiments | slot exists as legacy placeholder; no current exposed action confirmed in this inventory | placeholder | future `source/applications/gui/doexperiments/` frontend over `source/tools/FactorialDesign/` | after workflow specification |
-
-Immediate migration implication:
-
-- Do not create new `main.cpp` files below the current `GenesysQtGUI` tree while broad recursive source collection is active.
-- New GUI applications must be sibling subdirectories below the GUI umbrella, each with an independent `CMakeLists.txt` and executable target.
-- A future process-launching service should replace direct widget construction in `MainWindow`/`DialogUtilityController` only after each target frontend executable exists and has a minimal startup validation path.
-- `ExpressionBuilder` is not part of the application/tool frontend split and should not drive folder or target design.
+| Artifact | Planned/current application classification | Consolidation concern |
+|---|---|---|
+| Main GenESyS GUI | `source/applications/gui/genesys/` | Qt6 build, GUI tests, packaging |
+| Web Worker control frontend | `source/applications/gui/httpworker/` | secure process/API handoff |
+| Data Analyser | `source/applications/gui/dataanalyser/` | backend/frontend separation |
+| Optimizer | `source/applications/gui/optimizer/` | model context and incomplete backend |
+| AI Assistant | `source/applications/gui/ai_assistant/` | secret/configuration/model context |
+| Do Experiments | future `source/applications/gui/doexperiments/` | workflow not yet specified |
 
 ## Folder restructuring
 
@@ -160,7 +204,7 @@ Suggested migration rules:
 - move files in small commits;
 - update CMake immediately with each move;
 - avoid renaming executable targets casually because packaging and CI may depend on them;
-- test terminal, web, and GUI presets independently after structural moves.
+- test shell, worker, and GUI presets independently after structural moves.
 
 ## Validation checklist
 
@@ -169,17 +213,20 @@ For application changes, prefer this order:
 1. Run unit-test validation.
 2. Build the affected application preset.
 3. Run a minimal startup or smoke validation for the affected executable.
-4. For web changes, validate health/status behavior.
+4. For worker changes, validate health/status, authentication, authorization, payload limits, and failure behavior.
 5. For GUI changes, validate startup and a minimal model interaction when a display environment is available.
 6. For packaging-related changes, validate executable names and install paths separately.
+7. For Qt compatibility removal, search active source/build/docs for Qt5 and validate every Qt6 GUI target.
+8. For network-facing changes, validate firewall/bind assumptions and avoid public exposure during tests.
 
 ## Open follow-up tasks
 
+- Remove active Qt5 fallback code and validate the Qt6-only build matrix.
 - Revalidate the current application tree and CMake target names.
-- Consolidate the proposed application-folder restructuring into a separate migration plan.
-- Add lightweight web integration tests if the current test structure supports them.
+- Add lightweight worker integration/security tests if the current test structure supports them.
 - Define packaging-facing executable and man-page expectations for Debian/PPA.
-- Define the compatibility policy for the planned `web` to `httpworker` transition.
+- Complete the compatibility cleanup for historical `web` names after CI and packaging are updated.
 - Define the process-launching contract used by the main GUI to start sibling GUI applications.
-- Revalidate the GUI-hosted frontend inventory before each extraction PR.
+- Revalidate GUI-hosted frontend behavior before each extraction or cleanup PR.
 - Remove or replace the current Expression Builder menu entry in a dedicated GUI cleanup change.
+- Select the controlled-intranet worker authentication mechanism.
