@@ -7,7 +7,7 @@
 - Base commit inspected: `b25a4d2ec31abe27f1bf3597a5135fa4828fbc35`.
 - Work branch created: `audit/genesys-2026-consolidation-plan-20260720`.
 - Commits created: documentation-only commits on the work branch.
-- Pull request: pending creation at the time of this handoff file commit.
+- Pull request: draft PR #469, `docs: add GenESyS 2026 consolidation plan`, targeting `WorkInProgress`.
 - Main documents generated:
   - `docs/ai_assistants/genesys_2026_consolidation_plan.md`;
   - `docs/ai_assistants/genesys_2026_test_matrix.md`;
@@ -16,6 +16,7 @@
 - Existing documents updated:
   - `docs/ai_assistants/current_plans.md`.
 - Local validation executed: none; audit performed through GitHub repository/PR inspection only.
+- CI validation: pending for PR #469 at this handoff update.
 - Short observation: the plan and inventories are ready for review, but all configure/build/test results require local or CI execution before status can become `validated`.
 
 ## 2. What was done
@@ -34,6 +35,7 @@
 - Created a module inventory with status and future ownership by humans/AI.
 - Added a minimal reference entry to `current_plans.md`.
 - Created this operational handoff for future assistants.
+- Opened draft PR #469 against `WorkInProgress`.
 
 ## 3. Relevant comments made during execution
 
@@ -82,7 +84,7 @@
 - Impact: a PR can remain red even when ordinary unit compilation succeeds; release readiness cannot be inferred.
 - Decision taken: classify CI as P0 and require reproduction before other large work.
 - Status: `blocked`.
-- Next recommended action: run the audit PR, inspect both jobs, and decide which jobs are required status checks.
+- Next recommended action: run PR #469, inspect both jobs, and decide which jobs are required status checks.
 
 ### 4.4 Plugin target overlap
 
@@ -172,7 +174,7 @@ Documentation adjustments:
 - GUI: `not-executed`; prior repository evidence reports three GMDD failures.
 - Web/worker: `not-executed`; current executable is worker-oriented, and security risks were identified by source inspection.
 - Shell/modelSpecific: `not-executed`; presets/targets inspected.
-- CI/GitHub Actions: workflow inspected; audit-branch run pending PR creation.
+- CI/GitHub Actions: workflow inspected; PR #469 opened and initial run status pending.
 - Limitations: GitHub-only environment, no compiler, no Qt runtime, no sanitizer, no package installation, no local branch graph.
 
 ## 8. State of the created plan
@@ -254,7 +256,7 @@ Documentation adjustments:
    - Acceptance: exact failing tests and first failures recorded for all three baseline presets.
    - Execution: autonomous AI locally; no functional changes.
 
-2. Inspect the audit PR CI.
+2. Inspect PR #469 CI.
    - Objective: determine whether the normal unit job and GUI diagnostic job behave as documented.
    - Module: GitHub Actions.
    - Reference: plan Phase 0.
@@ -335,4 +337,4 @@ Next assistant: first read `docs/ai_assistants/README.md`, then `genesys_2026_co
 
 ## 13. Operational result
 
-Result: consolidation plan created and ready for review, with local/CI validation pending.
+Result: consolidation plan created and ready for review in draft PR #469, with local/CI validation pending.
