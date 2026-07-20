@@ -75,11 +75,23 @@ target_link_libraries(genesys_test_search_remove_runtime
 
 target_compile_features(genesys_test_search_remove_runtime PRIVATE cxx_std_23)
 
+target_compile_options(genesys_test_search_remove_runtime
+    PRIVATE
+        -fsanitize=address,undefined
+        -fno-omit-frame-pointer
+)
+
+target_link_options(genesys_test_search_remove_runtime
+    PRIVATE
+        -fsanitize=address,undefined
+)
+
 set_property(TARGET genesys_test_search_remove_runtime PROPERTY FOLDER tests/unit)
 
 gtest_discover_tests(genesys_test_search_remove_runtime
     PROPERTIES
         LABELS "unit;runtime;search-remove"
+        ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:halt_on_error=1;UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
 )
 
 if(TARGET genesys_kernel_unit_tests)
