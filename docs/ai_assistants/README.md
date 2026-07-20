@@ -23,6 +23,7 @@ Read this file before using or updating the other files in this directory.
 - `genesys_2026_test_matrix.md`: executable validation matrix for modules and applications.
 - `genesys_2026_module_inventory.md`: module, target, test, documentation, and risk inventory.
 - `genesys_2026_consolidation_handoff.md`: current operational handoff for the consolidation work.
+- `genesys_2026_phase0_ci_evidence_20260720.md`: executed Phase 0 CI checkpoint for the current consolidation PR head; supersedes older current-status claims about the three GUI GMDD tests.
 - `genesys_2026_human_decisions.md`: initial approved decisions, clarified options, and remaining human choices.
 - `genesys_2026_decisions_addendum_20260720.md`: later decisions that supersede conflicting statements, including `20261`/`20262`, stable C ABI, Level 3 maturity policy, intranet worker profile, and AI virtual-cell direction.
 - `genesys_numerical_statistical_references_plan.md`: deferred plan for acquiring bibliography, PDFs, datasets, parameterizations, and expected results.
@@ -43,8 +44,9 @@ Read this file before using or updating the other files in this directory.
 6. Do not delete historical files from `oldies/` before their relevant content has been consolidated or explicitly discarded.
 7. Prefer stable documents in this directory over historical files in `oldies/` when both cover the same topic.
 8. Read `genesys_2026_human_decisions.md` and `genesys_2026_decisions_addendum_20260720.md` before making changes that depend on a human architectural, scientific, maturity, security, or branch-governance decision.
-9. When two stable decision documents conflict, the later explicitly superseding addendum takes precedence.
-10. Do not claim Level 3 or Level 4 maturity without satisfying the documented acceptance criteria.
+9. Read the latest dated execution-evidence document before treating a historical test failure or CI result as current.
+10. When two stable decision documents conflict, the later explicitly superseding addendum takes precedence.
+11. Do not claim Level 3 or Level 4 maturity without satisfying the documented acceptance criteria.
 
 ## Historical material
 
