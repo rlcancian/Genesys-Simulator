@@ -19,6 +19,11 @@ Read this file before using or updating the other files in this directory.
 - `python_integration.md`: Python-facing integration guidance.
 - `documentation_governance.md`: documentation retention and governance guidance.
 - `branch_workflow.md`: repository branch/versioning policy and promotion flow.
+- `genesys_2026_consolidation_plan.md`: prioritized post-2026-1 consolidation plan.
+- `genesys_2026_test_matrix.md`: executable validation matrix for modules and applications.
+- `genesys_2026_module_inventory.md`: module, target, test, documentation, and risk inventory.
+- `genesys_2026_consolidation_handoff.md`: current operational handoff for the consolidation work.
+- `genesys_2026_human_decisions.md`: approved decisions, clarified options, and remaining human choices for plugins, Qt, scientific validation, optimization, worker security, and release promotion.
 - `oldies_inventory.md`: inventory of temporary historical documents retained in `oldies/`.
 - `oldies_review_status.md`: review matrix for historical files before deletion.
 - `consolidation_map.md`: target map for consolidating historical documents into stable AI-assistant documentation.
@@ -33,6 +38,7 @@ Read this file before using or updating the other files in this directory.
 5. Validate changes with CMake, Ninja, and CTest when the environment allows it.
 6. Do not delete historical files from `oldies/` before their relevant content has been consolidated or explicitly discarded.
 7. Prefer stable documents in this directory over historical files in `oldies/` when both cover the same topic.
+8. Read `genesys_2026_human_decisions.md` before making changes that depend on an approved or pending human architectural decision.
 
 ## Historical material
 
