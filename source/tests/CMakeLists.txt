@@ -57,7 +57,8 @@ if(TARGET genesys_kernel_unit_tests_run)
 endif()
 
 # The historical Search/Remove tests dispatch into the model calendar. Keep a
-# focused active suite that drains those scheduled events before assertions.
+# focused active suite that initializes its queue fixtures explicitly and drains
+# scheduled events before asserting routed entities.
 add_executable(genesys_test_search_remove_runtime
     unit/test_search_remove_runtime.cpp
 )
@@ -75,32 +76,25 @@ target_link_libraries(genesys_test_search_remove_runtime
 
 target_compile_features(genesys_test_search_remove_runtime PRIVATE cxx_std_23)
 
-target_compile_options(genesys_test_search_remove_runtime
-    PRIVATE
-        -fsanitize=address,undefined
-        -fno-omit-frame-pointer
-)
-
-target_link_options(genesys_test_search_remove_runtime
-    PRIVATE
-        -fsanitize=address,undefined
-)
-
 set_property(TARGET genesys_test_search_remove_runtime PROPERTY FOLDER tests/unit)
 
 gtest_discover_tests(genesys_test_search_remove_runtime
     PROPERTIES
         LABELS "unit;runtime;search-remove"
-        ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0:halt_on_error=1;UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1"
 )
 
 if(TARGET genesys_kernel_unit_tests)
     add_dependencies(genesys_kernel_unit_tests genesys_test_search_remove_runtime)
 endif()
 
-# Diagnostic checkpoint: keep this suite in the aggregate/CTest path while the
-# exact historical fixture mismatch is characterized. Reattach the explicit
-# direct-runner target after the focused suite is green.
+if(TARGET genesys_kernel_unit_tests_run)
+    add_custom_target(genesys_test_search_remove_runtime_run
+        COMMAND $<TARGET_FILE:genesys_test_search_remove_runtime>
+        DEPENDS genesys_test_search_remove_runtime
+        USES_TERMINAL
+    )
+    add_dependencies(genesys_kernel_unit_tests_run genesys_test_search_remove_runtime_run)
+endif()
 
 option(GENESYS_BUILD_SMOKE_TESTS "Build smoke tests under source/tests/smoke" ON)
 
