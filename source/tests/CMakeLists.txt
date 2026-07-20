@@ -1,5 +1,18 @@
 add_subdirectory(unit)
 
+# The AI plugin tests use only local fakes/dummy connectors and must participate
+# in both the ordinary aggregate build and the direct kernel unit-test runner.
+if(TARGET genesys_kernel_unit_tests AND TARGET genesys_test_ai_plugins)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_ai_plugins)
+endif()
+
+if(TARGET genesys_kernel_unit_tests_run AND TARGET genesys_test_ai_plugins)
+    add_custom_command(TARGET genesys_kernel_unit_tests_run
+        POST_BUILD
+        COMMAND $<TARGET_FILE:genesys_test_ai_plugins>
+    )
+endif()
+
 option(GENESYS_BUILD_SMOKE_TESTS "Build smoke tests under source/tests/smoke" ON)
 
 if(GENESYS_BUILD_SMOKE_TESTS)
