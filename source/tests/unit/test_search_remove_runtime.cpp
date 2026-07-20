@@ -80,6 +80,7 @@ TEST(SearchRemoveRuntimeTest, SearchQueueFindsEntityInRangeSavesRankAndRoutesToF
 
     SearchProbe search(model, "SearchFind");
     Queue queue(model, "SearchFindQueue");
+    queue.setReportStatistics(false);
     CollectorSinkComponentProbe notFoundSink(model, "SearchFindNotFound");
     CollectorSinkComponentProbe foundSink(model, "SearchFindFound");
     search.getConnectionManager()->insert(&notFoundSink);
@@ -114,6 +115,7 @@ TEST(SearchRemoveRuntimeTest, SearchQueueNotFoundRoutesToPortZeroAndSavesZeroRan
 
     SearchProbe search(model, "SearchNotFound");
     Queue queue(model, "SearchNotFoundQueue");
+    queue.setReportStatistics(false);
     CollectorSinkComponentProbe notFoundSink(model, "SearchNotFoundOut0");
     CollectorSinkComponentProbe foundSink(model, "SearchNotFoundOut1");
     search.getConnectionManager()->insert(&notFoundSink);
@@ -147,6 +149,7 @@ TEST(SearchRemoveRuntimeTest, RemoveEqualStartAndEndRankRemovesExactlyOneAndRout
 
     RemoveProbe remove(model, "RemoveSingleRank");
     Queue queue(model, "RemoveSingleRankQueue");
+    queue.setReportStatistics(false);
     CollectorSinkComponentProbe mainSink(model, "RemoveSingleRankMain");
     CollectorSinkComponentProbe removedSink(model, "RemoveSingleRankRemoved");
     remove.getConnectionManager()->insert(&mainSink);
@@ -182,6 +185,7 @@ TEST(SearchRemoveRuntimeTest, RemoveRangeRemovesOnlyEntitiesInsideConfiguredInte
 
     RemoveProbe remove(model, "RemoveRange");
     Queue queue(model, "RemoveRangeQueue");
+    queue.setReportStatistics(false);
     CollectorSinkComponentProbe mainSink(model, "RemoveRangeMain");
     CollectorSinkComponentProbe removedSink(model, "RemoveRangeRemoved");
     remove.getConnectionManager()->insert(&mainSink);
