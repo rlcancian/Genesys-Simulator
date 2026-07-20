@@ -87,8 +87,13 @@ if(TARGET genesys_kernel_unit_tests)
 endif()
 
 if(TARGET genesys_kernel_unit_tests_run)
+    set(GENESYS_SEARCH_REMOVE_DIAGNOSTICS_DIR
+        "${CMAKE_BINARY_DIR}/search-remove-diagnostics")
     add_custom_target(genesys_test_search_remove_runtime_run
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+                "${GENESYS_SEARCH_REMOVE_DIAGNOSTICS_DIR}"
         COMMAND $<TARGET_FILE:genesys_test_search_remove_runtime>
+                --gtest_output=xml:${GENESYS_SEARCH_REMOVE_DIAGNOSTICS_DIR}/LastTest.log
         DEPENDS genesys_test_search_remove_runtime
         USES_TERMINAL
     )
