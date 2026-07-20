@@ -22,6 +22,34 @@ Plugin changes have higher regression risk than local implementation changes bec
 
 Prefer small, reviewable changes with explicit validation.
 
+## Current static-build decision
+
+Decision date: 2026-07-20.
+
+For the current consolidation phase, plugins remain compiled together with GenESyS through the static CMake build graph. Do not begin a broad conversion to separately distributed dynamic libraries during baseline stabilization.
+
+Current plugin work should instead:
+
+- map every plugin source to its CMake target and final executable;
+- remove or redesign overlapping source aggregation between full/minimal static plugin targets;
+- document registration, factories, metadata, dependencies, persistence, and lifecycle;
+- preserve existing plugin semantics while unit/smoke/CI baselines are stabilized;
+- keep dynamic-plugin research and student implementations as historical/design input, not as an approved production migration.
+
+Status:
+
+- current static aggregation policy: `decided`;
+- dynamic plugin migration: `deferred`;
+- exact future ABI/toolchain policy: `needs-human-decision`.
+
+See `genesys_2026_human_decisions.md` for the future options:
+
+- same-toolchain C++ ABI;
+- stable C ABI with opaque handles and versioned function tables;
+- out-of-process plugin/service protocol.
+
+No assistant should implement one of these alternatives until the requirements and compatibility horizon documented there are answered.
+
 ## Source areas
 
 Primary source areas:
@@ -53,6 +81,7 @@ Primary historical sources for plugin work:
 - Keep plugin architecture changes separate from ordinary bug fixes.
 - Validate load/save symmetry when persistence changes.
 - Validate GUI dependency gating when GUI contributions depend on model plugins.
+- Do not pass ownership of STL/Qt/C++ objects across a future binary boundary without an approved ABI and lifecycle contract.
 
 ## Validation checklist
 
@@ -60,7 +89,9 @@ For plugin changes, prefer this order:
 
 1. Configure and build the unit-test preset.
 2. Run CTest with the unit-test preset.
-3. Build the affected application preset if the plugin is GUI, web, or terminal-visible.
+3. Build the affected application preset if the plugin is GUI, worker, or terminal-visible.
 4. Load a minimal model that exercises the changed plugin, when possible.
 5. Validate save/load round trip if serialization changed.
 6. Validate dependency gating if GUI contributions depend on model plugins.
+7. Inspect link maps when modifying plugin target composition.
+8. Run ASan/LSan or equivalent diagnostics for plugin ownership/lifecycle changes when a validated diagnostic configuration exists.
