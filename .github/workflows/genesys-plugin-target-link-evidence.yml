@@ -1,0 +1,322 @@
+name: GenESyS Plugin Target Link Evidence
+
+run-name: Plugin link evidence | ${{ matrix.glpk }} | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - .github/workflows/genesys-plugin-target-link-evidence.yml
+      - source/plugins/**
+      - source/kernel/simulator/CMakeLists.txt
+      - source/applications/**/CMakeLists.txt
+      - source/tests/**/CMakeLists.txt
+      - CMakeLists.txt
+      - CMakePresets.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-plugin-target-link-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inspect:
+    name: Inspect archives and link graph (${{ matrix.glpk }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        glpk:
+          - present
+          - absent
+
+    env:
+      GLPK_MODE: ${{ matrix.glpk }}
+      BUILD_DIR: build/plugin-target-${{ matrix.glpk }}
+      EVIDENCE_DIR: genesys-plugin-link-evidence-${{ matrix.glpk }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          packages=(
+            build-essential
+            binutils
+            cmake
+            ninja-build
+            pkg-config
+            python3
+            python3-dev
+            libsbml5-dev
+            ngspice
+            r-base
+            octave
+            qt6-base-dev
+            qt6-tools-dev
+            qt6-tools-dev-tools
+            libgl1-mesa-dev
+          )
+          if [[ "${GLPK_MODE}" == "present" ]]; then
+            packages+=(libglpk-dev)
+          fi
+          sudo apt-get install -y --no-install-recommends "${packages[@]}"
+
+      - name: Verify requested GLPK environment
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ "${GLPK_MODE}" == "present" ]]; then
+            pkg-config --exists glpk
+            test -f /usr/include/glpk.h
+          else
+            if pkg-config --exists glpk; then
+              echo "GLPK development metadata unexpectedly available in absent mode" >&2
+              exit 1
+            fi
+            test ! -f /usr/include/glpk.h
+          fi
+
+      - name: Configure tests-unit with CMake File API query
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          query_dir="${BUILD_DIR}/.cmake/api/v1/query"
+          mkdir -p "${query_dir}"
+          : > "${query_dir}/codemodel-v2"
+          cmake --preset tests-unit -B "${BUILD_DIR}" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build focused diffusion target with verbose link output
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "${EVIDENCE_DIR}"
+          cmake --build "${BUILD_DIR}" \
+            --target genesys_test_plugins_continuous_diffusion \
+            --parallel "$(nproc)" \
+            --verbose 2>&1 | tee "${EVIDENCE_DIR}/focused-build.log"
+
+      - name: Extract codemodel, archive symbols, and link evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          mode = os.environ["GLPK_MODE"]
+          build = Path(os.environ["BUILD_DIR"])
+          output = Path(os.environ["EVIDENCE_DIR"])
+          output.mkdir(parents=True, exist_ok=True)
+
+          reply = build / ".cmake/api/v1/reply"
+          indexes = sorted(reply.glob("index-*.json"), key=lambda p: p.stat().st_mtime)
+          if not indexes:
+              raise SystemExit("CMake File API index not found")
+
+          index = json.loads(indexes[-1].read_text())
+          codemodel_ref = index["reply"]["codemodel-v2"]
+          codemodel = json.loads((reply / codemodel_ref["jsonFile"]).read_text())
+          configurations = codemodel.get("configurations", [])
+          if not configurations:
+              raise SystemExit("CMake codemodel has no configurations")
+
+          target_refs = configurations[0].get("targets", [])
+          refs_by_id = {target["id"]: target for target in target_refs}
+          details = {}
+          for target in target_refs:
+              details[target["name"]] = json.loads((reply / target["jsonFile"]).read_text())
+
+          full_name = "genesys_plugins_components"
+          minimal_name = "genesys_plugins_components_minimal"
+          test_name = "genesys_test_plugins_continuous_diffusion"
+          required = [full_name, minimal_name, test_name]
+          missing = [name for name in required if name not in details]
+          if missing:
+              raise SystemExit(f"Missing target(s): {', '.join(missing)}")
+
+          def sources(target):
+              return sorted({
+                  source["path"]
+                  for source in target.get("sources", [])
+                  if source.get("path", "").endswith(".cpp")
+              })
+
+          def definitions(target):
+              values = set()
+              for group in target.get("compileGroups", []):
+                  for define in group.get("defines", []):
+                      value = define.get("define")
+                      if value:
+                          values.add(value)
+              return sorted(values)
+
+          def dependencies(target):
+              names = []
+              for dependency in target.get("dependencies", []):
+                  ref = refs_by_id.get(dependency.get("id"))
+                  names.append(ref["name"] if ref else dependency.get("id"))
+              return sorted(set(filter(None, names)))
+
+          def artifacts(target):
+              paths = []
+              for artifact in target.get("artifacts", []):
+                  path = Path(artifact["path"])
+                  paths.append(path if path.is_absolute() else build / path)
+              return paths
+
+          def link_fragments(target):
+              return [
+                  fragment.get("fragment", "")
+                  for fragment in target.get("link", {}).get("commandFragments", [])
+                  if fragment.get("fragment")
+              ]
+
+          def archive_symbols(path):
+              result = subprocess.run(
+                  ["nm", "-C", "-g", "--defined-only", "-j", str(path)],
+                  check=True,
+                  text=True,
+                  capture_output=True,
+              )
+              return sorted({line.strip() for line in result.stdout.splitlines() if line.strip()})
+
+          full_sources = sources(details[full_name])
+          minimal_sources = sources(details[minimal_name])
+          full_defs = definitions(details[full_name])
+          minimal_defs = definitions(details[minimal_name])
+
+          full_archives = [path for path in artifacts(details[full_name]) if path.suffix == ".a"]
+          minimal_archives = [path for path in artifacts(details[minimal_name]) if path.suffix == ".a"]
+          if len(full_archives) != 1 or len(minimal_archives) != 1:
+              raise SystemExit(
+                  f"Expected one archive per component target; full={full_archives}, minimal={minimal_archives}"
+              )
+
+          full_archive = full_archives[0]
+          minimal_archive = minimal_archives[0]
+          if not full_archive.exists() or not minimal_archive.exists():
+              raise SystemExit("Expected component archives were not built")
+
+          full_symbols = archive_symbols(full_archive)
+          minimal_symbols = archive_symbols(minimal_archive)
+          common_symbols = sorted(set(full_symbols) & set(minimal_symbols))
+          full_only = sorted(set(full_symbols) - set(minimal_symbols))
+          minimal_only = sorted(set(minimal_symbols) - set(full_symbols))
+
+          test_fragments = link_fragments(details[test_name])
+          test_link = " ".join(test_fragments)
+          full_archive_name = full_archive.name
+          minimal_archive_name = minimal_archive.name
+
+          interesting = [
+              symbol
+              for symbol in common_symbols
+              if "MetabolicFluxBalance" in symbol or "WholeCell" in symbol
+          ]
+
+          evidence = {
+              "head": "${{ github.event.pull_request.head.sha || github.sha }}",
+              "glpk_mode": mode,
+              "source_lists_identical": full_sources == minimal_sources,
+              "full": {
+                  "archive": str(full_archive),
+                  "source_count": len(full_sources),
+                  "compile_definitions": full_defs,
+                  "dependencies": dependencies(details[full_name]),
+                  "defined_global_symbol_count": len(full_symbols),
+              },
+              "minimal": {
+                  "archive": str(minimal_archive),
+                  "source_count": len(minimal_sources),
+                  "compile_definitions": minimal_defs,
+                  "dependencies": dependencies(details[minimal_name]),
+                  "defined_global_symbol_count": len(minimal_symbols),
+              },
+              "symbols": {
+                  "common_count": len(common_symbols),
+                  "full_only_count": len(full_only),
+                  "minimal_only_count": len(minimal_only),
+                  "interesting_common_symbols": interesting,
+              },
+              "focused_test": {
+                  "dependencies": dependencies(details[test_name]),
+                  "link_fragments": test_fragments,
+                  "link_contains_full_archive": full_archive_name in test_link,
+                  "link_contains_minimal_archive": minimal_archive_name in test_link,
+              },
+          }
+
+          (output / "plugin-target-link-evidence.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n"
+          )
+          (output / "full-defined-symbols.txt").write_text("\n".join(full_symbols) + "\n")
+          (output / "minimal-defined-symbols.txt").write_text("\n".join(minimal_symbols) + "\n")
+          (output / "common-defined-symbols.txt").write_text("\n".join(common_symbols) + "\n")
+          (output / "full-only-defined-symbols.txt").write_text("\n".join(full_only) + "\n")
+          (output / "minimal-only-defined-symbols.txt").write_text("\n".join(minimal_only) + "\n")
+          (output / "focused-test-link-fragments.txt").write_text(test_link + "\n")
+
+          lines = [
+              "# GenESyS plugin target link evidence",
+              "",
+              f"- Head: `{evidence['head']}`",
+              f"- GLPK mode: **{mode}**",
+              f"- Full sources: {len(full_sources)}",
+              f"- Minimal sources: {len(minimal_sources)}",
+              f"- Source lists identical: **{str(full_sources == minimal_sources).lower()}**",
+              f"- GLPK define in full: **{str(any(d.startswith('GENESYS_HAVE_GLPK') for d in full_defs)).lower()}**",
+              f"- GLPK define in minimal: **{str(any(d.startswith('GENESYS_HAVE_GLPK') for d in minimal_defs)).lower()}**",
+              f"- Full defined global symbols: {len(full_symbols)}",
+              f"- Minimal defined global symbols: {len(minimal_symbols)}",
+              f"- Common defined global symbols: {len(common_symbols)}",
+              f"- Full-only symbols: {len(full_only)}",
+              f"- Minimal-only symbols: {len(minimal_only)}",
+              f"- Focused test link contains full archive: **{str(evidence['focused_test']['link_contains_full_archive']).lower()}**",
+              f"- Focused test link contains minimal archive: **{str(evidence['focused_test']['link_contains_minimal_archive']).lower()}**",
+              "",
+              "## Focused test direct dependencies",
+              "",
+          ]
+          lines.extend([f"- `{name}`" for name in evidence["focused_test"]["dependencies"]] or ["- none"])
+          lines.extend(["", "## Whole-cell/FBA symbols defined by both archives", ""])
+          lines.extend([f"- `{symbol}`" for symbol in interesting] or ["- none"])
+          lines.extend(["", "## Focused test link fragments", "", "```text", test_link, "```"])
+          (output / "plugin-target-link-evidence.md").write_text("\n".join(lines) + "\n")
+
+          if full_sources != minimal_sources:
+              raise SystemExit("Generated full/minimal source lists are no longer identical")
+          full_has_glpk = any(value.startswith("GENESYS_HAVE_GLPK") for value in full_defs)
+          minimal_has_glpk = any(value.startswith("GENESYS_HAVE_GLPK") for value in minimal_defs)
+          if mode == "present" and not full_has_glpk:
+              raise SystemExit("GLPK-present mode did not define GENESYS_HAVE_GLPK on full target")
+          if mode == "absent" and full_has_glpk:
+              raise SystemExit("GLPK-absent mode unexpectedly defined GENESYS_HAVE_GLPK on full target")
+          if minimal_has_glpk:
+              raise SystemExit("Minimal target unexpectedly defines GENESYS_HAVE_GLPK")
+          PY
+
+      - name: Summarize evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat "${EVIDENCE_DIR}/plugin-target-link-evidence.md" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload link evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-plugin-target-link-evidence-${{ matrix.glpk }}
+          path: ${{ env.EVIDENCE_DIR }}/
+          if-no-files-found: error
