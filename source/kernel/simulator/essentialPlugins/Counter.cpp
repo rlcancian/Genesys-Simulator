@@ -29,8 +29,17 @@ ModelDataDefinition* Counter::NewInstance(Model* model, std::string name) {
 
 Counter::Counter(Model* model, std::string name, ModelDataDefinition* parent) : ModelDataDefinition(model, Util::TypeOf<Counter>(), name) {
 	_parent = parent;
-	_parentModel->getResponses()->insert(new SimulationResponseDouble(
-					 std::bind(&Counter::getCountValue, this), this->getClassname(), getName(), "CountValue"));
+	_countValueResponse = new SimulationResponseDouble(
+					 std::bind(&Counter::getCountValue, this), this->getClassname(), getName(), "CountValue");
+	_parentModel->getResponses()->insert(_countValueResponse);
+}
+
+Counter::~Counter() {
+	if (_countValueResponse != nullptr) {
+		_parentModel->getResponses()->remove(_countValueResponse);
+		delete _countValueResponse;
+		_countValueResponse = nullptr;
+	}
 }
 
 std::string Counter::show() {

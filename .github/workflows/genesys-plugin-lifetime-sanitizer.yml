@@ -1,0 +1,107 @@
+name: GenESyS Plugin Lifetime Sanitizer
+
+run-name: GenESyS Plugin Lifetime | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - source/kernel/simulator/Simulator.cpp
+      - source/kernel/simulator/model/Model.cpp
+      - source/kernel/simulator/model/ModelManager.cpp
+      - source/tests/CMakeLists.txt
+      - source/tests/unit/test_simulator_plugin_completion_lifetime.cpp
+      - .github/workflows/genesys-plugin-lifetime-sanitizer.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-plugin-lifetime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  plugin-lifetime:
+    name: Validate plugin completion lifetime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            libsbml5-dev \
+            ngspice \
+            r-base \
+            octave \
+            qt6-base-dev \
+            qt6-tools-dev \
+            qt6-tools-dev-tools \
+            libgl1-mesa-dev
+
+      - name: Configure tests-unit
+        run: |
+          set -Eeuo pipefail
+          cmake --preset tests-unit
+
+      - name: Build focused sanitizer executable
+        run: |
+          set -Eeuo pipefail
+          cmake --build --preset tests-unit \
+            --target genesys_test_simulator_plugin_completion_lifetime \
+            --parallel "$(nproc)"
+
+      - name: Run focused ASan and LeakSanitizer regression
+        run: |
+          set -Eeuo pipefail
+          mkdir -p plugin-lifetime-evidence
+          binary="$(find build/tests-unit -type f \
+            -name genesys_test_simulator_plugin_completion_lifetime \
+            -perm -111 -print -quit)"
+          if [[ -z "${binary}" ]]; then
+            echo "Focused executable was not found" | tee plugin-lifetime-evidence/plugin-completion-lifetime.log
+            exit 2
+          fi
+
+          set +e
+          ASAN_OPTIONS="detect_leaks=1:halt_on_error=1:symbolize=1" \
+          LSAN_OPTIONS="exitcode=23" \
+            "${binary}" \
+              --gtest_filter=SimulatorPluginCompletionLifetimeTest.CompletionDoesNotRegisterOrRetainTemporaryModels \
+              2>&1 | tee plugin-lifetime-evidence/plugin-completion-lifetime.log
+          status=${PIPESTATUS[0]}
+          set -e
+
+          printf '%s\n' "${status}" > plugin-lifetime-evidence/exit-code.txt
+          git rev-parse HEAD > plugin-lifetime-evidence/head-sha.txt
+          cmake --version > plugin-lifetime-evidence/cmake-version.txt 2>&1
+          ninja --version > plugin-lifetime-evidence/ninja-version.txt 2>&1
+          g++ --version > plugin-lifetime-evidence/gxx-version.txt 2>&1
+          exit "${status}"
+
+      - name: Upload focused sanitizer evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-plugin-completion-lifetime-sanitizer
+          path: plugin-lifetime-evidence/
+          if-no-files-found: warn

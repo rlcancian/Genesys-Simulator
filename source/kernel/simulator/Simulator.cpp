@@ -115,7 +115,7 @@ List<Plugin*>* Simulator::_completePluginsFieldsAndTemplate() {
 	_traceManager->trace("Completing plugins and templates", TraceManager::Level::L8_detailed);
 	_traceManager->setTraceLevel(TraceManager::Level::L0_noTraces); // this crap stuff should not been shown
 	List<Plugin*>* completedPlugins = new List<Plugin*>();
-	Model* tempModel = new Model(this);
+	auto tempModel = std::make_unique<Model>(this);
 	tempModel->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, true);
 	auto fields = std::make_unique<PersistenceRecord>(*tempModel->getPersistence());
 	Plugin* plugin;
@@ -133,7 +133,7 @@ List<Plugin*>* Simulator::_completePluginsFieldsAndTemplate() {
 				fields->clear();
 				try {
 					if (info->isComponent()) {
-						comp = dynamic_cast<ModelComponent*> (plugin->loadNew(tempModel, fields.get()));
+						comp = dynamic_cast<ModelComponent*> (plugin->loadNew(tempModel.get(), fields.get()));
 						comp->setName("name");
 						while (comp->getConnectionManager()->size() < info->getMinimumOutputs()) {
 							comp->getConnectionManager()->insert(comp);
@@ -141,7 +141,7 @@ List<Plugin*>* Simulator::_completePluginsFieldsAndTemplate() {
 						fields->clear();
 						comp->SaveInstance(fields.get(), comp);
 					} else {
-						datum = plugin->loadNew(tempModel, fields.get());
+						datum = plugin->loadNew(tempModel.get(), fields.get());
 						datum->setName("name");
 						fields->clear();
 						datum->SaveInstance(fields.get(), datum);
@@ -162,6 +162,10 @@ List<Plugin*>* Simulator::_completePluginsFieldsAndTemplate() {
 		} catch (...) {
 		}
 	}
+	// PersistenceRecord was copied from the temporary model persistence service;
+	// destroy it before releasing the model and all model-owned plugin instances.
+	fields.reset();
+	tempModel.reset();
 	Util::ResetAllIds();
 	_traceManager->setTraceLevel(savedTraceLevel);
 	return completedPlugins;
