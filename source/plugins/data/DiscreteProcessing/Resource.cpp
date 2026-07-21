@@ -133,6 +133,9 @@ std::string Resource::show() {
 
 bool Resource::seize(unsigned int quantity, double priority) {
     //@ TODO: Considere priority. (Is it here??)
+    if (_reportStatistics) {
+        _initStatisticsAndAccounting();
+    }
     double tnow = _parentModel->getSimulation()->getSimulatedTime();
     _sumCapacityOverTime += _lastTimeCapacityEvaluated * getCapacity();
     _lastTimeCapacityEvaluated = tnow;
@@ -141,14 +144,17 @@ bool Resource::seize(unsigned int quantity, double priority) {
     if (canSeize) {
         _sumNumberBusyOverTime += std::max<double>(_lastTimeReleased, _lastTimeSeized) * _lastTimeAnythingNumberBusy;
         _numberBusy += quantity;
-        if (_reportStatistics)
+        if (_reportStatistics) {
             _counterNumSeizes->incCountValue(quantity);
+            _counterTotalCostPerUse->incCountValue(_costPerUse);
+        }
         _lastTimeSeized = tnow; // instant when seized
         _lastTimeAnythingNumberBusy = _numberBusy;
-        _counterTotalCostPerUse->incCountValue(_costPerUse);
         if (_resourceState != Resource::ResourceState::BUSY) {
             _resourceState = Resource::ResourceState::BUSY;
-            _counterTotalCostIdle->incCountValue(_costIdleTimeUnit * (tnow - _lastTimeIdle));
+            if (_reportStatistics) {
+                _counterTotalCostIdle->incCountValue(_costIdleTimeUnit * (tnow - _lastTimeIdle));
+            }
             _lastTimeBusy = tnow;
         }
     }
@@ -156,6 +162,9 @@ bool Resource::seize(unsigned int quantity, double priority) {
 }
 
 void Resource::release(unsigned int quantity) {
+    if (_reportStatistics) {
+        _initStatisticsAndAccounting();
+    }
     double tnow = _parentModel->getSimulation()->getSimulatedTime();
     _sumNumberBusyOverTime += std::max<double>(_lastTimeReleased, _lastTimeSeized) * _lastTimeAnythingNumberBusy;
     _sumCapacityOverTime += _lastTimeCapacityEvaluated * getCapacity();
@@ -168,7 +177,9 @@ void Resource::release(unsigned int quantity) {
     }
     if (_numberBusy == 0) {
         _resourceState = Resource::ResourceState::IDLE;
-        _counterTotalCostBusy->incCountValue(_costBusyTimeUnit * (tnow - _lastTimeBusy));
+        if (_reportStatistics) {
+            _counterTotalCostBusy->incCountValue(_costBusyTimeUnit * (tnow - _lastTimeBusy));
+        }
         _lastTimeIdle = tnow;
     }
     _lastTimeReleased = tnow;
@@ -202,6 +213,7 @@ void Resource::_active() {
     _capacity = _originalCapacity;
     _lastTimeCapacityEvaluated = tnow;
     if (_reportStatistics) {
+        _initStatisticsAndAccounting();
         double failureTime = tnow - _lastTimeFailed;
         _counterTotalTimeFailed->incCountValue(failureTime);
         _cstatTimeFailed->getStatistics()->getCollector()->addValue(failureTime);
@@ -303,7 +315,7 @@ double Resource::getCapacityUtilization() const {
 
 double Resource::getSeizedUtilization() const {
     double tnow = _parentModel->getSimulation()->getSimulatedTime();
-    if (_parentModel != nullptr && tnow > 0)
+    if (_parentModel != nullptr && tnow > 0 && _counterTotalTimeSeized != nullptr)
         return _counterTotalTimeSeized->getCountValue() / tnow;
     else
         return 0.0;
@@ -448,6 +460,10 @@ bool Resource::_check(std::string& errorMessage) {
 }
 
 void Resource::_onReplicationEnd(SimulationEvent* se) {
+    if (!_reportStatistics || se == nullptr || _counterTotalTimeSeized == nullptr ||
+        _cstatProportionSeized == nullptr || se->getSimulatedTime() <= 0.0) {
+        return;
+    }
     double totalTime = se->getSimulatedTime();
     double seizedTime = _counterTotalTimeSeized->getCountValue();
     double finalProportionSeized = seizedTime / totalTime;
@@ -554,36 +570,68 @@ ModelDataDefinition* Resource::LoadInstance(Model* model, PersistenceRecord* fie
 
 // void Resource::_createEditableDataDefinitions() { }
 
+void Resource::_initStatisticsAndAccounting() {
+    if (!_reportStatistics) {
+        return;
+    }
+    if (_cstatProportionSeized == nullptr || _cstatCapacityUtilization == nullptr ||
+        _cstatTimeSeized == nullptr || _cstatTimeFailed == nullptr ||
+        _counterTotalTimeSeized == nullptr || _counterTotalTimeFailed == nullptr ||
+        _counterNumSeizes == nullptr || _counterNumReleases == nullptr ||
+        _counterTotalCostBusy == nullptr || _counterTotalCostIdle == nullptr ||
+        _counterTotalCostPerUse == nullptr) {
+        _createAttachedAttributes();
+    }
+}
+
 void Resource::_createAttachedAttributes() {
-    if (_reportStatistics && _cstatTimeSeized == nullptr) {
-        _cstatProportionSeized = new StatisticsCollector(_parentModel, getName() + "." + "ProportionSeized", this);
-        _cstatCapacityUtilization = new
-            StatisticsCollector(_parentModel, getName() + "." + "CapacityUtilization", this);
-        _cstatTimeSeized = new StatisticsCollector(_parentModel, getName() + "." + "TimeSeized", this);
-        _cstatTimeFailed = new StatisticsCollector(_parentModel, getName() + "." + "TimeFailed", this);
-        _counterTotalTimeSeized = new Counter(_parentModel, getName() + "." + "TotalTimeSeized", this);
-        _counterTotalTimeFailed = new Counter(_parentModel, getName() + "." + "TotalTimeFailed", this);
-        _counterNumSeizes = new Counter(_parentModel, getName() + "." + "Seizes", this);
-        _counterNumReleases = new Counter(_parentModel, getName() + "." + "Releases", this);
-        _counterTotalCostBusy = new Counter(_parentModel, getName() + "." + "CostBusy", this);
-        _counterTotalCostIdle = new Counter(_parentModel, getName() + "." + "CostIdle", this);
-        _counterTotalCostPerUse = new Counter(_parentModel, getName() + "." + "CostPerUse", this);
-        _parentModel->getOnEventManager()->addOnReplicationEndHandler(this, &Resource::_onReplicationEnd);
-    }
     if (_reportStatistics) {
-        if (_cstatProportionSeized != nullptr) _mandatoryNonEditableDataDefinitionInsert("ProportionSeized", _cstatProportionSeized);
-        if (_cstatCapacityUtilization != nullptr) _mandatoryNonEditableDataDefinitionInsert("CapacityUtilization", _cstatCapacityUtilization);
-        if (_cstatTimeSeized != nullptr) _mandatoryNonEditableDataDefinitionInsert("TimeSeized", _cstatTimeSeized);
-        if (_cstatTimeFailed != nullptr) _mandatoryNonEditableDataDefinitionInsert("TimeFailed", _cstatTimeFailed);
-        if (_counterTotalTimeSeized != nullptr) _mandatoryNonEditableDataDefinitionInsert("TotalTimeSeized", _counterTotalTimeSeized);
-        if (_counterTotalTimeFailed != nullptr) _mandatoryNonEditableDataDefinitionInsert("TotalTimeFailed", _counterTotalTimeFailed);
-        if (_counterNumSeizes != nullptr) _mandatoryNonEditableDataDefinitionInsert("Seizes", _counterNumSeizes);
-        if (_counterNumReleases != nullptr) _mandatoryNonEditableDataDefinitionInsert("Releases", _counterNumReleases);
-        if (_counterTotalCostBusy != nullptr) _mandatoryNonEditableDataDefinitionInsert("CostBusy", _counterTotalCostBusy);
-        if (_counterTotalCostIdle != nullptr) _mandatoryNonEditableDataDefinitionInsert("CostIdle", _counterTotalCostIdle);
-        if (_counterTotalCostPerUse != nullptr) _mandatoryNonEditableDataDefinitionInsert("CostPerUse", _counterTotalCostPerUse);
+        if (_cstatProportionSeized == nullptr)
+            _cstatProportionSeized = new StatisticsCollector(_parentModel, getName() + ".ProportionSeized", this);
+        if (_cstatCapacityUtilization == nullptr)
+            _cstatCapacityUtilization = new StatisticsCollector(_parentModel, getName() + ".CapacityUtilization", this);
+        if (_cstatTimeSeized == nullptr)
+            _cstatTimeSeized = new StatisticsCollector(_parentModel, getName() + ".TimeSeized", this);
+        if (_cstatTimeFailed == nullptr)
+            _cstatTimeFailed = new StatisticsCollector(_parentModel, getName() + ".TimeFailed", this);
+        if (_counterTotalTimeSeized == nullptr)
+            _counterTotalTimeSeized = new Counter(_parentModel, getName() + ".TotalTimeSeized", this);
+        if (_counterTotalTimeFailed == nullptr)
+            _counterTotalTimeFailed = new Counter(_parentModel, getName() + ".TotalTimeFailed", this);
+        if (_counterNumSeizes == nullptr)
+            _counterNumSeizes = new Counter(_parentModel, getName() + ".Seizes", this);
+        if (_counterNumReleases == nullptr)
+            _counterNumReleases = new Counter(_parentModel, getName() + ".Releases", this);
+        if (_counterTotalCostBusy == nullptr)
+            _counterTotalCostBusy = new Counter(_parentModel, getName() + ".CostBusy", this);
+        if (_counterTotalCostIdle == nullptr)
+            _counterTotalCostIdle = new Counter(_parentModel, getName() + ".CostIdle", this);
+        if (_counterTotalCostPerUse == nullptr)
+            _counterTotalCostPerUse = new Counter(_parentModel, getName() + ".CostPerUse", this);
+
+        if (!_replicationEndHandlerRegistered) {
+            _parentModel->getOnEventManager()->addOnReplicationEndHandler(this, &Resource::_onReplicationEnd);
+            _replicationEndHandlerRegistered = true;
+        }
+
+        _mandatoryNonEditableDataDefinitionInsert("ProportionSeized", _cstatProportionSeized);
+        _mandatoryNonEditableDataDefinitionInsert("CapacityUtilization", _cstatCapacityUtilization);
+        _mandatoryNonEditableDataDefinitionInsert("TimeSeized", _cstatTimeSeized);
+        _mandatoryNonEditableDataDefinitionInsert("TimeFailed", _cstatTimeFailed);
+        _mandatoryNonEditableDataDefinitionInsert("TotalTimeSeized", _counterTotalTimeSeized);
+        _mandatoryNonEditableDataDefinitionInsert("TotalTimeFailed", _counterTotalTimeFailed);
+        _mandatoryNonEditableDataDefinitionInsert("Seizes", _counterNumSeizes);
+        _mandatoryNonEditableDataDefinitionInsert("Releases", _counterNumReleases);
+        _mandatoryNonEditableDataDefinitionInsert("CostBusy", _counterTotalCostBusy);
+        _mandatoryNonEditableDataDefinitionInsert("CostIdle", _counterTotalCostIdle);
+        _mandatoryNonEditableDataDefinitionInsert("CostPerUse", _counterTotalCostPerUse);
     }
-    else if (!_reportStatistics && _cstatTimeSeized != nullptr) {
+    else if (_cstatProportionSeized != nullptr || _cstatCapacityUtilization != nullptr ||
+             _cstatTimeSeized != nullptr || _cstatTimeFailed != nullptr ||
+             _counterTotalTimeSeized != nullptr || _counterTotalTimeFailed != nullptr ||
+             _counterNumSeizes != nullptr || _counterNumReleases != nullptr ||
+             _counterTotalCostBusy != nullptr || _counterTotalCostIdle != nullptr ||
+             _counterTotalCostPerUse != nullptr) {
         _mandatoryNonEditableDataDefinitionsClear();
         _cstatTimeSeized = nullptr;
         _cstatTimeFailed = nullptr;

@@ -157,6 +157,7 @@ private: //methods
 	void _fail();
 	void _active();
 	void _checkFailByCount();
+	void _initStatisticsAndAccounting();
 	friend class Failure;
 	friend class ResourceTestProbe;
 
@@ -184,6 +185,7 @@ private: // only gets
 	double _sumNumberBusyOverTime = 0.0;
 	double _sumCapacityOverTime = 0.0;
 	bool _isActive = true;
+	bool _replicationEndHandlerRegistered = false;
 private: // not gets nor sets
 	unsigned int _originalCapacity; // used for failing purposes, when _capacity changes to 0
 private: //1::n
