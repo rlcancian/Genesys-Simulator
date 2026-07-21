@@ -91,8 +91,9 @@ protected:
 	virtual void _createAttachedAttributes() override;
 
 private:
+	void _initCStats();
 	unsigned int _numberInStation = 0;
-	ModelComponent* _enterIntoStationComponent;
+	ModelComponent* _enterIntoStationComponent = nullptr;
 private: // inner elements
 	StatisticsCollector* _cstatNumberInStation = nullptr;
 	StatisticsCollector* _cstatTimeInStation = nullptr;
