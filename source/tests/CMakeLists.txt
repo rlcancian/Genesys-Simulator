@@ -56,6 +56,46 @@ if(TARGET genesys_kernel_unit_tests_run)
     add_dependencies(genesys_kernel_unit_tests_run genesys_test_tools_legacy_solver_regression_run)
 endif()
 
+# The historical Search/Remove tests dispatch into the model calendar. Keep a
+# focused active suite that initializes its queue fixtures explicitly and drains
+# scheduled events before asserting routed entities.
+add_executable(genesys_test_search_remove_runtime
+    unit/test_search_remove_runtime.cpp
+)
+
+target_include_directories(genesys_test_search_remove_runtime
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+)
+
+target_link_libraries(genesys_test_search_remove_runtime
+    PRIVATE
+        GTest::gtest_main
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+)
+
+target_compile_features(genesys_test_search_remove_runtime PRIVATE cxx_std_23)
+
+set_property(TARGET genesys_test_search_remove_runtime PROPERTY FOLDER tests/unit)
+
+gtest_discover_tests(genesys_test_search_remove_runtime
+    PROPERTIES
+        LABELS "unit;runtime;search-remove"
+)
+
+if(TARGET genesys_kernel_unit_tests)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_search_remove_runtime)
+endif()
+
+if(TARGET genesys_kernel_unit_tests_run)
+    add_custom_target(genesys_test_search_remove_runtime_run
+        COMMAND $<TARGET_FILE:genesys_test_search_remove_runtime>
+        DEPENDS genesys_test_search_remove_runtime
+        USES_TERMINAL
+    )
+    add_dependencies(genesys_kernel_unit_tests_run genesys_test_search_remove_runtime_run)
+endif()
+
 option(GENESYS_BUILD_SMOKE_TESTS "Build smoke tests under source/tests/smoke" ON)
 
 if(GENESYS_BUILD_SMOKE_TESTS)
