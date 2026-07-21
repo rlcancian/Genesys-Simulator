@@ -150,7 +150,7 @@ private:
 	void _configureListComparator();
 private:
 	List<Waiting*>* _list = new List<Waiting*>();
-	double _lastTimeNumberInQueueChanged;
+	double _lastTimeNumberInQueueChanged = 0.0;
 	unsigned long long _nextArrivalOrder = 0;
 private: //1::1
 
