@@ -26,6 +26,8 @@
 
 #include <functional>
 
+
+
 class SeizableItem;
 
 /*!
@@ -97,9 +99,10 @@ public:
 	enum class ResourceState : int {
 		IDLE = 0, BUSY = 1, FAILED = 2, INACTIVE = 3, OTHER = 4, num_elements = 5
 	};
-public:
+public:	
 	static std::string convertEnumToStr(ResourceState state);
 public:
+	//Resource(Model* model);
 	Resource(Model* model, std::string name = "");
 	virtual ~Resource() override;
 public:
@@ -116,7 +119,7 @@ public:
 	double getInstantCapacityUtilization() const;
 	double getCapacityUtilization() const;
 	double getSeizedUtilization() const;
-	double getLastTimeSeized() const;
+	double getLastTimeSeized() const; // used only by "Release" component
 	void addReleaseResourceEventHandler(ResourceEventHandler eventHandler, ModelComponent* component, unsigned int priority);
 public: // g&s
 	void setResourceState(ResourceState _resourceState);
@@ -133,19 +136,24 @@ public: // g&s
 	Schedule* getCapacitySchedule() const;
 	unsigned int getNumberBusy() const;
 
-protected:
+protected: // protected must override
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
-protected:
+protected: // protected could override
 	virtual bool _check(std::string& errorMessage) override;
+	// virtual void _createInternalAndAttachedData() override;
 	virtual void _initBetweenReplications() override;
 
+
 protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
 	virtual void _createAttachedAttributes() override;
 
-private:
-	void _notifyReleaseEventHandlers();
-	void _onReplicationEnd(SimulationEvent* se);
+private: //methods
+	void _notifyReleaseEventHandlers(); //!< Notify observer classes that some of the resource capacity has been released. It is useful for allocation components (such as Seize) to know when an entity waiting into a queue can try to seize the resource again
+	void _onReplicationEnd(SimulationEvent* se); //!< Nofified whe replication ended to update cstats based on final replication length
 	void _fail();
 	void _active();
 	void _checkFailByCount();
@@ -154,6 +162,7 @@ private:
 	friend class ResourceTestProbe;
 
 private:
+
 	const struct DEFAULT_VALUES {
 		const unsigned int capacity = 1;
 		const double cost = 1.0;
@@ -164,9 +173,9 @@ private:
 	double _costIdleTimeUnit = DEFAULT.cost;
 	double _costPerUse = DEFAULT.cost;
 	ResourceState _resourceState = DEFAULT.resourceState;
-private:
+private: // only gets
 	unsigned int _numberBusy = 0;
-	double _lastTimeSeized = 0.0;
+	double _lastTimeSeized = 0.0; // @TODO: It won't work for resources with capacity>1, when not all capacity is seized and them some more are seized. Seized time of first units will be lost. I don't have a solution so far
 	double _lastTimeReleased = 0.0;
 	double _lastTimeFailed = 0.0;
 	double _lastTimeCapacityEvaluated = 0.0;
@@ -177,14 +186,14 @@ private:
 	double _sumCapacityOverTime = 0.0;
 	bool _isActive = true;
 	bool _replicationEndHandlerRegistered = false;
-private:
-	unsigned int _originalCapacity;
-private:
+private: // not gets nor sets
+	unsigned int _originalCapacity; // used for failing purposes, when _capacity changes to 0
+private: //1::n
 	List<SortedResourceEventHandler*>* _resourceEventHandlers = new List<SortedResourceEventHandler*>();
 	List<Failure*>* _failures = new List<Failure*>();
-private:
+private: // attached elements
 	Schedule* _capacitySchedule = nullptr;
-private:
+private: // internal elements
 	StatisticsCollector* _cstatTimeSeized = nullptr;
 	StatisticsCollector* _cstatTimeFailed = nullptr;
 	StatisticsCollector* _cstatProportionSeized = nullptr;
