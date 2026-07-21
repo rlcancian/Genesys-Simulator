@@ -1,0 +1,227 @@
+name: GenESyS Plugin Target Introspection
+
+run-name: Plugin target introspection | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - .github/workflows/genesys-plugin-target-introspection.yml
+      - source/plugins/**
+      - source/kernel/simulator/CMakeLists.txt
+      - source/applications/**/CMakeLists.txt
+      - source/tests/**/CMakeLists.txt
+      - CMakeLists.txt
+      - CMakePresets.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-plugin-target-introspection-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inspect:
+    name: Inspect generated plugin target graph
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies including GLPK
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            libsbml5-dev \
+            libglpk-dev \
+            ngspice \
+            r-base \
+            octave \
+            qt6-base-dev \
+            qt6-tools-dev \
+            qt6-tools-dev-tools \
+            libgl1-mesa-dev
+
+      - name: Configure tests-unit with CMake File API query
+        run: |
+          set -Eeuo pipefail
+          query_dir=build/tests-unit/.cmake/api/v1/query
+          mkdir -p "${query_dir}"
+          : > "${query_dir}/codemodel-v2"
+          cmake --preset tests-unit -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Extract target graph evidence
+        run: |
+          set -Eeuo pipefail
+          mkdir -p genesys-plugin-target-evidence
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          build = Path("build/tests-unit")
+          reply = build / ".cmake/api/v1/reply"
+          indexes = sorted(reply.glob("index-*.json"), key=lambda p: p.stat().st_mtime)
+          if not indexes:
+              raise SystemExit("CMake File API index not found")
+
+          index = json.loads(indexes[-1].read_text())
+          codemodel_ref = index["reply"]["codemodel-v2"]
+          codemodel = json.loads((reply / codemodel_ref["jsonFile"]).read_text())
+          configurations = codemodel.get("configurations", [])
+          if not configurations:
+              raise SystemExit("CMake codemodel has no configurations")
+
+          targets = configurations[0].get("targets", [])
+          by_id = {target["id"]: target for target in targets}
+          details = {}
+          for target in targets:
+              target_json = json.loads((reply / target["jsonFile"]).read_text())
+              details[target["name"]] = target_json
+
+          names = ["genesys_plugins_components", "genesys_plugins_components_minimal"]
+          missing = [name for name in names if name not in details]
+          if missing:
+              raise SystemExit(f"Missing target(s): {', '.join(missing)}")
+
+          def normalized_sources(target):
+              result = []
+              for source in target.get("sources", []):
+                  path = source.get("path")
+                  if path and path.endswith(".cpp"):
+                      result.append(path)
+              return sorted(set(result))
+
+          def compile_definitions(target):
+              definitions = set()
+              for group in target.get("compileGroups", []):
+                  for define in group.get("defines", []):
+                      value = define.get("define")
+                      if value:
+                          definitions.add(value)
+              return sorted(definitions)
+
+          def dependency_names(target):
+              result = []
+              for dep in target.get("dependencies", []):
+                  dep_id = dep.get("id")
+                  entry = by_id.get(dep_id)
+                  result.append(entry["name"] if entry else dep_id)
+              return sorted(set(filter(None, result)))
+
+          reverse = {name: [] for name in names}
+          for consumer_name, target in details.items():
+              deps = set(dependency_names(target))
+              for name in names:
+                  if name in deps:
+                      reverse[name].append(consumer_name)
+          for name in reverse:
+              reverse[name] = sorted(set(reverse[name]))
+
+          def link_fragments(target):
+              return [
+                  fragment.get("fragment", "")
+                  for fragment in target.get("link", {}).get("commandFragments", [])
+                  if fragment.get("fragment")
+              ]
+
+          full_sources = normalized_sources(details[names[0]])
+          minimal_sources = normalized_sources(details[names[1]])
+          full_defs = compile_definitions(details[names[0]])
+          minimal_defs = compile_definitions(details[names[1]])
+
+          representative = [
+              "genesys_shell",
+              "genesys_worker_app",
+              "genesys_gui_application",
+              "genesys_optimizer_gui_application",
+              "genesys_kernel_unit_tests",
+              "genesys_smoke_simulator_start",
+          ]
+
+          evidence = {
+              "head": "${{ github.event.pull_request.head.sha || github.sha }}",
+              "sources_identical": full_sources == minimal_sources,
+              "full": {
+                  "source_count": len(full_sources),
+                  "sources": full_sources,
+                  "compile_definitions": full_defs,
+                  "dependencies": dependency_names(details[names[0]]),
+                  "reverse_dependencies": reverse[names[0]],
+              },
+              "minimal": {
+                  "source_count": len(minimal_sources),
+                  "sources": minimal_sources,
+                  "compile_definitions": minimal_defs,
+                  "dependencies": dependency_names(details[names[1]]),
+                  "reverse_dependencies": reverse[names[1]],
+              },
+              "representative_link_fragments": {
+                  name: link_fragments(details[name])
+                  for name in representative
+                  if name in details
+              },
+          }
+
+          output = Path("genesys-plugin-target-evidence")
+          (output / "plugin-target-introspection.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n"
+          )
+
+          lines = [
+              "# GenESyS generated plugin target introspection",
+              "",
+              f"- Head: `{evidence['head']}`",
+              f"- Full source count: {len(full_sources)}",
+              f"- Minimal source count: {len(minimal_sources)}",
+              f"- Source lists identical: **{str(full_sources == minimal_sources).lower()}**",
+              f"- `GENESYS_HAVE_GLPK` in full definitions: **{str(any(d.startswith('GENESYS_HAVE_GLPK') for d in full_defs)).lower()}**",
+              f"- `GENESYS_HAVE_GLPK` in minimal definitions: **{str(any(d.startswith('GENESYS_HAVE_GLPK') for d in minimal_defs)).lower()}**",
+              "",
+              "## Reverse dependencies",
+              "",
+              "### genesys_plugins_components",
+          ]
+          lines.extend([f"- `{name}`" for name in reverse[names[0]]] or ["- none"])
+          lines.extend(["", "### genesys_plugins_components_minimal"])
+          lines.extend([f"- `{name}`" for name in reverse[names[1]]] or ["- none"])
+          lines.extend(["", "## Compile definitions", "", "### Full"])
+          lines.extend([f"- `{value}`" for value in full_defs] or ["- none"])
+          lines.extend(["", "### Minimal"])
+          lines.extend([f"- `{value}`" for value in minimal_defs] or ["- none"])
+          lines.extend(["", "## Representative link fragments"])
+          for name, fragments in evidence["representative_link_fragments"].items():
+              lines.extend(["", f"### {name}", "", "```text", " ".join(fragments), "```"])
+          lines.extend(["", "## Resolved component sources", ""])
+          lines.extend([f"- `{source}`" for source in full_sources])
+          (output / "plugin-target-introspection.md").write_text("\n".join(lines) + "\n")
+
+          if full_sources != minimal_sources:
+              raise SystemExit("Generated source lists are not identical; inspect evidence")
+          if not any(d.startswith("GENESYS_HAVE_GLPK") for d in full_defs):
+              raise SystemExit("GLPK was installed but full target lacks GENESYS_HAVE_GLPK")
+          if any(d.startswith("GENESYS_HAVE_GLPK") for d in minimal_defs):
+              raise SystemExit("Minimal target unexpectedly has GENESYS_HAVE_GLPK")
+          PY
+
+      - name: Summarize evidence
+        run: |
+          set -Eeuo pipefail
+          cat genesys-plugin-target-evidence/plugin-target-introspection.md >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload target graph evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-plugin-target-introspection
+          path: genesys-plugin-target-evidence/
+          if-no-files-found: error
