@@ -19,48 +19,54 @@ Record executed software validation, remaining coverage, and acceptance criteria
 | Station lifecycle | `29792383322` | 1,714 registered; 1,710 passed; 4 disabled | PR #478 merged as `96b0cbd5...` |
 | Delay lifecycle | `29793447956` | 1,716 registered; 1,712 passed; 4 disabled | PR #479 merged as `a14a274b...` |
 | Resource lifecycle/accounting | `29795009950` | 1,719 registered; 1,715 passed; 4 disabled | PR #480 merged as `4f98a909...` |
+| Plugin completion lifetime | `29831405860` | focused ASan/LSan exit 0; no leak markers | PR #483 merged as `6d6dd4ed...` |
+| Optimizer ownership contract | `29833758797` | 1,721 registered; 1,717 passed; 4 disabled | PR #485 merged as `6aca91a5...` |
 
 ## 3. Core baseline matrix
 
 | Validation path | Executed evidence | Status | Remaining gap |
 |---|---|---|---|
-| `tests-unit` | configure/build/CTest passed on every PR #474–#480 | `validated` | preserve on future code changes |
-| Focused GUI GMDD | 3/3 passed on every PR #474–#480 | `validated` | standalone GUI startup/workflow |
+| `tests-unit` | configure/build/CTest passed on every final head through PR #485 | `validated` | preserve on future code changes |
+| Focused GUI GMDD | 3/3 passed on every final head through PR #485 | `validated` | standalone GUI startup/workflow |
 | `tests-kernel-unit` | configure/build/direct runner/CTest passed | `validated` | 4 historical duplicate tests remain disabled |
-| Kernel CTest inventory | 1,719 registered; 1,715 passed; 4 disabled | `validated` | remove or formally retire duplicate disabled blocks |
+| Kernel CTest inventory | 1,721 registered; 1,717 passed; 4 disabled | `validated` | remove or formally retire duplicate disabled blocks |
+| Focused plugin lifetime sanitizer | ASan/LSan workflow exit 0 with artifact evidence | `validated` | expand sanitizer scope selectively |
 | AI tests ordinary/direct paths | tests #495–#497 passed in recorded Phase 0 baseline | `validated` | provider transport/security coverage |
 | Legacy solver regressions | 9 focused tests passed | `validated` software contract | authoritative numerical use beyond the quarantined API |
 | Search/Remove runtime | 4 focused active tests passed | `validated` | remove historical disabled duplicates locally |
-| Queue statistics lifecycle | 3 focused tests passed | `validated` | sanitizer coverage |
-| Station statistics lifecycle | 2 focused tests passed | `validated` | sanitizer coverage and broader entity-type combinations |
+| Queue statistics lifecycle | 3 focused tests passed | `validated` | broader sanitizer coverage |
+| Station statistics lifecycle | 2 focused tests passed | `validated` | broader entity-type combinations |
 | Delay statistics lifecycle | 2 focused tests passed | `validated` | nonzero-delay and allocation-category breadth |
 | Resource accounting lifecycle | 3 focused tests passed | `validated` | capacity>1 accounting semantics and failure/schedule breadth |
+| Optimizer ownership contract | non-copy/non-move traits enforced | `validated` ownership boundary | algorithm and future RAII/value migration |
 | `tests-smoke` | 3 registered/executed/passed | `validated` | broader application smoke matrix |
 | Debian trigger/path filters | integrated | `implemented` | package lifecycle execution |
 | Application presets | targets/presets confirmed | `needs-local-validation` | independent build/startup/workflows |
-| Sanitizers/profiling | not executed | `not-started` | ASan/LSan/UBSan/Valgrind/profiling |
+| Broader sanitizers/profiling | only focused plugin-lifetime ASan/LSan executed | `partially-started` | UBSan, broader ASan/LSan, Valgrind, profiling |
 
 ## 4. Exact current Phase 0 inventory
 
 ### 4.1 Kernel
 
-Latest validated head before merge: `eddca45a8ab0c48b94b2e53f553c18a56729fc99`.
+Latest validated head before PR #485 merge: `e3b884d6401337d532b6cfd5ac08fff8ee8c52df`.
 
-- registered: 1,719;
-- executed/passed: 1,715;
+- registered: 1,721;
+- executed/passed: 1,717;
 - failed: 0;
 - disabled: 4;
-- Phase 0 run: `29795009950`;
-- artifact: `genesys-phase0-tests-kernel-unit`, ID `8481811952`.
+- Phase 0 run: `29833758797`;
+- artifact: `genesys-phase0-tests-kernel-unit`, ID `8496613101`.
 
-New focused runtime tests accumulated after the original Phase 0 baseline:
+Focused tests accumulated after the original Phase 0 baseline:
 
 - #1–#9: legacy solver quadrature and unsupported-derivative contract;
 - #10–#13: active Search/Remove scenarios;
 - #14–#16: Queue statistics lifecycle;
 - #17–#18: Station statistics lifecycle;
 - #19–#20: Delay statistics lifecycle;
-- #21–#23: Resource accounting lifecycle.
+- #21–#23: Resource accounting lifecycle;
+- #24: plugin-completion temporary-model lifetime under ASan/LSan;
+- #25: optimizer compile-time ownership contract.
 
 Historical disabled duplicate runtime tests remain registered:
 
@@ -71,7 +77,19 @@ Historical disabled duplicate runtime tests remain registered:
 
 These are no longer behavioral coverage gaps because equivalent focused tests are active and mandatory. They remain source-cleanup debt.
 
-### 4.2 Smoke
+### 4.2 Focused ASan/LeakSanitizer
+
+Final validated head for PR #483: `2a007c45fad8b451fe60dac67c4390b777be86e7`.
+
+- workflow: `GenESyS Plugin Lifetime Sanitizer`;
+- final run: `29831405860`;
+- exit code: 0;
+- artifact: `genesys-plugin-completion-lifetime-sanitizer`, ID `8495543015`;
+- no AddressSanitizer, LeakSanitizer, use-after-free, double-free, or SEGV markers.
+
+The red/green sequence reduced the focused leak from 27,533 bytes/470 allocations to zero.
+
+### 4.3 Smoke
 
 - registered/executed/passed: 3/3/3;
 - failed: 0;
@@ -81,13 +99,14 @@ These are no longer behavioral coverage gaps because equivalent focused tests ar
 
 | Module / concern | Current evidence | Missing coverage | Priority | Acceptance criterion | Status |
 |---|---|---|---|---|---|
-| Utilities | baseline green | edge cases and sanitizers | P2 | deterministic edge behavior; no findings | `partially-validated` |
-| Simulator support/runtime | Search/Remove plus Queue/Station/Delay/Resource lifecycle suites green | temporary-model lifetime, sanitizers, broader failure paths | P0/P1 | no leak/UB and explicit lifecycle ownership | `partially-validated` |
+| Utilities | baseline green | edge cases and broader sanitizers | P2 | deterministic edge behavior; no findings | `partially-validated` |
+| Simulator support/runtime | Search/Remove, lifecycle suites, and temporary-model sanitizer green | broader ownership and failure paths | P1 | no leak/UB and explicit lifecycle ownership | `partially-validated` |
+| Essential Counter/StatisticsCollector/EntityType ownership | focused ASan/LSan and full suite green | broader repeated-create/destroy stress | P1 | no leak/double-delete/use-after-free | `validated` for exercised path |
 | Persistence | baseline green | cross-plugin and compatibility fixtures | P1 | supported fields round-trip; unsupported diagnosed | `partially-validated` |
-| PluginManager | baseline green | ownership, duplicate insertion, future ABI/load/unload | P1 | deterministic lifecycle and diagnostics | `partially-validated` |
+| PluginManager | completion lifetime fixed; baseline green | duplicate insertion, target overlap, future ABI/load/unload | P1 | deterministic lifecycle and diagnostics | `partially-validated` |
 | Parser expressions | baseline green | unknown functions and historical compatibility | P1 | deterministic errors and `.gen` compatibility | `partially-validated` |
 | FunctionRegistry | historical PR only | current disposition/design | P1 | explicit decision and compatibility tests | `not-started` |
-| Kernel statistics | runtime collector lifecycle now covered for four classes | authoritative references and degenerate inputs | P0/P1 | declared methods match references/tolerances | `partially-validated` |
+| Kernel statistics | runtime collector lifecycle and focused ownership covered | authoritative references and degenerate inputs | P0/P1 | declared methods match references/tolerances | `partially-validated` |
 | Hypothesis testing | current tests green | authoritative statistical references | P0/P1 | reference-backed p-values/intervals | `partially-validated` scientifically |
 | `SolverDefaultImpl1` | 9 regression tests and fail-fast derivative boundary | replacement ODE API if required | P1 | no silent unsupported numerical result | `stabilized` |
 | ODE factory | analytical/convergence tests green | stiffness, long-time, NaN/Inf, event boundaries | P1 | explicit solver contract and reference convergence | `partially-validated` |
@@ -99,7 +118,7 @@ These are no longer behavioral coverage gaps because equivalent focused tests ar
 | AI plugins | ordinary and direct paths green | transport and error/security cases | P1 | offline deterministic coverage and redaction | `partially-validated` |
 | AI secret storage | source risk identified | process/Secret Service tests | P1 | secret absent from argv/logs | `not-started` |
 | Worker API/tokens | partial tests | auth, quotas, CSPRNG, expiry/rotation | P1 | controlled-intranet security contract | `not-started` hardening |
-| Optimizer | scaffold | algorithm/ranking/constraints/ownership | P1 | Level 3 contract and benchmark suite | `partially-implemented` |
+| Optimizer | shallow-copy hazard blocked; backend remains scaffold | algorithm/ranking/constraints and later RAII migration | P1 | Level 3 contract and benchmark suite | `partially-implemented` |
 | Data Analyser | related tests exist | reference fits/import/export | P1 | reference-backed workflow | `partially-implemented` |
 | Do Experiments | backend fragments; GUI absent | DOE specification/tests/workflow | P1/P2 | known designs and analyses match references | `partially-implemented` |
 | Shell | preset confirmed | scripted startup/model/exit | P1 | minimal model completes cleanly | `needs-local-validation` |
@@ -107,7 +126,7 @@ These are no longer behavioral coverage gaps because equivalent focused tests ar
 | Independent GUIs | presets confirmed | basic startup/workflows | P1 | each application starts independently | `needs-local-validation` |
 | Packaging | triggers corrected | build/install/start/uninstall/version | P2 | packages complete lifecycle | `needs-ci-validation` |
 | Qt6-only cleanup | policy decided | remove Qt5 fallback across CMake/tests/scripts | P1/P2 | Qt6 baseline remains green; no fallback discovery | `not-started` |
-| Dynamic plugins | ABI direction recorded | target/lifecycle map and pilot | P1/P2 | versioned pilot loads/unloads safely | `deferred` |
+| Dynamic plugins | ABI direction recorded | target/source overlap map and pilot | P1/P2 | versioned pilot loads/unloads safely | `deferred` |
 
 ## 6. Aggregation and lifecycle findings
 
@@ -118,16 +137,19 @@ Resolved:
 - legacy solver silent/undefined paths are quarantined or corrected;
 - active Search/Remove behavior is mandatory;
 - Queue, Station, Delay, and Resource initialize statistics/accounting safely on first public use;
-- statistics-disabled operations no longer dereference absent accounting objects in the audited classes.
+- statistics-disabled operations no longer dereference absent accounting objects in the audited classes;
+- temporary plugin-completion Model and helper-owned responses/statistics are released;
+- focused ASan/LeakSanitizer guard is permanent;
+- `OptimizerDefaultImpl1` shallow copy/move is prohibited.
 
 Still open:
 
 1. four disabled Search/Remove blocks remain as historical duplicates;
-2. temporary `Model` lifetime in `Simulator::_completePluginsFieldsAndTemplate()`;
-3. repeated runtime libraries in selected link lists;
-4. full/minimal plugin source overlap;
-5. GUI test source aggregation/build cost;
-6. generated method inventory is structural inventory, not behavioral proof.
+2. repeated runtime libraries in selected link lists;
+3. full/minimal plugin source overlap;
+4. GUI test source aggregation/build cost;
+5. generated method inventory is structural inventory, not behavioral proof;
+6. optimizer algorithm and container modernization remain future work.
 
 ## 7. Numerical and scientific evidence policy
 
@@ -135,4 +157,4 @@ Every correctness-sensitive method must define its mathematics, parameterization
 
 ## 8. Next bounded execution
 
-The next P0 workstream should characterize the temporary-model ownership/lifetime path in `Simulator::_completePluginsFieldsAndTemplate()` without mixing unrelated refactoring. Use a test-only or sanitizer-backed red checkpoint where feasible, then apply the smallest RAII/lifetime correction. Application, package, broader sanitizer, Qt6 cleanup, plugin architecture, worker security, and optimizer work remain separate workstreams.
+The next safe architectural workstream should map the full/minimal plugin source overlap and exact link consumers before any target reorganization. Produce an evidence-only source-to-target/link map first; do not change plugin ABI, library type, source ownership, or runtime loading in the same PR. Application, package, broader sanitizer, Qt6 cleanup, worker security, dynamic plugin pilot, optimizer algorithms, and scientific validation remain separate workstreams.
