@@ -106,6 +106,7 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	Util::TimeUnit stu = _parentModel->getSimulation()->getReplicationBaseTimeUnit(); //getReplicationLengthTimeUnit();
 	waitTime *= Util::TimeUnitConvert(_delayTimeUnit, stu);
 	if (_reportStatistics) {
+		_initCStats();
 		std::string allocationCategory = Util::StrAllocation(_allocation);
         _cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
 		if (entity->getEntityType()->isReportStatistics())
@@ -224,6 +225,12 @@ void Delay::_createInternalStatisticReporters() {
 		_statisticReportersClear();
 		_cstatWaitTime = nullptr;
 		// @TODO remove StatisticsCollector needed in EntityType
+	}
+}
+
+void Delay::_initCStats() {
+	if (_reportStatistics && _cstatWaitTime == nullptr) {
+		_createInternalStatisticReporters();
 	}
 }
 

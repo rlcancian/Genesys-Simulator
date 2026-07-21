@@ -93,6 +93,7 @@ private:
 	std::vector<std::string> _allAllocationAttachedAttributeNames() const;
 	std::string _allocationAttachedAttributeName(Util::AllocationType allocation) const;
 	void _reconcileAllocationAttachedAttributes();
+	void _initCStats();
 private: // inner internal elements
 	friend class DelayProbe;
 	StatisticsCollector* _cstatWaitTime = nullptr;
