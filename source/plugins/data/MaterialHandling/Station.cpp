@@ -65,8 +65,10 @@ void Station::enter(Entity* entity) {
 	entity->setAttributeValue(attributeName, _parentModel->getSimulation()->getSimulatedTime());
 	entity->setAttributeValue("Entity.Station", _id);
 	_numberInStation++;
-	if (_reportStatistics)
-		this->_cstatNumberInStation->getStatistics()->getCollector()->addValue(_numberInStation);
+	if (_reportStatistics) {
+		_initCStats();
+		_cstatNumberInStation->getStatistics()->getCollector()->addValue(_numberInStation);
+	}
 }
 
 void Station::leave(Entity* entity) {
@@ -77,6 +79,7 @@ void Station::leave(Entity* entity) {
 	entity->setAttributeValue("Entity.Station", 0.0);
 	_numberInStation--;
 	if (_reportStatistics) {
+		_initCStats();
 		_cstatNumberInStation->getStatistics()->getCollector()->addValue(_numberInStation);
 		_cstatTimeInStation->getStatistics()->getCollector()->addValue(timeInStation);
 		if (entity->getEntityType()->isReportStatistics())
@@ -187,6 +190,8 @@ void Station::_createInternalStatisticReporters() {
 	if (_reportStatistics) {
 		if (_cstatNumberInStation == nullptr) {
 			_cstatNumberInStation = new StatisticsCollector(_parentModel, getName() + "." + "NumberInStation", this);
+		}
+		if (_cstatTimeInStation == nullptr) {
 			_cstatTimeInStation = new StatisticsCollector(_parentModel, getName() + "." + "TimeInStation", this);
 		}
 		if (_cstatNumberInStation != nullptr) {
@@ -196,19 +201,23 @@ void Station::_createInternalStatisticReporters() {
 			_statisticReporterInsert("TimeInStation", _cstatTimeInStation);
 		}
 		if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
-			//
 			// include StatisticsCollector needed in EntityType
 			std::list<ModelDataDefinition*>* enttypes = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
 			for (ModelDataDefinition* modeldatum : *enttypes) {
 				if (modeldatum->isReportStatistics())
 					static_cast<EntityType*> (modeldatum)->addGetStatisticsCollector(modeldatum->getName() + ".TimeInStations"); // force create this CStat before simulation starts
 			}
-
 		}
 	} else if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
 		_statisticReportersClear();
 		_cstatNumberInStation = nullptr;
 		_cstatTimeInStation = nullptr;
+	}
+}
+
+void Station::_initCStats() {
+	if (_reportStatistics && (_cstatNumberInStation == nullptr || _cstatTimeInStation == nullptr)) {
+		_createInternalStatisticReporters();
 	}
 }
 
