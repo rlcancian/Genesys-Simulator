@@ -1,6 +1,6 @@
 name: GenESyS Plugin Target Link Evidence
 
-run-name: Plugin link evidence | ${{ matrix.glpk }} | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+run-name: Plugin link evidence | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
 
 on:
   pull_request:
