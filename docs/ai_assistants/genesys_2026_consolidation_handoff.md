@@ -4,12 +4,15 @@
 
 - Repository: `rlcancian/Genesys-Simulator`.
 - Active development branch: `WorkInProgress`.
-- Current integrated checkpoint: `802b8aec7ac129559692bd574e70fd9991aaec1d`.
+- Current integrated checkpoint: `4f98a909d941ac31582205904c597fb345d3527f`.
 - Core Phase 0 baseline: `validated` for the recorded GitHub Actions commits and toolchain.
-- Consolidation documentation: merged through PR #469 as `9c52b61532b847668adc3be92c780966301bcf7c`.
-- Workflow-trigger corrections: merged through PR #470 as `5b24c1e4f31f1b001cd0bd6910fb2c134108fc77`.
-- AI-test aggregation correction: merged through PR #471 as `1fca8763cb7a6449cab719950ff74fb59e149b1e`.
-- Reusable Phase 0 kernel/smoke workflow: merged through PR #472 as `802b8aec7ac129559692bd574e70fd9991aaec1d`.
+- Current kernel inventory: 1,719 registered; 1,715 executed/passed; 4 historical duplicates disabled; 0 failures.
+- Consolidation documentation: merged through PR #469.
+- Workflow and Phase 0 infrastructure: merged through PRs #470–#473.
+- Legacy solver stabilization: merged through PR #474.
+- Search/Remove active coverage: merged through PR #475.
+- Queue, Station, Delay, and Resource lifecycle corrections: merged through PRs #476, #478, #479, and #480.
+- Runtime statistics lifecycle issue #477: closed as completed.
 - Release readiness: not established.
 - Numerical, statistical, biochemical, and biological validity: not established by ordinary test success.
 
@@ -18,12 +21,14 @@
 - Read the root `README.md` and mandatory `docs/ai_assistants/README.md`.
 - Mapped CMake/Ninja/C++23, Qt6, applications, plugins, tools, tests, CI, packaging, and high-risk source areas.
 - Created the 2026 consolidation plan, module inventory, test matrix, decision records, research-direction documents, Phase 0 evidence, and this handoff.
-- Corrected stale build/application documentation.
-- Corrected active workflow filters after `2026-1` was renamed to `20261`.
-- Corrected the Debian workflow path filter to the root-level `debian/` tree.
-- Added the existing offline AI plugin tests to the ordinary aggregate and kernel direct runner.
-- Added `.github/workflows/genesys-phase0-validation.yml` for reusable kernel/smoke validation and evidence artifacts.
-- Executed all three primary baseline presets through GitHub Actions.
+- Corrected stale build/application documentation and active workflow filters.
+- Added offline AI plugin tests to ordinary and direct-runner aggregates.
+- Added reusable Phase 0 kernel/smoke validation with artifacts.
+- Characterized and stabilized `SolverDefaultImpl1` quadrature; unsupported derivative overloads now fail explicitly.
+- Added mandatory active coverage for four Search/Remove runtime scenarios.
+- Reproduced and corrected first-use statistics/accounting lifecycle defects in `Queue`, `Station`, `Delay`, and `Resource`.
+- Preserved red checkpoints before production fixes for Station, Delay, and Resource.
+- Executed ordinary, GUI GMDD, kernel direct-runner/CTest, and smoke validation after each bounded correction.
 
 ## 3. Relevant technical comments
 
@@ -31,11 +36,15 @@
 - [Executed toolchain] CMake 3.31.6, Ninja 1.13.2, G++ 13.3.0.
 - [Qt] Qt6-only is the intended support policy; Qt5 fallback code remains technical debt.
 - [CI] Historical records of 16/1657 failures and three failing GUI GMDD tests were not reproduced.
-- [Tests] Kernel inventory contains 1,696 registered tests: 1,692 passed and 4 were disabled.
+- [Tests] Latest kernel inventory contains 1,719 registered tests: 1,715 passed and 4 historical duplicate blocks were disabled.
 - [Tests] Smoke inventory contains 3 tests; all passed.
-- [AI] The three offline AI plugin tests are present as tests #495–#497 and passed.
+- [AI] The three offline AI plugin tests are included in ordinary and direct-runner paths.
+- [Solver] Composite Simpson behavior is covered by focused tests; derivative overloads without a defined step-size contract throw `std::logic_error`.
+- [Runtime] Search/Remove has active focused coverage; the old four disabled blocks are duplicate cleanup debt, not current behavioral gaps.
+- [Lifecycle] Queue, Station, Delay, and Resource create statistics/accounting data idempotently on first statistics-enabled public use.
+- [Disabled statistics] Audited operations no longer dereference collectors/counters that intentionally do not exist.
+- [Resource] Replication-end accounting callback is registered once and guarded for disabled/incomplete state.
 - [Plugins] Current runtime remains statically aggregated; dynamic migration is deferred until target overlap and lifecycle contracts are mapped.
-- [Numerics] Green tests do not invalidate the confirmed defects in `SolverDefaultImpl1`.
 - [Worker] Controlled academic intranet is the intended deployment profile after security hardening.
 - [Optimizer] The current backend remains a scaffold and must not be presented as a mature optimizer.
 
@@ -43,163 +52,183 @@
 
 ### 4.1 Historical documentation drift
 
-Old documents reported failures no longer reproduced and used obsolete branch, target, path, and application names. Stable guides and the root README were corrected. Historical files remain historical evidence rather than current status.
+Older documents reported failures no longer reproduced and used obsolete branch, target, path, and application names. Stable guides and the root README were corrected. Historical files remain evidence, not current status.
 
-### 4.2 AI-test aggregation omission
+### 4.2 Test aggregation omissions
 
-`genesys_test_ai_plugins` existed but was missing from aggregate/direct-runner orchestration. The first cross-directory `add_custom_command(TARGET ...)` attempt failed during CMake configuration. The final solution uses a dedicated run target and valid dependency edges. Both ordinary and kernel paths passed.
+AI plugin tests existed but were missing from aggregate/direct-runner orchestration. Dedicated dependency/run targets were added and validated.
 
-### 4.3 Incomplete Phase 0 CI coverage
+### 4.3 Disabled Search/Remove tests
 
-The ordinary workflow covered only `tests-unit` and GUI GMDD. PR #472 added a separate reusable matrix workflow for `tests-kernel-unit` and `tests-smoke`, exact inventory, logs, versions, and artifacts.
+Four large historical runtime tests were disabled. A focused active executable now covers equivalent behavior while respecting Queue initialization and asynchronous event-calendar routing. The disabled blocks remain only because the GitHub connector is unsuitable for safely editing the approximately 10,000-line historical test source.
 
-### 4.4 Remaining disabled tests
+### 4.4 Legacy solver defects
 
-Four simulator runtime tests are registered but disabled:
+The old Simpson implementation accepted invalid odd subinterval counts, duplicated loops, used non-standard VLAs, and exposed undefined derivative behavior. Focused red/green tests now enforce the corrected quadrature and fail-fast derivative boundary.
 
-1. `SimulatorRuntimeTest.SearchQueueFindsEntityInRangeSavesRankAndRoutesToFoundPort`;
-2. `SimulatorRuntimeTest.SearchQueueNotFoundRoutesToPortZeroAndSavesZeroRank`;
-3. `SimulatorRuntimeTest.RemoveEqualStartAndEndRankRemovesExactlyOneAndRoutesCorrectly`;
-4. `SimulatorRuntimeTest.RemoveRangeRemovesOnlyEntitiesInsideConfiguredInterval`.
+### 4.5 Statistics/accounting lifecycle defects
 
-These are explicit coverage gaps, not failures.
+Public operations could execute before model-wide related-data creation:
 
-### 4.5 Scientific/numerical blockers
+- `Queue::insertElement()` / `removeElement()`;
+- `Station::enter()` / `leave()`;
+- `Delay::_onDispatchEvent()`;
+- `Resource::seize()` / `release()` and related accounting paths.
 
-`SolverDefaultImpl1`, statistical reference validation, plugin target overlap, worker security, optimizer ownership/maturity, and whole-cell scientific claims remain unresolved.
+The first three dereferenced null statistics collectors. `Resource` also dereferenced cost counters when statistics were disabled and retained a replication-end callback after internal objects could be cleared.
+
+### 4.6 Remaining scientific and architectural blockers
+
+Authoritative statistical validation, plugin target overlap, worker security, optimizer ownership/maturity, whole-cell scientific claims, and dynamic plugin ABI remain unresolved.
 
 ## 5. Corrections and adjustments made
 
-Integrated changes:
+Integrated changes include:
 
-- `.github/workflows/genesys-ci.yml`: active branch filter uses `20261`.
-- `.github/workflows/genesys-debian-package.yml`: active branch filter uses `20261`; Debian path filter uses `debian/**`.
-- `source/tests/CMakeLists.txt`: AI plugin tests included in ordinary and direct-runner graphs.
-- `.github/workflows/genesys-phase0-validation.yml`: kernel/smoke matrix validation with inventory and artifacts.
-- root and AI-assistant documentation aligned with current architecture and evidence.
+- PR #470: active branch and Debian trigger/path filters;
+- PR #471: AI plugin test aggregation;
+- PR #472: reusable Phase 0 workflow;
+- PR #473: complete Phase 0 evidence documentation;
+- PR #474: legacy solver quadrature/fail-fast derivative contract;
+- PR #475: active Search/Remove runtime coverage;
+- PR #476: Queue statistics first-use lifecycle and `_lastTimeNumberInQueueChanged` initialization;
+- PR #478: Station statistics first-use lifecycle and `_enterIntoStationComponent=nullptr`;
+- PR #479: Delay statistics first-use lifecycle;
+- PR #480: Resource statistics/accounting first-use lifecycle, disabled-statistics guards, and replication-end callback safety.
 
-No numerical algorithm, plugin ABI, application behavior, package recipe, worker security behavior, or scientific model was modified in this consolidation round.
+No plugin ABI migration, application redesign, package recipe redesign, worker security redesign, optimizer algorithm, whole-cell model, or public persistence format was changed in this round.
 
 ## 6. Files created or changed
 
 Principal consolidated documentation:
 
 - `README.md`;
-- `docs/ai_assistants/README.md`;
-- `docs/ai_assistants/build_ci_tests.md`;
-- `docs/ai_assistants/branch_workflow.md`;
-- `docs/ai_assistants/applications_development.md`;
-- `docs/ai_assistants/plugins_development.md`;
-- `docs/ai_assistants/tools_and_statistics.md`;
-- `docs/ai_assistants/whole_cell_and_sbml.md`;
-- `docs/ai_assistants/genesys_2026_consolidation_plan.md`;
-- `docs/ai_assistants/genesys_2026_module_inventory.md`;
-- `docs/ai_assistants/genesys_2026_test_matrix.md`;
-- `docs/ai_assistants/genesys_2026_phase0_ci_evidence_20260720.md`;
-- this handoff and associated decision/research plans.
+- stable documents under `docs/ai_assistants/`;
+- `genesys_2026_consolidation_plan.md`;
+- `genesys_2026_module_inventory.md`;
+- `genesys_2026_test_matrix.md`;
+- Phase 0 and runtime-lifecycle evidence documents;
+- this handoff.
 
-Integrated non-document files:
+Principal test additions:
 
-- `.github/workflows/genesys-ci.yml`;
-- `.github/workflows/genesys-debian-package.yml`;
-- `.github/workflows/genesys-phase0-validation.yml`;
+- `source/tests/unit/test_tools_legacy_solver_regression.cpp`;
+- `source/tests/unit/test_search_remove_runtime.cpp`;
+- `source/tests/unit/test_queue_statistics_lifecycle.cpp`;
+- `source/tests/unit/test_station_statistics_lifecycle.cpp`;
+- `source/tests/unit/test_delay_statistics_lifecycle.cpp`;
+- `source/tests/unit/test_resource_accounting_lifecycle.cpp`.
+
+Principal production areas changed:
+
+- `source/tools/Continuous/SolverDefaultImpl1.*`;
+- `source/plugins/data/DiscreteProcessing/Queue.*`;
+- `source/plugins/data/MaterialHandling/Station.*`;
+- `source/plugins/components/DiscreteProcessing/Delay.*`;
+- `source/plugins/data/DiscreteProcessing/Resource.*`;
 - `source/tests/CMakeLists.txt`.
 
 ## 7. Validation performed
 
-### 7.1 Ordinary unit and GUI checkpoint
+### 7.1 Latest ordinary and GUI checkpoint
 
-- PR #472 ordinary CI run: `29780136801`, run 121.
-- `tests-unit` configure/build/CTest: passed.
-- Focused GUI GMDD job: passed.
+PR #480 ordinary run `29795009959`:
 
-### 7.2 Kernel-focused checkpoint
+- `tests-unit` configure: passed;
+- aggregate build: passed;
+- CTest: passed;
+- focused GUI GMDD diagnostics: passed.
 
-- Phase 0 run: `29780136722`, run 1.
-- Tested PR merge commit: `0d5f32b48510f6c1776ccfb1572f51fb452a6538`.
-- Configure: passed.
-- Build and direct runner: passed.
-- CTest inventory: 1,696.
-- Executed/passed: 1,692.
-- Disabled: 4.
-- Failed: 0.
-- Real CTest time: 26.90 seconds.
-- Artifact: `genesys-phase0-tests-kernel-unit`, ID `8476435822`.
-- Digest: `sha256:bf803a8432328e0bb7555d61c4c01d72e6cafe20391b57380099a8db440bc673`.
+### 7.2 Latest kernel-focused checkpoint
 
-AI tests confirmed and passed:
+PR #480 Phase 0 run `29795009950`:
 
-- #495 `AIConversationServiceTest.KeepsIndependentBoundedHistories`;
-- #496 `AIPluginTest.BuiltInConnectorExposesSupportAndComponentMetadata`;
-- #497 `AIPluginTest.PromptTemplateEvaluatesExpressionsAndEscapesLiteralBraces`.
+- validated head: `eddca45a8ab0c48b94b2e53f553c18a56729fc99`;
+- configure: passed;
+- build/direct runner: passed;
+- CTest: passed;
+- registered: 1,719;
+- executed/passed: 1,715;
+- disabled: 4;
+- failed: 0;
+- artifact: `genesys-phase0-tests-kernel-unit`, ID `8481811952`.
+
+Focused additions after the original Phase 0 baseline:
+
+- tests #1–#9: legacy solver;
+- tests #10–#13: Search/Remove;
+- tests #14–#16: Queue;
+- tests #17–#18: Station;
+- tests #19–#20: Delay;
+- tests #21–#23: Resource.
 
 ### 7.3 Smoke checkpoint
 
-- Configure/build/CTest: passed.
-- Inventory/executed/passed: 3/3/3.
-- Tests: `smoke_simulator_start`, `test_continuous_system`, `test_lsode`.
-- Real time: 0.68 seconds.
-- Artifact: `genesys-phase0-tests-smoke`, ID `8476325130`.
-- Digest: `sha256:3d0f40bb68d05ec0c738c8a34d92d2f4380cf743323015220c25706157871776`.
+- configure/build/CTest: passed;
+- inventory/executed/passed: 3/3/3;
+- tests: simulator start, continuous system, LSODE.
 
 ## 8. State of the consolidation plan
 
 - Phase 0 core baseline: `validated`.
-  - `tests-unit`: validated;
-  - focused GUI GMDD: validated;
-  - `tests-kernel-unit`: validated;
-  - `tests-smoke`: validated;
-  - kernel and smoke inventories: captured;
-  - AI ordinary/direct-runner inclusion: validated.
-- Phase 0 broader release evidence: incomplete.
-  - applications, package lifecycle, sanitizers, profiling, network/security, and scientific references remain pending.
-- Phase 1 numerical/build stabilization: ready to begin with focused failing regression tests.
+- Phase 1 bounded stabilization has progressed:
+  - legacy solver contract: stabilized;
+  - Search/Remove active coverage: validated;
+  - runtime statistics/accounting lifecycle for Queue/Station/Delay/Resource: validated.
+- Phase 0 broader release evidence remains incomplete:
+  - applications;
+  - package lifecycle;
+  - sanitizers/profiling;
+  - network/security;
+  - scientific references.
 - Dynamic plugins: deferred.
 - Qt5 removal: bounded implementation pending.
 
 ## 9. Pending work
 
-Immediate:
+Immediate P0/P1:
 
-1. Investigate and enable or formally retire the four disabled Search/Remove runtime tests.
-2. Validate representative shell, worker, main GUI, and independent GUI presets.
-3. Execute Debian package build/install/start/uninstall validation.
-4. Add opt-in ASan/LSan/UBSan validation for high-risk suites.
+1. Verify the temporary `Model` lifetime finding in `Simulator::_completePluginsFieldsAndTemplate()`.
+2. Add a focused leak/lifetime regression or sanitizer-backed checkpoint where technically feasible.
+3. Apply the smallest ownership correction only after the path is reproduced or proven by direct code ownership analysis.
+4. Remove or formally retire the four historical disabled Search/Remove duplicate blocks using a local checkout.
 
-Priority technical work:
+Other priority work:
 
-- add regression tests for every defective `SolverDefaultImpl1` path;
-- apply the minimum numerical correction only after those tests fail for the expected reasons;
+- validate representative shell, worker, main GUI, and independent GUI presets;
+- execute Debian package build/install/start/uninstall validation;
+- add opt-in ASan/LSan/UBSan validation for high-risk suites;
 - generate the plugin source-to-target/link map;
 - remove Qt5 fallback in a separate PR;
 - harden worker tokens and secret handling;
 - close optimizer ownership/copy hazards;
-- verify the temporary `Model` lifetime finding;
-- decide parser `FunctionRegistry` disposition.
+- decide parser `FunctionRegistry` disposition;
+- validate statistical/biochemical/whole-cell claims against authoritative references.
 
 ## 10. Recommended next actions
 
-1. Merge the documentation evidence update after ordinary CI passes.
-2. Open a focused test-only PR for `SolverDefaultImpl1`.
-3. Keep the first solver PR limited to regression tests and characterization; do not repair the implementation in the same first commit.
-4. Address the four disabled runtime tests in a separate bounded PR unless directly required by the solver work.
-5. Keep Qt6 cleanup, plugin architecture, worker security, and optimizer work isolated.
+1. Merge the runtime-lifecycle evidence documentation after ordinary CI passes.
+2. Open a focused issue and test-only branch for the temporary-model lifetime path.
+3. Inspect every exit path of `Simulator::_completePluginsFieldsAndTemplate()` and the ownership semantics of `Model`/`ModelManager`.
+4. Avoid broad Simulator ownership refactoring until the isolated path is understood.
+5. Keep application, package, sanitizer, worker-security, plugin-architecture, and optimizer work isolated.
 
 ## 11. Guidance for the next AI assistant
 
-First read `docs/ai_assistants/README.md`, then the Phase 0 evidence, test matrix, consolidation plan, module inventory, decisions addendum, and this handoff.
+First read `docs/ai_assistants/README.md`, then the latest runtime-lifecycle evidence, test matrix, consolidation plan, module inventory, decisions addendum, and this handoff.
 
-Use `20261`, not `2026-1`, except for historical quotations. Treat the core baseline as green only for the recorded commits/toolchain. Do not infer scientific correctness from the test count. Do not alter `SolverDefaultImpl1` before adding focused failing tests. Do not begin dynamic plugin migration before mapping current source overlap and lifecycle/ownership boundaries.
+Use `20261`, not `2026-1`, except for historical quotations. Treat the core baseline as green only for the recorded commits/toolchain. Do not infer scientific correctness from the test count. Preserve the red/green pattern used in PRs #474–#480. Do not begin dynamic plugin migration before mapping source overlap and lifecycle/ownership boundaries.
 
 ## 12. Limitations and uncertainties
 
 - Validation used GitHub-hosted Ubuntu runners, not the maintainer's local machine.
-- Four tests remain disabled.
+- Four duplicate historical tests remain disabled, although equivalent focused tests are active.
 - Application startup and user workflows were not executed.
 - Debian package lifecycle was not revalidated after trigger correction.
 - Sanitizers, Valgrind, profiling, worker networking, and authentication were not executed.
+- The suspected temporary-model leak has not yet been reproduced with LeakSanitizer.
 - Scientific correctness still requires independent references and domain review.
 
 ## 13. Operational result
 
-Result: the GenESyS core Phase 0 baseline is green and reproducible through integrated GitHub Actions workflows. The repository now has validated ordinary, kernel-focused, smoke, GUI GMDD, and AI plugin test paths. The next safe implementation phase is focused regression testing for `SolverDefaultImpl1`, while application, packaging, sanitizer, security, plugin-architecture, and scientific validation remain separate workstreams.
+Result: the GenESyS core baseline and the bounded runtime lifecycle corrections are green and reproducible through GitHub Actions. The repository has validated ordinary, kernel-focused, smoke, GUI GMDD, AI plugin, legacy solver, Search/Remove, Queue, Station, Delay, and Resource test paths. The next safe P0 workstream is the temporary-model ownership/lifetime path in `Simulator::_completePluginsFieldsAndTemplate()`, isolated from broader Simulator refactoring.
