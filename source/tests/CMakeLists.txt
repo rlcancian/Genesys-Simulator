@@ -253,6 +253,62 @@ if(TARGET genesys_kernel_unit_tests_run)
     add_dependencies(genesys_kernel_unit_tests_run genesys_test_resource_accounting_lifecycle_run)
 endif()
 
+# Plugin metadata completion creates a private temporary Model. Keep this one
+# focused executable sanitizer-enabled under GNU/Clang so its process exit proves
+# that the temporary model and its model-owned plugin instances are released.
+add_executable(genesys_test_simulator_plugin_completion_lifetime
+    unit/test_simulator_plugin_completion_lifetime.cpp
+)
+
+target_include_directories(genesys_test_simulator_plugin_completion_lifetime
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+)
+
+target_link_libraries(genesys_test_simulator_plugin_completion_lifetime
+    PRIVATE
+        GTest::gtest_main
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+)
+
+target_compile_features(genesys_test_simulator_plugin_completion_lifetime PRIVATE cxx_std_23)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(genesys_test_simulator_plugin_completion_lifetime
+        PRIVATE
+            -fsanitize=address
+            -fno-omit-frame-pointer
+    )
+    target_link_options(genesys_test_simulator_plugin_completion_lifetime
+        PRIVATE
+            -fsanitize=address
+    )
+endif()
+
+set_property(TARGET genesys_test_simulator_plugin_completion_lifetime PROPERTY FOLDER tests/unit)
+
+gtest_discover_tests(genesys_test_simulator_plugin_completion_lifetime
+    PROPERTIES
+        LABELS "unit;runtime;plugin;ownership;lifetime;asan;lsan"
+        ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:halt_on_error=1;LSAN_OPTIONS=exitcode=23"
+)
+
+if(TARGET genesys_kernel_unit_tests)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_simulator_plugin_completion_lifetime)
+endif()
+
+if(TARGET genesys_kernel_unit_tests_run)
+    add_custom_target(genesys_test_simulator_plugin_completion_lifetime_run
+        COMMAND ${CMAKE_COMMAND} -E env
+            "ASAN_OPTIONS=detect_leaks=1:halt_on_error=1"
+            "LSAN_OPTIONS=exitcode=23"
+            $<TARGET_FILE:genesys_test_simulator_plugin_completion_lifetime>
+        DEPENDS genesys_test_simulator_plugin_completion_lifetime
+        USES_TERMINAL
+    )
+    add_dependencies(genesys_kernel_unit_tests_run genesys_test_simulator_plugin_completion_lifetime_run)
+endif()
+
 option(GENESYS_BUILD_SMOKE_TESTS "Build smoke tests under source/tests/smoke" ON)
 
 if(GENESYS_BUILD_SMOKE_TESTS)
