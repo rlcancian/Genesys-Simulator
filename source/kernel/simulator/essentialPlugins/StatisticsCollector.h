@@ -19,6 +19,8 @@
 #include "../model/ModelDataManager.h"
 #include "../Plugin.h"
 
+#include <vector>
+
 //namespace GenesysKernel {
 
 /*!
@@ -27,7 +29,7 @@
 class StatisticsCollector : public ModelDataDefinition {//, public Statistics_if {
 public:
 	StatisticsCollector(Model* model, std::string name = "", ModelDataDefinition* parent = nullptr, bool insertIntoModel = true);
-	virtual ~StatisticsCollector() = default;
+	virtual ~StatisticsCollector() override;
 public:
 	virtual std::string show() override;
 public:
@@ -55,10 +57,11 @@ protected:
 
 private:
 	void _initStaticsAndCollector();
+	void _addOwnedResponse(SimulationResponse* response);
 private:
 	ModelDataDefinition* _parent;
-	Statistics_if* _statistics;
+	Statistics_if* _statistics = nullptr;
+	std::vector<SimulationResponse*> _ownedResponses;
 };
-//namespace\\}
+//namespace\}
 #endif /* STATISTICSCOLLECTOR_H */
-
