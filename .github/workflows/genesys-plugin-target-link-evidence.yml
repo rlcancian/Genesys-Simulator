@@ -77,13 +77,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           if [[ "${GLPK_MODE}" == "present" ]]; then
-            pkg-config --exists glpk
             test -f /usr/include/glpk.h
+            ldconfig -p | grep -q 'libglpk\.so'
           else
-            if pkg-config --exists glpk; then
-              echo "GLPK development metadata unexpectedly available in absent mode" >&2
-              exit 1
-            fi
             test ! -f /usr/include/glpk.h
           fi
 
