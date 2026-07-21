@@ -227,6 +227,10 @@ void Resource::_active() {
         this, "Resource \"" + getName() + "\" has been activated. Capacity set back to " + std::to_string(_capacity));
 }
 
+//
+//
+//
+
 void Resource::setResourceState(ResourceState _resourceState) {
     this->_resourceState = _resourceState;
 }
@@ -335,6 +339,11 @@ Schedule* Resource::getCapacitySchedule() const {
     return _capacitySchedule;
 }
 
+
+//
+//
+//
+
 void Resource::_checkFailByCount() {
     for (Failure* failure : *_failures->list()) {
         if (failure->getFailureType() == Failure::FailureType::COUNT) {
@@ -342,6 +351,8 @@ void Resource::_checkFailByCount() {
         }
     }
 }
+
+//
 
 void Resource::_initBetweenReplications() {
     ModelDataDefinition::_initBetweenReplications();
@@ -418,6 +429,9 @@ void Resource::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) 
 }
 
 bool Resource::_check(std::string& errorMessage) {
+    /*!
+     * \brief Validate resource basic semantic constraints.
+     */
     bool resultAll = true;
     if (_capacity == 0) {
         errorMessage += "Resource capacity must be greater than zero. ";
@@ -454,13 +468,90 @@ void Resource::_onReplicationEnd(SimulationEvent* se) {
     double seizedTime = _counterTotalTimeSeized->getCountValue();
     double finalProportionSeized = seizedTime / totalTime;
     _cstatProportionSeized->getStatistics()->getCollector()->addValue(finalProportionSeized);
+    // final proportionSeized is just one more value to this cstat
 }
+
+// void Resource::_createInternalAndAttachedData() {
+//     if (_reportStatistics && _cstatTimeSeized == nullptr) {
+//         _cstatProportionSeized = new StatisticsCollector(_parentModel, getName() + "." + "ProportionSeized", this);
+//         _cstatCapacityUtilization = new
+//             StatisticsCollector(_parentModel, getName() + "." + "CapacityUtilization", this);
+//         _cstatTimeSeized = new StatisticsCollector(_parentModel, getName() + "." + "TimeSeized", this);
+//         _cstatTimeFailed = new StatisticsCollector(_parentModel, getName() + "." + "TimeFailed", this);
+//         _counterTotalTimeSeized = new Counter(_parentModel, getName() + "." + "TotalTimeSeized", this);
+//         _counterTotalTimeFailed = new Counter(_parentModel, getName() + "." + "TotalTimeFailed", this);
+//         _counterNumSeizes = new Counter(_parentModel, getName() + "." + "Seizes", this);
+//         _counterNumReleases = new Counter(_parentModel, getName() + "." + "Releases", this);
+//         _counterTotalCostBusy = new Counter(_parentModel, getName() + "." + "CostBusy", this);
+//         _counterTotalCostIdle = new Counter(_parentModel, getName() + "." + "CostIdle", this);
+//         _counterTotalCostPerUse = new Counter(_parentModel, getName() + "." + "CostPerUse", this);
+//         _parentModel->getOnEventManager()->addOnReplicationEndHandler(this, &Resource::_onReplicationEnd);
+//     }
+//     if (_reportStatistics) {
+//         if (_cstatProportionSeized != nullptr) _internalDataInsert("ProportionSeized", _cstatProportionSeized);
+//         if (_cstatCapacityUtilization != nullptr) _internalDataInsert("CapacityUtilization", _cstatCapacityUtilization);
+//         if (_cstatTimeSeized != nullptr) _internalDataInsert("TimeSeized", _cstatTimeSeized);
+//         if (_cstatTimeFailed != nullptr) _internalDataInsert("TimeFailed", _cstatTimeFailed);
+//         if (_counterTotalTimeSeized != nullptr) _internalDataInsert("TotalTimeSeized", _counterTotalTimeSeized);
+//         if (_counterTotalTimeFailed != nullptr) _internalDataInsert("TotalTimeFailed", _counterTotalTimeFailed);
+//         if (_counterNumSeizes != nullptr) _internalDataInsert("Seizes", _counterNumSeizes);
+//         if (_counterNumReleases != nullptr) _internalDataInsert("Releases", _counterNumReleases);
+//         if (_counterTotalCostBusy != nullptr) _internalDataInsert("CostBusy", _counterTotalCostBusy);
+//         if (_counterTotalCostIdle != nullptr) _internalDataInsert("CostIdle", _counterTotalCostIdle);
+//         if (_counterTotalCostPerUse != nullptr) _internalDataInsert("CostPerUse", _counterTotalCostPerUse);
+//     }
+//     else if (!_reportStatistics && _cstatTimeSeized != nullptr) {
+//         _internalDataClear();
+//         _cstatTimeSeized = nullptr;
+//         _cstatTimeFailed = nullptr;
+//         _cstatProportionSeized = nullptr;
+//         _cstatCapacityUtilization = nullptr;
+//         _counterTotalTimeSeized = nullptr;
+//         _counterTotalTimeFailed = nullptr;
+//         _counterNumSeizes = nullptr;
+//         _counterNumReleases = nullptr;
+//         _counterTotalCostPerUse = nullptr;
+//         _counterTotalCostBusy = nullptr;
+//         _counterTotalCostIdle = nullptr;
+//     }
+//
+//     const std::string scheduleKey = getName() + ".CapacitySchedule";
+//     if (_capacitySchedule != nullptr) {
+//         _attachedDataInsert(scheduleKey, _capacitySchedule);
+//     }
+//     else {
+//         _attachedDataRemove(scheduleKey);
+//     }
+//
+//     std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
+//     std::list<std::string> staleFailureKeys;
+//     const std::string failurePrefix = getName() + ".Failure.";
+//     for (const auto& pair : *attachedData) {
+//         if (pair.first.rfind(failurePrefix, 0) == 0) {
+//             staleFailureKeys.push_back(pair.first);
+//         }
+//     }
+//     for (const std::string& key : staleFailureKeys) {
+//         _attachedDataRemove(key);
+//     }
+//
+//     for (Failure* failure : *_failures->list()) {
+//         if (failure != nullptr) {
+//             _attachedDataInsert(failurePrefix + failure->getName(), failure);
+//         }
+//     }
+// }
+
+//
+//
+//
 
 PluginInformation* Resource::GetPluginInformation() {
     PluginInformation* info = new PluginInformation(Util::TypeOf<Resource>(), &Resource::LoadInstance,
                                                     &Resource::NewInstance);
     info->insertDynamicLibFileDependence("failure.so");
     info->insertDynamicLibFileDependence("schedule.so");
+    //info->set...
     info->setCategory("DiscreteProcessing");
     return info;
 }
@@ -474,6 +565,10 @@ ModelDataDefinition* Resource::LoadInstance(Model* model, PersistenceRecord* fie
     }
     return newElement;
 }
+
+// void Resource::_createInternalStatisticReporters() { }
+
+// void Resource::_createEditableDataDefinitions() { }
 
 void Resource::_initStatisticsAndAccounting() {
     if (!_reportStatistics) {
