@@ -24,6 +24,9 @@ Read this file before using or updating the other files in this directory.
 - `genesys_2026_module_inventory.md`: module, target, test, documentation, and risk inventory.
 - `genesys_2026_consolidation_handoff.md`: current operational handoff for the consolidation work.
 - `genesys_2026_phase0_ci_evidence_20260720.md`: executed Phase 0 CI checkpoint for the current consolidation PR head; supersedes older current-status claims about the three GUI GMDD tests.
+- `genesys_2026_runtime_lifecycle_evidence_20260721.md`: executed Queue, Station, Delay, Resource, Search, and Remove lifecycle evidence.
+- `genesys_2026_ownership_evidence_20260721.md`: focused sanitizer and optimizer ownership evidence.
+- `genesys_plugin_target_overlap_inventory_20260721.md`: evidence-only full/minimal static plugin source, GLPK, consumer, and link-overlap inventory.
 - `genesys_2026_human_decisions.md`: initial approved decisions, clarified options, and remaining human choices.
 - `genesys_2026_decisions_addendum_20260720.md`: later decisions that supersede conflicting statements, including `20261`/`20262`, stable C ABI, Level 3 maturity policy, intranet worker profile, and AI virtual-cell direction.
 - `genesys_numerical_statistical_references_plan.md`: deferred plan for acquiring bibliography, PDFs, datasets, parameterizations, and expected results.
