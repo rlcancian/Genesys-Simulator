@@ -31,22 +31,45 @@ StatisticsCollector::StatisticsCollector(Model* model, std::string name, ModelDa
 	_initStaticsAndCollector();
 	StatisticsClass* statThis = static_cast<StatisticsClass*>(this->_statistics);
 	std::string classname = Util::TypeOf<StatisticsClass>();
-	// controls
-	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+	_addOwnedResponse(new SimulationResponseDouble(
 				 std::bind(&StatisticsClass::average, statThis),
 				 classname, getName(), "Average"));
-	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+	_addOwnedResponse(new SimulationResponseDouble(
 				 std::bind(&StatisticsClass::min, statThis),
 				 classname, getName(), "Minimum"));
-	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+	_addOwnedResponse(new SimulationResponseDouble(
 				 std::bind(&StatisticsClass::max, statThis),
 				 classname, getName(), "Maximum"));
-	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+	_addOwnedResponse(new SimulationResponseDouble(
 				 std::bind(&StatisticsClass::numElements, statThis),
 				 classname, getName(), "NumberOfElements"));
-	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+	_addOwnedResponse(new SimulationResponseDouble(
 				 std::bind(&StatisticsClass::halfWidthConfidenceInterval, statThis),
 				 classname, getName(), "HalfWidthConfidenceInterval"));
+}
+
+StatisticsCollector::~StatisticsCollector() {
+	for (SimulationResponse* response : _ownedResponses) {
+		if (response == nullptr) {
+			continue;
+		}
+		_parentModel->getResponses()->remove(response);
+		delete response;
+	}
+	_ownedResponses.clear();
+
+	Collector_if* collector = _statistics != nullptr ? _statistics->getCollector() : nullptr;
+	delete _statistics;
+	_statistics = nullptr;
+	delete collector;
+}
+
+void StatisticsCollector::_addOwnedResponse(SimulationResponse* response) {
+	if (response == nullptr) {
+		return;
+	}
+	_ownedResponses.push_back(response);
+	_parentModel->getResponses()->insert(response);
 }
 
 void StatisticsCollector::_initStaticsAndCollector() {
@@ -75,7 +98,6 @@ ModelDataDefinition* StatisticsCollector::getParent() const {
 Statistics_if* StatisticsCollector::getStatistics() const {
 	return _statistics;
 }
-
 
 ModelDataDefinition* StatisticsCollector::NewInstance(Model* model, std::string name) {
 	return new StatisticsCollector(model, name);
