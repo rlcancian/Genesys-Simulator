@@ -213,6 +213,46 @@ if(TARGET genesys_kernel_unit_tests_run)
     add_dependencies(genesys_kernel_unit_tests_run genesys_test_delay_statistics_lifecycle_run)
 endif()
 
+# Resource seize/release operations consume statistics and cost-accounting
+# objects that are currently created by the related-data lifecycle. Characterize
+# enabled, disabled, and repeated-operation behavior before changing production.
+add_executable(genesys_test_resource_accounting_lifecycle
+    unit/test_resource_accounting_lifecycle.cpp
+)
+
+target_include_directories(genesys_test_resource_accounting_lifecycle
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+)
+
+target_link_libraries(genesys_test_resource_accounting_lifecycle
+    PRIVATE
+        GTest::gtest_main
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+)
+
+target_compile_features(genesys_test_resource_accounting_lifecycle PRIVATE cxx_std_23)
+
+set_property(TARGET genesys_test_resource_accounting_lifecycle PROPERTY FOLDER tests/unit)
+
+gtest_discover_tests(genesys_test_resource_accounting_lifecycle
+    PROPERTIES
+        LABELS "unit;runtime;resource;statistics;accounting;lifecycle"
+)
+
+if(TARGET genesys_kernel_unit_tests)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_resource_accounting_lifecycle)
+endif()
+
+if(TARGET genesys_kernel_unit_tests_run)
+    add_custom_target(genesys_test_resource_accounting_lifecycle_run
+        COMMAND $<TARGET_FILE:genesys_test_resource_accounting_lifecycle>
+        DEPENDS genesys_test_resource_accounting_lifecycle
+        USES_TERMINAL
+    )
+    add_dependencies(genesys_kernel_unit_tests_run genesys_test_resource_accounting_lifecycle_run)
+endif()
+
 option(GENESYS_BUILD_SMOKE_TESTS "Build smoke tests under source/tests/smoke" ON)
 
 if(GENESYS_BUILD_SMOKE_TESTS)
