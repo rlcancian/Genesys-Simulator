@@ -6,6 +6,7 @@ on:
   pull_request:
     branches:
       - 20261
+      - 20262
       - WorkInProgress
       - WiP20261
       - currentStable
