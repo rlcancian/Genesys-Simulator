@@ -25,6 +25,7 @@ When this file conflicts with an older handoff, plan, test count, or dated evide
 - Latest integrated checkpoint before the documentation-governance branch: `ca47f7f05b0414190fedf73da947dd3d5c5e2456`
 - Current documentation-governance branch: `WiP20260722/ai-docs-governance`
 - Tracking issue: #511
+- Pull request: #512
 - Semester-stable target: `20262`, reserved for end-of-second-semester promotion
 - Release readiness: **not established**
 - Tasks/agents that could alter the repository: paused by the maintainer during this documentation migration
@@ -186,29 +187,26 @@ Not established:
 
 ## 12. Documentation migration status
 
-Phase D0 is active under issue #511.
+Phase D0 under issue #511 has been reviewed and approved by the maintainer.
 
-Current rule during D0:
+Current D0 state:
 
-- canonical documents and runbooks are being added;
-- existing Markdown files are not moved, renamed, rewritten, or deleted;
-- old documents remain available for review and traceability;
-- the new `README.md` will route agents through canonical documents;
-- effective consolidation occurs only after review in a separate phase/PR sequence;
-- the post-2026-11-01 `oldies/` retention gate remains unchanged.
+- PR #512 remains documentation-only;
+- branch: `WiP20260722/ai-docs-governance`;
+- ordinary CI run `29925861850`: success;
+- `tests-unit` configure/build/CTest: passed;
+- GUI GMDD diagnostics: passed;
+- canonical documents and runbooks are present;
+- no pre-existing Markdown file was moved or deleted;
+- maintainer authorized merge and continuation to D1–D6.
+
+The existing post-2026-11-01 `oldies/` retention gate remains unchanged.
 
 ## 13. Next eligible work
 
-During the migration freeze, the only active workstream is issue #511.
+1. Mark PR #512 ready and merge it into `WorkInProgress`.
+2. Create a new bounded branch from the resulting merge commit.
+3. Execute D1: consolidate normative governance and architecture sources.
+4. Continue D2–D6 in separate reviewable PRs until the structure is complete.
 
-After D0 review, the next approved sequence is:
-
-1. consolidate normative governance and architecture sources;
-2. consolidate current handoff/test matrix into this file;
-3. separate autonomous and human backlogs completely;
-4. move immutable evidence and migration records into `history/`;
-5. consolidate plugin/domain reference guides;
-6. add documentation-governance CI;
-7. review each `oldies/` file before any deletion.
-
-After documentation migration, resume technical work from the first `ready` task in `BACKLOG_AUTONOMOUS.md` whose blockers are resolved.
+During the migration freeze, no unrelated source, CMake, runtime, plugin, security, numerical, application or release work is eligible.
