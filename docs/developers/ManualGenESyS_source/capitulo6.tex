@@ -1,0 +1,211 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Organização do código-fonte e arquitetura geral}
+\label{chap:organizacao_codigo_fonte_arquitetura_geral}
+
+\section{Introdução}
+\label{sec:cap6_introducao}
+
+A partir deste ponto, o livro entra explicitamente em sua segunda metade: o manual do desenvolvedor. A mudança de perspectiva é importante. Até aqui, o foco esteve no uso do \textit{GenESyS} como ferramenta de modelagem e simulação, com ênfase na GUI, nos modelos de exemplo e na observação do comportamento do sistema. Agora, o foco passa a ser a compreensão do próprio software: sua organização interna, seus subsistemas centrais, a forma como o código está distribuído e os pontos a partir dos quais um desenvolvedor pode começar a estudá-lo, modificá-lo e ampliá-lo.
+
+Antes de estudar o núcleo do simulador ou discutir \textit{plugins}, parser e aplicações, é necessário construir uma visão de conjunto da organização do repositório. Sem essa visão, o desenvolvedor tende a se perder em arquivos e classes sem perceber a função arquitetural de cada região do código. A meta deste capítulo é justamente evitar esse problema. Em vez de apresentar imediatamente detalhes locais, ele organiza o mapa geral do projeto.
+
+A ideia central é simples. O \textit{GenESyS} não deve ser lido como um conjunto amorfo de arquivos \texttt{C++}, mas como um sistema dividido em áreas com responsabilidades distintas. Algumas dessas áreas sustentam o núcleo da simulação. Outras organizam o mecanismo de extensibilidade. Outras ainda implementam aplicações, ferramentas e testes. Compreender essa divisão é o primeiro passo para qualquer leitura técnica madura do projeto.
+
+\section{Do simulador como aplicação ao simulador como software}
+\label{sec:cap6_do_simulador_como_aplicacao_ao_software}
+
+Na primeira metade do livro, o \textit{GenESyS} apareceu ao leitor principalmente como aplicação. O usuário abriu a GUI, carregou modelos, executou simulações e observou resultados. Para o desenvolvedor, porém, essa visão é apenas a superfície de um sistema mais amplo. A aplicação gráfica não esgota o projeto; ela é uma de suas formas de apresentação.
+
+Essa observação é importante porque ajuda a reposicionar corretamente o objeto de estudo. O desenvolvedor não trabalha apenas sobre uma interface gráfica, nem apenas sobre um conjunto de modelos. Ele trabalha sobre um software que:
+
+\begin{itemize}
+    \item mantém um kernel de simulação;
+    \item representa modelos internamente;
+    \item administra eventos, entidades e tempo simulado;
+    \item interpreta expressões e linguagem de simulação;
+    \item carrega e integra \textit{plugins};
+    \item sustenta aplicações distintas sobre a mesma base;
+    \item oferece infraestrutura para testes e evolução.
+\end{itemize}
+
+Portanto, o ponto de partida da segunda metade do livro não é a GUI em si, mas o sistema do qual a GUI faz parte.
+
+\section{A lógica geral da árvore de diretórios}
+\label{sec:cap6_logica_geral_arvore_diretorios}
+
+O repositório do \textit{GenESyS} deve ser lido como uma árvore organizada por responsabilidade técnica. Nem todos os diretórios têm a mesma importância para o desenvolvedor, e uma boa leitura inicial consiste justamente em distinguir o que é estrutural do que é apenas contextual.
+
+Em termos gerais, há três grandes zonas de interesse:
+
+\begin{enumerate}
+    \item a zona do código-fonte principal;
+    \item a zona dos modelos e artefatos de uso;
+    \item a zona de apoio ao desenvolvimento, build e testes.
+\end{enumerate}
+
+Dentro da primeira dessas zonas, a pasta \texttt{source/} concentra o núcleo efetivo do software. É ela que passa a dominar a leitura a partir deste capítulo. A pasta \texttt{models/}, que na primeira metade do livro servia como principal porta de entrada para o usuário, continua importante, mas agora muda de papel: deixa de ser apenas material de uso e passa a ser também material de observação arquitetural, pois ajuda o desenvolvedor a relacionar a representação do modelo ao comportamento do código.
+
+\subsection{Por que a pasta \texttt{source/} é o centro da leitura}
+\label{subsec:cap6_por_que_source_centro_leitura}
+
+Para o desenvolvedor, a pasta \texttt{source/} é o coração do projeto. É nela que se encontram os subsistemas fundamentais do \textit{GenESyS}:
+\begin{itemize}
+    \item kernel;
+    \item parser;
+    \item \textit{plugins};
+    \item aplicações;
+    \item ferramentas;
+    \item testes.
+\end{itemize}
+
+Essa divisão já sugere uma primeira leitura arquitetural do sistema. O kernel representa a infraestrutura central da simulação. O parser cuida da linguagem e das expressões. Os \textit{plugins} materializam o mecanismo de extensibilidade. As aplicações expõem formas concretas de uso da infraestrutura. As ferramentas complementam o ecossistema. Os testes organizam a validação do comportamento do software.
+
+\subsection{Por que \texttt{models/} continua relevante ao desenvolvedor}
+\label{subsec:cap6_models_relevante_ao_desenvolvedor}
+
+Na primeira parte do livro, os modelos eram tratados como material de uso do simulador. Agora, eles passam também a servir como instrumentos de leitura do software. Isso ocorre porque o desenvolvedor precisa constantemente relacionar duas coisas:
+\begin{itemize}
+    \item a forma como o sistema se apresenta ao usuário;
+    \item a forma como o sistema está implementado internamente.
+\end{itemize}
+
+Os modelos em \texttt{models/} ajudam exatamente nessa ponte. Eles mostram o tipo de artefato que a aplicação manipula e ajudam a relacionar a estrutura dos modelos ao conjunto de classes e mecanismos do kernel.
+
+\section{As grandes áreas de \texttt{source/}}
+\label{sec:cap6_grandes_areas_source}
+
+A leitura de \texttt{source/} deve começar por suas grandes áreas, e não por arquivos isolados. Essa abordagem reduz ruído e ajuda a construir uma visão arquitetural antes da leitura detalhada de classes.
+
+\subsection{\texttt{source/kernel}}
+\label{subsec:cap6_source_kernel}
+
+A pasta \texttt{source/kernel} concentra a infraestrutura central do simulador. É nela que o desenvolvedor encontra os elementos mais fundamentais do sistema: representação do modelo, entidades, eventos, mecanismos de simulação, utilitários e estatísticas. Esta é, sem dúvida, a região mais importante do projeto para quem deseja compreender o GenESyS em profundidade.
+
+Do ponto de vista arquitetural, a pasta \texttt{kernel} organiza o que o simulador \emph{é} independentemente de qualquer interface específica. Aplicações gráficas, aplicações de terminal, ferramentas e outros módulos só conseguem existir porque esse núcleo lhes oferece uma base estável.
+
+\subsection{\texttt{source/parser}}
+\label{subsec:cap6_source_parser}
+
+A pasta \texttt{source/parser} reúne a infraestrutura associada à interpretação da linguagem e das expressões do simulador. Ela é especialmente importante porque muitos parâmetros do modelo não são apenas valores literais, mas expressões textuais que precisam ser interpretadas dentro do contexto do modelo e da simulação.
+
+Na primeira parte do livro, essa dimensão apareceu indiretamente na aba \textit{Simulang}. Aqui, ela passa a serA pasta \texttt{source/plugins} organiza um dos aspectos mais característicos do GenESyS: sua extensibilidade. Em vez de concentrar toda a funcionalidade em um núcleo fechado, o projeto prevê a incorporação de módulos especializados que ampliam os componentes, os dados e outras capacidades do sistema. entendida como subsistema de software, responsável por conectar texto, semântica do modelo e execução.
+
+\subsection{\texttt{source/plugins}}
+\label{subsec:cap6_source_plugins}
+
+A pasta \texttt{source/plugins} organiza um dos aspectos mais característicos do GenESyS: sua extensibilidade. Em vez de concentrar toda a funcionalidade em um núcleo fechado, o projeto prevê a incorporação de módulos especializados que ampliam os componentes, os dados e outras capacidades do sistema.
+
+Para o desenvolvedor, isso significa que parte importante da evolução do simulador acontece nessa fronteira entre kernel e \textit{plugins}. Muitos dos elementos de modelagem mais visíveis para o usuário são fornecidos justamente por esse mecanismo.
+
+\subsection{\texttt{source/applications}}
+\label{subsec:cap6_source_applications}
+
+A pasta \texttt{source/applications} contém as aplicações construídas sobre o núcleo do sistema. É aí que o GenESyS deixa de aparecer apenas como infraestrutura e passa a assumir formas de interação concretas, como a GUI e outras aplicações auxiliares. Essa camada é importante porque mostra uma separação arquitetural valiosa: o núcleo da simulação não se confunde com uma única aplicação.
+
+Isso significa que o software pode ser lido em dois níveis:
+\begin{itemize}
+    \item como infraestrutura;
+    \item como conjunto de aplicações sobre essa infraestrutura.
+\end{itemize}
+
+\subsection{\texttt{source/tools}}
+\label{subsec:cap6_source_tools}
+
+A pasta \texttt{source/tools} reúne ferramentas que apoiam o uso, o desenvolvimento ou a evolução do sistema. Embora nem sempre sejam a primeira prioridade de leitura, essas ferramentas podem se tornar importantes em contextos de depuração, suporte, integração ou manutenção.
+
+\subsection{\texttt{source/tests}}
+\label{subsec:cap6_source_tests}
+
+A pasta \texttt{source/tests} representa a dimensão de validação do projeto. Ela é especialmente importante para o desenvolvedor porque oferece um caminho concreto para verificar comportamento esperado, prevenir regressões e dar segurança a mudanças no sistema.
+
+Em projetos em evolução, a existência de uma árvore de testes organizada é um dos principais sinais de maturidade técnica. No GenESyS, isso é particularmente relevante porque o software possui múltiplas camadas e mecanismos de extensibilidade.
+
+\section{Uma leitura em camadas do sistema}
+\label{sec:cap6_leitura_em_camadas}
+
+Uma forma muito útil de compreender a arquitetura geral do \textit{GenESyS} é imaginar o sistema em camadas.
+
+Na camada mais profunda, está o kernel. É ele que define as estruturas e serviços fundamentais da simulação. Sobre essa camada, aparecem mecanismos de linguagem e extensibilidade, como parser e \textit{plugins}. Mais acima, surgem aplicações concretas, como a GUI, que apresentam ao usuário uma forma de interação com essa infraestrutura. Em paralelo, testes e ferramentas ajudam a sustentar a manutenção e a evolução do projeto.
+
+Essa leitura em camadas ajuda o desenvolvedor a evitar um erro comum: confundir o que é estrutural com o que é apenas superfície de uso. A GUI é muito importante, mas ela não é o coração do sistema. Da mesma forma, um plugin pode ser central para um domínio de modelagem específico, mas ainda assim depende do kernel para existir.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Leitura em camadas da arquitetura geral do GenESyS.}
+    \label{tab:cap6_leitura_em_camadas}
+    \small
+    \begin{tabular}{|p{3.3cm}|p{7.8cm}|}
+        \hline
+        \textbf{Camada} & \textbf{Função principal} \\
+        \hline
+        Kernel & Infraestrutura central da simulação, representação do modelo, eventos, entidades, tempo, estatísticas e serviços fundamentais \\
+        \hline
+        Parser e extensibilidade & Interpretação de expressões, linguagem do simulador e ampliação funcional por \textit{plugins} \\
+        \hline
+        Applications & Formas concretas de interação com o sistema, como a interface gráfica \\
+        \hline
+        Tools e Tests & Apoio ao desenvolvimento, validação, manutenção e evolução do projeto \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\section{O papel da classe \texttt{Simulator} na visão de conjunto}
+\label{sec:cap6_papel_classe_simulator}
+
+A classe \texttt{Simulator} fornece uma síntese particularmente útil dessa visão geral. Ela se apresenta como a classe de mais alto nível do kernel de simulação e expõe, por meio de acessos diretos, diversos gerenciadores centrais do sistema. Isso inclui, entre outros, o \texttt{PluginManager}, o \texttt{ModelManager}, o \texttt{TraceManager}, o \texttt{ParserManager} e o \texttt{ExperimentManager}.
+
+Essa observação é valiosa porque mostra, de forma muito concreta, que a arquitetura do GenESyS não se organiza em torno de um único arquivo ou de uma única classe operacional, mas em torno de um núcleo que coordena múltiplos subsistemas especializados. Em outras palavras, o desenvolvedor deve entender o \texttt{Simulator} como ponto de acesso ao ecossistema do simulador, e não apenas como objeto técnico isolado.
+
+\subsection{Por que isso importa para a leitura do código}
+\label{subsec:cap6_por_que_importa_leitura_codigo}
+
+Se o desenvolvedor entrar no projeto apenas pela GUI ou por um componente específico de modelagem, corre o risco de ler o sistema de forma fragmentada. A presença da classe \texttt{Simulator} como agregadora de gerenciadores ajuda a recentrar a leitura: o software é mais bem compreendido quando visto como um conjunto de subsistemas coordenados, e não como coleção de partes independentes.
+
+Essa percepção será particularmente importante no próximo capítulo, quando o foco se deslocar para o kernel e para as classes que efetivamente controlam a vida do modelo em simulação.
+
+\section{Leituras erradas que este capítulo evita}
+\label{sec:cap6_leituras_erradas_evita}
+
+Este capítulo pretende evitar algumas leituras equivocadas bastante comuns em projetos como o GenESyS.
+
+A primeira é imaginar que a GUI seja o sistema inteiro. Ela é fundamental para o usuário, mas é apenas uma aplicação sobre uma infraestrutura mais ampla.
+
+A segunda é imaginar que o kernel possa ser lido sem relação com parser, \textit{plugins} e aplicações. Embora o kernel seja a base, ele não vive isolado.
+
+A terceira é começar o estudo do código por arquivos aleatórios. Essa prática costuma produzir familiaridade local, mas não compreensão arquitetural.
+
+A quarta é tratar a pasta \texttt{models/} como algo irrelevante para o desenvolvedor. Na verdade, ela é importante porque ajuda a relacionar a implementação com o objeto real de trabalho do simulador.
+
+\section{Estratégia recomendada de leitura do código}
+\label{sec:cap6_estrategia_recomendada_leitura}
+
+A forma mais produtiva de estudar o código-fonte do \textit{GenESyS} é progressiva.
+
+Primeiro, construa uma visão geral da árvore do projeto e das responsabilidades de suas grandes áreas. Depois, entre no kernel e estude as classes centrais que articulam o modelo, a simulação, os eventos e a observabilidade. Em seguida, avance para as classes-base de componentes, \textit{data definitions}, parser e \textit{plugins}. Só então faz sentido aprofundar aplicações específicas, ferramentas e testes.
+
+Essa ordem não é arbitrária. Ela acompanha a própria lógica do software:
+\begin{enumerate}
+    \item primeiro, a infraestrutura;
+    \item depois, os mecanismos de ampliação;
+    \item depois, as aplicações concretas;
+    \item por fim, os instrumentos de manutenção e validação.
+\end{enumerate}
+
+\section{Considerações Finais}
+\label{sec:cap6_consideracoes_finais}
+
+Este capítulo teve a função de reorganizar o olhar do leitor sobre o \textit{GenESyS}. A partir dele, o projeto deixa de ser visto apenas como aplicação gráfica e passa a ser compreendido como sistema de software distribuído em áreas com responsabilidades distintas. O ponto mais importante a reter é que a arquitetura do GenESyS precisa ser lida por camadas: kernel, parser, \textit{plugins}, aplicações, ferramentas e testes. Sem essa visão de conjunto, o estudo das classes individuais tende a ficar fragmentado e pouco produtivo.
+
+Com essa base estabelecida, o passo seguinte é entrar na região mais importante do projeto: o núcleo do simulador. É nele que se definem o modelo, a simulação, os eventos, o tempo simulado, a lista de eventos futuros e os mecanismos centrais de observação do comportamento do sistema. Por isso, o capítulo seguinte se concentrará no kernel propriamente dito, com ênfase nas classes que articulam a dinâmica da simulação.
+
+Teste seu entendimento desse conteúdo respondendo as seguintes perguntas:
+
+\begin{enumerate}
+    \item Por que a pasta \texttt{source/} deve ser tratada como o centro da leitura técnica do projeto?
+
+    \item Qual é a vantagem de interpretar o GenESyS em camadas, em vez de lê-lo como conjunto disperso de arquivos?
+
+    \item Por que a GUI não deve ser confundida com o sistema inteiro?
+
+    \item Que papel a pasta \texttt{models/} ainda desempenha para o desenvolvedor, mesmo na segunda metade do livro?
+\end{enumerate}

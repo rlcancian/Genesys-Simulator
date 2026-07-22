@@ -1,0 +1,330 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Modelos de exemplo e uso inicial do simulador}
+\label{chap:modelos_de_exemplo_e_uso_inicial}
+
+\section{Introdução}
+\label{sec:cap4_introducao}
+
+Uma vez que a interface gráfica do \textit{GenESyS} esteja em funcionamento e que o leitor já tenha uma visão inicial de sua organização, a próxima etapa natural é começar a trabalhar com modelos concretos. Este é o ponto em que o simulador deixa de ser apenas uma aplicação aberta na tela e passa a se tornar um ambiente de modelagem e experimentação efetivo. Para isso, o caminho mais adequado não é começar criando imediatamente um modelo completo do zero, mas utilizar os modelos de exemplo já disponíveis no projeto.
+
+Essa decisão é importante tanto do ponto de vista didático quanto do ponto de vista prático. Do ponto de vista didático, um modelo de exemplo já oferece uma estrutura coerente, com elementos interligados, propriedades preenchidas e um comportamento esperado. Isso reduz a carga cognitiva inicial do usuário, que não precisa aprender simultaneamente a interface, a semântica dos componentes, a lógica de construção do fluxo e o mecanismo de execução da simulação. Do ponto de vista prático, os modelos de exemplo permitem verificar desde cedo se a instalação do sistema está funcional e se a GUI consegue abrir, exibir, interpretar e executar modelos reais.
+
+Neste capítulo, o objetivo é ensinar o leitor a usar os modelos salvos na pasta \texttt{models/} como porta de entrada para o simulador. Ao final da leitura, o usuário deverá saber como localizar um modelo de exemplo, carregá-lo na interface gráfica, ler sua estrutura visual, identificar o fluxo principal do sistema modelado, executar a simulação e realizar pequenas modificações controladas para observar o efeito dessas mudanças.
+
+\section{Por que começar por modelos de exemplo}
+\label{sec:cap4_por_que_comecar_por_modelos_exemplo}
+
+Simuladores ricos costumam oferecer muitas possibilidades de trabalho já no primeiro contato. Essa riqueza, embora valiosa, pode se transformar em obstáculo quando não se escolhe uma boa estratégia de entrada. No caso do \textit{GenESyS}, o uso de modelos de exemplo resolve exatamente esse problema.
+
+Ao abrir um modelo já salvo, o leitor tem acesso imediato a um artefato que:
+\begin{itemize}
+    \item já está organizado de forma coerente;
+    \item já contém uma lógica de fluxo ou estrutura de modelagem;
+    \item já pode ser inspecionado pela GUI;
+    \item já pode ser executado;
+    \item já pode ser usado como base para alterações controladas.
+\end{itemize}
+
+Isso permite que o aprendizado ocorra em camadas. Primeiro, o usuário aprende a reconhecer o modelo como objeto visual dentro da interface. Depois, aprende a executá-lo. Em seguida, começa a relacionar os elementos gráficos aos seus efeitos na simulação. Só mais tarde passa a produzir modelos próprios com maior autonomia.
+
+Em termos pedagógicos, o modelo de exemplo cumpre um papel semelhante ao de um experimento já montado em um laboratório: ele não substitui a aprendizagem ativa, mas cria um contexto inicial estável no qual o usuário pode começar a observar, formular hipóteses, modificar parâmetros e interpretar resultados.
+
+\subsection{O erro de começar do zero cedo demais}
+\label{subsec:cap4_erro_comecar_do_zero}
+
+Há uma tentação natural, especialmente em leitores tecnicamente curiosos, de tentar construir um modelo próprio logo nas primeiras interações com o sistema. Embora essa iniciativa possa parecer produtiva, ela frequentemente introduz dificuldades desnecessárias.
+
+Quando o usuário começa cedo demais a partir de um espaço vazio, ele precisa decidir ao mesmo tempo:
+\begin{itemize}
+    \item que elementos inserir;
+    \item em que ordem conectá-los;
+    \item quais propriedades ajustar;
+    \item quais dados de apoio são necessários;
+    \item como verificar se o modelo está coerente;
+    \item o que esperar da execução.
+\end{itemize}
+
+Esse acúmulo de decisões torna mais difícil distinguir o que é dificuldade própria da modelagem e o que é apenas desconhecimento inicial da ferramenta. O modelo de exemplo evita esse ruído. Ele separa o problema do uso da interface do problema da autoria completa do modelo.
+
+\subsection{Modelos de exemplo como material de leitura}
+\label{subsec:cap4_modelos_exemplo_como_leitura}
+
+Além de servirem como casos executáveis, os modelos de exemplo também devem ser lidos. Essa leitura, porém, não é igual à leitura de um texto ou de um código-fonte. Ela envolve:
+\begin{itemize}
+    \item observar o arranjo visual do modelo;
+    \item perceber a sequência principal do fluxo;
+    \item identificar pontos de entrada e saída;
+    \item reconhecer elementos auxiliares que sustentam a execução;
+    \item relacionar a estrutura visual ao comportamento observado.
+\end{itemize}
+
+Com isso, o modelo deixa de ser um arquivo e passa a ser um objeto de estudo dentro da GUI.
+
+\section{A pasta \texttt{models/} como referência de uso}
+\label{sec:cap4_pasta_models_referencia}
+
+Para o usuário do \textit{GenESyS}, a pasta \texttt{models/} deve ser entendida como uma das áreas mais importantes do projeto. É nela que se encontram os modelos salvos que serão usados como ponto de entrada para a exploração do simulador. Nesta primeira parte do livro, essa pasta tem prioridade muito maior do que qualquer diretório de código-fonte.
+
+O papel dessa pasta é duplo. Primeiro, ela concentra material concreto de uso do simulador. Segundo, ela oferece ao usuário um repertório de exemplos com os quais aprender a abrir, ler, executar e alterar modelos. Isso significa que, para fins de aprendizagem inicial, o usuário não precisa se preocupar com detalhes de implementação do software. Seu universo principal de trabalho está justamente nesses arquivos de modelo.
+
+\subsection{O que procurar na pasta \texttt{models/}}
+\label{subsec:cap4_o_que_procurar_models}
+
+Ao navegar pela pasta \texttt{models/}, o usuário deve procurar modelos que satisfaçam, preferencialmente, três critérios:
+
+\begin{enumerate}
+    \item sejam visualmente simples ou moderadamente simples;
+    \item tenham um fluxo principal facilmente identificável;
+    \item permitam uma execução cujo comportamento possa ser observado sem grande esforço interpretativo.
+\end{enumerate}
+
+Isso não significa que modelos maiores ou mais sofisticados não sejam valiosos. Significa apenas que, para a entrada no simulador, convém priorizar casos que favoreçam clareza e legibilidade.
+
+\subsection{Como selecionar bons primeiros exemplos}
+\label{subsec:cap4_como_selecionar_bons_exemplos}
+
+Em uma primeira aproximação, os melhores exemplos tendem a ser aqueles em que o usuário consegue responder relativamente rápido às seguintes perguntas:
+\begin{itemize}
+    \item onde o fluxo começa?
+    \item por quais elementos principais ele passa?
+    \item onde ele termina?
+    \item há filas, recursos, atributos ou dados auxiliares que sustentam esse comportamento?
+    \item o que eu espero observar quando esse modelo for executado?
+\end{itemize}
+
+Se essas perguntas puderem ser respondidas sem grande dificuldade, o modelo provavelmente é um bom candidato para exploração inicial.
+
+\section{Abrindo um modelo de exemplo na GUI}
+\label{sec:cap4_abrindo_modelo_exemplo}
+
+Com a aplicação já iniciada, o próximo passo é abrir um modelo real. A operação de abertura de um arquivo de modelo não deve ser tratada como simples detalhe técnico, porque ela inaugura a fase em que a GUI passa a operar efetivamente sobre um objeto concreto de trabalho.
+
+O procedimento geral é o seguinte:
+\begin{enumerate}
+    \item iniciar a GUI do \textit{GenESyS};
+    \item localizar o menu ou comando correspondente à abertura de modelo;
+    \item navegar até a pasta \texttt{models/};
+    \item selecionar um arquivo de modelo apropriado;
+    \item confirmar a abertura e observar a atualização da interface.
+\end{enumerate}
+
+Depois disso, a área gráfica central deverá passar a exibir o modelo, e os painéis da GUI tenderão a refletir os elementos carregados, permitindo inspeção mais detalhada.
+
+\subsection{O que confirmar logo após a abertura}
+\label{subsec:cap4_confirmar_apos_abertura}
+
+Assim que o modelo for carregado, o usuário deve confirmar alguns pontos simples, mas importantes:
+
+\begin{itemize}
+    \item a área gráfica foi preenchida com a estrutura do modelo;
+    \item há elementos e conexões visíveis;
+    \item a interface parece reconhecer o modelo como aberto;
+    \item comandos de inspeção e simulação se tornaram utilizáveis;
+    \item o usuário consegue navegar visualmente pelo conteúdo carregado.
+\end{itemize}
+
+Essa confirmação é útil porque distingue dois estados muito diferentes da aplicação:
+\begin{itemize}
+    \item a GUI vazia ou sem modelo ativo;
+    \item a GUI trabalhando efetivamente sobre um modelo.
+\end{itemize}
+
+Somente no segundo caso faz sentido avançar para leitura e execução.
+
+\subsection{Quando o modelo parece ``grande demais''}
+\label{subsec:cap4_modelo_grande_demais}
+
+Em alguns casos, o primeiro modelo aberto pode parecer visualmente denso demais. Se isso ocorrer, o usuário não deve interpretar imediatamente essa sensação como problema do simulador ou do modelo. Em geral, isso apenas indica que:
+\begin{itemize}
+    \item o zoom precisa ser ajustado;
+    \item o modelo escolhido não era o mais adequado para a primeira exploração;
+    \item a leitura deve começar por uma região principal, e não pela totalidade da cena.
+\end{itemize}
+
+Nessa situação, a melhor prática é voltar a um exemplo mais simples ou restringir a análise ao fluxo principal mais facilmente identificável.
+
+\section{Como ler um modelo na área gráfica}
+\label{sec:cap4_como_ler_modelo_area_grafica}
+
+Uma vez carregado o modelo, a próxima tarefa do usuário é lê-lo. Essa leitura não é puramente visual, nem puramente técnica. Ela é uma leitura orientada por perguntas sobre comportamento e estrutura.
+
+A melhor ordem de leitura inicial é:
+\begin{enumerate}
+    \item localizar o início do fluxo;
+    \item seguir o percurso principal do modelo;
+    \item identificar o término do fluxo;
+    \item observar elementos de apoio;
+    \item só depois examinar propriedades e detalhes locais.
+\end{enumerate}
+
+Essa ordem é importante porque impede que o usuário se perca em detalhes antes de compreender a lógica central do modelo.
+
+\subsection{Identificando o fluxo principal}
+\label{subsec:cap4_identificando_fluxo_principal}
+
+O fluxo principal é a estrutura mais importante do modelo para o primeiro contato. Ele corresponde ao caminho essencial percorrido pelas entidades, eventos ou transformações principais representadas no sistema. Em muitos casos, esse fluxo pode ser reconhecido por uma sequência de componentes conectados de forma relativamente linear ou por um arranjo visual que sugira claramente a progressão do processo modelado.
+
+A pergunta que deve orientar o usuário é:
+\begin{quote}
+    Qual é a história mínima que este modelo está contando?
+\end{quote}
+
+Quando essa pergunta começa a ser respondida, o modelo deixa de ser um conjunto de elementos na tela e passa a ser percebido como sistema organizado.
+
+\subsection{Distinguindo fluxo principal de elementos auxiliares}
+\label{subsec:cap4_fluxo_principal_elementos_auxiliares}
+
+Uma leitura madura do modelo depende de distinguir o que constitui seu percurso central daquilo que lhe dá suporte. Muitas vezes, além do fluxo principal, o modelo também envolve dados e estruturas auxiliares: filas, recursos, estatísticas, atributos, variáveis, contadores ou outras definições.
+
+O usuário não deve ignorar esses elementos, mas também não deve começar por eles. O procedimento correto é:
+\begin{enumerate}
+    \item entender primeiro o fluxo;
+    \item depois perguntar que elementos de apoio permitem que esse fluxo funcione;
+    \item só então observar propriedades específicas.
+\end{enumerate}
+
+Essa ordem melhora bastante a legibilidade do modelo.
+
+\section{Executando o modelo pela primeira vez}
+\label{sec:cap4_executando_modelo_primeira_vez}
+
+Depois de abrir e ler o modelo, chega o momento decisivo: executar a simulação. É nessa etapa que o usuário verifica se a estrutura visual observada realmente corresponde a um comportamento dinâmico compreensível.
+
+Em um primeiro uso, a execução deve ser conduzida com intenção exploratória e não com pressa. O objetivo não é apenas ``rodar'' o modelo, mas perceber:
+\begin{itemize}
+    \item se a simulação inicia corretamente;
+    \item se o comportamento do modelo faz sentido em relação à sua estrutura;
+    \item se a GUI oferece sinais suficientes para acompanhar o andamento;
+    \item se o modelo chega a um estado final ou evolui de forma coerente.
+\end{itemize}
+
+\subsection{O que observar durante a execução}
+\label{subsec:cap4_o_que_observar_durante_execucao}
+
+Ao executar um modelo pela primeira vez, o usuário deve evitar tentar ler todas as saídas e todos os painéis ao mesmo tempo. É melhor concentrar-se em alguns aspectos centrais:
+
+\begin{itemize}
+    \item há indicação clara de que a simulação começou;
+    \item o modelo parece evoluir visualmente ou produzir sinais coerentes de progresso;
+    \item o comportamento observado é compatível com o fluxo principal previamente identificado;
+    \item não há falha estrutural evidente no processo de execução.
+\end{itemize}
+
+Em outras palavras, a primeira execução serve para conectar o modelo estático à sua dinâmica.
+
+\subsection{Primeira validação do comportamento}
+\label{subsec:cap4_primeira_validacao}
+
+Uma validação inicial bem-feita é modesta, mas suficiente. O usuário deve ser capaz de responder:
+\begin{itemize}
+    \item o modelo abriu corretamente?
+    \item a simulação pôde ser iniciada?
+    \item o comportamento observado parece plausível?
+    \item a execução terminou ou evoluiu sem inconsistências evidentes?
+\end{itemize}
+
+Se essas respostas forem positivas, então o primeiro contato prático com o simulador já foi bem-sucedido.
+
+\section{Modificando um modelo de exemplo de forma controlada}
+\label{sec:cap4_modificando_modelo_controlado}
+
+Depois de abrir e executar um modelo, o passo seguinte mais produtivo é fazer pequenas modificações controladas. Essa etapa é pedagogicamente muito importante, porque transforma o modelo de exemplo em instrumento ativo de aprendizagem.
+
+As melhores modificações iniciais são aquelas que:
+\begin{itemize}
+    \item não alteram completamente a estrutura do modelo;
+    \item podem ser facilmente revertidas;
+    \item produzem efeito observável;
+    \item ajudam o usuário a entender a função de propriedades ou parâmetros.
+\end{itemize}
+
+Exemplos de mudanças adequadas nesse estágio incluem:
+\begin{itemize}
+    \item ajustar uma propriedade simples;
+    \item alterar um nome ou rótulo;
+    \item mudar um valor numérico associado a um componente;
+    \item salvar uma cópia modificada do modelo.
+\end{itemize}
+
+\subsection{Por que pequenas mudanças são melhores}
+\label{subsec:cap4_por_que_pequenas_mudancas}
+
+Se a primeira modificação for grande demais, o usuário perde a capacidade de relacionar causa e efeito. Fica difícil saber se a mudança de comportamento observada decorre de um parâmetro específico, de uma alteração estrutural extensa ou de uma inconsistência introduzida acidentalmente.
+
+Mudanças pequenas, ao contrário, permitem que o usuário experimente a lógica do simulador quase como em um laboratório:
+\begin{enumerate}
+    \item observar o estado original;
+    \item alterar um ponto específico;
+    \item reexecutar;
+    \item comparar o efeito.
+\end{enumerate}
+
+Essa metodologia é muito mais útil do que fazer modificações extensas logo no início.
+
+\section{Boas práticas para explorar modelos de exemplo}
+\label{sec:cap4_boas_praticas_explorar_modelos}
+
+Algumas práticas simples tornam o uso inicial dos modelos de exemplo muito mais proveitoso.
+
+\subsection{Comece por casos menores}
+\label{subsec:cap4_comece_por_casos_menores}
+
+Modelos menores geralmente permitem leitura mais clara da interface, do fluxo e do comportamento. Eles também facilitam a associação entre estrutura visual e execução observada.
+
+\subsection{Salve cópias separadas}
+\label{subsec:cap4_salve_copias_separadas}
+
+Ao modificar um modelo de exemplo, é recomendável salvar uma nova cópia em vez de sobrescrever imediatamente o arquivo original. Isso preserva o exemplo de referência e facilita comparações posteriores.
+
+\subsection{Use a execução como instrumento de leitura}
+\label{subsec:cap4_execucao_como_leitura}
+
+Muitas vezes, o modelo só se torna plenamente inteligível quando é executado. Portanto, a execução não deve ser vista apenas como etapa final, mas como parte do próprio processo de compreensão do exemplo.
+
+\subsection{Volte à estrutura após executar}
+\label{subsec:cap4_volte_a_estrutura_apos_executar}
+
+Uma prática muito útil é reler o modelo visualmente depois da primeira execução. O comportamento observado costuma lançar nova luz sobre a função de seus elementos, conexões e dados de apoio.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Roteiro recomendado para explorar modelos de exemplo no GenESyS.}
+    \label{tab:cap4_roteiro_modelos_exemplo}
+    \small
+    \begin{tabular}{|p{4.2cm}|p{7.1cm}|}
+        \hline
+        \textbf{Etapa} & \textbf{Objetivo} \\
+        \hline
+        Abrir o modelo & Carregar um caso funcional na GUI \\
+        \hline
+        Ler o fluxo principal & Entender a lógica central do sistema modelado \\
+        \hline
+        Reconhecer elementos de apoio & Perceber que dados e estruturas sustentam o fluxo \\
+        \hline
+        Executar a simulação & Relacionar estrutura visual a comportamento observado \\
+        \hline
+        Alterar algo simples & Transformar o exemplo em objeto ativo de aprendizagem \\
+        \hline
+        Reexecutar e comparar & Observar o efeito da modificação realizada \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\section{Considerações Finais}
+\label{sec:cap4_consideracoes_finais}
+
+Neste capítulo, os modelos de exemplo foram apresentados como o principal ponto de entrada do usuário no trabalho prático com o \textit{GenESyS}. Em vez de começar pela criação integral de um novo modelo, o leitor foi orientado a abrir casos já salvos, lê-los visualmente, identificar seus fluxos principais, executá-los e realizar pequenas alterações controladas. Essa estratégia permite que a aprendizagem aconteça de forma progressiva e concreta, sem exigir do usuário, logo no início, domínio pleno de toda a ferramenta.
+
+O ponto essencial a reter é que um modelo de exemplo não deve ser tratado como simples demonstração passiva. Ele é, ao mesmo tempo, objeto de leitura, objeto de execução e objeto de experimentação. A partir daqui, o usuário já não está apenas familiarizado com a GUI como estrutura, mas começa a usá-la efetivamente sobre modelos reais. O próximo passo natural é aprofundar a relação entre interface gráfica, execução, observação do comportamento e representação textual do modelo, o que será feito no capítulo seguinte ao introduzir a aba \textit{Simulang}, os mecanismos de observação da execução e os primeiros procedimentos de análise do comportamento do sistema.
+
+Teste seu entendimento desse conteúdo respondendo as seguintes perguntas:
+
+\begin{enumerate}
+    \item Por que os modelos de exemplo são uma porta de entrada mais adequada do que a criação imediata de um modelo completo do zero?
+
+    \item Qual é a ordem mais produtiva para ler um modelo carregado na GUI?
+
+    \item O que o usuário deve validar na primeira execução de um modelo de exemplo?
+
+    \item Por que é importante modificar inicialmente apenas pequenos aspectos do modelo?
+\end{enumerate}

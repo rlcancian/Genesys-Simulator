@@ -1,0 +1,223 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Primeiros passos na interface gráfica}
+\label{chap:primeiros_passos_interface_grafica}
+
+\section{Introdução}
+\label{sec:cap3_introducao}
+
+Uma vez que a aplicação gráfica do \textit{GenESyS} esteja em funcionamento, o usuário entra, de fato, no simulador. É a partir desse momento que o sistema deixa de ser apenas um projeto compilado e passa a ser um ambiente de trabalho. Este capítulo tem justamente essa função: transformar a primeira execução da GUI em um primeiro contato orientado com a interface.
+
+A proposta aqui não é ainda modelar em detalhe nem executar exemplos completos. Antes disso, o leitor precisa reconhecer a lógica da janela principal, entender quais áreas da interface são mais importantes, perceber onde estão os comandos essenciais e construir uma noção suficientemente clara do espaço de trabalho que o \textit{GenESyS} oferece. Em outras palavras, este capítulo ensina o usuário a se localizar dentro da aplicação.
+
+Essa etapa é mais importante do que pode parecer. Uma interface rica, com múltiplos menus, abas, árvores, painéis e comandos de simulação, pode gerar a impressão de excesso de complexidade quando o usuário tenta compreendê-la de uma só vez. A melhor estratégia é outra: reconhecer primeiro a estrutura global da aplicação, depois identificar seus grupos funcionais e, só então, começar a trabalhar com modelos concretos. É exatamente esse percurso que será seguido aqui.
+
+\section{A janela principal como ambiente de trabalho}
+\label{sec:cap3_janela_principal_ambiente}
+
+A interface gráfica do \textit{GenESyS} foi organizada em torno de uma janela principal que centraliza as operações de modelagem, inspeção, simulação, depuração e relatório. Isso significa que o usuário não está diante de uma aplicação com um único painel ou com um conjunto mínimo de comandos isolados. Ao contrário, a GUI foi concebida como um ambiente de trabalho completo, no qual diferentes tarefas podem ser realizadas por meio de diferentes visões do mesmo modelo.
+
+Do ponto de vista do uso, essa janela principal deve ser compreendida como o espaço onde se articulam cinco dimensões fundamentais do trabalho com o simulador:
+
+\begin{enumerate}
+    \item a gestão do modelo;
+    \item a edição gráfica;
+    \item a parametrização e inspeção;
+    \item a execução da simulação;
+    \item a observação dos resultados e do comportamento do sistema.
+\end{enumerate}
+
+Essa organização é especialmente importante porque o usuário não trabalha com o modelo apenas antes da execução nem apenas depois dela. O modelo é construído, ajustado, inspecionado e reavaliado continuamente. A GUI foi estruturada para sustentar exatamente esse ciclo.
+
+\section{Abertura da aplicação e primeira leitura visual}
+\label{sec:cap3_abertura_e_leitura_visual}
+
+Ao iniciar a aplicação gráfica, o usuário deve resistir à tentação de clicar imediatamente em todos os menus e comandos disponíveis. O melhor caminho é uma leitura visual orientada da janela principal. Essa leitura pode ser feita em etapas muito simples.
+
+Primeiro, observe a barra de menus e note que ela organiza o trabalho em categorias funcionais. Em geral, estão presentes ações de modelo, edição, visualização, simulação, ferramentas e informações auxiliares. Segundo, observe a área central da interface, que é o espaço principal de representação gráfica do modelo. Terceiro, note a existência de abas, painéis laterais ou inferiores e árvores de navegação, que complementam a visão central. Quarto, observe que a aplicação não foi desenhada apenas para editar um diagrama, mas para acompanhar a vida inteira do modelo, inclusive sua simulação e sua inspeção.
+
+Essa primeira leitura já é suficiente para uma conclusão importante: a GUI do \textit{GenESyS} não é um simples editor gráfico. Ela é uma interface de trabalho integrada.
+
+\section{Grupos funcionais da interface}
+\label{sec:cap3_grupos_funcionais_interface}
+
+A forma mais produtiva de compreender a GUI é dividi-la em grupos funcionais. Em vez de decorar comandos isolados, o usuário deve perguntar: que tipo de trabalho cada parte da interface organiza?
+
+\subsection{Comandos de modelo}
+\label{subsec:cap3_comandos_modelo}
+
+O primeiro grupo funcional é o dos comandos de modelo. São eles que permitem iniciar um novo trabalho, abrir um modelo já salvo, salvar o modelo atual, fechá-lo, verificar sua consistência e obter informações sobre ele. Esses comandos estruturam o ciclo mais básico de uso da ferramenta.
+
+Na prática, isso significa que o usuário deve reconhecer logo no início onde estão as ações responsáveis por:
+\begin{itemize}
+    \item criar um novo modelo;
+    \item abrir um modelo existente;
+    \item salvar o trabalho;
+    \item fechar o modelo atual;
+    \item verificar o modelo antes de simular.
+\end{itemize}
+
+Esses comandos serão usados repetidamente ao longo de toda a primeira parte do livro.
+
+\subsection{Comandos de edição}
+\label{subsec:cap3_comandos_edicao}
+
+O segundo grupo é o dos comandos de edição. Aqui entram ações como desfazer, refazer, copiar, colar, excluir, agrupar, desagrupar e, em alguns casos, comandos de organização e alinhamento. Esse conjunto revela que a interface foi pensada para edição efetiva do modelo, e não apenas para observação passiva.
+
+Mesmo que o usuário ainda não esteja construindo modelos novos, é importante perceber desde já que a GUI suporta modificação de elementos gráficos e estruturais. Isso será útil quando os modelos de exemplo começarem a ser alterados, mesmo que de forma leve.
+
+\subsection{Comandos de visualização}
+\label{subsec:cap3_comandos_visualizacao}
+
+Outro grupo importante é o dos comandos de visualização. Eles incluem ajustes como zoom, grade, guias e outros recursos que facilitam a organização visual do espaço gráfico. Em um primeiro contato, o usuário não precisa explorar todos esses recursos em detalhe, mas deve reconhecê-los como ferramentas de apoio à leitura e à edição do modelo.
+
+Em especial, o zoom já costuma ser útil logo no início, porque modelos diferentes podem exigir diferentes escalas de observação.
+
+\subsection{Comandos de simulação}
+\label{subsec:cap3_comandos_simulacao}
+
+Um grupo central da GUI é formado pelos comandos ligados à execução da simulação. Entre eles estão, tipicamente, iniciar, pausar, retomar, parar, avançar passo a passo e configurar a simulação. Esses comandos mostram que a aplicação não apenas organiza o modelo como estrutura, mas também acompanha sua execução.
+
+Neste capítulo, o leitor deve apenas reconhecer a existência e a localização desses comandos. Seu uso efetivo será aprofundado quando começarmos a trabalhar com modelos concretos. Ainda assim, é importante fixar a ideia de que a mesma GUI usada para abrir e editar o modelo também será usada para conduzir sua simulação.
+
+\subsection{Comandos de inspeção e apoio}
+\label{subsec:cap3_comandos_inspecao_apoio}
+
+Além dos grupos anteriores, a interface também oferece mecanismos de inspeção e apoio: painéis de propriedades, árvores de componentes e \textit{data definitions}, áreas de depuração, abas de relatórios e outras visões auxiliares. A presença desses recursos reforça um ponto essencial: o \textit{GenESyS} não foi desenhado apenas para desenhar modelos, mas para estudá-los em execução.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Grupos funcionais principais da GUI do GenESyS.}
+    \label{tab:cap3_grupos_funcionais}
+    \small
+    \begin{tabular}{|p{4.0cm}|p{7.4cm}|}
+        \hline
+        \textbf{Grupo funcional} & \textbf{Papel no trabalho do usuário} \\
+        \hline
+        Modelo & Criar, abrir, salvar, fechar, verificar e organizar o trabalho com modelos \\
+        \hline
+        Edição & Alterar e reorganizar elementos do modelo \\
+        \hline
+        Visualização & Ajustar escala, guias e organização visual da área gráfica \\
+        \hline
+        Simulação & Iniciar, pausar, retomar, interromper e acompanhar a execução \\
+        \hline
+        Inspeção e apoio & Examinar propriedades, elementos do modelo, resultados e informações auxiliares \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\section{A área gráfica do modelo}
+\label{sec:cap3_area_grafica_modelo}
+
+A área gráfica é o centro visual do trabalho com o \textit{GenESyS}. É nela que o modelo aparece de forma diagramática e é nela que a maior parte da atenção do usuário tende a se concentrar durante a leitura e a edição dos modelos. Em um primeiro contato, essa área deve ser compreendida como o espaço principal onde o fluxo do modelo se torna visível.
+
+Isso é importante porque o usuário precisa começar a ler o simulador pela forma como ele mostra o modelo, e não apenas pela forma como o programa organiza seus menus. A área gráfica permite visualizar:
+\begin{itemize}
+    \item os componentes presentes no modelo;
+    \item as conexões entre esses componentes;
+    \item a lógica geral do fluxo modelado;
+    \item a distribuição visual dos elementos dentro do espaço de trabalho.
+\end{itemize}
+
+Mesmo antes de abrir um modelo concreto, o usuário já deve perceber essa área como o núcleo da experiência visual do simulador.
+
+\subsection{Área gráfica não é apenas desenho}
+\label{subsec:cap3_area_grafica_nao_apenas_desenho}
+
+Um ponto importante é que a área gráfica não deve ser confundida com um simples editor de desenho. O que se organiza ali não são apenas formas geométricas, mas a representação do modelo que será posteriormente simulado. Em outras palavras, o espaço gráfico é também espaço semântico. Cada elemento visível ali tende a corresponder a uma entidade de modelagem relevante.
+
+Essa observação ajuda o usuário a olhar a interface da forma correta. Em vez de pensar que está apenas manipulando objetos visuais, ele deve entender que está interagindo com a representação operacional do modelo.
+
+\section{Árvores, painéis e editores auxiliares}
+\label{sec:cap3_arvores_paineis_editores}
+
+Além da área gráfica central, a GUI do \textit{GenESyS} oferece outros elementos igualmente importantes para o trabalho cotidiano. Esses elementos complementam a leitura visual do modelo e tornam possível inspecioná-lo de forma mais rica.
+
+\subsection{Árvores de navegação}
+\label{subsec:cap3_arvores_navegacao}
+
+As árvores de navegação ajudam o usuário a localizar elementos do sistema e do modelo. Dependendo do contexto, elas podem mostrar:
+\begin{itemize}
+    \item \textit{plugins};
+    \item componentes do modelo;
+    \item \textit{data definitions};
+    \item outras estruturas auxiliares associadas ao trabalho corrente.
+\end{itemize}
+
+Em um primeiro contato, essas árvores devem ser vistas como mecanismos de orientação. Elas ajudam a responder à pergunta: que elementos estão disponíveis ou presentes no modelo com o qual estou trabalhando?
+
+\subsection{Editor de propriedades}
+\label{subsec:cap3_editor_propriedades}
+
+O editor de propriedades é um dos instrumentos mais importantes da GUI. É por meio dele que o usuário deixa de apenas observar a existência de um elemento e passa a lidar com seus atributos, parâmetros e opções de configuração. Em outras palavras, é nesse ponto que o modelo começa a se tornar efetivamente editável.
+
+Na prática, isso significa que a seleção de um elemento na área gráfica ou em uma árvore de navegação tende a estar associada à exibição de propriedades correspondentes. Ao longo dos próximos capítulos, esse mecanismo aparecerá continuamente, porque quase toda modificação relevante de um modelo passa por algum tipo de parametrização.
+
+\subsection{Abas e visões complementares}
+\label{subsec:cap3_abas_visoes_complementares}
+
+A presença de abas centrais e de painéis organizados por abas mostra que a GUI foi construída para sustentar várias perspectivas sobre o mesmo modelo. Algumas dessas perspectivas são visuais, outras são textuais, outras são voltadas à execução, à depuração ou à apresentação de resultados. O usuário não precisa dominar tudo isso agora, mas deve reter a ideia de que o modelo não é observado apenas por uma única superfície visual.
+
+Essa multiplicidade de visões será especialmente importante quando, mais adiante, introduzirmos a aba \textit{Simulang} como representação textual complementar ao modelo gráfico.
+
+\section{Fluxo mínimo de orientação do usuário na GUI}
+\label{sec:cap3_fluxo_minimo_orientacao}
+
+Para que a familiarização com a GUI seja produtiva, convém adotar um pequeno roteiro de orientação. Em vez de explorar aleatoriamente a janela principal, o usuário pode seguir esta sequência:
+
+\begin{enumerate}
+    \item localizar os comandos de modelo;
+    \item identificar a área gráfica central;
+    \item localizar árvores e painéis auxiliares;
+    \item localizar o editor de propriedades;
+    \item reconhecer os comandos básicos de simulação;
+    \item observar a existência de abas complementares.
+\end{enumerate}
+
+Esse roteiro tem uma vantagem importante: ele evita que a riqueza da interface seja percebida como desorganização. Ao seguir uma ordem simples, o usuário transforma a janela principal em algo inteligível e progressivamente explorável.
+
+\section{O que não é necessário dominar agora}
+\label{sec:cap3_o_que_nao_dominar_agora}
+
+Um primeiro contato bem-sucedido com a GUI não exige dominar toda a aplicação. Não é necessário, por exemplo:
+\begin{itemize}
+    \item usar todos os comandos de edição;
+    \item compreender todos os painéis de depuração;
+    \item interpretar todas as árvores da interface;
+    \item conhecer em profundidade todos os tipos de elementos disponíveis;
+    \item explorar ainda a totalidade das linguagens e representações do modelo.
+\end{itemize}
+
+Pelo contrário, tentar dominar tudo imediatamente tende a produzir ruído. A aprendizagem mais eficiente ocorre por camadas. Primeiro, o usuário entende a estrutura geral da interface. Depois, passa a trabalhar com modelos concretos. Em seguida, começa a relacionar a GUI com execução, resultados e linguagem textual. Esse é o percurso adotado neste manual.
+
+\section{Boas práticas no primeiro contato com a interface}
+\label{sec:cap3_boas_praticas_primeiro_contato}
+
+Há algumas práticas simples que tornam a experiência inicial com a GUI muito mais proveitosa.
+
+A primeira é trabalhar sempre com um objetivo concreto. Em vez de ``explorar a interface'', procure localizar algo específico: o comando de abrir modelo, a área gráfica, o painel de propriedades ou os comandos de simulação.
+
+A segunda é não confundir quantidade de recursos com dificuldade de uso. A interface do \textit{GenESyS} é ampla porque organiza várias fases do trabalho com modelos. Isso não significa que todos os recursos precisem ser usados simultaneamente.
+
+A terceira é observar a interface como ambiente integrado. Menus, área gráfica, árvores, propriedades, simulação e relatórios não são partes independentes. Eles formam um único fluxo de trabalho.
+
+A quarta é aceitar que algumas partes da GUI só passarão a fazer sentido quando um modelo estiver efetivamente carregado. É por isso que o próximo capítulo entrará diretamente nos modelos de exemplo.
+
+\section{Considerações Finais}
+\label{sec:cap3_consideracoes_finais}
+
+Este capítulo apresentou a interface gráfica do \textit{GenESyS} como o principal ambiente de trabalho do usuário. Em vez de tratar a GUI como conjunto disperso de comandos, o texto procurou mostrar sua lógica de organização: a janela principal reúne recursos para gerir modelos, editá-los, parametrizá-los, simulá-los e observá-los sob diferentes perspectivas. Essa compreensão é essencial porque evita que o usuário reduza a aplicação a um simples editor gráfico ou, no extremo oposto, a perceba como uma interface excessivamente complexa e desordenada.
+
+Com essa orientação estabelecida, o próximo passo natural é começar a trabalhar sobre modelos concretos. É nesse momento que a interface gráfica realmente ganha sentido operacional. Por isso, o capítulo seguinte passará a tratar dos modelos de exemplo já disponíveis no projeto e de seu uso inicial na GUI, permitindo ao leitor abrir, inspecionar, executar e modificar casos reais de simulação.
+
+Teste seu entendimento desse conteúdo respondendo as seguintes perguntas:
+
+\begin{enumerate}
+    \item Por que a GUI do \textit{GenESyS} deve ser entendida como ambiente integrado de trabalho, e não apenas como editor gráfico?
+
+    \item Quais são os grupos funcionais mais importantes da interface em um primeiro contato?
+
+    \item Qual é a função da área gráfica do modelo dentro da experiência de uso do simulador?
+
+    \item Por que não é necessário dominar imediatamente todos os menus, árvores e painéis da aplicação?
+\end{enumerate}
