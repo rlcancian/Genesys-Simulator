@@ -14,185 +14,119 @@ tracks: 511
 
 This is the single current operational state for AI-assisted work in `rlcancian/Genesys-Simulator`.
 
-Use this file for current branch state, validated baselines, open blockers, documentation-migration progress, and the next eligible work. Detailed run logs and commit-specific evidence belong under `history/evidence/`; executable and human-controlled work belong in the two canonical backlogs.
-
-Older handoffs, matrices, inventories and plans are historical snapshots and do not override this file.
+Use it for current branch/checkpoint state, validated baselines, blockers, migration progress and next eligible work. Detailed executed results belong under `history/evidence/`; tasks and decisions belong in the two canonical backlogs.
 
 ## 2. Repository state
 
-- Repository: `rlcancian/Genesys-Simulator`.
 - Active integration branch: `WorkInProgress`.
-- Latest integrated documentation checkpoint: `958cdc6f63c02d004f1ffdf55e104b58a245bb88` — D0 governance layer through PR #512.
+- Latest integrated documentation checkpoint: `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` — D3 evidence consolidation through PR #515.
 - Stable promotion target: `20262`, only near the end of the second semester of 2026.
 - Release readiness: **not established**.
-- Scheduled/autonomous tasks that could modify the repository: paused by maintainer instruction during this documentation migration.
+- Scheduled/autonomous tasks that could modify the repository: paused during this documentation migration.
 - Active migration tracker: issue #511.
 
 ## 3. Technical baseline
 
-Confirmed intended platform:
+Intended platform:
 
 - Ubuntu 24.04;
 - CMake 3.24 or newer;
 - Ninja;
 - C++23 with compiler extensions disabled;
 - Qt6-only support direction;
-- Google Test with the configured system/bundled fallback.
+- Google Test through the configured system/bundled fallback.
 
-Recent executed GitHub runner baseline includes CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. These exact versions describe recorded CI runs, not immutable minimum requirements.
+Recent CI evidence used CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. Those exact versions describe recorded runs, not immutable minimum requirements.
 
 ## 4. Exact core test baseline
 
-Latest exact Phase 0 inventory currently retained as the baseline:
+Latest retained exact Phase 0 inventory:
 
-- 1,721 tests registered;
-- 1,717 tests executed and passed;
-- 0 failed;
-- 4 historical duplicate Search/Remove blocks disabled.
+- registered: 1,721;
+- executed/passed: 1,717;
+- failed: 0;
+- disabled: 4 historical duplicate Search/Remove blocks.
 
-Equivalent active Search/Remove tests are mandatory, so those four disabled blocks are source-cleanup debt rather than current behavioral coverage gaps.
+Equivalent active Search/Remove tests are mandatory, so the four disabled blocks are source-cleanup debt rather than current behavioral coverage gaps.
 
-Validated core paths include:
+Validated core paths include ordinary unit CI, GUI GMDD diagnostics, kernel/direct runner/CTest inventory, three smoke tests, focused plugin-completion ASan/LSan, AI plugin tests, legacy solver regression, Search/Remove runtime, Queue/Station/Delay/Resource lifecycle and the optimizer non-copy/non-move contract.
 
-- ordinary `tests-unit` configure/build/CTest;
-- focused GUI GMDD diagnostics;
-- kernel configure/build/direct runner/inventory/CTest;
-- three smoke tests: simulator start, continuous system, LSODE;
-- focused plugin-completion ASan/LeakSanitizer;
-- AI plugin tests in ordinary and direct-runner graphs;
-- legacy solver regression contract;
-- Search/Remove runtime behavior;
-- Queue, Station, Delay, and Resource first-use lifecycle/accounting;
-- optimizer non-copy/non-move ownership contract.
+No later production test-graph change has established a different exact inventory.
 
-No later production test-graph change has established a different exact inventory. Documentation and startup-workflow changes preserved ordinary CI but did not redefine the Phase 0 count.
-
-## 5. Integrated bounded corrections
+## 5. Integrated bounded work
 
 Completed work includes:
 
-- CI branch/path trigger corrections;
-- AI test aggregation;
+- CI trigger corrections and AI test aggregation;
 - reusable Phase 0 validation;
-- legacy Simpson quadrature stabilization and unsupported-derivative fail-fast behavior;
-- active Search/Remove tests;
-- Queue, Station, Delay and Resource lifecycle corrections;
-- plugin-completion temporary-model/helper ownership correction with focused ASan/LSan;
-- unsafe optimizer copy/move operations deleted;
+- legacy Simpson/unsupported-derivative stabilization;
+- Search/Remove and runtime statistics/accounting lifecycle corrections;
+- plugin-completion ownership correction and focused sanitizer;
+- optimizer copy/move barrier;
 - static plugin target/codemodel/link/symbol evidence;
-- shell startup/argv validation;
-- worker public-health validation;
-- Data Analyser GUI startup validation;
-- Optimizer GUI startup validation;
-- AI Assistant GUI startup validation without credentials or provider calls.
+- standalone shell and worker health validation;
+- Data Analyser, Optimizer and AI Assistant GUI startup validation.
 
-## 6. Application validation matrix
+Executed details are indexed in [`history/evidence/2026/07/VALIDATION_LEDGER.md`](history/evidence/2026/07/VALIDATION_LEDGER.md).
 
-| Application/path | Validated scope | Current status | Main remaining gap |
+## 6. Application status
+
+| Application/path | Validated scope | Status | Main remaining gap |
 |---|---|---|---|
-| Shell | preset, build, scripted commands, plugin count, clean exit | partially validated | model load/run and autoload deployment contract |
-| Worker | preset, build, loopback health, exact JSON, bounded exit | partially validated | bind policy, auth, TLS, quotas, protected endpoints, isolation |
-| Main GUI | focused GUI GMDD tests | partially validated | standalone startup and minimal model interaction |
-| Data Analyser GUI | preset/build/Xvfb window/liveness/teardown | startup validated | import, analysis, fitting, charts, export, persistence, scientific correctness |
-| Optimizer GUI | preset/build/Xvfb window/liveness/teardown | startup validated | real algorithms, evaluation, constraints, convergence, Level 3 workflow |
-| AI Assistant GUI | no-credential preset/build/Xvfb window/teardown | startup validated | provider workflow, credentials, redaction and failure handling |
-| HTTP Worker GUI | target/preset known | not independently validated | bounded startup and workflow contract |
-| Do Experiments GUI | intentionally absent | not started | backend/workflow/product specification |
-| Model-specific applications | historical bounded sweep | partially validated snapshot | revalidate failures, timeouts and known Gro compile breakages |
+| Shell | preset/build/scripted commands/plugin count/exit | partially validated | model load/run and autoload deployment |
+| Worker | preset/build/loopback health/exact JSON/bounded exit | partially validated | bind, auth, TLS, quotas, protected endpoints, isolation |
+| Main GUI | focused GMDD tests | partially validated | standalone startup and minimal interaction |
+| Data Analyser GUI | Xvfb window/liveness/teardown | startup validated | analysis workflows and scientific correctness |
+| Optimizer GUI | Xvfb window/liveness/teardown | startup validated | real algorithms and Level 3 workflow |
+| AI Assistant GUI | no-credential Xvfb startup/teardown | startup validated | provider/credentials/redaction/failure workflow |
+| HTTP Worker GUI | target/preset known | not independently validated | bounded startup/workflow |
+| Do Experiments GUI | intentionally absent | not started | backend/product/workflow definition |
+| Model-specific apps | historical bounded sweep | snapshot only | current revalidation and known failures |
 
-Startup evidence never implies complete functional or scientific maturity.
+Startup does not imply functional or scientific maturity.
 
-## 7. Plugin architecture status
+## 7. Open architecture, security and science boundaries
 
-Generated evidence confirms:
+- issue #492: canonical static component-target architecture;
+- issue #496: shell `autoloadplugins.txt` deployment/search/fallback contract;
+- issue #500: worker bind-address contract;
+- `HUM-SEC-002`: worker authentication architecture;
+- `HUM-SCI-001`: authoritative numerical/statistical reference packages;
+- `HUM-OPT-001`: initial optimizer algorithm/benchmark package;
+- `HUM-VC-001`: initial AI virtual-cell organism/use case/data package;
+- `HUM-REL-001`: final supported set and promotion gate.
 
-- `genesys_plugins_components` and `genesys_plugins_components_minimal` compile the same 84 component translation units;
-- GLPK compile configuration differs between them when GLPK is present;
-- the effective runtime graph primarily uses the target named `minimal`;
-- one focused continuous-diffusion test reaches both archives;
-- duplicate compilation/storage is real;
-- active duplicate-symbol failure was not demonstrated;
-- runtime feature selection remains ambiguous.
+These must not be guessed by autonomous agents.
 
-Implementation is blocked on human decision issue #492. Do not remove, rename, alias, repartition or dynamically migrate these targets before the decision is recorded.
+## 8. Ownership, scientific and maturity boundaries
 
-## 8. Ownership and memory status
+Confirmed only for exercised ownership paths: temporary plugin-completion Model uses RAII, helper responses are released, focused ASan/LSan is clean, and `OptimizerDefaultImpl1` cannot be copied/moved.
 
-Confirmed only for exercised paths:
+Not established: repository-wide leak freedom, thread safety, broad UBSan/Valgrind, complete optimizer behavior, broad numerical/statistical validation, biological predictive validity or release readiness.
 
-- temporary plugin-completion `Model` lifetime uses RAII;
-- helper-owned Counter and StatisticsCollector responses are released;
-- focused plugin-completion ASan/LeakSanitizer exits cleanly;
-- `OptimizerDefaultImpl1` cannot be copied or moved while legacy owning pointers remain.
+Whole-cell/biochemical/AI virtual-cell work remains experimental/research-oriented. Software maturity and scientific claim level remain independent.
 
-Not established:
+## 9. Documentation migration
 
-- repository-wide leak freedom;
-- complete thread safety;
-- broad UBSan/Valgrind coverage;
-- safe ownership for every legacy raw-pointer path.
+| Phase | Status | PR / merge | Result |
+|---|---|---|---|
+| D0 | done | #512 / `958cdc6f63c02d004f1ffdf55e104b58a245bb88` | canonical layer and runbooks |
+| D1 | done | #513 / `b48697e77d39b25cafc19271ce574bdead60f94d` | normative governance consolidated |
+| D2 | done | #514 / `53b49f7518509823fe2265a3f017b5aa76f09d2f` | sole current state and backlogs |
+| D3 | done | #515 / `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | date-first evidence ledger |
+| D4 | running | branch `WiP20260722/ai-docs-reference` | six references and active-root cleanup |
+| D6 | ready after D4 | pending | one oldies tracker; retained content classified |
+| D5 | blocked on D4/D6 | pending | structural/link/front-matter CI enforcement |
 
-## 9. Scientific and maturity boundary
+All merged D0–D3 source branches were automatically removed.
 
-- passing builds/tests do not establish numerical, statistical, biochemical or biological validity;
-- authoritative reference packages remain pending for broad scientific validation;
-- the optimizer backend remains a scaffold despite GUI startup validation;
-- whole-cell and biochemical capabilities remain experimental/research-oriented;
-- AI virtual-cell direction is strategic and neuro-symbolic-mechanistic, not implemented predictive functionality;
-- supported functionality is intended to reach at least Level 3 before semester-stable inclusion.
+## 10. Current autonomous eligibility
 
-## 10. Current human blockers
+Only issue #511 documentation migration work may execute during the freeze. Unrelated source, CMake, runtime, plugin, security, numerical, application, package and release work remains paused.
 
-| Issue/backlog | Decision | Effect |
-|---|---|---|
-| #492 | canonical static component target architecture | blocks target correction |
-| #496 | shell `autoloadplugins.txt` deployment/search/fallback contract | blocks autoload correction |
-| #500 | worker bind-address default/configuration | blocks listener hardening |
-| `HUM-SEC-002` | worker authentication architecture | blocks deployable controlled-intranet profile |
-| `HUM-SCI-001` | numerical/statistical reference packages | blocks scientific validation claims |
-| `HUM-OPT-001` | first optimizer algorithm and benchmark package | blocks real optimizer implementation |
-| `HUM-VC-001` | first AI virtual-cell organism/use case/data package | blocks bounded scientific program |
-| `HUM-REL-001` | final supported set and promotion gate | blocks eventual `20262` promotion only |
+## 11. Next action
 
-## 11. Documentation migration
-
-### D0 — canonical governance layer
-
-- Status: `done`.
-- PR: #512.
-- Merge: `958cdc6f63c02d004f1ffdf55e104b58a245bb88`.
-- Final CI: ordinary tests and GUI GMDD diagnostics green.
-- Source branch removed automatically after merge.
-
-### D1 — normative source consolidation
-
-- Status: `in review`.
-- Branch: `WiP20260722/ai-docs-normative`.
-- PR: #513.
-- Scope: consolidate branch/promotion/documentation/security/maturity policy and retire four competing policy documents to migration notices.
-
-### D2 — current-state consolidation
-
-- Status: `in progress`.
-- Branch: `WiP20260722/ai-docs-status`.
-- Scope: make this file and the two backlogs the only operational sources; retire five competing plan/matrix/inventory/handoff documents.
-
-### Remaining phases
-
-- D3: relocate dated execution evidence and completed integration records;
-- D4: consolidate topic guides into a small `reference/` set and remove temporary redirects;
-- D5: add documentation-governance CI and root allowlist;
-- D6: consolidate oldies governance and classify retained historical files without deleting them before the gate.
-
-## 12. Current autonomous eligibility
-
-During the migration freeze, only issue #511 documentation work may execute.
-
-Do not start unrelated source, CMake, runtime, plugin, security, numerical, application, package or release work until migration completion is explicitly recorded here and the maintainer resumes those activities.
-
-## 13. Next action
-
-1. Finish and merge D1 after green CI.
-2. Open D2 against the resulting `WorkInProgress` state.
-3. Continue D3–D6 in bounded reviewable PRs.
-4. Declare completion only after canonical root, references, history, archive tracker and documentation CI are all stabilized.
+1. Review, validate and merge D4.
+2. Execute D6 without deleting any `oldies/` content file.
+3. Execute D5 against the final structure.
+4. Close issue #511 and record explicit migration completion only when the exact top-level allowlist, references, history, oldies tracker and governance workflow are all green.
