@@ -14,247 +14,186 @@ tracks: 511
 
 This file is the only approved source for tasks that an AI agent may execute without a new material human decision.
 
-A task may be executed only when its status is `ready`, its required environment is available, all dependencies are resolved, and the repository is not under a maintainer-declared freeze that excludes the task.
-
-During the AI-documentation migration freeze, only tasks whose scope belongs to issue #511 may run.
+A task may run only when its status is `ready`, its environment is available, dependencies are resolved, and no maintainer freeze excludes it. During the documentation migration freeze, only issue #511 documentation work may run.
 
 ## 2. Status values
 
-- `ready` — fully specified and eligible for autonomous execution;
-- `running` — one active branch/PR owns the task;
-- `blocked-review` — implementation prepared but requires maintainer review before consolidation;
-- `blocked-dependency` — waits for another task, PR, or issue;
-- `paused` — technically executable but temporarily disabled by maintainer instruction;
-- `done` — acceptance criteria satisfied and merged;
-- `cancelled` — intentionally removed from the plan.
+- `ready` — fully specified and eligible;
+- `running` — owned by one active branch/PR;
+- `blocked-review` — prepared but waiting for review;
+- `blocked-dependency` — waits for another task/decision;
+- `paused` — executable but disabled by maintainer instruction;
+- `done` — accepted, validated and merged;
+- `cancelled` — intentionally removed.
 
-## 3. Required task schema
+## 3. Documentation migration
 
-Every task must define:
-
-- stable ID;
-- priority;
-- status;
-- permitted environment: `local`, `github`, or `either`;
-- objective;
-- evidence/background;
-- exact scope;
-- non-goals;
-- dependencies and blockers;
-- files/areas likely affected;
-- validation requirements;
-- acceptance criteria;
-- stop/escalation conditions;
-- tracking issue;
-- branch/PR when active.
-
-Agents must not expand scope because adjacent cleanup appears convenient.
-
-## 4. Active documentation migration
-
-### AUTO-DOC-001 — Establish canonical AI documentation governance
+### AUTO-DOC-001 — Establish canonical governance layer
 
 - Priority: `P0`
 - Status: `done`
 - Environment: `github`
-- Objective: create the approved canonical documents, runbooks, migration record, and routing entrypoint without moving or deleting existing files.
-- Evidence/background: issue #511 and the completed inventory/classification of Markdown under `docs/ai_assistants/`.
-- Scope:
-  - create `GOVERNANCE.md`, `ARCHITECTURE.md`, `STATUS.md`, both backlogs, and three runbooks;
-  - create migration/history index documents;
-  - update `README.md` to route future agents;
-  - retain every existing document in place.
-- Non-goals:
-  - no source, CMake, CI workflow, package, runtime, scientific, security, or architecture implementation changes;
-  - no file moves, renames, deletions, or broad rewriting of legacy documents;
-  - no `oldies/` consolidation or deletion.
-- Dependencies: maintainer approval received; repository-changing scheduled tasks paused.
-- Validation:
-  - inspect all new Markdown links and headings;
-  - compare branch against `WorkInProgress`;
-  - ordinary CI green;
-  - maintainer review received.
-- Acceptance:
-  - canonical reading order and authority are explicit;
-  - local/GitHub/autonomous runbooks exist;
-  - current status has one source;
-  - human decisions are separated from executable work;
-  - migration matrix covers current document categories;
-  - all prior files remain present.
-- Tracking issue: #511
-- Branch: `WiP20260722/ai-docs-governance`
-- PR: #512
-- Final validation: run `29928854081`, success.
+- Issue/PR: #511 / #512
+- Merge: `958cdc6f63c02d004f1ffdf55e104b58a245bb88`
+- Result: six canonical documents, three environment runbooks, migration/history/reference/archive indices and a short routing README.
+- Validation: run `29929616027`, ordinary tests and GUI GMDD green.
+- Source branch: removed automatically.
 
-### AUTO-DOC-002 — Consolidate normative governance and architecture sources
+### AUTO-DOC-002 — Consolidate normative governance and architecture
+
+- Priority: `P0`
+- Status: `done`
+- Environment: `github`
+- Issue/PR: #511 / #513
+- Merge: `b48697e77d39b25cafc19271ce574bdead60f94d`
+- Result: branch/promotion, documentation, security, maturity, plugin and evidence policy consolidated into canonical governance/architecture; four competing policy files retired.
+- Validation: run `29931594603`, ordinary tests and GUI GMDD green.
+- Source branch: removed automatically.
+
+### AUTO-DOC-003 — Consolidate current state and plans
+
+- Priority: `P0`
+- Status: `done`
+- Environment: `github`
+- Issue/PR: #511 / #514
+- Merge: `53b49f7518509823fe2265a3f017b5aa76f09d2f`
+- Result: `STATUS.md` and the two backlogs became the only operational state/task sources; five competing plan/matrix/inventory/handoff files retired.
+- Validation: run `29933330431`, ordinary tests and GUI GMDD green.
+- Source branch: removed automatically.
+
+### AUTO-DOC-004 — Consolidate executed evidence
+
+- Priority: `P1`
+- Status: `done`
+- Environment: `github`
+- Issue/PR: #511 / #515
+- Merge: `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca`
+- Result: date-first July 2026 validation ledger, active evidence index, ten detailed reports retired with original blob SHAs preserved.
+- Validation: run `29934227250`, ordinary tests and GUI GMDD green.
+- Source branch: removed automatically.
+
+### AUTO-DOC-005 — Consolidate technical references and clean active root
+
+- Priority: `P0`
+- Status: `running`
+- Environment: `github`
+- Branch: `WiP20260722/ai-docs-reference`
+- Objective:
+  - replace scattered topic guides/plans with six references;
+  - update root README to canonical routing;
+  - remove temporary D1–D3 redirects and superseded topic files;
+  - leave only six canonical Markdown files at the AI-assistant top level plus the three temporary oldies trackers until D6.
+- Active references:
+  - `reference/BUILD_TEST_PACKAGING.md`;
+  - `reference/KERNEL_PARSER_OWNERSHIP.md`;
+  - `reference/PLUGINS.md`;
+  - `reference/SCIENTIFIC_DOMAINS.md`;
+  - `reference/APPLICATIONS_TOOLS_MODELS.md`;
+  - `reference/API_INTEGRATIONS.md`.
+- Non-goals: no source/CMake/runtime/scientific/security implementation; no deletion of files inside `oldies/`.
+- Acceptance:
+  - no active guide/plan/evidence remains in the top-level root;
+  - all technical content is routed to canonical references/backlogs/history;
+  - root README links only to canonical paths;
+  - ordinary CI green;
+  - source branch removed after merge.
+- Tracking issue: #511.
+
+### AUTO-DOC-007 — Consolidate oldies governance and classify retained history
 
 - Priority: `P0`
 - Status: `ready`
 - Environment: `github`
-- Objective: merge useful normative content from existing stable guides into the canonical governance/architecture/reference structure.
-- Scope:
-  - reconcile `branch_workflow.md`, `documentation_governance.md`, decision documents, and durable portions of domain guides;
-  - preserve source history through Git;
-  - replace superseded normative files with migration notices or move them to history after content comparison.
-- Non-goals:
-  - no execution evidence movement in the same PR;
-  - no `oldies/` deletion;
-  - no technical implementation changes.
-- Dependencies: AUTO-DOC-001 approved and ready for merge.
-- Validation: link checks, document comparison, no lost active decision, ordinary CI if triggered.
-- Acceptance: one normative source per policy and one durable source per architecture boundary.
-- Stop/escalation: any unresolved conflict between human decisions must be moved to `BACKLOG_HUMAN.md`.
+- Objective:
+  - merge `oldies_inventory.md`, `oldies_review_status.md` and `consolidation_map.md` into `archive/OLDIES_REVIEW.md`;
+  - classify every retained historical file;
+  - remove the three old top-level trackers;
+  - preserve every `oldies/` content file until the retention gate and explicit approval.
+- Dependencies: AUTO-DOC-005 merged.
+- Acceptance before gate:
+  - one active tracker;
+  - all historical files listed/classified;
+  - no canonical document depends on oldies for current policy/state;
+  - no `oldies/` file deleted.
+- Stop/escalation: unique or uncertain historical content must be marked for human review, not discarded.
 - Tracking issue: #511.
-
-### AUTO-DOC-003 — Consolidate current status and backlogs
-
-- Priority: `P0`
-- Status: `blocked-dependency`
-- Environment: `github`
-- Objective: retire competing current-state claims after AUTO-DOC-002.
-- Scope:
-  - reconcile `current_plans.md`, `genesys_2026_test_matrix.md`, and `genesys_2026_consolidation_handoff.md` into `STATUS.md` and the two backlogs;
-  - preserve dated snapshots under history when needed;
-  - replace retired current-state documents with short migration notices before deletion.
-- Dependencies: AUTO-DOC-001 and AUTO-DOC-002.
-- Acceptance: no active README points to more than one current-state source.
-- Stop/escalation: stop when a pending task lacks enough evidence to classify as autonomous or human-controlled.
-
-### AUTO-DOC-004 — Move immutable evidence and migration records
-
-- Priority: `P1`
-- Status: `blocked-dependency`
-- Environment: `github`
-- Objective: relocate dated evidence and completed integration/integration notes into `history/` without altering substantive content.
-- Scope:
-  - move `*_evidence_YYYYMMDD.md` to dated evidence directories;
-  - move completed integration/handoff snapshots to migrations/history;
-  - update internal links atomically.
-- Non-goals: no evidence rewriting; no source/runtime change.
-- Dependencies: AUTO-DOC-003 and approved destination map.
-- Acceptance: immutable evidence remains reachable; canonical docs no longer enumerate every evidence file.
-
-### AUTO-DOC-005 — Consolidate plugin and scientific-domain references
-
-- Priority: `P1`
-- Status: `blocked-dependency`
-- Environment: `github`
-- Objective: reduce `plugins/*.md` to a smaller reference set without losing domain boundaries.
-- Planned destinations:
-  - `reference/PLUGINS.md`;
-  - `reference/SCIENTIFIC_DOMAINS.md`.
-- Dependencies: AUTO-DOC-002 and detailed source comparison.
-- Stop/escalation: scientific or architectural conflicts move to the human backlog.
 
 ### AUTO-DOC-006 — Add documentation-governance CI
 
-- Priority: `P1`
+- Priority: `P0`
 - Status: `blocked-dependency`
 - Environment: `github` or `local`
-- Objective: enforce the canonical documentation structure after consolidation.
-- Proposed checks:
-  - allowlist top-level canonical Markdown;
-  - internal link validation;
-  - required front matter by document type;
-  - no run IDs in governance/architecture documents;
-  - dated evidence restricted to `history/evidence/`;
+- Objective: enforce the final structure after AUTO-DOC-005 and AUTO-DOC-007.
+- Required checks:
+  - exact six-file top-level Markdown allowlist;
+  - relative-link validation for active documentation;
+  - required front matter for canonical/runbook/reference/history indices;
   - unique backlog IDs and required task fields;
-  - current `STATUS.md` timestamp;
-  - no `oldies/` deletion before gate/waiver.
-- Dependencies: AUTO-DOC-001 through AUTO-DOC-005.
-- Non-goals: do not enforce rules against legacy files before they are migrated.
+  - no run IDs in normative governance/architecture;
+  - evidence ledgers restricted to `history/evidence/`;
+  - oldies retention gate and tracker presence;
+  - no legacy migration notices or `plugins/` guide directory.
+- Dependencies: AUTO-DOC-005 and AUTO-DOC-007 merged.
+- Acceptance: workflow green on its own PR and ordinary CI preserved.
+- Tracking issue: #511.
 
-### AUTO-DOC-007 — Review and retain `oldies/` until the deletion gate
+## 4. Paused technical tasks
 
-- Priority: `P2`
-- Status: `blocked-dependency`
-- Environment: `github` or `local`
-- Objective: review every retained historical file and prepare future removal without violating retention policy.
-- Dependencies:
-  - all historical files individually reviewed;
-  - useful content consolidated or explicitly rejected;
-  - no active links depend on `oldies/`;
-  - deletion remains prohibited before 2026-11-01;
-  - explicit maintainer approval required for a later deletion PR.
-- Acceptance before the gate: one review tracker, all files classified, no current-state dependency on `oldies/`.
-- Acceptance after the gate: dedicated deletion PR, preserved Git history/tag, no current-state dependency.
-- Stop/escalation: any uncertain historical decision or unique technical content.
-
-## 5. Paused technical tasks
-
-The following tasks are technically bounded candidates but are paused until the documentation migration is complete and the maintainer resumes autonomous work.
+These tasks remain paused until the maintainer explicitly resumes non-documentation autonomous work.
 
 ### AUTO-APP-001 — Validate standalone HTTP Worker GUI startup
 
 - Priority: `P1`
 - Status: `paused`
 - Environment: `github`
-- Objective: add bounded Qt6/Xvfb startup evidence for the existing `gui-httpworker` preset.
-- Non-goals: no worker API/security redesign; no network exposure change.
 - Acceptance: preset/build, PID-associated window, bounded liveness, controlled teardown, ordinary CI green.
+- Non-goal: no worker security redesign.
 
 ### AUTO-APP-002 — Validate standalone main GUI startup
 
 - Priority: `P1`
 - Status: `paused`
 - Environment: `github`
-- Objective: validate `gui-app` configure/build/startup under bounded Xvfb before a later minimal model-interaction workflow.
-- Stop/escalation: do not reinterpret GUI GMDD tests as full main-GUI startup coverage.
+- Acceptance: `gui-app` preset/build/Xvfb startup evidence before minimal interaction work.
 
-### AUTO-TEST-001 — Remove historical duplicate Search/Remove test blocks
+### AUTO-TEST-001 — Remove four historical duplicate Search/Remove test blocks
 
 - Priority: `P2`
 - Status: `paused`
 - Environment: `local`
-- Objective: remove only the four disabled duplicate blocks from the large historical runtime test file.
-- Dependencies: active focused Search/Remove executable remains mandatory and green.
-- Validation: exact inventory changes from 1,721/1,717/4 to the expected no-duplicate count; ordinary, kernel, and smoke paths green.
-- Stop/escalation: connector-only environments must not replace the very large file blindly.
+- Acceptance: active focused tests remain green; exact inventory updated; ordinary/kernel/smoke paths green.
+- Stop: connector-only environments must not replace the large source file blindly.
 
-### AUTO-QT-001 — Inventory and remove active Qt5 fallback
+### AUTO-QT-001 — Remove active Qt5 fallback
 
 - Priority: `P1`
 - Status: `paused`
 - Environment: `local` preferred
-- Objective: implement the already decided Qt6-only policy through a bounded inventory and cleanup sequence.
-- Dependencies: documentation migration complete; exact active Qt5 references mapped.
-- Non-goals: no GUI redesign or unrelated CMake modernization.
-- Acceptance: no active Qt5 fallback outside retained historical files; all Qt6 GUI/test presets green.
+- Acceptance: current active references mapped; Qt6 presets/tests green; no GUI redesign.
 
 ### AUTO-PKG-001 — Execute Debian package lifecycle validation
 
 - Priority: `P1`
 - Status: `paused`
 - Environment: `github` or `local`
-- Objective: validate package build, metadata, install, executable startup, reinstall/upgrade behavior where applicable, uninstall, and residual files.
-- Non-goals: no PPA publication or package redesign in the validation PR.
+- Acceptance: package build, metadata, install, startup, reinstall/upgrade when relevant, uninstall/purge and residual-file checks.
+- Non-goal: no PPA publication or package redesign.
 
-## 6. Completed baseline tasks
+## 5. Completed technical baseline
 
-The following are `done` and must not be reopened without new evidence:
+Do not reopen without new evidence:
 
-- CI branch/path trigger corrections;
-- AI plugin test aggregation;
+- CI trigger corrections;
+- AI test aggregation;
 - Phase 0 kernel/smoke workflow;
-- legacy solver contract stabilization;
+- solver contract stabilization;
 - active Search/Remove coverage;
-- Queue, Station, Delay, and Resource lifecycle corrections;
-- focused plugin-completion ASan/LSan correction;
+- Queue/Station/Delay/Resource lifecycle corrections;
+- focused plugin-completion ownership sanitizer;
 - optimizer copy/move barrier;
-- plugin target overlap/introspection/link evidence;
-- shell startup validation;
-- worker public-health validation;
-- Data Analyser GUI startup validation;
-- Optimizer GUI startup validation;
-- AI Assistant GUI startup validation.
+- plugin target/codemodel/link evidence;
+- shell, worker, Data Analyser, Optimizer and AI Assistant startup validations.
 
-## 7. Task completion rule
+## 6. Completion rule
 
-A task moves to `done` only after:
-
-1. required validation is green;
-2. artifact/evidence is reviewed where required;
-3. PR is merged into `WorkInProgress`;
-4. source branch is deleted when tooling permits;
-5. issue is closed or updated;
-6. `STATUS.md`, applicable backlog, and `history/CHANGELOG_AI.md` are updated as appropriate.
+A task moves to `done` only after required validation is green, evidence is reviewed, the PR is merged, source branch deletion is confirmed, issue/status/backlog/changelog are updated, and remaining boundaries are explicit.

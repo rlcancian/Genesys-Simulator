@@ -3,107 +3,95 @@ document_type: reference-index
 authority: informative
 owner: project-maintainer
 last_reviewed: 2026-07-22
-status: migration-placeholder
+status: active
 tracks: 511
 ---
 
 # GenESyS AI Assistant Reference Documentation
 
-## Purpose
+## 1. Purpose
 
-This directory will contain topic-specific technical reference material that is too detailed for the canonical architecture and governance documents.
+This directory contains task-specific technical guidance that is too detailed for canonical governance and architecture.
 
-During migration phase D0, existing topic guides remain in their current locations. Do not treat this placeholder as evidence that those guides have already been consolidated.
+Read only the references required by the selected task. Current state remains in [`../STATUS.md`](../STATUS.md), and pending work remains in the canonical backlogs.
 
-## Planned reference set
+## 2. Reference set
 
-### `BUILD_TEST_PACKAGING.md`
+### [`BUILD_TEST_PACKAGING.md`](BUILD_TEST_PACKAGING.md)
 
-Planned content:
+Use for:
 
-- canonical CMake/Ninja/CTest commands and presets;
-- CI workflow responsibilities;
-- application build/startup validation patterns;
-- model-specific generation runbook;
-- Docker and Debian/PPA packaging boundaries;
-- sanitizer and diagnostic entry points.
+- CMake/Ninja/CTest presets;
+- CI and sanitizer routing;
+- application startup-validation patterns;
+- Docker helpers;
+- Debian lifecycle;
+- Doxygen/generated documentation.
 
-Sources to review include:
+### [`KERNEL_PARSER_OWNERSHIP.md`](KERNEL_PARSER_OWNERSHIP.md)
 
-- `../build_ci_tests.md`;
-- `../docker_packaging.md`;
-- stable portions of `../models_and_modelspecific_generation.md`;
-- current CMake, presets, workflows, and scripts.
+Use for:
 
-### `PLUGINS.md`
+- kernel lifecycle;
+- parser contracts;
+- pointer/reference ownership;
+- persistence impact;
+- C++23 modernization;
+- regression/sanitizer strategy.
 
-Planned content:
+### [`PLUGINS.md`](PLUGINS.md)
 
-- current static registration/build architecture;
-- component/data-definition plugin contracts;
-- metadata, factories, persistence, ownership, dependencies, lifecycle;
-- optional dependency behavior;
-- future stable C ABI boundary;
-- electronics, external integration, and general-purpose plugin details.
+Use for:
 
-Sources to review include `../plugins_development.md` and applicable files under `../plugins/`.
+- plugin registration/factories;
+- component/data-definition contracts;
+- metadata/persistence/ownership;
+- static target discipline;
+- optional dependencies;
+- future stable C ABI.
 
-### `SCIENTIFIC_DOMAINS.md`
+### [`SCIENTIFIC_DOMAINS.md`](SCIENTIFIC_DOMAINS.md)
 
-Planned content:
+Use for:
 
-- continuous/hybrid simulation;
-- modal models, EFSMs, Petri nets, cellular automata;
-- biochemical simulation;
-- whole-cell modeling;
-- SBML interoperability;
-- scientific validation and claim boundaries;
-- AI virtual-cell research context.
+- continuous/hybrid/modal/Petri/cellular models;
+- numerical/statistical validation;
+- biochemical/SBML/whole-cell;
+- AI virtual-cell direction;
+- scientific claim levels.
 
-Sources to review include:
+### [`APPLICATIONS_TOOLS_MODELS.md`](APPLICATIONS_TOOLS_MODELS.md)
 
-- `../modal_and_hybrid_simulation.md`;
-- `../whole_cell_and_sbml.md`;
-- relevant files under `../plugins/`;
-- approved scientific decision/research documents.
+Use for:
 
-### `APPLICATIONS_TOOLS_MODELS.md`
+- shell/worker/Qt6 applications;
+- model-specific generation;
+- property editors;
+- Data Analyser, Optimizer, AI Assistant and DOE;
+- application launch/install boundaries.
 
-Planned content:
+### [`API_INTEGRATIONS.md`](API_INTEGRATIONS.md)
 
-- shell, worker, main GUI, independent GUIs, and model-specific applications;
-- process-launching and context handoff;
-- Data Analyser, Optimizer, AI Assistant, and DOE frontend/backend boundaries;
-- model generation and compatibility rules.
+Use for:
 
-Sources to review include:
+- facade and shell command coverage;
+- Python-facing APIs;
+- AI providers;
+- generated code/external processes;
+- worker/HTTP boundary;
+- issue-report relay and public compatibility.
 
-- `../applications_development.md`;
-- `../tools_and_statistics.md`;
-- `../models_and_modelspecific_generation.md`.
-
-### `API_COVERAGE.md`
-
-Planned content:
-
-- shell-to-`SimulatorFacade` coverage;
-- Python-facing coverage;
-- generated or manually maintained API exposure matrices;
-- explicit exclusions and ownership constraints.
-
-Sources to review include:
-
-- `../terminal_facade_command_coverage.md`;
-- `../python_integration.md`;
-- historical Python facade coverage after revalidation.
-
-## Reference rules
+## 3. Reference rules
 
 Reference files:
 
-- must not duplicate current CI run IDs from `STATUS.md`;
-- must distinguish current code from historical findings;
-- must link to source paths and generated evidence where appropriate;
-- must not become task backlogs;
-- must not authorize architectural decisions absent from `GOVERNANCE.md` or `ARCHITECTURE.md`;
-- should remain short enough for task-specific AI retrieval.
+- must not duplicate current CI status or backlog state;
+- must distinguish current code, executed evidence, strong indications and historical findings;
+- must link to canonical policy/state and source paths when material;
+- must not authorize unresolved architecture/security/scientific/product decisions;
+- should remain scoped enough for task-specific AI retrieval;
+- must be updated when the underlying public contract changes.
+
+## 4. Historical source preservation
+
+The former topic guides and plans are consolidated during D4. Exact prior text remains in Git history. The D4 migration record maps former paths to these references and records any remaining backlog destination.
