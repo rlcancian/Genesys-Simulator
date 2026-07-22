@@ -59,3 +59,4 @@ NOTIFIED: SIM
 
 - 2026-07-22T17:02:44-03:00: baseline registrado com branch `WorkInProgress`, SHA `2a529facb96922f266c0c431452c464b52ade6b3` e fontes `git status --short`/`git branch --show-current`/`git rev-parse HEAD`; validação de §19.1 conferida.
 - 2026-07-22T17:36:51-03:00: MAN-M1-001 concluída com comandos de instalação/build corrigidos para `gui-app`, alvo `genesys_gui`/`genesys_gui_application` e executável `source/applications/gui/genesys/genesys-gui`; `cmake --preset gui-app`, `cmake --build --preset gui-app --parallel "$(nproc)"` e `latexmk -C ManualGenESyS.tex && ./make.sh` passaram; plano parado porque MAN-M1-002 requer decisão humana.
+- 2026-07-22T17:38:03-03:00: notificação `zenity` falhou com `Invalid MIT-MAGIC-COOKIE-1 key` e `Failed to open display`; estado HALTED/NOTIFIED preservado.
