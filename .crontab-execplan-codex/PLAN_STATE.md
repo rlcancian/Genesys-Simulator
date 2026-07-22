@@ -10,7 +10,7 @@ NOTIFIED: NAO
 | ID | Descrição curta | Fonte em PLAN.md | Depende de | Requer decisão humana | Status | Última atualização |
 |---|---|---|---|---|---|---|
 | MAN-M0-001 | Registrar baseline do update manual | §22 "Proposed first PR", §17.1, §17.2/MAN-M0-001 | - | Não | done | 2026-07-22T19:43:38-0300 |
-| MAN-M1-001 | Corrigir comandos, presets, alvos e baseline de build | §22 itens 1-4, §17.1, §17.2/MAN-M1-001 | MAN-M0-001 | Não | pending | - |
+| MAN-M1-001 | Corrigir comandos, presets, alvos e baseline de build | §22 itens 1-4, §17.1, §17.2/MAN-M1-001 | MAN-M0-001 | Não | done | 2026-07-22T20:05:00-0300 |
 | MAN-M1-002 | Inserir aviso de evidência, maturidade e segurança | §22 itens 7 e 14, §17.1, §17.2/MAN-M1-002 | MAN-M0-001 | Não | pending | - |
 | MAN-M1-003 | Corrigir o texto de plugins estáticos | §22 item 6, §17.1, §17.2/MAN-M1-003 | MAN-M0-001 | Não | pending | - |
 | MAN-M1-004 | Remover referências obsoletas ao terminal | §22 item 5, §17.1, §17.2/MAN-M1-004 | MAN-M0-001 | Não | pending | - |
@@ -23,4 +23,5 @@ NOTIFIED: NAO
 ## Log resumido (últimas execuções)
 
 - 2026-07-22T19:43:38-0300: baseline de MAN-M0-001 registrado. Branch `WorkInProgress`, SHA `f6a86cd57b573056c2d17424983e9b083d21e059`, data `2026-07-22T19:43:38-0300`. Fontes-base confirmadas nesta invocação: `PLAN.md`, `docs/ai_assistants/{README.md,GOVERNANCE.md,ARCHITECTURE.md,STATUS.md,BACKLOG_AUTONOMOUS.md,BACKLOG_HUMAN.md,runbooks/GITHUB_AGENT.md,reference/manual_figure_automation_plan.md}`, `docs/developers/ManualGenESyS_source/{README.md,ManualGenESyS.tex,book_content.tex,preface.tex,capa.tex,copyright.tex,structure.tex,make.sh,chapter_*.tex}`, `CMakeLists.txt`, `CMakePresets.json`, `source/**/CMakeLists.txt`, `debian/{control,rules}`, `.github/workflows/genesys-ci.yml`, `docs/ManualGenESyS.pdf`. Evidências e limitações mantidas conforme o plano.
+- 2026-07-22T20:05:00-0300: etapa MAN-M1-001 concluída. Validado `cmake --preset gui-app`, `cmake --build --preset gui-app --parallel "$(nproc)"` e a presença de `build/gui-app/source/applications/gui/genesys/genesys-gui`. Ajuste mantido no capítulo de instalação/build com os nomes reais de preset, alvo e executável.
 - 2026-07-22T19:43:38-0300: etapa MAN-M0-001 concluída sem mutação externa; baseline ficou apenas registrado no estado do plano.
