@@ -1,0 +1,237 @@
+name: GenESyS Data Analyser GUI Validation
+
+run-name: GenESyS Data Analyser GUI | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - CMakeLists.txt
+      - CMakePresets.json
+      - source/applications/gui/dataanalyser/**
+      - source/applications/gui/genesys/tools/dataanalyzer/**
+      - source/kernel/**
+      - source/parser/**
+      - source/plugins/**
+      - source/tools/**
+      - .github/workflows/genesys-dataanalyser-gui-validation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-dataanalyser-gui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-dataanalyser-gui:
+    name: Configure, build and start Data Analyser under Xvfb
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build and X11 dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            xvfb \
+            xdotool \
+            x11-utils \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            libsbml5-dev \
+            libglpk-dev \
+            ngspice \
+            r-base \
+            octave
+
+      - name: Record toolchain
+        run: |
+          set -Eeuo pipefail
+          mkdir -p dataanalyser-gui-evidence
+          git rev-parse HEAD | tee dataanalyser-gui-evidence/head-sha.txt
+          cmake --version | tee dataanalyser-gui-evidence/cmake-version.txt
+          ninja --version | tee dataanalyser-gui-evidence/ninja-version.txt
+          g++ --version | tee dataanalyser-gui-evidence/gxx-version.txt
+          qmake6 -query QT_VERSION | tee dataanalyser-gui-evidence/qt-version.txt
+          Xvfb -version > dataanalyser-gui-evidence/xvfb-version.txt 2>&1 || true
+
+      - name: Configure Data Analyser preset
+        run: |
+          set -Eeuo pipefail
+          cmake --preset gui-dataanalyser 2>&1 | tee dataanalyser-gui-evidence/configure.log
+
+      - name: Build Data Analyser preset
+        run: |
+          set -Eeuo pipefail
+          cmake --build --preset gui-dataanalyser --parallel "$(nproc)" 2>&1 \
+            | tee dataanalyser-gui-evidence/build.log
+
+      - name: Locate Data Analyser executable
+        run: |
+          set -Eeuo pipefail
+          mapfile -t candidates < <(find build/gui-dataanalyser -type f -name genesys-dataanalyser-gui -perm -111 | sort)
+          if [[ ${#candidates[@]} -ne 1 ]]; then
+            printf 'Expected exactly one executable named genesys-dataanalyser-gui, found %d\n' "${#candidates[@]}" >&2
+            printf '%s\n' "${candidates[@]}" >&2
+            exit 1
+          fi
+          printf '%s\n' "${candidates[0]}" | tee dataanalyser-gui-evidence/executable-path.txt
+          ldd "${candidates[0]}" | tee dataanalyser-gui-evidence/ldd.txt
+
+      - name: Run bounded Xvfb startup workflow
+        run: |
+          set -Eeuo pipefail
+
+          executable="$(cat dataanalyser-gui-evidence/executable-path.txt)"
+          display_number=99
+          export DISPLAY=":${display_number}"
+          export QT_QPA_PLATFORM=xcb
+          printf '%s\n' "${DISPLAY}" | tee dataanalyser-gui-evidence/display.txt
+
+          xvfb_pid=""
+          app_pid=""
+          cleanup() {
+            set +e
+            if [[ -n "${app_pid}" ]] && kill -0 "${app_pid}" 2>/dev/null; then
+              kill -TERM "${app_pid}" 2>/dev/null || true
+              for _ in $(seq 1 50); do
+                kill -0 "${app_pid}" 2>/dev/null || break
+                sleep 0.1
+              done
+              kill -KILL "${app_pid}" 2>/dev/null || true
+              wait "${app_pid}" 2>/dev/null || true
+            fi
+            if [[ -n "${xvfb_pid}" ]] && kill -0 "${xvfb_pid}" 2>/dev/null; then
+              kill -TERM "${xvfb_pid}" 2>/dev/null || true
+              wait "${xvfb_pid}" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          Xvfb "${DISPLAY}" -screen 0 1280x1024x24 -nolisten tcp \
+            > dataanalyser-gui-evidence/xvfb.log 2>&1 &
+          xvfb_pid=$!
+          printf '%s\n' "${xvfb_pid}" | tee dataanalyser-gui-evidence/xvfb-pid.txt
+
+          display_ready=false
+          for _ in $(seq 1 100); do
+            if ! kill -0 "${xvfb_pid}" 2>/dev/null; then
+              cat dataanalyser-gui-evidence/xvfb.log >&2
+              echo 'Xvfb exited before the display became ready.' >&2
+              exit 1
+            fi
+            if xdpyinfo -display "${DISPLAY}" > dataanalyser-gui-evidence/xdpyinfo.txt 2>&1; then
+              display_ready=true
+              break
+            fi
+            sleep 0.1
+          done
+          if [[ "${display_ready}" != true ]]; then
+            cat dataanalyser-gui-evidence/xvfb.log >&2
+            echo 'Xvfb display did not become ready.' >&2
+            exit 1
+          fi
+
+          "${executable}" > dataanalyser-gui-evidence/application.log 2>&1 &
+          app_pid=$!
+          printf '%s\n' "${app_pid}" | tee dataanalyser-gui-evidence/application-pid.txt
+
+          window_found=false
+          for _ in $(seq 1 150); do
+            if ! kill -0 "${app_pid}" 2>/dev/null; then
+              cat dataanalyser-gui-evidence/application.log >&2
+              echo 'Data Analyser exited before creating a window.' >&2
+              exit 1
+            fi
+            if xdotool search --pid "${app_pid}" > dataanalyser-gui-evidence/window-ids.txt 2>/dev/null \
+               && [[ -s dataanalyser-gui-evidence/window-ids.txt ]]; then
+              window_found=true
+              break
+            fi
+            sleep 0.1
+          done
+
+          xwininfo -root -tree > dataanalyser-gui-evidence/window-tree.txt 2>&1 || true
+          if [[ "${window_found}" != true ]]; then
+            cat dataanalyser-gui-evidence/application.log >&2
+            cat dataanalyser-gui-evidence/window-tree.txt >&2
+            echo 'No X11 window was associated with the Data Analyser process.' >&2
+            exit 1
+          fi
+
+          sleep 2
+          if ! kill -0 "${app_pid}" 2>/dev/null; then
+            cat dataanalyser-gui-evidence/application.log >&2
+            echo 'Data Analyser did not remain alive during the bounded startup interval.' >&2
+            exit 1
+          fi
+
+          ps -o pid,ppid,stat,etime,cmd -p "${app_pid}" \
+            | tee dataanalyser-gui-evidence/application-process.txt
+
+          kill -TERM "${app_pid}"
+          for _ in $(seq 1 100); do
+            kill -0 "${app_pid}" 2>/dev/null || break
+            sleep 0.1
+          done
+          if kill -0 "${app_pid}" 2>/dev/null; then
+            cat dataanalyser-gui-evidence/application.log >&2
+            echo 'Data Analyser did not terminate after SIGTERM.' >&2
+            exit 1
+          fi
+
+          set +e
+          wait "${app_pid}"
+          app_rc=$?
+          set -e
+          printf '%s\n' "${app_rc}" | tee dataanalyser-gui-evidence/application-exit-code.txt
+          app_pid=""
+
+          if [[ "${app_rc}" -ne 143 ]]; then
+            echo "Expected SIGTERM exit code 143, got ${app_rc}." >&2
+            exit 1
+          fi
+
+          if pgrep -af genesys-dataanalyser-gui > dataanalyser-gui-evidence/residual-application-processes.txt; then
+            cat dataanalyser-gui-evidence/residual-application-processes.txt >&2
+            echo 'A Data Analyser process remained after controlled termination.' >&2
+            exit 1
+          fi
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          set +e
+          ps -ef > dataanalyser-gui-evidence/processes-after-run.txt 2>&1 || true
+          pgrep -af genesys-dataanalyser-gui > dataanalyser-gui-evidence/dataanalyser-processes-after-run.txt 2>&1 || true
+          pgrep -af Xvfb > dataanalyser-gui-evidence/xvfb-processes-after-run.txt 2>&1 || true
+          find build/gui-dataanalyser -type f \( \
+            -name CMakeOutput.log \
+            -o -name CMakeError.log \
+          \) -exec cp --parents {} dataanalyser-gui-evidence/ \; 2>/dev/null || true
+
+      - name: Upload Data Analyser GUI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-dataanalyser-gui-validation
+          path: dataanalyser-gui-evidence/
+          if-no-files-found: error
