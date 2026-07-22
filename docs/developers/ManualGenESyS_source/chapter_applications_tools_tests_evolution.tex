@@ -30,7 +30,7 @@ Architecturally, this is very valuable. By separating the kernel from the applic
  \item greater capacity for evolution.
 \end{itemize}
 
-In practice, this separation allows the GUI, terminal application, and other future layers to exist as distinct projections of the same set of core services.
+In practice, this separation allows the GUI, Shell application, model-specific applications, and other future layers to exist as distinct projections of the same set of core services.
 
 \subsection{The GUI as an Application on the Core}
 \label{subsec:cap10_gui_como_aplicacao_sobre_nucleo}
@@ -47,12 +47,12 @@ The GUI is not the core. It is an application that:
 
 This separation is architecturally correct and explains why the system can, in principle, support other applications in addition to the graphical interface.
 
-\subsection{The Terminal Application as an Alternative Form of Use}
-\label{subsec:cap10_aplicacao_terminal_forma_alternativa}
+\subsection{The Shell and Model-Specific Applications as Alternative Forms of Use}
+\label{subsec:cap10_shell_modelspecific_forma_alternativa}
 
-The current build tree of the project shows that the terminal application is handled in a particularly structured way. The \texttt{CMakeLists.txt} of \texttt{source/applications/terminal} explains the use of an application called \texttt{GenesysShell}, as well as the possibility of selecting other terminal application classes and even specific example files in \texttt{source/applications/terminal/examples} to compose the terminal executable
+The current build tree of the project shows that the command-line applications are handled in a particularly structured way. The \texttt{CMakeLists.txt} of \texttt{source/applications/shell} defines the \texttt{genesys\_shell} target, while \texttt{source/applications/modelSpecific} defines \texttt{genesys\_modelspecific\_app} and lets the build select a concrete model-specific example file to compose the executable.
 
-This is extremely important for the developer. It shows that the terminal is not just an old auxiliary tool or a marginal way of use. It is an effective application of GenESyS and, more than that, a valuable environment for:
+This is extremely important for the developer. It shows that the command-line path is not just an old auxiliary tool or a marginal way of use. It is an effective application of GenESyS and, more than that, a valuable environment for:
 \begin{itemize}
  \item study the programmatic use of the simulator;
  \item build compact examples;
@@ -63,9 +63,9 @@ This is extremely important for the developer. It shows that the terminal is not
 \section{The examples in \texttt{C++} as developer material}
 \label{sec:cap10_exemplos_cpp_material_desenvolvedor}
 
-In the first half of the book, the examples in \texttt{C++} of the terminal application were deliberately left out, because the user manual should not start with code. Now, however, they begin to occupy a central place. This is because these examples show one of the most important capabilities of GenESyS as software: its use as a simulation library.
+In the first half of the book, the examples in \texttt{C++} of the command-line applications were deliberately left out, because the user manual should not start with code. Now, however, they begin to occupy a central place. This is because these examples show one of the most important capabilities of GenESyS as software: its use as a simulation library.
 
-The terminal application's \texttt{CMakeLists.txt} explicitly shows the existence of build-selectable examples, including \textit{smart} examples and more elaborate teaching examples, which confirms the role of these files as study material and architectural demonstration
+The model-specific application's \texttt{CMakeLists.txt} explicitly shows the existence of build-selectable examples, including \textit{smart} examples and more elaborate teaching examples, which confirms the role of these files as study material and architectural demonstration.
 
 \subsection{Why These Examples Are So Valuable}
 \label{subsec:cap10_por_que_exemplos_tao_valiosos}
@@ -118,7 +118,7 @@ Tools should not always be the first reading priority. In general, it makes more
  \item the simulator core;
  \item the \textit{plugins} system;
  \item the parser;
- \item at least one concrete application, such as the GUI or the terminal.
+ \item at least one concrete application, such as the GUI or the Shell.
 \end{itemize}
 
 After that, reading the tools tends to be much more productive, because the developer can better see their role in the project ecosystem.
@@ -164,7 +164,7 @@ This discipline is especially important when the change affects the kernel, pars
 \section{Build, Applications, and Behavior Selection}
 \label{sec:cap10_build_aplicacoes_selecao_comportamentos}
 
-Even though the build is not the guiding axis of the book, it continues to offer the developer an important set of signals about the project organization. The terminal application build file, for example, shows that the system was designed to allow configurable selection of the behavior of the terminal executable, either by specific classes or by concrete examples in \texttt{source/applications/terminal/examples}
+Even though the build is not the guiding axis of the book, it continues to offer the developer an important set of signals about the project organization. The Shell and model-specific build files, for example, show that the system was designed to allow configurable selection of the behavior of the command-line executable, either by a fixed Shell entry point or by concrete examples under \texttt{source/applications/modelSpecific}.
 
 This reveals something important about the project:
 \begin{quote}
@@ -257,7 +257,7 @@ This integrated view is important because it avoids too partial readings. GenESy
  \hline
  Plugins & Simulator extensibility and expansion of modeling elements \\
  \hline
- Applications & Concrete forms of use, such as GUI and terminal application \\
+ Applications & Concrete forms of use, such as GUI and Shell application \\
  \hline
  Tools & Support for use, integration and maintenance \\
  \hline
@@ -271,7 +271,7 @@ This integrated view is important because it avoids too partial readings. GenESy
 \section{Final Considerations}
 \label{sec:cap10_consideracoes_finais}
 
-This chapter has closed the main structure of the developer's manual by showing that \textit{GenESyS} should not only be read for its central classes, but also for its ecosystem of applications, tools, examples and tests. The GUI now appears as an application on top of the core. The terminal application and its examples in \texttt{C++} reveal the use of the simulator as a library. Tools expand the development environment. The test tree provides the basis for safe evolution. And the general organization of the project shows that GenESyS should be thought of as a software platform, and not just as a ready-made simulator.
+This chapter has closed the main structure of the developer's manual by showing that \textit{GenESyS} should not only be read for its central classes, but also for its ecosystem of applications, tools, examples and tests. The GUI now appears as an application on top of the core. The Shell application and the model-specific examples in \texttt{C++} reveal the use of the simulator as a library. Tools expand the development environment. The test tree provides the basis for safe evolution. And the general organization of the project shows that GenESyS should be thought of as a software platform, and not just as a ready-made simulator.
 
 With this, the reader now has a sufficiently broad and technically grounded view to use, study and expand GenESyS in a mature way. From here, further development can follow different paths: review and improvement of the GUI, more detailed study of components and \textit{plugins}, evolution of the parser, strengthening of the testing infrastructure, development of new applications or creation of new modeling domains on the same core. In all these cases, the logic remains the same: understand the correct layer, respect the system architecture and evolve the simulator based on its own structural principles.
 
@@ -280,7 +280,7 @@ Test your understanding of this content by answering the following questions:
 \begin{enumerate}
  \item Why should the GUI be understood, from the developer's point of view, as an application on the core and not as the entire system?
 
-\item What is the architectural value of the examples in \texttt{C++} of the terminal application?
+\item What is the architectural value of the examples in \texttt{C++} of the Shell and model-specific applications?
 
 \item Why should the project's test base be treated as part of the software evolution infrastructure?
 
