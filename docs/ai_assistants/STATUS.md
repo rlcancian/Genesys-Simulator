@@ -14,17 +14,19 @@ tracks: 511
 
 This is the single current operational state for AI-assisted work in `rlcancian/Genesys-Simulator`.
 
-Use it for current branch/checkpoint state, validated baselines, blockers, migration progress and next eligible work. Detailed executed results belong under `history/evidence/`; tasks and decisions belong in the two canonical backlogs.
+Use it for current branch/checkpoint state, validated baselines, blockers and next eligible work. Detailed executed results belong under `history/evidence/`; tasks and decisions belong in the two canonical backlogs.
 
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Latest integrated documentation checkpoint: `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` — D6 oldies-governance consolidation through PR #517.
-- D6 validation: run `29938004455`, ordinary configure/build/CTest and GUI GMDD diagnostics passed.
+- Latest integrated documentation checkpoint: `610d8ab21c87cfd11663af78370b39262cf4da81` — D5 documentation-governance enforcement through PR #518.
+- D5 validation:
+  - documentation-governance run `29938886903`: passed;
+  - ordinary CI run `29938886807`: configure, build, CTest and GUI GMDD diagnostics passed.
+- AI-assistant documentation migration D0–D6: **structurally complete**.
+- Completion tracker: issue #511, pending only the merge of the final completion record and administrative closure.
 - Stable promotion target: `20262`, only near the end of the second semester of 2026.
 - Release readiness: **not established**.
-- Scheduled/autonomous tasks that could modify the repository: paused during this documentation migration.
-- Active migration tracker: issue #511.
 
 ## 3. Technical baseline
 
@@ -107,7 +109,7 @@ Not established: repository-wide leak freedom, thread safety, broad UBSan/Valgri
 
 Whole-cell/biochemical/AI virtual-cell work remains experimental/research-oriented. Software maturity and scientific claim level remain independent.
 
-## 9. Documentation migration
+## 9. Documentation migration result
 
 | Phase | Status | PR / merge | Result |
 |---|---|---|---|
@@ -117,24 +119,47 @@ Whole-cell/biochemical/AI virtual-cell work remains experimental/research-orient
 | D3 | done | #515 / `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | date-first evidence ledger |
 | D4 | done | #516 / `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | six technical references and active-root cleanup |
 | D6 | done | #517 / `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | single oldies tracker; 25 retained files protected |
-| D5 | running | branch `WiP20260722/ai-docs-ci` | structural/link/front-matter/governance enforcement |
+| D5 | done | #518 / `610d8ab21c87cfd11663af78370b39262cf4da81` | local and GitHub Actions governance enforcement |
 
-All merged D0–D4 and D6 source branches were automatically removed. The D5 branch remains active and must not be deleted before its PR is merged.
+All D0–D6 source branches were removed automatically after their merges.
 
-## 10. Historical retention state
+## 10. Final governed structure
+
+The top level of `docs/ai_assistants/` contains exactly:
+
+- `README.md`;
+- `GOVERNANCE.md`;
+- `ARCHITECTURE.md`;
+- `STATUS.md`;
+- `BACKLOG_AUTONOMOUS.md`;
+- `BACKLOG_HUMAN.md`.
+
+Supporting material is routed through:
+
+- `runbooks/`;
+- `reference/`;
+- `history/`;
+- `archive/`;
+- retained non-authoritative `oldies/`.
+
+The structure is enforced by `.github/workflows/genesys-docs-governance.yml` and `scripts/validate-ai-docs.py`.
+
+## 11. Historical retention state
 
 - `archive/OLDIES_REVIEW.md` is the only active tracker for the 25 retained historical files.
 - No content file under `oldies/` was deleted or modified by D6.
 - Every retained file remains `retained-review-pending` and not deletion-ready.
 - Deletion remains prohibited before 2026-11-01 and additionally requires individual review, explicit maintainer approval and a dedicated deletion PR.
 
-## 11. Current autonomous eligibility
+## 12. Autonomous eligibility after migration
 
-Only issue #511 documentation migration work may execute during the freeze. Unrelated source, CMake, runtime, plugin, security, numerical, application, package and release work remains paused.
+The documentation-migration-specific freeze ends when this completion record is merged and issue #511 is closed.
 
-## 12. Next action
+Previously paused technical tasks remain `paused`; they do not resume automatically. A maintainer must explicitly activate the selected next task in `BACKLOG_AUTONOMOUS.md`.
 
-1. Validate the D5 documentation-governance script and workflow.
-2. Merge D5 only after its focused workflow and ordinary CI are green.
-3. Confirm source-branch removal and exact six-file top-level allowlist.
-4. Close issue #511 and explicitly record structural migration completion.
+## 13. Administrative closure
+
+1. Validate and merge the completion record PR.
+2. Confirm its source branch removal.
+3. Close issue #511 as completed.
+4. Keep future documentation changes subject to the governance workflow.
