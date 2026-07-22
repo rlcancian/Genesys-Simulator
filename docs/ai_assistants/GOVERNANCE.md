@@ -12,7 +12,7 @@ tracks: 511
 
 ## 1. Purpose
 
-This document is the normative source for AI-assisted development in the GenESyS repository. It defines authority, evidence, branch, review, validation, documentation, maturity, security, and escalation rules.
+This document is the normative source for AI-assisted development in the GenESyS repository. It defines authority, evidence, branch, review, validation, documentation, maturity, security, promotion, and escalation rules.
 
 It does not replace source-code inspection. Current code, generated build graphs, executable tests, Git history, pull requests, issues, workflow runs, and artifacts remain the evidence used to establish implementation facts.
 
@@ -23,7 +23,7 @@ Every AI assistant must read, in this order:
 1. repository `/README.md`;
 2. `docs/ai_assistants/README.md`;
 3. this file;
-4. `ARCHITECTURE.md` when changing architecture, module boundaries, ownership, plugins, applications, numerical/scientific behavior, or public interfaces;
+4. `ARCHITECTURE.md` when changing architecture, module boundaries, ownership, plugins, applications, numerical/scientific behavior, security boundaries, persistence, or public interfaces;
 5. `STATUS.md` for current repository state;
 6. the applicable backlog and environment runbook;
 7. topic-specific reference documents required by the selected task.
@@ -39,7 +39,7 @@ When documents conflict, use this order:
 3. `STATUS.md` — current operational state and validated checkpoints;
 4. `BACKLOG_AUTONOMOUS.md` and `BACKLOG_HUMAN.md` — approved pending work;
 5. applicable file under `runbooks/`;
-6. active topic-specific guides and references;
+6. active topic-specific references;
 7. dated evidence and migration records under `history/`;
 8. temporary historical material under `oldies/` or `archive/`.
 
@@ -86,23 +86,37 @@ Do not combine unrelated concerns such as:
 
 Preserve behavior unless a defect or intentionally changed contract is demonstrated.
 
-## 6. Branch and pull-request policy
+## 6. Branch roles and promotion flow
 
-The formal promotion flow remains:
+Current branch roles are:
+
+- `master` — public, most conservative, release-ready branch;
+- `currentStable` — pre-release stable branch, normally aligned with `master` except during a bounded promotion review;
+- `20261`, `20262`, `20271`, ... — semester-stable branches using the `YYYYs` convention;
+- `20261` — renamed continuation of the historical `2026-1` branch;
+- `20262` — target for the supported result at the end of the second semester of 2026;
+- `WorkInProgress` — active integration branch for ordinary development;
+- dated feature branches — bounded branches created from `WorkInProgress`.
+
+Historical references to `2026-1` and `2026-2` must be interpreted according to their date. New governance, automation, and branches use `20261` and `20262`.
+
+The formal promotion flow is:
 
 ```text
 feature branches -> WorkInProgress -> YYYYs -> currentStable -> master
 ```
 
-For the current semester:
+For the current cycle:
 
 ```text
 feature branches -> WorkInProgress -> 20262 -> currentStable -> master
 ```
 
-`20262` is reserved for end-of-semester promotion and must not be populated by ordinary development PRs.
+`20262` is reserved for end-of-semester promotion and must not be populated by ordinary development PRs. Stable branches are never promoted implicitly.
 
-For bounded AI-assisted work, use a dated descriptive branch, currently following:
+## 7. Working branches and pull requests
+
+For bounded AI-assisted work, use:
 
 ```text
 WiPYYYYMMDD/<short-scope>
@@ -123,9 +137,39 @@ Each pull request must:
 - use merge commits because repository squash and rebase merge are disabled;
 - delete its source branch after successful merge when repository tooling permits it.
 
-Never promote a stable branch implicitly.
+Do not reuse a merged source branch for unrelated work.
 
-## 7. Validation policy
+## 8. Promotion gates and waivers
+
+A promotion gate is a documented go/no-go assessment, not a single test. It combines software evidence, supported feature scope, unresolved risks, application/package readiness, documentation, maturity, scientific claim limits, and explicit approval.
+
+A mandatory gate failure blocks promotion unless an authorized waiver records:
+
+- the failed criterion;
+- exact evidence and impact;
+- contained or disabled scope;
+- responsible owner;
+- expiration or review condition;
+- explicit human approval.
+
+Candidate evidence for the future `20262` gate includes:
+
+- clean build on the supported Ubuntu/Qt6 baseline;
+- required unit, kernel, smoke, sanitizer, and application checks;
+- package build/install/start/reinstall-or-upgrade/uninstall evidence;
+- no unresolved P0 blocker;
+- P1 issues resolved or explicitly waived with containment;
+- supported features at least Level 3;
+- representative model compatibility fixtures;
+- worker/network behavior matching the approved controlled-intranet profile;
+- numerical/scientific claims backed by declared validation packages;
+- documentation, release notes, known limitations, and rollback procedure;
+- branch, commit, toolchain, CI, and artifact provenance;
+- explicit maintainer approval.
+
+The exact final `20262` gate is intentionally deferred until the end-of-semester preparation round.
+
+## 9. Validation policy
 
 Select validation according to impact.
 
@@ -138,7 +182,7 @@ Select validation according to impact.
 
 ### C++/kernel/parser/plugin/tool changes
 
-- configure with CMake preset;
+- configure with a current CMake preset;
 - build with Ninja;
 - run focused tests;
 - run ordinary `tests-unit` regression;
@@ -162,7 +206,7 @@ Select validation according to impact.
 
 Validate build, package creation, install, startup, upgrade/reinstall when relevant, uninstall, files left behind, version metadata, dependencies, and service/runtime assumptions separately from unit tests.
 
-## 8. Autonomous execution boundary
+## 10. Autonomous execution boundary
 
 An autonomous agent may execute a task only when all of the following are true:
 
@@ -174,9 +218,9 @@ An autonomous agent may execute a task only when all of the following are true:
 - stop/escalation conditions are defined;
 - the task does not silently alter scientific meaning, security posture, release scope, public compatibility, or product claims.
 
-The agent must stop and move the task to `blocked` when it discovers a decision boundary not represented in the task.
+The agent must stop and move the task to the appropriate blocked state when it discovers a decision boundary not represented in the task.
 
-## 9. Human-decision boundary
+## 11. Human-decision boundary
 
 Use `BACKLOG_HUMAN.md` when progress depends on:
 
@@ -189,7 +233,7 @@ Use `BACKLOG_HUMAN.md` when progress depends on:
 
 Assistants must present evidence, options, tradeoffs, recommendation, and the exact implementation work unlocked by the decision. They must not choose by assumption.
 
-## 10. Ownership and C++ modernization policy
+## 12. Ownership and C++ modernization policy
 
 Before changing a pointer, reference, container, destructor, copy/move operation, or smart-pointer type:
 
@@ -201,7 +245,7 @@ Before changing a pointer, reference, container, destructor, copy/move operation
 
 Modern C++ is used for technical benefit, not cosmetic replacement. Prefer incremental use of `nullptr`, `override`, RAII, Rule of Zero, deleted unsafe operations, `std::unique_ptr`, `noexcept`, `constexpr`, `[[nodiscard]]`, ranges, and newer library types only when compatible with the real toolchain and existing semantics.
 
-## 11. Plugin governance
+## 13. Plugin governance
 
 During baseline consolidation:
 
@@ -212,13 +256,15 @@ During baseline consolidation:
 
 The approved future in-process dynamic boundary is a stable C ABI with opaque handles, explicit create/destroy operations, versioned function/capability tables, structured errors, and no STL, Qt types, C++ implementation classes, or C++ exceptions crossing the boundary.
 
-Implementation remains deferred until its prerequisite architecture tasks and human decisions are resolved.
+Implementation remains deferred until prerequisite architecture tasks and human decisions are resolved.
 
-## 12. Software maturity and scientific claims
+## 14. Software maturity and scientific claims
 
 Supported software functionality must reach at least **Level 3 — Beta** before inclusion in a semester-stable supported set. Prioritized functionality may later reach **Level 4 — Stable user feature**.
 
 Software maturity and scientific claim level are independent.
+
+Level 3 requires the intended supported workflow, tests, invalid/error behavior, reproducibility, realistic fixtures, documented limitations, and cancellation, persistence, reporting, and provenance where applicable.
 
 A passing Level 3 software workflow may still be only:
 
@@ -229,15 +275,17 @@ A passing Level 3 software workflow may still be only:
 
 Numerical, statistical, biochemical, optimization, and biological claims require declared formulations, domains, references, fixtures, tolerances, reproducibility, limitations, and provenance.
 
-## 13. Security governance
+## 15. Security governance
 
-Network, secret, generated-code, external-process, AI-provider, and plugin-loading changes are security-sensitive.
+Network, secret, generated-code, external-process, AI-provider, issue-reporting, and plugin-loading changes are security-sensitive.
 
 Current worker direction is a controlled academic intranet, not direct public-Internet exposure. Security implementation requires explicit decisions and validation for bind addresses, authentication, TLS, credentials, quotas, isolation, audit logging, denial behavior, and resource limits.
 
-No token or write-capable GitHub credential may be embedded in desktop GUI code.
+No token or write-capable GitHub credential may be embedded in desktop GUI code. Any GUI issue-reporting function must use a maintainer-operated relay or another server-side mechanism with explicit authentication, validation, rate limits, and auditability.
 
-## 14. Documentation governance
+Secrets must not appear in source files, models, command-line arguments, browser-visible configuration, workflow logs, or generated evidence.
+
+## 16. Documentation governance
 
 Canonical top-level AI-assistant documents are:
 
@@ -248,9 +296,9 @@ Canonical top-level AI-assistant documents are:
 - `BACKLOG_AUTONOMOUS.md`;
 - `BACKLOG_HUMAN.md`.
 
-During migration, existing documents remain available but must not be treated as competing current-state sources.
+Dated execution records belong under `history/evidence/`. Migration records and superseded policy analyses belong under `history/migrations/`. Topic-specific detail belongs under `reference/`. Temporary historical documents remain under `oldies/` or `archive/` until reviewed.
 
-Dated execution records belong under `history/evidence/`. Migration records belong under `history/migrations/`. Temporary historical documents remain under `oldies/` or `archive/` until reviewed.
+User-facing Doxygen entry points and deliberately maintained final user artifacts belong under `docs/users/`. Developer-facing Doxygen entry points and final developer artifacts belong under `docs/developers/`. Doxygen intermediate output belongs under the build tree and must not be versioned.
 
 Do not delete `oldies/` before:
 
@@ -260,7 +308,7 @@ Do not delete `oldies/` before:
 4. the existing post-2026-11-01 retention gate is satisfied;
 5. deletion is approved and performed in a dedicated PR.
 
-## 15. Required reporting after work
+## 17. Required reporting after work
 
 Every completed task or PR must record:
 
