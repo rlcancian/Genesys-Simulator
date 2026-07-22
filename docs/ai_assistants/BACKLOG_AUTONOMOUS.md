@@ -35,9 +35,7 @@ A task may run only when its status is `ready`, its environment is available, de
 - Environment: `github`
 - Issue/PR: #511 / #512
 - Merge: `958cdc6f63c02d004f1ffdf55e104b58a245bb88`
-- Result: six canonical documents, three environment runbooks, migration/history/reference/archive indices and a short routing README.
 - Validation: run `29929616027`, ordinary tests and GUI GMDD green.
-- Source branch: removed automatically.
 
 ### AUTO-DOC-002 — Consolidate normative governance and architecture
 
@@ -46,9 +44,7 @@ A task may run only when its status is `ready`, its environment is available, de
 - Environment: `github`
 - Issue/PR: #511 / #513
 - Merge: `b48697e77d39b25cafc19271ce574bdead60f94d`
-- Result: branch/promotion, documentation, security, maturity, plugin and evidence policy consolidated into canonical governance/architecture; four competing policy files retired.
 - Validation: run `29931594603`, ordinary tests and GUI GMDD green.
-- Source branch: removed automatically.
 
 ### AUTO-DOC-003 — Consolidate current state and plans
 
@@ -57,9 +53,7 @@ A task may run only when its status is `ready`, its environment is available, de
 - Environment: `github`
 - Issue/PR: #511 / #514
 - Merge: `53b49f7518509823fe2265a3f017b5aa76f09d2f`
-- Result: `STATUS.md` and the two backlogs became the only operational state/task sources; five competing plan/matrix/inventory/handoff files retired.
 - Validation: run `29933330431`, ordinary tests and GUI GMDD green.
-- Source branch: removed automatically.
 
 ### AUTO-DOC-004 — Consolidate executed evidence
 
@@ -68,54 +62,47 @@ A task may run only when its status is `ready`, its environment is available, de
 - Environment: `github`
 - Issue/PR: #511 / #515
 - Merge: `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca`
-- Result: date-first July 2026 validation ledger, active evidence index, ten detailed reports retired with original blob SHAs preserved.
 - Validation: run `29934227250`, ordinary tests and GUI GMDD green.
-- Source branch: removed automatically.
 
 ### AUTO-DOC-005 — Consolidate technical references and clean active root
 
 - Priority: `P0`
-- Status: `running`
+- Status: `done`
 - Environment: `github`
-- Branch: `WiP20260722/ai-docs-reference`
-- Objective:
-  - replace scattered topic guides/plans with six references;
-  - update root README to canonical routing;
-  - remove temporary D1–D3 redirects and superseded topic files;
-  - leave only six canonical Markdown files at the AI-assistant top level plus the three temporary oldies trackers until D6.
-- Active references:
-  - `reference/BUILD_TEST_PACKAGING.md`;
-  - `reference/KERNEL_PARSER_OWNERSHIP.md`;
-  - `reference/PLUGINS.md`;
-  - `reference/SCIENTIFIC_DOMAINS.md`;
-  - `reference/APPLICATIONS_TOOLS_MODELS.md`;
-  - `reference/API_INTEGRATIONS.md`.
-- Non-goals: no source/CMake/runtime/scientific/security implementation; no deletion of files inside `oldies/`.
-- Acceptance:
-  - no active guide/plan/evidence remains in the top-level root;
-  - all technical content is routed to canonical references/backlogs/history;
-  - root README links only to canonical paths;
-  - ordinary CI green;
-  - source branch removed after merge.
-- Tracking issue: #511.
+- Issue/PR: #511 / #516
+- Merge: `d375d9e68e5c1dc84e214a772fb15cb05944f0d8`
+- Result:
+  - six active technical references;
+  - repository README routed only to canonical paths;
+  - superseded topic guides/plans/redirects removed;
+  - former plugin-guide directory removed;
+  - only three temporary oldies trackers remained for D6.
+- Validation: run `29936506990`, ordinary configure/build/CTest and GUI GMDD diagnostics green.
+- Source branch: removed automatically.
 
 ### AUTO-DOC-007 — Consolidate oldies governance and classify retained history
 
 - Priority: `P0`
-- Status: `ready`
+- Status: `running`
 - Environment: `github`
+- Branch: `WiP20260722/ai-docs-oldies`
 - Objective:
-  - merge `oldies_inventory.md`, `oldies_review_status.md` and `consolidation_map.md` into `archive/OLDIES_REVIEW.md`;
-  - classify every retained historical file;
-  - remove the three old top-level trackers;
-  - preserve every `oldies/` content file until the retention gate and explicit approval.
-- Dependencies: AUTO-DOC-005 merged.
+  - make `archive/OLDIES_REVIEW.md` the only active tracker;
+  - classify all 25 retained historical files conservatively;
+  - remove `oldies_inventory.md`, `oldies_review_status.md` and `consolidation_map.md`;
+  - preserve every content file under `oldies/`.
+- Non-goals:
+  - no individual historical technical claim is promoted to current fact;
+  - no historical content file is deleted or rewritten;
+  - no deletion-gate waiver is granted.
 - Acceptance before gate:
-  - one active tracker;
-  - all historical files listed/classified;
-  - no canonical document depends on oldies for current policy/state;
-  - no `oldies/` file deleted.
-- Stop/escalation: unique or uncertain historical content must be marked for human review, not discarded.
+  - one active tracker lists all 25 files;
+  - every entry identifies current reference and review/deletion state;
+  - top-level root contains only the six canonical Markdown files;
+  - no canonical document depends on `oldies/` for current policy or state;
+  - no `oldies/` content file changes;
+  - ordinary CI green.
+- Stop/escalation: unique or uncertain content remains `retained-review-pending`; never infer deletion readiness.
 - Tracking issue: #511.
 
 ### AUTO-DOC-006 — Add documentation-governance CI
@@ -123,18 +110,19 @@ A task may run only when its status is `ready`, its environment is available, de
 - Priority: `P0`
 - Status: `blocked-dependency`
 - Environment: `github` or `local`
-- Objective: enforce the final structure after AUTO-DOC-005 and AUTO-DOC-007.
+- Objective: enforce the final structure after AUTO-DOC-007.
 - Required checks:
   - exact six-file top-level Markdown allowlist;
   - relative-link validation for active documentation;
-  - required front matter for canonical/runbook/reference/history indices;
+  - required front matter for canonical/runbook/reference/history/archive indices;
   - unique backlog IDs and required task fields;
   - no run IDs in normative governance/architecture;
   - evidence ledgers restricted to `history/evidence/`;
-  - oldies retention gate and tracker presence;
-  - no legacy migration notices or `plugins/` guide directory.
-- Dependencies: AUTO-DOC-005 and AUTO-DOC-007 merged.
-- Acceptance: workflow green on its own PR and ordinary CI preserved.
+  - oldies retention gate and `archive/OLDIES_REVIEW.md` presence;
+  - no legacy migration notices or `plugins/` guide directory;
+  - no modification/deletion of `oldies/` before the gate without an explicit waiver path.
+- Dependencies: AUTO-DOC-007 merged.
+- Acceptance: focused documentation-governance workflow and ordinary CI green on the D5 PR.
 - Tracking issue: #511.
 
 ## 4. Paused technical tasks

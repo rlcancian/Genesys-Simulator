@@ -36,7 +36,8 @@ This is a concise index of material AI-assisted development and governance chang
 | 2026-07-22 | Establish canonical AI documentation governance D0 | GitHub | issue #511; PR #512 | `958cdc6f63c02d004f1ffdf55e104b58a245bb88` | run `29929616027`, ordinary tests and GUI GMDD green | effective consolidation followed |
 | 2026-07-22 | Consolidate normative governance D1 | GitHub | issue #511; PR #513 | `b48697e77d39b25cafc19271ce574bdead60f94d` | run `29931594603`, ordinary tests and GUI GMDD green | state/evidence/reference consolidation followed |
 | 2026-07-22 | Consolidate current status/backlogs D2 | GitHub | issue #511; PR #514 | `53b49f7518509823fe2265a3f017b5aa76f09d2f` | run `29933330431`, ordinary tests and GUI GMDD green | evidence/reference consolidation followed |
-| 2026-07-22 | Consolidate executed evidence D3 | GitHub | issue #511; PR #515 | `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | run `29934227250`, ordinary tests and GUI GMDD green | reference/oldies/CI phases remain |
+| 2026-07-22 | Consolidate executed evidence D3 | GitHub | issue #511; PR #515 | `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | run `29934227250`, ordinary tests and GUI GMDD green | reference/oldies/CI phases remained |
+| 2026-07-22 | Consolidate technical references D4 | GitHub | issue #511; PR #516 | `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | run `29936506990`, ordinary tests and GUI GMDD green | oldies tracker and governance CI remain |
 
 ## 3. Update rule
 

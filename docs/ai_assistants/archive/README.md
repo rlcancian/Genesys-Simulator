@@ -3,7 +3,7 @@ document_type: archive-index
 authority: informative
 owner: project-maintainer
 last_reviewed: 2026-07-22
-status: migration-placeholder
+status: active-retention
 tracks: 511
 ---
 
@@ -11,55 +11,48 @@ tracks: 511
 
 ## Purpose
 
-This directory is reserved for temporary retained material that is no longer current but has not yet passed its consolidation and deletion gate.
+This directory governs retained historical material that is no longer current but has not passed its review and deletion gate.
 
-During migration phase D0, no existing file is moved here. The current `../oldies/` directory remains in place and retains its existing protection rules.
+The 25 historical Markdown files remain physically under `../oldies/`. Their only active tracker is [`OLDIES_REVIEW.md`](OLDIES_REVIEW.md).
 
-## Archive authority
+## Authority
 
-Archived material:
+Historical material:
 
-- is not current policy;
-- is not current architecture;
-- is not current project status;
-- is not an executable backlog;
-- must be revalidated against current code before reuse;
-- never overrides `GOVERNANCE.md`, `ARCHITECTURE.md`, `STATUS.md`, the active backlogs, or current source/build evidence.
+- is not current policy, architecture, project status or executable backlog;
+- must be revalidated against current source/build evidence before reuse;
+- never overrides `../GOVERNANCE.md`, `../ARCHITECTURE.md`, `../STATUS.md`, the canonical backlogs or current code;
+- may contain unique analysis, rejected alternatives, stale assumptions or unresolved questions.
 
-## Planned historical-review flow
+## Review states
 
-Each historical file must be classified as:
+`OLDIES_REVIEW.md` classifies each retained file using:
 
-- `pending-review`;
+- `retained-review-pending`;
 - `unique-content-to-consolidate`;
-- `consolidated`;
-- `obsolete`;
+- `consolidated-retained`;
+- `obsolete-retained`;
 - `discard-after-gate`.
 
-The review record must identify:
+A file is not deletion-ready merely because a current reference exists.
 
-- source file;
-- original date/branch/commit when known;
-- topic;
-- current replacement/reference;
-- unique content retained;
-- stale or rejected claims;
-- reviewer/date;
-- deletion readiness.
+## Retention gate
 
-## `oldies/` retention gate
+Do not delete or bulk-move `../oldies/` until all conditions are satisfied:
 
-Do not delete or bulk move `../oldies/` until:
-
-1. every historical file has been inspected;
+1. every historical file has been individually inspected;
 2. useful content has been consolidated or explicitly rejected;
-3. current documents no longer depend on it;
+3. current documentation no longer depends on it;
 4. the date is after 2026-11-01;
 5. the maintainer explicitly approves deletion;
 6. a dedicated deletion PR preserves a clear Git-history reference or archival tag/branch.
 
-## Evidence is not archive clutter
+D6 consolidates governance only. It does not satisfy the individual-review or deletion gate.
 
-Executed evidence with durable audit value belongs under `../history/evidence/`, not in this archive. Completed branch/document migrations belong under `../history/migrations/`.
+## Other historical destinations
 
-The archive is for unresolved historical retention, not for ordinary workflow artifacts or current handoffs.
+- executed evidence: `../history/evidence/`;
+- completed migration records: `../history/migrations/`;
+- concise change index: `../history/CHANGELOG_AI.md`.
+
+Ordinary workflow artifacts and current handoffs do not belong in this archive.
