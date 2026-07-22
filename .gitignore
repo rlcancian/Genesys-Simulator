@@ -30,6 +30,8 @@ CMakeLists.txt.user
 /.aider*
 /.claude*
 /.codex*
+/.crontab-execplan-codex/
+*.swp
 
 # Generic
 *.o
