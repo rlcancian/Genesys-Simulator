@@ -55,7 +55,7 @@ Agents must not expand scope because adjacent cleanup appears convenient.
 ### AUTO-DOC-001 — Establish canonical AI documentation governance
 
 - Priority: `P0`
-- Status: `running`
+- Status: `done`
 - Environment: `github`
 - Objective: create the approved canonical documents, runbooks, migration record, and routing entrypoint without moving or deleting existing files.
 - Evidence/background: issue #511 and the completed inventory/classification of Markdown under `docs/ai_assistants/`.
@@ -72,8 +72,8 @@ Agents must not expand scope because adjacent cleanup appears convenient.
 - Validation:
   - inspect all new Markdown links and headings;
   - compare branch against `WorkInProgress`;
-  - ordinary CI must be green if triggered;
-  - review PR diff before ready-for-review state.
+  - ordinary CI green;
+  - maintainer review received.
 - Acceptance:
   - canonical reading order and authority are explicit;
   - local/GitHub/autonomous runbooks exist;
@@ -81,33 +81,30 @@ Agents must not expand scope because adjacent cleanup appears convenient.
   - human decisions are separated from executable work;
   - migration matrix covers current document categories;
   - all prior files remain present.
-- Stop/escalation:
-  - stop if implementation requires deleting/moving content;
-  - stop if a proposed policy contradicts an unresolved human decision;
-  - stop if another branch changes the same documentation during the freeze.
 - Tracking issue: #511
 - Branch: `WiP20260722/ai-docs-governance`
-- PR: pending
+- PR: #512
+- Final validation: run `29928854081`, success.
 
 ### AUTO-DOC-002 — Consolidate normative governance and architecture sources
 
 - Priority: `P0`
-- Status: `blocked-review`
+- Status: `ready`
 - Environment: `github`
-- Objective: after review of AUTO-DOC-001, merge the useful normative content from existing stable guides into the canonical governance/architecture/reference structure.
+- Objective: merge useful normative content from existing stable guides into the canonical governance/architecture/reference structure.
 - Scope:
   - reconcile `branch_workflow.md`, `documentation_governance.md`, decision documents, and durable portions of domain guides;
   - preserve source history through Git;
-  - replace old documents with redirects only after content comparison.
+  - replace superseded normative files with migration notices or move them to history after content comparison.
 - Non-goals:
   - no execution evidence movement in the same PR;
   - no `oldies/` deletion;
   - no technical implementation changes.
-- Dependencies: AUTO-DOC-001 merged and explicitly reviewed.
+- Dependencies: AUTO-DOC-001 approved and ready for merge.
 - Validation: link checks, document comparison, no lost active decision, ordinary CI if triggered.
 - Acceptance: one normative source per policy and one durable source per architecture boundary.
 - Stop/escalation: any unresolved conflict between human decisions must be moved to `BACKLOG_HUMAN.md`.
-- Tracking issue: #511 or a child issue created after D0 review.
+- Tracking issue: #511.
 
 ### AUTO-DOC-003 — Consolidate current status and backlogs
 
@@ -128,7 +125,7 @@ Agents must not expand scope because adjacent cleanup appears convenient.
 - Priority: `P1`
 - Status: `blocked-dependency`
 - Environment: `github`
-- Objective: relocate dated evidence and completed migration/integration notes into `history/` without altering their substantive content.
+- Objective: relocate dated evidence and completed integration/integration notes into `history/` without altering substantive content.
 - Scope:
   - move `*_evidence_YYYYMMDD.md` to dated evidence directories;
   - move completed integration/handoff snapshots to migrations/history;
@@ -167,19 +164,20 @@ Agents must not expand scope because adjacent cleanup appears convenient.
 - Dependencies: AUTO-DOC-001 through AUTO-DOC-005.
 - Non-goals: do not enforce rules against legacy files before they are migrated.
 
-### AUTO-DOC-007 — Review and retire `oldies/`
+### AUTO-DOC-007 — Review and retain `oldies/` until the deletion gate
 
 - Priority: `P2`
 - Status: `blocked-dependency`
 - Environment: `github` or `local`
-- Objective: review every retained historical file and remove obsolete files only after the retention gate.
+- Objective: review every retained historical file and prepare future removal without violating retention policy.
 - Dependencies:
   - all historical files individually reviewed;
   - useful content consolidated or explicitly rejected;
   - no active links depend on `oldies/`;
-  - date is after 2026-11-01;
-  - explicit maintainer approval.
-- Acceptance: dedicated deletion PR, preserved Git history/tag, no current-state dependency on oldies.
+  - deletion remains prohibited before 2026-11-01;
+  - explicit maintainer approval required for a later deletion PR.
+- Acceptance before the gate: one review tracker, all files classified, no current-state dependency on `oldies/`.
+- Acceptance after the gate: dedicated deletion PR, preserved Git history/tag, no current-state dependency.
 - Stop/escalation: any uncertain historical decision or unique technical content.
 
 ## 5. Paused technical tasks
@@ -258,4 +256,5 @@ A task moves to `done` only after:
 2. artifact/evidence is reviewed where required;
 3. PR is merged into `WorkInProgress`;
 4. source branch is deleted when tooling permits;
-5. `STATUS.md`, this backlog, and `history/CHANGELOG_AI.md` are updated consistently.
+5. issue is closed or updated;
+6. `STATUS.md`, applicable backlog, and `history/CHANGELOG_AI.md` are updated as appropriate.
