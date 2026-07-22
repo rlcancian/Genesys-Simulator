@@ -119,13 +119,13 @@ feature branches -> WorkInProgress -> 20262 -> currentStable -> master
 For bounded AI-assisted work, use:
 
 ```text
-WiPYYYYMMDD/<short-scope>
+WiPYYYYMM/<short-scope>
 ```
 
 Example:
 
 ```text
-WiP20260722/ai-docs-governance
+WiP202607/ai-docs-governance
 ```
 
 Each pull request must:
