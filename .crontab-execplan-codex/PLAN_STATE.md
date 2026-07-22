@@ -1,16 +1,16 @@
 # PLAN_STATE.md — Estado da execução autônoma (prompt de cada invocação)
 
-RUN_STATE: EM_EXECUCAO
-HALT_REASON:
-CURRENT_STEP: MAN-M1-001
-NOTIFIED: NAO
+RUN_STATE: HALTED
+HALT_REASON: Próxima etapa elegível MAN-M1-002 requer decisão humana (§20 item 1).
+CURRENT_STEP: MAN-M1-002
+NOTIFIED: SIM
 
 ## Etapas
 
 | ID | Descrição curta | Fonte em PLAN.md | Depende de | Requer decisão humana | Status | Última atualização |
 |---|---|---|---|---|---|---|
 | MAN-M0-001 | Registrar baseline de evidências | §17.1 MAN-M0-001, §18 M0, §19.1 | - | Não | done | 2026-07-22T17:02:44-03:00 |
-| MAN-M1-001 | Corrigir comandos e alvos de instalação | §17.1 MAN-M1-001, §17.2 MAN-M1-001, §18 M1, §19.2, §22 | MAN-M0-001 | Não | pending | - |
+| MAN-M1-001 | Corrigir comandos e alvos de instalação | §17.1 MAN-M1-001, §17.2 MAN-M1-001, §18 M1, §19.2, §22 | MAN-M0-001 | Não | done | 2026-07-22T17:36:51-03:00 |
 | MAN-M1-002 | Adicionar aviso de maturidade e evidências | §17.1 MAN-M1-002, §17.2 MAN-M1-002, §18 M1, §20 item 1, §22 | MAN-M0-001 | Sim (§20 item 1) | blocked_human | - |
 | MAN-M1-003 | Corrigir texto de plugins estáticos | §17.1 MAN-M1-003, §17.2 MAN-M1-003, §18 M1, §22 | MAN-M0-001 | Não | pending | - |
 | MAN-M1-004 | Remover caminhos obsoletos do terminal | §17.1 MAN-M1-004, §17.2 MAN-M1-004, §18 M1, §22 | MAN-M0-001 | Não | pending | - |
@@ -58,3 +58,4 @@ NOTIFIED: NAO
 ## Log resumido (últimas execuções)
 
 - 2026-07-22T17:02:44-03:00: baseline registrado com branch `WorkInProgress`, SHA `2a529facb96922f266c0c431452c464b52ade6b3` e fontes `git status --short`/`git branch --show-current`/`git rev-parse HEAD`; validação de §19.1 conferida.
+- 2026-07-22T17:36:51-03:00: MAN-M1-001 concluída com comandos de instalação/build corrigidos para `gui-app`, alvo `genesys_gui`/`genesys_gui_application` e executável `source/applications/gui/genesys/genesys-gui`; `cmake --preset gui-app`, `cmake --build --preset gui-app --parallel "$(nproc)"` e `latexmk -C ManualGenESyS.tex && ./make.sh` passaram; plano parado porque MAN-M1-002 requer decisão humana.

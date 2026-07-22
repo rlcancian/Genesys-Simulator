@@ -56,7 +56,7 @@ From a practical point of view, it is worth thinking about the environment in th
 
 In the first layer, the central element is \texttt{CMake}. In the second, the most important point is Qt, especially the modules associated with the graphical interface. The third includes the \texttt{C++} compiler and the usual development tools for the chosen platform.
 
-In the specific case of the GUI, the project preferably searches for \texttt{Qt6} and, if necessary, supports fallback to \texttt{Qt5}. For the user, this means that the environment needs to make at least one of these facilities available in a coherent way.
+In the current build baseline, the GUI is expected to be compiled against \texttt{Qt6}. For the user, this means that the environment needs to make the Qt6 development packages available in a coherent way, together with the build system and compiler required by the project.
 
 \subsection{Minimum environment checklist}
 \label{subsec:cap2_checklist_minimo_ambiente}
@@ -65,8 +65,9 @@ Before starting to configure the build, the user must confirm that they have, at
 \begin{itemize}
 \item \texttt{git};
 \item \texttt{cmake};
+\item \texttt{Ninja};
 \item the modern \texttt{C++} compiler;
-\item a working installation of \texttt{Qt};
+\item a working installation of \texttt{Qt6};
 \item basic terminal and file system tools.
 \end{itemize}
 
@@ -85,21 +86,16 @@ cd build
 With the build directory created, the user can configure the project. Since the main path of this first part of the book is the GUI, the configuration must explicitly enable the graphical application. A typical initial configuration might be done like this:
 
 \begin{lstlisting}[language=bash,caption={Initial GUI Build Configuration},label={lst:cap2_configuracao_gui}]
-cmake..\
--DGENESYS_BUILD_GUI_APPLICATION=ON
+cmake --preset gui-app
 \end{lstlisting}
 
-Depending on the platform and local environment, the user may want to adjust other options. However, as an initial guideline in the manual, the essential point is to ensure that the GUI is included in the build process. After that, the compilation itself can be carried out.
+This preset configures the build directory used by the GUI, enables the graphical application and selects the current CMake/Ninja baseline expected by the project. Depending on the platform and local environment, the user may want to adjust other options. However, as an initial guideline in the manual, the essential point is to ensure that the GUI is included in the build process. After that, the compilation itself can be carried out.
 
 \begin{lstlisting}[language=bash,caption={GUI Build Compilation},label={lst:cap2_compilacao_gui}]
-cmake --build . --target genesys_qt_gui_application -j
+cmake --build --preset gui-app --parallel "$(nproc)"
 \end{lstlisting}
 
-In some environments, the GUI aggregate target can also be used, when available:
-
-\begin{lstlisting}[language=bash,caption={Alternative Build via the Aggregated GUI Target},label={lst:cap2_compilacao_gui_agregada}]
-cmake --build . --target genesys_gui -j
-\end{lstlisting}
+The build preset already drives the aggregate GUI target \texttt{genesys\_gui}, which depends on the application target \texttt{genesys\_gui\_application}. That application target produces the runtime executable named \texttt{genesys-gui}.
 
 \subsection{Why is the GUI explicitly enabled}
 \label{subsec:cap2_por_que_gui_habilitada}
@@ -146,10 +142,10 @@ A particularly useful practice is to remove the \texttt{build} directory and rep
 \section{First run of the GUI}
 \label{sec:cap2_primeira_execucao_gui}
 
-Once the compilation is complete, the next objective is to start the graphical application. The generated executable corresponds to the \texttt{genesys\_qt\_gui\_application} target. In a typical scenario, its initial execution will be done directly from the build directory or from the exact path where the generator used produced it.
+Once the compilation is complete, the next objective is to start the graphical application. The generated executable corresponds to the \texttt{genesys\_gui\_application} target, and its runtime name is \texttt{genesys-gui}. From the preset build directory, it is available at \texttt{source/applications/gui/genesys/genesys-gui}.
 
 \begin{lstlisting}[language=bash,caption={Generic Example of the First GUI Run},label={lst:cap2_primeira_execucao_gui}]
-./genesys_qt_gui_application
+./source/applications/gui/genesys/genesys-gui
 \end{lstlisting}
 
 The exact path may vary, but the intention is always the same: to reach the main application window and confirm that the GUI is functional.
