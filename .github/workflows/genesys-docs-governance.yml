@@ -1,0 +1,76 @@
+name: GenESyS Documentation Governance
+
+run-name: Documentation governance | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  pull_request:
+    branches:
+      - 20261
+      - WorkInProgress
+      - WiP20261
+      - currentStable
+      - master
+    paths:
+      - README.md
+      - docs/ai_assistants/**
+      - scripts/validate-ai-docs.py
+      - .github/workflows/genesys-docs-governance.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-docs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  documentation-governance:
+    name: Validate AI documentation governance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository with history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show validation metadata
+        run: |
+          set -Eeuo pipefail
+          echo "event_name=${{ github.event_name }}"
+          echo "ref=${GITHUB_REF}"
+          echo "sha=${GITHUB_SHA}"
+          python3 --version
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "pr_number=${{ github.event.pull_request.number }}"
+            echo "pr_base_ref=${{ github.event.pull_request.base.ref }}"
+            echo "pr_base_sha=${{ github.event.pull_request.base.sha }}"
+            echo "pr_head_ref=${{ github.event.pull_request.head.ref }}"
+            echo "pr_head_sha=${{ github.event.pull_request.head.sha }}"
+          fi
+
+      - name: Validate governed AI documentation
+        run: |
+          set -Eeuo pipefail
+
+          args=()
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            args+=(--base-ref "${{ github.event.pull_request.base.sha }}")
+          fi
+
+          python3 scripts/validate-ai-docs.py "${args[@]}"
+
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "## GenESyS AI documentation governance"
+            echo
+            echo "- Event: ${{ github.event_name }}"
+            echo "- Ref: ${GITHUB_REF_NAME}"
+            echo "- SHA: ${GITHUB_SHA}"
+            echo "- Validator: scripts/validate-ai-docs.py"
+          } >> "${GITHUB_STEP_SUMMARY}"
