@@ -184,7 +184,7 @@ This separation between composition and aggregation makes the GenESyS architectu
 \section{The \textit{plugins} system}
 \label{sec:cap8_sistema_plugins}
 
-The presence of \textit{plugins} is one of the most important features of GenESyS as extensible software. The \texttt{Simulator} class itself already makes this evident when exposing a \texttt{PluginManager}. This shows that the \textit{plugins} mechanism is neither improvised nor peripheral; it is a structural part of the system.
+The presence of \textit{plugins} is one of the most important features of GenESyS as extensible software. The \texttt{Simulator} class itself already makes this evident when exposing a \texttt{PluginManager}. In the current repository, the plugin implementations are built as static libraries and linked into the simulator, while the connector and manager layers organize metadata, discovery and instantiation. This shows that the \textit{plugins} mechanism is neither improvised nor peripheral; it is a structural part of the system, but not a set of independent runtime packages.
 
 For the developer, the consequence is clear: expanding GenESyS does not necessarily mean directly modifying the kernel. In many cases, the most appropriate strategy is to introduce new capabilities through \textit{plugins}. This is especially true for:
 \begin{itemize}
@@ -205,7 +205,7 @@ Without \textit{plugins}, the system's growth would depend on increasingly profo
  \item greater separation between stable infrastructure and additional functionality.
 \end{itemize}
 
-This is an especially appropriate architectural decision for a simulator that aims to be generic and expandable.
+This is an especially appropriate architectural decision for a simulator that aims to be generic and expandable. At the current stage, that extensibility is expressed at build and link time, not as a separate deployable plugin runtime. Any future ABI boundary belongs to a later architectural decision, not to the present contract described here.
 
 \subsection{Components and Data as Natural Extensions}
 \label{subsec:cap8_componentes_dados_extensoes_naturais}
@@ -239,7 +239,7 @@ If the need is for new behavior in the flow, the extension will probably be in t
 
 This chapter seeks to avoid a very common misreading: imagining that the GenESyS model is composed only of visual boxes in the GUI. In reality, the model is a much richer structure, supported by a hierarchy of classes and a clear architectural distinction between behavior and data.
 
-It also seeks to avoid another error: imagining that \textit{plugins} are just dynamic loading details. In GenESyS, they are part of the system's growth logic. Extensibility is not an appendix; It's an architectural principle.
+It also seeks to avoid another error: imagining that \textit{plugins} are just dynamic loading details or independent runtime packages. In GenESyS, they are part of the system's growth logic and, in the current implementation, are aggregated through static libraries and connector-managed metadata. Extensibility is not an appendix; it is an architectural principle.
 
 \begin{table}[htbp]
  \centering
@@ -264,7 +264,7 @@ It also seeks to avoid another error: imagining that \textit{plugins} are just d
 \section{Final Considerations}
 \label{sec:cap8_consideracoes_finais}
 
-This chapter showed that the GenESyS model is structured based on a coherent and extensible architecture. The \texttt{ModelDataDefinition} class provides the base infrastructure for model elements. The \texttt{ModelComponent} class specializes this base to represent behavior in the flow. The distinction between main flow and supporting data, as well as between composition and aggregation, clearly organizes the internal semantics of the system. Finally, the \textit{plugins} mechanism appears as a natural consequence of this architecture, allowing the simulator to be expanded without losing coherence.
+This chapter showed that the GenESyS model is structured based on a coherent and extensible architecture. The \texttt{ModelDataDefinition} class provides the base infrastructure for model elements. The \texttt{ModelComponent} class specializes this base to represent behavior in the flow. The distinction between main flow and supporting data, as well as between composition and aggregation, clearly organizes the internal semantics of the system. Finally, the \textit{plugins} mechanism appears as a natural consequence of this architecture, allowing the simulator to be expanded within the current static-linking and metadata-based infrastructure without losing coherence.
 
 With this, the reader already has the necessary basis to understand how new elements can be introduced into the system. The next natural step is to study the subsystem that connects the language, expressions and semantics of the model: the GenESyS parser and its relationship with the simulator's internal language.
 
