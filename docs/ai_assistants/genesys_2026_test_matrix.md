@@ -23,13 +23,14 @@ Record executed software validation, remaining coverage, and acceptance criteria
 | Optimizer ownership contract | `29833758797` | 1,721 registered; 1,717 passed; 4 disabled | PR #485 merged as `6aca91a5...` |
 | Standalone shell | `29885199488` | preset/build/argv/plugin-count/exit passed | PR #495 merged as `abb992ec...` |
 | Standalone worker health | `29896225187` | preset/build/HTTP 200/exact JSON/clean exit passed | PR #499 merged as `8f42f509...` |
+| Standalone Data Analyser GUI | `29911036076` | preset/build/Xvfb window/bounded startup/clean external teardown passed | PR #503 merged as `b3c7f462...` |
 
 ## 3. Core baseline matrix
 
 | Validation path | Executed evidence | Status | Remaining gap |
 |---|---|---|---|
-| `tests-unit` | configure/build/CTest passed on every final head through PR #499 | `validated` | preserve on future code changes |
-| Focused GUI GMDD | 3/3 passed on every final head through PR #499 | `validated` | standalone GUI startup/workflow |
+| `tests-unit` | configure/build/CTest passed on every final head through PR #503 | `validated` | preserve on future code changes |
+| Focused GUI GMDD | 3/3 passed on every final head through PR #503 | `validated` | broader standalone GUI workflows |
 | `tests-kernel-unit` | configure/build/direct runner/CTest passed | `validated` | 4 historical duplicate tests remain disabled |
 | Kernel CTest inventory | 1,721 registered; 1,717 passed; 4 disabled | `validated` | remove or formally retire duplicate disabled blocks |
 | Focused plugin lifetime sanitizer | ASan/LSan workflow exit 0 with artifact evidence | `validated` | expand sanitizer scope selectively |
@@ -44,8 +45,9 @@ Record executed software validation, remaining coverage, and acceptance criteria
 | `tests-smoke` | 3 registered/executed/passed | `validated` | broader application smoke matrix |
 | Standalone shell | preset/build/argv/plugin-count/exit passed | `partially-validated` | model load/run and `autoloadplugins.txt` deployment contract |
 | Standalone worker | preset/build/loopback health/clean request-limited exit passed | `partially-validated` | bind policy, authentication, protected endpoints and resource controls |
+| Standalone Data Analyser GUI | preset/build/Xvfb window/startup/SIGTERM teardown passed | `partially-validated` | interaction, import, fitting, chart, export and scientific correctness |
 | Debian trigger/path filters | integrated | `implemented` | package lifecycle execution |
-| Independent GUI presets | targets/presets confirmed | `needs-local-validation` | independent build/startup/workflows |
+| Other independent GUI presets | targets/presets confirmed | `needs-local-validation` | Optimizer, AI Assistant and HTTP Worker startup/workflows |
 | Broader sanitizers/profiling | only focused plugin-lifetime ASan/LSan executed | `partially-started` | UBSan, broader ASan/LSan, Valgrind, profiling |
 
 ## 4. Exact current Phase 0 inventory
@@ -126,6 +128,23 @@ PR #499 focused run `29896225187`:
 
 The wildcard bind is evidence of current behavior, not an approved deployment policy. Issue #500 tracks the required bind-address contract.
 
+### 4.6 Standalone Data Analyser GUI
+
+PR #503 final focused run `29911036076`:
+
+- `gui-dataanalyser` preset configure/build: passed;
+- exactly one `genesys-dataanalyser-gui` executable: found;
+- private Xvfb display with TCP disabled: started;
+- Qt6/XCB process: started and remained alive through the bounded interval;
+- PID-associated X11 window: `2097158`;
+- SIGTERM exit code: `143`;
+- residual application process: none;
+- artifact ID: `8525948784`.
+
+Ordinary run `29911036020` passed `tests-unit` configure/build/CTest and focused GUI GMDD diagnostics.
+
+This is process/window startup evidence only. It does not validate Data Analyser interaction, imports, fitting, charts, exports, persistence, or numerical/statistical correctness.
+
 ## 5. Detailed module matrix
 
 | Module / concern | Current evidence | Missing coverage | Priority | Acceptance criterion | Status |
@@ -150,11 +169,11 @@ The wildcard bind is evidence of current behavior, not an approved deployment po
 | AI secret storage | source risk identified | process/Secret Service tests | P1 | secret absent from argv/logs | `not-started` |
 | Worker API/tokens | public health workflow validated; current wildcard listener recorded | bind contract, auth, quotas, CSPRNG, expiry/rotation, protected endpoints | P1 | controlled-intranet security contract | `partially-validated`, hardening blocked |
 | Optimizer | shallow-copy hazard blocked; backend remains scaffold | algorithm/ranking/constraints and later RAII migration | P1 | Level 3 contract and benchmark suite | `partially-implemented` |
-| Data Analyser | related tests exist | reference fits/import/export | P1 | reference-backed workflow | `partially-implemented` |
+| Data Analyser | standalone configure/build/window startup green | reference imports/fits/charts/exports and interaction | P1 | reference-backed workflow | `partially-validated` startup; functionally incomplete |
 | Do Experiments | backend fragments; GUI absent | DOE specification/tests/workflow | P1/P2 | known designs and analyses match references | `partially-implemented` |
 | Shell | preset/build/argv/plugin-count/exit green | model workflow and autoload deployment | P1 | minimal model completes cleanly | `partially-validated` |
 | Main GUI | focused tests green | standalone startup/model interaction | P1 | target starts; workflow smoke passes | `partially-validated` |
-| Independent GUIs | presets confirmed | basic startup/workflows | P1 | each application starts independently | `needs-local-validation` |
+| Independent GUIs | Data Analyser startup validated | Optimizer, AI Assistant and HTTP Worker startup/workflows | P1 | each application starts independently | `partially-validated` |
 | Packaging | triggers corrected | build/install/start/uninstall/version | P2 | packages complete lifecycle | `needs-ci-validation` |
 | Qt6-only cleanup | policy decided | remove Qt5 fallback across CMake/tests/scripts | P1/P2 | Qt6 baseline remains green; no fallback discovery | `not-started` |
 | Dynamic plugins | ABI direction recorded | target/source overlap decision and pilot | P1/P2 | versioned pilot loads/unloads safely | `deferred` |
@@ -172,7 +191,8 @@ Resolved:
 - temporary plugin-completion Model and helper-owned responses/statistics are released;
 - focused ASan/LeakSanitizer guard is permanent;
 - `OptimizerDefaultImpl1` shallow copy/move is prohibited;
-- standalone shell and worker public-health startup paths are covered by focused workflows.
+- standalone shell and worker public-health startup paths are covered by focused workflows;
+- standalone Data Analyser configure/build/X11-window startup is covered by a focused workflow.
 
 Still open:
 
@@ -183,7 +203,8 @@ Still open:
 5. generated method inventory is structural inventory, not behavioral proof;
 6. optimizer algorithm and container modernization remain future work;
 7. shell autoload deployment decision #496;
-8. worker bind-address decision #500 and broader security hardening.
+8. worker bind-address decision #500 and broader security hardening;
+9. Data Analyser functional/scientific workflow validation.
 
 ## 7. Numerical and scientific evidence policy
 
@@ -191,4 +212,4 @@ Every correctness-sensitive method must define its mathematics, parameterization
 
 ## 8. Next bounded execution
 
-While decisions #492, #496, and #500 remain open, the next safe independent workstream is standalone Qt6 application validation. Start with one existing independent GUI preset, validate configure/build and a bounded headless startup/clean-exit path under `QT_QPA_PLATFORM=offscreen` or Xvfb, and preserve ordinary CI. Do not alter Qt5 fallback, plugin targets, worker security, or application behavior in the same PR.
+While decisions #492, #496, and #500 remain open, continue standalone Qt6 application validation. Issue #504 defines the next bounded candidate: configure/build and Xvfb startup/clean teardown of the existing `gui-optimizer` preset. Do not implement optimizer algorithms, claim Level 3 maturity, remove Qt5 fallback, or alter plugin/worker behavior in that PR.
