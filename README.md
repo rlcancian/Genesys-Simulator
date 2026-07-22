@@ -1,34 +1,46 @@
 # GenESyS — Generic and Expansible System Simulator
 
-GenESyS (**Ge**neric and E**xpansible** **Sy**stem **S**imulator) is a C++ platform for modeling and simulation built around a reusable kernel, parser infrastructure, model components/data definitions, optional applications, and automated tests.
+GenESyS (**Ge**neric and E**xpansible** **Sy**stem **S**imulator) is a C++ platform for modeling and simulation built around a reusable kernel, expression parser, model components/data definitions, statistical and analytical tools, optional applications, and automated tests.
 
-The current repository is a development codebase. A successful build or unit-test run does not imply that every experimental, numerical, statistical, biological, optimization, or distributed feature is mature or scientifically validated.
+The repository is an active development codebase. Successful configuration, compilation, startup, or unit tests do not imply that every experimental, numerical, statistical, biochemical, optimization, AI, worker, or distributed feature is mature or scientifically validated.
 
-## 1. Current technical baseline
+## 1. Technical baseline
 
-The canonical build flow is:
+The intended primary baseline is:
 
-- Ubuntu 24.04 as the primary CI/development baseline;
+- Ubuntu 24.04;
 - CMake 3.24 or newer;
 - Ninja;
 - C++23 with compiler extensions disabled;
 - Qt6 for graphical applications;
-- Google Test through a system package when compatible, with the bundled source fallback otherwise.
+- Google Test through the configured system package/bundled fallback.
 
-Primary build entry points:
+Canonical build entry points:
 
 ```text
 CMakeLists.txt
 CMakePresets.json
 ```
 
-Older documentation that treats `project/`, `projects/`, qmake, Qt5, `source/applications/terminal/`, or `source/applications/web/` as the current canonical structure is historical unless explicitly marked as a compatibility path.
+Historical documentation that treats qmake, Qt5, `project/`, `projects/`, `source/applications/terminal/`, or `source/applications/web/` as the current canonical architecture must be revalidated against the current tree.
 
-AI assistants must read `docs/ai_assistants/README.md` before changing code, CMake, tests, CI, packaging, documentation, plugin architecture, numerical algorithms, or scientific behavior.
+## 2. Mandatory guidance for AI assistants
 
-## 2. Quick validation
+Before changing code, CMake, tests, CI, packaging, documentation, plugin architecture, numerical algorithms, security boundaries, or scientific behavior, read:
 
-### 2.1 Ordinary unit baseline
+```text
+docs/ai_assistants/README.md
+docs/ai_assistants/GOVERNANCE.md
+docs/ai_assistants/STATUS.md
+```
+
+Read `docs/ai_assistants/ARCHITECTURE.md`, the applicable backlog/runbook, and task-specific files under `docs/ai_assistants/reference/` when required by the task.
+
+Do not use historical files or old PR reports as current policy/state.
+
+## 3. Quick validation
+
+### Ordinary unit baseline
 
 ```bash
 cmake --preset tests-unit
@@ -36,15 +48,7 @@ cmake --build --preset tests-unit --parallel "$(nproc)"
 ctest --preset tests-unit --output-on-failure
 ```
 
-This is the ordinary CI baseline. It configures under `build/tests-unit` and builds target `genesys_kernel_unit_tests`.
-
-To inspect the registered tests without executing them:
-
-```bash
-ctest --preset tests-unit -N
-```
-
-### 2.2 Kernel-focused baseline
+### Kernel-focused baseline
 
 ```bash
 cmake --preset tests-kernel-unit
@@ -52,7 +56,7 @@ cmake --build --preset tests-kernel-unit --parallel "$(nproc)"
 ctest --preset tests-kernel-unit --output-on-failure
 ```
 
-### 2.3 Smoke baseline
+### Smoke baseline
 
 ```bash
 cmake --preset tests-smoke
@@ -60,71 +64,70 @@ cmake --build --preset tests-smoke --parallel "$(nproc)"
 ctest --preset tests-smoke --output-on-failure
 ```
 
-The smoke preset is separate from the ordinary unit preset.
+The current exact counts and bounded application/sanitizer results are recorded in:
 
-## 3. Applications
+```text
+docs/ai_assistants/STATUS.md
+docs/ai_assistants/history/evidence/
+```
 
-### 3.1 GenESyS shell
+## 4. Repository map
+
+```text
+Genesys-Simulator/
+├── CMakeLists.txt
+├── CMakePresets.json
+├── debian/
+├── docs/
+│   ├── ai_assistants/
+│   ├── developers/
+│   └── users/
+├── models/
+├── packaging/
+├── scripts/
+└── source/
+    ├── applications/
+    │   ├── gui/
+    │   ├── modelSpecific/
+    │   ├── shell/
+    │   └── worker/
+    ├── kernel/
+    ├── parser/
+    ├── plugins/
+    ├── tests/
+    └── tools/
+```
+
+Generated build/package output is not source architecture and must not be versioned.
+
+## 5. Applications
+
+### Shell
 
 ```bash
 cmake --preset genesys_shell
 cmake --build --preset genesys_shell --parallel "$(nproc)"
 ```
 
-Target:
-
-```text
-genesys_shell
-```
-
-Source area:
-
-```text
-source/applications/shell/
-```
-
-### 3.2 Worker HTTP application
+### Worker
 
 ```bash
 cmake --preset genesys_worker_app
 cmake --build --preset genesys_worker_app --parallel "$(nproc)"
 ```
 
-Targets/output:
+The worker is not approved for direct public-Internet exposure. Its intended future profile is a controlled academic intranet after bind, authentication, TLS, quotas, isolation, audit, and resource controls are implemented and validated.
 
-```text
-genesys_worker_core
-genesys_worker_app
-genesys-worker
-```
-
-Source area:
-
-```text
-source/applications/worker/
-```
-
-The worker is intended for a controlled academic intranet after its authentication, cryptographic randomness, resource limits, isolation, and audit controls are implemented and validated. Direct public-Internet exposure is not the default approved profile.
-
-### 3.3 Main Qt GUI
+### Main Qt6 GUI
 
 ```bash
 cmake --preset gui-app
 cmake --build --preset gui-app --parallel "$(nproc)"
 ```
 
-Target/output:
+### Independent Qt6 GUIs
 
-```text
-genesys_gui
-genesys-gui
-```
-
-The supported Qt baseline is Qt6. Remaining Qt5 fallback code is legacy implementation debt scheduled for removal; Qt5 is not part of the intended platform contract.
-
-### 3.4 Independent GUI applications
-
-Current configure/build presets include:
+Current presets include:
 
 ```text
 gui-httpworker
@@ -133,171 +136,46 @@ gui-optimizer
 gui-ai-assistant
 ```
 
-Examples:
+The Data Analyser, Optimizer, and AI Assistant have bounded startup evidence. Startup does not prove their complete functional or scientific workflows. `doexperiments` remains planned and intentionally unavailable rather than represented by an empty target.
 
-```bash
-cmake --preset gui-dataanalyser
-cmake --build --preset gui-dataanalyser --parallel "$(nproc)"
+### Model-specific applications
 
-cmake --preset gui-optimizer
-cmake --build --preset gui-optimizer --parallel "$(nproc)"
-```
+Current presets include model-specific/smart-terminal variants defined in `CMakePresets.json`. Treat any historical sweep as a snapshot and revalidate the selected source/model and generated `.gen` output.
 
-These presets build independent GUI targets under:
+## 6. Architecture summary
 
-```text
-source/applications/gui/
-```
+- `source/kernel/`: simulator runtime/support, statistics, utilities;
+- `source/parser/`: expression parsing/evaluation;
+- `source/plugins/`: model components and data definitions;
+- `source/tools/`: reusable statistical, numerical, optimization, AI, diffusion, and results backends;
+- `source/applications/`: shell, worker, model-specific programs and Qt6 GUIs;
+- `source/tests/`: unit, focused, integration-light and smoke validation.
 
-The `doexperiments` GUI is planned but not implemented. Enabling `GENESYS_BUILD_GUI_DOEXPERIMENTS` currently fails configuration intentionally rather than creating a misleading empty application.
+Current plugins are statically aggregated. A broad dynamic migration is not authorized during consolidation. The approved future in-process boundary is a versioned stable C ABI with opaque handles and no STL/Qt/C++ exceptions across the package boundary.
 
-### 3.5 Model-specific applications
-
-Current presets include:
+Detailed architecture:
 
 ```text
-terminal-smart
-terminal-model-specific
-genesys_modelspecific_app
-terminal-smart-hold-search-remove
-terminal-smart-ai-assistant
+docs/ai_assistants/ARCHITECTURE.md
+docs/ai_assistants/reference/PLUGINS.md
 ```
 
-The selected source/model is controlled through the corresponding CMake cache variables recorded in `CMakePresets.json`.
+## 7. Numerical, statistical, optimization, and biological maturity
 
-## 4. Main CMake options
+Scientific correctness requires explicit formulations, parameterizations, domains, units, references, fixtures, expected values, tolerances, reproducibility, provenance, limitations, and independent review where appropriate.
 
-The root build exposes these principal options:
+Supported functionality should reach at least Level 3 — Beta before inclusion in a semester-stable supported set. Software maturity and scientific claim level are independent.
 
-| Option | Purpose |
-|---|---|
-| `GENESYS_BUILD_KERNEL` | Build kernel libraries |
-| `GENESYS_BUILD_PARSER` | Build parser library |
-| `GENESYS_BUILD_PLUGINS` | Build the current statically aggregated plugin libraries |
-| `GENESYS_BUILD_TESTS` | Build automated tests |
-| `GENESYS_BUILD_TERMINAL_APPLICATION` | Build the shell application |
-| `GENESYS_BUILD_TERMINAL_EXAMPLES` | Build selected model-specific/terminal examples |
-| `GENESYS_BUILD_WORKER_APPLICATION` | Build the worker HTTP application |
-| `GENESYS_BUILD_GUI_APPLICATION` | Enter the GUI applications umbrella |
-| `GENESYS_BUILD_TOOLS` | Build reusable tool backends |
-| `GENESYS_ENABLE_PYTHON_INTEGRATION` | Enable experimental embedded Python support when development files exist |
-
-Compatibility aliases may still exist for older option names. New work should use the current options above.
-
-## 5. Current repository map
-
-```text
-Genesys-Simulator/
-├── CMakeLists.txt
-├── CMakePresets.json
-├── autoloadplugins.txt
-├── debian/
-├── docs/
-│   ├── ManualGenESyS.pdf
-│   ├── ai_assistants/
-│   ├── developers/
-│   └── users/
-├── models/
-├── packaging/
-│   ├── docker/
-│   └── linux/
-├── source/
-│   ├── applications/
-│   │   ├── gui/
-│   │   │   ├── genesys/
-│   │   │   ├── httpworker/
-│   │   │   ├── dataanalyser/
-│   │   │   ├── optimizer/
-│   │   │   └── ai_assistant/
-│   │   ├── modelSpecific/
-│   │   ├── shell/
-│   │   └── worker/
-│   ├── kernel/
-│   │   ├── simulator/
-│   │   ├── statistics/
-│   │   └── util/
-│   ├── parser/
-│   ├── plugins/
-│   ├── tests/
-│   └── tools/
-└── build/                 # generated out-of-source build directories
-```
-
-`build/` and other generated build/package output directories are not source-tree architecture and must not be versioned.
-
-## 6. Plugin architecture status
-
-The current production build aggregates component and data-definition plugins into static libraries and links a static connector into the simulator runtime.
-
-This means:
-
-- current plugins are not independently distributed dynamic packages;
-- the immediate consolidation objective is to remove unjustified source overlap and document registration/lifecycle contracts;
-- a broad dynamic migration must not begin during baseline stabilization.
-
-The approved future boundary for independently built in-process plugins is a stable C ABI using opaque handles, explicit ownership operations, versioned function/capability tables, and no STL/Qt/C++ exceptions crossing the binary boundary.
+The Optimizer remains a scaffold pending a selected algorithm/benchmark package. Whole-cell, biochemical, SBML, and AI virtual-cell work remains experimental/research-oriented and must not be overclaimed.
 
 See:
 
 ```text
-docs/ai_assistants/plugins_development.md
-docs/ai_assistants/genesys_2026_human_decisions.md
-docs/ai_assistants/genesys_2026_decisions_addendum_20260720.md
+docs/ai_assistants/reference/SCIENTIFIC_DOMAINS.md
+docs/ai_assistants/BACKLOG_HUMAN.md
 ```
 
-## 7. Tests and CI status
-
-The ordinary GitHub Actions workflow is:
-
-```text
-.github/workflows/genesys-ci.yml
-```
-
-It currently executes:
-
-- configure/build/CTest for `tests-unit`;
-- a focused GUI GMDD diagnostic executable.
-
-A recorded Phase 0 checkpoint on Ubuntu 24.04.4 passed the ordinary `tests-unit` job and all three focused GUI GMDD tests. That result applies only to the recorded commit and registered test scope.
-
-Still required for a complete baseline:
-
-- `tests-kernel-unit` execution;
-- `tests-smoke` execution;
-- exact CTest/test-target inclusion inventory;
-- representative application startup validation;
-- sanitizer runs;
-- package lifecycle validation.
-
-Detailed current evidence:
-
-```text
-docs/ai_assistants/genesys_2026_phase0_ci_evidence_20260720.md
-docs/ai_assistants/genesys_2026_test_matrix.md
-docs/ai_assistants/genesys_2026_consolidation_handoff.md
-```
-
-## 8. Numerical, statistical, optimization, and biological maturity
-
-Correct compilation is not sufficient evidence for scientific correctness.
-
-Current policy requires:
-
-- authoritative mathematical/statistical references;
-- explicit parameterizations and valid domains;
-- analytical invariants or trusted reference vectors;
-- documented tolerances;
-- deterministic seeds and reproducibility controls;
-- benchmark datasets/models;
-- no unsupported scientific or predictive claims.
-
-Supported functionality should reach at least **Level 3 — Beta** before prioritized capabilities advance to **Level 4 — Stable user feature**.
-
-The current Optimizer backend remains an internal scaffold. Future work is planned around evolutionary multiobjective optimization, hypervolume-based methods, ETH Zürich/PISA-related work, and algorithms/benchmarks from the project maintainer's doctoral research.
-
-Whole-cell and biochemical evolution follows a neuro-symbolic-mechanistic AI virtual-cell research direction while preserving mechanistic simulators, invariants, curated data, and verifiable tools.
-
-## 9. Documentation
+## 8. Documentation
 
 AI/developer operational guidance:
 
@@ -305,35 +183,31 @@ AI/developer operational guidance:
 docs/ai_assistants/README.md
 ```
 
-User and developer Doxygen entry points:
+Doxygen entry points:
 
 ```text
 docs/users/DoxyfileUser
 docs/developers/DoxyfileDeveloper
 ```
 
-Run from the repository root:
+Run Doxygen from the repository root. Intermediate generated output belongs under the build tree; only deliberately maintained final artifacts should be versioned.
 
-```bash
-doxygen docs/users/DoxyfileUser
-doxygen docs/developers/DoxyfileDeveloper
-```
+## 9. Branch policy
 
-Doxygen intermediate output belongs under the build tree. Only deliberately maintained final documentation artifacts should be versioned.
-
-## 10. Branch policy
-
-Current branch roles are documented in:
+The formal promotion flow is:
 
 ```text
-docs/ai_assistants/branch_workflow.md
+feature branches -> WorkInProgress -> YYYYs -> currentStable -> master
 ```
 
-Important naming:
+For current work, bounded AI-assisted branches use:
 
-- `20261` is the renamed former `2026-1` semester-stable branch;
-- `WorkInProgress` is the active development line;
-- `20262` is reserved for the stable result promoted near the end of the second semester of 2026;
-- `currentStable` and `master` remain progressively more conservative branches.
+```text
+WiPYYYYMMDD/<scope>
+```
 
-Do not promote or merge stable branches implicitly. Use bounded branches, small commits, CI evidence, and explicit human approval.
+Stable branch promotion, waivers, release scope, and branch roles are defined only in:
+
+```text
+docs/ai_assistants/GOVERNANCE.md
+```
