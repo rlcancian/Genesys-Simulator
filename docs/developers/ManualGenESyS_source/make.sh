@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOCS_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 OUTPUT_PDF="${DOCS_DIR}/ManualGenESyS.pdf"
-SOURCE_PDF="${SCRIPT_DIR}/main.pdf"
+SOURCE_PDF="${SCRIPT_DIR}/ManualGenESyS.pdf"
 
 if ! command -v latexmk >/dev/null 2>&1; then
   echo "Error: latexmk is required to build the GenESyS manual." >&2
@@ -12,7 +12,7 @@ if ! command -v latexmk >/dev/null 2>&1; then
 fi
 
 cd "${SCRIPT_DIR}"
-latexmk -cd -xelatex -file-line-error -interaction=errorstopmode -halt-on-error "main.tex"
+latexmk -cd -xelatex -file-line-error -interaction=errorstopmode -halt-on-error "ManualGenESyS.tex"
 
 if [[ ! -f "${SOURCE_PDF}" ]]; then
   echo "Error: expected PDF was not generated: ${SOURCE_PDF}" >&2
