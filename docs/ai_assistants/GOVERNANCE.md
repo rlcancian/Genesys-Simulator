@@ -206,7 +206,24 @@ Select validation according to impact.
 
 Validate build, package creation, install, startup, upgrade/reinstall when relevant, uninstall, files left behind, version metadata, dependencies, and service/runtime assumptions separately from unit tests.
 
-## 10. Autonomous execution boundary
+## 10. Manual impact requirement
+
+Material changes to GenESyS are not considered fully documented until the affected manual content has been reviewed and updated.
+
+The required manual-impact workflow is:
+
+1. assess the change against the User Manual and the Developer Manual;
+2. update the User Manual for user-visible changes;
+3. update the Developer Manual for architectural, implementation, parser, tooling, or workflow changes;
+4. update both parts when the change affects both audiences;
+5. create new chapters when a new concept cannot be represented cleanly in the current structure;
+6. reorder chapters when the logical reading order changes;
+7. validate that any LaTeX edits compile successfully;
+8. regenerate `docs/ManualGenESyS.pdf`;
+9. keep the manual update in the same PR as the code change, or in an explicitly linked documentation PR;
+10. record an explicit `no manual impact` justification only when the change truly has no manual consequence.
+
+## 11. Autonomous execution boundary
 
 An autonomous agent may execute a task only when all of the following are true:
 

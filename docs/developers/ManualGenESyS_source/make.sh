@@ -19,5 +19,7 @@ if [[ ! -f "${SOURCE_PDF}" ]]; then
   exit 1
 fi
 
-cp -f "${SOURCE_PDF}" "${OUTPUT_PDF}"
+tmp_output="$(mktemp "${DOCS_DIR}/ManualGenESyS.pdf.XXXXXX")"
+cp -f "${SOURCE_PDF}" "${tmp_output}"
+mv -f "${tmp_output}" "${OUTPUT_PDF}"
 echo "Updated ${OUTPUT_PDF}"

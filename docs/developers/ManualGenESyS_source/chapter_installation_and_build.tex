@@ -1,0 +1,208 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Download, installation and compilation}
+\label{chap:download_instalacao_compilacao}
+
+\section{Introduction}
+\label{sec:cap2_introducao}
+
+After understanding the role of \textit{GenESyS} and the way this manual is organized, the reader needs to put it to work. That is the objective of this chapter. Instead of treating compilation as a central theme of the book, it will be treated here as what it really is for the user: a necessary step to achieve graphical application and start working with models.
+
+It is important to note that \textit{GenESyS} is a broader software project than a single application. There are kernel, parser, \textit{plugins}, tests, auxiliary applications and other internal elements. However, this complexity does not need to be absorbed by the user right from the start. The practical goal of this step is simple: obtain the project, prepare the environment, compile the GUI and validate the first execution of the graphical application. If this is achieved safely, the reader will already have what is necessary to advance to the phase of effective use of the simulator.
+
+\section{Getting the project}
+\label{sec:cap2_obtendo_projeto}
+
+\textit{GenESyS} is available as a source code repository. Therefore, the first step is to obtain a local copy of the project. In an environment with \texttt{git} properly installed, this procedure is straightforward.
+
+\begin{lstlisting}[language=bash,caption={Initial Clone of the GenESyS Repository},label={lst:cap2_git_clone}]
+git clone https://github.com/rlcancian/Genesys-Simulator.git
+cd Genesys-Simulator
+\end{lstlisting}
+
+This command produces a local copy of the repository. From then on, the user will have on their machine the set of files necessary to prepare the work environment. It is advisable, at this point, to carry out an initial inspection of the root of the project, just to recognize its presence and structural volume.
+
+\begin{lstlisting}[language=bash,caption={Initial Inspection of the Repository Root},label={lst:cap2_inspecao_inicial}]
+pwd
+ls
+\end{lstlisting}
+
+The user does not yet need to interpret in depth everything that appears in this list. Just recognize that there is a source tree, there is a templates folder, and there are configuration files that support the build and the rest of the project.
+
+\section{What the user really needs at this stage}
+\label{sec:cap2_o_que_usuario_precisa}
+
+A frequent difficulty in academic and research projects is assuming that the user needs to understand the entire internal organization before being able to use them. For \textit{GenESyS}, this strategy would be bad. The user of this first part of the book does not need to immediately study the kernel structure, \textit{plugins} or the parser. He only needs enough to:
+\begin{itemize}
+\item prepare a coherent environment;
+\item compile the graphical application;
+\item start the GUI;
+\item confirm that the interface is functional.
+\end{itemize}
+
+Therefore, the organization of the repository should be read, at this point, with only a practical concern. The \texttt{source/} folder contains application and system code. The \texttt{models/} folder will be important in the next chapters, as it is where the example models used by the user will come from. Other elements of the project may remain in the background for now.
+
+\section{Environment dependencies}
+\label{sec:cap2_dependencias_ambiente}
+
+The current version of \textit{GenESyS} uses \texttt{CMake} as the main configuration and build system. This means that the user's build environment must offer a minimum set of tools that are compatible with that organization. In addition to \texttt{CMake} itself, the project depends on a modern \texttt{C++} compiler and a working installation of Qt for the graphical application.
+
+From a practical point of view, it is worth thinking about the environment in three layers:
+
+\begin{enumerate}
+\item build tools;
+\item graphics and support libraries;
+\item compiler and general development utilities.
+\end{enumerate}
+
+In the first layer, the central element is \texttt{CMake}. In the second, the most important point is Qt, especially the modules associated with the graphical interface. The third includes the \texttt{C++} compiler and the usual development tools for the chosen platform.
+
+In the specific case of the GUI, the project preferably searches for \texttt{Qt6} and, if necessary, supports fallback to \texttt{Qt5}. For the user, this means that the environment needs to make at least one of these facilities available in a coherent way.
+
+\subsection{Minimum environment checklist}
+\label{subsec:cap2_checklist_minimo_ambiente}
+
+Before starting to configure the build, the user must confirm that they have, at least:
+\begin{itemize}
+\item \texttt{git};
+\item \texttt{cmake};
+\item the modern \texttt{C++} compiler;
+\item a working installation of \texttt{Qt};
+\item basic terminal and file system tools.
+\end{itemize}
+
+This checklist does not replace specific instructions for each platform, but it prevents the compilation process from starting in a clearly incomplete environment.
+
+\section{Compiling the graphical application}
+\label{sec:cap2_compilando_aplicacao_grafica}
+
+GUI compilation must be conducted in a build directory separate from the source tree. This practice is recommended for two reasons. The first is to keep the repository clean, without mixing generated files with the original project files. The second is to make it easier to repeat the process in case of adjustments, cleaning or reconfiguration of the environment.
+
+\begin{lstlisting}[language=bash,caption={Build Directory Creation},label={lst:cap2_criacao_build}]
+mkdir -p build
+cd build
+\end{lstlisting}
+
+With the build directory created, the user can configure the project. Since the main path of this first part of the book is the GUI, the configuration must explicitly enable the graphical application. A typical initial configuration might be done like this:
+
+\begin{lstlisting}[language=bash,caption={Initial GUI Build Configuration},label={lst:cap2_configuracao_gui}]
+cmake..\
+-DGENESYS_BUILD_GUI_APPLICATION=ON
+\end{lstlisting}
+
+Depending on the platform and local environment, the user may want to adjust other options. However, as an initial guideline in the manual, the essential point is to ensure that the GUI is included in the build process. After that, the compilation itself can be carried out.
+
+\begin{lstlisting}[language=bash,caption={GUI Build Compilation},label={lst:cap2_compilacao_gui}]
+cmake --build . --target genesys_qt_gui_application -j
+\end{lstlisting}
+
+In some environments, the GUI aggregate target can also be used, when available:
+
+\begin{lstlisting}[language=bash,caption={Alternative Build via the Aggregated GUI Target},label={lst:cap2_compilacao_gui_agregada}]
+cmake --build . --target genesys_gui -j
+\end{lstlisting}
+
+\subsection{Why is the GUI explicitly enabled}
+\label{subsec:cap2_por_que_gui_habilitada}
+
+It is important to understand the logic of this configuration. The project contains more than one possible application, but the user manual will not be guided by all of them. The target of this first half of the book is the graphical interface. Therefore, the GUI is explicitly enabled in the build configuration. This decision reduces ambiguities and aligns the technical process with the actual way the user will work with the system.
+
+\section{How to interpret configuration and compilation}
+\label{sec:cap2_como_interpretar_configuracao_compilacao}
+
+At first glance, the textual output of \texttt{CMake} and the compilation process may appear excessively detailed. However, the user does not need to interpret everything. There are just a few essential signs to look out for.
+
+In configuration:
+\begin{itemize}
+\item Qt must be localized correctly;
+\item the process must not end with a fatal error;
+\item the build directory should be generated normally.
+\end{itemize}
+
+In compilation:
+\begin{itemize}
+\item the process must complete the generation of the GUI executable;
+\item linking failures or missing libraries should not appear;
+\item the target of the graphical application must be produced at the end.
+\end{itemize}
+
+This selective reading of build output is important. The user does not yet need to analyze the entire internal chain of project targets. He only needs to confirm that the path to the graphical application was successful.
+
+\section{What to do in case of an error}
+\label{sec:cap2_o_que_fazer_em_caso_de_erro}
+
+Compilation problems are part of working with software, especially when the project is evolving. This does not mean, however, that the user needs to immediately enter into architectural debugging of the system. The most useful approach is to start with the simple causes.
+
+In case of error, first check:
+\begin{itemize}
+\item whether Qt was installed correctly;
+\item whether \texttt{cmake} is available and updated;
+\item whether the \texttt{C++} compiler is correctly configured;
+\item if the build directory was created clean;
+\item that there are no residues of previous incompatible configurations.
+\end{itemize}
+
+A particularly useful practice is to remove the \texttt{build} directory and repeat the process in a clean environment when inconsistencies that are difficult to interpret appear. In many cases, this eliminates configuration waste or previous poor choices.
+
+\section{First run of the GUI}
+\label{sec:cap2_primeira_execucao_gui}
+
+Once the compilation is complete, the next objective is to start the graphical application. The generated executable corresponds to the \texttt{genesys\_qt\_gui\_application} target. In a typical scenario, its initial execution will be done directly from the build directory or from the exact path where the generator used produced it.
+
+\begin{lstlisting}[language=bash,caption={Generic Example of the First GUI Run},label={lst:cap2_primeira_execucao_gui}]
+./genesys_qt_gui_application
+\end{lstlisting}
+
+The exact path may vary, but the intention is always the same: to reach the main application window and confirm that the GUI is functional.
+
+\subsection{What to validate on the first run}
+\label{subsec:cap2_o_que_validar_primeira_execucao}
+
+When starting the application for the first time, the user must check some very specific points:
+
+\begin{itemize}
+\item the main window opens correctly;
+\item menus and visible areas of the interface appear coherently;
+\item there is no immediate structural failure when application begins;
+\item the GUI appears ready to open or create templates.
+\end{itemize}
+
+There is no need to open models or run simulations yet. The goal of this step is more modest, but fundamental: to confirm that the prepared environment actually leads to a working graphical application.
+
+\section{First useful observations about the interface}
+\label{sec:cap2_primeiras_observacoes_interface}
+
+Once the GUI is open, the user can read the application very briefly, without trying to use it in depth. It is worth noting:
+\begin{itemize}
+\item the presence of a menu bar;
+\item the central work area;
+\item the existence of panels, trees or side flaps;
+\item the availability of commands linked to model, editing and simulation.
+\end{itemize}
+
+This observation does not replace the following chapter, which will deal specifically with the graphical interface. However, it helps to transform the first execution into a more concrete experience than simply ``the program opened''.
+
+\section{Preparing the next step}
+\label{sec:cap2_preparando_proximo_passo}
+
+If the reader managed to get this far, then they already have the most important element of this initial phase: a functional installation of \textit{GenESyS} ready for use. This is enough to move forward. It is not necessary, at this point, to delve into the details of the code structure or explore all possible build options. From here, the manual moves from the technical problem of preparing the environment to the practical problem of using the simulator.
+
+In other words, the reader is now in a position to start working with the graphical application itself.
+
+\section{Final Considerations}
+\label{sec:cap2_consideracoes_finais}
+
+The purpose of this chapter was to take the reader from obtaining the project to the first functional execution of the \textit{GenESyS} GUI. Although this step involves downloading, dependencies, configuration, and compiling, its role within the book remains instrumental. The objective was not to make the build the center of the manual, but to remove the technical barrier necessary for the use of the simulator to actually begin.
+
+With the graphical application in operation, the next natural step is to better understand the main window and its organizational logic. Therefore, the following chapter starts to deal with the graphical interface as a user's working environment, showing how the GUI organizes menus, editing areas, simulation commands, navigation panels and different views of the model.
+
+Test your understanding of this content by answering the following questions:
+
+\begin{enumerate}
+\item Why is GUI compilation treated in this manual as a means to achieve simulator use, and not as the book's organizing axis?
+
+\item What minimum dependencies does the user environment need to provide before configuring the build?
+
+\item Why is it recommended to build the project in a separate build directory?
+
+\item What signs show that the first run of the graphics application was successful?
+\end{enumerate}

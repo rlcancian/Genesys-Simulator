@@ -27,6 +27,9 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 - Issue #511: **closed as completed**.
 - Stable promotion target: `20262`, only near the end of the second semester of 2026.
 - Release readiness: **not established**.
+- GenESyS manual restructuring and governance follow-up: in progress on
+  `docs/manual-genesys-restructure-20260722`; PDF regeneration still pending
+  validation.
 
 ## 3. Technical baseline
 

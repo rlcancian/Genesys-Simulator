@@ -41,9 +41,11 @@
 
 \documentclass[9pt,fleqn]{book} % Default font size and left-justified equations
 
-\input{structure}  % Insert the commands.tex file which contains the majority of the structure behind the template
+\input{structure} % Insert the commands.tex file which contains the majority of the structure behind the template
 
 \begin{document}
+
+\frontmatter
 
 %----------------------------------------------------------------------------------------
 %	TITLE PAGE
@@ -76,14 +78,15 @@
 %	TEXTUAL CONTENT
 %----------------------------------------------------------------------------------------
 
-\input{main_textual_content}
+\mainmatter
+\input{book_content}
 
 %----------------------------------------------------------------------------------------
 %	BIBLIOGRAPHY
 %----------------------------------------------------------------------------------------
 
 \chapter*{Bibliography}
-\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliografia}}
+\addcontentsline{toc}{chapter}{\textcolor{ocre}{Bibliography}}
 %\section*{Books}
 %\addcontentsline{toc}{section}{Books}
 \printbibliography[heading=bibempty,type=book]
