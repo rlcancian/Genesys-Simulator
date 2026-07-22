@@ -4,13 +4,14 @@
 
 - Repository: `rlcancian/Genesys-Simulator`.
 - Active development branch: `WorkInProgress`.
-- Current integrated checkpoint: `8f42f50992b0bd53759018f09e46f48434839bf7`.
+- Current integrated checkpoint: `b3c7f462666c955d2c6d6429c1d5636290ef25f1`.
 - Core Phase 0 baseline: `validated` for the recorded GitHub Actions commits and toolchain.
 - Current kernel inventory: 1,721 registered; 1,717 executed/passed; 4 historical duplicates disabled; 0 failures.
 - Runtime lifecycle, focused ownership sanitizer, and optimizer copy/move barrier: integrated.
 - Static plugin target inventory and generated codemodel/link/symbol workflows: integrated through PR #491.
 - Standalone shell validation: integrated through PR #495.
 - Standalone worker public-health validation: integrated through PR #499.
+- Standalone Data Analyser Qt6 startup validation: integrated through PR #503.
 - Plugin architecture implementation: blocked on human decision issue #492.
 - Shell `autoloadplugins.txt` deployment: blocked on human decision issue #496.
 - Worker bind-address policy: blocked on human security decision issue #500.
@@ -31,8 +32,8 @@
 - Blocked shallow copy/move of `OptimizerDefaultImpl1` while its seven `List*` members remain manually owned.
 - Mapped full/minimal static plugin sources, consumers, compile definitions, symbols, and final link fragments.
 - Added permanent diagnostic workflows for CMake codemodel and GLPK-present/absent archive/link evidence.
-- Added a focused standalone shell build/argv workflow.
-- Added a focused standalone worker build/localhost-health workflow.
+- Added focused standalone shell and worker workflows.
+- Added a focused standalone Data Analyser Qt6/Xvfb startup workflow.
 - Preserved bounded red/green checkpoints before production corrections.
 
 ## 3. Relevant technical comments
@@ -52,6 +53,7 @@
 - [Plugins] The focused diffusion test links both archives. Without GLPK their global symbol sets are identical; with GLPK they expose different FBA implementations.
 - [Shell] Preset/build/argv/plugin-count/exit are validated; `autoloadplugins.txt` deployment remains unresolved.
 - [Worker] Preset/build/loopback health/clean one-request exit are validated. The actual listener is `0.0.0.0`, which conflicts with the intended explicit-private-interface profile until issue #500 is resolved.
+- [Data Analyser] Preset/build/Qt6-XCB/X11-window startup and controlled SIGTERM teardown are validated. Data workflows and scientific correctness remain unvalidated.
 
 ## 4. Problems encountered
 
@@ -103,9 +105,13 @@ The shell workflow succeeded through the static plugin fallback, but the artifac
 
 The worker workflow succeeded through loopback, but `ss` recorded `0.0.0.0:<port>`. The selected controlled-intranet profile requires an explicitly selected private interface/address and deny-by-default behavior. Issue #500 is the decision boundary for the exact bind contract.
 
-### 4.11 Remaining scientific and architectural blockers
+### 4.11 Standalone GUI evidence boundary
 
-Authoritative statistical validation, worker authentication/security, optimizer maturity, whole-cell scientific claims, GUI/package validation, Qt5 cleanup, and dynamic plugin ABI remain unresolved.
+The Data Analyser workflow proves configure/build/event-loop/window startup and process teardown. It does not prove menu/action correctness, graceful Qt-owned close behavior, import, fitting, charts, export, persistence, or numerical/statistical correctness.
+
+### 4.12 Remaining scientific and architectural blockers
+
+Authoritative statistical validation, worker authentication/security, optimizer maturity, whole-cell scientific claims, broader GUI/package validation, Qt5 cleanup, and dynamic plugin ABI remain unresolved.
 
 ## 5. Integrated changes
 
@@ -117,9 +123,10 @@ Principal integrated PRs:
 - #485: optimizer copy/move ownership barrier;
 - #488–#491: plugin target/source/codemodel/link/symbol evidence;
 - #495: standalone shell validation workflow;
-- #499: standalone worker validation workflow.
+- #499: standalone worker validation workflow;
+- #503: standalone Data Analyser Qt6/Xvfb startup workflow.
 
-No plugin ABI migration, package redesign, worker security redesign, optimizer algorithm, whole-cell model, or public persistence format was changed.
+No plugin ABI migration, package redesign, worker security redesign, optimizer algorithm, whole-cell model, Data Analyser feature implementation, or public persistence format was changed.
 
 ## 6. Principal evidence and workflows
 
@@ -133,6 +140,7 @@ Evidence documents:
 - `genesys_plugin_target_link_evidence_20260722.md`;
 - `genesys_shell_validation_evidence_20260722.md`;
 - `genesys_worker_validation_evidence_20260722.md`;
+- `genesys_dataanalyser_gui_validation_evidence_20260722.md`;
 - this handoff.
 
 Principal workflows:
@@ -143,7 +151,8 @@ Principal workflows:
 - `.github/workflows/genesys-plugin-target-introspection.yml`;
 - `.github/workflows/genesys-plugin-target-link-evidence.yml`;
 - `.github/workflows/genesys-shell-validation.yml`;
-- `.github/workflows/genesys-worker-validation.yml`.
+- `.github/workflows/genesys-worker-validation.yml`;
+- `.github/workflows/genesys-dataanalyser-gui-validation.yml`.
 
 ## 7. Validation performed
 
@@ -174,7 +183,6 @@ PR #483 run `29831405860`: ASan/LeakSanitizer passed with exit code 0 and artifa
 PR #495:
 
 - focused run: `29885199488`;
-- ordinary run: green;
 - artifact ID: `8516303352`;
 - build/argv/plugin-count/exit passed;
 - autoload deployment unresolved.
@@ -191,6 +199,20 @@ PR #499:
 - HTTP 200 and exact JSON passed;
 - request-limited exit and no residual process passed.
 
+### 7.6 Standalone Data Analyser GUI
+
+PR #503:
+
+- focused run: `29911036076`;
+- ordinary run: `29911036020`;
+- artifact ID: `8525948784`;
+- exact executable discovery passed;
+- Qt6/XCB startup under private Xvfb passed;
+- X11 window ID: `2097158`;
+- process-liveness check passed;
+- SIGTERM exit code: `143`;
+- residual application process: none.
+
 ## 8. State of the consolidation plan
 
 - Phase 0 core baseline: `validated`.
@@ -198,7 +220,8 @@ PR #499:
 - Static plugin evidence: `complete`; correction blocked on issue #492.
 - Standalone shell: `partially-validated`; autoload deployment blocked on issue #496.
 - Standalone worker: `partially-validated`; bind policy blocked on issue #500; broader security hardening pending.
-- Main and independent Qt6 GUIs: startup/workflow validation pending.
+- Standalone Data Analyser: `partially-validated` for startup only; functional/scientific workflows pending.
+- Other independent Qt6 GUIs and main GUI: startup/workflow validation pending.
 - Debian package lifecycle: pending.
 - Dynamic plugins: deferred.
 - Qt5 removal: pending.
@@ -223,29 +246,30 @@ Select explicit required address, loopback default with private override, deploy
 ## 10. Other pending work
 
 - remove or formally retire the four historical disabled duplicate blocks locally;
-- validate main GUI and independent GUI presets;
+- validate Optimizer, AI Assistant, HTTP Worker and main GUI startup;
 - execute Debian package lifecycle validation;
 - add selective UBSan and broader ASan/LSan coverage;
 - remove Qt5 fallback in a separate PR;
 - harden worker authentication, tokens, quotas, TLS and isolation;
-- implement and validate optimizer algorithms separately from ownership work;
+- implement and validate optimizer algorithms separately from ownership and GUI-startup work;
 - decide parser `FunctionRegistry` disposition;
-- validate statistical/biochemical/whole-cell claims against authoritative references.
+- validate Data Analyser statistical functions against authoritative references;
+- validate biochemical/whole-cell claims against authoritative references.
 
 ## 11. Recommended next actions
 
-1. Merge the worker evidence documentation after ordinary CI passes.
+1. Merge the Data Analyser evidence documentation after ordinary CI passes.
 2. Keep issues #492, #496, and #500 as explicit human decision boundaries.
-3. Start one bounded standalone Qt6 GUI validation using an existing preset.
-4. Validate configure/build and a headless startup/clean-exit path under `QT_QPA_PLATFORM=offscreen` or Xvfb.
-5. Do not remove Qt5 fallback or alter plugin/worker behavior in the GUI-validation PR.
+3. Execute issue #504 as the next bounded standalone Qt6 GUI validation.
+4. Reuse the private-Xvfb, PID-window, bounded-startup and controlled-teardown pattern.
+5. Do not implement optimizer algorithms or claim optimizer maturity in the GUI-validation PR.
 6. Update matrix and handoff from the resulting artifact.
 
 ## 12. Guidance for the next AI assistant
 
-First read `docs/ai_assistants/README.md`, then the latest worker and shell evidence, plugin link evidence, test matrix, consolidation plan, module inventory, and this handoff.
+First read `docs/ai_assistants/README.md`, then the latest Data Analyser, worker and shell evidence, plugin link evidence, test matrix, consolidation plan, module inventory, and this handoff.
 
-Use `20261`, not `2026-1`, except for historical quotations. Treat the baseline as green only for recorded heads/toolchains. Do not infer scientific correctness from test counts. Preserve bounded changes and explicit human decision boundaries.
+Use `20261`, not `2026-1`, except for historical quotations. Treat the baseline as green only for recorded heads/toolchains. Do not infer functional or scientific correctness from process startup or test counts. Preserve bounded changes and explicit human decision boundaries.
 
 ## 13. Limitations and uncertainties
 
@@ -253,7 +277,8 @@ Use `20261`, not `2026-1`, except for historical quotations. Treat the baseline 
 - Four duplicate historical tests remain disabled, although equivalent focused tests are active.
 - Shell model load/run was not executed.
 - Worker protected endpoints and security controls were not executed.
-- Main and independent GUI startup were not executed.
+- Data Analyser feature workflows were not executed.
+- GUI termination was external SIGTERM, not a user-driven close workflow.
 - Debian package lifecycle was not revalidated.
 - Sanitizer coverage is focused, not repository-wide.
 - Optimizer algorithms remain largely unimplemented.
@@ -261,4 +286,4 @@ Use `20261`, not `2026-1`, except for historical quotations. Treat the baseline 
 
 ## 14. Operational result
 
-Result: core validation, bounded ownership/runtime corrections, plugin evidence, shell startup, and worker public-health startup are green and reproducible. The next safe independent workstream is a bounded standalone Qt6 GUI validation. Plugin architecture, shell autoload deployment, and worker bind/security changes remain blocked on explicit decisions.
+Result: core validation, bounded ownership/runtime corrections, plugin evidence, shell startup, worker public-health startup, and Data Analyser window startup are green and reproducible. The next safe independent workstream is issue #504: bounded standalone Optimizer Qt6/Xvfb startup validation. Plugin architecture, shell autoload deployment, and worker bind/security changes remain blocked on explicit decisions.
