@@ -38,7 +38,8 @@ This is a concise index of material AI-assisted development and governance chang
 | 2026-07-22 | Consolidate current status/backlogs D2 | GitHub | issue #511; PR #514 | `53b49f7518509823fe2265a3f017b5aa76f09d2f` | run `29933330431`, ordinary tests and GUI GMDD green | evidence/reference consolidation followed |
 | 2026-07-22 | Consolidate executed evidence D3 | GitHub | issue #511; PR #515 | `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | run `29934227250`, ordinary tests and GUI GMDD green | reference/oldies/CI phases remained |
 | 2026-07-22 | Consolidate technical references D4 | GitHub | issue #511; PR #516 | `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | run `29936506990`, ordinary tests and GUI GMDD green | oldies tracker and governance CI remained |
-| 2026-07-22 | Consolidate retained oldies governance D6 | GitHub | issue #511; PR #517 | `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | run `29938004455`, ordinary tests and GUI GMDD green | documentation-governance CI remains |
+| 2026-07-22 | Consolidate retained oldies governance D6 | GitHub | issue #511; PR #517 | `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | run `29938004455`, ordinary tests and GUI GMDD green | documentation-governance CI remained |
+| 2026-07-22 | Enforce documentation governance D5 | GitHub | issue #511; PR #518 | `610d8ab21c87cfd11663af78370b39262cf4da81` | governance run `29938886903`; ordinary run `29938886807`; all green | administrative completion record only |
 
 ## 3. Update rule
 
