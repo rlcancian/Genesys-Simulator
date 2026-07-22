@@ -26,7 +26,7 @@ No source code, CMake, workflow, package, runtime, scientific algorithm, or secu
 
 The following pre-canonical policy documents were compared:
 
-| Former top-level file | Blob SHA before migration | Principal content |
+| Former top-level file | Blob SHA before retirement | Principal content |
 |---|---|---|
 | `branch_workflow.md` | `1ab6e324592c907aaf9c9941cfda2e353a730b0e` | branch roles, promotion chain, release gate and waiver policy |
 | `documentation_governance.md` | `7f633ff551732e3cf8e9c07d47ed73151b4e369c` | documentation placement, oldies retention, issue-report relay security |
@@ -68,15 +68,14 @@ Material choices still open remain in `BACKLOG_HUMAN.md`, including static targe
 
 ## 4. Historical preservation
 
-The exact four superseded documents are moved, without substantive rewriting, to:
+The four superseded top-level files are retired from the active tree after consolidation. Their exact contents remain preserved through:
 
-```text
-history/migrations/legacy/
-```
+- repository commit history;
+- the immutable pre-retirement blob SHAs listed above;
+- pull-request and issue audit history;
+- current backlog entries that preserve unresolved options and decisions.
 
-They are retained for option analysis, provenance, and audit. They no longer have normative authority and are not part of mandatory reading.
-
-Git history and the blob SHAs above provide additional preservation.
+They are no longer normative and are not part of mandatory reading. Restoring an exact historical source does not require keeping a duplicate file in the active documentation tree.
 
 ## 5. Non-claims
 
