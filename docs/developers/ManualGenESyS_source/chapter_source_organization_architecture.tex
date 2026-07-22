@@ -1,0 +1,211 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Source Code Organization and Overall Architecture}
+\label{chap:organizacao_codigo_fonte_arquitetura_geral}
+
+\section{Introduction}
+\label{sec:cap6_introducao}
+
+From this point on, the book explicitly enters its second half: the developer's manual. Changing perspective is important. So far, the focus has been on using \textit{GenESyS} as a modeling and simulation tool, with an emphasis on the GUI, example models and observation of system behavior. Now, the focus becomes understanding the software itself: its internal organization, its central subsystems, the way the code is distributed and the points from which a developer can begin to study, modify and expand it.
+
+Before studying the core of the simulator or discussing \textit{plugins}, parser and applications, it is necessary to build an overview of the repository organization. Without this vision, the developer tends to get lost in files and classes without realizing the architectural function of each region of the code. The goal of this chapter is precisely to avoid this problem. Instead of immediately presenting local details, it organizes the overall project map.
+
+The central idea is simple. \textit{GenESyS} should not be read as an amorphous set of \texttt{C++} files, but as a system divided into areas with distinct responsibilities. Some of these areas underpin the core of the simulation. Others organize the extensibility mechanism. Still others implement applications, tools and tests. Understanding this division is the first step to any mature technical reading of the project.
+
+\section{From Simulator Application to Software System}
+\label{sec:cap6_do_simulador_como_aplicacao_ao_software}
+
+In the first half of the book, \textit{GenESyS} appeared to the reader mainly as an application. The user opened the GUI, loaded models, ran simulations, and observed results. For the developer, however, this vision is just the surface of a broader system. The graphic application does not exhaust the project; it is one of its forms of presentation.
+
+This observation is important because it helps to correctly reposition the object of study. The developer does not work just on a graphical interface, nor just on a set of models. He works on software that:
+
+\begin{itemize}
+ \item maintains a simulation kernel;
+ \item represents models internally;
+ \item manages events, entities and simulated time;
+ \item interprets expressions and simulation language;
+ \item loads and integrates \textit{plugins};
+ \item supports different applications on the same basis;
+ \item provides infrastructure for testing and evolution.
+\end{itemize}
+
+Therefore, the starting point of the second half of the book is not the GUI itself, but the system of which the GUI is a part.
+
+\section{The Overall Logic of the Directory Tree}
+\label{sec:cap6_logica_geral_arvore_diretorios}
+
+The \textit{GenESyS} repository should be read as a tree organized by technical responsibility. Not all directories have the same importance for the developer, and a good initial reading consists precisely in distinguishing what is structural from what is just contextual.
+
+Broadly speaking, there are three main areas of interest:
+
+\begin{enumerate}
+ \item the main source code zone;
+ \item the zone of usage models and artifacts;
+ \item the development, build and testing support area.
+\end{enumerate}
+
+Within the first of these zones, the \texttt{source/} folder contains the effective core of the software. It is the one that starts to dominate the reading from this chapter forward. The \texttt{models/} folder, which in the first half of the book served as the main entry point for the user, remains important, but now changes its role: it is no longer just material for use but also becomes material for architectural observation, as it helps the developer to relate the representation of the model to the behavior of the code.
+
+\subsection{Why the \texttt{source/} folder is the center of reading}
+\label{subsec:cap6_por_que_source_centro_leitura}
+
+For the developer, the \texttt{source/} folder is the heart of the project. This is where the fundamental subsystems of \textit{GenESyS} are located:
+\begin{itemize}
+ \item kernel;
+ \item parser;
+ \item \textit{plugins};
+ \item applications;
+ \item tools;
+ \item tests.
+\end{itemize}
+
+This division already suggests a first architectural reading of the system. The kernel represents the central infrastructure of the simulation. The parser takes care of the language and expressions. The \textit{plugins} mechanism materializes the extensibility mechanism. The applications expose concrete ways of using the infrastructure. The tools complement the ecosystem. Tests organize the validation of software behavior.
+
+\subsection{Why \texttt{models/} remains relevant to developers}
+\label{subsec:cap6_models_relevante_ao_desenvolvedor}
+
+In the first part of the book, the models were treated as material for using the simulator. Now, they also start to serve as software reading instruments. This is because the developer constantly needs to report two things:
+\begin{itemize}
+ \item the way the system presents itself to the user;
+ \item the way the system is implemented internally.
+\end{itemize}
+
+The models in \texttt{models/} help exactly with this bridge. They show the type of artifacts that the application manipulates and help to report the structure of the models to the set of kernel classes and mechanisms.
+
+\section{The large areas of \texttt{source/}}
+\label{sec:cap6_grandes_areas_source}
+
+Reading \texttt{source/} must start with its large areas, and not with isolated files. This approach reduces noise and helps build an architectural view before reading detailed classes.
+
+\subsection{\texttt{source/kernel}}
+\label{subsec:cap6_source_kernel}
+
+The \texttt{source/kernel} folder contains the simulator's central infrastructure. It is there that the developer finds the most fundamental elements of the system: model representation, entities, events, simulation mechanisms, utilities and statistics. This is, without a doubt, the most important region of the project for anyone who wants to understand GenESyS in depth.
+
+From an architectural point of view, the \texttt{kernel} folder organizes what the simulator core does independently of any specific interface. Graphical applications, terminal applications, tools and other modules can only exist because this core provides them with a stable base.
+
+\subsection{\texttt{source/parser}}
+\label{subsec:cap6_source_parser}
+
+The \texttt{source/parser} folder brings together the infrastructure associated with interpreting the simulator's language and expressions. It is especially important because many model parameters are not just literal values, but textual expressions that need to be interpreted within the context of the model and simulation.
+
+In the first part of the book, this dimension appeared indirectly in the \textit{Simulang} tab. Here, it becomes clear that the \texttt{source/parser} folder should be understood as a software subsystem responsible for connecting text, model semantics, and execution.
+
+\subsection{\texttt{source/plugins}}
+\label{subsec:cap6_source_plugins}
+
+The \texttt{source/plugins} folder organizes one of the most characteristic aspects of GenESyS: its extensibility. Instead of concentrating all functionality in a closed core, the project foresees the incorporation of specialized modules that expand the components, data and other capabilities of the system.
+
+For the developer, this means that an important part of the simulator's evolution happens on this border between kernel and \textit{plugins}. Many of the modeling elements most visible to the user are provided precisely by this mechanism.
+
+\subsection{\texttt{source/applications}}
+\label{subsec:cap6_source_applications}
+
+The \texttt{source/applications} folder contains applications built on top of the system core. This is where GenESyS stops appearing just as infrastructure and starts to take on concrete forms of interaction, such as the GUI and other auxiliary applications. This layer is important because it shows a valuable architectural separation: the simulation core is not confused with a single application.
+
+This means that the software can be read at two levels:
+\begin{itemize}
+ \item as infrastructure;
+ \item as a set of applications on this infrastructure.
+\end{itemize}
+
+\subsection{\texttt{source/tools}}
+\label{subsec:cap6_source_tools}
+
+The \texttt{source/tools} folder brings together tools that support the use, development or evolution of the system. Although they are not always the first reading priority, these tools can become important in debugging, support, integration, or maintenance contexts.
+
+\subsection{\texttt{source/tests}}
+\label{subsec:cap6_source_tests}
+
+The \texttt{source/tests} folder represents the project validation dimension. It is especially important for the developer because it offers a concrete path to verify expected behavior, prevent regressions and provide security for changes to the system.
+
+In evolving projects, the existence of an organized test tree is one of the main signs of technical maturity. In GenESyS, this is particularly relevant because the software has multiple layers and extensibility mechanisms.
+
+\section{A Layered Reading of the System}
+\label{sec:cap6_leitura_em_camadas}
+
+A very useful way to understand the general architecture of \textit{GenESyS} is to imagine the system in layers.
+
+At the deepest layer is the kernel. It is what defines the fundamental structures and services of the simulation. On top of this layer, language and extensibility mechanisms appear, such as parser and \textit{plugins}. Further up, concrete applications emerge, such as the GUI, which present the user with a way of interacting with this infrastructure. In parallel, tests and tools help support the maintenance and evolution of the project.
+
+This layered reading helps the developer avoid a common mistake: confusing what is structural with what is just surface use. The GUI is very important, but it is not the heart of the system. Likewise, a plugin may be central to a specific modeling domain, but still depends on the kernel to exist.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Layered Reading of the Overall GenESyS Architecture.}
+ \label{tab:cap6_leitura_em_camadas}
+ \small
+ \begin{tabular}{|p{3.3cm}|p{7.8cm}|}
+ \hline
+ \textbf{Layer} & \textbf{Main Function} \\
+ \hline
+ Kernel & Central simulation infrastructure, model representation, events, entities, time, statistics and fundamental services \\
+ \hline
+ Parser and extensibility & Expression interpretation, simulator language and functional extension by \textit{plugins} \\
+ \hline
+ Applications & Concrete forms of interaction with the system, such as the graphical interface \\
+ \hline
+ Tools and Tests & Support for development, validation, maintenance and project evolution \\
+ \hline
+ \end{tabular}
+\end{table}
+
+\section{The Role of the \texttt{Simulator} Class in the System View}
+\label{sec:cap6_papel_classe_simulator}
+
+The \texttt{Simulator} class provides a particularly useful synthesis of this overview. It presents itself as the highest level class of the simulation kernel and exposes, through direct access, several central system managers. This includes, but is not limited to, \texttt{PluginManager}, \texttt{ModelManager}, \texttt{TraceManager}, \texttt{ParserManager}, and \texttt{ExperimentManager}.
+
+This observation is valuable because it shows, in a very concrete way, that the GenESyS architecture is not organized around a single file or a single operational class, but around a core that coordinates multiple specialized subsystems. In other words, the developer must understand \texttt{Simulator} as an access point to the simulator ecosystem, and not just as an isolated technical object.
+
+\subsection{Why This Matters for Reading the Code}
+\label{subsec:cap6_por_que_importa_leitura_codigo}
+
+If the developer enters the project only through the GUI or a specific modeling component, they run the risk of reading the system in a fragmented way. The presence of the \texttt{Simulator} class as an aggregator of managers helps to refocus the reading: software is better understood when seen as a set of coordinated subsystems, and not as a collection of independent parts.
+
+This insight will be particularly important in the next chapter, when the focus shifts to the kernel and classes that effectively control the life of the model in simulation.
+
+\section{Misreadings This Chapter Avoids}
+\label{sec:cap6_leituras_erradas_evita}
+
+This chapter aims to avoid some common misreadings in projects like GenESyS.
+
+The first is to imagine that the GUI is the entire system. It is fundamental for the user, but it is just an application on a broader infrastructure.
+
+The second is to imagine that the kernel can be read without relation to the parser, \textit{plugins} and applications. Although the kernel is the foundation, it does not live in isolation.
+
+The third is to start studying the code with random files. This practice often produces local familiarity but not architectural understanding.
+
+The fourth is to treat the \texttt{models/} folder as something irrelevant to the developer. In fact, it is important because it helps to relate the implementation to the simulator's real work object.
+
+\section{Recommended Reading Strategy for the Code}
+\label{sec:cap6_estrategia_recomendada_leitura}
+
+The most productive way to study the \textit{GenESyS} source code is progressive.
+
+First, build an overview of the project tree and the responsibilities of its major areas. Then, enter the kernel and study the central classes that articulate the model, simulation, events and observability. Then move on to the component base classes, \textit{data definitions}, parser, and \textit{plugins}. Only then does it make sense to delve deeper into specific applications, tools and tests.
+
+This order is not arbitrary. It follows the software’s own logic:
+\begin{enumerate}
+ \item first, the infrastructure;
+ \item then, the expansion mechanisms;
+ \item then, the concrete applications;
+ \item finally, the maintenance and validation instruments.
+\end{enumerate}
+
+\section{Final Considerations}
+\label{sec:cap6_consideracoes_finais}
+
+This chapter reorganized the reader's perspective on \textit{GenESyS}. From this point onward, the project is no longer seen just as a graphical application and instead becomes a software system distributed across areas with different responsibilities. The most important point to remember is that the GenESyS architecture must be read in layers: kernel, parser, \textit{plugins}, applications, tools, and tests. Without this overall view, the study of individual classes tends to become fragmented and unproductive.
+
+With this base established, the next step is to enter the most important region of the project: the core of the simulator. It is here that the model, the simulation, the events, the simulated time, the list of future events and the central mechanisms for observing the system's behavior are defined. Therefore, the following chapter will focus on the kernel itself, with an emphasis on the classes that articulate the dynamics of the simulation.
+
+Test your understanding of this content by answering the following questions:
+
+\begin{enumerate}
+ \item Why should the \texttt{source/} folder be treated as the center of the project's technical reading?
+
+\item What is the advantage of interpreting GenESyS in layers, rather than reading it as a scattered set of files?
+
+\item Why shouldn't the GUI be confused with the entire system?
+
+\item What role does the \texttt{models/} folder still play for the developer, even in the second half of the book?
+\end{enumerate}

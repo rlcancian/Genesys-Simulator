@@ -41,6 +41,7 @@ This is a concise index of material AI-assisted development and governance chang
 | 2026-07-22 | Consolidate retained oldies governance D6 | GitHub | issue #511; PR #517 | `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | run `29938004455`, ordinary tests and GUI GMDD green | documentation-governance CI remained |
 | 2026-07-22 | Enforce documentation governance D5 | GitHub | issue #511; PR #518 | `610d8ab21c87cfd11663af78370b39262cf4da81` | governance run `29938886903`; ordinary run `29938886807`; all green | completion record remained |
 | 2026-07-22 | Close AI documentation governance migration | GitHub | issue #511; PR #519 | `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` | governance run `29939815697`; ordinary run `29939816032`; all green | no documentation-migration boundary remains |
+| 2026-07-22 | Restructure GenESyS manual sources and manual-impact governance | local | branch `docs/manual-genesys-restructure-20260722` | in progress | LaTeX rebuild and final PDF validation pending | chapter map, README, manual-impact rule and figure automation plan introduced |
 
 ## 3. Update rule
 

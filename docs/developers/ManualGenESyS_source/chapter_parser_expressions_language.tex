@@ -1,0 +1,282 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Parser, Expressions, and Internal Language}
+\label{chap:parser_expressoes_linguagem_interna}
+
+\section{Introduction}
+\label{sec:cap9_introducao}
+
+Throughout the first half of this book, the \textit{GenESyS} language appeared to the user mainly through the \textit{Simulang} tab. At that stage, the central interest was in realizing that the graphic model also has a textual representation. For the developer, however, this observation is just the starting point. The real problem now is different: how the system interprets expressions, how the language is linked to the model state and how new syntactic and semantic capabilities can be introduced into the simulator.
+
+This chapter deals exactly with this subsystem. Its focus is not just on the generic notion of ``parser'', but on the concrete way \textit{GenESyS} organizes the evaluation of expressions, the handling of model symbols, the integration with stochastic functions, the Bison/Flex grammar, and the extension points that allow the system to grow.
+
+The importance of this topic is great. In a simulator like \textit{GenESyS}, language is not ornament. Many model decisions involve expressions: parameters, formulas, attribute references, statistical queries, simulation controls and probabilistic functions. The parser, therefore, is not just a textual convenience; it is part of the operational semantics of the simulator.
+
+\section{The Role of the Parser in GenESyS}
+\label{sec:cap9_papel_parser_genesys}
+
+The \textit{GenESyS} parser should be understood as the infrastructure that makes it possible to interpret expressions and functions in model context. This means that it doesn't just operate on abstract text, but on text that needs to be related to concrete elements of the simulator:
+\begin{itemize}
+ \item attributes of the current entity;
+ \item simulation controls and responses;
+ \item accountants and statistical collectors;
+ \item variables, formulas, queues, resources and other model objects;
+ \item mathematical and probabilistic functions;
+ \item information about the current state of the simulation.
+\end{itemize}
+
+In other words, the parser works as a bridge between language and the internal state of the system. This is why it is so important in the GenESyS architecture.
+
+\subsection{Parser as a Semantic Subsystem}
+\label{subsec:cap9_parser_como_subsistema_semantico}
+
+It is useful to avoid a limited reading of the parser as a simple parser. In \textit{GenESyS}, it does more than recognize a well-formed expression. It also needs:
+\begin{itemize}
+ \item resolves symbol names;
+ \item identify the nature of these symbols;
+ \item get values ​​associated with the current state of the model;
+ \item integrate stochastic functions supported by a sampler;
+ \item propagate useful error messages.
+\end{itemize}
+
+This means that the correct reading of the parser in GenESyS is semantic and not just syntactic.
+
+\section{The \texttt{Parser\_if} interface}
+\label{sec:cap9_interface_parser_if}
+
+The \texttt{Parser\_if} interface offers a very clear summary of the role of the parser in the project. It defines a minimal contract for evaluating stochastic expressions and functions, making some central responsibilities explicit:
+\begin{itemize}
+ \item evaluate expressions and return a numeric value;
+ \item offer a variant that reports success and an error message without throwing an exception;
+ \item make the last error message available;
+ \item associate the parser with an instance of \texttt{Sampler\_if};
+ \item expose the internal parser driver for advanced scenarios.
+\end{itemize}
+
+This interface is important because it shows that the parser is seen, architecturally, as a simulator service and not as an accidental implementation detail.
+
+\subsection{Expression Evaluation}
+\label{subsec:cap9_avaliacao_expressoes}
+
+The most obvious point of the interface is the expression evaluation method. The existence of two main forms of \texttt{parse} is particularly revealing:
+\begin{itemize}
+ \item a way that can throw exceptions;
+ \item a way that avoids exceptions and explicitly reports success and error messages.
+\end{itemize}
+
+This decision improves the integration of the parser with different layers of the system. In some contexts, the developer may prefer exception handling. In others, especially in validation and user interface, it is more convenient to receive the success state explicitly.
+
+\subsection{Integration with \texttt{Sampler\_if}}
+\label{subsec:cap9_integracao_sampler_if}
+
+The interface also makes it clear that the parser is not just a parser of deterministic expressions. It integrates stochastic functions supported by \texttt{Sampler\_if}. This is important because it reinforces the specific nature of the GenESyS language: it is not just a mini-arithmetic language, but a simulation-oriented language.
+
+In practical terms, this means that probabilistic functions of the language depend on the presence of a sampler associated with the parser. As a result, the semantics of expressions naturally incorporate random generation mechanisms.
+
+\section{The \texttt{Model} class as parser user}
+\label{sec:cap9_model_como_usuario_parser}
+
+The role of the parser within the kernel is especially clear in the \texttt{Model} class. It exposes methods like \texttt{parseExpression} and \texttt{checkExpression}, which shows that the model uses the parser directly to:
+\begin{itemize}
+ \item evaluate expressions defined in the model context;
+ \item validate expressions entered by the user;
+ \item check references to \textit{data definitions} in the text of expressions.
+\end{itemize}
+
+This detail is architecturally very important. It means that the parser is not isolated in an external layer; he participates in the model's life.
+
+\subsection{Why does \texttt{Model} invoke the parser}
+\label{subsec:cap9_por_que_model_invoca_parser}
+
+The presence of these methods in \texttt{Model} reveals an important principle: expressions are part of the model's semantics, and not just the interface. A model component or data that stores an expression needs to be able to validate it and, in many cases, evaluate it within the current context of the simulation.
+
+This architectural choice is very good because it keeps the language connected to the object where it really belongs: the model.
+
+\subsection{Expressions and Consistency Checking}
+\label{subsec:cap9_expressoes_verificacao_consistencia}
+
+It's also important to note that the \texttt{Model} class offers \texttt{checkExpression}. This shows that the parser participates not only in the execution, but also in the model checking phase. In other words, the validity of an expression is treated as part of the integrity of the model, and not as a problem to be discovered only during an execution that has already started.
+
+This decision greatly improves the robustness of the system and helps explain why model checking is such an important step in the use and development of GenESyS.
+
+\section{The GenESyS Bison/Flex Grammar}
+\label{sec:cap9_gramatica_bison_flex}
+
+The concrete implementation of the parser in \texttt{source/parser/parserBisonFlex} clearly shows the maturity of this subsystem. The \texttt{bisonparser.yy} file defines a C++ grammar based on \texttt{lalr1.cc}, with its own parser class, typed tokens, localizations, support code, and explicit integration with \texttt{genesyspp\_driver}. This shows that the parser was designed as a serious component of the simulator infrastructure, and not as an improvised textual routine.
+
+Grammar covers, among other elements:
+\begin{itemize}
+ \item numbers;
+ \item relational and logical operators;
+ \item trigonometric and mathematical functions;
+ \item probabilistic functions;
+ \item functions associated with the kernel;
+ \item template symbols;
+ \item extensions introduced by \textit{plugins}.
+\end{itemize}
+
+This scope is enough to show that the parser is one of the subsystems with the highest semantic density in the project.
+
+\subsection{A Language Truly Integrated with the Model}
+\label{subsec:cap9_linguagem_integrada_modelo}
+
+Reading the grammar shows something particularly relevant: many tokens and productions do not just refer to abstract syntactic constructions, but to real objects in the model. There are rules for attributes, simulation responses, simulation controls, and elements such as variables, formulas, queues, and resources. Functions associated with statistics, counters and simulation status also appear.
+
+This reinforces an essential point:
+\begin{quote}
+ The GenESyS language is not external to the simulator; it is a textual projection of the semantics of the model and simulation.
+\end{quote}
+
+\subsection{Probabilistic Functions and Sampling}
+\label{subsec:cap9_funcoes_probabilisticas_amostragem}
+
+The grammar makes explicit the presence of probabilistic functions such as exponential, normal, uniform, Weibull, lognormal, gamma, Erlang, triangular and beta, among others. In all of them, the operational semantics depend on the \texttt{Sampler\_if} associated with the parser.
+
+This is very important for the developer, because it shows that:
+\begin{itemize}
+ \item the simulator language directly incorporates stochastic sampling;
+ \item the parser implementation needs to maintain a consistent contract with the statistical subsystem;
+ \item error handling in these functions is not only syntactic but also operational.
+\end{itemize}
+
+\section{Model Symbols and Dependence on the Current State}
+\label{sec:cap9_simbolos_modelo_estado_corrente}
+
+One of the most interesting features of the GenESyS parser is its explicit dependence on the current state of the simulation. The grammar shows, for example, that access to attributes depends on the current entity associated with the current event. Likewise, functions such as \texttt{TNOW}, \texttt{TFIN}, number of repetitions and identifiers of the current entity depend on the state maintained in \texttt{ModelSimulation} and the current event.
+
+This feature is architecturally strong because it reveals that the interpretation of expressions in GenESyS is contextual. The same expression can have different meanings depending on:
+\begin{itemize}
+ \item the loaded model;
+ \item the current entity;
+ \item the event being processed;
+ \item the simulated instant;
+ \item the model data available in that context.
+\end{itemize}
+
+\subsection{Parser como consumidor do estado do kernel}
+\label{subsec:cap9_parser_consumidor_estado_kernel}
+
+This means that the parser directly consumes information from the kernel. It queries:
+\begin{itemize}
+ \item the model;
+ \item the simulation;
+ \item the current event;
+ \item or \textit{data manager};
+ \item collectors and counters;
+ \item controls and responses.
+\end{itemize}
+
+This dependence is not a defect. Rather, it is part of the nature of the problem. A parser for a simulation language needs to know the universe of symbols and states of the simulator.
+
+\section{Extension points by \textit{plugins}}
+\label{sec:cap9_pontos_extensao_plugins}
+
+The grammar of \textit{GenESyS} very clearly reveals the existence of regions designed for extension. The blocks marked by structured comments for \textit{plugins} inclusions, tokens, types, and productions show that the system is designed for growth.
+
+This aspect is particularly important for the developer. It shows that expanding the language does not necessarily depend on completely rewriting the base grammar. There are architecturally planned points for new elements to be introduced.
+
+\subsection{Syntactic and Semantic Extension}
+\label{subsec:cap9_extensao_sintatica_semantica}
+
+When a \textit{plugin} extends the language, it doesn't just introduce new tokens. In general, it also introduces:
+\begin{itemize}
+ \item new symbols;
+ \item new functions;
+ \item new interpretation rules;
+ \item new relationships between text and model data.
+\end{itemize}
+
+This means that the parser extension is simultaneously syntactic and semantic. This is precisely why the \texttt{ParserChangesInformation} and \texttt{ParserManager} infrastructure exists in the project.
+
+\section{The class \texttt{ParserManager}}
+\label{sec:cap9_classe_parsermanager}
+
+The \texttt{ParserManager} class makes explicit GenESyS's architectural ambition to support language evolution. Its interface provides:
+\begin{itemize}
+ \item generation of a new parser based on changes;
+ \item connecting a new parser to the system.
+\end{itemize}
+
+Although the header itself indicates that important parts of this flow are still under development, the existence of this class is already architecturally relevant. It shows that GenESyS does not treat grammar as an entirely static artifact. There is, in the system design, space for explicit management of the evolution of the parser.
+
+\subsection{What This Means for the Developer}
+\label{subsec:cap9_o_que_significa_para_desenvolvedor}
+
+For the developer, this means that working with language in GenESyS is not limited to modifying a Bison or Flex file. The project foresees, at an architectural level, a subsystem responsible for:
+\begin{itemize}
+ \item describe changes;
+ \item generate parser artifacts;
+ \item connect new parsers to the simulator.
+\end{itemize}
+
+Even though this infrastructure is still maturing, it already guides the correct way of thinking about the evolution of language.
+
+\section{Erros, mensagens e robustez}
+\label{sec:cap9_erros_mensagens_robustez}
+
+Another important aspect of parser implementation is error handling. The grammar shows explicit concern for useful messages, including in the case of illegal tokens, missing literals, and failures in probabilistic functions. This is important because simulation language, when misinterpreted or misdiagnosed, quickly becomes a source of frustration for user and developer.
+
+The robustness of the parser therefore depends on three factors:
+\begin{itemize}
+ \item correct syntactic recognition;
+ \item correct semantic integration with the model;
+ \item producing sufficiently informative error messages.
+\end{itemize}
+
+This triad is especially important in a system where expressions can appear at many points in the model.
+
+\section{How to Study and Modify the Parser Productively}
+\label{sec:cap9_como_estudar_modificar_parser}
+
+The most productive way to study the GenESyS parser is in layers.
+
+First, understand the \texttt{Parser\_if} interface and the way \texttt{Model} invokes the parser. Then, study the Bison/Flex grammar and the way it accesses model symbols. Then identify the extension points introduced by \textit{plugins}. Only then does it make sense to propose more significant changes, especially when they involve new functions, new symbols or changes to grammar.
+
+It is also important to remember that changes to the parser are not just textual changes. They can affect:
+\begin{itemize}
+ \item model checking;
+ \item component semantics and \textit{data definitions};
+ \item integration with sampling;
+ \item error messages;
+ \item compatibility with \textit{plugins}.
+\end{itemize}
+
+\begin{table}[htbp]
+ \centering
+ \caption{Reading Layers of the GenESyS Parser.}
+ \label{tab:cap9_camadas_leitura_parser}
+ \small
+ \begin{tabular}{|p{3.9cm}|p{7.3cm}|}
+ \hline
+ \textbf{Camada} & \textbf{Pergunta principal} \\
+ \hline
+ Interface & What service does the parser provide to the rest of the system? \\
+ \hline
+ Model Integration & How does \texttt{Model} and Simulation State use this service? \\
+ \hline
+ Concrete grammar & How is language recognized and evaluated? \\
+ \hline
+ Extensibility & How do new symbols and functions enter the system? \\
+ \hline
+ Robustness & How are errors detected and reported? \\
+ \hline
+ \end{tabular}
+\end{table}
+
+\section{Final Considerations}
+\label{sec:cap9_consideracoes_finais}
+
+This chapter has shown that the \textit{GenESyS} parser is much more than an auxiliary text layer. It is an integral part of the simulator semantics. The \texttt{Parser\_if} interface, the direct integration with \texttt{Model}, the Bison/Flex grammar, the use of model and simulation symbols, the dependence on a sampler, and the explicit extension points by \textit{plugins} reveal an architecturally dense and strategically important subsystem for the project.
+
+With this, the reader already has the main elements to understand how \textit{GenESyS} links language, model and execution. The next step is to broaden the focus again, leaving the parser and returning to the project's broader ecosystem: applications, tools, C++ examples, tests and software evolution strategies. This is exactly what will be covered in the next chapter, which closes this version of the developer manual.
+
+Test your understanding of this content by answering the following questions:
+
+\begin{enumerate}
+ \item Why should the \textit{GenESyS} parser be understood as a semantic subsystem and not just a syntactic one?
+
+\item How important is it for the \texttt{Model} class to expose methods like \texttt{parseExpression} and \texttt{checkExpression}?
+
+\item How does the \textit{GenESyS} grammar show dependence on the current state of the model and simulation?
+
+\item Why are extension points by \textit{plugins} essential to the evolution of the simulator language?
+\end{enumerate}

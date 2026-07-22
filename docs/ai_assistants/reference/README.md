@@ -81,6 +81,14 @@ Use for:
 - worker/HTTP boundary;
 - issue-report relay and public compatibility.
 
+### [`manual_figure_automation_plan.md`](manual_figure_automation_plan.md)
+
+Use for:
+
+- future manual screenshot automation;
+- developer diagram generation planning;
+- figure governance and stop-gate decisions.
+
 ## 3. Reference rules
 
 Reference files:

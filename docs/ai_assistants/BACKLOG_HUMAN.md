@@ -127,6 +127,23 @@ A decision recorded here is not implemented automatically unless a corresponding
   - packaging dependencies.
 - Decision unlocks: secret-store hardening and provider integration tests.
 
+### HUM-DOC-001 — Manual figure automation stack
+
+- Priority: `P2`
+- Status: `research-needed`
+- Decision required: choose the approved automation path for manual screenshots
+  and developer diagrams.
+- Candidate areas to evaluate:
+  - Qt test automation;
+  - Xvfb or a comparable virtual desktop setup;
+  - screenshot tooling available on the target platform;
+  - TikZ, PlantUML, Graphviz, or Doxygen-based diagram generation;
+  - repository-local scripts for capture, normalization, and validation.
+- Recommendation: prefer repository-local, reproducible generation first; add
+  external tooling only after explicit review and compatibility evidence.
+- Decision unlocks: a bounded automation implementation and updated manual
+  figure workflow.
+
 ## 5. Numerical and statistical decisions
 
 ### HUM-SCI-001 — Authoritative numerical/statistical reference package
