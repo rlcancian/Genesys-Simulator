@@ -13,7 +13,7 @@ tracks: 511
 
 This file is a concise index of material AI-assisted development and governance changes.
 
-It is not a substitute for Git history, pull-request discussions, issues, workflow runs, or artifacts. Each row should be short and link or identify the detailed source of evidence.
+It is not a substitute for Git history, pull-request discussions, issues, workflow runs, or artifacts. Each row should be short and identify the detailed source of evidence.
 
 Do not paste full logs here.
 
@@ -42,7 +42,7 @@ Do not paste full logs here.
 | 2026-07-22 | Validate Optimizer GUI startup and record evidence | GitHub | PRs #507/#508 | `408c62dcd428de38708df4eac11cad287fb84f13`, `fbf67b76c7d1e86e9431b680aa10de465d657b51` | Qt6/Xvfb startup artifact green | algorithms and maturity not validated |
 | 2026-07-22 | Validate AI Assistant GUI startup | GitHub | PR #510; issue #509 | `ca47f7f05b0414190fedf73da947dd3d5c5e2456` | runs `29919067547`/`29919067854`, artifact `8529227458` | credentials/provider workflow/security pending |
 | 2026-07-22 | Close superseded Optimizer GUI draft | GitHub | PR #506 | closed without merge | replacement #507 already integrated | none |
-| 2026-07-22 | Establish AI documentation governance D0 | GitHub | issue #511 | branch `WiP20260722/ai-docs-governance` | additive documentation migration; PR pending | effective consolidation requires review |
+| 2026-07-22 | Establish canonical AI documentation governance D0 | GitHub | issue #511; PR #512 | `958cdc6f63c02d004f1ffdf55e104b58a245bb88` | final run `29929616027`, ordinary tests and GUI GMDD green | D1–D6 consolidation remains |
 
 ## 4. Update rule
 
