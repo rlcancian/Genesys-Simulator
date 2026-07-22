@@ -3,63 +3,64 @@ document_type: evidence-index
 authority: informative
 owner: project-maintainer
 last_reviewed: 2026-07-22
-status: migration-placeholder
+status: active
 tracks: 511
 ---
 
 # GenESyS Executed Evidence Archive
 
-## Purpose
+## 1. Purpose
 
-This directory is the planned destination for immutable, dated evidence produced by bounded GenESyS validation work.
+This directory contains immutable, dated indices of bounded GenESyS validation work.
 
-Evidence records support audit and diagnosis. They do not become current policy or current status merely because they are newer than another document.
+Evidence supports audit and diagnosis. It does not become current policy or current status merely because it is newer than another document. Use [`../../STATUS.md`](../../STATUS.md) for current operational conclusions.
 
-Use `../../STATUS.md` for current operational conclusions.
+## 2. Organization
 
-## Planned organization
+The selected convention is date-first:
 
 ```text
 history/evidence/
-├── 2026/
-│   └── 07/
-├── applications/
-├── ownership/
-├── plugins/
-├── runtime/
-└── scientific/
+└── YYYY/
+    └── MM/
+        └── VALIDATION_LEDGER.md
 ```
 
-The final organization may prefer date-first or domain-first directories, but one convention must be selected before D3 moves existing files.
+Current ledger:
 
-## Required evidence metadata
+- [`2026/07/VALIDATION_LEDGER.md`](2026/07/VALIDATION_LEDGER.md)
 
-New evidence documents should record:
+A separate document may be added inside the same month only when its technical detail cannot be represented responsibly in the ledger. It must still be linked from that month's ledger.
+
+## 3. Required evidence metadata
+
+New evidence entries should record, when applicable:
 
 - scope and non-claims;
-- repository, branch, head/merge commit;
+- repository, branch, head and merge commit;
 - PR and issue;
-- workflow/local environment;
+- workflow or local environment;
 - toolchain;
-- exact commands or workflow steps;
+- commands or workflow steps;
 - test inventory and results;
-- artifact name, ID, digest, and retention when applicable;
-- red checkpoint where relevant;
-- correction or change;
+- artifact name, ID, digest and retention;
+- red checkpoint;
+- correction/change;
 - interpretation;
 - remaining risks;
 - relationship to current `STATUS.md`.
 
-## Immutability rule
+## 4. Immutability rule
 
-After evidence is finalized and its PR merged:
+After evidence is finalized and merged:
 
 - do not rewrite the result to match later repository state;
-- correct material errors through an explicit addendum or successor evidence record;
+- correct material errors through an explicit addendum or successor ledger entry;
 - keep historical failures when they explain a later correction;
-- do not reuse an old count or result as current without checking `STATUS.md` and the current branch.
+- do not reuse an old count as current without checking `STATUS.md` and the current branch;
+- preserve detailed former reports through Git history and recorded blob SHAs when consolidating them.
 
-## Scope discipline
+## 5. Scope discipline
 
 Evidence must state what it does **not** prove.
 
@@ -72,6 +73,6 @@ Examples:
 - successful linking does not prove ABI stability or absence of latent ODR risk;
 - package creation does not prove install/upgrade/uninstall lifecycle.
 
-## Migration note
+## 6. Current migration state
 
-During D0, existing top-level `*_evidence_YYYYMMDD.md` files remain in place. They will be moved only in D3 after the destination convention is reviewed and links can be updated atomically.
+D3 consolidates the former top-level dated reports into the July 2026 ledger. Temporary redirects remain until D4/D5 update all active links and enforce the canonical root allowlist.
