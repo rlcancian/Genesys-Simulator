@@ -21,13 +21,15 @@ Record executed software validation, remaining coverage, and acceptance criteria
 | Resource lifecycle/accounting | `29795009950` | 1,719 registered; 1,715 passed; 4 disabled | PR #480 merged as `4f98a909...` |
 | Plugin completion lifetime | `29831405860` | focused ASan/LSan exit 0; no leak markers | PR #483 merged as `6d6dd4ed...` |
 | Optimizer ownership contract | `29833758797` | 1,721 registered; 1,717 passed; 4 disabled | PR #485 merged as `6aca91a5...` |
+| Standalone shell | `29885199488` | preset/build/argv/plugin-count/exit passed | PR #495 merged as `abb992ec...` |
+| Standalone worker health | `29896225187` | preset/build/HTTP 200/exact JSON/clean exit passed | PR #499 merged as `8f42f509...` |
 
 ## 3. Core baseline matrix
 
 | Validation path | Executed evidence | Status | Remaining gap |
 |---|---|---|---|
-| `tests-unit` | configure/build/CTest passed on every final head through PR #485 | `validated` | preserve on future code changes |
-| Focused GUI GMDD | 3/3 passed on every final head through PR #485 | `validated` | standalone GUI startup/workflow |
+| `tests-unit` | configure/build/CTest passed on every final head through PR #499 | `validated` | preserve on future code changes |
+| Focused GUI GMDD | 3/3 passed on every final head through PR #499 | `validated` | standalone GUI startup/workflow |
 | `tests-kernel-unit` | configure/build/direct runner/CTest passed | `validated` | 4 historical duplicate tests remain disabled |
 | Kernel CTest inventory | 1,721 registered; 1,717 passed; 4 disabled | `validated` | remove or formally retire duplicate disabled blocks |
 | Focused plugin lifetime sanitizer | ASan/LSan workflow exit 0 with artifact evidence | `validated` | expand sanitizer scope selectively |
@@ -40,8 +42,10 @@ Record executed software validation, remaining coverage, and acceptance criteria
 | Resource accounting lifecycle | 3 focused tests passed | `validated` | capacity>1 accounting semantics and failure/schedule breadth |
 | Optimizer ownership contract | non-copy/non-move traits enforced | `validated` ownership boundary | algorithm and future RAII/value migration |
 | `tests-smoke` | 3 registered/executed/passed | `validated` | broader application smoke matrix |
+| Standalone shell | preset/build/argv/plugin-count/exit passed | `partially-validated` | model load/run and `autoloadplugins.txt` deployment contract |
+| Standalone worker | preset/build/loopback health/clean request-limited exit passed | `partially-validated` | bind policy, authentication, protected endpoints and resource controls |
 | Debian trigger/path filters | integrated | `implemented` | package lifecycle execution |
-| Application presets | targets/presets confirmed | `needs-local-validation` | independent build/startup/workflows |
+| Independent GUI presets | targets/presets confirmed | `needs-local-validation` | independent build/startup/workflows |
 | Broader sanitizers/profiling | only focused plugin-lifetime ASan/LSan executed | `partially-started` | UBSan, broader ASan/LSan, Valgrind, profiling |
 
 ## 4. Exact current Phase 0 inventory
@@ -95,6 +99,33 @@ The red/green sequence reduced the focused leak from 27,533 bytes/470 allocation
 - failed: 0;
 - tests: simulator start, continuous system, LSODE.
 
+### 4.4 Standalone shell
+
+PR #495 focused run `29885199488`:
+
+- preset configure/build: passed;
+- deterministic argv workflow: passed;
+- static fallback exposed 123 plugins;
+- clean exit: passed;
+- artifact ID: `8516303352`.
+
+The artifact also recorded the unresolved missing `autoloadplugins.txt` deployment contract tracked by issue #496.
+
+### 4.5 Standalone worker
+
+PR #499 focused run `29896225187`:
+
+- preset configure/build: passed;
+- listener: `0.0.0.0:44559`;
+- request path: `127.0.0.1:44559/health`;
+- HTTP status: 200;
+- exact body: `{"ok":true,"status":"up"}`;
+- clean exit after `--max-requests 1`: passed;
+- no residual process: passed;
+- artifact ID: `8520123900`.
+
+The wildcard bind is evidence of current behavior, not an approved deployment policy. Issue #500 tracks the required bind-address contract.
+
 ## 5. Detailed module matrix
 
 | Module / concern | Current evidence | Missing coverage | Priority | Acceptance criterion | Status |
@@ -117,16 +148,16 @@ The red/green sequence reduced the focused leak from 27,533 bytes/470 allocation
 | Modal/hybrid | domain sources exist | state/time contract fixtures | P1 | deterministic event-boundary behavior | `not-started` |
 | AI plugins | ordinary and direct paths green | transport and error/security cases | P1 | offline deterministic coverage and redaction | `partially-validated` |
 | AI secret storage | source risk identified | process/Secret Service tests | P1 | secret absent from argv/logs | `not-started` |
-| Worker API/tokens | partial tests | auth, quotas, CSPRNG, expiry/rotation | P1 | controlled-intranet security contract | `not-started` hardening |
+| Worker API/tokens | public health workflow validated; current wildcard listener recorded | bind contract, auth, quotas, CSPRNG, expiry/rotation, protected endpoints | P1 | controlled-intranet security contract | `partially-validated`, hardening blocked |
 | Optimizer | shallow-copy hazard blocked; backend remains scaffold | algorithm/ranking/constraints and later RAII migration | P1 | Level 3 contract and benchmark suite | `partially-implemented` |
 | Data Analyser | related tests exist | reference fits/import/export | P1 | reference-backed workflow | `partially-implemented` |
 | Do Experiments | backend fragments; GUI absent | DOE specification/tests/workflow | P1/P2 | known designs and analyses match references | `partially-implemented` |
-| Shell | preset confirmed | scripted startup/model/exit | P1 | minimal model completes cleanly | `needs-local-validation` |
+| Shell | preset/build/argv/plugin-count/exit green | model workflow and autoload deployment | P1 | minimal model completes cleanly | `partially-validated` |
 | Main GUI | focused tests green | standalone startup/model interaction | P1 | target starts; workflow smoke passes | `partially-validated` |
 | Independent GUIs | presets confirmed | basic startup/workflows | P1 | each application starts independently | `needs-local-validation` |
 | Packaging | triggers corrected | build/install/start/uninstall/version | P2 | packages complete lifecycle | `needs-ci-validation` |
 | Qt6-only cleanup | policy decided | remove Qt5 fallback across CMake/tests/scripts | P1/P2 | Qt6 baseline remains green; no fallback discovery | `not-started` |
-| Dynamic plugins | ABI direction recorded | target/source overlap map and pilot | P1/P2 | versioned pilot loads/unloads safely | `deferred` |
+| Dynamic plugins | ABI direction recorded | target/source overlap decision and pilot | P1/P2 | versioned pilot loads/unloads safely | `deferred` |
 
 ## 6. Aggregation and lifecycle findings
 
@@ -140,16 +171,19 @@ Resolved:
 - statistics-disabled operations no longer dereference absent accounting objects in the audited classes;
 - temporary plugin-completion Model and helper-owned responses/statistics are released;
 - focused ASan/LeakSanitizer guard is permanent;
-- `OptimizerDefaultImpl1` shallow copy/move is prohibited.
+- `OptimizerDefaultImpl1` shallow copy/move is prohibited;
+- standalone shell and worker public-health startup paths are covered by focused workflows.
 
 Still open:
 
 1. four disabled Search/Remove blocks remain as historical duplicates;
 2. repeated runtime libraries in selected link lists;
-3. full/minimal plugin source overlap;
+3. full/minimal plugin architecture decision #492;
 4. GUI test source aggregation/build cost;
 5. generated method inventory is structural inventory, not behavioral proof;
-6. optimizer algorithm and container modernization remain future work.
+6. optimizer algorithm and container modernization remain future work;
+7. shell autoload deployment decision #496;
+8. worker bind-address decision #500 and broader security hardening.
 
 ## 7. Numerical and scientific evidence policy
 
@@ -157,4 +191,4 @@ Every correctness-sensitive method must define its mathematics, parameterization
 
 ## 8. Next bounded execution
 
-The next safe architectural workstream should map the full/minimal plugin source overlap and exact link consumers before any target reorganization. Produce an evidence-only source-to-target/link map first; do not change plugin ABI, library type, source ownership, or runtime loading in the same PR. Application, package, broader sanitizer, Qt6 cleanup, worker security, dynamic plugin pilot, optimizer algorithms, and scientific validation remain separate workstreams.
+While decisions #492, #496, and #500 remain open, the next safe independent workstream is standalone Qt6 application validation. Start with one existing independent GUI preset, validate configure/build and a bounded headless startup/clean-exit path under `QT_QPA_PLATFORM=offscreen` or Xvfb, and preserve ordinary CI. Do not alter Qt5 fallback, plugin targets, worker security, or application behavior in the same PR.
