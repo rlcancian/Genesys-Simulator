@@ -31,6 +31,7 @@ Read this file before using or updating the other files in this directory.
 - `genesys_plugin_target_link_evidence_20260722.md`: generated GLPK-present/absent archive-symbol and final-link evidence.
 - `genesys_shell_validation_evidence_20260722.md`: executed standalone shell preset/build/argv evidence and the separate `autoloadplugins.txt` deployment limitation.
 - `genesys_worker_validation_evidence_20260722.md`: executed standalone worker preset/build/localhost-health evidence and the separate wildcard-bind security limitation.
+- `genesys_dataanalyser_gui_validation_evidence_20260722.md`: executed standalone Data Analyser Qt6 preset/build/Xvfb-window/startup evidence and its functional/scientific scope boundary.
 - `genesys_2026_human_decisions.md`: initial approved decisions, clarified options, and remaining human choices.
 - `genesys_2026_decisions_addendum_20260720.md`: later decisions that supersede conflicting statements, including `20261`/`20262`, stable C ABI, Level 3 maturity policy, intranet worker profile, and AI virtual-cell direction.
 - `genesys_numerical_statistical_references_plan.md`: deferred plan for acquiring bibliography, PDFs, datasets, parameterizations, and expected results.
