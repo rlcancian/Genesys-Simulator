@@ -71,58 +71,52 @@ A task may run only when its status is `ready`, its environment is available, de
 - Environment: `github`
 - Issue/PR: #511 / #516
 - Merge: `d375d9e68e5c1dc84e214a772fb15cb05944f0d8`
-- Result:
-  - six active technical references;
-  - repository README routed only to canonical paths;
-  - superseded topic guides/plans/redirects removed;
-  - former plugin-guide directory removed;
-  - only three temporary oldies trackers remained for D6.
-- Validation: run `29936506990`, ordinary configure/build/CTest and GUI GMDD diagnostics green.
-- Source branch: removed automatically.
+- Validation: run `29936506990`, ordinary tests and GUI GMDD green.
+- Result: six technical references, canonical README routing and removal of superseded active-root guides/plans/redirects.
 
 ### AUTO-DOC-007 — Consolidate oldies governance and classify retained history
 
 - Priority: `P0`
-- Status: `running`
+- Status: `done`
 - Environment: `github`
-- Branch: `WiP20260722/ai-docs-oldies`
-- Objective:
-  - make `archive/OLDIES_REVIEW.md` the only active tracker;
-  - classify all 25 retained historical files conservatively;
-  - remove `oldies_inventory.md`, `oldies_review_status.md` and `consolidation_map.md`;
-  - preserve every content file under `oldies/`.
-- Non-goals:
-  - no individual historical technical claim is promoted to current fact;
-  - no historical content file is deleted or rewritten;
-  - no deletion-gate waiver is granted.
-- Acceptance before gate:
-  - one active tracker lists all 25 files;
-  - every entry identifies current reference and review/deletion state;
-  - top-level root contains only the six canonical Markdown files;
-  - no canonical document depends on `oldies/` for current policy or state;
-  - no `oldies/` content file changes;
-  - ordinary CI green.
-- Stop/escalation: unique or uncertain content remains `retained-review-pending`; never infer deletion readiness.
-- Tracking issue: #511.
+- Issue/PR: #511 / #517
+- Merge: `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5`
+- Validation: run `29938004455`, ordinary tests and GUI GMDD green.
+- Result:
+  - `archive/OLDIES_REVIEW.md` is the only active tracker;
+  - all 25 retained files are listed as `retained-review-pending` and not deletion-ready;
+  - three superseded top-level trackers were removed;
+  - no content file under `oldies/` changed.
+- Source branch: removed automatically.
 
 ### AUTO-DOC-006 — Add documentation-governance CI
 
 - Priority: `P0`
-- Status: `blocked-dependency`
+- Status: `running`
 - Environment: `github` or `local`
-- Objective: enforce the final structure after AUTO-DOC-007.
-- Required checks:
-  - exact six-file top-level Markdown allowlist;
-  - relative-link validation for active documentation;
-  - required front matter for canonical/runbook/reference/history/archive indices;
-  - unique backlog IDs and required task fields;
-  - no run IDs in normative governance/architecture;
-  - evidence ledgers restricted to `history/evidence/`;
-  - oldies retention gate and `archive/OLDIES_REVIEW.md` presence;
-  - no legacy migration notices or `plugins/` guide directory;
-  - no modification/deletion of `oldies/` before the gate without an explicit waiver path.
-- Dependencies: AUTO-DOC-007 merged.
-- Acceptance: focused documentation-governance workflow and ordinary CI green on the D5 PR.
+- Branch: `WiP20260722/ai-docs-ci`
+- Objective: enforce the final governed documentation structure.
+- Scope:
+  - add `scripts/validate-ai-docs.py`;
+  - add `.github/workflows/genesys-docs-governance.yml`;
+  - validate the exact six-file top-level allowlist;
+  - validate active relative links and repository-bound targets;
+  - require front matter and core metadata for active AI documentation;
+  - enforce unique backlog IDs plus required priority/status fields;
+  - prohibit workflow run IDs in normative governance/architecture;
+  - restrict dated evidence placement;
+  - validate the 25-file oldies tracker and deletion states;
+  - reject premature oldies deletion/rename through PR-diff inspection.
+- Non-goals:
+  - no source/CMake/runtime/package/scientific/security changes;
+  - no historical content review or deletion;
+  - no third-party Python dependency.
+- Acceptance:
+  - focused documentation-governance workflow green;
+  - ordinary CI and GUI GMDD green;
+  - validator usable locally with Python 3;
+  - exact final structure enforced;
+  - source branch removed after merge.
 - Tracking issue: #511.
 
 ## 4. Paused technical tasks

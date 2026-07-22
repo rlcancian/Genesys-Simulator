@@ -19,8 +19,8 @@ Use it for current branch/checkpoint state, validated baselines, blockers, migra
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Latest integrated documentation checkpoint: `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` — D4 technical-reference consolidation through PR #516.
-- D4 validation: run `29936506990`, ordinary configure/build/CTest and GUI GMDD diagnostics passed.
+- Latest integrated documentation checkpoint: `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` — D6 oldies-governance consolidation through PR #517.
+- D6 validation: run `29938004455`, ordinary configure/build/CTest and GUI GMDD diagnostics passed.
 - Stable promotion target: `20262`, only near the end of the second semester of 2026.
 - Release readiness: **not established**.
 - Scheduled/autonomous tasks that could modify the repository: paused during this documentation migration.
@@ -116,16 +116,16 @@ Whole-cell/biochemical/AI virtual-cell work remains experimental/research-orient
 | D2 | done | #514 / `53b49f7518509823fe2265a3f017b5aa76f09d2f` | sole current state and backlogs |
 | D3 | done | #515 / `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | date-first evidence ledger |
 | D4 | done | #516 / `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | six technical references and active-root cleanup |
-| D6 | running | branch `WiP20260722/ai-docs-oldies` | one oldies tracker; all 25 retained files protected |
-| D5 | blocked on D6 | pending | structural/link/front-matter CI enforcement |
+| D6 | done | #517 / `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | single oldies tracker; 25 retained files protected |
+| D5 | running | branch `WiP20260722/ai-docs-ci` | structural/link/front-matter/governance enforcement |
 
-All merged D0–D4 source branches were automatically removed. The D6 branch remains active and must not be deleted before its PR is merged.
+All merged D0–D4 and D6 source branches were automatically removed. The D5 branch remains active and must not be deleted before its PR is merged.
 
 ## 10. Historical retention state
 
 - `archive/OLDIES_REVIEW.md` is the only active tracker for the 25 retained historical files.
-- The former `oldies_inventory.md`, `oldies_review_status.md` and `consolidation_map.md` are removed in D6.
-- No content file under `oldies/` is deleted or modified by D6.
+- No content file under `oldies/` was deleted or modified by D6.
+- Every retained file remains `retained-review-pending` and not deletion-ready.
 - Deletion remains prohibited before 2026-11-01 and additionally requires individual review, explicit maintainer approval and a dedicated deletion PR.
 
 ## 11. Current autonomous eligibility
@@ -134,7 +134,7 @@ Only issue #511 documentation migration work may execute during the freeze. Unre
 
 ## 12. Next action
 
-1. Validate and merge D6.
-2. Execute D5 against the final documentation structure.
-3. Verify the exact six-file top-level allowlist and all active links/front matter.
-4. Close issue #511 and record explicit migration completion only when D5 is green and source-branch cleanup is confirmed.
+1. Validate the D5 documentation-governance script and workflow.
+2. Merge D5 only after its focused workflow and ordinary CI are green.
+3. Confirm source-branch removal and exact six-file top-level allowlist.
+4. Close issue #511 and explicitly record structural migration completion.
