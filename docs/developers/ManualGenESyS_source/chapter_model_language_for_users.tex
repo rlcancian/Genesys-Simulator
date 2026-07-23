@@ -2,12 +2,244 @@
 \chapter{Model Language for Users}
 \label{chap:model-language-for-users}
 
-This chapter is part of the new editorial skeleton for the user manual. It preserves the user-facing language chapter while the formal explanation is reorganized.
+This chapter documents the current user-facing textual representation of a
+GenESyS model. It does not try to replace the graphical workflow or the later
+developer-level language reference. Instead, it explains how the textual model
+view fits into the GUI, how to read a saved model file, and how to keep the
+text synchronized with the current kernel model.
 
-\noindent\textbf{Objective.} Introduce the model language as a readable description of the same model shown in the GUI.
+\noindent\textbf{Objective.} Show how the textual model language relates to the
+graphical model and how a user can read it as a second view of the same system.
 
-\noindent\textbf{Audience.} Users who want to inspect or author model text after learning the graphical workflow.
+\noindent\textbf{Audience.} Users who already know the GUI and want to inspect
+or edit the textual model representation with confidence.
 
-\noindent\textbf{Scope.} Keep the focus on syntax, user-level semantics, and the relationship between text and the visual model representation.
+\noindent\textbf{Scope.} Cover the current text editor surface, the current
+line-oriented file structure, the relationship between model text and GUI
+elements, and the practical limits of this chapter.
 
-\noindent\textbf{Status.} Temporary skeleton only; the complete language walkthrough will be provided later.
+\noindent\textbf{Status.} Partially validated by code inspection and example
+model files. The chapter matches the current GUI services
+(\texttt{ModelLanguageSynchronizer} and \texttt{GraphicalModelSerializer}) and
+the current \texttt{.gen} file shape, but it intentionally stops short of a
+full grammar reference.
+
+The chapter follows this sequence:
+Figure~\ref{fig:model-language-tab},
+Table~\ref{tab:model-language-sections}, and
+Figure~\ref{fig:model-language-flow}.
+
+\section{What the model language is}
+\label{sec:model-language-what-it-is}
+
+The user-facing model language is the textual form of a GenESyS model. It is
+the same model that appears in the GUI, but serialized as text so it can be
+read, saved, copied, compared, and in some cases edited directly.
+
+In the current code, the GUI keeps this representation in the
+\texttt{TextCodeEditor} widget inside the model-language tab set. The
+\texttt{ModelLanguageSynchronizer} service rebuilds that text from the current
+\texttt{Simulator} state, and it can also apply textual edits back into the
+model. The persistence path is handled by
+\texttt{GraphicalModelSerializer}, which saves the textual representation using
+the established compatibility format.
+
+That means the text is not a separate abstraction with its own independent
+truth. It is a synchronized view of the current model. If the model changes in
+the GUI, the text view must be refreshed. If the text is edited, the model must
+be revalidated before it can be used again.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:model-language-tab
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/services/ModelLanguageSynchronizer.h
+%   - source/applications/gui/genesys/services/GraphicalModelSerializer.h
+%   - models/AirportSecurityExample.gen
+% Purpose:
+%   Show the current model-language editor/tab and a representative text excerpt.
+% Required visual content:
+%   - the model-language tab or editor surface
+%   - a real model text excerpt
+%   - a visible connection to the surrounding GUI
+% Accessibility description:
+%   A screenshot that makes it clear that the text is the model's serialized view, not a separate document.
+% Validation:
+%   The visible widget labels and the excerpt structure must match the current repository code and saved model files.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/model-language-tab}
+\caption{Textual model view used by the GUI to represent the current model.}
+\label{fig:model-language-tab}
+\end{figure}
+
+Figure~\ref{fig:model-language-tab} should be read as a direct companion to the
+graphical model, not as a replacement for it.
+
+\section{How a saved model is organized}
+\label{sec:model-language-organization}
+
+A current saved model file is line-oriented and sectioned. One current example
+is the airport security example model under \texttt{models/}. Its
+\texttt{.gen} file starts with comment headers, then lists the simulator and
+model metadata, and then continues with data definitions and model components.
+
+The exact naming of sections can vary slightly between models, but the current
+shape is easy to recognize:
+\begin{itemize}
+\item comment lines at the top identify the file as a GenESyS model;
+\item a header section records simulator, model, and simulation metadata;
+\item model data definitions appear next;
+\item model components follow after that.
+\end{itemize}
+
+The format is intentionally explicit. A line typically begins with a numeric
+prefix, then a type name, then a quoted object name, and then a list of
+property assignments. For example, the example model file contains entries such
+as \texttt{Simulator}, \texttt{ModelInfo}, \texttt{ModelSimulation},
+\texttt{EntityType}, \texttt{Resource}, \texttt{Queue}, \texttt{Create},
+\texttt{Process}, \texttt{Seize}, \texttt{Delay}, \texttt{Release},
+\texttt{Decide}, and \texttt{Dispose}.
+
+\begin{table}[htbp]
+\centering
+\caption{Typical sections of a current GenESyS model text file.}
+\label{tab:model-language-sections}
+\small
+\begin{tabular}{|p{3.5cm}|p{7.4cm}|}
+\hline
+\textbf{Section} & \textbf{What the user reads there} \\
+\hline
+Comment header & File identity and simple human-readable reminders \\
+\hline
+Simulator and model metadata & Names, descriptions, version metadata, and simulation defaults \\
+\hline
+Model data definitions & Entity types, attributes, queues, resources, and other supporting data \\
+\hline
+Model components & The connected flow elements that form the actual model behavior \\
+\hline
+\end{tabular}
+\end{table}
+
+The model text in Table~\ref{tab:model-language-sections} is useful because it
+maps directly to the same conceptual objects the user already sees in the GUI.
+That one-to-one relation is the main reason the textual representation is worth
+learning.
+
+\section{How to read the text as a user}
+\label{sec:model-language-how-to-read}
+
+The best reading strategy is to start from the same questions used in the GUI.
+Instead of trying to understand the whole file at once, ask what each section
+describes in the graphical model.
+
+In practice:
+\begin{itemize}
+\item the header tells you which model is open and which simulation defaults it uses;
+\item data definitions tell you what reusable objects the model depends on;
+\item component lines tell you how the flow is wired;
+\item expressions tell you what behavior is parameterized rather than hard-coded.
+\end{itemize}
+
+That same example model is a useful reading aid because it is small enough to
+inspect and still contains all the major current categories. Its first
+component block shows how text expresses the same model that the GUI diagram
+represents: the source component, the next component, the delay expression,
+the queue relation, the resource request, the decision condition, and the
+alternative exits are all present in text.
+
+For a user, the important habit is to match names and links:
+\begin{itemize}
+\item component names in the file should match the labels seen in the GUI;
+\item property values should match the properties edited in the property panel;
+\item connection fields such as \texttt{nextId} should line up with the visible flow;
+\item captions and descriptions should remain readable as plain text.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:model-language-flow
+% Source of truth:
+%   - models/AirportSecurityExample.gen
+%   - source/applications/gui/genesys/services/ModelLanguageSynchronizer.h
+%   - source/applications/gui/genesys/services/GraphicalModelSerializer.h
+% Purpose:
+%   Show the practical reading flow from GUI model to text file and back again.
+% Required visual content:
+%   - a graphical model view
+%   - a corresponding model-language excerpt
+%   - arrows or annotations showing round-trip synchronization
+% Accessibility description:
+%   A simple explanatory diagram that helps the reader map visual objects to text lines and back.
+% Validation:
+%   The diagram must describe the current synchronization path, not a hypothetical one.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/model-language-flow}
+\caption{How the textual model view maps to the graphical model and back.}
+\label{fig:model-language-flow}
+\end{figure}
+
+Figure~\ref{fig:model-language-flow} summarizes the practical reading rule:
+learn the graphical model first, then use the textual view to confirm and
+compare what the GUI already showed.
+
+\section{Editing and synchronization}
+\label{sec:model-language-editing}
+
+The current implementation supports a synchronization workflow, not a free-form
+text editor detached from the simulator. That distinction matters.
+
+When the text is changed, the GUI must apply the text back into the current
+model and then refresh the rest of the interface. When the model changes in the
+GUI, the text must be regenerated so the editor does not go stale. The code
+paths involved in this cycle are already explicit in the repository:
+\begin{itemize}
+\item The sync service rebuilds the text from model state.
+\item The sync service applies text edits back to the model.
+\item The serializer writes the current text representation to disk.
+\item The serializer restores persisted model state.
+\end{itemize}
+
+For the user, the conservative rule is simple: after a direct text change,
+reload or re-sync the model before relying on the GUI again. After a GUI change,
+confirm that the text view has been refreshed before assuming the file on disk
+already reflects the new state.
+
+This chapter does not introduce a separate command line or a new syntax for
+manual editing. It documents the existing synchronized surface only.
+
+\section{What this chapter does not cover}
+\label{sec:model-language-limits}
+
+This chapter is intentionally not the full language reference. It does not try
+to define the complete grammar, every expression function, or every parser
+production. Those topics belong to the later developer-level language chapter.
+
+It also does not claim that every old or future file variant is supported
+forever. The only safe claim here is about the current repository state: the
+GUI stores a textual model view, saves it in the established format, and keeps
+that view synchronized with the kernel model.
+
+If a text excerpt and the GUI appear to disagree, the user should treat that as
+a synchronization problem to resolve, not as a signal that the text is a better
+authority than the model or vice versa.
+
+\section{Final considerations}
+\label{sec:model-language-final-considerations}
+
+The main value of the model language for users is readability. It gives the
+same model a second, formal surface that can be inspected alongside the GUI.
+That helps with understanding, comparison, review, and troubleshooting, but it
+only works well when the user remembers that the text and the diagram are two
+views of one synchronized model.
+
+In the reading sequence used by this manual, the textual model view comes after
+the GUI, the first model, editing, execution, and results. That order is
+intentional. By the time the reader reaches this chapter, the model language is
+no longer an opaque notation. It is a familiar model written in another form.
+
+The next chapter returns to command-line usage for users who need the terminal
+workflow or want a more scripted interaction style.
