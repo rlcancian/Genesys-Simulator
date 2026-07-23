@@ -2,12 +2,344 @@
 \chapter{Tools and Algorithms}
 \label{chap:tools-and-algorithms}
 
-This chapter is part of the new editorial skeleton for the developer manual. It keeps the tools chapter available while the algorithm inventory is rebuilt.
+This chapter documents the current \texttt{source/tools} package as it exists in the repository now: a support layer for statistical analysis, fitting, hypothesis testing, numerical solvers, optimization scaffolds, factorial design, and AI-assisted workflows. It is intentionally conservative. When a family is only partially implemented, the text says so instead of treating a scaffold as a finished algorithm.
 
-\noindent\textbf{Objective.} Document the reusable tools and algorithms exposed by the project.
+\noindent\textbf{Objective.} Describe the reusable tools and algorithms exposed by the project, together with their current maturity and the evidence that supports each family.
 
-\noindent\textbf{Audience.} Developers who need to reuse support libraries or understand available computational helpers.
+\noindent\textbf{Audience.} Developers, maintainers, and advanced users who need to reuse support libraries or understand which computational helpers are real, which are legacy, and which remain placeholders.
 
-\noindent\textbf{Scope.} Focus on the tool layer, algorithm families, and the current boundaries of support.
+\noindent\textbf{Scope.} Focus on the tool layer, algorithm families, validation evidence, and the current boundary between implemented behavior and deferred work. The chapter does not claim that every interface in \texttt{source/tools} is already a complete production algorithm.
 
-\noindent\textbf{Status.} Temporary skeleton only; the technical detail will be migrated later.
+\noindent\textbf{Status.} Substantive documentation grounded in \texttt{source/tools}, the package inventory entry point, and the current unit-test surface.
+
+\section{Package boundary and inventory}
+\label{sec:tools-package-boundary}
+
+The \texttt{source/tools} package is the shared support layer for the manual's developer-facing numerical and analysis topics. Its command-line entry point, implemented in \path{source/tools/main.cpp}, prints a small inventory when invoked with \texttt{--list} or \texttt{--help}; the output groups the current interfaces into analysis, fitting, hypothesis testing, distributions, numerics, optimization, and factorial design. Figure~\ref{fig:tools-package-map} summarizes that package boundary.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:tools-package-map
+% Source of truth:
+%   - source/tools/main.cpp
+%   - source/tools/CMakeLists.txt
+%   - source/tools/README_tools.md
+%   - source/tools/ARCHITECTURE_tools.md
+%   - source/tools/Statistics/*
+%   - source/tools/Continuous/*
+%   - source/tools/Optimization/*
+%   - source/tools/FactorialDesign/*
+%   - source/tools/AIAssistant/*
+% Purpose:
+%   Show the current package boundary, the exported interface families, and
+%   the relationship between the library and the optional command-line helper.
+% Required visual content:
+%   - the genesys_tools static library
+%   - the optional genesys_tools_application entry point
+%   - analysis interfaces
+%   - fitting interfaces and implementations
+%   - hypothesis-testing interfaces and implementations
+%   - distribution abstractions
+%   - numerical solver contracts
+%   - optimization scaffold
+%   - factorial-design helper
+%   - AI assistant support layer
+% Exclusions:
+%   - do not imply that every family is equally mature
+%   - do not imply that the optional helper is the primary user entry point
+% Accessibility description:
+%   A package map that helps a reader see which tool families are real,
+%   which are legacy, and which are still scaffolded.
+% Validation:
+%   Every node must correspond to a real file, target, or documented scaffold
+%   in the current tree.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/tools-package-map}
+\caption{Current \texttt{source/tools} package boundary and exported tool families.}
+\label{fig:tools-package-map}
+\end{figure}
+
+As shown in Figure~\ref{fig:tools-package-map}, the package is not a monolith. It exposes a shared static library, a small inventory executable, and several subfamilies with different maturity levels. That distinction matters because a header existing in the tree does not automatically mean the algorithm behind it is complete.
+
+\section{Statistical analysis and data support}
+\label{sec:tools-statistical-analysis}
+
+The statistical side of \texttt{source/tools} covers dataset-oriented analysis, distribution fitting, hypothesis testing, and probability/distribution utilities. The core abstractions are \texttt{DataSet\_if}, \texttt{DataAnalyser\_if}, \texttt{SimulationResultsDataset}, \texttt{SimulationResultsDatasetParser}, \texttt{Fitter\_if}, \texttt{HypothesisTester\_if}, \texttt{ProbabilityDistributionBase}, \texttt{ProbabilityDistribution}, \texttt{Distribution\_if}, \texttt{ContinuousDistribution\_if}, and \texttt{DiscreteDistribution\_if}.
+
+The current documentation and code describe these roles consistently:
+\begin{itemize}
+\item \texttt{DataAnalyser\_if} is a high-level facade that orchestrates dataset-oriented analysis services.
+\item \texttt{SimulationResultsDatasetParser} loads numeric result files and Genesys \texttt{Record} outputs, preserving replication and optional time metadata.
+\item \texttt{Fitter\_if} defines the distribution-parameter inference contract.
+\item \texttt{HypothesisTester\_if} exposes parametric confidence-interval and test routines.
+\item \texttt{ProbabilityDistributionBase} and \texttt{ProbabilityDistribution} provide static probability and quantile helpers instead of a full OO distribution hierarchy.
+\end{itemize}
+
+The flow from dataset to fitting and testing is summarized in Figure~\ref{fig:tools-fit-test-flow}. The figure is important because the package has enough functionality to support real analysis work, but the steps are still layered across multiple interfaces rather than hidden behind a single all-in-one class.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:tools-fit-test-flow
+% Source of truth:
+%   - source/tools/Statistics/SimulationResultsDataset.h
+%   - source/tools/Statistics/SimulationResultsDataset.cpp
+%   - source/tools/Statistics/Fitter_if.h
+%   - source/tools/Statistics/FitterDummyImpl.h
+%   - source/tools/Statistics/FitterDefaultImpl.h
+%   - source/tools/Statistics/HypothesisTester_if.h
+%   - source/tools/Statistics/HypothesisTesterDefaultImpl1.h
+%   - source/tests/unit/test_tools_simulation_results_dataset.cpp
+%   - source/tests/unit/test_tools_hypothesistester.cpp
+% Purpose:
+%   Show the current statistical-analysis pipeline from raw or record-like
+%   dataset ingestion through fitting and hypothesis testing.
+% Required visual content:
+%   - raw numeric dataset input
+%   - legacy and enriched Genesys Record input
+%   - parser output with replication/time metadata
+%   - fitting step and promoted default fitter
+%   - hypothesis testing step
+%   - legacy dummy fitter as a retained placeholder
+% Exclusions:
+%   - do not imply that every two-sample path is fully consolidated
+%   - do not imply that the dummy fitter is the default binding
+% Accessibility description:
+%   A left-to-right flow showing how analysis data becomes fitted and then
+%   tested.
+% Validation:
+%   The parser formats and hypothesis-test outputs must match the current
+%   unit-test expectations.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/tools-fit-test-flow}
+\caption{Dataset ingestion, fitting, and hypothesis-testing flow in the tools package.}
+\label{fig:tools-fit-test-flow}
+\end{figure}
+
+As illustrated in Figure~\ref{fig:tools-fit-test-flow}, the package supports two broad input shapes for analysis: free numeric datasets and Genesys \texttt{Record}-style outputs. The parser keeps replication ids and optional time columns because those fields are needed for downstream plots and per-replication analysis.
+
+\subsection{Simulation result datasets}
+\label{subsec:tools-simulation-result-datasets}
+
+\texttt{SimulationResultsDatasetParser} is the package's concrete data-ingestion helper. The current unit tests confirm that it can:
+\begin{itemize}
+\item load raw numeric datasets;
+\item reject malformed decimal and empty datasets;
+\item load legacy \texttt{Record} datasets with or without time columns;
+\item load enriched \texttt{GenesysRecordDataset} headers;
+\item normalize variable-type strings;
+\item load GUI-oriented tabular datasets with semantic headers.
+\end{itemize}
+
+The parser behavior is exercised by \path{source/tests/unit/test_tools_simulation_results_dataset.cpp}, which is the strongest direct evidence for this part of the package. The code path is therefore functional, not hypothetical.
+
+\subsection{Distributions and fitting}
+\label{subsec:tools-distributions-and-fitting}
+
+The probability-distribution side is intentionally conservative. \texttt{ProbabilityDistributionBase} and \texttt{ProbabilityDistribution} are static mathematical facades, while \texttt{Distribution\_if}, \texttt{ContinuousDistribution\_if}, and \texttt{DiscreteDistribution\_if} establish interface boundaries for future growth. The current documentation explicitly says that the package does not yet present a fully unified OO distribution hierarchy.
+
+On fitting, the promoted default implementation is \texttt{FitterDefaultImpl}. The package documentation and status notes describe it as functional for uniform, triangular, normal, exponential, Erlang, Beta, and Weibull families, while \texttt{FitterDummyImpl} remains as a legacy/documental placeholder. That distinction is important for users reading the headers: the dummy class exists, but it is no longer the default trait binding.
+
+The fitting and testing story is therefore one of real capability with explicit boundaries:
+\begin{itemize}
+\item fitting is real for a defined family set;
+\item dummy behavior is preserved only for compatibility and documentation;
+\item hypothesis testing currently has a functional baseline in \texttt{HypothesisTesterDefaultImpl1};
+\item the remaining two-population paths are still documented as partially consolidated rather than finished.
+\end{itemize}
+
+The current regression suite supports that reading. \path{source/tests/unit/test_tools_hypothesistester.cpp} confirms proportion confidence intervals and one-population average/variance tests with finite, bounded p-values. Those tests are enough to establish that the baseline works, but not enough to claim that every inferential branch is fully mature.
+
+\subsection{Hypothesis testing}
+\label{subsec:tools-hypothesis-testing}
+
+\texttt{HypothesisTesterDefaultImpl1} currently covers one-population proportion intervals, one-population average tests, and one-population variance tests with a coherent confidence-level path. The tests check both rejection and non-rejection cases, and they also confirm that the interval center stays where the estimator says it should be.
+
+The important limitation is that the chapter does not extrapolate this baseline into a blanket claim for all future multi-sample or two-population workflows. The code and tests support a solid starter implementation, not a finished statistical library.
+
+\section{Optimization and design of experiments}
+\label{sec:tools-optimization-doe}
+
+The optimization and DOE part of the package is split between a scaffolded simulation optimizer and a concrete factorial-design helper.
+
+\texttt{Optimizer\_if} defines the intended contract for simulation-based optimization: model association, control and response selection, objective and constraint registration, settings, lifecycle control, and solution summaries. \texttt{OptimizerDefaultImpl1} is the current concrete class, but the code comments and tests make its status explicit: it is still a scaffold, not an executed search engine. The unit test \path{source/tests/unit/test_optimizer_ownership_contract.cpp} exists primarily to protect ownership semantics, default constructibility, and non-copyable/non-movable behavior for the seven owned \texttt{List} wrappers.
+
+Figure~\ref{fig:tools-optimizer-workflow} shows that divide clearly. The optimizer has a real contract and real state transitions, but the search algorithm itself is still deferred.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:tools-optimizer-workflow
+% Source of truth:
+%   - source/tools/Optimization/Optimizer_if.h
+%   - source/tools/Optimization/OptimizerDefaultImpl1.h
+%   - source/tools/Optimization/OptimizerDefaultImpl1.cpp
+%   - source/tests/unit/test_optimizer_ownership_contract.cpp
+% Purpose:
+%   Show the current optimizer contract, owned state, lifecycle methods, and
+%   the gap between scaffolded behavior and a real search algorithm.
+% Required visual content:
+%   - model association
+%   - selected controls and responses
+%   - objectives and constraints
+%   - optimization settings
+%   - lifecycle methods start/step/pause/resume/stop
+%   - best-solution cache
+%   - explicit scaffold / deferred-algorithm marker
+% Exclusions:
+%   - do not imply a finished OptQuest-like algorithm
+%   - do not imply move or copy support
+% Accessibility description:
+%   A workflow diagram that separates the optimizer contract from the current
+%   placeholder algorithm body.
+% Validation:
+%   Ownership and readiness behavior must match the compile-time and runtime
+%   checks already present in the tree.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/tools-optimizer-workflow}
+\caption{Current optimizer contract and scaffolded execution lifecycle.}
+\label{fig:tools-optimizer-workflow}
+\end{figure}
+
+As shown in Figure~\ref{fig:tools-optimizer-workflow}, the optimizer is intentionally split into configuration and execution. The configuration API is real, but the step function currently advances counters and state without running a full optimization search. That is a legitimate placeholder, not a hidden claim of completeness.
+
+\texttt{FactorialDesign} is the concrete DOE helper in the package. It is a console-oriented class that generates combinations, creates sign tables, computes means and statistics, and prints residual and impact summaries. Unlike the optimizer scaffold, it does real work now, but it is still a low-level helper rather than a polished user workflow.
+
+Figure~\ref{fig:tools-doe-workflow} captures that DOE helper. The point of the figure is to show that the class is a computational utility with explicit inputs, intermediate tables, and reported statistics, not a general optimization engine.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:tools-doe-workflow
+% Source of truth:
+%   - source/tools/FactorialDesign/FactorialDesign.h
+%   - source/tools/FactorialDesign/FactorialDesign.cpp
+%   - source/tools/main.cpp
+% Purpose:
+%   Show the current factorial-design workflow, from factor count and
+%   fraction size to generated combinations, sign table, statistics, and
+%   printed summaries.
+% Required visual content:
+%   - input parameters k, p, and r
+%   - feasibility check
+%   - generated factor combinations
+%   - column labels and sign table
+%   - means, effects, and residual summaries
+%   - console-oriented reporting
+% Exclusions:
+%   - do not imply a GUI workflow
+%   - do not imply formal DOE validation beyond the current class behavior
+% Accessibility description:
+%   A workflow diagram for the fractional factorial design helper and its
+%   derived tables.
+% Validation:
+%   The displayed data flow must match the current \texttt{FactorialDesign} methods.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/tools-doe-workflow}
+\caption{Fractional factorial design helper workflow.}
+\label{fig:tools-doe-workflow}
+\end{figure}
+
+As illustrated in Figure~\ref{fig:tools-doe-workflow}, \texttt{FactorialDesign} is best understood as a procedural DOE helper. The class exposes methods such as \texttt{checkFeasibility()}, \texttt{generateIndexCombinations()}, \texttt{createColumnLabels()}, \texttt{generateInputs()}, \texttt{calculateResultsMean()}, \texttt{createSignTable()}, and \texttt{calculateStatistics()}. That is enough to make it useful, but not enough to treat it as a fully validated DOE framework.
+
+\section{Continuous numerical tools}
+\label{sec:tools-continuous-numerics}
+
+The continuous-numerics family combines the legacy solver contract with more explicit ODE abstractions. The package currently includes \texttt{Solver\_if}, \texttt{SolverDefaultImpl1}, \texttt{Quadrature\_if}, \texttt{RootFinder\_if}, \texttt{OdeSystem\_if}, \texttt{OdeSolver\_if}, \texttt{OdeSolverFactory}, \texttt{RungeKutta4OdeSolver}, \texttt{DormandPrince54OdeSolver}, and \texttt{DiffusionMethodOfLinesSystem}.
+
+This is one of the clearest places where the chapter needs to separate levels of maturity:
+\begin{itemize}
+\item \texttt{SolverDefaultImpl1} is a legacy baseline, and the regression tests keep its Simpson-style integration and derivative-contract behavior stable.
+\item \texttt{OdeSolverFactory} and the concrete ODE solvers are real and test-backed.
+\item \texttt{DiffusionMethodOfLinesSystem} has dedicated numerical checks, but it is still a model-reduction helper rather than a general PDE framework.
+\end{itemize}
+
+The solver family is not shown with a dedicated figure in this chapter because the surrounding chapters already document the simulation and application surfaces that consume it. The current evidence is in \path{source/tests/unit/test_tools_ode_solver_factory.cpp}, \path{source/tests/unit/test_tools_diffusion_mol.cpp}, \path{source/tests/unit/test_tools_legacy_solver_regression.cpp}, and the broader simulation runtime regression coverage that reuses \texttt{RungeKutta4OdeSolver}.
+
+In practical terms, this means the solver stack is available and numerically checked, but the manual should still describe it as a support layer. The factory knows how to construct the registered solvers by key, the concrete solvers are validated against analytic decay and harmonic-oscillator cases, and the diffusion method-of-lines helper preserves the expected decay or mass-conservation behavior in the targeted tests.
+
+\section{AI-related tools}
+\label{sec:tools-ai-related}
+
+The AI-related part of \texttt{source/tools} is not a generic chatbot wrapper. It is a GenESyS-specific assistant layer with explicit model-building and simulation-control duties. The relevant classes are \texttt{AIAssistant\_if}, \texttt{AIAssistantDefaultImpl}, \texttt{AIProviderClient\_if}, \texttt{HttpProviderClientBase}, \texttt{OpenAIProviderClientImpl}, \texttt{AnthropicProviderClientImpl}, \texttt{LocalProviderClientImpl}, \texttt{AISecretStore}, \texttt{AIAuditLog}, and \texttt{AIConversationService}.
+
+The current implementation path is already more complete than a usual stub. The code and package documentation describe:
+\begin{itemize}
+\item configuration and secure API-key handling;
+\item provider-client abstraction and HTTP transport;
+\item knowledge-base refresh from the simulator and plugin metadata;
+\item prompt analysis and model-plan generation;
+\item model construction and simulation configuration;
+\item simulation execution and result collection;
+\item audit logging and bounded conversation history.
+\end{itemize}
+
+\path{source/tests/unit/test_ai_plugins.cpp} confirms the prompt-template and assistant wiring on the plugin side, and the package documentation in \path{source/tools/README_tools.md} records the staged AI-assistant roadmap. The important reading is that this is a real tool-layer service, but the chapter still needs to preserve the distinction between implemented stages and planned stages. Stage 7 integration and Stage 8 security/governance hardening remain planned.
+
+\section{Maturity and validation}
+\label{sec:tools-maturity-validation}
+
+Figure~\ref{fig:tools-maturity-map} condenses the maturity boundary of the package. It helps prevent two common mistakes: treating every header as production-ready, and dismissing scaffolded code that already has real ownership or contract value.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:tools-maturity-map
+% Source of truth:
+%   - source/tools/README_tools.md
+%   - source/tools/ARCHITECTURE_tools.md
+%   - source/tools/main.cpp
+%   - source/tools/Optimization/OptimizerDefaultImpl1.h
+%   - source/tools/Statistics/FitterDummyImpl.h
+%   - source/tools/Statistics/FitterDefaultImpl.h
+%   - source/tools/Statistics/HypothesisTesterDefaultImpl1.h
+%   - source/tools/Continuous/SolverDefaultImpl1.h
+%   - source/tools/Continuous/OdeSolverFactory.h
+%   - source/tools/AIAssistant/AIAssistantDefaultImpl.h
+%   - source/tests/unit/test_tools_simulation_results_dataset.cpp
+%   - source/tests/unit/test_tools_hypothesistester.cpp
+%   - source/tests/unit/test_tools_ode_solver_factory.cpp
+%   - source/tests/unit/test_tools_diffusion_mol.cpp
+%   - source/tests/unit/test_optimizer_ownership_contract.cpp
+%   - source/tests/unit/test_ai_plugins.cpp
+% Purpose:
+%   Classify the current tool families by maturity and evidence strength.
+% Required visual content:
+%   - functional families
+%   - legacy placeholders
+%   - scaffolded implementations
+%   - test-backed families
+%   - partially consolidated families
+% Accessibility description:
+%   A maturity matrix that lets a reader distinguish real algorithms from
+%   compatibility scaffolds and future work.
+% Validation:
+%   Each classification must be defensible from the current source tree and
+%   tests.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/tools-maturity-map}
+\caption{Current maturity map for the \texttt{source/tools} families.}
+\label{fig:tools-maturity-map}
+\end{figure}
+
+As summarized in Figure~\ref{fig:tools-maturity-map}, the package currently falls into four practical maturity bands:
+\begin{itemize}
+\item \textbf{Functional and test-backed}: simulation-result dataset parsing, hypothesis testing baseline, ODE factory and concrete solvers, diffusion method-of-lines checks, AI assistant integration, and the package inventory entry point.
+\item \textbf{Functional but deliberately conservative}: distribution utilities and fitting interfaces, where the code is real but the manual must still describe scope and family coverage carefully.
+\item \textbf{Legacy compatibility}: \texttt{FitterDummyImpl} and \texttt{SolverDefaultImpl1}, which remain available because the tree still needs compatibility and regression coverage.
+\item \textbf{Scaffolded}: \texttt{OptimizerDefaultImpl1}, which preserves contract and ownership behavior while its search algorithm remains deferred.
+\end{itemize}
+
+That classification is the main editorial point of the chapter. The package contains enough usable code to support simulation analysis and numerical experimentation, but it is not honest to flatten all of it into a single "complete algorithms" label. The manual should preserve the real boundaries so later chapters can reference them consistently.
+
+The current validation evidence behind this chapter is therefore mixed but concrete:
+\begin{itemize}
+\item the parser and hypothesis tests are unit-tested;
+\item the solver factory, ODE solvers, and diffusion helper are numerically checked;
+\item the optimizer ownership contract is enforced at compile time;
+\item the AI assistant and plugin wiring have targeted tests;
+\item the DOE helper is documented directly from its source rather than from a dedicated regression suite.
+\end{itemize}
+
+That is sufficient for a conservative chapter-level description. It is not sufficient to claim that every family is at the same maturity level, and this chapter does not do that.
