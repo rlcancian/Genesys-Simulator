@@ -33,7 +33,7 @@ It is useful to avoid a limited reading of the parser as a simple parser. In \te
 \begin{itemize}
  \item resolves symbol names;
  \item identify the nature of these symbols;
- \item get values ​​associated with the current state of the model;
+ \item get values associated with the current state of the model;
  \item integrate stochastic functions supported by a sampler;
  \item propagate useful error messages.
 \end{itemize}
@@ -245,13 +245,13 @@ It is also important to remember that changes to the parser are not just textual
  \caption{Reading Layers of the GenESyS Parser.}
  \label{tab:cap9_camadas_leitura_parser}
  \small
- \begin{tabular}{|p{3.9cm}|p{7.3cm}|}
+ \begin{tabular}{|p{3.5cm}|p{6.8cm}|}
  \hline
  \textbf{Camada} & \textbf{Pergunta principal} \\
  \hline
  Interface & What service does the parser provide to the rest of the system? \\
  \hline
- Model Integration & How does \texttt{Model} and Simulation State use this service? \\
+ Model Integration & How does the model use this service in simulation? \\
  \hline
  Concrete grammar & How is language recognized and evaluated? \\
  \hline

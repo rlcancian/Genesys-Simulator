@@ -134,17 +134,17 @@ This layered reading helps the developer avoid a common mistake: confusing what 
  \caption{Layered Reading of the Overall GenESyS Architecture.}
  \label{tab:cap6_leitura_em_camadas}
  \small
- \begin{tabular}{|p{3.3cm}|p{7.8cm}|}
+ \begin{tabular}{|p{3.0cm}|p{7.2cm}|}
  \hline
  \textbf{Layer} & \textbf{Main Function} \\
  \hline
- Kernel & Central simulation infrastructure, model representation, events, entities, time, statistics and fundamental services \\
+ Kernel & Core simulation infrastructure, model representation, events, time and statistics \\
  \hline
- Parser and extensibility & Expression interpretation, simulator language and functional extension by \textit{plugins} \\
+ Parser and extensibility & Expression interpretation, simulator language and extension by \textit{plugins} \\
  \hline
- Applications & Concrete forms of interaction with the system, such as the graphical interface \\
+ Applications & Concrete interaction forms, such as the graphical interface \\
  \hline
- Tools and Tests & Support for development, validation, maintenance and project evolution \\
+ Tools and Tests & Support for development, validation, maintenance and evolution \\
  \hline
  \end{tabular}
 \end{table}
@@ -152,7 +152,7 @@ This layered reading helps the developer avoid a common mistake: confusing what 
 \section{The Role of the \texttt{Simulator} Class in the System View}
 \label{sec:cap6_papel_classe_simulator}
 
-The \texttt{Simulator} class provides a particularly useful synthesis of this overview. It presents itself as the highest level class of the simulation kernel and exposes, through direct access, several central system managers. This includes, but is not limited to, \texttt{PluginManager}, \texttt{ModelManager}, \texttt{TraceManager}, \texttt{ParserManager}, and \texttt{ExperimentManager}.
+The \texttt{Simulator} class provides a particularly useful synthesis of this overview. It presents itself as the highest level class of the simulation kernel and exposes several central system managers. These include \texttt{PluginManager}, \texttt{ModelManager}, \texttt{TraceManager}, \texttt{ParserManager}, and \texttt{ExperimentManager}.
 
 This observation is valuable because it shows, in a very concrete way, that the GenESyS architecture is not organized around a single file or a single operational class, but around a core that coordinates multiple specialized subsystems. In other words, the developer must understand \texttt{Simulator} as an access point to the simulator ecosystem, and not just as an isolated technical object.
 
@@ -183,7 +183,7 @@ The most productive way to study the \textit{GenESyS} source code is progressive
 
 First, build an overview of the project tree and the responsibilities of its major areas. Then, enter the kernel and study the central classes that articulate the model, simulation, events and observability. Then move on to the component base classes, \textit{data definitions}, parser, and \textit{plugins}. Only then does it make sense to delve deeper into specific applications, tools and tests.
 
-This order is not arbitrary. It follows the software’s own logic:
+This order is not arbitrary. It follows the software's own logic:
 \begin{enumerate}
  \item first, the infrastructure;
  \item then, the expansion mechanisms;

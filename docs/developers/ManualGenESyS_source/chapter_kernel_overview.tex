@@ -41,7 +41,7 @@ These four problems appear clearly in the project's central classes. That's why 
 \section{The \texttt{Simulator} class as kernel entry point}
 \label{sec:cap7_classe_simulator}
 
-The \texttt{Simulator} class occupies a special position in the kernel view. It presents itself as the main class of the simulation system and provides access to important managers such as \texttt{PluginManager}, \texttt{ModelManager}, \texttt{TraceManager}, \texttt{ParserManager} and \texttt{ExperimentManager}. This organization already reveals something important: GenESyS was not structured around a single monolithic class, but around a nucleus that coordinates specialized subsystems.
+The \texttt{Simulator} class occupies a special position in the kernel view. It presents itself as the main class of the simulation system and provides access to important managers such as \texttt{PluginManager}, \texttt{ModelManager}, \texttt{TraceManager}, \texttt{ParserManager}, and \texttt{ExperimentManager}. This organization already reveals something important: GenESyS was not structured around a single monolithic class, but around a nucleus that coordinates specialized subsystems.
 
 From a developer's perspective, the \texttt{Simulator} class is useful for two reasons. First, because it offers a synthetic view of the project's architecture. Secondly, because it works as a high-level access point to the other mechanisms of the system. Instead of entering the software in isolated fragments, the reader can start by realizing that there is a central class that articulates the simulator's ecosystem.
 
@@ -235,7 +235,7 @@ This integration helps to realize that the kernel is not a set of parallel class
  \caption{Roles of the core classes in the GenESyS kernel.}
  \label{tab:cap7_papeis_classes_centrais}
  \small
- \begin{tabular}{|p{3.6cm}|p{7.6cm}|}
+ \begin{tabular}{|p{3.3cm}|p{7.2cm}|}
  \hline
  \textbf{Classe} & \textbf{Papel principal} \\
  \hline
@@ -243,7 +243,7 @@ This integration helps to realize that the kernel is not a set of parallel class
  \hline
  \texttt{Model} & Representation of the simulation model, its components, data, entities and future events \\
  \hline
- \texttt{ModelSimulation} & Control of model execution, including repetitions, simulated time, termination conditions and event processing \\
+ \texttt{ModelSimulation} & Control of execution, repetitions, simulated time, termination conditions and events \\
  \hline
  \texttt{OnEventManager} & Registration and triggering of handlers associated with relevant model and simulation events \\
  \hline

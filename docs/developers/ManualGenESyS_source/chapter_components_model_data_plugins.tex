@@ -15,12 +15,12 @@ In GenESyS, this answer is not reduced to a single class type. The model is buil
 
 This distinction is especially important because it organizes the entire way the simulator represents the main flow of a system and the data infrastructure that supports it. Furthermore, it is from here that the extensibility mechanism via \textit{plugins} gains clarity. New components and new model data can be introduced to the system without the core having to be rewritten as a monolithic block.
 
-This chapter delves deeper into this architecture. First, it discusses the \texttt{ModelDataDefinition} base class. Then, it shows how \texttt{ModelComponent} specializes it to represent behavior in the model flow. It then discusses the importance of internal and attached data, the relationship between composition and aggregation and, finally, situates the \textit{plugins} mechanism as a way to expand the system in a consistent manner.
+This chapter delves deeper into this architecture. First, it discusses the \texttt{ModelDataDefinition} base class. Then, it shows how \texttt{ModelComponent} specializes it to represent behavior in the model flow. It then discusses the importance of internal and attached data, the relationship between composition and aggregation, and finally situates the \textit{plugins} mechanism as a way to expand the system in a consistent manner.
 
 \section{\texttt{ModelDataDefinition} as model base class}
 \label{sec:cap8_modeldatadefinition}
 
-The \texttt{ModelDataDefinition} class occupies a structural role in GenESyS. Its documentation describes it as the basis for any model data — queues, resources, variables, and other elements — and also for any model components. This means that it defines a common infrastructure that will be shared both by elements that support the simulation and by elements that directly participate in the model flow.
+The \texttt{ModelDataDefinition} class occupies a structural role in GenESyS. Its documentation describes it as the basis for any model data, such as queues, resources, variables, and other elements, and also for any model components. This means that it defines a common infrastructure that will be shared both by elements that support the simulation and by elements that directly participate in the model flow.
 
 This design decision is extremely important. Instead of completely separating flow components and supporting data into unrelated hierarchies, GenESyS makes them both share a common foundation. With this, the software gains:
 \begin{itemize}
@@ -210,7 +210,7 @@ This is an especially appropriate architectural decision for a simulator that ai
 \subsection{Components and Data as Natural Extensions}
 \label{subsec:cap8_componentes_dados_extensoes_naturais}
 
-From the model's point of view, many \textit{plugins} precisely materialize as new components and new data. This means that the architecture discussed so far — \texttt{ModelDataDefinition}, \texttt{ModelComponent}, internal data, attached data — is not just a matter of internal elegance. It is the foundation on which the system's extensibility rests.
+From the model's point of view, many \textit{plugins} precisely materialize as new components and new data. This means that the architecture discussed so far, \texttt{ModelDataDefinition}, \texttt{ModelComponent}, internal data, and attached data, is not just a matter of internal elegance. It is the foundation on which the system's extensibility rests.
 
 In other words, understanding the architecture of the model elements is also understanding the architecture of \textit{plugins}.
 
@@ -246,7 +246,7 @@ It also seeks to avoid another error: imagining that \textit{plugins} are just d
  \caption{Central Distinctions for Understanding the Model Structure in GenESyS.}
  \label{tab:cap8_distincoes_centrais}
  \small
- \begin{tabular}{|p{3.8cm}|p{7.4cm}|}
+ \begin{tabular}{|p{3.4cm}|p{6.9cm}|}
  \hline
  \textbf{Distinction} & \textbf{Architectural Meaning} \\
  \hline
@@ -271,7 +271,7 @@ With this, the reader already has the necessary basis to understand how new elem
 Test your understanding of this content by answering the following questions:
 
 \begin{enumerate}
- \item What is the architectural advantage of making \texttt{ModelComponent} inherit from \texttt{ModelDataDefinition}?
+ \item Why does \texttt{ModelComponent} inherit from \texttt{ModelDataDefinition}?
 
 \item How does the distinction between main stream and supporting data help you understand the structure of the model?
 
