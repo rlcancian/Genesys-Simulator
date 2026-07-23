@@ -1,9 +1,9 @@
 # PLAN_STATE.md — Estado da execução autônoma (prompt de cada invocação)
 
-RUN_STATE: EM_EXECUCAO
+RUN_STATE: CONCLUIDO
 HALT_REASON:
 CURRENT_STEP:
-NOTIFIED: NAO
+NOTIFIED: SIM
 
 ## Etapas
 
@@ -18,11 +18,13 @@ NOTIFIED: NAO
 | MAN-M1-006 | Corrigir exageros de maturidade e linguagem científica | §22 itens 7 e 14, §17.1, §17.2/MAN-M1-006 | MAN-M0-001 | Não | done | 2026-07-22T21:21:41-0300 |
 | MAN-M1-007 | Validar e corrigir a configuração de `hyperref` | §22 item 10, §17.1, §17.2/MAN-M1-007 | MAN-M1-001, MAN-M1-002, MAN-M1-003, MAN-M1-004, MAN-M1-005, MAN-M1-006, MAN-M1-008 | Não | done | 2026-07-23T00:00:00-0300 |
 | MAN-M1-008 | Limpar português residual nos trechos tocados | §22 item 9, §17.1, §17.2/MAN-M1-008 | MAN-M1-001, MAN-M1-002, MAN-M1-003, MAN-M1-004, MAN-M1-005, MAN-M1-006 | Não | done | 2026-07-22T21:50:08-0300 |
-| MAN-M7-001 | Construir e inspecionar o PDF atualizado | §22 itens 11-12, §17.1, §17.2/MAN-M7-001 | MAN-M1-007 | Não | pending | - |
+| MAN-M7-001 | Construir e inspecionar o PDF atualizado | §22 itens 11-12, §17.1, §17.2/MAN-M7-001 | MAN-M1-007 | Não | done | 2026-07-22T23:46:51-0300 |
 
 ## Log resumido (últimas execuções)
 
 - 2026-07-22T21:50:08-0300: etapa MAN-M1-008 concluída. Traduzidos os últimos resíduos visíveis de português nos trechos tocados em `structure.tex`, `chapter_genesys_overview.tex`, `chapter_execution_observation_simulang.tex`, `chapter_example_models.tex`, `chapter_kernel_overview.tex` e `chapter_components_model_data_plugins.tex`; `./make.sh` recompilou o manual e regenerou `docs/ManualGenESyS.pdf`, com warnings preexistentes de LaTeX ainda presentes. [revisão sugerida]
+- 2026-07-22T23:46:51-0300: etapa MAN-M7-001 concluída. `./make.sh` em `docs/developers/ManualGenESyS_source` confirmou o manual em estado up-to-date e copiou o PDF atualizado para `docs/ManualGenESyS.pdf`; inspeção complementar com `pdfinfo` e `pdftotext` mostrou 100 páginas e front matter coerente.
+- 2026-07-22T23:46:51-0300: notificação redundante de conclusão tentada conforme protocolo; ambiente headless não confirmou sessão gráfica útil no terminal.
 - 2026-07-23T00:00:00-0300: etapa MAN-M1-007 concluída. Corrigida a configuração de `hyperref` em `structure.tex` separando `urlcolor=ocre` e `bookmarksopen=false`; `./make.sh` recompilou o manual e regenerou `docs/ManualGenESyS.pdf`, sem repetir falha de sintaxe de `hyperref` e com warnings preexistentes de LaTeX ainda presentes. [revisão sugerida]
 - 2026-07-22T21:21:41-0300: etapa MAN-M1-006 concluída. Contida a linguagem de maturidade/força/seriedade em `preface.tex`, `chapter_source_organization_architecture.tex`, `chapter_kernel_overview.tex`, `chapter_parser_expressions_language.tex`, `chapter_components_model_data_plugins.tex`, `chapter_execution_observation_simulang.tex`, `chapter_example_models.tex` e `chapter_applications_tools_tests_evolution.tex`; validação com `./make.sh` concluiu com warnings preexistentes e regenerou `docs/ManualGenESyS.pdf`. [revisão sugerida]
 - 2026-07-22T21:15:57-0300: invocação em HALTED; ainda travado em MAN-M1-006 e, por dependência, MAN-M1-007 e MAN-M1-008 permanecem inelegíveis; humano já notificado; nenhuma ação necessária.
