@@ -2,12 +2,492 @@
 \chapter{Continuous, Modal, and Hybrid Simulation}
 \label{chap:continuous-modal-and-hybrid-simulation}
 
-This chapter is part of the new editorial skeleton for the developer manual. It reserves the advanced simulation chapter while the conceptual outline is rebuilt.
+This chapter documents the current continuous, modal, and hybrid simulation
+surface in the repository as it exists now. It is intentionally conservative:
+the text distinguishes implemented support from historical scaffolding and does
+not claim a unified scientific validation package that the codebase does not
+yet provide.
 
-\noindent\textbf{Objective.} Explain the continuous, modal, and hybrid simulation modes supported by the project.
+\noindent\textbf{Objective.} Explain the continuous solver layer, the
+Method-of-Lines diffusion bridge, the modal-model and Petri-net facilities,
+the cellular-automata helpers, and the way these pieces interact with the
+discrete-event clock.
 
-\noindent\textbf{Audience.} Developers and advanced modelers who need to reason about multi-mode simulation behavior.
+\noindent\textbf{Audience.} Developers and advanced modelers who need to reason
+about multi-mode simulation behavior, model-to-solver coupling, and the current
+validation boundary.
 
-\noindent\textbf{Scope.} Cover the interaction between simulation paradigms, the current scope of support, and the limits of claimable behavior.
+\noindent\textbf{Scope.} Cover the ODE solver factory, the diffusion PDE
+implementation, modal networks, Petri nets, cellular automata, the current
+hybrid bridges, and the limits of what can be claimed from the available code
+and tests.
 
-\noindent\textbf{Status.} Temporary skeleton only; the final discussion will be added later.
+\noindent\textbf{Status.} Substantive documentation grounded in
+\path{source/tools/Continuous}, \path{source/plugins/components/ModalModel},
+\path{source/plugins/data/Continuous}, and the current regression tests. The
+chapter treats numerical accuracy claims as demonstrative unless a test or
+reference in the repository establishes more.
+
+The chapter follows Figure~\ref{fig:continuous-ode-flow},
+Figure~\ref{fig:continuous-solver-steps},
+Figure~\ref{fig:diffusion-mol-flow},
+Figure~\ref{fig:modal-state-transitions},
+Figure~\ref{fig:petri-net-flow},
+Figure~\ref{fig:cellular-automaton-lattice}, and
+Figure~\ref{fig:hybrid-coupling-flow}.
+
+\section{Continuous solver layer}
+\label{sec:continuous-solver-layer}
+
+The current continuous-simulation layer is split into a legacy solver contract
+and a more explicit ODE abstraction. In the tree today, \texttt{Solver\_if} and
+\texttt{SolverDefaultImpl1} remain as compatibility material, while
+\texttt{OdeSolver\_if}, \texttt{OdeSystem\_if}, and
+\texttt{OdeSolverFactory} define the clearer ODE-oriented path. The factory
+currently registers \texttt{RungeKutta4} and \texttt{DormandPrince54}; those
+are the concrete solver names that the code and tests can resolve today.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:continuous-ode-flow
+% Source of truth:
+%   - source/tools/Continuous/OdeSolver_if.h
+%   - source/tools/Continuous/OdeSystem_if.h
+%   - source/tools/Continuous/OdeSolverFactory.h
+%   - source/tools/Continuous/RungeKutta4OdeSolver.h
+%   - source/tools/Continuous/DormandPrince54OdeSolver.h
+%   - source/tools/Continuous/Solver_if.h
+%   - source/tools/Continuous/SolverDefaultImpl1.h
+%   - source/tests/test_continuous_system.cpp
+%   - source/tests/demo_continuous_trace.cpp
+% Purpose:
+%   Show the current continuous-solver stack, including the legacy contract,
+%   the ODE abstraction, the solver factory, and the concrete solver options.
+% Required visual content:
+%   - legacy solver contract
+%   - ODE system abstraction
+%   - solver factory
+%   - RungeKutta4 and DormandPrince54 concrete solvers
+%   - representative callers in the runtime/tests
+% Exclusions:
+%   - do not imply that the legacy solver path is the preferred modern API
+%   - do not imply a general-purpose symbolic equation engine
+% Accessibility description:
+%   A layered solver map that shows which interfaces are legacy and which are
+%   the current ODE-oriented entry points.
+% Validation:
+%   The labels and solver names must match the headers in the current tree.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/continuous-ode-flow}
+\caption{Current continuous-solver stack and concrete ODE solver options.}
+\label{fig:continuous-ode-flow}
+\end{figure}
+
+Figure~\ref{fig:continuous-ode-flow} should be read as a boundary diagram, not
+as a promise that every mathematical family has the same maturity. The current
+factory exposes two solver names, and the surrounding runtime code chooses
+between them explicitly.
+
+\subsection{Solver selection and runtime coupling}
+\label{subsec:continuous-solver-selection}
+
+The ODE-oriented path is centered on \texttt{OdeSolverFactory}. That factory
+creates a solver object from a string key or enum value, and the
+\texttt{DiffusionField} plugin uses that selection mechanism to choose between
+the supported solver names. The current evidence is direct: the headers in
+\path{source/tools/Continuous} define the factory and concrete solvers, and the
+regression tests exercise both supported solver keys.
+
+The runtime coupling is easier to understand when viewed as a sequence rather
+than a single class:
+\begin{itemize}
+\item a model or helper selects a solver name;
+\item the factory materializes a concrete solver object;
+\item the solver advances a system of equations over a time step;
+\item the calling component records or propagates the new state;
+\item the discrete-event kernel remains responsible for the event clock.
+\end{itemize}
+
+Figure~\ref{fig:continuous-solver-steps} captures that sequence.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:continuous-solver-steps
+% Source of truth:
+%   - source/tests/demo_continuous_trace.cpp
+%   - source/tests/test_continuous_system.cpp
+%   - source/tools/Continuous/OdeSolverFactory.h
+%   - source/tools/Continuous/DormandPrince54OdeSolver.h
+%   - source/tools/Continuous/RungeKutta4OdeSolver.h
+% Purpose:
+%   Show the solver step sequence and the way continuous advancement is
+%   recorded alongside the discrete-event simulation clock.
+% Required visual content:
+%   - solver creation
+%   - repeated step advancement
+%   - state capture after each event or step
+%   - comparison against an exact or reference trajectory where available
+% Exclusions:
+%   - do not imply adaptive-step error control when the chosen solver is fixed-step
+%   - do not imply a proof of global scientific validity
+% Accessibility description:
+%   A timeline showing that the solver advances state incrementally while the
+%   kernel and the caller observe the results.
+% Validation:
+%   The figure must agree with the trace/demo programs already present in the tree.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/continuous-solver-steps}
+\caption{Continuous solver steps observed in the current runtime examples.}
+\label{fig:continuous-solver-steps}
+\end{figure}
+
+The demonstration in \path{source/tests/demo_continuous_trace.cpp} is useful
+because it shows the solver advancing in sync with a discrete-event schedule.
+That file is not a numerical benchmark paper; it is a clear runtime example
+that prints the state trajectory, writes a CSV, and records the internal trace.
+
+\section{Diffusion and Method of Lines}
+\label{sec:diffusion-and-method-of-lines}
+
+The diffusion path is the clearest current example of a continuous PDE bridge
+inside GenESyS. The kernel-facing plugin is \texttt{DiffusionField}; it solves
+\(du/dt = D \nabla^2 u\) in \(N\) dimensions using a dedicated
+\texttt{DiffusionMethodOfLinesSystem}. Spatial discretization is handled by the
+Method of Lines, and time stepping is delegated to the selected ODE solver from
+the factory.
+
+The component counterpart is \texttt{DiffusionSimulate}. It acts as a
+discrete-to-continuous bridge: when an entity arrives, it can trigger a
+diffusion solve using either the field's own configured window or the
+component's override window. The field itself also supports event-driven
+advancement via internal events when \texttt{AutoSchedule} is enabled, so the
+continuous solve can stay synchronized with the kernel clock.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:diffusion-mol-flow
+% Source of truth:
+%   - source/tools/Continuous/DiffusionMethodOfLinesSystem.h
+%   - source/plugins/data/Continuous/DiffusionField.h
+%   - source/plugins/components/Continuous/DiffusionSimulate.h
+%   - source/tests/unit/test_plugins_continuous_diffusion.cpp
+% Purpose:
+%   Show the PDE -> Method of Lines -> ODE solver pipeline and the bridge to
+%   the discrete-event component that can trigger a diffusion run.
+% Required visual content:
+%   - PDE definition
+%   - spatial grid / finite-difference discretization
+%   - ODE system assembly
+%   - solver selection
+%   - diffusion field state and diagnostics
+%   - discrete-event component trigger
+% Exclusions:
+%   - do not imply that all PDEs are supported
+%   - do not imply a general user equation compiler
+% Accessibility description:
+%   A pipeline diagram from diffusion equation to discrete-event driven solve.
+% Validation:
+%   The diagram must match the current diffusion unit tests and headers.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/diffusion-mol-flow}
+\caption{Diffusion solve pipeline through Method of Lines and solver selection.}
+\label{fig:diffusion-mol-flow}
+\end{figure}
+
+Figure~\ref{fig:diffusion-mol-flow} is the main evidence that the continuous
+subsystem is not just a theory chapter. The current tests exercise the default
+solver, compare Runge-Kutta and Dormand-Prince on a sine mode, check Neumann
+mass conservation, validate persistence round-tripping, and verify that invalid
+solver or grid settings are rejected.
+
+\subsection{What the diffusion tests prove}
+\label{subsec:diffusion-tests}
+
+The strongest direct evidence for the diffusion path is
+\path{source/tests/unit/test_plugins_continuous_diffusion.cpp}. That test file
+confirms all of the following in the current tree:
+\begin{itemize}
+\item the default solver is \texttt{RungeKutta4};
+\item the analytical decay of a sine mode matches the discretized evolution to
+  the current test tolerance;
+\item \texttt{RungeKutta4} and \texttt{DormandPrince54} produce comparable
+  results on the same setup;
+\item Neumann boundary conditions conserve total mass within the current test
+  tolerance;
+\item the implementation runs in three dimensions;
+\item configuration round-trips through persistence;
+\item invalid solver and invalid grid or boundary settings are rejected;
+\item the \texttt{DiffusionSimulate} component can drive the field.
+\end{itemize}
+
+Those checks are strong runtime evidence, but they are still evidence for the
+specific scenarios under test. They are not a claim that every diffusion
+boundary condition, every solver, or every grid size has been scientifically
+validated.
+
+\section{Modal models and hybrid execution}
+\label{sec:modal-and-hybrid-execution}
+
+The modal-model layer groups several related formalisms under the same
+component family. \texttt{ModalModelDefault} is the base network container.
+\texttt{ModalModelFSM} extends it with finite-state semantics, while
+\texttt{ModalModelPetriNet} extends it with Petri-net semantics. The transition
+helpers also remain explicit: \texttt{EFSMTransition} carries trigger and
+probability semantics, and \texttt{PetriTransition} carries token-based input
+and output arc weights.
+
+This is the right place to keep the boundary clear:
+\begin{itemize}
+\item an FSM transition is not the same thing as a Petri transition;
+\item the model holds the state and transition topology;
+\item the current code keeps the semantics in dedicated classes instead of
+  collapsing everything into one generic transition type;
+\item the chapter does not claim a finished unified modal runtime beyond what
+  the classes in the tree actually implement.
+\end{itemize}
+
+Figure~\ref{fig:modal-state-transitions} summarizes the current modal state
+path.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:modal-state-transitions
+% Source of truth:
+%   - source/plugins/components/ModalModel/ModalModelDefault.h
+%   - source/plugins/components/ModalModel/ModalModelFSM.h
+%   - source/plugins/components/ModalModel/ModalModelPetriNet.h
+%   - source/plugins/components/ModalModel/DefaultTransitionExtensions.h
+%   - source/applications/modelSpecific/smarts/ModalModel/Smart_ModalModelDefaultNetwork.cpp
+%   - source/applications/modelSpecific/smarts/ModalModel/Smart_ModalModelFSM.cpp
+% Purpose:
+%   Show how the modal-model family is split into default networks, FSM
+%   specializations, and Petri-net specializations with dedicated transitions.
+% Required visual content:
+%   - shared modal-model container
+%   - FSM branch
+%   - Petri-net branch
+%   - trigger/probability transition helpers
+%   - entry node / current node notion where relevant
+% Exclusions:
+%   - do not imply that modal models and Petri nets share identical semantics
+%   - do not imply a fully unified runtime API
+% Accessibility description:
+%   A family tree that distinguishes the shared container from the specialized
+%   modal behaviors.
+% Validation:
+%   The labels and class names must correspond to the current headers.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/modal-state-transitions}
+\caption{Current modal-model family and the specialization points for state transitions.}
+\label{fig:modal-state-transitions}
+\end{figure}
+
+Figure~\ref{fig:modal-state-transitions} is deliberately broad because the tree
+contains several modal variants that are related but not identical. The default
+modal network keeps the shared container, the FSM extension adds state-machine
+behavior, and the Petri extension adds token and arc semantics.
+
+\subsection{Petri nets}
+\label{subsec:petri-nets}
+
+The Petri-net side is concrete enough to document directly. \texttt{PetriPlace}
+stores token counts by color, and \texttt{PetriTransition} checks and moves
+those tokens between places according to its input and output arc weights.
+That is a real enable/fire model, not a generic placeholder.
+
+The model-specific examples in \path{source/applications/modelSpecific/smarts/ModalModel}
+show that path in a runnable form. The current tree includes examples for a
+default modal network, an FSM, and Petri-based examples such as
+\path{Smart_PetriPlace.cpp} and \path{Smart_ModalModelPetriNet.cpp}.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:petri-net-flow
+% Source of truth:
+%   - source/plugins/components/ModalModel/PetriPlace.h
+%   - source/plugins/components/ModalModel/DefaultTransitionExtensions.h
+%   - source/applications/modelSpecific/smarts/ModalModel/Smart_PetriPlace.cpp
+%   - source/applications/modelSpecific/smarts/ModalModel/Smart_ModalModelPetriNet.cpp
+% Purpose:
+%   Show the token-based Petri net model: places, transitions, arc weights,
+%   enabling, and firing.
+% Required visual content:
+%   - places with colored tokens
+%   - transitions with input/output weights
+%   - enabling condition
+%   - token movement after firing
+% Exclusions:
+%   - do not collapse Petri semantics into generic FSM semantics
+%   - do not imply stochastic timing unless explicitly shown
+% Accessibility description:
+%   A token-flow diagram that shows the route from enabled transition to new
+%   place markings.
+% Validation:
+%   The figure must match the Petri headers and the current model-specific examples.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/petri-net-flow}
+\caption{Petri net place/transition semantics in the current modal-model tree.}
+\label{fig:petri-net-flow}
+\end{figure}
+
+Figure~\ref{fig:petri-net-flow} makes the semantics boundary visible. In the
+current code, Petri places own token counts and Petri transitions explicitly
+read and mutate those counts. That is a clear runtime contract, even though the
+chapter does not elevate it to a validated scientific claim.
+
+\section{Cellular automata}
+\label{sec:cellular-automata}
+
+Cellular automata are also present in the modal-model area, but they have their
+own dedicated component and runtime helpers. The component facade is
+\texttt{CellularAutomataComp}, which can be configured as classic, timed 1D,
+asynchronous, or user-defined. The underlying helper types include
+\texttt{CellularAutomataBase}, \texttt{CellularAutomata}, \texttt{Lattice},
+\texttt{Neighborhood}, \texttt{StateSet}, and a set of local rules such as
+Game of Life, HPP lattice gas, sand/rock, forest fire, and related examples.
+
+The important distinction is that the tree contains multiple CA helpers, but
+they do not all represent the same execution model:
+\begin{itemize}
+\item \texttt{CellularAutomata\_Classic} applies the same local rule to all
+  cells and then updates their states;
+\item \texttt{CellularAutomata\_1DTimed} treats the second dimension as time;
+\item the component facade carries configuration for lattice, neighborhood,
+  boundary, state set, and local rule selection;
+\item the current classes are supportive infrastructure, not a claim that every
+  automaton family is fully polished or equally validated.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:cellular-automaton-lattice
+% Source of truth:
+%   - source/plugins/components/ModalModel/CellularAutomataComp.h
+%   - source/plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h
+%   - source/plugins/components/ModalModel/CellularAutomata/CellularAutomata.h
+%   - source/plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h
+%   - source/plugins/components/ModalModel/CellularAutomata/CellularAutomata_1DTimed.h
+%   - source/plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h
+%   - source/plugins/components/ModalModel/CellularAutomata/LocalRule_HppLatticeGas.h
+% Purpose:
+%   Show the CA component facade, the lattice/neighborhood/state-set layers,
+%   and the distinction between classic and timed execution models.
+% Required visual content:
+%   - component facade and configuration enums
+%   - lattice
+%   - neighborhood
+%   - state set
+%   - local rule
+%   - classic update loop
+%   - 1D timed variant
+% Exclusions:
+%   - do not imply that every local rule family has the same maturity
+%   - do not imply that the HPP rule or Game of Life are presented as the same abstraction
+% Accessibility description:
+%   A grid-and-rule diagram that shows how a cell neighborhood evolves to the next state.
+% Validation:
+%   The figure must match the current component and helper headers.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/cellular-automaton-lattice}
+\caption{Cellular-automaton facade and lattice/rule execution model.}
+\label{fig:cellular-automaton-lattice}
+\end{figure}
+
+Figure~\ref{fig:cellular-automaton-lattice} is the clearest way to show that
+the CA support is not a single opaque feature. The component facade selects a
+runtime shape, and the runtime helpers then execute the chosen lattice/rule
+combination.
+
+\section{Hybrid coupling and validation boundary}
+\label{sec:hybrid-coupling-and-validation}
+
+The hybrid-simulation story is the interaction between the discrete-event
+calendar and the continuous or modal submodels. The current code supports that
+interaction in several ways:
+\begin{itemize}
+\item \texttt{DiffusionField} can auto-schedule internal events so the field
+  advances one step per kernel event;
+\item \texttt{DiffusionSimulate} can launch a diffusion solve when an entity
+  arrives at the component;
+\item \texttt{ContinuousSystemComponent} and the ODE examples show how a
+  continuous solver can be driven from a discrete-event workflow;
+\item the model-specific continuous trace example demonstrates that solver time
+  and simulated time are related but not identical concepts.
+\end{itemize}
+
+The correct mental model is that the discrete-event kernel owns the event
+clock, while the continuous subsystem owns its internal state and step policy.
+Fixed-step advancement is therefore not automatically equivalent to elapsed
+discrete-event time. That distinction is documented in the scientific-domain
+reference and is visible in the trace example.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:hybrid-coupling-flow
+% Source of truth:
+%   - source/plugins/data/Continuous/DiffusionField.h
+%   - source/plugins/components/Continuous/DiffusionSimulate.h
+%   - source/plugins/components/Continuous/ContinuousSystemComponent.h
+%   - source/tests/demo_continuous_trace.cpp
+%   - source/tests/test_continuous_system.cpp
+% Purpose:
+%   Show how a discrete-event component or internal event drives a continuous
+%   subsystem and how the resulting state is observed by the rest of the model.
+% Required visual content:
+%   - discrete-event trigger
+%   - continuous subsystem solve
+%   - state update/diagnostic capture
+%   - event-clock synchronization option
+%   - trace or CSV evidence path
+% Exclusions:
+%   - do not imply that all hybrid flows are numerically validated
+%   - do not imply that simulated time and solver step count are the same quantity
+% Accessibility description:
+%   A boundary diagram between the kernel event queue and the continuous solver.
+% Validation:
+%   The figure must match the current trace/demo programs and diffusion headers.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/hybrid-coupling-flow}
+\caption{Discrete-event and continuous-solver coupling in the current tree.}
+\label{fig:hybrid-coupling-flow}
+\end{figure}
+
+Figure~\ref{fig:hybrid-coupling-flow} is the most important boundary diagram in
+the chapter. It explains why the continuous subsystem is documented as a
+coupled mode rather than as a standalone analytical solver library.
+
+\subsection{Current validation boundary}
+\label{subsec:current-validation-boundary}
+
+The current tree gives enough evidence to document the implemented behavior,
+but not enough to claim global numerical certification. The supported and
+demonstrated points are:
+\begin{itemize}
+\item explicit ODE solver selection works through the factory;
+\item diffusion examples can be reproduced and checked against the current
+  analytical reference in the tests;
+\item modal-network, Petri, and CA helpers exist and are wired into the source
+  tree;
+\item event-clock coupling is implemented for the documented diffusion and
+  continuous-system examples;
+\item the chapter does not extend those results into a general scientific
+  validity claim for all future models.
+\end{itemize}
+
+Historical LSODE-based examples still exist in the tree, including
+\path{source/tests/test_lsode.cpp} and the model-specific continuous examples
+under \path{source/applications/modelSpecific/smarts/Continuous}. They are
+useful as legacy context, but the explicit ODE solver factory and the diffusion
+bridge are the clearest current support surface for this chapter.
+
+That is the right level of claim for the current manual revision: the feature
+families are real, the coupling is real, and the validation is real for the
+scenarios already tested, but the codebase still contains experimental and
+historical areas that should remain labeled as such.
