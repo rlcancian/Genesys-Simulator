@@ -2,7 +2,7 @@
 
 RUN_STATE: EM_EXECUCAO
 HALT_REASON:
-CURRENT_STEP:
+CURRENT_STEP: MAN-F8-001
 NOTIFIED: NAO
 
 ## Etapas
@@ -17,7 +17,7 @@ NOTIFIED: NAO
 | MAN-F5-001 | Documentar instalação para usuários | §13, §§50-51 | MAN-F4-001 | Não | done | 2026-07-23 |
 | MAN-F6-001 | Documentar a visão geral das aplicações | §14, §§50-51 | MAN-F5-001 | Não | done | 2026-07-23 |
 | MAN-F7-001 | Documentar a aplicação gráfica principal | §15, §§50-51 | MAN-F6-001 | Não | done | 2026-07-23 |
-| MAN-F8-001 | Criar o primeiro modelo reproduzível | §16, §§50-51 | MAN-F7-001 | Não | pending | - |
+| MAN-F8-001 | Criar o primeiro modelo reproduzível | §16, §§50-51 | MAN-F7-001 | Não | done | 2026-07-23 |
 | MAN-F9-001 | Documentar edição de modelos na GUI | §17, §§50-51 | MAN-F8-001 | Não | pending | - |
 | MAN-F10-001 | Documentar execução de simulações | §18, §§50-51 | MAN-F9-001 | Não | pending | - |
 | MAN-F11-001 | Documentar resultados, traces e relatórios | §19, §§50-51 | MAN-F10-001 | Não | pending | - |
@@ -55,6 +55,7 @@ NOTIFIED: NAO
 ## Log resumido (últimas execuções)
 
 - 2026-07-23: MAN-F5-001 concluida. O capitulo `chapter_user_installation.tex` passou a documentar o caminho Debian `genesys-gui`, a validacao local via `gui-app`, as localizacoes instaladas em `/usr/bin` e `/usr/share`, a confirmacao pelo menu About, update/remove via `apt` e cinco figuras estruturais com placeholders; `docs/ManualGenESyS.pdf` recompilado com 162 paginas. [revisao sugerida] o pacote `.deb` foi tratado como caminho principal de usuario e o build-tree `gui-app` como validacao local, mantendo o capitulo separado de instalacao de desenvolvimento.
+- 2026-07-23: MAN-F8-001 concluida. `chapter_first_model.tex` deixou o esqueleto e passou a documentar `models/AirportSecurityExample.gen` como primeiro caso reproduzivel, usando a geracao em `source/applications/modelSpecific/arenaExamples/AirportSecurityExample.cpp`, o fluxo `Create_1 -> Process_1 -> Decide_1 -> Dispose`, a configuracao baseline `expo(2)`, `tria(0.75, 1.5, 3)`, `unif(0, 1) < 0.96`, 12h, 2 replicacoes e warm-up de 0.5h, e a comparacao com um limiar mais estrito `0.90`; o capitulo agora inclui oito blocos de figura estruturais com `FIGURE-SPEC` e o `docs/ManualGenESyS.pdf` recompilou para 176 paginas. [revisao sugerida] o seed foi tratado como registro externo da execucao, porque o `.gen` nao persiste um campo de seed proprio nesse fluxo.
 - 2026-07-23: MAN-F7-001 concluida. `chapter_main_graphical_application.tex` saiu do esqueleto e agora documenta a janela principal do `genesys-gui` no branch `WorkInProgress` commit `7cc6458da93c5099d7f1f5dda7535f5a761999ea`; foram descritos layout, menus, toolbars, trees, property editor, scene, trace/results panes, configuracao de simulacao, a trilha de acoes incompletas/experimentais e o fechamento seguro; `docs/ManualGenESyS.pdf` recompilado com 172 paginas.
 - 2026-07-23: MAN-F6-001 concluida. O capitulo `chapter_application_overview.tex` passou a listar as familias de aplicacoes atuais com targets, executaveis, dependencias, publico, status, evidencia e limitacoes; foram adicionados quatro placeholders estruturais para familia, matriz executavel x biblioteca, mapa de maturidade e fluxo de escolha; `docs/ManualGenESyS.pdf` recompilado com 168 paginas. [revisao sugerida] os GUIs auxiliares foram agrupados sob `chapter_standalone_tools.tex` e o route de model-specific sob `chapter_model_specific_and_advanced_examples.tex`, que sao as capitulos atuais mais proximos do escopo.
 - 2026-07-23: MAN-F4-001 concluida. O front matter ganhou seccoes dedicadas para revision do repositorio, reading paths, safety/scientific validity e conventions; os novos arquivos registram branch `WorkInProgress`, commit `f3214dfbde92b28a292416f2abbb033af023d25d`, data `July 23, 2026`, ambiente `Ubuntu 24.04.4 LTS`, `CMake 3.28.3`, `g++ 13.3.0` e `Qt 6.4.2`; `docs/ManualGenESyS.pdf` recompilado com 156 paginas. [revisao sugerida] a divisao em arquivos `front_matter_*` e a permanencia do prefacio como introducao sintetica foram escolhas conservadoras para manter rastreabilidade sem ampliar o escopo da etapa.
