@@ -2,12 +2,393 @@
 \chapter{Testing and Validation}
 \label{chap:testing-and-validation}
 
-This chapter is part of the new editorial skeleton for the developer manual. It keeps the testing chapter visible while the validation matrix is rebuilt.
+This chapter documents the current testing and validation surface as it exists
+in the repository now. It is based on the active root README, the local-agent
+runbook, \texttt{docs/ai\_assistants/STATUS.md}, the validation ledger, the
+current \texttt{CMakePresets.json}, and \texttt{source/tests/CMakeLists.txt}.
+It records the observed baseline for the \texttt{WorkInProgress} branch at
+commit \texttt{7097bc395d11b269692e62d39021cce220e0b1ad} on 2026-07-23.
 
-\noindent\textbf{Objective.} Document the available tests and the validation practices used in the repository.
+This chapter does not treat a successful build as scientific validation. It
+separates configure/build evidence, CTest inventory, focused sanitizer checks,
+and scientific or numerical validation.
 
-\noindent\textbf{Audience.} Developers, maintainers, and reviewers who need to judge change quality.
+\noindent\textbf{Objective.} Describe the available test layers, the current
+validation presets, the meaning of the recorded evidence, and the current
+limits of the repository's validation surface.
 
-\noindent\textbf{Scope.} Focus on unit tests, smoke tests, validation evidence, and the current limits of test coverage.
+\noindent\textbf{Audience.} Developers, maintainers, and reviewers who need to
+judge the current quality bar for code, runtime, and documentation changes.
 
-\noindent\textbf{Status.} Temporary skeleton only; the detailed testing guide will be written later.
+\noindent\textbf{Scope.} Cover Google Test, CTest, unit tests, smoke tests,
+regression tests, integration checks, numerical tests, scientific validation,
+ASan, UBSan, LSan, the focused leak path, the test presets, the expected
+disabled tests, and how to interpret the observed results.
+
+\noindent\textbf{Status.} Confirmed by source inspection and local command
+execution on 2026-07-23. The chapter records the current validation surface
+rather than a hypothetical future gate.
+
+The chapter follows this sequence:
+Figure~\ref{fig:test-pyramid},
+Figure~\ref{fig:validation-preset-matrix},
+Figure~\ref{fig:validation-ladder},
+Figure~\ref{fig:sanitizer-workflow}, and
+Figure~\ref{fig:failure-triage}.
+
+\section{Validation layers}
+\label{sec:test-validation-layers}
+
+The repository uses several validation layers, each with a different claim.
+The layers should be read from bottom to top:
+\begin{itemize}
+\item configure and build confirm that the current preset and target graph are
+still coherent for the selected scope;
+\item unit and regression tests confirm narrow code contracts and selected
+runtime invariants;
+\item smoke tests confirm that small startup and execution paths still launch
+and terminate cleanly;
+\item focused sanitizer runs confirm a bounded ownership or lifetime path;
+\item scientific validation requires explicit formulations, references,
+fixtures, expected values, and independent review where appropriate.
+\end{itemize}
+
+The important boundary is that the layers do not imply each other. A green
+build does not prove a green CTest run. A green CTest run does not prove
+scientific correctness. A focused sanitizer does not prove repository-wide leak
+freedom.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:test-pyramid
+% Source of truth:
+%   - ../README.md
+%   - ../docs/ai_assistants/README.md
+%   - ../docs/ai_assistants/GOVERNANCE.md
+%   - ../docs/ai_assistants/STATUS.md
+%   - ../source/tests/CMakeLists.txt
+% Purpose:
+%   Show the current validation hierarchy from configure/build to scientific review.
+% Required visual content:
+%   - configure/build base
+%   - unit/regression layer
+%   - smoke layer
+%   - focused sanitizer layer
+%   - scientific validation cap
+% Accessibility description:
+%   A pyramid or stacked diagram that makes the validation strength of each layer explicit.
+% Validation:
+%   The layer names and their ordering must match the current repository policy and test surface.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/test-pyramid}
+\caption{Current validation pyramid and claim strength.}
+\label{fig:test-pyramid}
+\end{figure}
+
+Figure~\ref{fig:test-pyramid} should make the claim strength obvious. The
+lowest layers are about coherence and narrow contracts; the upper layers are
+about repeatable behavior and bounded evidence.
+
+\section{Current preset matrix}
+\label{sec:test-current-preset-matrix}
+
+The current test presets are defined in \texttt{CMakePresets.json}:
+\begin{itemize}
+\item \texttt{tests-unit};
+\item \texttt{tests-kernel-unit};
+\item \texttt{tests-smoke}.
+\end{itemize}
+
+The corresponding configure commands are:
+\begin{itemize}
+\item \texttt{cmake --preset tests-unit};
+\item \texttt{cmake --preset tests-kernel-unit};
+\item \texttt{cmake --preset tests-smoke}.
+\end{itemize}
+
+The matching build commands are:
+\begin{itemize}
+\item \texttt{cmake --build --preset tests-unit --parallel "\$(nproc)"};
+\item \texttt{cmake --build --preset tests-kernel-unit --parallel "\$(nproc)"};
+\item \texttt{cmake --build --preset tests-smoke --parallel "\$(nproc)"}.
+\end{itemize}
+
+The matching CTest commands are:
+\begin{itemize}
+\item \texttt{ctest --preset tests-unit --output-on-failure};
+\item \texttt{ctest --preset tests-kernel-unit --output-on-failure};
+\item \texttt{ctest --preset tests-smoke --output-on-failure}.
+\end{itemize}
+
+The current inventory snapshot for a fresh tree was:
+\begin{itemize}
+\item \texttt{ctest --preset tests-unit -N}: 0 tests visible in the fresh tree;
+\item \texttt{ctest --preset tests-kernel-unit -N}: 34 registered tests,
+reported as \texttt{\_NOT\_BUILT} because the executables were not yet present
+when the inventory was captured;
+\item \texttt{ctest --preset tests-smoke -N}: 3 tests, namely
+\texttt{smoke\_simulator\_start}, \texttt{test\_continuous\_system}, and
+\texttt{test\_lsode}.
+\end{itemize}
+
+That snapshot is useful because it proves the presets exist and the smoke
+suite is intentionally small. It is not a substitute for the full build and
+test execution history recorded in the status documents.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:validation-preset-matrix
+% Source of truth:
+%   - ../CMakePresets.json
+%   - ../source/tests/CMakeLists.txt
+%   - ../README.md
+% Purpose:
+%   Present the current configure, build, and test presets with their build-tree separation.
+% Required visual content:
+%   - tests-unit preset
+%   - tests-kernel-unit preset
+%   - tests-smoke preset
+%   - build directories
+%   - matching CTest entry points
+% Accessibility description:
+%   A matrix or table that lets the reader choose the right preset without guessing.
+% Validation:
+%   The names must match the current repository inventory.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/validation-preset-matrix}
+\caption{Current test preset matrix and build-tree separation.}
+\label{fig:validation-preset-matrix}
+\end{figure}
+
+Figure~\ref{fig:validation-preset-matrix} should make the separation between
+presets and build trees explicit. The chapter intentionally treats the
+presets as separate surfaces because a change in one tree must not silently
+alter another.
+
+\section{What the suites cover}
+\label{sec:test-suite-coverage}
+
+The current suite coverage is intentionally uneven, and the chapter should say
+so directly instead of smoothing it over.
+
+The unit/regression surface currently includes focused executables such as:
+\begin{itemize}
+\item \texttt{genesys\_test\_tools\_legacy\_solver\_regression};
+\item \texttt{genesys\_test\_search\_remove\_runtime};
+\item \texttt{genesys\_test\_queue\_statistics\_lifecycle};
+\item \texttt{genesys\_test\_station\_statistics\_lifecycle};
+\item \texttt{genesys\_test\_delay\_statistics\_lifecycle};
+\item \texttt{genesys\_test\_resource\_accounting\_lifecycle};
+\item \texttt{genesys\_test\_simulator\_plugin\_completion\_lifetime};
+\item \texttt{genesys\_test\_optimizer\_ownership\_contract}.
+\end{itemize}
+
+The smoke surface currently includes:
+\begin{itemize}
+\item \texttt{smoke\_simulator\_start};
+\item \texttt{test\_continuous\_system};
+\item \texttt{test\_lsode}.
+\end{itemize}
+
+The status ledger still records the latest exact core inventory as:
+\begin{itemize}
+\item registered: 1,721;
+\item executed/passed: 1,717;
+\item failed: 0;
+\item disabled: 4 historical duplicate Search/Remove blocks.
+\end{itemize}
+
+That exact baseline is a historical current-state record, not an eternal
+promise. It should be refreshed when the production test graph changes.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:validation-ladder
+% Source of truth:
+%   - ../docs/ai_assistants/STATUS.md
+%   - ../docs/ai_assistants/history/evidence/2026/07/VALIDATION_LEDGER.md
+%   - ../source/tests/CMakeLists.txt
+% Purpose:
+%   Show how build, test, smoke, sanitizer, and scientific validation relate to one another.
+% Required visual content:
+%   - build/configure step
+%   - regression/unit step
+%   - smoke step
+%   - focused sanitizer step
+%   - scientific validation step
+% Accessibility description:
+%   A ladder diagram that explains the difference between coverage depth and claim strength.
+% Validation:
+%   The ordering must preserve the distinction between runtime evidence and scientific validation.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/validation-ladder}
+\caption{Current validation ladder and claim boundaries.}
+\label{fig:validation-ladder}
+\end{figure}
+
+Figure~\ref{fig:validation-ladder} should show that a user-visible startup
+claim is weaker than a runtime workflow claim, and that both are weaker than a
+scientific validity claim.
+
+\section{Focused sanitizer path}
+\label{sec:test-focused-sanitizer}
+
+The repository does not expose a universal sanitizer preset. Instead, it has a
+focused sanitizer-enabled executable in \texttt{source/tests/CMakeLists.txt}.
+The current contract is:
+\begin{itemize}
+\item target: \texttt{genesys\_test\_simulator\_plugin\_completion\_lifetime};
+\item compile options under GNU or Clang: \texttt{-fsanitize=address} and
+\texttt{-fno-omit-frame-pointer};
+\item link option: \texttt{-fsanitize=address};
+\item runtime environment:
+\texttt{ASAN\_OPTIONS=detect\_leaks=1:halt\_on\_error=1} and
+\texttt{LSAN\_OPTIONS=exitcode=23}.
+\end{itemize}
+
+The purpose of this target is narrow: it exercises the temporary plugin-model
+completion path and checks that the bounded ownership/lifetime slice exits
+cleanly. It proves that the focused path is clean. It does not prove global
+leak freedom, whole-repository UB freedom, or any broader scientific claim.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:sanitizer-workflow
+% Source of truth:
+%   - ../source/tests/CMakeLists.txt
+%   - ../docs/ai_assistants/GOVERNANCE.md
+%   - ../docs/ai_assistants/STATUS.md
+% Purpose:
+%   Show the focused sanitizer path and its explicit leak-detection settings.
+% Required visual content:
+%   - focused executable target
+%   - sanitizer compile/link flags
+%   - runtime ASAN/LSAN settings
+%   - narrow scope warning
+% Accessibility description:
+%   A flow diagram that shows why one sanitizer check is useful but not exhaustive.
+% Validation:
+%   The flags and environment variables must match the current source file.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/sanitizer-workflow}
+\caption{Focused sanitizer workflow for the plugin-completion lifetime test.}
+\label{fig:sanitizer-workflow}
+\end{figure}
+
+Figure~\ref{fig:sanitizer-workflow} should make the narrowness of the path
+explicit. The diagnostic is intentionally strong on one slice and intentionally
+silent about broader repository guarantees.
+
+\section{Interpreting results}
+\label{sec:test-result-interpretation}
+
+The chapter should interpret results conservatively:
+\begin{itemize}
+\item configure success means the current preset graph is coherent;
+\item build success means the affected targets compiled in the current tree;
+\item CTest inventory means the current tree exposes the expected tests;
+\item CTest execution means the registered tests actually passed in that run;
+\item sanitizer success means the focused path did not trip the checked class
+of memory or UB defect;
+\item scientific validation requires domain-specific evidence, not just a
+green build or a green smoke suite.
+\end{itemize}
+
+The most important negative rule is the one that prevents overclaim:
+startup evidence is not functional correctness, and functional correctness is
+not scientific validity.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:failure-triage
+% Source of truth:
+%   - ../docs/ai_assistants/GOVERNANCE.md
+%   - ../docs/ai_assistants/STATUS.md
+%   - ../docs/ai_assistants/runbooks/LOCAL_AGENT.md
+% Purpose:
+%   Show how to classify build, test, startup, sanitizer, and scientific failures.
+% Required visual content:
+%   - build/configure failure branch
+%   - CTest failure branch
+%   - startup/workflow failure branch
+%   - sanitizer failure branch
+%   - scientific-mismatch branch
+% Accessibility description:
+%   A triage chart that tells the reader when to fix locally and when to stop and escalate.
+% Validation:
+%   The branches must match the current governance and runbook stop rules.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/failure-triage}
+\caption{Current failure triage and stop-gate behavior.}
+\label{fig:failure-triage}
+\end{figure}
+
+Figure~\ref{fig:failure-triage} should emphasize the stop rules. If the code
+and the canonical documentation diverge, if a required target is missing, if a
+scientific claim lacks a reference, or if a required validation path is not
+available, the correct action is to stop and report the blocker rather than to
+inflate the claim.
+
+\section{Current evidence snapshot}
+\label{sec:test-evidence-snapshot}
+
+The local documentation pass for this chapter executed the following commands
+on 2026-07-23 at commit \texttt{7097bc395d11b269692e62d39021cce220e0b1ad}:
+\begin{itemize}
+\item \texttt{cmake --preset tests-unit};
+\item \texttt{cmake --preset tests-kernel-unit};
+\item \texttt{cmake --preset tests-smoke};
+\item \texttt{cmake --build --preset tests-unit --parallel "\$(nproc)"};
+\item \texttt{cmake --build --preset tests-kernel-unit --parallel "\$(nproc)"};
+\item \texttt{cmake --build --preset tests-smoke --parallel "\$(nproc)"};
+\item \texttt{ctest --preset tests-unit -N};
+\item \texttt{ctest --preset tests-kernel-unit -N};
+\item \texttt{ctest --preset tests-smoke -N}.
+\end{itemize}
+
+The configure commands completed successfully. The build commands exercised the
+current kernel, plugin, and tools graph and then exposed a linker failure in
+\texttt{genesys\_test\_optimizer\_ownership\_contract} during both
+\texttt{tests-unit} and \texttt{tests-kernel-unit}. The failure was an
+undefined-reference link error involving
+\texttt{SamplerDefaultImpl1},
+\texttt{CollectorDefaultImpl1}, and
+\texttt{StatisticsDefaultImpl1}. The smoke tree had already built through its
+three executables. The inventory commands returned the fresh-tree results
+listed above.
+
+The current historical evidence ledger also records the following bounded
+conclusions for the broader repository:
+\begin{itemize}
+\item ordinary unit, kernel, and smoke baselines passed for the recorded
+historical head;
+\item a focused ASan/LSan run reduced the exercised leak surface to zero for
+the plugin-completion lifetime path;
+\item those results are bounded to their recorded commit, environment, and
+scope.
+\end{itemize}
+
+Those historical results belong in the status ledger and validation ledger, not
+as a blanket claim that every future change will behave the same way.
+
+\section{Practical reading rule}
+\label{sec:test-practical-reading-rule}
+
+When a developer reads this chapter, the safest interpretation is:
+\begin{enumerate}
+\item use the smallest preset that covers the change;
+\item prefer focused regression tests over broad guesses;
+\item use the focused sanitizer only for ownership and lifetime questions it
+was designed to answer;
+\item consult the status ledger when you need the last exact inventory or the
+historical core baseline;
+\item stop when the repository evidence and the chapter disagree.
+\end{enumerate}
+
+That rule keeps the chapter aligned with the repository's current evidence
+discipline and prevents a validation story from drifting into assumption.
