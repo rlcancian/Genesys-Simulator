@@ -5,20 +5,20 @@
 0   ModelSimulation "" warmUpTimeTimeUnit=7 warmUpTime=0.500000 replicationLength=12.000000 numberOfReplications=2 replicationLengthTimeUnit=7 
 
 # Model Data Definitions
-134 EntityType "entitytype" 
-135 Attribute  "Entity.ArrivalTime" 
-136 Attribute  "Entity.Type" 
-137 EntityType "Passenger" 
-138 Resource   "Transportation_Security_Officer" 
-154 Attribute  "Entity.TotalWaitTime" 
-156 Queue      "Check_for_Proper_Identification.Queue" 
+136 EntityType "entitytype" 
+137 Attribute  "Entity.ArrivalTime" 
+138 Attribute  "Entity.Type" 
+139 EntityType "Passenger" 
+140 Resource   "Transportation_Security_Officer" 
+156 Attribute  "Entity.TotalWaitTime" 
+158 Queue      "Check_for_Proper_Identification.Queue" 
 
 # Model Components
-132 Create     "Create_1" entityType="Passenger" timeBetweenCreationsTimeUnit=6 nextId=150 caption="Passengers arrive to security" timeBetweenCreations="expo(2)" 
-150 Process    "Process_1" delayExpression="tria(0.75, 1.5, 3)" delayExpressionTimeUnit=6 nextId=159 queueable="Check_for_Proper_Identification.Queue" caption="Check for proper identification" requestSeizable[0]="Transportation_Security_Officer" 
-151 Seize      "Process_1.Seize" queueable="Check_for_Proper_Identification.Queue" nextId=152 requestSeizable[0]="Transportation_Security_Officer" 
-152 Delay      "Process_1.Delay" delayExpressionTimeUnit=6 delayExpression="tria(0.75, 1.5, 3)" nextId=155 
-155 Release    "Process_1.Release" resquests=0 nexts=0 
-159 Decide     "Decide_1" condition[0]="unif(0, 1) < 0.96" nextId[0]=160 nextId[1]=164 nexts=2 conditions=1 caption="Pass security?" 
-160 Dispose    "Dispose_1" nexts=0 caption="Cleared" 
-164 Dispose    "Dispose_2" nexts=0 caption="Denied" 
+134 Create     "Create_1" entityType="Passenger" timeBetweenCreationsTimeUnit=6 nextId=152 caption="Passengers arrive to security" timeBetweenCreations="expo(2)" 
+152 Process    "Process_1" delayExpression="tria(0.75, 1.5, 3)" delayExpressionTimeUnit=6 nextId=161 queueable="Check_for_Proper_Identification.Queue" caption="Check for proper identification" requestSeizable[0]="Transportation_Security_Officer" 
+153 Seize      "Process_1.Seize" queueable="Check_for_Proper_Identification.Queue" nextId=154 requestSeizable[0]="Transportation_Security_Officer" 
+154 Delay      "Process_1.Delay" delayExpressionTimeUnit=6 delayExpression="tria(0.75, 1.5, 3)" nextId=157 
+157 Release    "Process_1.Release" resquests=0 nexts=0 
+161 Decide     "Decide_1" condition[0]="unif(0, 1) < 0.96" nextId[0]=162 nextId[1]=166 nexts=2 conditions=1 caption="Pass security?" 
+162 Dispose    "Dispose_1" nexts=0 caption="Cleared" 
+166 Dispose    "Dispose_2" nexts=0 caption="Denied" 
