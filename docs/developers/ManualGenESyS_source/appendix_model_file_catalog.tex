@@ -1,0 +1,31 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Model File Catalog}
+\label{chap:appendix-model-file-catalog}
+
+This appendix lists the checked-in model files that the current manual cites
+explicitly. It is deliberately conservative: only model files already named in
+the book are included here. \index{models}\index{model files}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|p{4.3cm}|p{3.7cm}|p{3.7cm}|p{2.0cm}|}
+\hline
+\textbf{Model file} & \textbf{Used in} & \textbf{Purpose} & \textbf{Status} \\
+\hline
+\texttt{models/AirportSecurityExample.gen} & First model, GUI editing, shell usage, language guide & Canonical reproducible example for the user chapters & checked-in example \\
+\hline
+\texttt{models/Banking\_Transactions.gen} & Model-specific examples & Secondary model-specific example & checked-in example \\
+\hline
+\texttt{models/Smart\_ModalModel.gen} & Model-specific examples & Advanced modal example with explicit caveat & checked-in example \\
+\hline
+\end{tabular}
+\end{table}
+
+The manual uses these files as stable examples for tutorial flows, not as a
+claim that every example is fully supported at the same maturity level. For
+example, the smart modal model remains a conservative example of a more
+experimental route.
+
+The \texttt{models} tree itself is the current repository source of these
+examples. \index{models!AirportSecurityExample.gen}\index{models!Banking_Transactions.gen}\index{models!Smart_ModalModel.gen}

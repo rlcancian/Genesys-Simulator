@@ -1,0 +1,56 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Command Reference}
+\label{chap:appendix-command-reference}
+
+This appendix collects the commands that recur across the current manual.
+It is intentionally conservative: every command listed here already appears in
+the main text or in the active build and validation chapters. The appendix is
+meant to help readers copy the exact command shape without hunting through the
+chapter flow.
+
+The main build entry point remains \texttt{./make.sh}\index{make.sh}. The
+presets and command families below are the ones that the current manual already
+documents and validates.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|p{3.2cm}|p{4.2cm}|p{4.5cm}|}
+\hline
+\textbf{Command} & \textbf{Used for} & \textbf{Notes} \\
+\hline
+\texttt{cd docs/developers/ManualGenESyS\_source \&\& ./make.sh} & Build the full manual & Runs the local LaTeX build pipeline and refreshes \texttt{docs/ManualGenESyS.pdf}. \index{manual build}\index{make.sh} \\
+\hline
+\texttt{cmake --preset gui-app} & Configure the main GUI tree & Creates the dedicated \texttt{build/gui-app} tree used by the GUI chapters. \index{CMake presets!gui-app} \index{gui-app} \\
+\hline
+\texttt{cmake --preset genesys\_shell} & Configure the shell tree & Creates the dedicated \path{build/genesys_shell} tree for the terminal application. \index{CMake presets!genesys_shell} \index{genesys_shell} \\
+\hline
+\texttt{cmake --preset genesys\_worker\_app} & Configure the worker tree & Creates the dedicated \path{build/genesys_worker_app} tree used by the worker chapters. \index{CMake presets!genesys_worker_app} \index{genesys_worker_app} \\
+\hline
+\texttt{cmake --preset tests-unit} & Configure the main unit/regression tree & Base tree for the primary test surface. \index{CMake presets!tests-unit} \index{tests-unit} \\
+\hline
+\texttt{cmake --build --preset tests-unit --parallel "\$(nproc)"} & Build the main unit/regression tree & Matches the current test-validation chapter. \index{tests-unit!build command} \\
+\hline
+\texttt{ctest --preset tests-unit --output-on-failure} & Run the unit/regression CTest surface & The chapter treats this as the main regression gate. \index{tests-unit!CTest} \\
+\hline
+\texttt{cmake --preset tests-kernel-unit} & Configure the kernel-unit tree & Dedicated tree for the kernel-focused tests. \index{CMake presets!tests-kernel-unit} \index{tests-kernel-unit} \\
+\hline
+\texttt{ctest --preset tests-kernel-unit --output-on-failure} & Run the kernel-unit CTest surface & Used when the kernel-only regression tree is under inspection. \index{tests-kernel-unit!CTest} \\
+\hline
+\texttt{cmake --preset tests-smoke} & Configure the smoke-test tree & Dedicated tree for the small startup and smoke surface. \index{CMake presets!tests-smoke} \index{tests-smoke} \\
+\hline
+\texttt{ctest --preset tests-smoke --output-on-failure} & Run the smoke surface & Confirms the smallest startup and execution path currently documented. \index{tests-smoke!CTest} \\
+\hline
+\texttt{cmake --preset gui-httpworker} & Configure the HTTP Worker GUI tree & Part of the current application preset inventory. \index{gui-httpworker} \\
+\hline
+\texttt{cmake --preset gui-dataanalyser} & Configure the Data Analyser tree & Part of the current application preset inventory. \index{gui-dataanalyser} \\
+\hline
+\texttt{cmake --preset gui-optimizer} & Configure the Optimizer tree & Part of the current application preset inventory. \index{gui-optimizer} \\
+\hline
+\texttt{cmake --preset gui-ai-assistant} & Configure the AI Assistant tree & Part of the current application preset inventory. \index{gui-ai-assistant} \\
+\hline
+\end{tabular}
+\end{table}
+
+The appendix deliberately avoids commands that the manual only mentions as
+historical examples or unvalidated placeholders.
