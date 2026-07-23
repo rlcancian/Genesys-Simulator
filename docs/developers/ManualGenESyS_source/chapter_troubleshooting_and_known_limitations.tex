@@ -2,12 +2,364 @@
 \chapter{Troubleshooting and Known Limitations}
 \label{chap:troubleshooting-and-known-limitations}
 
-This chapter is part of the new editorial skeleton for the user manual. It preserves the closing user chapter while the troubleshooting list is rebuilt from the live repository.
+This chapter documents the current troubleshooting surface of the manual as it
+exists in the live repository. The text is grounded in the current GUI shell,
+model lifecycle, parser diagnostics, plugin manager, worker boundaries, and
+issue-reporting flow. It intentionally stays conservative: when the code gives
+only a generic failure message, this chapter says so instead of inventing a
+more specific diagnosis.
 
-\noindent\textbf{Objective.} Summarize common issues, their expected symptoms, and the current limits of support.
+\noindent\textbf{Objective.} Help readers identify the subsystem behind a
+failure, find the current diagnostic entry points, and understand which
+limitations are real current-state boundaries rather than temporary editorial
+gaps.
 
-\noindent\textbf{Audience.} Users, instructors, and operators who need a concise place to check failure modes and boundaries.
+\noindent\textbf{Audience.} Users, instructors, operators, and developers who
+need a single place to check common failure modes and current support limits.
 
-\noindent\textbf{Scope.} Cover the most visible errors, practical recovery steps, and the limitations that should be stated before the manual reaches a release candidate.
+\noindent\textbf{Scope.} Cover build and startup problems, display issues,
+model opening and validation failures, parser and expression errors, plugin
+loading issues, worker/tool boundaries, log locations, reporting paths, and
+limitations that should be stated explicitly before release.
 
-\noindent\textbf{Status.} Temporary skeleton only; the full troubleshooting matrix will be added later.
+\noindent\textbf{Status.} Confirmed by code inspection and aligned with the
+current repository documentation. The chapter uses structural figure
+placeholders until the final screenshots and diagrams are produced.
+
+The chapter follows this sequence:
+Figure~\ref{fig:troubleshooting-decision-tree},
+Figure~\ref{fig:troubleshooting-error-examples},
+Figure~\ref{fig:troubleshooting-diagnostic-flow}, and
+Figure~\ref{fig:troubleshooting-log-locations}.
+
+\section{How to triage a failure}
+\label{sec:troubleshooting-triage}
+
+The first question is always which subsystem failed:
+\begin{itemize}
+\item build or configure failure: the toolchain, preset, or dependency set is
+usually wrong;
+\item startup failure: the runtime environment or display backend is usually
+the problem;
+\item model open or check failure: the model file, its companion layout file,
+or a component validator is usually the cause;
+\item expression failure: the parser grammar or an invalid symbol reference is
+usually the cause;
+\item plugin failure: the plugin file or its current system dependencies are
+usually the cause;
+\item worker or helper-tool failure: the current scope is often a partially
+validated boundary rather than a complete workflow contract.
+\end{itemize}
+
+When in doubt, start with the current console, simulation, and report panes,
+then inspect the process log described later in this chapter. The manual
+favours specific evidence over general reassurance.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:troubleshooting-decision-tree
+% Source of truth:
+%   - ../README.md
+%   - ../docs/ai_assistants/STATUS.md
+%   - ../docs/ai_assistants/runbooks/LOCAL_AGENT.md
+%   - ../source/applications/gui/genesys/main.cpp
+%   - ../source/applications/gui/genesys/controllers/ModelLifecycleController.cpp
+%   - ../source/applications/shell/GenesysShell.cpp
+% Purpose:
+%   Show a conservative decision tree that routes the reader from symptom class to the current diagnostic surface.
+% Required visual content:
+%   - build/configure branch
+%   - startup/display branch
+%   - model open/check branch
+%   - parser branch
+%   - plugin branch
+%   - worker/helper-tool branch
+% Accessibility description:
+%   A top-down flowchart that helps the reader pick the next diagnostic step without guessing.
+% Validation:
+%   The branches must reflect the current code and documentation boundaries rather than future support plans.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/troubleshooting-decision-tree}
+\caption{Current troubleshooting decision tree.}
+\label{fig:troubleshooting-decision-tree}
+\end{figure}
+
+Figure~\ref{fig:troubleshooting-decision-tree} should be the quickest way to
+route a new problem to the right subsystem.
+
+\section{Build and startup problems}
+\label{sec:troubleshooting-build-startup}
+
+\subsection{Toolchain or preset mismatch}
+\label{subsec:troubleshooting-toolchain}
+
+\begin{description}
+\item[Symptom.] Configuration or build stops before the application starts.
+\item[Likely cause.] The current CMake preset does not match the available
+toolchain, Qt6 setup, or build directory state.
+\item[Diagnosis.] Re-run the exact preset from the repository root and compare
+the reported compiler, CMake, and Qt versions against the current baseline in
+the repository README and status documents.
+\item[Recovery.] Use the canonical preset for the target you are trying to
+build, then rebuild from a clean configuration directory if the previous cache
+was produced with a different toolchain.
+\item[Current limitation.] A successful configure does not prove that the
+runtime workflow is healthy; it only proves the selected preset configured.
+\end{description}
+
+\subsection{No display or invalid display backend}
+\label{subsec:troubleshooting-display}
+
+\begin{description}
+\item[Symptom.] The GUI does not appear, exits immediately, or reports a Qt
+display connection failure on a headless host.
+\item[Likely cause.] There is no usable display server for the current session.
+\item[Diagnosis.] Check whether the session has an interactive display. For
+headless validation, use a private Xvfb or equivalent virtual desktop and keep
+TCP listening disabled.
+\item[Recovery.] Relaunch the GUI in a valid graphical session, or reproduce
+the launch under the same virtual-desktop setup used by the local runbook.
+\item[Current limitation.] Startup under Xvfb is only startup evidence; it is
+not proof of end-to-end interaction or scientific correctness.
+\end{description}
+
+The visual summary of these two failure classes appears in
+Figure~\ref{fig:troubleshooting-error-examples}.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:troubleshooting-error-examples
+% Source of truth:
+%   - ../source/applications/gui/genesys/main.cpp
+%   - ../source/applications/gui/genesys/controllers/ModelLifecycleController.cpp
+%   - ../source/applications/gui/genesys/mainwindow.cpp
+%   - ../source/applications/shell/GenesysShell.cpp
+% Purpose:
+%   Show the most common user-visible error messages for startup, model opening, model checking, and plugin auto-load problems.
+% Required visual content:
+%   - a build/startup failure example
+%   - the generic model-open warning
+%   - the generic model-check failure dialog
+%   - the shell plugin auto-load warning
+% Accessibility description:
+%   A montage of UI and terminal messages that match current code paths.
+% Validation:
+%   The text shown must match messages actually emitted by the current code paths.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/troubleshooting-error-examples}
+\caption{Representative current error messages.}
+\label{fig:troubleshooting-error-examples}
+\end{figure}
+
+\section{Model and parser problems}
+\label{sec:troubleshooting-model-parser}
+
+\subsection{A model does not open}
+\label{subsec:troubleshooting-open-model}
+
+\begin{description}
+\item[Symptom.] Opening a model ends with the generic warning that the model
+could not be opened.
+\item[Likely cause.] The selected file is unreadable, not a valid model file,
+or does not match the companion graphical layout expected by the open flow.
+\item[Diagnosis.] The current open flow prefers a companion \texttt{.gui}
+file when a \texttt{.gen} file is selected. If the open action fails, inspect
+the exact file that was chosen and check whether the matching layout file is
+present.
+\item[Recovery.] Reopen the companion \texttt{.gui} when it exists, or reopen a
+known-good model from the \texttt{models/} tree and confirm that the current
+file path is valid.
+\item[Current limitation.] The dialog message is intentionally generic; the
+actual cause has to be recovered from the file choice and the console trace.
+\end{description}
+
+\subsection{Model check fails}
+\label{subsec:troubleshooting-model-check}
+
+\begin{description}
+\item[Symptom.] The model check dialog reports failure instead of the success
+message.
+\item[Likely cause.] A component validator rejected a parameter, a connection,
+or a model rule that is checked during the current model validation pass.
+\item[Diagnosis.] Inspect the console. The current dialog only tells the user
+that the model has errors and to see the console for more information.
+\item[Recovery.] Fix the component or property that produced the console
+message, then run model check again.
+\item[Current limitation.] Model check success only proves the current
+validation pass succeeded; it does not prove that the model is scientifically
+validated or that every future scenario is safe.
+\end{description}
+
+\subsection{Parser or expression errors}
+\label{subsec:troubleshooting-parser}
+
+\begin{description}
+\item[Symptom.] Expression evaluation in the parser checker or a property
+editor fails and the console shows an error line instead of a numeric result.
+\item[Likely cause.] The expression does not match the current grammar, a
+symbol is missing from the current model context, or the parser returned a
+syntax error.
+\item[Diagnosis.] Use the parser grammar checker dialog and the console output.
+The checker currently reports either the real parser message or a fallback
+\texttt{Unknown parser error.} message when no more specific detail is
+available.
+\item[Recovery.] Rewrite the expression to match the grammar currently
+implemented in the parser, then evaluate it again in the same model context.
+\item[Current limitation.] The parser diagnostics are helpful but not a full
+formal proof of semantic correctness for a model.
+\end{description}
+
+\section{Plugins, worker, and helper tools}
+\label{sec:troubleshooting-plugins-worker-tools}
+
+\subsection{Plugin load or dependency problems}
+\label{subsec:troubleshooting-plugins}
+
+\begin{description}
+\item[Symptom.] The plugin manager shows blocked plugins, or the shell reports
+that auto-loading plugins from \texttt{autoloadplugins.txt} failed.
+\item[Likely cause.] The plugin file is missing, incomplete, structurally
+invalid, or still depends on system packages that are not installed.
+\item[Diagnosis.] Use the plugin manager's loaded and problem tabs, then check
+the current dependency preflight and the system package state. The shell
+starts even when the auto-load list is not usable, so a plugin warning alone
+does not imply a fatal application failure.
+\item[Recovery.] Load the plugin list that matches the current checkout, or
+resolve the blocked plugin dependencies through the plugin manager if the
+system package prerequisites are available.
+\item[Current limitation.] Plugin loading still follows the current static
+build graph and the existing deployment/search contract; do not assume a future
+dynamic-plugin boundary or a fully automatic recovery path.
+\end{description}
+
+\subsection{Worker reachability and scope}
+\label{subsec:troubleshooting-worker}
+
+\begin{description}
+\item[Symptom.] The worker does not answer, or a worker-based workflow cannot
+complete from outside the local machine.
+\item[Likely cause.] The worker is not running, is bound outside the expected
+local test setup, or is being used outside the trusted boundary currently
+documented by the repository.
+\item[Diagnosis.] Confirm the worker target and launch path first, then inspect
+its local reachability from the same machine or private network segment used
+for development.
+\item[Recovery.] Use the current local/private deployment pattern only. Do not
+try to turn this into a public service as a troubleshooting shortcut.
+\item[Current limitation.] The worker is not approved for direct public
+Internet exposure, and its full security profile is not yet the supported
+production profile.
+\end{description}
+
+\subsection{Standalone tools that start but do not complete a workflow}
+\label{subsec:troubleshooting-tools}
+
+\begin{description}
+\item[Symptom.] A helper window opens, but the intended workflow does not look
+complete or reproducible yet.
+\item[Likely cause.] The tool is only startup-validated, or the specific
+analysis/optimization/AI workflow is still outside the fully validated scope.
+\item[Diagnosis.] Distinguish startup from workflow validation. Check whether
+the current tool is one of the standalone helper front ends or a partially
+validated workflow behind them.
+\item[Recovery.] Reduce the problem to the smallest current supported path and
+capture the exact inputs, outputs, and logs that were produced.
+\item[Current limitation.] Startup evidence does not prove complete functional
+or scientific correctness for the helper tools.
+\end{description}
+
+Figure~\ref{fig:troubleshooting-diagnostic-flow} summarizes the current
+diagnostic path across these subsystems.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:troubleshooting-diagnostic-flow
+% Source of truth:
+%   - ../source/applications/gui/genesys/controllers/DialogUtilityController.cpp
+%   - ../source/applications/gui/genesys/controllers/ModelLifecycleController.cpp
+%   - ../source/applications/gui/genesys/dialogs/dialogpluginmanager.cpp
+%   - ../source/applications/gui/genesys/mainwindow.cpp
+%   - ../source/applications/shell/GenesysShell.cpp
+% Purpose:
+%   Show how the reader moves from symptom to console, dialog, or subsystem-specific recovery path.
+% Required visual content:
+%   - model open/check branch
+%   - parser branch
+%   - plugin branch
+%   - worker/tool branch
+%   - log/reporting branch
+% Accessibility description:
+%   A flowchart that turns the chapter's prose into a concrete debugging sequence.
+% Validation:
+%   The flow must not claim more validation than the current code and status documents support.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/troubleshooting-diagnostic-flow}
+\caption{Subsystem-oriented diagnostic flow.}
+\label{fig:troubleshooting-diagnostic-flow}
+\end{figure}
+
+\section{Logs and reporting}
+\label{sec:troubleshooting-logs}
+
+The current GUI application installs a log file in the working directory named
+\texttt{crashesAndLogs.log}. The application appends Qt message output and
+startup diagnostics to that file as soon as the GUI process starts.
+
+The issue-report workflow in the About menu can attach the tail of that log
+file together with the current console, simulation, reports, and optionally the
+current model text. That makes \texttt{crashesAndLogs.log} the first file to
+check when a GUI problem needs to be reported or reproduced.
+
+For terminal workflows, capture the exact command and the full terminal output
+instead of relying on memory. For model problems, also capture the model file
+that was opened and whether the companion \texttt{.gui} file was present.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:troubleshooting-log-locations
+% Source of truth:
+%   - ../source/applications/gui/genesys/main.cpp
+%   - ../source/applications/gui/genesys/controllers/DialogUtilityController.cpp
+%   - ../source/applications/gui/genesys/dialogs/DialogReportIssue.cpp
+% Purpose:
+%   Show where the current GUI writes its process log and what the issue-report path can attach.
+% Required visual content:
+%   - the working-directory log file
+%   - the About/Report Issue entry point
+%   - the attach-log-tail option
+%   - the console/simulation/reports panes
+% Accessibility description:
+%   A compact diagram that points to the current diagnostic evidence locations.
+% Validation:
+%   The location and attachments must match the current GUI startup and reporting code.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/troubleshooting-log-locations}
+\caption{Current log and reporting locations.}
+\label{fig:troubleshooting-log-locations}
+\end{figure}
+
+\section{Known limitations}
+\label{sec:troubleshooting-known-limitations}
+
+The following boundaries are current state, not promises of future support:
+\begin{itemize}
+\item startup does not prove complete workflow correctness;
+\item helper-tool startup does not prove the associated analysis or
+optimization workflow is scientifically validated;
+\item model validation failures are reported through generic dialogs with
+console details, not through a fully structured problem taxonomy;
+\item the shell auto-load contract around \texttt{autoloadplugins.txt} remains a
+current deployment and fallback gap;
+\item the worker must remain in the current local or private-network boundary;
+\item numerical, statistical, and biological results must still be treated as
+bounded evidence unless they are explicitly validated elsewhere;
+\item a reported problem should be read against the current code and status,
+not as a guarantee of future support policy.
+\end{itemize}
+
+This chapter exists so the manual can say, clearly and conservatively, where
+the current repository stops today.
