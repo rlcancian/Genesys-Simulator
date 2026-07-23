@@ -154,7 +154,7 @@
 }
 
 \newcommand{\figureplaceholder}[1]{%
-    \missingfigurebox{#1}%
+    \safeincludegraphics[width=\linewidth]{#1}%
 }
 
 \newcommand{\safeincludegraphics}[2][]{%

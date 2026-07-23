@@ -46,7 +46,7 @@ while IFS= read -r label; do
     status=1
   fi
 done < <(
-  perl -0ne 'while (/\\label\{([^}]+)\}/g) { print "$1\n" }' "${figure_files[@]}" | sort -u
+  perl -0ne 'while (/\\begin\{figure\}.*?\\label\{([^}]+)\}.*?\\end\{figure\}/sg) { print "$1\n" }' "${figure_files[@]}" | sort -u
 )
 
 exit "${status}"
