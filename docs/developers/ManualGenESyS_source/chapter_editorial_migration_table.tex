@@ -1,0 +1,37 @@
+\chapter*{Editorial Migration Table}
+\addcontentsline{toc}{chapter}{Editorial Migration Table}
+\label{chap:editorial-migration-table}
+
+The table below records a first-pass mapping from the legacy chapter set to the new editorial tree. It is intentionally conservative: each legacy chapter is mapped to the most relevant new destination without claiming that the migration is already complete.
+
+\begin{table}[htbp]
+\centering
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|p{2.8cm}|p{2.2cm}|p{4.8cm}|p{1.5cm}|}
+\hline
+\textbf{Old chapter} & \textbf{Old section} & \textbf{New destination} & \textbf{Status} \\
+\hline
+\path{chapter_genesys_overview.tex} & Whole chapter & \path{chapter_application_overview.tex} and \path{chapter_main_graphical_application.tex} & mapped \\
+\hline
+\path{chapter_installation_and_build.tex} & Whole chapter & \path{chapter_user_installation.tex} and \path{chapter_development_environment_and_build.tex} & mapped \\
+\hline
+\path{chapter_graphical_interface_first_steps.tex} & Whole chapter & \path{chapter_main_graphical_application.tex} and \path{chapter_first_model.tex} & mapped \\
+\hline
+\path{chapter_example_models.tex} & Whole chapter & \path{chapter_first_model.tex} and \path{chapter_model_specific_and_advanced_examples.tex} & mapped \\
+\hline
+\path{chapter_execution_observation_simulang.tex} & Whole chapter & \path{chapter_running_simulations.tex}, \path{chapter_results_traces_and_reports.tex}, and \path{chapter_model_language_for_users.tex} & mapped \\
+\hline
+\path{chapter_source_organization_architecture.tex} & Whole chapter & \path{chapter_repository_architecture.tex} & mapped \\
+\hline
+\path{chapter_kernel_overview.tex} & Whole chapter & \path{chapter_kernel_lifecycle_and_managers.tex} and \path{chapter_event_scheduling_and_replications.tex} & mapped \\
+\hline
+\path{chapter_components_model_data_plugins.tex} & Whole chapter & \path{chapter_model_components_and_data_definitions.tex} and \path{chapter_plugin_registration_and_architecture.tex} & mapped \\
+\hline
+\path{chapter_parser_expressions_language.tex} & Whole chapter & \path{chapter_parser_architecture.tex} and \path{chapter_expression_language_reference.tex} & mapped \\
+\hline
+\path{chapter_applications_tools_tests_evolution.tex} & Whole chapter & \path{chapter_application_architecture.tex}, \path{chapter_tools_and_algorithms.tex}, \path{chapter_testing_and_validation.tex}, and \path{chapter_governance_and_contribution.tex} & mapped \\
+\hline
+\end{tabular}%
+}
+\end{table}
