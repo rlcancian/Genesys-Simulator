@@ -141,7 +141,7 @@ This organization is particularly valuable because it gives the developer a way 
 \subsection{Why Tests Are Part of the Architecture, Not Just the Routine}
 \label{subsec:cap10_testes_parte_arquitetura}
 
-It is common to think of testing only as an activity external to the main project. In GenESyS, however, they must be read in a stronger way: as part of the system's evolutionary infrastructure. This is particularly important because the software has:
+It is common to think of testing only as an activity external to the main project. In GenESyS, however, they must be read as part of the system's evolutionary infrastructure. This is particularly important because the software has:
 \begin{itemize}
  \item relatively dense kernel;
  \item extension mechanisms;
@@ -154,7 +154,7 @@ In a context like this, changing code without testing support tends to be risky.
 \subsection{How the Developer Should Use the Tests}
 \label{subsec:cap10_como_usar_testes}
 
-A mature development practice in GenESyS must consider testing in at least three moments:
+A disciplined development practice in GenESyS must consider testing in at least three moments:
 \begin{enumerate}
  \item before the change, to understand the current basis of behavior;
  \item during the change, to avoid local regressions;
@@ -197,7 +197,7 @@ and becomes:
  At which layer of the system does my change make the most sense architecturally?
 \end{quote}
 
-This change in perspective is what distinguishes an opportunistic modification from a technically mature contribution.
+This change in perspective is what distinguishes an opportunistic modification from a technically grounded contribution.
 
 \subsection{How to Choose an Entry Point for Contribution}
 \label{subsec:cap10_como_escolher_ponto_entrada}
@@ -224,7 +224,7 @@ Examples and tests play complementary roles in software evolution.
  \item Tests help verify \emph{se o sistema continua correto} when being modified.
 \end{itemize}
 
-A mature GenESyS developer needs to value both. Without examples, the system loses its ability to demonstrate and learn. Without testing, you lose evolutionary security.
+A GenESyS developer needs to value both. Without examples, the system loses its ability to demonstrate and learn. Without testing, you lose evolutionary security.
 
 \section{An Integrated Final View of GenESyS}
 \label{sec:cap10_visao_final_integrada_genesys}
@@ -275,7 +275,7 @@ This integrated view is important because it avoids too partial readings. GenESy
 
 This chapter has closed the main structure of the developer's manual by showing that \textit{GenESyS} should not only be read for its central classes, but also for its ecosystem of applications, tools, examples and tests. The GUI now appears as an application on top of the core. The Shell application and the model-specific examples in \texttt{C++} reveal the use of the simulator as a library. Tools expand the development environment. The test tree provides the basis for safe evolution. And the general organization of the project shows that GenESyS should be thought of as a software platform, and not just as a ready-made simulator.
 
-With this, the reader now has a sufficiently broad and technically grounded view to use, study and expand GenESyS in a mature way. From here, further development can follow different paths: review and improvement of the GUI, more detailed study of components and \textit{plugins}, evolution of the parser, strengthening of the testing infrastructure, development of new applications or creation of new modeling domains on the same core. In all these cases, the logic remains the same: understand the correct layer, respect the system architecture and evolve the simulator based on its own structural principles.
+With this, the reader now has a sufficiently broad and technically grounded view to use, study and expand GenESyS in a careful way. From here, further development can follow different paths: review and improvement of the GUI, more detailed study of components and \textit{plugins}, evolution of the parser, strengthening of the testing infrastructure, development of new applications or creation of new modeling domains on the same core. In all these cases, the logic remains the same: understand the correct layer, respect the system architecture and evolve the simulator based on its own structural principles.
 
 Test your understanding of this content by answering the following questions:
 

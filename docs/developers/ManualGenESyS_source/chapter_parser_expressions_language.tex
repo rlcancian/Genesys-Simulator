@@ -101,7 +101,7 @@ This decision greatly improves the robustness of the system and helps explain wh
 \section{The GenESyS Bison/Flex Grammar}
 \label{sec:cap9_gramatica_bison_flex}
 
-The concrete implementation of the parser in \texttt{source/parser/parserBisonFlex} clearly shows the maturity of this subsystem. The \texttt{bisonparser.yy} file defines a C++ grammar based on \texttt{lalr1.cc}, with its own parser class, typed tokens, localizations, support code, and explicit integration with \texttt{genesyspp\_driver}. This shows that the parser was designed as a serious component of the simulator infrastructure, and not as an improvised textual routine.
+The concrete implementation of the parser in \texttt{source/parser/parserBisonFlex} shows a well-defined implementation of this subsystem. The \texttt{bisonparser.yy} file defines a C++ grammar based on \texttt{lalr1.cc}, with its own parser class, typed tokens, localizations, support code, and explicit integration with \texttt{genesyspp\_driver}. This shows that the parser was designed as an explicitly documented component of the simulator infrastructure, and not as an improvised textual routine.
 
 Grammar covers, among other elements:
 \begin{itemize}
@@ -143,7 +143,7 @@ This is very important for the developer, because it shows that:
 
 One of the most interesting features of the GenESyS parser is its explicit dependence on the current state of the simulation. The grammar shows, for example, that access to attributes depends on the current entity associated with the current event. Likewise, functions such as \texttt{TNOW}, \texttt{TFIN}, number of repetitions and identifiers of the current entity depend on the state maintained in \texttt{ModelSimulation} and the current event.
 
-This feature is architecturally strong because it reveals that the interpretation of expressions in GenESyS is contextual. The same expression can have different meanings depending on:
+This feature is architecturally important because it reveals that the interpretation of expressions in GenESyS is contextual. The same expression can have different meanings depending on:
 \begin{itemize}
  \item the loaded model;
  \item the current entity;
@@ -208,7 +208,7 @@ For the developer, this means that working with language in GenESyS is not limit
  \item connect new parsers to the simulator.
 \end{itemize}
 
-Even though this infrastructure is still maturing, it already guides the correct way of thinking about the evolution of language.
+Even though this infrastructure is still under development, it already guides a sensible way of thinking about the evolution of language.
 
 \section{Erros, mensagens e robustez}
 \label{sec:cap9_erros_mensagens_robustez}

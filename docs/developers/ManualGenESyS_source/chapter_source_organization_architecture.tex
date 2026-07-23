@@ -9,7 +9,7 @@ From this point on, the book explicitly enters its second half: the developer's 
 
 Before studying the core of the simulator or discussing \textit{plugins}, parser and applications, it is necessary to build an overview of the repository organization. Without this vision, the developer tends to get lost in files and classes without realizing the architectural function of each region of the code. The goal of this chapter is precisely to avoid this problem. Instead of immediately presenting local details, it organizes the overall project map.
 
-The central idea is simple. \textit{GenESyS} should not be read as an amorphous set of \texttt{C++} files, but as a system divided into areas with distinct responsibilities. Some of these areas underpin the core of the simulation. Others organize the extensibility mechanism. Still others implement applications, tools and tests. Understanding this division is the first step to any mature technical reading of the project.
+The central idea is simple. \textit{GenESyS} should not be read as an amorphous set of \texttt{C++} files, but as a system divided into areas with distinct responsibilities. Some of these areas underpin the core of the simulation. Others organize the extensibility mechanism. Still others implement applications, tools and tests. Understanding this division is the first step to a careful technical reading of the project.
 
 \section{From Simulator Application to Software System}
 \label{sec:cap6_do_simulador_como_aplicacao_ao_software}
@@ -118,7 +118,7 @@ The \texttt{source/tools} folder brings together tools that support the use, dev
 
 The \texttt{source/tests} folder represents the project validation dimension. It is especially important for the developer because it offers a concrete path to verify expected behavior, prevent regressions and provide security for changes to the system.
 
-In evolving projects, the existence of an organized test tree is one of the main signs of technical maturity. In GenESyS, this is particularly relevant because the software has multiple layers and extensibility mechanisms.
+In evolving projects, the existence of an organized test tree is one indication of disciplined development. In GenESyS, this is particularly relevant because the software has multiple layers and extensibility mechanisms.
 
 \section{A Layered Reading of the System}
 \label{sec:cap6_leitura_em_camadas}
