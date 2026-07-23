@@ -2,12 +2,323 @@
 \chapter{GUI Architecture}
 \label{chap:gui-architecture}
 
-This chapter is part of the new editorial skeleton for the developer manual. It keeps the GUI architecture chapter stable while the widget and window story is rewritten.
+This chapter documents the current Qt6 GUI architecture as it exists in the active branch on 2026-07-23. It is based on the current GUI sources, the generated UI file, and the extracted controller/service classes used by the \texttt{MainWindow} compatibility facade. The chapter describes the current snapshot, not a future idealized split.
 
-\noindent\textbf{Objective.} Describe the architecture of the main graphical interface.
+\noindent\textbf{Objective.} Explain how the main graphical interface is composed, which classes own each responsibility, and how user actions travel from widgets to controllers, scene objects, and simulator callbacks.
 
-\noindent\textbf{Audience.} Developers who change the GUI or need to trace user actions through the interface layer.
+\noindent\textbf{Audience.} Developers who need a faithful map of the GUI before changing actions, view wiring, property editing, plugin presentation, persistence, or simulation interactions.
 
-\noindent\textbf{Scope.} Cover windows, panels, presentation state, and the GUI boundary to the simulation core.
+\noindent\textbf{Scope.} Cover the MainWindow composition root, the widget and scene boundaries, controller and service responsibilities, signal/slot and callback wiring, model open/save flows, and the simulation action path.
 
-\noindent\textbf{Status.} Temporary skeleton only; the detailed GUI architecture content will come later.
+\noindent\textbf{Status.} Confirmed by repository inspection on 2026-07-23. The chapter describes the current architecture snapshot and explicitly includes the remaining compatibility wrappers.
+
+The chapter follows Figure~\ref{fig:gui-architecture-component-map},
+Figure~\ref{fig:gui-architecture-controller-map},
+Figure~\ref{fig:gui-architecture-signal-flow},
+Figure~\ref{fig:gui-architecture-model-open},
+and Figure~\ref{fig:gui-architecture-simulation-flow}.
+
+\section{MainWindow as the composition root}
+\label{sec:gui-architecture-mainwindow}
+
+\texttt{MainWindow} is still the GUI composition root. The current implementation is split across \texttt{mainwindow.cpp}, \texttt{mainwindow\_controller.cpp}, \texttt{mainwindow\_scene.cpp}, and \texttt{mainwindow\_simulator.cpp}, but the class itself remains the top-level place where UI objects are created, controller dependencies are wired, and compatibility slots are exposed.
+
+The constructor in \texttt{mainwindow.cpp} creates the generated UI, the simulator, the trace and property support objects, the extracted controllers, and the helper services used by the editor. The generated \texttt{mainwindow.ui} file still provides the widgets, menus, tabs, toolbars, dock panes, and action objects, while the C++ constructor wires them into the controller stack.
+
+The current design is not a pure passive view. \texttt{MainWindow} still owns some coordination duties:
+\begin{itemize}
+\item it creates the controller graph;
+\item it registers the remaining compatibility slots used by the generated UI;
+\item it connects scene signals to legacy handlers;
+\item it keeps some cross-cutting state such as the active model tabs, selection state, and recent-file menu;
+\item it mediates between the generated UI and the extracted controllers.
+\end{itemize}
+
+This means the GUI is already partially modular, but not fully flattened into independent presenter or service layers. The chapter therefore treats \texttt{MainWindow} as a compatibility facade that delegates selected responsibilities instead of pretending that the split is already complete.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:gui-architecture-component-map
+% Source of truth:
+%   - ../source/applications/gui/genesys/mainwindow.h
+%   - ../source/applications/gui/genesys/mainwindow.cpp
+%   - ../source/applications/gui/genesys/mainwindow.ui
+%   - ../source/applications/gui/genesys/graphicals/ModelGraphicsView.h
+%   - ../source/applications/gui/genesys/graphicals/ModelGraphicsScene.h
+%   - ../source/applications/gui/genesys/controllers/TraceConsoleController.h
+%   - ../source/applications/gui/genesys/controllers/PropertyEditorController.h
+%   - ../source/applications/gui/genesys/controllers/ModelInspectorController.h
+%   - ../source/applications/gui/genesys/controllers/PluginCatalogController.h
+%   - ../source/applications/gui/genesys/controllers/SimulationEventController.h
+% Purpose:
+%   Show the visible GUI widgets and the main service/controller blocks that sit beside them.
+% Required visual content:
+%   - the generated MainWindow UI widgets and panes
+%   - the graphics view and graphics scene
+%   - the trace console, property editor, plugin tree, and model trees
+%   - the major controller blocks that attach to those widgets
+% Accessibility description:
+%   A top-level GUI map that helps the reader identify which widget owns each responsibility.
+% Validation:
+%   Every widget, scene, and controller block must correspond to a real class or generated UI object in the current tree.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/gui-architecture-component-map}
+\caption{Current GUI component map and the main controller blocks attached to it.}
+\label{fig:gui-architecture-component-map}
+\end{figure}
+
+Figure~\ref{fig:gui-architecture-component-map} is the entry point for the rest of the chapter. It separates visible widgets from the controller and service objects that keep them synchronized.
+
+\section{Controller and service map}
+\label{sec:gui-architecture-controller-map}
+
+The GUI is already organized around focused controller and service classes. Their current roles are visible in the class headers and in the constructor wiring inside \texttt{mainwindow.cpp}:
+\begin{itemize}
+\item \texttt{ModelLifecycleController} owns new/open/save/close/check/configure/exit orchestration;
+\item \texttt{SimulationController} validates simulation readiness before unsafe commands;
+\item \texttt{SimulationCommandController} turns start/step/pause/resume/stop requests into simulator calls;
+\item \texttt{SimulationEventController} bridges kernel simulation events back to the GUI;
+\item \texttt{TraceConsoleController} renders simulator traces into the console, simulation, and reports panes;
+\item \texttt{ModelInspectorController} keeps the component and data-definition trees synchronized with the scene;
+\item \texttt{PropertyEditorController} binds scene selection to the property editor and coalesces post-commit refreshes;
+\item \texttt{PluginCatalogController} owns the plugin tree presentation and insertion affordances;
+\item \texttt{SceneToolController} owns zoom, drawing, animation, and layout commands;
+\item \texttt{GraphicalContextMenuController} builds the scene context menu using existing actions;
+\item \texttt{DialogUtilityController} owns the auxiliary dialogs and utility actions;
+\item \texttt{GraphicalModelSerializer}, \texttt{GraphicalModelBuilder}, \texttt{ModelLanguageSynchronizer}, \texttt{GraphvizModelExporter}, and \texttt{CppModelExporter} keep persistence and representation work out of the widget code;
+\item \texttt{GuiExtensionManager} rebuilds the extension surface from the loaded model plugins.
+\end{itemize}
+
+The important boundary is that these classes are not just helper functions. They are the current seam between the generated Qt widget tree and the rest of the application layer. In other words, the GUI already has a service/controller tier, but the legacy \texttt{MainWindow} wrappers still remain as compatibility glue.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:gui-architecture-controller-map
+% Source of truth:
+%   - ../source/applications/gui/genesys/mainwindow.cpp
+%   - ../source/applications/gui/genesys/mainwindow_controller.cpp
+%   - ../source/applications/gui/genesys/mainwindow_scene.cpp
+%   - ../source/applications/gui/genesys/mainwindow_simulator.cpp
+%   - ../source/applications/gui/genesys/controllers/ModelLifecycleController.h
+%   - ../source/applications/gui/genesys/controllers/SimulationController.h
+%   - ../source/applications/gui/genesys/controllers/SimulationCommandController.h
+%   - ../source/applications/gui/genesys/controllers/SimulationEventController.h
+%   - ../source/applications/gui/genesys/controllers/TraceConsoleController.h
+%   - ../source/applications/gui/genesys/controllers/ModelInspectorController.h
+%   - ../source/applications/gui/genesys/controllers/PropertyEditorController.h
+%   - ../source/applications/gui/genesys/controllers/PluginCatalogController.h
+%   - ../source/applications/gui/genesys/controllers/SceneToolController.h
+%   - ../source/applications/gui/genesys/controllers/GraphicalContextMenuController.h
+%   - ../source/applications/gui/genesys/controllers/DialogUtilityController.h
+%   - ../source/applications/gui/genesys/services/GraphicalModelSerializer.h
+%   - ../source/applications/gui/genesys/services/GraphicalModelBuilder.h
+%   - ../source/applications/gui/genesys/services/ModelLanguageSynchronizer.h
+%   - ../source/applications/gui/genesys/services/GraphvizModelExporter.h
+%   - ../source/applications/gui/genesys/services/CppModelExporter.h
+%   - ../source/applications/gui/genesys/extensions/GuiExtensionManager.h
+% Purpose:
+%   Show which class owns each GUI responsibility and which classes remain as compatibility wrappers.
+% Required visual content:
+%   - the MainWindow compatibility facade
+%   - the extracted controllers
+%   - the persistence and representation services
+%   - the extension manager boundary
+% Accessibility description:
+%   A responsibility map that lets a maintainer see where to edit a given GUI workflow.
+% Validation:
+%   Every node must match a real class or service in the current source tree.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/gui-architecture-controller-map}
+\caption{Current controller and service responsibilities around the GUI facade.}
+\label{fig:gui-architecture-controller-map}
+\end{figure}
+
+Figure~\ref{fig:gui-architecture-controller-map} shows the current split: model lifecycle, simulation control, scene tools, property editing, plugin browsing, trace rendering, and dialog utilities are all already separated from the main widget tree.
+
+\section{Signal, slot, and callback wiring}
+\label{sec:gui-architecture-signals}
+
+The GUI uses a mix of Qt signals/slots and explicit callback injection.
+
+The direct Qt links still matter:
+\begin{itemize}
+\item \texttt{QAction} triggers map to legacy \texttt{MainWindow::on\_action...\_triggered()} slots;
+\item \texttt{QGraphicsScene::changed}, \texttt{focusItemChanged}, and \texttt{selectionChanged} are connected back into \texttt{MainWindow} scene handlers;
+\item the plugin tree, property editor tree, and several dialogs still use direct widget callbacks.
+\end{itemize}
+
+The extracted controllers then take over the heavier work through injected dependencies:
+\begin{itemize}
+\item \texttt{MainWindow} creates \texttt{ModelLifecycleController} with callbacks for console logging, model load/save, UI refresh, scene connection management, and textual synchronization;
+\item \texttt{MainWindow} creates \texttt{SimulationCommandController} with callbacks for command logging, action refresh, model checking, text-to-simulation synchronization, and clearing simulation outputs;
+\item \texttt{MainWindow} creates \texttt{PropertyEditorController} with callbacks for model-language refresh, component/data-definition refresh, C++ export refresh, model-image generation, and pane/action updates;
+\item \texttt{MainWindow} creates \texttt{SimulationEventController} with callbacks for action refresh, event panes, debug tree refresh, and graphical-model refresh;
+\item \texttt{ModelGraphicsView} accepts function callbacks for mouse, wheel, context-menu, and graphical-model event handling instead of hard-coding those paths in the widget class.
+\end{itemize}
+
+This is the main architectural fact to keep in mind when editing the GUI: the code is no longer a single nested slot file, but it is also not a pure signal-driven MVC stack. The current system is a controlled hybrid. Some behavior still routes through MainWindow wrappers, while the actual orchestration lives in small controllers and services.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:gui-architecture-signal-flow
+% Source of truth:
+%   - ../source/applications/gui/genesys/mainwindow.cpp
+%   - ../source/applications/gui/genesys/mainwindow_controller.cpp
+%   - ../source/applications/gui/genesys/mainwindow_scene.cpp
+%   - ../source/applications/gui/genesys/mainwindow_simulator.cpp
+%   - ../source/applications/gui/genesys/graphicals/ModelGraphicsView.h
+%   - ../source/applications/gui/genesys/controllers/PropertyEditorController.h
+%   - ../source/applications/gui/genesys/controllers/SimulationEventController.h
+%   - ../source/applications/gui/genesys/controllers/TraceConsoleController.h
+% Purpose:
+%   Show how QAction triggers, scene notifications, and controller callbacks flow through the GUI.
+% Required visual content:
+%   - the QAction to MainWindow slot path
+%   - the scene to MainWindow selection/change path
+%   - the MainWindow to controller callback injection path
+%   - the controller back to widget-update path
+% Accessibility description:
+%   A wiring diagram that clarifies where Qt signals end and explicit callbacks begin.
+% Validation:
+%   Every edge must follow a real slot, signal, or callback in the current code.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/gui-architecture-signal-flow}
+\caption{Signal, slot, and callback flow in the current GUI architecture.}
+\label{fig:gui-architecture-signal-flow}
+\end{figure}
+
+Figure~\ref{fig:gui-architecture-signal-flow} should be read as a routing diagram, not as an ownership diagram. Ownership and flow are related here, but they are not the same thing.
+
+\section{Model open and close flow}
+\label{sec:gui-architecture-model-open}
+
+The model lifecycle is managed by \texttt{ModelLifecycleController}, but the compatibility slot still lives in \texttt{MainWindow}.
+
+The open flow currently works like this:
+\begin{enumerate}
+\item the user activates \texttt{on\_actionModelOpen\_triggered()} or a recent-file action;
+\item \texttt{MainWindow} delegates to \texttt{ModelLifecycleController::onActionModelOpenTriggered()} or \texttt{openModelFile()};
+\item the controller resolves the file path and prefers a companion \texttt{.gui} file when the input is a \texttt{.gen} file and a matching graphical file exists;
+\item the controller logs the command into the console and calls the injected model-load callback;
+\item after a successful load, the controller marks the model as loaded, rebuilds the UI for the new model, clears dirty flags, updates recent-file state, and clears the undo stack when available;
+\item \texttt{MainWindow} then refreshes its recent-model menu and any dependent tabs or actions.
+\end{enumerate}
+
+The close flow stays in \texttt{MainWindow} for now, but it still interacts with the same lifecycle state:
+\begin{itemize}
+\item it checks whether the current model exists;
+\item it closes only the current tab/model pair, not every loaded model;
+\item it refreshes the action state after teardown.
+\end{itemize}
+
+This is a good example of the current compromise. The lifecycle orchestration is extracted, but the compatibility facade still hosts some tab and model-management behavior that has not yet been fully moved into the controller layer.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:gui-architecture-model-open
+% Source of truth:
+%   - ../source/applications/gui/genesys/mainwindow_controller.cpp
+%   - ../source/applications/gui/genesys/controllers/ModelLifecycleController.h
+%   - ../source/applications/gui/genesys/controllers/ModelLifecycleController.cpp
+%   - ../source/applications/gui/genesys/mainwindow.cpp
+%   - ../source/applications/gui/genesys/services/GraphicalModelSerializer.h
+%   - ../source/applications/gui/genesys/services/ModelLanguageSynchronizer.h
+% Purpose:
+%   Show the current open/recent-file/load sequence and where the GUI refreshes state afterward.
+% Required visual content:
+%   - the action trigger and wrapper slot
+%   - the lifecycle controller
+%   - the load callback and companion-file preference
+%   - the UI refresh and recent-file update path
+% Accessibility description:
+%   A sequence diagram that helps maintainers follow the model-open path from the menu to the scene.
+% Validation:
+%   The sequence must match the current load path for .gui and .gen inputs.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/gui-architecture-model-open}
+\caption{Current model open and close lifecycle around the GUI facade.}
+\label{fig:gui-architecture-model-open}
+\end{figure}
+
+Figure~\ref{fig:gui-architecture-model-open} captures the important user-visible promise: opening a model is not just file I/O, because it also restores the GUI state that goes with the loaded model.
+
+\section{Simulation action flow}
+\label{sec:gui-architecture-simulation-flow}
+
+Simulation actions use a two-layer guard:
+\begin{enumerate}
+\item \texttt{SimulationController} validates readiness, current-model existence, and the model-check/text-sync preconditions;
+\item \texttt{SimulationCommandController} translates the action into start, step, pause, resume, or stop behavior and then calls \texttt{ModelSimulation}.
+\end{enumerate}
+
+The command controller also updates \texttt{AnimationTransition} flags and inserts the corresponding command into the console. That keeps simulation bookkeeping aligned with the textual command history and the graphical animation state.
+
+Event reactions are handled separately by \texttt{SimulationEventController}:
+\begin{itemize}
+\item model-check success updates the graphical data-definition layer;
+\item replication and simulation start/end events update the progress bar, event table, and tab state;
+\item process and entity events drive the simulation and graphical progress paths;
+\item the \texttt{setOnEventHandlers()} bridge registers the kernel callbacks through the compatibility facade.
+\end{itemize}
+
+Trace output is routed through \texttt{TraceConsoleController}, not through the simulation command path. That separation matters because trace rendering is presentation logic, while simulation commands are execution logic.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:gui-architecture-simulation-flow
+% Source of truth:
+%   - ../source/applications/gui/genesys/mainwindow_controller.cpp
+%   - ../source/applications/gui/genesys/mainwindow_simulator.cpp
+%   - ../source/applications/gui/genesys/controllers/SimulationController.h
+%   - ../source/applications/gui/genesys/controllers/SimulationCommandController.h
+%   - ../source/applications/gui/genesys/controllers/SimulationEventController.h
+%   - ../source/applications/gui/genesys/controllers/TraceConsoleController.h
+%   - ../source/applications/gui/genesys/animations/AnimationTransition.h
+% Purpose:
+%   Show how the start/step/pause/resume/stop actions reach the simulator and then return UI events.
+% Required visual content:
+%   - the readiness guard
+%   - the command controller
+%   - the simulator/model simulation call
+%   - the event controller and trace bridge
+% Accessibility description:
+%   A command-and-response sequence that shows the GUI and simulator halves of a run.
+% Validation:
+%   Every action and callback must exist in the current source tree.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/gui-architecture-simulation-flow}
+\caption{Current simulation action flow through the GUI layer.}
+\label{fig:gui-architecture-simulation-flow}
+\end{figure}
+
+Figure~\ref{fig:gui-architecture-simulation-flow} is the cleanest place to see the current split between command issuance, simulation execution, and event-driven refresh.
+
+\section{Scene, property editor, and plugin catalog boundaries}
+\label{sec:gui-architecture-boundaries}
+
+Three GUI subsystems deserve separate mention because they are still coupled to the scene but no longer live entirely inside \texttt{MainWindow}:
+\begin{itemize}
+\item the plugin catalog is rebuilt from the kernel \texttt{PluginManager}, grouped by category, and kept as a drag source rather than a drop target;
+\item the property editor syncs scene selection into \texttt{PropertyEditorGenesys} and \texttt{ObjectPropertyBrowser}, then defers heavy refreshes when a property commit is already in progress;
+\item the graphics view owns the current \texttt{ModelGraphicsScene} wrapper and forwards context-menu, mouse, wheel, and selection events through injected callbacks.
+\end{itemize}
+
+That boundary is deliberately conservative. The GUI still uses scene-selection callbacks, direct widget refreshes, and a few legacy slots, but the meaningful logic is already in controller classes where it can be tested and reasoned about more locally.
+
+\section{Current limitations}
+\label{sec:gui-architecture-limitations}
+
+The current snapshot has a few important limits:
+\begin{itemize}
+\item \texttt{MainWindow} is still the compatibility facade, so the GUI is not yet a fully clean presenter/service split;
+\item several flows still rely on direct wrapper slots instead of a single modern event bus;
+\item \texttt{ModelGraphicsView} and \texttt{ModelGraphicsScene} still expose a legacy callback-heavy interface because the scene interactions are not fully signal-based yet;
+\item startup success does not prove that every GUI workflow is correct, only that the current wiring is coherent enough to initialize and delegate.
+\end{itemize}
+
+For maintainers, the practical rule is simple: change the extracted controller when the behavior is local to that responsibility, and change \texttt{MainWindow} only when the glue itself needs to change.
