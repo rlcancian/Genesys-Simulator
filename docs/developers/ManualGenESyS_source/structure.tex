@@ -19,13 +19,13 @@
 
 \newcommand{\numeroversaoapostila}{0.26.03}
 \newcommand{\anolongo}{2026}
-\newcommand{\datalonga}{Março de \anolongo}
-\newcommand{\versaoapostila}{Versão rascunho \numeroversaoapostila \newline Proibido compartilhar. Uso exclusivo em sala-de-aula.}
+\newcommand{\datalonga}{July \anolongo}
+\newcommand{\versaoapostila}{Draft version \numeroversaoapostila \newline Do not share. For classroom use only.}
 \newcommand{\nomeautor}{Rafael Luiz Cancian}
 \newcommand{\pronomenomeautor}{Prof. Dr. Eng. \nomeautor}
 \newcommand{\websiteautor}{www.ine.ufsc.br/rafael.cancian}
 \newcommand{\authorsfootnote}{\footnotesize{ \pronomenomeautor}}
-\newcommand{\booknamefootnote}{\footnotesize{Plataforma de Simulação GenESyS. \versaoapostila}}
+\newcommand{\booknamefootnote}{\footnotesize{GenESyS Simulation Platform. \versaoapostila}}
 
 %----------------------------------------------------------------------------------------
 %	VARIOUS REQUIRED PACKAGES AND CONFIGURATIONS
@@ -71,7 +71,7 @@
 
 %\usepackage{pdfpages} % para inserir páginas de arquivos pdf
 
-\usepackage[brazil]{babel} %{autolang} % English language/hyphenation
+\usepackage[english]{babel} %{autolang} % English language/hyphenation
 
 \usepackage{enumitem} % Customize lists
 \setlist{nolistsep} % Reduce spacing between bullet points and numbered lists
@@ -87,7 +87,7 @@
 \definecolor{ocre}{RGB}{25,25, 172} % Define the orange color used for highlighting throughout the book
 
 \usepackage{draftwatermark}
-\SetWatermarkText{RASCUNHO}%\safeincludegraphics{rascunho_marca_dagua.png}}
+\SetWatermarkText{DRAFT}%\safeincludegraphics{rascunho_marca_dagua.png}}
 \SetWatermarkAngle{60}
 \SetWatermarkScale{0.8}
 \SetWatermarkLightness{0.85}
@@ -148,7 +148,7 @@
         \begin{minipage}[c][0.18\textheight][c]{0.88\linewidth}
             \centering
             {\Huge ?}\par\vspace{0.5em}
-            \textbf{Figura não encontrada}\par\vspace{0.3em}
+            \textbf{Figure not found}\par\vspace{0.3em}
             \texttt{\detokenize{#1}}
         \end{minipage}
     }%
@@ -410,14 +410,14 @@
 \numberwithin{dummy}{section}
 \theoremstyle{ocrenumbox}
 \newtheorem{theoremeT}[dummy]{Theorem}
-\newtheorem{problem}{Exercício}[chapter]
-\newtheorem{exerciseT}{Exemplo}[chapter]
+\newtheorem{problem}{Problem}[chapter]
+\newtheorem{exerciseT}{Exercise}[chapter]
 \theoremstyle{blacknumex}
 \newtheorem{exampleT}{Example}[chapter]
 %\newtheorem{objetivosT}{Objetivos de aprendizagem:}[chapter]
 \theoremstyle{blacknumbox}
 \newtheorem{vocabulary}{V}[chapter]
-\newtheorem{definitionT}{Definição}[section]
+\newtheorem{definitionT}{Definition}[section]
 \newtheorem{corollaryT}[dummy]{Corollary}
 \theoremstyle{ocrenum}
 \newtheorem{proposition}[dummy]{Proposition}

@@ -189,7 +189,7 @@ The \texttt{OnEventManager} class allows you to register handlers for different 
 
 This infrastructure shows that GenESyS treats observability as a constitutive part of the kernel, and not as a mere peripheral interface resource.
 
-\subsection{Por que isso é arquiteturalmente importante}
+\subsection{Why this is architecturally important}
 \label{subsec:cap7_por_que_oneventmanager_importante}
 
 \texttt{OnEventManager} elegantly separates two things:
@@ -216,7 +216,7 @@ From the user's perspective, this appears in the GUI as the ability to pause or 
 
 This is an important architectural decision. It means that debugging, inspection, and controlled experimentation do not depend exclusively on the graphical application; they are based on the simulation core.
 
-\section{Uma leitura integrada do núcleo}
+\section{An integrated reading of the kernel}
 \label{sec:cap7_leitura_integrada_nucleo}
 
 The best way to understand the core of \textit{GenESyS} is to integrate the functions of the classes studied so far.
@@ -232,7 +232,7 @@ This integration helps to realize that the kernel is not a set of parallel class
 
 \begin{table}[htbp]
  \centering
- \caption{Papéis das classes centrais do núcleo do GenESyS.}
+ \caption{Roles of the core classes in the GenESyS kernel.}
  \label{tab:cap7_papeis_classes_centrais}
  \small
  \begin{tabular}{|p{3.6cm}|p{7.6cm}|}
