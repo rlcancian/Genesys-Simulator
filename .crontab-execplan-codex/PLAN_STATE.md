@@ -2,7 +2,7 @@
 
 RUN_STATE: EM_EXECUCAO
 HALT_REASON:
-CURRENT_STEP: MAN-F20-001
+CURRENT_STEP:
 NOTIFIED: NAO
 
 ## Etapas
@@ -29,7 +29,7 @@ NOTIFIED: NAO
 | MAN-F17-001 | Documentar troubleshooting e limitações | §25, §§50-51 | MAN-F16-001 | Não | done | 2026-07-23 |
 | MAN-F18-001 | Documentar ambiente de desenvolvimento e build | §26, §§50-51 | MAN-F17-001 | Não | done | 2026-07-23 |
 | MAN-F19-001 | Documentar a arquitetura do repositório | §27, §§50-51 | MAN-F18-001 | Não | done | 2026-07-23 |
-| MAN-F20-001 | Documentar kernel, lifecycle e managers | §28, §§50-51 | MAN-F19-001 | Não | in_progress | 2026-07-23 |
+| MAN-F20-001 | Documentar kernel, lifecycle e managers | §28, §§50-51 | MAN-F19-001 | Não | done | 2026-07-23 |
 | MAN-F21-001 | Documentar eventos e replicações | §29, §§50-51 | MAN-F20-001 | Não | pending | - |
 | MAN-F22-001 | Documentar representação e persistência de modelos | §30, §§50-51 | MAN-F21-001 | Não | pending | - |
 | MAN-F23-001 | Documentar Components e ModelData | §31, §§50-51 | MAN-F22-001 | Não | pending | - |
@@ -54,6 +54,7 @@ NOTIFIED: NAO
 
 ## Log resumido (últimas execuções)
 
+- 2026-07-23: MAN-F20-001 concluida. `chapter_kernel_lifecycle_and_managers.tex` saiu do esqueleto e passou a documentar o `Simulator` como kernel facade, a ordem de startup e teardown dos managers, as fronteiras de ownership confirmadas no código, o lifecycle de `Model`, `ModelManager`, `PluginManager`, `TraceManager`, `ParserManager` e `ExperimentManager`, e os TODOs ainda abertos; `./make.sh` recompilou `docs/ManualGenESyS.pdf` para 224 paginas. [revisao sugerida] a redacao manteve `ParserManager` e `ExperimentManager` explicitamente incompletos porque o codigo atual ainda expõe workflows TODO nesses dois managers.
 - 2026-07-23: MAN-F18-001 concluida. `chapter_development_environment_and_build.tex` deixou o esqueleto e passou a documentar o baseline Ubuntu 24.04/CMake 3.24+/Ninja/C++23/Qt6, a matriz atual de presets configure/build/test, os build trees separados por preset, os target families reais, o caminho de sanitizer focado em `genesys_test_simulator_plugin_completion_lifetime`, e a postura conservadora sem preset de release nativo; `./make.sh` recompilou `docs/ManualGenESyS.pdf` para 214 paginas. [revisao sugerida] a redacao tratou release como ausente no inventario atual e sanitizer como caminho focado em target, porque o tree atual nao expõe presets nativos para esses modos.
 - 2026-07-23: MAN-F19-001 concluida. `chapter_repository_architecture.tex` saiu do esqueleto e passou a documentar o mapa real do repositório, a hierarquia CMake, os targets centrais, as camadas kernel/parser/plugins/applications/tools/tests, as areas de suporte (`docs/`, `models/`, `debian/`, `packaging/`, `scripts/`) e o workspace MCP como integracao fora do grafo raiz; `./make.sh` recompilou `docs/ManualGenESyS.pdf` para 218 paginas. [revisao sugerida] o `source/applications/mcp/` foi tratado como workspace de integracao fora do grafo de build raiz porque o CMake atual nao o adiciona por `add_subdirectory()`.
 - 2026-07-23: MAN-F17-001 concluida. `chapter_troubleshooting_and_known_limitations.tex` saiu do esqueleto e passou a documentar a triagem por subsistema, os problemas de build/startup, o caminho de display sem janela via Xvfb privado, as falhas de abertura e validacao de modelo, os erros de parser com a saida `Unknown parser error.` quando necessario, as limitacoes atuais do plugin manager, o boundary local/privado do worker, os helper tools apenas startup-validated, e o caminho de log `crashesAndLogs.log` com o fluxo About/Report Issue; `./make.sh` recompilou `docs/ManualGenESyS.pdf` para 210 paginas. [revisao sugerida] a redacao tratou como limites correntes o que o codigo e o STATUS ainda nao validam completamente, incluindo startup sem prova de workflow, worker fora da rede local e tools auxiliares fora de validacao funcional completa.
