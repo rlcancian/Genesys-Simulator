@@ -2,12 +2,348 @@
 \chapter{Development Environment and Build}
 \label{chap:development-environment-and-build}
 
-This chapter is part of the new editorial skeleton for the developer manual. It keeps the build chapter anchored while the real developer workflow is reorganized.
+This chapter describes the current build surface for GenESyS as it exists in
+the repository now. It is based on the active root README, the current
+\texttt{CMakePresets.json}, the local-agent runbook, and the focused sanitizer
+path that already exists in \texttt{source/tests/}. The chapter does not
+invent a release workflow that the repository does not currently expose.
 
-\noindent\textbf{Objective.} Describe the environment and build surface used by developers working on GenESyS.
+\noindent\textbf{Objective.} Describe the environment, presets, target families,
+and validation paths used by developers building GenESyS from source.
 
-\noindent\textbf{Audience.} Contributors, maintainers, and anyone who needs to configure the project from source.
+\noindent\textbf{Audience.} Contributors, maintainers, and anyone who needs to
+configure, build, and check the project locally.
 
-\noindent\textbf{Scope.} Cover the toolchain baseline, build presets, and the expectations for a reproducible local development setup.
+\noindent\textbf{Scope.} Cover the toolchain baseline, the current preset
+matrix, separate build trees, debug and sanitizer posture, and the current
+cleanup/incremental-build expectations.
 
-\noindent\textbf{Status.} Temporary skeleton only; the concrete build instructions will be migrated later.
+\noindent\textbf{Status.} Confirmed by repository inspection and local command
+execution on 2026-07-23. The chapter records the current build surface rather
+than a hypothetical future release configuration.
+
+The chapter follows this sequence:
+Figure~\ref{fig:dev-build-pipeline},
+Figure~\ref{fig:dev-preset-matrix},
+Figure~\ref{fig:dev-target-families}, and
+Figure~\ref{fig:dev-dependency-tree}.
+
+\section{Baseline toolchain}
+\label{sec:dev-baseline-toolchain}
+
+The documented platform baseline is Ubuntu 24.04 with \texttt{CMake}
+3.24 or newer, \texttt{Ninja}, \texttt{C++23} with compiler extensions
+disabled, and Qt6 for the graphical applications. The current
+\texttt{CMakePresets.json} encodes that policy directly by requiring
+\texttt{CMAKE\_CXX\_STANDARD 23}, \texttt{CMAKE\_CXX\_STANDARD\_REQUIRED ON},
+and \texttt{CMAKE\_CXX\_EXTENSIONS OFF}.
+
+The local validation snapshot captured the following versions:
+\begin{itemize}
+\item \texttt{cmake} 3.28.3;
+\item \texttt{ninja} 1.11.1;
+\item \texttt{g++} 13.3.0;
+\item Qt 6.4.2 via \texttt{qtpaths6 --qt-version}.
+\end{itemize}
+
+The repository root README still describes the intended baseline as
+\texttt{CMake} 3.24 or newer, \texttt{Ninja}, \texttt{C++23}, Qt6, and the
+configured Google Test fallback. That is the policy baseline; the versions
+above are the observed local environment used for this chapter revision.
+
+\subsection{Why the build surface is split}
+\label{subsec:dev-why-build-surface-split}
+
+GenESyS is not built as one monolith with a single universal preset. The
+current preset matrix separates tests, shell, worker, GUI, and
+model-specific targets into distinct build trees so that each workflow can be
+configured and rebuilt independently.
+
+This separation matters because different development tasks need different
+dependencies and different validation scopes. A shell or model-specific build
+does not need the same GUI surface as \texttt{gui-app}; a focused unit or
+sanitizer check does not need the entire application set.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:dev-build-pipeline
+% Source of truth:
+%   - ../README.md
+%   - ../docs/ai_assistants/runbooks/LOCAL_AGENT.md
+%   - ../CMakePresets.json
+%   - ../source/tests/CMakeLists.txt
+% Purpose:
+%   Show the current configure -> build -> test flow for the main preset families.
+% Required visual content:
+%   - repository baseline and version checks
+%   - configure step with a named preset
+%   - build step with the matching build preset
+%   - test step when the preset family has a test preset
+% Accessibility description:
+%   A pipeline diagram that explains how a developer moves from toolchain check to configure, build, and validation.
+% Validation:
+%   The command names and arrows must match the current presets and runbook guidance.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/dev-build-pipeline}
+\caption{Current configure, build, and test pipeline.}
+\label{fig:dev-build-pipeline}
+\end{figure}
+
+Figure~\ref{fig:dev-build-pipeline} is the canonical view of the local
+developer workflow. It should make it obvious that configure, build, and test
+are separate steps and that the test step only exists where the preset family
+defines it.
+
+\section{Current preset matrix}
+\label{sec:dev-current-preset-matrix}
+
+The current \texttt{cmake --list-presets=all} output is grouped into configure,
+build, and test presets. The configure presets are:
+\begin{itemize}
+\item \texttt{tests-unit};
+\item \texttt{tests-kernel-unit};
+\item \texttt{genesys\_shell};
+\item \texttt{terminal-smart};
+\item \texttt{terminal-model-specific};
+\item \texttt{genesys\_modelspecific\_app};
+\item \texttt{terminal-smart-hold-search-remove};
+\item \texttt{terminal-smart-ai-assistant};
+\item \texttt{worker-app};
+\item \texttt{genesys\_worker\_app};
+\item \texttt{gui-app};
+\item \texttt{gui-httpworker};
+\item \texttt{gui-dataanalyser};
+\item \texttt{gui-optimizer};
+\item \texttt{gui-ai-assistant};
+\item \texttt{tests-smoke}.
+\end{itemize}
+
+The build presets mirror the same names, with a special case for
+\texttt{tests-kernel-unit-run} as the command-side alias for the kernel unit
+test runner. The test presets are currently limited to
+\texttt{tests-unit}, \texttt{tests-kernel-unit}, and \texttt{tests-smoke}.
+
+All named configure presets currently inherit \texttt{debug-base}. That means
+the current named surface is debug-oriented. There is no dedicated release
+preset in the current inventory, so release builds must be introduced and
+revalidated explicitly if they are needed later.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:dev-preset-matrix
+% Source of truth:
+%   - ../CMakePresets.json
+%   - ../README.md
+% Purpose:
+%   Present the current configure, build, and test preset families with their build trees.
+% Required visual content:
+%   - configure preset names
+%   - matching build preset names
+%   - matching test preset names
+%   - the separate build directory for each family
+% Accessibility description:
+%   A matrix or table that lets the reader choose the correct preset without guessing.
+% Validation:
+%   The displayed preset names must match the current preset inventory.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/dev-preset-matrix}
+\caption{Current preset matrix and build-tree separation.}
+\label{fig:dev-preset-matrix}
+\end{figure}
+
+Figure~\ref{fig:dev-preset-matrix} should make the current split explicit:
+tests use \path{build/tests-unit}, \path{build/tests-kernel-unit}, and
+\path{build/tests-smoke}; the shell uses \path{build/genesys_shell}; the
+worker uses \path{build/genesys_worker_app}; the GUI uses
+\path{build/gui-app}; and the model-specific variants use their own build
+trees under \path{build/}.
+
+\subsection{Main build commands}
+\label{subsec:dev-main-build-commands}
+
+The repository root README and the local-agent runbook both use the same
+command shape for configure and build. The current baseline examples are:
+\begin{itemize}
+\item \texttt{cmake --preset tests-unit};
+\item \texttt{cmake --build --preset tests-unit --parallel "\$(nproc)"};
+\item \texttt{ctest --preset tests-unit --output-on-failure};
+\item \texttt{cmake --preset tests-kernel-unit};
+\item \texttt{cmake --build --preset tests-kernel-unit --parallel "\$(nproc)"};
+\item \texttt{ctest --preset tests-kernel-unit --output-on-failure};
+\item \texttt{cmake --preset tests-smoke};
+\item \texttt{cmake --build --preset tests-smoke --parallel "\$(nproc)"};
+\item \texttt{ctest --preset tests-smoke --output-on-failure}.
+\end{itemize}
+
+Application builds follow the same pattern but target the application preset:
+\begin{itemize}
+\item \texttt{cmake --preset genesys\_shell};
+\item \texttt{cmake --build --preset genesys\_shell --parallel "\$(nproc)"};
+\item \texttt{cmake --preset genesys\_worker\_app};
+\item \texttt{cmake --build --preset genesys\_worker\_app --parallel "\$(nproc)"};
+\item \texttt{cmake --preset gui-app};
+\item \texttt{cmake --build --preset gui-app --parallel "\$(nproc)"}.
+\end{itemize}
+
+The same pattern applies to the independent GUI and model-specific presets.
+The build tree remains separate for each preset, so changing one family does
+not overwrite another family unless the developer deliberately reuses the same
+binary directory.
+
+\section{Target families}
+\label{sec:dev-target-families}
+
+The current preset set maps onto a small number of real target families:
+\begin{itemize}
+\item regression tests: \texttt{genesys\_kernel\_unit\_tests},
+\texttt{genesys\_kernel\_unit\_tests\_run}, and \texttt{genesys\_smoke\_tests};
+\item shell: \texttt{genesys\_shell};
+\item model-specific terminal application: \texttt{genesys\_terminal\_application};
+\item dedicated model-specific app: \texttt{genesys\_modelspecific\_app};
+\item worker: \texttt{genesys\_worker\_app};
+\item main GUI: \texttt{genesys\_gui};
+\item independent GUI frontends:
+\begin{itemize}
+\item \texttt{genesys\_httpworker\_gui\_application};
+\item \texttt{genesys\_dataanalyser\_gui\_application};
+\item \texttt{genesys\_optimizer\_gui\_application};
+\item \texttt{genesys\_ai\_assistant\_gui\_application}.
+\end{itemize}
+\end{itemize}
+
+The shell and model-specific presets also encode source selection through
+cache variables such as \texttt{GENESYS\_TERMINAL\_EXAMPLE} and
+\texttt{GENESYS\_MODELSPECIFIC\_APP}. That means the source tree selection is
+part of the build contract, not just an ad hoc command-line argument.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:dev-target-families
+% Source of truth:
+%   - ../CMakePresets.json
+%   - ../README.md
+% Purpose:
+%   Show which logical application family produces which build target.
+% Required visual content:
+%   - regression test family
+%   - shell family
+%   - worker family
+%   - main GUI family
+%   - independent GUI family
+% Accessibility description:
+%   A family map that lets the reader see which targets belong to each executable area.
+% Validation:
+%   Each family label must match a real target name in the current tree.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/dev-target-families}
+\caption{Current target families and their executable boundaries.}
+\label{fig:dev-target-families}
+\end{figure}
+
+Figure~\ref{fig:dev-target-families} should help developers avoid the common
+mistake of building the wrong family when the task only needs a single target
+or one independent GUI.
+
+\section{Dependency and decision tree}
+\label{sec:dev-dependency-tree}
+
+The current repository does not expose every possible build choice as a named
+preset. The conservative decision tree is simple:
+\begin{enumerate}
+\item If the task is about ordinary regression, use one of the test presets.
+\item If the task is about the interactive shell, use \texttt{genesys\_shell}.
+\item If the task is about the worker runtime, use \texttt{genesys\_worker\_app}.
+\item If the task is about the main GUI, use \texttt{gui-app}.
+\item If the task is about an independent GUI, use the matching GUI preset.
+\item If the task is about model-specific generation, use the matching
+terminal/model-specific preset.
+\item If the task needs a sanitizer, use the focused sanitizer-enabled test
+executable that already exists, rather than assuming a whole-repository
+sanitizer preset.
+\end{enumerate}
+
+The current sanitizer path is intentionally focused. In
+\texttt{source/tests/CMakeLists.txt}, the
+\texttt{genesys\_test\_simulator\_plugin\_completion\_lifetime} target adds
+\texttt{-fsanitize=address} and \texttt{-fno-omit-frame-pointer} under GNU or
+Clang, links with the matching sanitizer option, and runs with
+\texttt{ASAN\_OPTIONS=detect\_leaks=1:halt\_on\_error=1} and
+\texttt{LSAN\_OPTIONS=exitcode=23}. That proves a focused ownership/lifetime
+sanity path exists. It does not prove repository-wide leak freedom.
+
+The chapter's dependency diagram makes that choice explicit.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:dev-dependency-tree
+% Source of truth:
+%   - ../README.md
+%   - ../CMakePresets.json
+%   - ../source/tests/CMakeLists.txt
+% Purpose:
+%   Show how a developer chooses between test, shell, worker, GUI, model-specific, and sanitizer builds.
+% Required visual content:
+%   - root toolchain check
+%   - branch for tests
+%   - branch for shell/worker/GUI/model-specific apps
+%   - branch for focused sanitizer execution
+% Accessibility description:
+%   A decision tree that points the reader to the right preset and validation path.
+% Validation:
+%   The branch names and target names must match the current repository surface.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/dev-dependency-tree}
+\caption{Current build dependency decision tree.}
+\label{fig:dev-dependency-tree}
+\end{figure}
+
+Figure~\ref{fig:dev-dependency-tree} is the practical guide for selecting the
+right preset. It also makes the sanitizer boundary explicit: there is a real
+focused sanitizer path, but not a universal sanitizer preset.
+
+\section{Warnings, cleanup, and incremental build}
+\label{sec:dev-warnings-cleanup-incremental}
+
+The current workflow assumes incremental rebuilds inside each preset-specific
+build tree. That is the default \texttt{cmake --build} behavior: only changed
+targets are rebuilt unless the developer asks for a fresh configuration.
+
+Use a separate build tree when changing incompatible options. If the current
+cache becomes stale, rebuild from the affected \path{build/<preset>} tree
+instead of mixing unrelated preset state.
+
+Warnings should be treated conservatively:
+\begin{itemize}
+\item configuration warnings should be resolved or explicitly understood;
+\item build warnings should be checked against the target being changed;
+\item a successful build does not by itself validate runtime behavior;
+\item a successful startup does not by itself validate the workflow or the
+science behind it.
+\end{itemize}
+
+The current preset inventory is debug-oriented, so a release-oriented build
+requires a deliberate new configuration and a fresh validation pass. Likewise,
+sanitizers are currently a focused diagnostic path rather than a repository
+mode that can be assumed everywhere.
+
+\section{Validation snapshot}
+\label{sec:dev-validation-snapshot}
+
+The local documentation pass for this chapter used the following commands:
+\begin{itemize}
+\item \texttt{cmake --list-presets=all};
+\item \texttt{cmake --version};
+\item \texttt{ninja --version};
+\item \texttt{g++ --version};
+\item \texttt{qtpaths6 --qt-version};
+\item \texttt{source/tests/CMakeLists.txt} inspection for the focused sanitizer target.
+\end{itemize}
+
+The observed versions were \texttt{cmake} 3.28.3, \texttt{ninja} 1.11.1,
+\texttt{g++} 13.3.0, and Qt 6.4.2. Those values are the current evidence
+snapshot for this chapter revision and should be refreshed when the toolchain
+changes.
