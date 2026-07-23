@@ -14,7 +14,7 @@ NOTIFIED: NAO
 | MAN-F2-001 | Criar infraestrutura LaTeX e política de figuras | §10, §§50-51 | MAN-F1-001 | Não | done | 2026-07-23 |
 | MAN-F3-001 | Implementar a nova árvore editorial | §11, §§50-51 | MAN-F2-001 | Não | done | 2026-07-23 |
 | MAN-F4-001 | Front matter, rastreabilidade e evidência | §12, §§50-51 | MAN-F3-001 | Não | done | 2026-07-23 |
-| MAN-F5-001 | Documentar instalação para usuários | §13, §§50-51 | MAN-F4-001 | Não | pending | - |
+| MAN-F5-001 | Documentar instalação para usuários | §13, §§50-51 | MAN-F4-001 | Não | done | 2026-07-23 |
 | MAN-F6-001 | Documentar a visão geral das aplicações | §14, §§50-51 | MAN-F5-001 | Não | pending | - |
 | MAN-F7-001 | Documentar a aplicação gráfica principal | §15, §§50-51 | MAN-F6-001 | Não | pending | - |
 | MAN-F8-001 | Criar o primeiro modelo reproduzível | §16, §§50-51 | MAN-F7-001 | Não | pending | - |
@@ -54,6 +54,7 @@ NOTIFIED: NAO
 
 ## Log resumido (últimas execuções)
 
+- 2026-07-23: MAN-F5-001 concluida. O capitulo `chapter_user_installation.tex` passou a documentar o caminho Debian `genesys-gui`, a validacao local via `gui-app`, as localizacoes instaladas em `/usr/bin` e `/usr/share`, a confirmacao pelo menu About, update/remove via `apt` e cinco figuras estruturais com placeholders; `docs/ManualGenESyS.pdf` recompilado com 162 paginas. [revisao sugerida] o pacote `.deb` foi tratado como caminho principal de usuario e o build-tree `gui-app` como validacao local, mantendo o capitulo separado de instalacao de desenvolvimento.
 - 2026-07-23: MAN-F4-001 concluida. O front matter ganhou seccoes dedicadas para revision do repositorio, reading paths, safety/scientific validity e conventions; os novos arquivos registram branch `WorkInProgress`, commit `f3214dfbde92b28a292416f2abbb033af023d25d`, data `July 23, 2026`, ambiente `Ubuntu 24.04.4 LTS`, `CMake 3.28.3`, `g++ 13.3.0` e `Qt 6.4.2`; `docs/ManualGenESyS.pdf` recompilado com 156 paginas. [revisao sugerida] a divisao em arquivos `front_matter_*` e a permanencia do prefacio como introducao sintetica foram escolhas conservadoras para manter rastreabilidade sem ampliar o escopo da etapa.
 - 2026-07-23: MAN-F3-001 concluida. A nova arvore editorial foi adicionada com 32 stubs compilaveis do User/Developer Manual, a tabela de migracao foi incluida e o `book_content.tex` passou a expor a estrutura final antes de reter os capitulos legados em `Legacy Chapters (Temporary)`; `docs/ManualGenESyS.pdf` recompilado com 156 paginas. [revisao sugerida] a retencao temporaria da arvore legada e a tabela de migracao sao escolhas conservadoras para preservar rastreabilidade antes da limpeza futura.
 - 2026-07-23: MAN-F2-001 concluida. Infraestrutura LaTeX de figuras criada com macro `\figureplaceholder`, politica documentada no `README.md`, validacao reproduzivel em `validate_figure_specs.sh`, diretorios de destino materializados e exemplo compilavel adicionado em `preface.tex`; `docs/ManualGenESyS.pdf` recompilado com 86 paginas e a referencia da figura placeholder ficou resolvida. [revisao sugerida] a solucao adotou um placeholder estrutural conservador no proprio LaTeX e um verificador leve de `FIGURE-SPEC` para manter a politica auditavel sem introduzir dependencias novas.
