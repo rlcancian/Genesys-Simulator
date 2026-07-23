@@ -14,7 +14,7 @@ NOTIFIED: NAO
 | MAN-M1-002 | Inserir aviso de evidência, maturidade e segurança | §22 itens 7 e 14, §17.1, §17.2/MAN-M1-002 | MAN-M0-001 | Não | done | 2026-07-22T20:24:59-0300 |
 | MAN-M1-003 | Corrigir o texto de plugins estáticos | §22 item 6, §17.1, §17.2/MAN-M1-003 | MAN-M0-001 | Não | done | 2026-07-22T20:31:03-0300 |
 | MAN-M1-004 | Remover referências obsoletas ao terminal | §22 item 5, §17.1, §17.2/MAN-M1-004 | MAN-M0-001 | Não | done | 2026-07-22T20:51:53-0300 |
-| MAN-M1-005 | Adicionar aviso obrigatório contra deploy público | §22 item 8, §17.1, §17.2/MAN-M1-005 | MAN-M0-001 | Não | pending | - |
+| MAN-M1-005 | Adicionar aviso obrigatório contra deploy público | §22 item 8, §17.1, §17.2/MAN-M1-005 | MAN-M0-001 | Não | done | 2026-07-22T21:04:20-0300 |
 | MAN-M1-006 | Corrigir exageros de maturidade e linguagem científica | §22 itens 7 e 14, §17.1, §17.2/MAN-M1-006 | MAN-M0-001 | Não | pending | - |
 | MAN-M1-007 | Validar e corrigir a configuração de `hyperref` | §22 item 10, §17.1, §17.2/MAN-M1-007 | MAN-M1-001, MAN-M1-002, MAN-M1-003, MAN-M1-004, MAN-M1-005, MAN-M1-006, MAN-M1-008 | Não | pending | - |
 | MAN-M1-008 | Limpar português residual nos trechos tocados | §22 item 9, §17.1, §17.2/MAN-M1-008 | MAN-M1-001, MAN-M1-002, MAN-M1-003, MAN-M1-004, MAN-M1-005, MAN-M1-006 | Não | pending | - |
@@ -22,6 +22,7 @@ NOTIFIED: NAO
 
 ## Log resumido (últimas execuções)
 
+- 2026-07-22T21:04:20-0300: etapa MAN-M1-005 concluída. Reforçado o aviso de worker local/private only em `preface.tex` e `chapter_applications_tools_tests_evolution.tex`, deixando explícito que o manual não fornece instruções de public deployment. Validado com `cd docs/developers/ManualGenESyS_source && ./make.sh`; o PDF foi regenerado com os warnings preexistentes do manual.
 - 2026-07-22T20:51:53-0300: etapa MAN-M1-004 concluída. Atualizado o capítulo de aplicações para trocar `source/applications/terminal` por `source/applications/shell` e `source/applications/modelSpecific`, distinguindo `genesys_shell` de `genesys_modelspecific_app`. Validados `cmake --preset genesys_shell`, `cmake --preset genesys_modelspecific_app`, `cmake --build --preset genesys_shell --parallel "$(nproc)"` e `cmake --build --preset genesys_modelspecific_app --parallel "$(nproc)"`.
 - 2026-07-22T19:43:38-0300: baseline de MAN-M0-001 registrado. Branch `WorkInProgress`, SHA `f6a86cd57b573056c2d17424983e9b083d21e059`, data `2026-07-22T19:43:38-0300`. Fontes-base confirmadas nesta invocação: `PLAN.md`, `docs/ai_assistants/{README.md,GOVERNANCE.md,ARCHITECTURE.md,STATUS.md,BACKLOG_AUTONOMOUS.md,BACKLOG_HUMAN.md,runbooks/GITHUB_AGENT.md,reference/manual_figure_automation_plan.md}`, `docs/developers/ManualGenESyS_source/{README.md,ManualGenESyS.tex,book_content.tex,preface.tex,capa.tex,copyright.tex,structure.tex,make.sh,chapter_*.tex}`, `CMakeLists.txt`, `CMakePresets.json`, `source/**/CMakeLists.txt`, `debian/{control,rules}`, `.github/workflows/genesys-ci.yml`, `docs/ManualGenESyS.pdf`. Evidências e limitações mantidas conforme o plano.
 - 2026-07-22T20:05:00-0300: etapa MAN-M1-001 concluída. Validado `cmake --preset gui-app`, `cmake --build --preset gui-app --parallel "$(nproc)"` e a presença de `build/gui-app/source/applications/gui/genesys/genesys-gui`. Ajuste mantido no capítulo de instalação/build com os nomes reais de preset, alvo e executável.
