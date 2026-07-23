@@ -139,3 +139,28 @@ The current figure directory is `figs/`. It contains the active cover, chapter
 headers, and helper assets used by the book. The future automation plan for
 screenshots and developer diagrams is documented in
 `docs/ai_assistants/reference/manual_figure_automation_plan.md`.
+
+The manual now treats each figure as a first-class structural element. Future
+figures should follow this policy:
+
+- introduce the figure in the prose before the environment appears;
+- use a stable `\label{...}` and a caption that can stand on its own;
+- wrap every future figure block with `FIGURE-SPEC-BEGIN` and
+  `FIGURE-SPEC-END` comments so the source makes the intended content explicit;
+- place placeholders through the `\figureplaceholder{...}` macro until a final
+  asset exists;
+- keep source assets organized by destination:
+
+```text
+figs/screenshots/
+figs/architecture/
+figs/workflows/
+figs/results/
+figs/scientific/
+figs/generated/
+figs/source/
+```
+
+The helper script `./validate_figure_specs.sh` performs a lightweight
+reproducible check over the LaTeX sources to confirm that figure blocks keep
+their `FIGURE-SPEC` comments, captions, labels, and references aligned.
