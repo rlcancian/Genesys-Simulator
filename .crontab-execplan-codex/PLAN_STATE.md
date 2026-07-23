@@ -2,7 +2,7 @@
 
 RUN_STATE: EM_EXECUCAO
 HALT_REASON:
-CURRENT_STEP:
+CURRENT_STEP: MAN-F20-001
 NOTIFIED: NAO
 
 ## Etapas
@@ -29,7 +29,7 @@ NOTIFIED: NAO
 | MAN-F17-001 | Documentar troubleshooting e limitações | §25, §§50-51 | MAN-F16-001 | Não | done | 2026-07-23 |
 | MAN-F18-001 | Documentar ambiente de desenvolvimento e build | §26, §§50-51 | MAN-F17-001 | Não | done | 2026-07-23 |
 | MAN-F19-001 | Documentar a arquitetura do repositório | §27, §§50-51 | MAN-F18-001 | Não | done | 2026-07-23 |
-| MAN-F20-001 | Documentar kernel, lifecycle e managers | §28, §§50-51 | MAN-F19-001 | Não | pending | - |
+| MAN-F20-001 | Documentar kernel, lifecycle e managers | §28, §§50-51 | MAN-F19-001 | Não | in_progress | 2026-07-23 |
 | MAN-F21-001 | Documentar eventos e replicações | §29, §§50-51 | MAN-F20-001 | Não | pending | - |
 | MAN-F22-001 | Documentar representação e persistência de modelos | §30, §§50-51 | MAN-F21-001 | Não | pending | - |
 | MAN-F23-001 | Documentar Components e ModelData | §31, §§50-51 | MAN-F22-001 | Não | pending | - |
