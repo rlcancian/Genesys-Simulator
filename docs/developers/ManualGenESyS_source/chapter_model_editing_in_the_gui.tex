@@ -2,12 +2,330 @@
 \chapter{Model Editing in the GUI}
 \label{chap:model-editing-in-the-gui}
 
-This chapter is part of the new editorial skeleton for the user manual. It keeps the editing workflow chapter in the book while the detailed guidance is rewritten.
+This chapter turns the GUI from a passive viewer into an editing workspace. The goal is to show a
+reproducible path for creating or loading a model, changing it, checking it, saving it, and opening
+it again without losing the structure that was just edited.
 
-\noindent\textbf{Objective.} Explain how users edit a model through the graphical interface.
+The safest way to follow the chapter is to start from a checked-in example model such as
+\path{models/AirportSecurityExample.gen}, save a working copy, and make the edits in that copy. That
+keeps the original file intact and makes the round-trip easier to verify.
 
-\noindent\textbf{Audience.} Users who need to modify components, connections, and properties inside the GUI.
+The chapter is organized around these steps:
+Figure~\ref{fig:model-editing-workflow},
+Figure~\ref{fig:model-editing-connection},
+Figure~\ref{fig:model-editing-invalid-property},
+Figure~\ref{fig:model-editing-validation-message}, and
+Figure~\ref{fig:model-editing-save-reopen}.
 
-\noindent\textbf{Scope.} Cover the editing actions, the structure of the workspace, and the user-visible editing constraints that shape model maintenance.
+\noindent\textbf{Objective.} Show how a user can create, connect, edit, validate, save, and reopen a
+model through the graphical interface.
 
-\noindent\textbf{Status.} Temporary skeleton only; the full editing guide will be expanded later.
+\noindent\textbf{Audience.} Readers who already know the main GUI layout and now need to perform real
+editing work on a model.
+
+\noindent\textbf{Scope.} Cover the component insertion path, connection flow, property editing,
+duplicate/remove behavior, validation, and the persistence round-trip back to disk.
+
+The implementation used by the GUI is intentionally conservative. The current code exposes model
+creation, open, save, check, undo, redo, cut, copy, paste, delete, group, ungroup, and replace
+actions. There is no separate dedicated ``duplicate'' command in the current GUI path, so this chapter
+treats duplication as the documented copy-paste workflow.
+
+\section{Starting from a reproducible baseline}
+\label{sec:model-editing-baseline}
+
+Editing should begin from a stable model state. In practice, that means one of two things:
+\begin{itemize}
+\item create a new model from the GUI template;
+\item open an existing checked-in model and save it under a new name before editing.
+\end{itemize}
+
+For the purposes of this chapter, the second option is the better baseline. A checked-in example gives
+the reader a known starting point, a known structure, and a known file to compare before and after the
+edits.
+
+The relevant GUI entry points are the model lifecycle actions wired in the main window:
+\begin{itemize}
+\item \texttt{Model New};
+\item \texttt{Model Open};
+\item \texttt{Model Save};
+\item \texttt{Model Check}.
+\end{itemize}
+
+The same workspace also exposes the property editor, the component tree, the graphical scene, and the
+current model tabs. That combination is what makes editing possible without leaving the application.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:model-editing-workflow
+% Source of truth:
+%   - models/AirportSecurityExample.gen
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow_controller.cpp
+%   - source/applications/gui/genesys/controllers/ModelLifecycleController.cpp
+%   - source/applications/gui/genesys/controllers/PropertyEditorController.cpp
+%   - source/applications/gui/genesys/controllers/EditCommandController.cpp
+%   - source/applications/gui/genesys/mainwindow.cpp
+% Purpose:
+%   Show the practical editing loop from loading a model to selecting elements and changing properties.
+% Required visual content:
+%   - the loaded model canvas
+%   - the component tree or palette used to reach components
+%   - the property editor bound to a selected component
+%   - a visible indication that the model is in an editable state
+% Accessibility description:
+%   A workspace screenshot that proves the GUI is ready for model editing.
+% Validation:
+%   The screen must correspond to the checked-in model or its saved working copy and not to an unrelated scene.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/model-editing-workflow}
+\caption{Workspace ready for model editing.}
+\label{fig:model-editing-workflow}
+\end{figure}
+
+Figure~\ref{fig:model-editing-workflow} is the anchor for the rest of the chapter. Every later edit,
+connection, validation, and persistence step should be read against the same loaded model.
+
+\section{Creating components and placing them in the model}
+\label{sec:model-editing-creating-components}
+
+Once a model is open, editing begins by inserting or selecting components in the graphical scene. The
+GUI keeps the scene, the property editor, and the tree views synchronized so that selecting an element
+immediately exposes its editable fields.
+
+The practical sequence is simple:
+\begin{enumerate}
+\item choose the model or component source from the GUI;
+\item place a component in the scene;
+\item select the new component;
+\item confirm that the property editor follows the selection;
+\item repeat until the desired flow exists.
+\end{enumerate}
+
+If the user starts from a blank model, the same cycle applies, only with more insertions. If the user
+starts from the checked-in tutorial model, the cycle becomes a controlled edit to an existing flow.
+
+The main point is that creation is not separate from inspection. A component should be created and then
+immediately checked in the property editor, because most modeling errors start as a mismatch between the
+intended role of the component and its configured properties.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:model-editing-connection
+% Source of truth:
+%   - source/applications/gui/genesys/graphicals/ModelGraphicsScene.h
+%   - source/applications/gui/genesys/graphicals/ModelGraphicsView.h
+%   - source/applications/gui/genesys/controllers/EditCommandController.cpp
+%   - source/applications/gui/genesys/mainwindow.ui
+% Purpose:
+%   Show how one model component is connected to another in the graphical scene.
+% Required visual content:
+%   - two or more components with a visible connection path
+%   - source and destination ports or connection handles
+%   - the current scene state after the connection is made
+% Accessibility description:
+%   A close-up that makes the direction and ownership of the connection easy to understand.
+% Validation:
+%   The connection must be a real scene link between live components, not just a diagram sketch.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/model-editing-connection}
+\caption{Connection between model components.}
+\label{fig:model-editing-connection}
+\end{figure}
+
+Figure~\ref{fig:model-editing-connection} should show the connection workflow as it exists in the scene,
+not as an abstract diagram. The user should be able to recognize source and destination elements and
+see that the connection belongs to the current model.
+
+\section{Editing properties and provoking one controlled error}
+\label{sec:model-editing-properties-and-validation}
+
+Property editing is where the model becomes concrete. In the GUI, selecting a component or data
+definition updates the property editor so the user can change names, numeric parameters, expressions,
+and other configuration fields.
+
+The recommended sequence is:
+\begin{enumerate}
+\item select one component;
+\item change one safe property first;
+\item deliberately introduce one invalid property value;
+\item run \texttt{Model Check};
+\item read the error feedback in the console or dialog;
+\item correct the value and check again.
+\end{enumerate}
+
+This is not a decorative exercise. The point is to prove that the GUI does more than store the visual
+layout: it also validates the model before execution. The code path behind \texttt{Model Check} calls the
+model's own \texttt{check()} logic, refreshes the graphical data definitions when needed, and marks the
+model as valid or invalid based on the result.
+
+The chapter does not invent a separate validation mechanism. It uses the same check action that the GUI
+already exposes.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:model-editing-invalid-property
+% Source of truth:
+%   - source/applications/gui/genesys/controllers/PropertyEditorController.cpp
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - models/AirportSecurityExample.gen
+% Purpose:
+%   Show one deliberately invalid property value before validation is run.
+% Required visual content:
+%   - the selected component in the property editor
+%   - one property field containing an invalid or incomplete value
+%   - the edited scene in the background or nearby
+% Accessibility description:
+%   The invalid state must be visually obvious without needing to inspect raw files.
+% Validation:
+%   The property shown must be one that the model actually exposes in the current GUI.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/model-editing-invalid-property}
+\caption{A deliberately invalid property value before validation.}
+\label{fig:model-editing-invalid-property}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:model-editing-validation-message
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/controllers/ModelLifecycleController.cpp
+%   - source/kernel/simulator/model/Model.cpp
+% Purpose:
+%   Show the model validation result after the invalid property is checked.
+% Required visual content:
+%   - the validation dialog or console message
+%   - the model check action in context
+%   - the error text or success/failure indication
+% Accessibility description:
+%   A visual proof that the GUI reports validation results to the user.
+% Validation:
+%   The message must correspond to the model's current check result, not a previous run.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/model-editing-validation-message}
+\caption{Model validation feedback after a check.}
+\label{fig:model-editing-validation-message}
+\end{figure}
+
+Figure~\ref{fig:model-editing-invalid-property} shows the bad state. Figure~\ref{fig:model-editing-validation-message}
+shows the result of asking the application to validate it. Together they prove that the editor and the
+checker are coupled in the expected way.
+
+\section{Undo, redo, copy, paste, delete, group, and ungroup}
+\label{sec:model-editing-edit-operations}
+
+Once a model is editable, the GUI needs to support routine editing operations. The current code exposes
+them through the edit menu and the scene commands:
+\begin{itemize}
+\item undo;
+\item redo;
+\item cut;
+\item copy;
+\item paste;
+\item delete;
+\item group;
+\item ungroup;
+\item replace.
+\end{itemize}
+
+The most important practical point is that copy and paste are the current conservative path for
+duplication. There is no separate dedicated duplicate action in the code path inspected for this chapter.
+If a reader wants to duplicate a model element, the supported route is to copy it and then paste it into
+the same model or a working copy.
+
+Deletion is equally direct. The scene filters the selected items to the ones that can actually be
+manipulated, and the delete command removes only those items. Grouping and ungrouping are available for
+layout management, but they do not replace the underlying model relationships.
+
+These commands matter because editing a model is usually a sequence of small corrections rather than one
+big creation step. A user adds, repositions, duplicates, and removes elements until the flow matches the
+intended logic.
+
+\section{Saving and reopening the edited model}
+\label{sec:model-editing-save-and-reopen}
+
+After the model is in the desired state, save it and reopen it immediately. That is the fastest way to
+prove the persistence round-trip.
+
+The GUI accepts a graphical save target with the \texttt{.gui} extension and also supports saving a text
+model to \texttt{.gen}. For an editing workflow, \texttt{.gui} is the conservative choice because it
+preserves the graphical state that was just changed. If the user needs a kernel-oriented artifact, the
+\texttt{.gen} route remains available.
+
+The practical verification steps are:
+\begin{enumerate}
+\item save the working copy under a new base name;
+\item close or switch away from the model;
+\item reopen the saved file;
+\item confirm that the scene and properties match the saved state;
+\item verify that the model is no longer marked as dirty.
+\end{enumerate}
+
+This is the point where the chapter proves persistence rather than just editing. If the model opens with
+the same structure and the same properties, the GUI round-trip worked.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:model-editing-save-reopen
+% Source of truth:
+%   - source/applications/gui/genesys/controllers/ModelLifecycleController.cpp
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/mainwindow_modelrepresentations.cpp
+%   - models/AirportSecurityExample.gen
+% Purpose:
+%   Show the edited model after saving and after reopening the saved copy.
+% Required visual content:
+%   - the saved file name or tab title
+%   - the reopened scene
+%   - the property editor or model tree confirming the restored state
+%   - a visible indication that the round-trip succeeded
+% Accessibility description:
+%   A before-and-after proof that the edited model persisted correctly.
+% Validation:
+%   The reopened model must match the saved working copy, not the original baseline file.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/model-editing-save-reopen}
+\caption{Edited model after save and reopen.}
+\label{fig:model-editing-save-reopen}
+\end{figure}
+
+Figure~\ref{fig:model-editing-save-reopen} is the final proof that the editing session was not temporary.
+If the saved file can be reopened and the change remains visible, the workflow is complete.
+
+\section{What this chapter proves}
+\label{sec:model-editing-what-it-proves}
+
+This chapter establishes a narrow but useful claim:
+\begin{itemize}
+\item the GUI can create or open a model;
+\item the model can be edited through the scene and property editor;
+\item the GUI can expose and report validation problems;
+\item changes can be saved and reopened;
+\item the same working copy survives the persistence round-trip.
+\end{itemize}
+
+The chapter does not claim that every optional export path, advanced plugin, or experimental workflow is
+fully documented here. It focuses on the editing path that is already visible in the current GUI and on
+the behavior that can be confirmed directly from the repository.
+
+That is enough to move to the next chapters, where the manual starts explaining execution, results, and
+the more specialized model workflows that build on this editing foundation.
+
+Test your understanding of this content by answering the following questions:
+
+\begin{enumerate}
+\item Why is it safer to start from a checked-in model and save a working copy before editing?
+
+\item Which GUI actions form the core edit loop in this chapter?
+
+\item Why does the chapter treat duplication as copy and paste instead of a separate command?
+
+\item What proves that the edited model was really saved and reopened?
+\end{enumerate}
