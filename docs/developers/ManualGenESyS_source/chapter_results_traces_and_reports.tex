@@ -2,12 +2,354 @@
 \chapter{Results, Traces, and Reports}
 \label{chap:results-traces-and-reports}
 
-This chapter is part of the new editorial skeleton for the user manual. It keeps the results chapter in place while the reporting workflow is rebuilt.
+This chapter documents the result path that already exists in the repository.
+It does not invent a new analysis workflow. Instead, it explains how runtime
+traces, report text, aggregated statistics, and grouped plots are produced by
+the current GUI and kernel code.
 
-\noindent\textbf{Objective.} Explain how users inspect traces, outputs, and simulation reports after a run.
+\noindent\textbf{Objective.} Explain how users inspect traces, simulation
+reports, aggregated statistics, and run-to-run comparisons after a simulation.
 
-\noindent\textbf{Audience.} Readers who need to interpret model output and compare runs.
+\noindent\textbf{Audience.} Users who need to read simulation output, compare
+runs, and understand what the reported numbers do and do not prove.
 
-\noindent\textbf{Scope.} Cover the user-visible result panels, textual traces, summary outputs, and the boundaries of what those outputs prove.
+\noindent\textbf{Scope.} Cover the trace console, the simulation and reports
+panes, the aggregated results table, the grouped result plots, the replication
+reporting flow, and the current limits of interpretation and export.
 
-\noindent\textbf{Status.} Temporary skeleton only; the final reporting examples will be written later.
+\noindent\textbf{Status.} Partially validated by code inspection. The chapter
+matches the current widget names, reporter calls, and statistics columns, but
+the figures are still structural placeholders until the final screenshots are
+produced.
+
+The chapter follows this sequence:
+Figure~\ref{fig:results-trace},
+Figure~\ref{fig:results-report},
+Figure~\ref{fig:results-table},
+Figure~\ref{fig:results-plots},
+Figure~\ref{fig:results-replication-comparison}, and
+Figure~\ref{fig:results-data-flow}.
+
+\section{Trace surfaces and report routing}
+\label{sec:results-trace-surfaces}
+
+The GUI currently separates three textual destinations for runtime output. The
+trace controller routes generic traces and fatal or recoverable errors to
+\texttt{textEdit\_Console}, simulation-event traces to
+\texttt{textEdit\_Simulation}, and report traces to
+\texttt{textEdit\_Reports}. That split is implemented in
+\texttt{TraceConsoleController} and wired from the main window.
+
+The report path is explicit in the kernel. The default simulation reporter
+emits replication and full-simulation summaries. Those report methods write
+lines with \texttt{TraceManager::Level::L2\_results}, so the GUI can display
+them as report output instead of ordinary console chatter.
+
+The simulation pane is for live execution feedback. It shows event-level text,
+including the lines emitted while a replication is running or advancing through
+events. The reports pane is for structured summary text, not for free-form
+debugging.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:results-trace
+% Source of truth:
+%   - source/applications/gui/genesys/controllers/TraceConsoleController.cpp
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow.h
+%   - source/applications/gui/genesys/mainwindow_simulator.cpp
+% Purpose:
+%   Show the live trace surfaces used during simulation execution.
+% Required visual content:
+%   - the main console trace pane
+%   - the simulation trace pane
+%   - a representative live event or results line
+% Accessibility description:
+%   A screenshot that distinguishes console traces from simulation traces during a run.
+% Validation:
+%   The visible pane labels and routing must match the current GUI code.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/results-trace}
+\caption{Live trace surfaces used while a simulation is running.}
+\label{fig:results-trace}
+\end{figure}
+
+As shown in Figure~\ref{fig:results-trace}, the runtime trace surfaces are
+separated by purpose. That separation matters because a trace line that explains
+a simulation event should not be read as a final statistical result.
+
+\section{Replication and simulation reports}
+\label{sec:results-reports}
+
+The current reporter emits two related textual summaries:
+\begin{itemize}
+\item a replication report, produced after each replication when reporting is
+enabled;
+\item a simulation report, produced after the full run finishes.
+\end{itemize}
+
+The replication report starts and ends with explicit markers that identify the
+replication number. Inside that block, the reporter groups statistics and
+counters by parent type and parent name, then prints the columns currently used
+by the kernel: name, element count, minimum, maximum, average, variance,
+standard deviation, variation coefficient, confidence interval half-width, and
+confidence level. Counters are printed as counts only.
+
+The simulation report reuses the same grouping logic across the complete run.
+It shows the same statistic columns, but the numbers are aggregated across the
+full simulation rather than a single replication. The current code can also show
+simulation controls and, when enabled, a list of simulation responses.
+
+The chapter stays conservative about the word \textit{export}. In the current
+GUI, the primary artifact is the rendered report text in the reports pane. For
+offline result-file analysis, the repository also provides
+\texttt{SimulationResultsDatasetParser} in \texttt{source/tools}, which reads
+text datasets and Genesys \texttt{Record} files for analysis outside the main
+simulation window.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:results-report
+% Source of truth:
+%   - source/kernel/simulator/SimulationReporterDefaultImpl1.cpp
+%   - source/kernel/simulator/SimulationReporterDefaultImpl1.h
+%   - source/applications/gui/genesys/controllers/TraceConsoleController.cpp
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow_simulator.cpp
+% Purpose:
+%   Show a real replication or full-simulation report rendered in the reports pane.
+% Required visual content:
+%   - the reports text pane
+%   - begin/end report markers
+%   - grouped statistics or counters
+% Accessibility description:
+%   A report screenshot that makes the structured summary output readable.
+% Validation:
+%   The headings and row structure must match the reporter implementation.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/results-report}
+\caption{Structured replication or full-simulation report in the reports pane.}
+\label{fig:results-report}
+\end{figure}
+
+As illustrated in Figure~\ref{fig:results-report}, the report text is not a
+free-form log. It is a structured summary, so the surrounding text should be
+read as statistical reporting rather than event narration.
+
+\section{Aggregated results table}
+\label{sec:results-table}
+
+The aggregated table in the reports area is populated from the current
+simulation aggregate list returned by the kernel. The GUI configures the table
+with these columns:
+\begin{itemize}
+\item Type;
+\item ParentType;
+\item ParentName;
+\item Name;
+\item NumElements;
+\item Min;
+\item Max;
+\item Average;
+\item Variance;
+\item StdDev;
+\item VarCoef;
+\item HalfWidthCI;
+\item ConfidenceLevel.
+\end{itemize}
+
+The table is filled from the current simulation's aggregate data definitions.
+When a row corresponds to a \texttt{StatisticsCollector}, the GUI reads the
+statistics object and prints the full descriptive set. When a row corresponds to
+a \texttt{Counter}, the GUI prints the counter value and leaves the descriptive
+statistics cells blank. Parent type and parent name are derived from the owning
+model element so the table can be read in the same hierarchy used by the report
+text.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:results-table
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+%   - source/kernel/simulator/model/ModelSimulation.h
+%   - source/kernel/simulator/essentialPlugins/StatisticsCollector.h
+%   - source/kernel/simulator/essentialPlugins/Counter.h
+% Purpose:
+%   Show the aggregated results table populated after a simulation run.
+% Required visual content:
+%   - the reports results table
+%   - statistic rows and/or counter rows
+%   - the current column set
+% Accessibility description:
+%   A screenshot that exposes the summary metrics in tabular form.
+% Validation:
+%   The visible columns must match the table header setup in code.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/results-table}
+\caption{Aggregated simulation results table.}
+\label{fig:results-table}
+\end{figure}
+
+Figure~\ref{fig:results-table} is the quickest way to inspect the numeric
+summary for a run. It should be read together with the report text, because the
+table makes the values compact but does not explain the model context by itself.
+
+\section{Grouped result plots}
+\label{sec:results-plots}
+
+The plots area is built dynamically inside the \texttt{tabReportsPlots} tab.
+The GUI wraps the content in a scroll area and creates one chart per result
+category. The charting widget is a custom \texttt{ResultsBoxPlotWidget}, not a
+generic plotting component from an external tool.
+
+The chart grouping is conservative. Items are grouped by parent type. Each item
+is labeled with either the result name itself or a \textit{parent.name} form
+when a parent exists. The chart draws the minimum and maximum as whiskers and
+the average as a central horizontal line. The filled box is a presentation aid;
+it should not be read as a strict quartile box plot unless the underlying code
+changes to compute quartiles explicitly.
+
+The result plots are intentionally summary plots. They are useful for spotting
+wide ranges, missing stability, or obviously skewed responses, but they do not
+replace a statistical test or a design-of-experiments analysis.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:results-plots
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+% Purpose:
+%   Show the grouped result charts rendered in the reports plots tab.
+% Required visual content:
+%   - the plots tab or scroll area
+%   - one or more grouped charts
+%   - visible labels for the plotted result categories
+% Accessibility description:
+%   A chart screenshot that makes the summary trend by category visible.
+% Validation:
+%   The chart type and grouping must match the current custom plot widget.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/results-plots}
+\caption{Grouped result charts rendered from simulation aggregates.}
+\label{fig:results-plots}
+\end{figure}
+
+As illustrated in Figure~\ref{fig:results-plots}, the plot view complements the
+table view. The table is exact and compact; the plot is visual and comparative.
+
+\section{Comparing replications}
+\label{sec:results-replication-comparison}
+
+Replication comparison in the current code is primarily textual and summary
+based. The replication report makes each replication boundary explicit, which
+lets the user compare the same statistic across consecutive replications when
+the model and settings are held constant.
+
+If the user needs a file-based comparison, the repository also contains the
+dataset parser used by the analysis tools. That parser understands Genesys
+\texttt{Record} files and other text datasets with replication metadata, so the
+results can be inspected outside the simulation run itself.
+
+The important limit is methodological: a replication-by-replication comparison
+is only meaningful when the runs are comparable. Different seeds, different
+input data, or different model settings change the interpretation. The chapter
+therefore treats replication comparison as a descriptive aid, not as proof of
+equivalence.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:results-replication-comparison
+% Source of truth:
+%   - source/kernel/simulator/SimulationReporterDefaultImpl1.cpp
+%   - source/tools/Statistics/SimulationResultsDatasetParser.cpp
+%   - source/tools/README_tools.md
+%   - source/applications/gui/genesys/mainwindow.cpp
+% Purpose:
+%   Show a comparison between two or more replications using the current reporting output.
+% Required visual content:
+%   - at least two replication summaries or equivalent comparison rows
+%   - a visible shared metric across replications
+%   - the replication identifiers or headings
+% Accessibility description:
+%   A comparison screenshot that makes run-to-run differences readable.
+% Validation:
+%   The compared numbers must come from the current replication report or dataset parser.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/results-replication-comparison}
+\caption{Comparison of results across replications.}
+\label{fig:results-replication-comparison}
+\end{figure}
+
+Figure~\ref{fig:results-replication-comparison} should be read as a comparison
+aid only. It does not claim that the reported mean or interval alone proves a
+global model property.
+
+\section{Data to report pipeline and limits}
+\label{sec:results-data-flow}
+
+The current data path is:
+\begin{enumerate}
+\item the simulation kernel updates statistics, counters, and responses;
+\item the simulation reporter renders replication or full-simulation summaries;
+\item the trace controller routes report text into the reports pane;
+\item the GUI fills the results table and grouped plots from aggregate data;
+\item the analysis tools can load text datasets and \texttt{Record} files for
+offline inspection.
+\end{enumerate}
+
+The pipeline is complete enough to read a real run, but it is not a promise that
+every metric is automatically exported in a user-friendly file format. The
+chapter therefore distinguishes three layers:
+\begin{itemize}
+\item live trace output;
+\item structured report text and aggregate tables;
+\item offline dataset loading for analysis.
+\end{itemize}
+
+The current limits are equally important:
+\begin{itemize}
+\item the plots are summary visuals, not a statistical inference engine;
+\item the report text is generated from the current kernel aggregates, not from
+an external audited data warehouse;
+\item the chapter does not claim a dedicated one-click export path that is absent
+from the current GUI.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:results-data-flow
+% Source of truth:
+%   - source/kernel/simulator/SimulationReporterDefaultImpl1.cpp
+%   - source/applications/gui/genesys/controllers/TraceConsoleController.cpp
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/mainwindow_simulator.cpp
+%   - source/tools/Statistics/SimulationResultsDatasetParser.cpp
+% Purpose:
+%   Show the flow from simulation data to report text, table, plots, and offline analysis.
+% Required visual content:
+%   - kernel statistics and counters
+%   - reporter output
+%   - GUI text/table/plot sinks
+%   - offline dataset analysis entry point
+% Accessibility description:
+%   A flow diagram that explains how numeric results reach the user-visible panes.
+% Validation:
+%   Every arrow and sink must correspond to an actual code path or documented tool.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/results-data-flow}
+\caption{Data flow from simulation aggregates to GUI and offline analysis.}
+\label{fig:results-data-flow}
+\end{figure}
+
+As shown in Figure~\ref{fig:results-data-flow}, the reporting path is layered.
+That layering is useful because it keeps live runtime feedback separate from the
+aggregated numbers used for reading and comparison.

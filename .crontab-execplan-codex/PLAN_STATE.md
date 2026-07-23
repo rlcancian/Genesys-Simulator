@@ -2,7 +2,7 @@
 
 RUN_STATE: EM_EXECUCAO
 HALT_REASON:
-CURRENT_STEP: MAN-F11-001
+CURRENT_STEP:
 NOTIFIED: NAO
 
 ## Etapas
@@ -20,7 +20,7 @@ NOTIFIED: NAO
 | MAN-F8-001 | Criar o primeiro modelo reproduzível | §16, §§50-51 | MAN-F7-001 | Não | done | 2026-07-23 |
 | MAN-F9-001 | Documentar edição de modelos na GUI | §17, §§50-51 | MAN-F8-001 | Não | done | 2026-07-23 |
 | MAN-F10-001 | Documentar execução de simulações | §18, §§50-51 | MAN-F9-001 | Não | done | 2026-07-23 |
-| MAN-F11-001 | Documentar resultados, traces e relatórios | §19, §§50-51 | MAN-F10-001 | Não | pending | - |
+| MAN-F11-001 | Documentar resultados, traces e relatórios | §19, §§50-51 | MAN-F10-001 | Não | done | 2026-07-23 |
 | MAN-F12-001 | Documentar a linguagem para usuários | §20, §§50-51 | MAN-F11-001 | Não | pending | - |
 | MAN-F13-001 | Documentar o Shell | §21, §§50-51 | MAN-F12-001 | Não | pending | - |
 | MAN-F14-001 | Documentar Worker e segurança | §22, §§50-51, §54 | MAN-F13-001 | Não | pending | - |
@@ -54,7 +54,7 @@ NOTIFIED: NAO
 
 ## Log resumido (últimas execuções)
 
-- 2026-07-23: MAN-F10-001 concluida. `chapter_running_simulations.tex` deixou o esqueleto e passou a documentar o dialogo `Configure Simulation`, os campos `Number of Replications`/`Replication Length`/`Warmup Period`/`Terminating Condition`, as bandeiras `Step by step`/`Pause on event`/`Pause on replication`, o estado efetivo derivado de `isRunning()` e `isPaused()`, os breakpoints por componente/entidade/tempo, e os cinco placeholders estruturais para configuracao, maquina de estados, pausa, breakpoint e sequencia completa; `docs/ManualGenESyS.pdf` recompilado com 184 paginas. [revisao sugerida] o `seed` foi tratado como registro externo porque o dialogo atual nao expõe campo dedicado, e a aba de parallelization foi descrita conservadoramente como caminho futuro devido ao botao distribuido placeholder.
+- 2026-07-23: MAN-F11-001 concluida. `chapter_results_traces_and_reports.tex` deixou o esqueleto e passou a documentar o roteamento de traces para `textEdit_Console`/`textEdit_Simulation`/`textEdit_Reports`, os relatórios de replicacao e simulacao emitidos pelo `SimulationReporterDefaultImpl1`, a tabela agregada com `Type`/`ParentType`/`ParentName`/`Name` e metrics descritivas, os plots agrupados em `tabReportsPlots`, a comparacao entre replicacoes, e o fluxo kernel -> reporter -> GUI -> analise offline; seis figuras estruturais foram adicionadas e `docs/ManualGenESyS.pdf` recompilado com 188 paginas. [revisao sugerida] o plot foi descrito conservadoramente como summary box-style chart, nao como boxplot quartil formal, e a exportacao foi tratada como leitura offline via `SimulationResultsDatasetParser` sem prometer um botao dedicado inexistente.
 - 2026-07-23: MAN-F5-001 concluida. O capitulo `chapter_user_installation.tex` passou a documentar o caminho Debian `genesys-gui`, a validacao local via `gui-app`, as localizacoes instaladas em `/usr/bin` e `/usr/share`, a confirmacao pelo menu About, update/remove via `apt` e cinco figuras estruturais com placeholders; `docs/ManualGenESyS.pdf` recompilado com 162 paginas. [revisao sugerida] o pacote `.deb` foi tratado como caminho principal de usuario e o build-tree `gui-app` como validacao local, mantendo o capitulo separado de instalacao de desenvolvimento.
 - 2026-07-23: MAN-F8-001 concluida. `chapter_first_model.tex` deixou o esqueleto e passou a documentar `models/AirportSecurityExample.gen` como primeiro caso reproduzivel, usando a geracao em `source/applications/modelSpecific/arenaExamples/AirportSecurityExample.cpp`, o fluxo `Create_1 -> Process_1 -> Decide_1 -> Dispose`, a configuracao baseline `expo(2)`, `tria(0.75, 1.5, 3)`, `unif(0, 1) < 0.96`, 12h, 2 replicacoes e warm-up de 0.5h, e a comparacao com um limiar mais estrito `0.90`; o capitulo agora inclui oito blocos de figura estruturais com `FIGURE-SPEC` e o `docs/ManualGenESyS.pdf` recompilou para 176 paginas. [revisao sugerida] o seed foi tratado como registro externo da execucao, porque o `.gen` nao persiste um campo de seed proprio nesse fluxo.
 - 2026-07-23: MAN-F9-001 concluida. `chapter_model_editing_in_the_gui.tex` passou do esqueleto para um fluxo reproduzivel de edicao com baseline em `models/AirportSecurityExample.gen`, cobertura de criacao/conexao/edicao de propriedades, validacao via `Model Check`, salvamento e reabertura, e cinco blocos `FIGURE-SPEC` completos; a compilacao `./make.sh` concluiu com `docs/ManualGenESyS.pdf` atualizado para 180 paginas. [revisao sugerida] a duplicacao foi documentada conservadoramente como `copy/paste`, porque nao existe uma acao separada de duplicacao no caminho atual da GUI.
