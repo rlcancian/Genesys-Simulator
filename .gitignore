@@ -32,6 +32,7 @@ CMakeLists.txt.user
 /.aider*
 /.claude*
 /.codex*
+/.crontab-execplan-codex/
 /ai_periodic_plan/
 *.swp
 
