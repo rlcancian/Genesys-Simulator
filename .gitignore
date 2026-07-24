@@ -4,6 +4,7 @@
 /cmake-build-*/
 build/
 build-gui/
+/docs/developers/ManualGenESyS_source/
 
 # CMake
 CMakeCache.txt
@@ -30,7 +31,7 @@ CMakeLists.txt.user
 /.aider*
 /.claude*
 /.codex*
-/.crontab-execplan-codex/
+/ai_periodic_plan/
 *.swp
 
 # Generic
@@ -48,5 +49,3 @@ temp*
 
 # Logs
 *.log
-
-documentation/diagrams/
