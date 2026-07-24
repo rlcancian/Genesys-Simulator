@@ -5,6 +5,7 @@
 build/
 build-gui/
 /docs/developers/ManualGenESyS_source/
+/docs/developers/ManualGenESyS/
 
 # CMake
 CMakeCache.txt
