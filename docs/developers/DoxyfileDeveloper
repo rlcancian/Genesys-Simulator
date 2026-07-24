@@ -9,15 +9,14 @@
 # - Man pages are generated under build/doxygen/developers/man for Debian/PPA packaging workflows.
 # - The compatibility files DoxyfileDeveloper2022 and DoxyfileDeveloper2026 exist only because they were historical entrypoints.
 
-@INCLUDE = docs/developers/DoxyfileDeveloper2026.legacy
-
-PROJECT_LOGO           = source/applications/gui/qt/GenesysQtGUI/resources/software_genesys.gif
+PROJECT_LOGO           = source/applications/gui/genesys/resources/genesys_name.gif
 OUTPUT_DIRECTORY       = build/doxygen/developers
 INPUT                  = source/applications \
                          source/kernel \
                          source/plugins
 STRIP_FROM_PATH        = source
 STRIP_FROM_INC_PATH    = source
+RECURSIVE              = YES
 
 GENERATE_HTML          = NO
 GENERATE_LATEX         = YES

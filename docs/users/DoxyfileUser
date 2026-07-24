@@ -8,13 +8,12 @@
 # - The final PDF, when generated, should be copied to docs/users/GenESyS-User-Documentation.pdf.
 # - The compatibility file DoxyfileUser2022 exists only because it was the historical entrypoint.
 
-@INCLUDE = docs/users/DoxyfileUser2022.legacy
-
-PROJECT_LOGO           = source/applications/gui/qt/GenesysQtGUI/resources/software_genesys.gif
+PROJECT_LOGO           = source/applications/gui/genesys/resources/genesys_name.gif
 OUTPUT_DIRECTORY       = build/doxygen/users
 INPUT                  = source
 STRIP_FROM_PATH        = source
 STRIP_FROM_INC_PATH    = source
+RECURSIVE              = YES
 
 GENERATE_HTML          = NO
 GENERATE_LATEX         = YES
