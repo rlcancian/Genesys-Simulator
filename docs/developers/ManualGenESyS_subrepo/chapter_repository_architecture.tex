@@ -1,0 +1,412 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Repository Architecture}
+\label{chap:repository-architecture}
+
+This chapter documents the current repository layout as it exists in the active
+branch and build surface. It is based on the root \texttt{README.md}, the root
+\texttt{CMakeLists.txt}, \texttt{CMakePresets.json}, the canonical
+architecture/status documents, and the filesystem tree observed on
+2026-07-23. It does not treat historical paths or planned workspaces as if they
+were current build boundaries.
+
+\noindent\textbf{Objective.} Explain how the repository is organized, which
+directories are source architecture, and how the current CMake hierarchy maps to
+real modules, targets, executables, tests, and support areas.
+
+\noindent\textbf{Audience.} Developers who need a faithful map of the codebase
+before changing modules, build wiring, documentation, or packaging.
+
+\noindent\textbf{Scope.} Cover the top-level repository tree, the source tree,
+the current CMake target families, the non-build support areas, and the current
+reading path for technical work.
+
+\noindent\textbf{Status.} Confirmed by repository inspection on 2026-07-23.
+The chapter describes the current architecture snapshot, not a future idealized
+layout.
+
+The chapter follows this sequence:
+Figure~\ref{fig:repo-tree},
+Figure~\ref{fig:repo-target-graph},
+Figure~\ref{fig:repo-layer-map},
+Figure~\ref{fig:repo-boundary-map}, and
+Figure~\ref{fig:repo-build-flow}.
+
+\section{Repository snapshot}
+\label{sec:repo-snapshot}
+
+The repository is intentionally organized around a small number of top-level
+roots:
+\begin{itemize}
+\item \texttt{CMakeLists.txt} and \texttt{CMakePresets.json} define the build
+surface;
+\item \texttt{source/} contains the compiled code and test code;
+\item \texttt{models/} contains example and didactic \texttt{.gen} inputs;
+\item \texttt{docs/} contains the manuals and governance material;
+\item \texttt{debian/}, \texttt{packaging/}, and \texttt{scripts/} contain
+packaging and automation helpers.
+\end{itemize}
+
+Generated build directories such as \texttt{build/} or
+\texttt{cmake-build-debug/} exist in the checkout, but they are not source
+architecture and must not be read as canonical repository structure.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:repo-tree
+% Source of truth:
+%   - ../README.md
+%   - ../docs/ai_assistants/ARCHITECTURE.md
+%   - ../CMakeLists.txt
+%   - filesystem tree under ../
+% Purpose:
+%   Show the current top-level repository layout and the major source/support roots.
+% Required visual content:
+%   - top-level roots
+%   - source subtree families
+%   - docs, models, packaging, scripts, debian
+% Accessibility description:
+%   A compact repository map that helps the reader orient before drilling into CMake or source trees.
+% Validation:
+%   Every directory label must exist in the current checkout and the diagram must not include generated build directories as source architecture.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/repository-tree}
+\caption{Current repository tree and the major top-level roots.}
+\label{fig:repo-tree}
+\end{figure}
+
+Figure~\ref{fig:repo-tree} should make the boundaries obvious at a glance: the
+code lives under \texttt{source/}, the reference models live under
+\texttt{models/}, and the documentation and packaging helpers are separate
+subtrees rather than hidden inside the application code.
+
+\section{Source tree and build graph}
+\label{sec:repo-source-tree}
+
+The current build graph is rooted in \texttt{CMakeLists.txt}. That file does not
+build the repository by directory name alone; it turns on and off module groups
+through explicit options and then adds only the relevant subdirectories.
+
+The current root options are:
+\begin{itemize}
+\item \texttt{GENESYS\_BUILD\_KERNEL};
+\item \texttt{GENESYS\_BUILD\_PARSER};
+\item \texttt{GENESYS\_BUILD\_PLUGINS};
+\item \texttt{GENESYS\_BUILD\_TERMINAL\_APPLICATION};
+\item \texttt{GENESYS\_BUILD\_TERMINAL\_EXAMPLES};
+\item \texttt{GENESYS\_BUILD\_WORKER\_APPLICATION};
+\item \texttt{GENESYS\_BUILD\_GUI\_APPLICATION};
+\item \texttt{GENESYS\_BUILD\_TOOLS};
+\item \texttt{GENESYS\_BUILD\_TESTS};
+\item \texttt{GENESYS\_ENABLE\_PYTHON\_INTEGRATION}.
+\end{itemize}
+
+The compatibility aliases currently retained in the build layer are:
+\begin{itemize}
+\item \texttt{GENESYS\_TERMINAL\_APPLICATION};
+\item \texttt{GENESYS\_BUILD\_WEB\_APPLICATION};
+\item \texttt{GENESYS\_TERMINAL\_EXAMPLE};
+\item \texttt{GENESYS\_TERMINAL\_EXAMPLE\_CLASS}.
+\end{itemize}
+They are transitional names only. The planned GUI experiment slot is
+\texttt{GENESYS\_BUILD\_GUI\_DOEXPERIMENTS}, and it is intentionally guarded
+as not-yet-implemented, so it is not treated here as a current architecture
+surface.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:repo-target-graph
+% Source of truth:
+%   - ../CMakeLists.txt
+%   - ../CMakePresets.json
+%   - ../source/kernel/*/CMakeLists.txt
+%   - ../source/plugins/*/CMakeLists.txt
+%   - ../source/parser/CMakeLists.txt
+%   - ../source/applications/*/CMakeLists.txt
+%   - ../source/tests/CMakeLists.txt
+%   - ../source/tools/CMakeLists.txt
+% Purpose:
+%   Show the actual target families and their link/build dependencies.
+% Required visual content:
+%   - static core libraries
+%   - application executables
+%   - test executables and aggregate targets
+%   - compatibility aliases and custom targets where they matter
+% Accessibility description:
+%   A dependency graph that helps the reader distinguish libraries, executables, aliases, and aggregate targets.
+% Validation:
+%   Every node must correspond to a real current target or alias, and every edge must follow a real target_link_libraries or add_dependencies relation.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/repository-target-graph}
+\caption{Current target graph derived from the live CMake files.}
+\label{fig:repo-target-graph}
+\end{figure}
+
+Figure~\ref{fig:repo-target-graph} is the canonical view of the current build
+surface. The core static chain is the following dependency ladder:
+\begin{itemize}
+\item \texttt{genesys\_kernel\_util};
+\item \texttt{genesys\_kernel\_statistics};
+\item \texttt{genesys\_kernel\_simulator\_support};
+\item \texttt{genesys\_kernel\_simulator\_runtime}.
+\end{itemize}
+
+The plugin and parser side feed the same runtime chain. The relevant static
+libraries are:
+\begin{itemize}
+\item \texttt{genesys\_plugins\_data};
+\item \texttt{genesys\_plugins\_components\_minimal};
+\item \texttt{genesys\_plugins\_components} for the broader component
+library with an optional GLPK path;
+\item \texttt{genesys\_parser}, which remains a separate parser library with
+optional Bison/Flex regeneration.
+\end{itemize}
+
+The executable families hang off that shared core:
+\begin{itemize}
+\item \texttt{genesys\_shell};
+\item \texttt{genesys\_modelspecific\_app} and the legacy
+\texttt{genesys\_terminal\_application} copy target;
+\item \texttt{genesys\_worker\_app} / \texttt{genesys\_worker};
+\item \texttt{genesys\_gui\_application} / \texttt{genesys\_gui};
+\item \texttt{genesys\_httpworker\_gui\_application};
+\item \texttt{genesys\_dataanalyser\_gui\_application};
+\item \texttt{genesys\_optimizer\_gui\_application};
+\item \texttt{genesys\_ai\_assistant\_gui\_application};
+\item \texttt{genesys\_tools\_application};
+\item the test executables under \texttt{source/tests/}.
+\end{itemize}
+
+\section{Layered boundaries}
+\label{sec:repo-layered-boundaries}
+
+The repository is easier to understand when read in layers rather than as a
+flat directory listing.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:repo-layer-map
+% Source of truth:
+%   - ../docs/ai_assistants/ARCHITECTURE.md
+%   - ../README.md
+%   - ../CMakeLists.txt
+%   - ../source/kernel/*
+%   - ../source/parser/*
+%   - ../source/plugins/*
+%   - ../source/applications/*
+%   - ../source/tools/*
+% Purpose:
+%   Show the durable architectural layers and how source families map onto them.
+% Required visual content:
+%   - kernel as the foundation
+%   - parser and plugins as language/extensibility layers
+%   - applications and tools on top
+%   - tests as validation
+%   - non-source roots as support material
+% Accessibility description:
+%   A layer diagram that explains which parts of the tree are structural and which are support or content.
+% Validation:
+%   The layer names must match current repository boundaries and the diagram must not imply forbidden cross-layer ownership.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/repository-layer-map}
+\caption{Current repository layers and their responsibilities.}
+\label{fig:repo-layer-map}
+\end{figure}
+
+Figure~\ref{fig:repo-layer-map} captures the most useful reading order for new
+work:
+\begin{enumerate}
+\item kernel;
+\item parser and plugins;
+\item applications and tools;
+\item tests;
+\item support material such as docs, models, packaging, and scripts.
+\end{enumerate}
+
+The kernel contains the runtime foundation:
+\begin{itemize}
+\item \texttt{source/kernel/util/};
+\item \texttt{source/kernel/statistics/};
+\item \texttt{source/kernel/simulator/}.
+\end{itemize}
+The parser owns expression interpretation in \texttt{source/parser/}. The
+plugins layer owns data and component definitions in
+\texttt{source/plugins/data/} and \texttt{source/plugins/components/}.
+
+The applications layer contains the user-facing and service-facing binaries:
+\begin{itemize}
+\item \texttt{source/applications/shell/};
+\item \texttt{source/applications/worker/};
+\item \texttt{source/applications/gui/};
+\item \texttt{source/applications/modelSpecific/}; and
+\item the separate \texttt{source/applications/mcp/} workspace.
+\end{itemize}
+The MCP directory is useful integration material, but it is not added by the
+root CMake graph and should therefore be treated as a companion workspace
+rather than a compiled target family.
+
+The tools layer is a shared backend library tree in \texttt{source/tools/}.
+Its source families currently include AI assistant support, biochemical,
+continuous, factorial design, optimization, and statistics. Only
+\texttt{source/tools/AIAssistant/} has its own subdirectory CMake file; the
+other tool subdirectories are source families consumed through the top-level
+\texttt{genesys\_tools} library.
+
+\section{Non-build support areas}
+\label{sec:repo-support-areas}
+
+Several top-level directories are part of the repository but are not source
+architecture in the narrow CMake sense.
+
+\begin{table}[htbp]
+\centering
+\caption{Support areas that are part of the repository but not compiled as core architecture.}
+\label{tab:repo-support-areas}
+\small
+\begin{tabular}{|p{3.2cm}|p{4.5cm}|p{4.5cm}|}
+\hline
+\textbf{Area} & \textbf{Current role} & \textbf{Build graph status} \\
+\hline
+\texttt{docs/} & Manuals, governance, architectural references, and generated PDFs & documentation source, not runtime architecture \\
+\hline
+\texttt{models/} & Example and didactic \texttt{.gen} models used by the manual and validation flows & data/content root, not a compiled target family \\
+\hline
+\texttt{debian/} & Debian packaging metadata and install manifests & packaging-only \\
+\hline
+\texttt{packaging/} & Linux desktop, Docker, and OVA helpers & packaging-only \\
+\hline
+\texttt{scripts/} & Maintenance and automation scripts & tooling-only \\
+\hline
+MCP workspace & Python MCP workspace for assistant integration & integration workspace; not in the root CMake graph \\
+\hline
+\end{tabular}
+\end{table}
+
+The support areas matter because they shape how the code is delivered and
+documented, but they do not define the runtime module boundaries of the
+simulator itself.
+
+\section{Dependency and build flow}
+\label{sec:repo-dependency-build-flow}
+
+The current build flow is a configure-build-test pipeline with separate preset
+families for unit tests, shell, worker, GUI, and model-specific applications.
+The safest reading is:
+\begin{enumerate}
+\item configure with the correct preset;
+\item build the matching target family;
+\item run the matching tests when the preset family defines them;
+\item inspect packaging or installation artifacts only after the compiled
+surface is confirmed.
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:repo-boundary-map
+% Source of truth:
+%   - ../CMakeLists.txt
+%   - ../source/applications/gui/CMakeLists.txt
+%   - ../source/applications/modelSpecific/CMakeLists.txt
+%   - ../source/applications/worker/CMakeLists.txt
+%   - ../source/tools/CMakeLists.txt
+%   - ../source/tests/CMakeLists.txt
+% Purpose:
+%   Show which parts of the source tree are in the current compile boundary and which are support-only.
+% Required visual content:
+%   - source subtrees that compile into targets
+%   - support-only roots such as docs/models/packaging/scripts
+%   - explicit note that the MCP workspace is outside the root build graph
+% Accessibility description:
+%   A boundary map that prevents readers from assuming every directory is a current compiled module.
+% Validation:
+%   The separation between compiled targets and support/workspace roots must match the current root CMake files.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/repository-boundary-map}
+\caption{Current compiled boundary versus support-only repository areas.}
+\label{fig:repo-boundary-map}
+\end{figure}
+
+Figure~\ref{fig:repo-boundary-map} is the easiest way to avoid false
+assumptions. A directory existing on disk does not mean it is in the root build
+graph. The compiled boundary is created by \texttt{add\_subdirectory()} calls in
+the root CMake file and by the options that enable or disable them.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:repo-build-flow
+% Source of truth:
+%   - ../CMakePresets.json
+%   - ../README.md
+%   - ../docs/ai_assistants/runbooks/LOCAL_AGENT.md
+%   - ../docs/developers/ManualGenESyS_source/make.sh
+% Purpose:
+%   Show the current configure -> build -> test flow and where packaging/doc generation sits relative to it.
+% Required visual content:
+%   - preset selection
+%   - configure step
+%   - build step
+%   - test step
+%   - packaging/documentation side paths
+% Accessibility description:
+%   A flow diagram that explains how a developer moves from preset selection to a validated target.
+% Validation:
+%   The steps and preset names must match the current preset inventory and the documented runbooks.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/repository-build-flow}
+\caption{Current configure, build, test, and support workflow.}
+\label{fig:repo-build-flow}
+\end{figure}
+
+The current preset inventory makes this flow concrete. For example:
+\begin{itemize}
+\item \texttt{tests-unit}, \texttt{tests-kernel-unit}, and
+\texttt{tests-smoke} are the test-oriented families;
+\item \texttt{genesys\_shell} and the model-specific presets build the terminal
+family;
+\item \texttt{genesys\_worker\_app} and \texttt{gui-app} build the service and
+main GUI families;
+\item the independent GUI presets build their own executables in separate build
+trees.
+\end{itemize}
+
+The build tree separation is part of the architecture. It prevents one family
+from overwriting another family accidentally and makes it possible to reason
+about target boundaries from the preset name alone.
+
+\section{Reading order and final notes}
+\label{sec:repo-reading-order}
+
+The most reliable reading order for this repository is:
+\begin{enumerate}
+\item root \texttt{README.md};
+\item \path{docs/ai_assistants/ARCHITECTURE.md};
+\item root \texttt{CMakeLists.txt} and \texttt{CMakePresets.json};
+\item the \texttt{source/kernel/} subtree;
+\item the parser and plugins subtrees;
+\item the application and tools subtrees;
+\item the tests subtree;
+\item the support roots (\texttt{docs/}, \texttt{models/}, \texttt{debian/},
+\texttt{packaging/}, and \texttt{scripts/}).
+\end{enumerate}
+
+This chapter deliberately avoids overclaiming the current maturity of any
+individual application or scientific feature. It is a map of current structure,
+not a promise that every directory is equally production-ready.
+
+\section{Test your understanding}
+\label{sec:repo-test-your-understanding}
+
+\begin{enumerate}
+\item Why is the root \texttt{CMakeLists.txt} a better source of truth for build
+architecture than directory names alone?
+\item Which directories are support areas rather than compiled runtime
+architecture?
+\item Why should \texttt{source/applications/mcp/} be treated differently from
+the current compiled application families?
+\item Which target family forms the runtime core that the applications and tests
+share?
+\end{enumerate}

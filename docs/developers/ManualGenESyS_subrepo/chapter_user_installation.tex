@@ -1,0 +1,446 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{User Installation}
+\label{chap:user-installation}
+
+\section{Introduction}
+\label{sec:user-installation-introduction}
+
+This chapter explains how to install and start GenESyS as a user-facing
+application, without requiring knowledge of the source tree or the internal
+build layout. The focus is on supported installation paths, the runtime files
+that appear after installation, the first launch of the GUI, and the checks
+that confirm the program is ready for use.
+
+The documented baseline for the repository is Ubuntu 24.04. The current
+packaging and build surface are Debian-based and Qt6-based, so this chapter is
+written around that environment. Other systems may work if they satisfy the
+same dependencies, but they are not the baseline validated by this repository.
+
+For a user, the important distinction is simple:
+\begin{itemize}
+\item installation puts a runnable GenESyS application on the system;
+\item development build instructions are for contributors and validators.
+\end{itemize}
+
+The chapter therefore keeps the user path separate from the source-build path,
+even though both can produce the same GUI executable name.
+
+The visual sequence for this chapter is anchored by Figure~\ref{fig:user-installation-flow}
+and then continues through Figure~\ref{fig:user-installed-structure},
+Figure~\ref{fig:user-first-start},
+Figure~\ref{fig:user-version-confirmation},
+Figure~\ref{fig:user-executable-locations}, and
+Figure~\ref{fig:user-installation-structure-summary}.
+
+\begin{figure}[htbp]
+    \centering
+
+    % FIGURE-SPEC-BEGIN
+    % Figure ID: user-installation-flow
+    % Type: process diagram
+    % Purpose:
+    %   Show the supported installation and first-start sequence for users.
+    % Source of truth:
+    %   - debian/control
+    %   - debian/rules
+    %   - debian/genesys-gui.install
+    %   - CMakePresets.json
+    %   - packaging/linux/io.github.rlcancian.genesys.desktop
+    % Required visual content:
+    %   - supported Debian package path
+    %   - optional local artifact path
+    %   - installed launcher name
+    %   - first GUI startup
+    %   - About-dialog version check
+    % Accessibility description:
+    %   Flowchart from package acquisition to a successful GUI launch.
+    % Validation:
+    %   Every node must match the current packaging and preset files.
+    % FIGURE-SPEC-END
+
+    \figureplaceholder{figs/generated/user-installation-flow}
+
+    \caption{Supported installation and first-start flow for GenESyS.}
+    \label{fig:user-installation-flow}
+\end{figure}
+
+\section{Supported installation paths}
+\label{sec:user-installation-supported-paths}
+
+The repository currently documents two practical ways to get a runnable
+GenESyS GUI on the machine.
+
+\subsection{Preferred path: Debian package}
+\label{subsec:user-installation-debian-package}
+
+The packaged desktop application is named \texttt{genesys-gui}. The Debian
+metadata installs the executable to \path{/usr/bin/genesys-gui} and also ships
+the desktop integration files under the standard XDG locations:
+\begin{itemize}
+\item \path{/usr/share/applications/io.github.rlcancian.genesys.desktop};
+\item \path{/usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml};
+\item \path{/usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg}.
+\end{itemize}
+
+This is the clearest end-user route when a package artifact is available. It
+creates the expected desktop launcher and provides a direct command-line entry
+point.
+
+If the package is available as a local file, install it with \texttt{apt} so
+dependency resolution happens automatically:
+
+\begin{lstlisting}[language=bash,caption={Installing the local GenESyS Debian package},label={lst:user-installation-local-deb}]
+sudo apt install ./genesys-gui_*.deb
+\end{lstlisting}
+
+If the package is already published in a configured repository, the same binary
+package can be installed by name:
+
+\begin{lstlisting}[language=bash,caption={Installing GenESyS from a repository},label={lst:user-installation-repo-deb}]
+sudo apt install genesys-gui
+\end{lstlisting}
+
+\subsection{Manual artifact installation}
+\label{subsec:user-installation-manual-artifact}
+
+When a binary artifact is delivered outside an apt repository, the same package
+format should still be preferred. In practice, that means a user or maintainer
+can download the \texttt{.deb} file and install it locally with the command
+above.
+
+If the artifact is provided as a staged filesystem tree rather than a package,
+the repository does not define a separate user-facing installer for it. In that
+case, the artifact should be treated as a validation or distribution artifact
+that must already match the expected layout before it is copied into place.
+This chapter does not define a new custom installer.
+
+\section{System baseline and runtime dependencies}
+\label{sec:user-installation-runtime-dependencies}
+
+The current supported baseline is the Qt6 desktop stack on Ubuntu 24.04.
+The Debian package metadata confirms the build-time requirements used by the
+project:
+\begin{itemize}
+\item \texttt{cmake} 3.24 or newer;
+\item \texttt{ninja-build};
+\item \texttt{g++};
+\item \texttt{pkgconf};
+\item \texttt{qt6-base-dev};
+\item \texttt{qt6-base-dev-tools};
+\item \texttt{libgl-dev}.
+\end{itemize}
+
+For a packaged install, the user does not usually install those build-time
+packages directly. They matter here because they define the toolchain that
+produces the user package and the GUI runtime.
+
+At runtime, the GUI expects a normal graphical desktop session, access to the
+display server, and the standard desktop integration files provided by the
+package. The application is intended to launch as a desktop GUI, not as a
+headless background service.
+
+\begin{figure}[htbp]
+    \centering
+
+    % FIGURE-SPEC-BEGIN
+    % Figure ID: user-installed-structure
+    % Type: filesystem layout diagram
+    % Purpose:
+    %   Show what is installed by the desktop package and where the launcher
+    %   and metadata files live.
+    % Source of truth:
+    %   - debian/genesys-gui.install
+    %   - packaging/linux/io.github.rlcancian.genesys.desktop
+    %   - packaging/linux/io.github.rlcancian.genesys.metainfo.xml
+    % Required visual content:
+    %   - /usr/bin/genesys-gui
+    %   - desktop entry file
+    %   - metainfo file
+    %   - icon file
+    % Accessibility description:
+    %   Tree of installed files and desktop integration assets.
+    % Validation:
+    %   Paths must match the current package metadata.
+    % FIGURE-SPEC-END
+
+    \figureplaceholder{figs/generated/user-installed-structure}
+
+    \caption{Installed GenESyS desktop files and launcher locations.}
+    \label{fig:user-installed-structure}
+\end{figure}
+
+\section{First launch of the GUI}
+\label{sec:user-installation-first-launch}
+
+After installation, start the GUI from the desktop launcher or from a shell.
+The installed binary name is \texttt{genesys-gui}. A terminal launch looks like
+this:
+
+\begin{lstlisting}[language=bash,caption={Starting the installed GenESyS GUI},label={lst:user-installation-start-gui}]
+genesys-gui
+\end{lstlisting}
+
+If you are validating a local build rather than a package install, the current
+source tree can produce the same executable through the \texttt{gui-app}
+preset:
+
+\begin{lstlisting}[language=bash,caption={Local build-and-run validation path},label={lst:user-installation-build-path}]
+cmake --preset gui-app
+cmake --build --preset gui-app --parallel "$(nproc)"
+./build/gui-app/source/applications/gui/genesys/genesys-gui
+\end{lstlisting}
+
+The local build path is useful for validation, but it is not the same thing as
+the user-install path. In the book, the package install is the primary user
+path.
+
+\begin{figure}[htbp]
+    \centering
+
+    % FIGURE-SPEC-BEGIN
+    % Figure ID: user-first-start
+    % Type: UI screenshot placeholder
+    % Purpose:
+    %   Show the GUI immediately after first launch.
+    % Source of truth:
+    %   - source/applications/gui/genesys/mainwindow.ui
+    %   - source/applications/gui/genesys/mainwindow.cpp
+    %   - source/applications/gui/genesys/controllers/DialogUtilityController.cpp
+    % Required visual content:
+    %   - main window
+    %   - menu bar
+    %   - workspace panels
+    %   - About menu entry
+    % Accessibility description:
+    %   Main GenESyS window at startup.
+    % Validation:
+    %   The window must match the current GUI composition.
+    % FIGURE-SPEC-END
+
+    \figureplaceholder{figs/generated/user-first-start}
+
+    \caption{First successful start of the GenESyS GUI.}
+    \label{fig:user-first-start}
+\end{figure}
+
+\subsection{What to confirm on the first run}
+\label{subsec:user-installation-first-run-checks}
+
+The first launch should confirm only the basics:
+\begin{itemize}
+\item the window opens without an immediate failure;
+\item the menus and toolbars are visible;
+\item the main workspace loads normally;
+\item the application can be closed cleanly.
+\end{itemize}
+
+The user does not need to build a model yet. The goal is only to prove that the
+installed application starts and displays the main GUI.
+
+\subsection{Version confirmation}
+\label{subsec:user-installation-version-confirmation}
+
+The GUI includes an \textit{About} menu with an \textit{About Genesys} action.
+That action is the most direct way to confirm the application identity and
+version information from inside the running program.
+
+\begin{figure}[htbp]
+    \centering
+
+    % FIGURE-SPEC-BEGIN
+    % Figure ID: user-version-confirmation
+    % Type: dialog screenshot placeholder
+    % Purpose:
+    %   Show the About dialog used to confirm the runtime version.
+    % Source of truth:
+    %   - source/applications/gui/genesys/mainwindow.ui
+    %   - source/applications/gui/genesys/controllers/DialogUtilityController.cpp
+    % Required visual content:
+    %   - About Genesys dialog
+    %   - version field or equivalent runtime identity
+    %   - application name
+    % Accessibility description:
+    %   About dialog used for version and identity confirmation.
+    % Validation:
+    %   The dialog content must match the current GUI code.
+    % FIGURE-SPEC-END
+
+    \figureplaceholder{figs/generated/user-version-confirmation}
+
+    \caption{Version confirmation through the GenESyS About dialog.}
+    \label{fig:user-version-confirmation}
+\end{figure}
+
+\section{Where the files live after installation}
+\label{sec:user-installation-file-locations}
+
+From a user point of view, the important installed locations are the launcher
+binary and the desktop integration files. For package-based installs, the key
+paths are:
+\begin{itemize}
+\item \path{/usr/bin/genesys-gui};
+\item \path{/usr/share/applications/io.github.rlcancian.genesys.desktop};
+\item \path{/usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml};
+\item \path{/usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg}.
+\end{itemize}
+
+For local validation from source, the matching build-tree executable is:
+\begin{itemize}
+\item \path{build/gui-app/source/applications/gui/genesys/genesys-gui}.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+
+    % FIGURE-SPEC-BEGIN
+    % Figure ID: user-executable-locations
+    % Type: layout diagram
+    % Purpose:
+    %   Show the installed binary and the equivalent local build-tree path.
+    % Source of truth:
+    %   - debian/genesys-gui.install
+    %   - CMakePresets.json
+    %   - packaging/linux/io.github.rlcancian.genesys.desktop
+    % Required visual content:
+    %   - installed binary path
+    %   - desktop launcher path
+    %   - build-tree executable path
+    % Accessibility description:
+    %   Side-by-side installed and build-tree executable locations.
+    % Validation:
+    %   Paths must be current and directly runnable where applicable.
+    % FIGURE-SPEC-END
+
+    \figureplaceholder{figs/generated/user-executable-locations}
+
+    \caption{Installed and build-tree executable locations for GenESyS.}
+    \label{fig:user-executable-locations}
+\end{figure}
+
+\section{Updating the installation}
+\label{sec:user-installation-updating}
+
+If GenESyS was installed from a Debian package, update it by installing the new
+package version over the old one. On a configured package repository, the
+standard flow is:
+
+\begin{lstlisting}[language=bash,caption={Updating an apt-based GenESyS installation},label={lst:user-installation-update}]
+sudo apt update
+sudo apt install --only-upgrade genesys-gui
+\end{lstlisting}
+
+If you are using a local \texttt{.deb} file, replace the package from the new
+artifact:
+
+\begin{lstlisting}[language=bash,caption={Replacing a local package artifact},label={lst:user-installation-update-local}]
+sudo apt install ./genesys-gui_*.deb
+\end{lstlisting}
+
+This keeps the package manager in control of file ownership and dependency
+tracking. It is preferable to copying files by hand into system directories.
+
+\section{Removing the installation}
+\label{sec:user-installation-removal}
+
+To remove the package, use the package manager instead of deleting files
+manually. A plain remove keeps configuration if the package has any:
+
+\begin{lstlisting}[language=bash,caption={Removing the GenESyS package},label={lst:user-installation-remove}]
+sudo apt remove genesys-gui
+\end{lstlisting}
+
+If a full purge is desired, remove configuration files as well:
+
+\begin{lstlisting}[language=bash,caption={Purging the GenESyS package},label={lst:user-installation-purge}]
+sudo apt purge genesys-gui
+\end{lstlisting}
+
+Because the Debian package also declares \texttt{genesys-web} as a runtime
+dependency, a system that installed both packages explicitly may need both names
+in the removal command. The safe habit is to inspect the package list after the
+first uninstall if the goal is to clean the machine completely.
+
+\section{Initial troubleshooting}
+\label{sec:user-installation-troubleshooting}
+
+If the GUI does not start, the first checks should be practical rather than
+architectural:
+\begin{itemize}
+\item verify that the package installed successfully;
+\item verify that \texttt{genesys-gui} is on the path or run from the full
+  installed location;
+\item verify that the desktop session can open Qt applications;
+\item verify that the package dependencies were resolved;
+\item verify that the display session is available if the command is started
+from a terminal.
+\end{itemize}
+
+If the application starts but the About dialog or launcher does not look
+correct, recheck the package version and the desktop integration files. If the
+local build path is being used, confirm that the \texttt{gui-app} preset was
+selected and that the build completed successfully before starting the binary.
+
+\section{Limitations}
+\label{sec:user-installation-limitations}
+
+This chapter does not claim support for every operating system or every
+distribution packaging style. It documents the Debian-based package path and
+the local build-tree validation path that are currently confirmed in the
+repository.
+
+It also does not redefine the installer format. If a future release adds a
+different distribution artifact, that artifact should be documented with the
+same discipline as the Debian package: package name, installed paths, launch
+command, update path, removal path, and first-run verification.
+
+\begin{figure}[htbp]
+    \centering
+
+    % FIGURE-SPEC-BEGIN
+    % Figure ID: user-installation-structure-summary
+    % Type: summary diagram
+    % Purpose:
+    %   Summarize the relationship between install, launch, verification,
+    %   update, and removal.
+    % Source of truth:
+    %   - debian/control
+    %   - debian/genesys-gui.install
+    %   - CMakePresets.json
+    %   - packaging/linux/io.github.rlcancian.genesys.desktop
+    % Required visual content:
+    %   - install
+    %   - launch
+    %   - About check
+    %   - update
+    %   - remove
+    % Accessibility description:
+    %   Summary lifecycle for the user package.
+    % Validation:
+    %   All nodes must correspond to commands and files already documented.
+    % FIGURE-SPEC-END
+
+    \figureplaceholder{figs/generated/user-installation-structure-summary}
+
+    \caption{Lifecycle summary for a user installation of GenESyS.}
+    \label{fig:user-installation-structure-summary}
+\end{figure}
+
+\section{Final considerations}
+\label{sec:user-installation-final-considerations}
+
+The user installation path for GenESyS is intentionally narrow: install the
+desktop package when available, or use the local build-tree validation path
+only when you are checking the runtime from source. In both cases, the outcome
+that matters is the same: the \texttt{genesys-gui} application starts, displays
+its main window, and exposes the expected About dialog and desktop launcher.
+
+Once that works, the reader can move to the next chapter and start learning how
+the application is organized and what the main GUI areas mean in practice.
+
+Test your understanding of this content by answering the following questions:
+
+\begin{enumerate}
+\item Why is the Debian package the preferred user-installation path in this chapter?
+\item Which files and paths confirm that GenESyS was installed correctly on the system?
+\item How does the chapter distinguish a user installation from a local build-tree validation?
+\end{enumerate}

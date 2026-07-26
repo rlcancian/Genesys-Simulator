@@ -1,0 +1,313 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Worker and Remote Execution}
+\label{chap:worker-and-remote-execution}
+
+This chapter documents the current Worker architecture as it exists in the active branch on 2026-07-23. It is based on the standalone worker sources, the reusable embedded worker runtime, the root repository guidance, and the current worker application README. The chapter describes the current snapshot, not a future idealized distributed platform.
+
+\noindent\textbf{Objective.} Explain how the Worker process is composed, how requests move through transport, routing, sessions, and job handling, and where the current security and deployment boundary stops.
+
+\noindent\textbf{Audience.} Developers and maintainers who need a faithful map of the Worker before changing HTTP routes, session behavior, job handling, deployment assumptions, or embedded-runtime integration.
+
+\noindent\textbf{Scope.} Cover the standalone \texttt{genesys-worker} executable, the reusable \texttt{WebWorkerRuntime} wrapper, the HTTP transport layer, token and session management, the current API surface, worker jobs, logging, and the local/private deployment boundary.
+
+\noindent\textbf{Status.} Confirmed by repository inspection on 2026-07-23. The chapter is conservative about maturity: the Worker exposes discovery and job-oriented endpoints, but it does not provide TLS, quotas, public-Internet approval, or background distributed execution.
+
+The chapter follows Figure~\ref{fig:worker-architecture-runtime-map},
+Figure~\ref{fig:worker-architecture-request-flow},
+Figure~\ref{fig:worker-architecture-session-flow},
+Figure~\ref{fig:worker-architecture-api-surface},
+Figure~\ref{fig:worker-architecture-job-lifecycle}, and
+Figure~\ref{fig:worker-architecture-security-boundary}.
+
+\section{Worker process boundary}
+\label{sec:worker-architecture-process-boundary}
+
+The current Worker is not a GUI widget and not a kernel subsystem. It is an executable application that owns its own entry point, its own HTTP stack, and its own session registry. The standalone target is \texttt{genesys\_worker\_app}, which produces the executable name \texttt{genesys-worker}; the build also keeps the alias target \texttt{genesys\_worker}.
+
+The standalone entry point in \texttt{BaseGenesysWebApplication} wires together
+these objects:
+\begin{itemize}
+\item \texttt{TokenService};
+\item \texttt{SessionManager};
+\item \texttt{WorkerJobManager};
+\item \texttt{SimulatorSessionService};
+\item \texttt{ApiRouter};
+\item \texttt{SimpleHttpServer}.
+\end{itemize}
+The command-line wrapper accepts \texttt{--port} and \texttt{--max-requests}.
+The port defaults to 8080 and the request cap defaults to unlimited.
+
+The same stack is also reused by \texttt{WebWorkerRuntime}, which is the embedded lifecycle wrapper used by GUI-facing code. That wrapper keeps the worker stack behind a start/stop/restart interface and exposes a bounded snapshot of runtime state, recent events, and recent errors. The important architectural point is that the embedded runtime reuses the same worker core instead of reimplementing the HTTP and session logic in the GUI.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:worker-architecture-runtime-map
+% Source of truth:
+%   - ../source/applications/worker/BaseGenesysWebApplication.h
+%   - ../source/applications/worker/BaseGenesysWebApplication.cpp
+%   - ../source/applications/worker/service/WebWorkerRuntime.h
+%   - ../source/applications/worker/service/WebWorkerRuntime.cpp
+%   - ../source/applications/worker/CMakeLists.txt
+% Purpose:
+%   Show the two current Worker composition roots: the standalone executable and the embedded runtime wrapper.
+% Required visual content:
+%   - genesys-worker standalone process
+%   - genesys_worker_app target and alias
+%   - WebWorkerRuntime embedded lifecycle object
+%   - shared worker core stack
+%   - CLI arguments for port and request cap
+% Accessibility description:
+%   A composition-root diagram that distinguishes the standalone process from the reusable embedded runtime.
+% Validation:
+%   Every node must correspond to a real class, target, or entry point in the current tree.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/worker-architecture-runtime-map}
+\caption{Current Worker composition roots and the reusable embedded runtime.}
+\label{fig:worker-architecture-runtime-map}
+\end{figure}
+
+Figure~\ref{fig:worker-architecture-runtime-map} is the quickest way to see that the Worker exists in two forms: a standalone HTTP process and an embedded runtime wrapper that reuses the same core services.
+
+\section{HTTP transport and request routing}
+\label{sec:worker-architecture-transport}
+
+The HTTP transport is intentionally small. \texttt{SimpleHttpServer} is a blocking, one-request-per-connection server that accepts a connection, reads one bounded HTTP/1.1 request, delegates to the route handler, serializes the response, and closes the socket. It does not implement keep-alive or chunked transfer decoding.
+
+The transport layer enforces a 1 MiB request cap and 5 second socket read/write timeouts. It maps transport failures to standard JSON responses: invalid requests become 400, timeouts become 408, oversized requests become 413, and unexpected server errors become 500. The server binds to \texttt{INADDR\_ANY} on the configured port.
+
+\texttt{ApiRouter} keeps the route logic separate from transport. It resolves public discovery routes, session routes, simulation routes, and worker-job routes, then returns a compact JSON response model with stable error codes. The router is explicit on purpose: the current source tree is easier to audit when the public routes are spelled out in one place.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:worker-architecture-request-flow
+% Source of truth:
+%   - ../source/applications/worker/http/SimpleHttpServer.h
+%   - ../source/applications/worker/http/SimpleHttpServer.cpp
+%   - ../source/applications/worker/api/ApiRouter.h
+%   - ../source/applications/worker/api/ApiRouter.cpp
+% Purpose:
+%   Show the request path from socket read to router dispatch and JSON response.
+% Required visual content:
+%   - socket accept/read/write loop
+%   - bounded request assembly
+%   - parseRequest and handler callback
+%   - router dispatch to route groups
+%   - JSON error mapping for transport failures
+% Accessibility description:
+%   A transport-to-routing flow diagram that clarifies where HTTP parsing stops and API handling begins.
+% Validation:
+%   The diagram must match the current read, timeout, and response behavior in the server code.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/worker-architecture-request-flow}
+\caption{Current HTTP transport and request-routing flow in the Worker.}
+\label{fig:worker-architecture-request-flow}
+\end{figure}
+
+Figure~\ref{fig:worker-architecture-request-flow} should be read as a boundary diagram. The transport layer knows how to read, bound, and serialize requests, while the router knows how to interpret the API surface.
+
+\section{Session, token, and workspace model}
+\label{sec:worker-architecture-session-model}
+
+Authenticated worker sessions are owned by \texttt{SessionManager}. Each session binds one bearer token to one simulator instance, one session identifier, and one filesystem workspace rooted under the system temporary directory. The current root is \texttt{temp\_directory\_path()/genesys\_worker\_sessions}.
+
+\texttt{TokenService} generates two opaque identifiers: a session id with the \texttt{sess\_} prefix and a bearer token encoded as hex. The session manager stores sessions in a token-to-session map, and each created session receives a fresh \texttt{Simulator} instance from the provided factory. The simulator is then initialized with the default plugin set so that language import and snapshot loading can resolve built-in model elements immediately.
+
+The workspace boundary matters. Persistence operations are limited to the session workspace directory, and filename inputs are treated as safe basenames only. The current rules reject absolute paths, parent-path traversal, slashes, backslashes, and names that do not match the safe filename pattern. That keeps the Worker from acting as a general file server.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:worker-architecture-session-flow
+% Source of truth:
+%   - ../source/applications/worker/auth/TokenService.h
+%   - ../source/applications/worker/auth/TokenService.cpp
+%   - ../source/applications/worker/session/SessionContext.h
+%   - ../source/applications/worker/session/SessionManager.h
+%   - ../source/applications/worker/session/SessionManager.cpp
+%   - ../source/applications/worker/service/SimulatorSessionService.cpp
+% Purpose:
+%   Show how a bearer token becomes a session, simulator instance, and isolated workspace directory.
+% Required visual content:
+%   - token generation
+%   - session creation
+%   - simulator construction
+%   - session workspace root and per-session folder
+%   - token lookup on subsequent requests
+% Accessibility description:
+%   A lifecycle diagram that helps the reader understand token scope and workspace isolation.
+% Validation:
+%   The diagram must match the current SessionManager and TokenService implementation.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/worker-architecture-session-flow}
+\caption{Current session, token, and workspace lifecycle.}
+\label{fig:worker-architecture-session-flow}
+\end{figure}
+
+Figure~\ref{fig:worker-architecture-session-flow} shows the core promise of the current Worker: every authenticated session gets isolated state, but that state is still local to the running process.
+
+\section{Current API surface}
+\label{sec:worker-architecture-api-surface}
+
+The public and authenticated routes are split into discovery, session, simulation, and worker-job groups.
+
+The discovery surface currently includes:
+\begin{itemize}
+\item \texttt{GET /health};
+\item \texttt{POST /api/v1/auth/session};
+\item \texttt{GET /api/v1/worker/info};
+\item \texttt{GET /api/v1/worker/capabilities}.
+\end{itemize}
+
+The session-scoped surface currently includes:
+\begin{itemize}
+\item \texttt{GET /api/v1/simulator/info};
+\item \texttt{POST /api/v1/models};
+\item \texttt{GET /api/v1/models/current};
+\item \texttt{POST /api/v1/models/save};
+\item \texttt{POST /api/v1/models/load};
+\item \texttt{GET /api/v1/simulation/status};
+\item \texttt{POST /api/v1/simulation/config};
+\item \texttt{POST /api/v1/simulation/run};
+\item \texttt{POST /api/v1/simulation/step};
+\item \texttt{POST /api/v1/worker/models/import-language};
+\item \texttt{POST /api/v1/worker/jobs};
+\item \texttt{GET /api/v1/worker/jobs/\{jobId\}};
+\item \texttt{POST /api/v1/worker/jobs/\{jobId\}/run};
+\item \texttt{GET /api/v1/worker/jobs/\{jobId\}/result}.
+\end{itemize}
+
+The discovery endpoints do not require a bearer token. The remaining routes do. The capability payload intentionally exposes the current implementation boundary: session API support is present, synchronous run and step are present, model upload through plain text import is present, background execution is false, and streaming events are false. The job-oriented flags currently describe the current API surface, not a background distributed executor.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:worker-architecture-api-surface
+% Source of truth:
+%   - ../source/applications/worker/api/ApiRouter.cpp
+%   - ../source/applications/worker/service/SimulatorSessionService.h
+%   - ../source/applications/worker/service/SimulatorSessionService.cpp
+%   - ../source/applications/worker/README.md
+% Purpose:
+%   Show the current route groups and which ones require bearer authentication.
+% Required visual content:
+%   - public discovery routes
+%   - session-scoped simulator routes
+%   - model persistence and import routes
+%   - worker job routes
+%   - auth requirements per group
+% Accessibility description:
+%   A route map that helps users and integrators see which calls are public and which are token-scoped.
+% Validation:
+%   Every route in the diagram must match the current ApiRouter implementation and README contract.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/worker-architecture-api-surface}
+\caption{Current Worker API surface and authentication boundary.}
+\label{fig:worker-architecture-api-surface}
+\end{figure}
+
+Figure~\ref{fig:worker-architecture-api-surface} is the quickest reference when deciding whether a client needs only discovery or a full authenticated session.
+
+\section{Worker jobs and synchronous execution}
+\label{sec:worker-architecture-jobs}
+
+Worker jobs are stored in memory by \texttt{WorkerJobManager}. A newly created job receives a monotonic identifier of the form \texttt{job-<n>} and a creation marker of the form \texttt{seq-<n>}. The creation marker preserves ordering, while the job id is the public handle exposed by the API.
+
+Job creation requires a current model in the session. The implementation then writes a snapshot file named \texttt{job\_<id>.gen} into the session workspace so that later execution can be decoupled from live model mutations. That snapshot is the execution source for the \texttt{/run} path.
+
+Execution is synchronous. The current run path loads the stored snapshot back into the session simulator, calls \texttt{simulation->start()}, and records a minimal terminal summary with simulated time, replication numbers, replication length, warm-up period, and optional paused state. If execution fails, the job is marked failed and the terminal summary is still preserved when possible.
+
+The query path and result path remain session-scoped. A job that belongs to another session is treated as inaccessible, and a terminal result is not returned until the job has reached a finished or failed state with stored terminal data.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:worker-architecture-job-lifecycle
+% Source of truth:
+%   - ../source/applications/worker/worker/WorkerJob.h
+%   - ../source/applications/worker/worker/WorkerJobManager.h
+%   - ../source/applications/worker/worker/WorkerJobManager.cpp
+%   - ../source/applications/worker/service/SimulatorSessionService.cpp
+%   - ../source/applications/worker/api/ApiRouter.cpp
+% Purpose:
+%   Show the lifecycle from job creation to snapshotting, synchronous execution, and result retrieval.
+% Required visual content:
+%   - queued job creation
+%   - snapshot filename assignment
+%   - synchronous run from job snapshot
+%   - state transitions queued -> running -> finished/failed
+%   - terminal result retrieval gate
+% Accessibility description:
+%   A lifecycle diagram that makes the worker-job state machine visible to maintainers.
+% Validation:
+%   The diagram must match the current job manager, service, and router behavior.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/worker-architecture-job-lifecycle}
+\caption{Current worker-job lifecycle and synchronous execution path.}
+\label{fig:worker-architecture-job-lifecycle}
+\end{figure}
+
+Figure~\ref{fig:worker-architecture-job-lifecycle} captures the current job model accurately: jobs are durable only within the running process, and execution is synchronous even though the API is shaped like a worker system.
+
+\section{Security, logging, and recovery boundary}
+\label{sec:worker-architecture-security}
+
+The current Worker boundary is local or private network only. The standalone server binds to all interfaces on the selected port, but the repository guidance does not approve direct public-Internet exposure. The current code does not implement TLS, credential rotation, quotas, per-request authorization beyond the opaque bearer token, or service-level isolation controls. Those are future hardening items, not current guarantees.
+
+The transport and API layers do provide basic failure handling. Invalid HTTP requests become 400 responses; expired or malformed session tokens become 401 responses; missing current models become 409 responses; missing or invalid worker jobs become 404 or 409 depending on the failure mode; transport overload becomes 413; and unexpected exceptions become 500. That behavior is useful for debugging, but it is not a security story by itself.
+
+\texttt{WebWorkerRuntime} keeps recent events and recent errors in bounded in-memory deques, together with a thread-safe snapshot of the worker state. That gives the GUI or other callers a lightweight way to observe whether the background worker is starting, running, stopping, or failed. It does not make job state persistent across process restarts, and it does not replace external monitoring or audit logging.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:worker-architecture-security-boundary
+% Source of truth:
+%   - ../README.md
+%   - ../docs/ai_assistants/ARCHITECTURE.md
+%   - ../source/applications/worker/README.md
+%   - ../source/applications/worker/http/SimpleHttpServer.cpp
+%   - ../source/applications/worker/service/WebWorkerRuntime.cpp
+% Purpose:
+%   Show the current local/private deployment boundary, the transport limits, and the runtime recovery hooks.
+% Required visual content:
+%   - local/private deployment zone
+%   - INADDR_ANY binding on a selected port
+%   - 1 MiB request limit and 5 second timeout guardrails
+%   - error mapping to 400/401/404/409/413/500
+%   - bounded runtime event/error history
+% Accessibility description:
+%   A boundary diagram that makes the non-production security posture explicit.
+% Validation:
+%   The diagram must match the current README, architecture guidance, and server implementation.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/worker-architecture-security-boundary}
+\caption{Current Worker deployment and recovery boundary.}
+\label{fig:worker-architecture-security-boundary}
+\end{figure}
+
+Figure~\ref{fig:worker-architecture-security-boundary} is the security summary for the current codebase. The Worker is usable, but it is still a local/private service with explicit hardening remaining before any stronger deployment claim would be justified.
+
+\section{Practical reading order}
+\label{sec:worker-architecture-reading-order}
+
+For maintainers, the most useful reading order is:
+\begin{enumerate}
+\item \texttt{BaseGenesysWebApplication} for the standalone process boundary;
+\item \texttt{SimpleHttpServer} for transport limits and response mapping;
+\item \texttt{ApiRouter} for the route table and public wire contract;
+\item \texttt{TokenService}, \texttt{SessionManager}, and
+      \texttt{SessionContext} for authentication scope and workspace isolation;
+\item \texttt{SimulatorSessionService} for model, simulation, and job behavior;
+\item \texttt{WorkerJobManager} for job storage and terminal result handling;
+\item \texttt{WebWorkerRuntime} for the embedded lifecycle wrapper.
+\end{enumerate}
+
+As illustrated by Figures~\ref{fig:worker-architecture-runtime-map},
+\ref{fig:worker-architecture-request-flow},
+\ref{fig:worker-architecture-session-flow},
+\ref{fig:worker-architecture-api-surface},
+\ref{fig:worker-architecture-job-lifecycle}, and
+\ref{fig:worker-architecture-security-boundary},
+the current Worker is already a coherent application boundary, but it is still intentionally conservative in security, transport, and execution model.

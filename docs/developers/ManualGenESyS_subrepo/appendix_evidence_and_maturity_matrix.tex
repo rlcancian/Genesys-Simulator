@@ -1,0 +1,38 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Evidence and Maturity Matrix}
+\label{chap:appendix-evidence-and-maturity-matrix}
+
+This appendix expands the evidence ladder used in the front matter into a
+readable matrix. It is meant to keep the language of the manual consistent:
+build success is not release readiness, and startup evidence is not scientific
+validation. \index{evidence}\index{maturity}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{|p{2.8cm}|p{5.1cm}|p{4.0cm}|}
+\hline
+\textbf{Evidence level} & \textbf{What it supports} & \textbf{What it does not support} \\
+\hline
+Build evidence & The current source tree can be configured and compiled for the selected preset. & It does not prove runtime correctness or scientific validity. \\
+\hline
+Startup evidence & The executable launches, opens its surface, and shuts down cleanly. & It does not prove complete workflow coverage. \\
+\hline
+Functional evidence & A focused user flow or API path behaves as documented. & It does not prove all edge cases or all configuration combinations. \\
+\hline
+Numerical evidence & A bounded computation reproduces the observed output for the documented inputs. & It does not guarantee universal accuracy or stability. \\
+\hline
+Scientific evidence & The model, reference, and interpretation were reviewed against an explicit domain basis. & It does not follow from a compiler pass alone. \\
+\hline
+Security evidence & The documented boundary was inspected and a local or private deployment claim was confirmed. & It does not authorize public exposure or production trust. \\
+\hline
+Release readiness & The documented validation, review, and governance gates were cleared. & It does not arise from one local validation run. \\
+\hline
+\end{tabular}
+\end{table}
+
+The current manual aligns the evidence ladder with the simulation literature
+and the repository's validation chapters. \cite{banks2005,law2015,myers2011,sommerville2015}\index{simulation evidence}\index{release readiness}
+
+The practical lesson is simple: each claim must stay inside the evidence level
+that actually supports it.

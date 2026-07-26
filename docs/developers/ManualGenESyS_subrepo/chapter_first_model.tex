@@ -1,0 +1,390 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{The First Model}
+\label{chap:first-model}
+
+This chapter is grounded in the current \texttt{WorkInProgress} branch at
+commit \texttt{f6dbc298\allowbreak{}66dba3e8\allowbreak{}a7021277\allowbreak{}229b82e9\allowbreak{}6fb54d52}.
+
+The worked example comes from the checked-in model file
+\path{models/AirportSecurityExample.gen}.
+Its generator is the model-specific source file
+\texttt{AirportSecurityExample.cpp}.
+Chapter~\ref{chap:first-model} is organized around
+Section~\ref{sec:first-model-why-this-example},
+Section~\ref{sec:first-model-opening},
+Section~\ref{sec:first-model-initial-properties},
+Section~\ref{sec:first-model-first-execution},
+Section~\ref{sec:first-model-controlled-change}, and
+Section~\ref{sec:first-model-what-it-proves}.
+
+\noindent\textbf{Objective.} Walk through a small but complete model from
+loading to a first comparison run, using only elements that already exist in
+the repository.
+
+\noindent\textbf{Audience.} Readers who have launched the GUI, opened a model
+before, and now need one reproducible path that can be inspected, executed, and
+slightly modified.
+
+\noindent\textbf{Scope.} Cover the source of the tutorial model, its main
+components, the initial simulation settings, the first execution, a single
+controlled change, and the limits of what the example proves.
+
+The model choice is intentionally conservative. It uses the familiar flow of
+arrival, processing, decision, and disposal. It does not depend on optional
+subsystems, and it already exists as a repository artifact. That makes it a
+useful bridge between the GUI overview chapter and the later chapters on model
+editing and simulation execution.
+
+The chapter follows this sequence:
+Figure~\ref{fig:first-model-conceptual-flow},
+Figure~\ref{fig:first-model-gui-load},
+Figure~\ref{fig:first-model-properties},
+Figure~\ref{fig:first-model-simulation-config},
+Figure~\ref{fig:first-model-execution},
+Figure~\ref{fig:first-model-trace},
+Figure~\ref{fig:first-model-report}, and
+Figure~\ref{fig:first-model-comparison}.
+
+\section{Why this example}
+\label{sec:first-model-why-this-example}
+
+\path{AirportSecurityExample.gen} is a good first model for four reasons.
+
+\begin{itemize}
+\item It exists in the repository as a checked-in file.
+\item Its structure is small enough to read in one session.
+\item It uses the basic modeling primitives that appear throughout the rest of
+the user manual.
+\item It produces a clear before/after comparison when one parameter is changed.
+\end{itemize}
+
+The generated model contains these main elements:
+\begin{itemize}
+\item \texttt{Create\_1} for passenger arrivals;
+\item \texttt{Process\_1} for the security check;
+\item \texttt{Decide\_1} for the pass/fail branch;
+\item \texttt{Dispose\_1} for cleared passengers;
+\item \texttt{Dispose\_2} for denied passengers;
+\item \texttt{Transportation\_Security\_Officer} as the seized resource;
+\item \texttt{Check\_for\_Proper\_Identification.Queue} as the waiting queue.
+\end{itemize}
+
+The source file that generates the model, shown above, confirms that the
+example is not invented for the manual. The model is built in code, saved to
+\path{models/AirportSecurityExample.gen}, and then executed by the model-
+specific application.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:first-model-conceptual-flow
+% Source of truth:
+%   - models/AirportSecurityExample.gen
+%   - source/applications/modelSpecific/arenaExamples/AirportSecurityExample.cpp
+%   - source/plugins/components/Logic/Create.h
+%   - source/plugins/components/DiscreteProcessing/Process.h
+%   - source/plugins/components/Decisions/Decide.h
+%   - source/plugins/components/Logic/Dispose.h
+% Purpose:
+%   Show the logical flow of the first tutorial model from arrivals to the two disposal branches.
+% Required visual content:
+%   - Create -> Process -> Decide chain
+%   - resource seize point
+%   - queue and branch outcomes
+%   - the single simple change point used later in the chapter
+% Accessibility description:
+%   A compact flow diagram that lets the reader map the textual tutorial to the model structure.
+% Validation:
+%   The diagram must match the current checked-in example model and its saved component names.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/first-model-conceptual-flow}
+\caption{Conceptual flow of the first tutorial model.}
+\label{fig:first-model-conceptual-flow}
+\end{figure}
+
+Figure~\ref{fig:first-model-conceptual-flow} is the reference view for the rest
+of the chapter. Every later property, run setting, and output should be read
+against this flow.
+
+\section{Opening the model in the GUI}
+\label{sec:first-model-opening}
+
+Open \path{models/AirportSecurityExample.gen} in the main GUI. After the file
+loads, the component tree should expose the model objects listed above, and the
+scene should show a short linear process with one branch to each disposal.
+
+The point of this first load is not to edit anything yet. It is to confirm that
+the repository model and the GUI agree on the same structure. If the loaded
+scene does not resemble the conceptual flow in
+Figure~\ref{fig:first-model-conceptual-flow}, stop and recheck the file being
+opened.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:first-model-gui-load
+% Source of truth:
+%   - models/AirportSecurityExample.gen
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/controllers/ModelInspectorController.cpp
+% Purpose:
+%   Show the loaded example model inside the current GUI workspace.
+% Required visual content:
+%   - the model canvas with the short security flow
+%   - the component tree
+%   - the selected model object
+%   - the property editor or nearby inspector
+% Accessibility description:
+%   A screenshot that proves the tutorial model is actually loaded into the GUI.
+% Validation:
+%   The scene must show the current repository example, not an unrelated model.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/first-model-gui-load}
+\caption{Loaded tutorial model in the main GUI.}
+\label{fig:first-model-gui-load}
+\end{figure}
+
+The loaded model should be readable without zoom tricks. The main flow starts at
+\texttt{Create\_1}, reaches \texttt{Process\_1}, and then reaches
+\texttt{Decide\_1}. The two terminal branches represent the cleared and denied
+paths.
+
+\section{Initial properties and simulation settings}
+\label{sec:first-model-initial-properties}
+
+The initial model properties are the ones saved in the repository example.
+They are the values the reader should see after loading the file for the first
+time:
+
+\begin{itemize}
+\item arrival distribution: \texttt{expo(2)} minutes;
+\item security delay: \texttt{tria(0.75, 1.5, 3)} minutes;
+\item pass condition: \texttt{unif(0, 1) < 0.96};
+\item replication length: 12 hours;
+\item number of replications: 2;
+\item warm-up period: 0.5 hour;
+\item trace level: event level.
+\end{itemize}
+
+These are the properties that make the example reproducible as a tutorial. The
+manual does not invent a separate seed field for this model file. Instead, the
+reproducible record for a run must include the exact random seed used by the
+current execution environment, alongside the file name and the simulation
+settings above.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:first-model-properties
+% Source of truth:
+%   - models/AirportSecurityExample.gen
+%   - source/applications/gui/genesys/controllers/PropertyEditorController.cpp
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+% Purpose:
+%   Show the key object properties and the simulation values that define the baseline run.
+% Required visual content:
+%   - property editor with Create_1 selected
+%   - the arrival expression and time unit
+%   - the process delay and resource request
+%   - the simulation configuration summary
+% Accessibility description:
+%   A close-up of the editable fields that control the tutorial model.
+% Validation:
+%   The visible properties must match the values stored in AirportSecurityExample.gen.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/first-model-properties}
+\caption{Baseline properties for the tutorial model.}
+\label{fig:first-model-properties}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:first-model-simulation-config
+% Source of truth:
+%   - source/applications/gui/genesys/dialogs/dialogsimulationconfigure.cpp
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+%   - models/AirportSecurityExample.gen
+% Purpose:
+%   Show the simulation dialog used to confirm the replication length, warm-up, and replication count.
+% Required visual content:
+%   - number of replications
+%   - replication length
+%   - warm-up period
+%   - time-unit selectors
+% Accessibility description:
+%   The simulation settings that make the example run reproducible.
+% Validation:
+%   The dialog state must reflect the same values stored in the model file.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/first-model-simulation-config}
+\caption{Simulation configuration for the baseline tutorial run.}
+\label{fig:first-model-simulation-config}
+\end{figure}
+
+Before the first execution, confirm two things. First, the model file name is
+the one above, not a different saved copy. Second, the simulation settings in
+the dialog match the saved model values. If either one is different, the run is
+no longer the baseline version described in this chapter.
+
+\section{First execution}
+\label{sec:first-model-first-execution}
+
+Run the model once without changing anything. The expected behavior is simple:
+passengers arrive, enter the process, seize the officer resource, wait in the
+queue if needed, and leave through one of the two disposal paths.
+
+Because the tutorial uses stochastic distributions, the exact event order and
+the exact counts depend on the seed used in the run. That does not weaken the
+tutorial. It only means that the reproducible record must keep the seed with
+the model file and the simulation settings.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:first-model-execution
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+%   - models/AirportSecurityExample.gen
+% Purpose:
+%   Show the GUI while the baseline simulation is actively running.
+% Required visual content:
+%   - active run indicator
+%   - current simulation time or progress
+%   - visible model or trace updates
+%   - controls in a state consistent with execution
+% Accessibility description:
+%   A screenshot that proves the simulation is running and not just configured.
+% Validation:
+%   The running state must correspond to the baseline example described in the text.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/first-model-execution}
+\caption{Baseline simulation running in the GUI.}
+\label{fig:first-model-execution}
+\end{figure}
+
+At this stage, the main thing to verify is not a specific number but a correct
+qualitative path: arrivals happen, the security step consumes time, and the
+branching decision sends some entities to the cleared path and some to the
+denied path.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:first-model-trace
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+%   - source/kernel/trace/TraceManager.h
+% Purpose:
+%   Show the trace or event log produced by the first run.
+% Required visual content:
+%   - ordered event messages
+%   - at least one arrival, one processing step, and one branch result
+%   - the event-level trace setting used for the example
+% Accessibility description:
+%   A readable trace view that connects the flow diagram to runtime behavior.
+% Validation:
+%   The trace must match the baseline example and show real runtime messages.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/first-model-trace}
+\caption{Trace view for the first baseline execution.}
+\label{fig:first-model-trace}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:first-model-report
+% Source of truth:
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - models/AirportSecurityExample.gen
+% Purpose:
+%   Show the output report or summary statistics generated by the baseline run.
+% Required visual content:
+%   - reported replication summary
+%   - any observed statistics for the branch outcomes
+%   - time-based summary values if visible
+% Accessibility description:
+%   A report snapshot that lets the reader relate the run to the observed statistics.
+% Validation:
+%   The report must reflect the same example and the same simulation settings as the trace.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/first-model-report}
+\caption{Report summary from the baseline execution.}
+\label{fig:first-model-report}
+\end{figure}
+
+The trace and the report together are enough to establish that the example is
+working. A successful first run proves that the GUI can load the model, the
+kernel can execute it, and the reporting path can summarize it.
+
+\section{One controlled change}
+\label{sec:first-model-controlled-change}
+
+The simplest useful change is to make the security branch stricter. Change the
+decision condition from \texttt{unif(0, 1) < 0.96} to
+\texttt{unif(0, 1) < 0.90}. That keeps the structure intact but increases the
+number of entities that fall into the denied path.
+
+The change is deliberately small:
+\begin{itemize}
+\item no new components are added;
+\item no connections are rewired;
+\item only one numeric threshold changes;
+\item the effect should be visible in the trace and report.
+\end{itemize}
+
+Save the modified model under a new name before rerunning it. That preserves
+the baseline example and makes the comparison explicit.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:first-model-comparison
+% Source of truth:
+%   - models/AirportSecurityExample.gen
+%   - the saved modified copy created during the tutorial
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+% Purpose:
+%   Show the before/after comparison between the baseline run and the stricter decision threshold.
+% Required visual content:
+%   - baseline and modified report summary side by side, or a clearly comparable pair
+%   - the changed decision threshold in the edited model
+%   - a visible difference in branch counts or branch proportions
+% Accessibility description:
+%   A comparison figure that makes the single parameter change and its effect obvious.
+% Validation:
+%   The comparison must show a real difference caused by the edited threshold, not by a different model.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/first-model-comparison}
+\caption{Comparison between the baseline and the stricter branch threshold.}
+\label{fig:first-model-comparison}
+\end{figure}
+
+The comparison should answer one question clearly: did the changed threshold
+affect the outcome in the expected direction? If the answer is yes, the user
+has completed a full first-model loop:
+load, read, run, change, rerun, compare.
+
+\section{What this example proves}
+\label{sec:first-model-what-it-proves}
+
+This tutorial proves that the checked-in example model can be loaded and
+understood as a small simulation system. It also proves that a single
+parameter change can produce an observable difference in the result path.
+
+What it does not prove is broader than that:
+\begin{itemize}
+\item it does not certify the statistical quality of the chosen distributions;
+\item it does not establish a universal seed policy for all models;
+\item it does not replace the later chapters on editing, execution, and results;
+\item it does not claim the example is a final product model.
+\end{itemize}
+
+That limitation is intentional. A first model should be concrete, readable, and
+repeatable, not exhaustive. The later chapters build on the same logic with
+more detailed workflows and richer example structures.

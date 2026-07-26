@@ -1,0 +1,270 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Simulator Kernel}
+\label{chap:nucleo_do_simulador}
+
+\section{Introduction}
+\label{sec:cap7_introducao}
+
+If the previous chapter organized the general map of the project, this chapter goes into the most important region of that map: the core of the simulator. This is where \textit{GenESyS} stops being seen just as an application and starts to be understood as a system that represents models, schedules events, controls repetitions, maintains simulated time and coordinates the observability of the experiment.
+
+The study of the kernel is decisive for a simple reason: everything the user does in the GUI and everything the developer adds via parser, \textit{plugins} or applications ultimately depends on the infrastructure defined here. It doesn't matter whether the model was opened visually, described textually or constructed by code. In all cases it will need to be represented, verified, executed and observed by core kernel classes.
+
+In this chapter, the focus will be on a set of particularly important classes and structures:
+\begin{itemize}
+ \item \texttt{Simulator};
+ \item \texttt{Model};
+ \item \texttt{ModelSimulation};
+ \item \texttt{OnEventManager};
+ \item list of upcoming events;
+ \item current entities and events;
+ \item simulation cycle control mechanisms.
+\end{itemize}
+
+The goal is not yet to exhaust all kernel classes, but to build a firm understanding of the core dynamics of GenESyS.
+
+\section{The Kernel as Simulation Infrastructure}
+\label{sec:cap7_kernel_como_infraestrutura}
+
+The \textit{GenESyS} kernel should be understood as the layer that makes it possible for the simulator to exist regardless of the interface used. The GUI, terminal application, textual templates, \textit{plugins} and tools may vary; the kernel, however, is the basis that supports the representation of the model and the execution of the simulation.
+
+In architectural terms, this means that the kernel needs to solve at least four fundamental problems:
+
+\begin{enumerate}
+ \item how to represent a simulation model;
+ \item how to represent the execution state of this model;
+ \item how to advance in simulated time through events;
+ \item how to make the simulation observable and controllable.
+\end{enumerate}
+
+These four problems appear clearly in the project's central classes. That's why studying the kernel is not studying ``another package'' of the system, but the part that defines the essential behavior of the simulator.
+
+\section{The \texttt{Simulator} class as kernel entry point}
+\label{sec:cap7_classe_simulator}
+
+The \texttt{Simulator} class occupies a special position in the kernel view. It presents itself as the main class of the simulation system and provides access to important managers such as \texttt{PluginManager}, \texttt{ModelManager}, \texttt{TraceManager}, \texttt{ParserManager}, and \texttt{ExperimentManager}. This organization already reveals something important: GenESyS was not structured around a single monolithic class, but around a nucleus that coordinates specialized subsystems.
+
+From a developer's perspective, the \texttt{Simulator} class is useful for two reasons. First, because it offers a synthetic view of the project's architecture. Secondly, because it works as a high-level access point to the other mechanisms of the system. Instead of entering the software in isolated fragments, the reader can start by realizing that there is a central class that articulates the simulator's ecosystem.
+
+\subsection{What This Class Suggests About the Architecture}
+\label{subsec:cap7_o_que_simulator_sugere}
+
+The mere presence of managers accessible from \texttt{Simulator} already indicates five architectural pillars:
+\begin{itemize}
+ \item the system manages models;
+ \item the system manages \textit{plugins};
+ \item the system has an explicit tracing infrastructure;
+ \item the system has a parser subsystem;
+ \item the system provides support for experiments.
+\end{itemize}
+
+Even before reading the details of each manager, the developer already realizes that the GenESyS core was designed as a coordinating infrastructure and not as a single execution block.
+
+\section{The class \texttt{Model} as the center of the simulation model}
+\label{sec:cap7_classe_model}
+
+The \texttt{Model} class deserves special attention because it represents, in the kernel, the simulation model itself. Its importance is already explained in the header documentation: it is described as probably the most important class in the GenESyS kernel. This formulation makes sense. It is where components, \textit{data definitions}, list of future events, controls, responses, persistence, parser, consistency check, entity management and access to the simulation state are articulated.
+
+In practical terms, \texttt{Model} is the class in which the model stops being just an idea or diagram and becomes an object that can be manipulated by the software.
+
+\subsection{Why \texttt{Model} is so central}
+\label{subsec:cap7_por_que_model_central}
+
+The centrality of \texttt{Model} arises from the fact that it articulates several essential mechanisms at the same time:
+\begin{itemize}
+ \item insertion and removal of model elements;
+ \item creation and removal of entities;
+ \item sending entities between components;
+ \item model consistency check;
+ \item persistence and loading;
+ \item access to parser, tracing and simulation;
+ \item maintenance of the list of upcoming events.
+\end{itemize}
+
+This means that the \texttt{Model} class is not just a component container. It is the organizing center of the model's life within the simulator.
+
+\subsection{Model as a Combination of Components and Data}
+\label{subsec:cap7_modelo_componentes_dados}
+
+The class documentation itself indicates that the model is mainly represented by:
+\begin{itemize}
+ \item a collection of model components, appropriately configured and connected;
+ \item a collection of \textit{model data definitions}, which supports the model infrastructure.
+\end{itemize}
+
+This distinction is architecturally fundamental. It anticipates a principle that will return in later chapters: the model is not just made of flow blocks. It also depends on a layer of data and definitions that supports the simulation.
+
+\subsection{The Future Event List}
+\label{subsec:cap7_lista_eventos_futuros}
+
+Among the attributes of \texttt{Model}, one deserves special mention: the list of upcoming events. The code's own documentation describes it as one of the most important elements of an event-driven simulation system. This is easily justified. It is from this list that the simulation advances chronologically, always taking the next event to be processed.
+
+For the developer, this is essential. The simulated time does not advance as a simple arbitrary incremental loop. It progresses by orderly firing of scheduled events, and the list of future events is the mechanism that supports this process.
+
+\section{The class \texttt{ModelSimulation}}
+\label{sec:cap7_classe_modelsimulation}
+
+If \texttt{Model} represents the model, \texttt{ModelSimulation} represents the execution of that model. This distinction is extremely important. The model and its simulation are related but not identical objects. The first describes the structure of the modeled system; the second controls its execution cycle.
+
+\texttt{ModelSimulation}'s documentation is particularly helpful. It describes the current simulation execution layer, based on repetitions, replication length, \textit{warm-up} configuration, and event processing. It also emphasizes that although there are higher abstractions of experimentation in development, \texttt{ModelSimulation} remains the execution core used today. This observation is useful for the developer, because it indicates which operational class concentrates the current behavior of the simulation.
+
+\subsection{Responsibilities of \texttt{ModelSimulation}}
+\label{subsec:cap7_responsabilidades_modelsimulation}
+
+\texttt{ModelSimulation}'s responsibilities can be organized into a few main groups:
+
+\begin{itemize}
+ \item start, pause, step by step and stop the simulation;
+ \item control repetitions;
+ \item maintain the current simulated time;
+ \item manage replication length and period of \textit{warm-up};
+ \item check termination conditions;
+ \item manage breakpoints;
+ \item trigger reports;
+ \item coordinate event processing.
+\end{itemize}
+
+Note that this class is not a mere operational detail. It concentrates the effective logic of model execution and, therefore, must be studied carefully by any developer who intends to change the central dynamics of the simulator.
+
+\subsection{The Simulation Cycle}
+\label{subsec:cap7_ciclo_da_simulacao}
+
+Reading the \texttt{ModelSimulation} class allows you to see a clear logical structure of the simulation cycle:
+
+\begin{enumerate}
+ \item simulation initialization;
+ \item initializing a replication;
+ \item sequential event processing;
+ \item checking breakpoints and termination conditions;
+ \item replication shutdown;
+ \item simulation termination.
+\end{enumerate}
+
+This cycle is very important for understanding the system. It shows that execution is not a simple monolithic ``run'' call, but a process structured into phases, each with its own responsibilities.
+
+\subsection{Simulated Time, Replications, and \textit{Warm-up}}
+\label{subsec:cap7_tempo_replications_warmup}
+
+One of the merits of the \texttt{ModelSimulation} class is that it makes explicit that model execution involves more than simply passing events. There is also the management of:
+\begin{itemize}
+ \item current simulated time;
+ \item number of repetitions;
+ \item replication length;
+ \item \textit{warm-up} period;
+ \item base time unit;
+ \item termination condition.
+\end{itemize}
+
+These elements reveal that the class was designed to support simulation-oriented experimentation and analysis, and not just ad hoc execution of a flow of events.
+
+\section{Events, the Current Event, and Sequential Processing}
+\label{sec:cap7_eventos_evento_corrente_processamento}
+
+Discrete event-driven simulation depends on a central idea: the system evolves from event to event. In \textit{GenESyS}, this logic appears very clearly in the relationship between \texttt{Model}, \texttt{ModelSimulation}, \texttt{Event} and the list of future events.
+
+During the simulation, there is always a current event being processed. This event defines the current simulated instant and the context of the ongoing operation. When processed, it can produce effects on entities, components, model data and the system's own future agenda.
+
+This organization has two important implications for the developer:
+\begin{enumerate}
+ \item the system state is not updated diffusely, but at discrete processing points;
+ \item the semantics of the components and most of the model's actions depend on the current event.
+\end{enumerate}
+
+This observation connects directly to the parser, entities, components and various expressions linked to the model state, which will be discussed in later chapters.
+
+\section{The \texttt{OnEventManager} class and core observability}
+\label{sec:cap7_classe_oneventmanager}
+
+If \texttt{ModelSimulation} controls execution, \texttt{OnEventManager} makes that execution observable through high-level events. This is a very elegant architectural point of GenESyS and deserves special attention.
+
+The \texttt{OnEventManager} class allows you to register handlers for different types of occurrences in the model and simulation life cycle. Among them are:
+\begin{itemize}
+ \item model check successful;
+ \item model loading and saving;
+ \item replication initiation and termination;
+ \item event processing;
+ \item creating, moving and removing entities;
+ \item start, pause, resume and end of the simulation;
+ \item breakpoint triggering.
+\end{itemize}
+
+This infrastructure shows that GenESyS treats observability as a constitutive part of the kernel, and not as a mere peripheral interface resource.
+
+\subsection{Why this is architecturally important}
+\label{subsec:cap7_por_que_oneventmanager_importante}
+
+\texttt{OnEventManager} elegantly separates two things:
+\begin{itemize}
+ \item the simulation execution logic;
+ \item the logic for reacting to relevant simulation events.
+\end{itemize}
+
+This separation is valuable because it allows applications, tools, reporting, and debugging mechanisms to plug into kernel behavior without having to mix their logic directly with central processing. It is, in essence, an observation and reaction mechanism based on events in the simulator itself.
+
+\subsection{ModelEvent e SimulationEvent}
+\label{subsec:cap7_modelevent_simulationevent}
+
+The presence of the auxiliary classes \texttt{ModelEvent} and \texttt{SimulationEvent} reinforces this architecture. They function as context objects for registered handlers, carrying information about the model, the simulated time, the current event, the replication, the paused or stopped state, the created entity and the target component, among other relevant data.
+
+With this, \texttt{OnEventManager} not only announces that ``something has occurred'', but provides enough context for the reaction to that event to be technically useful.
+
+\section{Breakpoints and Fine-Grained Execution Control}
+\label{sec:cap7_breakpoints_controle_fino_execucao}
+
+The \texttt{ModelSimulation} class also makes explicit the existence of breakpoint lists by time, component and entity. This feature is particularly relevant because it shows that the kernel was designed not only to run models to completion, but to allow controlled observation of the simulation.
+
+From the user's perspective, this appears in the GUI as the ability to pause or advance step by step. From the developer's point of view, this reveals that fine control over execution is not added by the interface in a superficial way. It is provided in the kernel infrastructure itself.
+
+This is an important architectural decision. It means that debugging, inspection, and controlled experimentation do not depend exclusively on the graphical application; they are based on the simulation core.
+
+\section{An integrated reading of the kernel}
+\label{sec:cap7_leitura_integrada_nucleo}
+
+The best way to understand the core of \textit{GenESyS} is to integrate the functions of the classes studied so far.
+
+\begin{itemize}
+ \item \texttt{Simulator} coordinates access to central subsystems.
+ \item \texttt{Model} represents the model, its components, data and future events.
+ \item \texttt{ModelSimulation} controls the execution cycle for this model.
+ \item \texttt{OnEventManager} makes relevant events observable and responsive.
+\end{itemize}
+
+This integration helps to realize that the kernel is not a set of parallel classes without articulation. It is a coherent infrastructure in which each class occupies a specific role within the same simulation dynamics.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Roles of the core classes in the GenESyS kernel.}
+ \label{tab:cap7_papeis_classes_centrais}
+ \small
+ \begin{tabular}{|p{3.3cm}|p{7.2cm}|}
+ \hline
+ \textbf{Classe} & \textbf{Papel principal} \\
+ \hline
+ \texttt{Simulator} & Highest-level kernel class, coordinating access to central managers \\
+ \hline
+ \texttt{Model} & Representation of the simulation model, its components, data, entities and future events \\
+ \hline
+ \texttt{ModelSimulation} & Control of execution, repetitions, simulated time, termination conditions and events \\
+ \hline
+ \texttt{OnEventManager} & Registration and triggering of handlers associated with relevant model and simulation events \\
+ \hline
+ \end{tabular}
+\end{table}
+
+\section{Final Considerations}
+\label{sec:cap7_consideracoes_finais}
+
+This chapter presented the core of the simulator based on its most central classes. The main point to remember is that \textit{GenESyS} organizes its simulation infrastructure clearly: there is a high-level class that coordinates subsystems, a class that represents the model, a class that controls the execution of that model, and an explicit event-driven observability mechanism. This organization is robust enough to support applications, parser, \textit{plugins}, tracing, breakpoints and future extensions.
+
+With this foundation established, the next natural step is to move on to the structure of the model elements themselves. In other words, if this chapter showed how the system represents and executes a model, the following chapter will show what types of objects this model is made of: components, \textit{data definitions} and extensibility mechanisms by \textit{plugins}.
+
+Test your understanding of this content by answering the following questions:
+
+\begin{enumerate}
+ \item What is the conceptual difference between \texttt{Model} and \texttt{ModelSimulation} in the GenESyS kernel?
+
+\item Why is the list of future events such an important structure in event-driven simulation?
+
+\item What role does \texttt{OnEventManager} play in system observability?
+
+\item Why is the presence of breakpoints in the kernel a relevant architectural decision and not just an interface detail?
+\end{enumerate}

@@ -1,0 +1,441 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Biological and Whole-Cell Extensions}
+\label{chap:biological-and-whole-cell-extensions}
+
+This chapter maps the biological extension surface that exists in the current
+tree. It is intentionally conservative: it documents implemented classes,
+didactic examples, and validation boundaries, but it does not claim organism-
+level predictive validity.
+
+\noindent\textbf{Objective.} Summarize the biological, whole-cell, and related
+extension areas supported by the project.
+
+\noindent\textbf{Audience.} Developers and researchers who need a high-level map
+of the biological extension surface.
+
+\noindent\textbf{Scope.} Cover the scope, terminology, and evidence limits that
+should govern these extensions.
+
+\noindent\textbf{Status.} Temporary skeleton replaced with current implemented
+surface and evidence boundaries. The scientific claim level remains
+experimental/research-oriented unless a later chapter states otherwise.
+
+\section{Scope and contract}
+
+The repository currently treats whole-cell, biochemical, SBML, and virtual-cell
+work as experimental or research-oriented. That boundary is stated in
+\path{../README.md}, \path{../docs/ai_assistants/reference/SCIENTIFIC_DOMAINS.md},
+and the human decision backlog. The right reading is:
+\begin{itemize}
+\item the code exposes real classes, examples, and tests;
+\item the examples are didactic unless a source file explicitly says otherwise;
+\item successful compilation or startup does not imply scientific validation;
+\item any future claim beyond the current code must bring a real reference,
+      dataset or model identifier, benchmark, tolerance, procedure, and
+      explicit scope.
+\end{itemize}
+
+The biological surface in the current tree is split across three layers:
+\begin{itemize}
+\item native biochemical definitions and bridges;
+\item whole-cell state and components;
+\item model-specific didactic examples.
+\end{itemize}
+
+The key design rule is that biological meaning stays explicit. A biochemical
+network, a flux-balance network, a compartment transport rule, and a whole-cell
+state are not interchangeable abstractions.
+
+The key visual references for this chapter are Figure~\ref{fig:biochemical-network-surface},
+Figure~\ref{fig:fba-flow},
+Figure~\ref{fig:compartment-transport-flow},
+Figure~\ref{fig:whole-cell-architecture},
+Figure~\ref{fig:yeast-mvp-structure}, and
+Figure~\ref{fig:pathway-stress-example}.
+
+\section{Biochemical surface}
+
+The biochemical layer currently includes both native deterministic networks and
+interoperability helpers.
+
+\subsection{Native deterministic and network-oriented classes}
+
+The current surface centers on the following classes:
+\begin{itemize}
+\item \texttt{BioSpecies}, \texttt{BioParameter}, and \texttt{BioReaction} for
+      native species, scalar parameters, and mass-action reactions;
+\item \texttt{BioNetwork} for a deterministic biochemical network runner with
+      fixed-step RK4 over a mass-action ODE system;
+\item \texttt{MetabolicNetwork} and \texttt{MetabolicReaction} for flux-style
+      metabolic networks that keep reaction membership and objective metadata
+      explicit;
+\item \texttt{GeneticCircuit}, \texttt{GeneticRegulation}, and related genetic
+      circuit helpers for transcriptional regulation surfaces;
+\item \texttt{BioSimulatorRunner} as the command-driven structural runner for
+      validate/simulate/report/import/export workflows;
+\item \texttt{BioSBMLBridge} as the native import/export boundary for SBML text.
+\end{itemize}
+
+Figure~\ref{fig:biochemical-network-surface} sketches that surface as it exists
+today: native biochemical definitions feed either the deterministic runner or
+the SBML bridge, while the flux-style network types stay available for the
+whole-cell examples that need them.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:biochemical-network-surface
+% Source of truth:
+%   - ../source/plugins/data/BiochemicalSimulation/BioSpecies.h
+%   - ../source/plugins/data/BiochemicalSimulation/BioParameter.h
+%   - ../source/plugins/data/BiochemicalSimulation/BioReaction.h
+%   - ../source/plugins/data/BiochemicalSimulation/BioNetwork.h
+%   - ../source/plugins/data/BiochemicalSimulation/BioSimulatorRunner.h
+%   - ../source/plugins/data/BiochemicalSimulation/BioSBMLBridge.h
+% Purpose:
+%   Show the current biochemical extension surface and its import/export boundary.
+% Required visual content:
+%   - native biochemical definitions
+%   - deterministic network runner
+%   - SBML bridge
+%   - structural runner commands
+% Accessibility description:
+%   A block diagram that shows native biochemical data flowing into the deterministic runner and into the SBML bridge.
+% Validation:
+%   The diagram must match the current class names and the command-oriented runner surface in the codebase.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/biochemical-network-surface}
+\caption{Current biochemical extension surface and its SBML boundary.}
+\label{fig:biochemical-network-surface}
+\end{figure}
+
+\subsection{Flux-style metabolic models}
+
+The metabolic path is deliberately separate from the deterministic network
+runner. \texttt{MetabolicNetwork} stores the reaction membership, objective
+reaction, objective sense, compartment, and enabled flag. \texttt{MetabolicReaction}
+stores reactants, products, bounds, objective coefficient, reversibility, and
+gene rule text.
+
+This is the layer used by the whole-cell examples that exercise FBA-style
+reasoning. The manual should treat it as a didactic constraint model rather than
+as a validated biochemical simulator.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:fba-flow
+% Source of truth:
+%   - ../source/plugins/data/BiochemicalSimulation/MetabolicNetwork.h
+%   - ../source/plugins/data/BiochemicalSimulation/MetabolicReaction.h
+%   - ../source/plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h
+%   - ../source/plugins/components/WholeCellModeling/MetabolicStateProjectionComponent.h
+% Purpose:
+%   Show the FBA-style path from reaction membership to flux balance and projection.
+% Required visual content:
+%   - metabolic reaction membership and bounds
+%   - objective selection
+%   - flux-balance solve
+%   - projection into pathway activity or pools
+% Accessibility description:
+%   A pipeline diagram from a metabolic network through FBA to projected state updates.
+% Validation:
+%   The diagram must reflect the current backend behavior in the whole-cell MVPs and tests.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/fba-flow}
+\caption{FBA-style metabolic flow used by the whole-cell examples.}
+\label{fig:fba-flow}
+\end{figure}
+
+\subsection{Compartment transport}
+
+Compartment-aware transport is modeled explicitly rather than hidden inside the
+solver. The main helper classes are:
+\begin{itemize}
+\item \texttt{MetabolicStateProjectionComponent} for mapping selected fluxes into
+      global metabolite pools, compartment pools, and pathway activity values;
+\item \texttt{CompartmentExchangeComponent} for moving selected amounts between
+      regions such as extracellular, cytosol, mitochondria, or bud;
+\item \texttt{ResourceAllocationComponent} for distributing RNAP and ribosome
+      resources before expression steps.
+\end{itemize}
+
+Figure~\ref{fig:compartment-transport-flow} captures the compartment-aware flow
+used by the yeast-oriented whole-cell examples.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:compartment-transport-flow
+% Source of truth:
+%   - ../source/plugins/components/WholeCellModeling/MetabolicStateProjectionComponent.h
+%   - ../source/plugins/components/WholeCellModeling/CompartmentExchangeComponent.h
+%   - ../source/plugins/components/WholeCellModeling/ResourceAllocationComponent.h
+%   - ../source/applications/modelSpecific/wcm/WcmCompartmentTransportWholeCellMvp.h
+%   - ../source/applications/modelSpecific/wcm/WcmYeastDidacticWholeCellMvp.h
+% Purpose:
+%   Show how fluxes become compartment pools and how exchange rules consume pathway activity.
+% Required visual content:
+%   - source compartment
+%   - target compartment
+%   - projected flux
+%   - exchange rule
+%   - downstream expression/growth stages
+% Accessibility description:
+%   A compartment map that shows transport, projection, and downstream consumption of metabolites.
+% Validation:
+%   The diagram must match the current whole-cell transport examples and their runtime order.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/compartment-transport-flow}
+\caption{Compartment transport and projection in the current whole-cell examples.}
+\label{fig:compartment-transport-flow}
+\end{figure}
+
+\section{Whole-cell surface}
+
+The whole-cell layer centers on \texttt{WholeCellState}. That class is the
+shared container used by the whole-cell components. Its current responsibilities
+include:
+\begin{itemize}
+\item integer molecule counts for SSA-driven expression and degradation;
+\item metabolite pools, including compartment-scoped pools;
+\item pathway activity values used by growth, checkpoint, and stress routing;
+\item resource budgets for expression allocation;
+\item cell volume, mass, time, step count, lifecycle phase, generation count,
+      viability, and last-division time;
+\item JSON path storage for the CovertLab/WholeCell fixed-constants and
+      parameters inputs used by the didactic M. genitalium-oriented path.
+\end{itemize}
+
+The main whole-cell components are:
+\begin{itemize}
+\item \texttt{StochasticReactionRule} and \texttt{StochasticReactionComponent}
+      for Gillespie-style SSA updates;
+\item \texttt{StochasticTranscription} and \texttt{StochasticTranslation} for
+      tau-leaping expression;
+\item \texttt{CellGrowthComponent} for growth and density-aware mass change;
+\item \texttt{CellCycleCheckpointComponent} for lifecycle phase annotation and
+      clock advancement;
+\item \texttt{CellFateDecisionComponent} and \texttt{CellDivisionEvent} for
+      viability/division routing;
+\item \texttt{PathwayStressResponseComponent} for sustained low-pathway stress;
+\item \texttt{BioStateProjectionComponent} and
+      \texttt{MetabolicStateProjectionComponent} for moving biochemical outputs
+      into whole-cell state;
+\item \texttt{CompartmentExchangeComponent} for transport between regions;
+\item \texttt{EukaryoticCellCycleComponent} and \texttt{FtsZPolymerizationComponent}
+      for the more specific eukaryotic and division-oriented examples;
+\item \texttt{MetabolicSubmodelComponent} for compact metabolism examples;
+\item \texttt{ResourceAllocationComponent} for resource partitioning examples.
+\end{itemize}
+
+The components are intentionally explicit: they share one state object, but they
+do not silently merge semantics. That is why the examples can explain how a
+biochemical output becomes a resource budget, a growth driver, or a lifecycle
+checkpoint without pretending that these are the same thing.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:whole-cell-architecture
+% Source of truth:
+%   - ../source/plugins/data/WholeCellModeling/WholeCellState.h
+%   - ../source/plugins/data/WholeCellModeling/StochasticReactionRule.h
+%   - ../source/plugins/components/WholeCellModeling/StochasticTranscription.h
+%   - ../source/plugins/components/WholeCellModeling/StochasticTranslation.h
+%   - ../source/plugins/components/WholeCellModeling/CellGrowthComponent.h
+%   - ../source/plugins/components/WholeCellModeling/CellCycleCheckpointComponent.h
+%   - ../source/plugins/components/WholeCellModeling/CellFateDecisionComponent.h
+%   - ../source/plugins/components/WholeCellModeling/CellDivisionEvent.h
+% Purpose:
+%   Show the current whole-cell pipeline around the shared state object.
+% Required visual content:
+%   - shared state
+%   - expression and degradation
+%   - growth and checkpoints
+%   - fate/division routing
+% Accessibility description:
+%   A layered pipeline where biochemical, expression, growth, and routing components all read and write the same shared state.
+% Validation:
+%   The diagram must match the component ordering used by the didactic whole-cell applications.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/whole-cell-architecture}
+\caption{Current whole-cell architecture around \texttt{WholeCellState}.}
+\label{fig:whole-cell-architecture}
+\end{figure}
+
+\section{Didactic examples}
+
+The model-specific whole-cell examples are the clearest evidence that the
+surface exists in executable form. They live under
+\texttt{source/applications/modelSpecific/wcm/} and persist matching
+\texttt{models/*.gen} snapshots.
+
+The current families are:
+\begin{itemize}
+\item \texttt{WcmSimpleSsa}: one-gene SSA example with transcription,
+      degradation, translation, and protein turnover;
+\item \texttt{WcmGeneExpression}: central-dogma example with four genes and
+      stochastic transcription, translation, and degradation;
+\item \texttt{WcmBioNetworkBridge}: minimal deterministic BioNetwork to
+      stochastic whole-cell bridge;
+\item \texttt{WcmWholeCellMvp}: compact whole-cell analog combining
+      deterministic metabolism, projection, expression, growth, and division;
+\item \texttt{WcmFluxBalanceWholeCellMvp}: FBA-driven whole-cell MVP;
+\item \texttt{WcmCompartmentTransportWholeCellMvp}: FBA plus compartment-aware
+      transport and exchange;
+\item \texttt{WcmPathwayStressWholeCellMvp}: stress routing when the monitored
+      pathway stays below threshold;
+\item \texttt{WcmLifecycleStress}: starvation and death routing example;
+\item \texttt{WcmMgenitaliumKarr2012}: M. genitalium analog inspired by Karr et
+      al. 2012, with explicit note that it is a didactic analog, not a canonical
+      validated public whole-cell model;
+\item \texttt{WcmYeastDidacticWholeCellMvp}: yeast-oriented didactic FBA/whole-
+      cell example;
+\item \texttt{WcmYeastEukaryoticWholeCellMvp}: budding-yeast-inspired eukaryotic
+      whole-cell example with compartments and cell-cycle coordination.
+\end{itemize}
+
+The yeast examples are the most useful way to explain the architecture to a
+reader. They combine FBA-style metabolism, compartment transport, expression,
+growth, and lifecycle control in one didactic pipeline without presenting the
+result as a validated public yeast whole-cell model.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:yeast-mvp-structure
+% Source of truth:
+%   - ../source/applications/modelSpecific/wcm/WcmYeastDidacticWholeCellMvp.h
+%   - ../source/applications/modelSpecific/wcm/WcmYeastEukaryoticWholeCellMvp.h
+%   - ../source/applications/modelSpecific/wcm/WcmCompartmentTransportWholeCellMvp.h
+%   - ../source/applications/modelSpecific/wcm/WcmPathwayStressWholeCellMvp.h
+%   - ../source/applications/modelSpecific/wcm/WcmLifecycleStress.h
+% Purpose:
+%   Show how the yeast-oriented examples vary around one shared architectural core.
+% Required visual content:
+%   - common core
+%   - metabolic branch
+%   - compartment branch
+%   - stress branch
+%   - lifecycle branch
+% Accessibility description:
+%   A matrix or branching diagram that compares the yeast-oriented whole-cell MVP variants.
+% Validation:
+%   The diagram must remain aligned with the actual example class responsibilities and descriptions.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/yeast-mvp-structure}
+\caption{Yeast-oriented whole-cell example structure.}
+\label{fig:yeast-mvp-structure}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:pathway-stress-example
+% Source of truth:
+%   - ../source/applications/modelSpecific/wcm/WcmPathwayStressWholeCellMvp.h
+%   - ../source/plugins/components/WholeCellModeling/PathwayStressResponseComponent.h
+%   - ../source/plugins/components/WholeCellModeling/CellFateDecisionComponent.h
+% Purpose:
+%   Show the sustained low-pathway-stress path from objective to arrest/death routing.
+% Required visual content:
+%   - monitored pathway objective
+%   - threshold
+%   - stress streak
+%   - arrest/death routing
+% Accessibility description:
+%   A simple lifecycle diagram where low objective activity produces arrest and death paths.
+% Validation:
+%   The diagram must match the current stress component inputs and routing behavior.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/pathway-stress-example}
+\caption{Pathway stress example in the current whole-cell surface.}
+\label{fig:pathway-stress-example}
+\end{figure}
+
+\section{Evidence and validation}
+
+The current whole-cell and biochemical code is not only descriptive; it is also
+covered by focused unit tests. The most relevant current test files are:
+\begin{itemize}
+\item \texttt{../source/tests/unit/test\_wcm\_plugins.cpp};
+\item \texttt{../source/tests/unit/test\_simulator\_runtime.cpp}.
+\end{itemize}
+
+Those tests confirm, among other things, that:
+\begin{itemize}
+\item \texttt{WholeCellState} stores and returns molecule counts, metabolite
+      pools, compartment pools, pathway activities, resource budgets, cell
+      geometry, and lifecycle metadata;
+\item \texttt{StochasticReactionRule} handles zero-rate, zero-count, unimolecular,
+      and bimolecular propensity cases;
+\item \texttt{BioNetwork} and \texttt{BioSimulatorRunner} expose the current
+      deterministic runner and SBML import/export surface;
+\item \texttt{MetabolicStateProjectionComponent} and
+      \texttt{CompartmentExchangeComponent} participate in executable
+      whole-cell pipelines;
+\item \texttt{CellCycleCheckpointComponent} participates in executable
+      whole-cell pipelines;
+\item \texttt{CellFateDecisionComponent} participates in executable whole-cell
+      pipelines;
+\item \texttt{PathwayStressResponseComponent} participates in executable
+      whole-cell pipelines;
+\item \texttt{EukaryoticCellCycleComponent} participates in executable whole-
+      cell pipelines;
+\item SBML import/export currently round-trips the native biochemical
+      representation through the implemented bridge behavior.
+\end{itemize}
+
+Figure~\ref{fig:evidence-ladder} summarizes the evidence ladder that should be
+used when reading this chapter.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:evidence-ladder
+% Source of truth:
+%   - ../docs/ai_assistants/GOVERNANCE.md
+%   - ../docs/ai_assistants/STATUS.md
+%   - ../docs/ai_assistants/reference/SCIENTIFIC_DOMAINS.md
+%   - ../source/tests/unit/test_wcm_plugins.cpp
+%   - ../source/tests/unit/test_simulator_runtime.cpp
+% Purpose:
+%   Show how code, tests, didactic examples, and scientific claims relate to each other.
+% Required visual content:
+%   - confirmed code
+%   - executed tests
+%   - didactic examples
+%   - experimental/research boundary
+% Accessibility description:
+%   A vertical or stepped ladder that distinguishes code evidence from scientific claim level.
+% Validation:
+%   The diagram must not collapse experimental examples into scientific validation.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/evidence-ladder}
+\caption{Evidence ladder for the biological and whole-cell surface.}
+\label{fig:evidence-ladder}
+\end{figure}
+
+\section{Scientific limits and future work}
+
+The current surface is useful, but it is not a validated organism model.
+Specific limits matter:
+\begin{itemize}
+\item \texttt{WcmMgenitaliumKarr2012} is an analog inspired by the Karr et al.
+      2012 whole-cell paper, not a canonical public model with full scientific
+      validation in this repository;
+\item the yeast examples are didactic architecture examples, not published
+      validated yeast whole-cell simulations;
+\item \texttt{HUM-VC-001} in the human backlog still owns the choice of first
+      bounded virtual-cell use case;
+\item \texttt{HUM-VC-002} still owns the SBML supported subset and compatibility
+      target;
+\item any future scientific claim must include a real reference, dataset or
+      model identifier, benchmark, tolerance, procedure, and explicit maturity
+      statement.
+\end{itemize}
+
+The practical takeaway is simple: use this chapter to locate the current
+implementation surface and its validation boundary, not to infer a stronger
+scientific claim than the code and tests support.

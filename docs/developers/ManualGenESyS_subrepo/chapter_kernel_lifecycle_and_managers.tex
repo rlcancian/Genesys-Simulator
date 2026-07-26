@@ -1,0 +1,428 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Kernel Lifecycle and Managers}
+\label{chap:kernel-lifecycle-and-managers}
+
+This chapter documents the current kernel entry point and the manager objects
+that coordinate runtime behavior in the active branch. It is based on the live
+kernel sources inspected on 2026-07-23. The inspection focused on:
+\begin{itemize}
+\item \texttt{source/kernel/simulator/Simulator.*};
+\item \texttt{source/kernel/simulator/model/Model.*};
+\item \texttt{source/kernel/simulator/model/ModelManager.*};
+\item \texttt{source/kernel/simulator/PluginManager.*};
+\item \texttt{source/kernel/simulator/TraceManager.*};
+\item \texttt{source/kernel/simulator/ParserManager.h};
+\item \texttt{source/kernel/simulator/ExperimentManager.*}.
+\end{itemize}
+
+\noindent\textbf{Objective.} Describe the kernel lifecycle and the manager
+objects that own, expose, and shut down the runtime services used by the
+simulator.
+
+\noindent\textbf{Audience.} Developers who need to reason about kernel
+startup, ownership, teardown order, and the current set of manager classes.
+
+\noindent\textbf{Scope.} Cover the \texttt{Simulator} entry point, the owned
+manager set, the \texttt{Model} lifecycle, ownership boundaries, and the
+current TODOs that still mark incomplete manager behavior.
+
+\noindent\textbf{Status.} Confirmed by repository inspection on 2026-07-23.
+This chapter records the current runtime snapshot, not a future refactoring
+target.
+
+The chapter follows this sequence:
+Figure~\ref{fig:kernel-uml},
+Figure~\ref{fig:kernel-ownership},
+Figure~\ref{fig:kernel-startup-sequence},
+Figure~\ref{fig:kernel-shutdown-sequence}, and
+Figure~\ref{fig:kernel-manager-map}.
+
+\section{Kernel entry point}
+\label{sec:kernel-entry-point}
+
+The kernel is centered on the \texttt{Simulator} class. The class is exposed as
+the main simulation kernel object and gives the rest of the repository access
+to the current managers:
+\texttt{LicenceManager},
+\texttt{PluginManager},
+\texttt{ModelManager},
+\texttt{TraceManager},
+\texttt{ParserManager}, and
+\texttt{ExperimentManager}.
+
+The constructor is intentionally explicit. It creates those managers in one
+place, prints the startup banner, and exposes the resulting kernel through a
+single object that applications can obtain through the connector layer. That
+means the kernel is not a monolithic simulation loop; it is a coordinator for
+specialized subsystems.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:kernel-uml
+% Source of truth:
+%   - ../source/kernel/simulator/Simulator.h
+%   - ../source/kernel/simulator/Simulator.cpp
+%   - ../source/kernel/simulator/model/Model.h
+%   - ../source/kernel/simulator/model/ModelManager.h
+%   - ../source/kernel/simulator/PluginManager.h
+%   - ../source/kernel/simulator/TraceManager.h
+%   - ../source/kernel/simulator/ParserManager.h
+%   - ../source/kernel/simulator/ExperimentManager.h
+% Purpose:
+%   Show the kernel entry point and the manager objects owned or reached through it.
+% Required visual content:
+%   - Simulator at the center
+%   - owned manager objects
+%   - Model as a kernel object with its own runtime helpers
+% Accessibility description:
+%   A compact UML-style view that helps the reader understand which objects are top-level managers and which ones are owned by a model.
+% Validation:
+%   Every class label must exist in the current code and every ownership edge must match the constructor and destructor paths.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/kernel-uml}
+\caption{Kernel entry point and the main manager objects.}
+\label{fig:kernel-uml}
+\end{figure}
+
+Figure~\ref{fig:kernel-uml} should make the kernel composition obvious before
+the reader drills into teardown order and manager responsibilities.
+
+\section{Startup and ownership}
+\label{sec:kernel-startup-ownership}
+
+The constructor of \texttt{Simulator} creates the owned manager objects in a
+fixed order. The current implementation constructs:
+\begin{enumerate}
+\item \texttt{LicenceManager};
+\item \texttt{PluginManager};
+\item \texttt{ModelManager};
+\item \texttt{TraceManager};
+\item \texttt{ParserManager};
+\item \texttt{ExperimentManager}.
+\end{enumerate}
+
+That order matters because the managers are not just passive data holders.
+\texttt{PluginManager} needs the kernel and the trace infrastructure.
+\texttt{ModelManager} creates and tracks models that are themselves kernel
+objects.
+\texttt{TraceManager} mediates most runtime diagnostics.
+\texttt{ExperimentManager} coordinates the higher-level experiment abstraction
+that is still under development.
+
+The model-side lifecycle follows the same pattern. A new \texttt{Model} is
+constructed with a parent \texttt{Simulator}. It immediately binds to the
+parent trace manager, creates its own event manager, model-data manager,
+component manager, simulation controller, parser, checker, persistence layer,
+future-event list, controls, and responses, and then exposes those objects
+through getters.
+
+The key ownership rule is simple:
+\begin{itemize}
+\item raw pointers are not automatically owning pointers;
+\item ownership is confirmed only when constructor and destructor paths delete
+the pointed-to object;
+\item non-owning back-references remain non-owning even though they are stored
+as raw pointers.
+\end{itemize}
+
+In the current code, the top-level owning relationships are clear enough to
+document conservatively:
+\begin{itemize}
+\item \texttt{Simulator} owns the manager objects it creates;
+\item \texttt{ModelManager} owns the open models it stores;
+\item \texttt{PluginManager} owns the connected plugin wrappers plus the
+connector and system command executor it creates or receives;
+\item \texttt{TraceManager} owns its handler lists and error-message storage;
+\item \texttt{ExperimentManager} owns the experiment objects in its list;
+\item \texttt{Model} owns its runtime services, containers, and model-owned
+runtime objects;
+\item \texttt{Model} does not own its parent \texttt{Simulator} or the trace
+manager reference it borrows from the simulator.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:kernel-ownership
+% Source of truth:
+%   - ../source/kernel/simulator/Simulator.cpp
+%   - ../source/kernel/simulator/model/Model.cpp
+%   - ../source/kernel/simulator/model/ModelManager.cpp
+%   - ../source/kernel/simulator/PluginManager.cpp
+%   - ../source/kernel/simulator/TraceManager.cpp
+%   - ../source/kernel/simulator/ExperimentManager.cpp
+% Purpose:
+%   Show the confirmed ownership boundaries and teardown responsibilities.
+% Required visual content:
+%   - owning arrows from managers to managed objects
+%   - non-owning arrows for back-references
+%   - explicit note that raw pointers do not imply ownership
+% Accessibility description:
+%   A diagram that tells the reader which pointers are lifetime-owning and which ones are observers/back-references.
+% Validation:
+%   The diagram must follow the actual delete paths and must not classify any raw pointer as owning without destructor evidence.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/kernel-ownership}
+\caption{Confirmed ownership and back-reference boundaries in the kernel.}
+\label{fig:kernel-ownership}
+\end{figure}
+
+Figure~\ref{fig:kernel-ownership} should be read together with the destructor
+paths. The chapter intentionally treats ownership conservatively and does not
+infer ownership from pointer syntax alone.
+
+\section{Model lifecycle}
+\label{sec:model-lifecycle}
+
+The \texttt{Model} class is the core runtime object beneath the simulator.
+Its constructor shows the current model stack clearly:
+\begin{itemize}
+\item the parent simulator is stored as a back-reference;
+\item the trace manager is borrowed from the simulator;
+\item \texttt{OnEventManager} is created for model-level events;
+\item \texttt{ModelDataManager} and \texttt{ModelComponentManager} are created
+for model content;
+\item \texttt{ModelSimulation} is created as the execution controller;
+\item parser, checker, and persistence services are created through the kernel
+traits layer;
+\item the future-event list is created and sorted chronologically;
+\item controls and responses are allocated as model-owned lists.
+\end{itemize}
+
+The current header documentation also states that the model is represented by
+components, model-data definitions, the future-event list, controls, responses,
+persistence, parser access, and simulation state. That matches the current
+implementation.
+
+Two lifecycle details matter for developers:
+\begin{enumerate}
+\item \texttt{Model::clear()} tears down the current runtime state and then
+calls \texttt{Util::ResetAllIds()}.
+\item \texttt{Model::~Model()} destroys runtime state in a deliberate order:
+future events, transient entities, components, remaining model data
+definitions, then the owned services and containers.
+\end{enumerate}
+
+That order is important because several destructors and manager methods are
+expected to keep manager state internally consistent while objects disappear.
+The model destructor therefore destroys owned runtime objects before it destroys
+the containers and managers that track them.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:kernel-startup-sequence
+% Source of truth:
+%   - ../source/kernel/simulator/Simulator.cpp
+%   - ../source/kernel/simulator/model/Model.cpp
+%   - ../source/kernel/simulator/model/ModelManager.cpp
+% Purpose:
+%   Show the startup order from Simulator construction to a ready Model instance.
+% Required visual content:
+%   - Simulator constructor
+%   - manager creation order
+%   - ModelManager::newModel
+%   - Model constructor and its owned runtime services
+% Accessibility description:
+%   A sequence diagram that helps the reader see which object is instantiated first and which runtime services are created inside the model.
+% Validation:
+%   The sequence must match the actual constructor calls and the new-model path.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/kernel-startup-sequence}
+\caption{Kernel startup sequence from simulator creation to model readiness.}
+\label{fig:kernel-startup-sequence}
+\end{figure}
+
+Figure~\ref{fig:kernel-startup-sequence} should make the current creation
+sequence easy to audit. It is especially useful when diagnosing startup
+failures or when adding new manager responsibilities.
+
+\section{Teardown and shutdown safety}
+\label{sec:teardown-shutdown-safety}
+
+The shutdown path is as deliberate as the startup path. The current
+\texttt{Simulator} destructor deletes the managers in a fixed order:
+\begin{enumerate}
+\item \texttt{ExperimentManager};
+\item \texttt{ParserManager};
+\item \texttt{ModelManager};
+\item \texttt{TraceManager};
+\item \texttt{PluginManager};
+\item \texttt{LicenceManager}.
+\end{enumerate}
+
+This order is conservative and avoids leaving late users behind the objects
+they still reference. The trace infrastructure deserves special mention:
+\texttt{TraceManager::beginShutdown()} marks the tracer as shutting down and
+clears all callback lists before the storage is released. That prevents late
+GUI or application callbacks during teardown.
+
+The model shutdown path also keeps teardown deterministic. The destructor
+first destroys model-owned runtime data, then deletes the simulation services,
+then deletes the containers and managers that own the runtime graph.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:kernel-shutdown-sequence
+% Source of truth:
+%   - ../source/kernel/simulator/Simulator.cpp
+%   - ../source/kernel/simulator/model/Model.cpp
+%   - ../source/kernel/simulator/TraceManager.cpp
+%   - ../source/kernel/simulator/model/ModelManager.cpp
+% Purpose:
+%   Show the destructor order and the trace shutdown guard.
+% Required visual content:
+%   - Simulator destructor order
+%   - Model destructor order
+%   - TraceManager::beginShutdown guard
+%   - model-owned object cleanup before manager cleanup
+% Accessibility description:
+%   A shutdown sequence diagram that shows why late callbacks are neutralized before storage is freed.
+% Validation:
+%   The sequence must match the delete order in the destructors and the callback shutdown guard in TraceManager.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/kernel-shutdown-sequence}
+\caption{Kernel shutdown sequence and teardown safety guard.}
+\label{fig:kernel-shutdown-sequence}
+\end{figure}
+
+Figure~\ref{fig:kernel-shutdown-sequence} captures the reason the shutdown path
+is safe enough to document: callbacks are neutralized, runtime objects are
+destroyed first, and container storage is released only after the live objects
+have been removed.
+
+\section{Manager responsibilities}
+\label{sec:manager-responsibilities}
+
+The manager set is small but has distinct roles.
+
+\begin{table}[htbp]
+\centering
+\caption{Current manager responsibilities in the kernel.}
+\label{tab:kernel-manager-responsibilities}
+\small
+\begin{tabular}{|p{3.2cm}|p{7.4cm}|}
+\hline
+\textbf{Object} & \textbf{Current role} \\
+\hline
+\texttt{Simulator} & Kernel facade and owner of the top-level managers. \\
+\hline
+\texttt{ModelManager} & Creates, stores, loads, saves, and deletes open models. \\
+\hline
+\texttt{PluginManager} & Tracks connected plugins, default kernel elements, and load diagnostics. \\
+\hline
+\texttt{TraceManager} & Routes traces, reports, and errors to registered handlers. \\
+\hline
+\texttt{ParserManager} & Placeholder for parser generation and activation workflows. \\
+\hline
+\texttt{ExperimentManager} & Tracks higher-level simulation experiments; save/load remains incomplete. \\
+\hline
+\texttt{Model} & Owns the runtime graph of a model and the services needed to execute it. \\
+\hline
+\texttt{ModelSimulation} & Controls execution, replications, and simulated-time progression. \\
+\hline
+\end{tabular}
+\end{table}
+
+\texttt{ModelManager} is responsible for the open-model list. Its current
+behavior is straightforward:
+\begin{itemize}
+\item \texttt{newModel()} creates a new model and inserts it as the current
+model;
+\item \texttt{insert()} adds an existing model to the open list;
+\item \texttt{remove()} erases the model from the list and deletes it;
+\item \texttt{loadModel()} creates a model, loads it, and deletes it on failure;
+\item the destructor deletes every remaining model in the list.
+\end{itemize}
+
+\texttt{PluginManager} currently owns the connected plugin wrappers and starts
+with the default kernel plugin elements already inserted. The default set
+includes \texttt{EntityType}, \texttt{Attribute}, \texttt{Counter}, and
+\texttt{StatisticsCollector}. The manager also keeps plugin load issues so that
+interactive front ends can display diagnostics after startup.
+
+\texttt{TraceManager} is the runtime diagnostics hub. It stores trace and
+error handlers, report handlers, simulation handlers, and error-message
+buffers. Its shutdown path clears the callbacks before the storage goes away,
+which is the main reason the chapter treats it as a core teardown dependency.
+
+\texttt{ParserManager} is intentionally minimal at this stage. The header
+exposes generation and connection entry points, but both methods are marked
+with TODOs that describe the missing workflow and lifecycle contract.
+
+\texttt{ExperimentManager} is likewise incomplete. It already owns a list of
+\texttt{SimulationExperiment} objects and tracks a current experiment, but the
+save/load methods are explicitly marked as not implemented yet. The class is a
+work-in-progress layer on top of the currently functional
+\texttt{ModelSimulation} path.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:kernel-manager-map
+% Source of truth:
+%   - ../source/kernel/simulator/Simulator.h
+%   - ../source/kernel/simulator/model/ModelManager.h
+%   - ../source/kernel/simulator/PluginManager.h
+%   - ../source/kernel/simulator/TraceManager.h
+%   - ../source/kernel/simulator/ParserManager.h
+%   - ../source/kernel/simulator/ExperimentManager.h
+%   - ../source/kernel/simulator/model/Model.h
+% Purpose:
+%   Show the current manager roster and the dependencies between top-level kernel services and model-level services.
+% Required visual content:
+%   - manager map
+%   - dependency arrows
+%   - model-level services separated from simulator-level services
+% Accessibility description:
+%   A manager dependency diagram that helps the reader distinguish the kernel facade from the model runtime.
+% Validation:
+%   Every object must exist in the current tree and each edge must match a current constructor, getter, or ownership path.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/kernel-manager-map}
+\caption{Current kernel manager map and dependencies.}
+\label{fig:kernel-manager-map}
+\end{figure}
+
+Figure~\ref{fig:kernel-manager-map} is the compact summary of the chapter. It
+separates the top-level simulator services from the per-model runtime services
+and makes the confirmed dependencies easier to review.
+
+\section{Confirmed limitations and TODOs}
+\label{sec:kernel-limitations}
+
+This chapter deliberately records the current limits instead of smoothing them
+over.
+\begin{itemize}
+\item \texttt{ParserManager} still advertises generation and connection methods
+that are not implemented as a full workflow.
+\item \texttt{ExperimentManager} still leaves save/load unimplemented.
+\item \texttt{Simulator} still relies on raw-pointer ownership for its manager
+set, so the delete order must remain deliberate until a later refactor
+documents a different ownership model.
+\item \texttt{Model} still uses several helper managers and containers that are
+destroyed manually in a controlled order.
+\item \texttt{Model::createEntity()} and \texttt{Model::removeEntity()} route
+through the event system, so entity lifecycle and event lifecycle should be
+read together rather than in isolation.
+\end{itemize}
+
+The chapter does not present those limits as defects by themselves. It only
+records them so later phases can decide whether to tighten behavior or replace
+the current scaffolding.
+
+\section{Final considerations}
+\label{sec:kernel-final-considerations}
+
+The current kernel design is small enough to describe clearly and rich enough
+to matter for the rest of the manual. \texttt{Simulator} is the kernel facade;
+\texttt{ModelManager}, \texttt{PluginManager}, \texttt{TraceManager},
+\texttt{ParserManager}, and \texttt{ExperimentManager} are the top-level
+services; and \texttt{Model} is the runtime object that binds execution,
+persistence, model contents, and event scheduling together.
+
+With that picture in place, the next chapter can move from kernel ownership to
+event scheduling and replication behavior without re-explaining the same
+foundations.
