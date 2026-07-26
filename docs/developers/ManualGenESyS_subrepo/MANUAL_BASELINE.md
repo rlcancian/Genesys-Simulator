@@ -4,21 +4,21 @@ Date: 2026-07-23
 Repository: rlcancian/Genesys-Simulator
 Branch: WorkInProgress
 Commit: ab34b2c9033a4869acc955e8ab710eda09598400
-Manual source dir: `docs/developers/ManualGenESyS_source`
+Manual source dir: `docs/developers/ManualGenESyS_subrepo`
 Published PDF: `docs/ManualGenESyS.pdf`
-Source PDF: `docs/developers/ManualGenESyS_source/ManualGenESyS.pdf`
+Source PDF: `docs/developers/ManualGenESyS_subrepo/ManualGenESyS.pdf`
 
 ## Tree state
 
 The repository worktree was not clean at capture time. Observed pre-existing
 changes included:
 
-- deleted legacy files under `docs/developers/ManualGenESyS_source/NOT_USED/`;
-- modified `docs/developers/ManualGenESyS_source/capa.png`;
-- modified `docs/developers/ManualGenESyS_source/figs/capa.png`;
-- deleted chapter-head images under `docs/developers/ManualGenESyS_source/figs/`;
-- untracked `docs/developers/ManualGenESyS_source.zip`;
-- untracked `docs/developers/ManualGenESyS_source/ManualGenESyS.ptc`.
+- deleted legacy files under `docs/developers/ManualGenESyS_subrepo/NOT_USED/`;
+- modified `docs/developers/ManualGenESyS_subrepo/capa.png`;
+- modified `docs/developers/ManualGenESyS_subrepo/figs/capa.png`;
+- deleted chapter-head images under `docs/developers/ManualGenESyS_subrepo/figs/`;
+- untracked `docs/developers/ManualGenESyS_subrepo.zip`;
+- untracked `docs/developers/ManualGenESyS_subrepo/ManualGenESyS.ptc`.
 
 ## Current book structure
 
@@ -121,7 +121,7 @@ The current `ManualGenESyS.log` contains these objective issues:
 git rev-parse --abbrev-ref HEAD
 git rev-parse HEAD
 git status --short --untracked-files=all
-pdfinfo docs/developers/ManualGenESyS_source/ManualGenESyS.pdf
+pdfinfo docs/developers/ManualGenESyS_subrepo/ManualGenESyS.pdf
 latexmk --version
 git --version
 ```

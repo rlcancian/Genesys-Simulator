@@ -219,7 +219,7 @@ The required manual-impact workflow is:
 5. create new chapters when a new concept cannot be represented cleanly in the current structure;
 6. reorder chapters when the logical reading order changes;
 7. validate that any LaTeX edits compile successfully;
-8. regenerate `docs/ManualGenESyS.pdf`;
+8. regenerate `docs/ManualGenESyS.pdf` from `docs/developers/ManualGenESyS_subrepo`;
 9. keep the manual update in the same PR as the code change, or in an explicitly linked documentation PR;
 10. record an explicit `no manual impact` justification only when the change truly has no manual consequence.
 

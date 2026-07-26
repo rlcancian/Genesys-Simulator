@@ -87,7 +87,7 @@ labels, and code symbols are preserved as-is.
 Build the manual from this directory:
 
 ```bash
-cd docs/developers/ManualGenESyS_source
+cd docs/developers/ManualGenESyS_subrepo
 ./make.sh
 ```
 
