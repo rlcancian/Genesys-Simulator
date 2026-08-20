@@ -12,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSet>
+#include <QVector>
 
 #include <algorithm>
 #include <cerrno>
@@ -39,7 +40,11 @@ QString readTextFile(const QString& path) {
 }
 
 QSet<QString> applicationSet(const QStringList& applications) {
-    return QSet<QString>(applications.begin(), applications.end());
+    QSet<QString> result;
+    for (const QString& application : applications) {
+        result.insert(application);
+    }
+    return result;
 }
 
 } // namespace
@@ -94,8 +99,8 @@ void UserRuntimeManager::endUpdate() {
 }
 
 bool UserRuntimeManager::validateRuntime(const QString& runtimeRoot,
-                                        const UpdateManifest& manifest,
-                                        QString* error) const {
+                                         const UpdateManifest& manifest,
+                                         QString* error) const {
     const QFileInfo rootInfo(runtimeRoot);
     const QString canonicalRoot = rootInfo.canonicalFilePath();
     if (!rootInfo.isDir() || canonicalRoot.isEmpty()) {
@@ -152,7 +157,8 @@ bool UserRuntimeManager::validateRuntime(const QString& runtimeRoot,
         internalApplications.push_back(value.toString());
     }
 
-    if (applicationSet(internalApplications) != applicationSet(manifest.platform.applications)) {
+    const QSet<QString> internalApplicationSet = applicationSet(internalApplications);
+    if (internalApplicationSet != applicationSet(manifest.platform.applications)) {
         if (error) {
             *error = QStringLiteral("Extracted runtime applications do not match the remote manifest");
         }
@@ -165,11 +171,13 @@ bool UserRuntimeManager::validateRuntime(const QString& runtimeRoot,
         QStringLiteral("genesys-worker"),
         QStringLiteral("genesys-mcp")
     };
-    if (!applicationSet(internalApplications).contains(requiredApplications)) {
-        if (error) {
-            *error = QStringLiteral("Runtime bundle is incomplete: gui, shell, worker and MCP applications are required");
+    for (const QString& required : requiredApplications) {
+        if (!internalApplicationSet.contains(required)) {
+            if (error) {
+                *error = QStringLiteral("Runtime bundle is incomplete: gui, shell, worker and MCP applications are required");
+            }
+            return false;
         }
-        return false;
     }
 
     const QString binRoot = QDir(canonicalRoot).filePath(QStringLiteral("bin"));
@@ -380,8 +388,9 @@ void UserRuntimeManager::cleanupOldVersions(const int maxUserVersions,
     if (!rollbackRuntime.isEmpty()) {
         preserved.insert(QDir::cleanPath(rollbackRuntime));
     }
-    const int desired = std::max(maxUserVersions, preserved.size());
-    int retained = preserved.size();
+    const int preservedCount = static_cast<int>(preserved.size());
+    const int desired = std::max(maxUserVersions, preservedCount);
+    int retained = preservedCount;
     for (const Candidate& candidate : candidates) {
         const QString path = QDir::cleanPath(candidate.path);
         if (preserved.contains(path)) {
