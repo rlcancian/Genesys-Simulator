@@ -98,42 +98,44 @@ This is the only approved source for work an AI agent may execute without a new 
   - exact root allowlist, links, front matter, backlog IDs, evidence placement and oldies retention are checked;
   - source branch removed automatically.
 
-## 4. Active bounded work
+## 4. Completed application and packaging work
 
 ### AUTO-APP-003 — Implement per-user runtime launcher and dispatcher
 
 - Priority: `P0`
-- Status: `running`
+- Status: `done`
 - Environment: `github`
-- Branch: `WiP202608/launcher-user-runtime`
-- Authorization: explicit maintainer instruction dated 2026-08-20, with attached launcher/runtime specification.
-- Scope:
-  - add `source/applications/launcher/`;
-  - build `genesys-launcher` and `genesys-dispatch` with Qt6/C++23;
-  - implement XDG configuration/runtime paths, deterministic user/system selection, update manifest/version/platform validation, bounded HTTPS transport, SHA-256 verification, fail-closed signature verification, safe archive extraction, partial install, atomic activation, retention, logging and non-shell process launch;
-  - support `genesys-gui`, `genesys-shell`, canonical `genesys-worker`, legacy `genesys-web` compatibility, and existing Python `genesys-mcp` entry point;
-  - add focused unit/integration tests and GitHub-only CI evidence.
-- Non-goals:
-  - no Debian package layout/wrapper/control/install-file redesign;
-  - no release bundle publication/signing workflow;
-  - no Worker authentication/network exposure redesign;
-  - no MCP rewrite or Python package installation;
-  - no public compatibility change outside the launcher contracts defined by the maintainer specification.
-- Acceptance:
-  - dedicated CMake option/preset/targets;
-  - dispatcher has no network dependency and preserves arguments/process semantics where supported;
-  - update pipeline fails safely without changing `current` on intermediate failure;
-  - signature-required mode fails closed when verification prerequisites are unavailable;
-  - tests use local fakes/temporary roots and no public network;
-  - focused launcher CI and ordinary regression CI are green on final PR head;
-  - GitHub-only limits and required local/package follow-up are documented.
-- Stop/escalate:
-  - unresolved cryptographic trust/key policy beyond the specified `gpgv` fail-closed contract;
-  - any required Debian package mutation;
-  - any need to expose Worker services or alter authentication;
-  - any incompatible public application rename not explicitly covered by `genesys-web` -> `genesys-worker` compatibility.
+- Issue/PR: #521
+- Merge: `d88b4b20b5163891e47c9e63bb04eca68a9e40d0`
+- Validation: Launcher CI green (33 focused tests, dispatcher isolation, install contract), ordinary regression CI green on final PR head.
+- Scope delivered:
+  - `source/applications/launcher/` with `genesys-launcher` and `genesys-dispatch` (Qt6/C++23);
+  - XDG configuration/runtime paths, deterministic user/system runtime selection, update manifest/version/platform validation, bounded HTTPS transport, SHA-256 verification, fail-closed signature verification, safe archive extraction, partial install, atomic activation, retention, logging and non-shell (`execv`) process launch;
+  - `genesys-gui`, `genesys-shell`, canonical `genesys-worker`, legacy `genesys-web` compatibility, and existing Python `genesys-mcp` entry point.
+- Non-goals honored: no Debian package layout/wrapper/control/install-file redesign in this PR (delivered separately by `AUTO-PKG-001`/PR #522); no release bundle publication/signing workflow; no Worker authentication/network exposure redesign; no MCP rewrite or Python package installation.
+- Reconciled 2026-08-20 while executing `AUTO-PKG-001`: this task was recorded `running` after its PR had already merged; re-verified against current `source/applications/launcher/` and a fresh green Launcher CI run before marking `done`.
 
-## 5. Paused technical tasks
+### AUTO-PKG-001 — Execute Debian package lifecycle validation
+
+- Priority: `P1`
+- Status: `done`
+- Environment: `github` and `local`
+- Issue/PR: #522
+- Merge: `d8fce9562617525657e8cbf9870b32323364773f`
+- Authorization: this task was recorded `paused` (see historical Section 6 baseline); explicit maintainer instruction dated 2026-08-20 authorized executing it, including integrating the Launcher (`AUTO-APP-003`) into the Debian package, fixing the discovered Lintian and lifecycle-script defects, and merging when all objective criteria were satisfied.
+- Scope delivered:
+  - integrated the stable Launcher/Dispatcher into the Debian install tree (`/usr/libexec/genesys/`), added the `genesys-common` package (launcher, dispatcher, `/etc/genesys/update.conf`, public `genesys-mcp` entry) and split the GUI/Shell/Worker packages into public wrapper + Debian-provided system fallback, keeping `genesys-web` as a payload-free transitional package;
+  - fixed real Lintian findings on GitHub Actions run `32407760833`: `depends-on-essential-package-without-using-version` (dropped an unneeded explicit `tar` dependency on an Essential package), `copyright-without-copyright-notice` (added copyright years), `no-manual-page` (added five section-1 manual pages); confirmed by re-inspection that `hardening-no-pie` and `possible-gpl-code-linked-with-openssl` do not occur on this branch (`readelf` confirms PIE binaries with no OpenSSL linkage);
+  - found and fixed four real, previously unexercised defects in `packaging/linux/validate-debian-lifecycle.sh` (a `set -e`/`pgrep && fail` function-return bug, missing `sudo` on five per-user-home path checks, an insufficiently bounded GUI-startup poll, and `apt-get purge` failing to resolve locally-installed no-conffile packages by name) — the lifecycle job had never previously run to completion because the build job was always blocked earlier by Lintian;
+  - validated locally (disposable Ubuntu 24.04 Docker container with `CAP_SYS_PTRACE`, matching GitHub Actions runner fidelity) and on GitHub Actions run `32421072334`: `dpkg-buildpackage` produces exactly 5 packages, `lintian --fail-on error` and `lintian` (no filter) report zero findings, `appstreamcli validate --no-net` passes, and the full lifecycle script (install, ownership, non-root user, system fallback, per-user runtime, admin-policy override, six invalid-runtime cases, file-integrity, reinstall/conffile, remove, purge) completes with exit 0;
+  - updated `packaging/linux/README.md` and the Developer/User manual chapters (`chapter_packaging_and_ci.tex`, `chapter_user_installation.tex`) to document the current five-package split and the Launcher/system-fallback/per-user-runtime contract; regenerated `docs/ManualGenESyS.pdf`.
+- Non-goals honored: no GitHub Release, PPA/APT repository, package signing, runtime signing key, or promotion beyond `WorkInProgress`.
+
+## 5. Active bounded work
+
+No task is currently in `running` state.
+
+## 6. Paused technical tasks
 
 These tasks remain paused until the maintainer explicitly activates one. Completion of the documentation migration does not resume them automatically.
 
@@ -167,15 +169,7 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local` preferred
 - Acceptance: active references mapped, Qt6 presets/tests green and no GUI redesign.
 
-### AUTO-PKG-001 — Execute Debian package lifecycle validation
-
-- Priority: `P1`
-- Status: `paused`
-- Environment: `github` or `local`
-- Acceptance: package build, metadata, install, startup, reinstall/upgrade when relevant, uninstall/purge and residual-file checks.
-- Non-goal: no PPA publication or package redesign.
-
-## 6. Completed technical baseline
+## 7. Completed technical baseline
 
 Do not reopen without new evidence:
 
@@ -187,9 +181,10 @@ Do not reopen without new evidence:
 - focused plugin-completion ownership sanitizer;
 - optimizer copy/move barrier;
 - plugin target/codemodel/link evidence;
-- shell, worker, Data Analyser, Optimizer and AI Assistant startup validations.
+- shell, worker, Data Analyser, Optimizer and AI Assistant startup validations;
+- per-user runtime launcher/dispatcher (`AUTO-APP-003`, PR #521) and its integration into the Debian package with lifecycle validation (`AUTO-PKG-001`, PR #522).
 
-## 7. Activation and completion rules
+## 8. Activation and completion rules
 
 A paused task becomes eligible only after the maintainer changes it to `ready` and confirms scope, validation and stop conditions.
 

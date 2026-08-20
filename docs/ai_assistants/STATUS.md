@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-07-22
+last_updated: 2026-08-20
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -28,8 +28,12 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 - Stable promotion target: `20262`, only near the end of the second semester of 2026.
 - Release readiness: **not established**.
 - GenESyS manual restructuring and governance follow-up: in progress on
-  `docs/manual-genesys-restructure-20260722`; PDF regeneration still pending
-  validation.
+  `docs/manual-genesys-restructure-20260722`; PDF regeneration completed
+  2026-08-20 (Section 14).
+- Per-user runtime Launcher/Dispatcher (PR #521, merge `d88b4b20b5163891e47c9e63bb04eca68a9e40d0`)
+  and its integration into the Debian package (PR #522, merge
+  `d8fce9562617525657e8cbf9870b32323364773f`) are integrated. Section 14
+  records the current package/lifecycle validation scope.
 
 ## 3. Technical baseline
 
@@ -97,6 +101,7 @@ Startup does not imply functional or scientific maturity.
 - issue #496: shell `autoloadplugins.txt` deployment/search/fallback contract;
 - issue #500: worker bind-address contract;
 - `HUM-SEC-002`: worker authentication architecture;
+- `HUM-SEC-004`: runtime signing public key provisioning for per-user Launcher updates;
 - `HUM-SCI-001`: authoritative numerical/statistical reference packages;
 - `HUM-OPT-001`: initial optimizer algorithm/benchmark package;
 - `HUM-VC-001`: initial AI virtual-cell organism/use case/data package;
@@ -166,3 +171,39 @@ Previously paused technical tasks remain `paused`; they do not resume automatica
 - Future AI-assistant documentation changes must pass the focused governance workflow.
 - Canonical facts, tasks, decisions, evidence and historical material must remain in their designated locations.
 - The completed migration record is `history/migrations/ai_docs_governance_completion_20260722.md`.
+
+## 14. Launcher and Debian packaging
+
+- Per-user runtime Launcher/Dispatcher (`AUTO-APP-003`): PR #521, merge
+  `d88b4b20b5163891e47c9e63bb04eca68a9e40d0`. `genesys-launcher` and
+  `genesys-dispatch` select between a validated per-user runtime
+  (`~/.local/share/genesys/current`) and a system fallback, with fail-closed
+  signature verification and no network activity outside the launcher.
+- Launcher integrated into the Debian package (`AUTO-PKG-001`): PR #522,
+  merge `d8fce9562617525657e8cbf9870b32323364773f`.
+- Package split: `genesys-common` (launcher, dispatcher,
+  `/etc/genesys/update.conf`, public `genesys-mcp`), `genesys-shell`,
+  `genesys-worker` (also owns the legacy `genesys-web` command),
+  `genesys-gui` (depends on the three above), and `genesys-web` (payload-free
+  transitional package depending on `genesys-worker`).
+- `.github/workflows/genesys-debian-package.yml` build job (`dpkg-buildpackage`,
+  package/AppStream/Lintian verification) and lifecycle-validation job
+  (`packaging/linux/validate-debian-lifecycle.sh`) are both green on the
+  PR-head run `32421072334` (head `368091693c613d5d090cc564f028c957a38c4668`)
+  and on the post-merge `WorkInProgress` push run `32422514020` (merge
+  `d8fce9562617525657e8cbf9870b32323364773f`): `lintian` and
+  `lintian --fail-on error` report zero findings across the 5 produced
+  `.deb` files, `appstreamcli validate --no-net` passes, and the full
+  install/ownership/non-root-user/system-fallback/per-user-runtime/
+  admin-policy/six-invalid-runtime-case/integrity/reinstall/remove/purge
+  lifecycle completes successfully.
+- `genesys-mcp` has a public dispatcher entry point but intentionally no
+  Debian system fallback (`source/applications/mcp/` is Python, out of the
+  Debian build contract); the dispatcher returns a controlled diagnostic
+  (exit 127) instead.
+- Remaining boundary: `HUM-SEC-004` (runtime signing public key
+  provisioning) is required before per-user runtime updates can be enabled;
+  as shipped, `/etc/genesys/update.conf` keeps remote updates disabled and
+  `require_signature=true`. No GitHub Release, PPA/APT repository, or
+  package signing was produced by this work; `genesys-debian-packages` is a
+  workflow artifact, not a distribution channel.

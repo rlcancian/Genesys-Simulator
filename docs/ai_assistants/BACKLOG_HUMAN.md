@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-07-22
+last_updated: 2026-08-20
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -126,6 +126,42 @@ A decision recorded here is not implemented automatically unless a corresponding
   - redaction/error-path tests;
   - packaging dependencies.
 - Decision unlocks: secret-store hardening and provider integration tests.
+
+### HUM-SEC-004 — Runtime signing public key provisioning
+
+- Priority: `P1`
+- Status: `open`
+- Decision required: provision an approved OpenPGP keypair for signing per-user
+  GenESyS runtime release bundles, and install the corresponding public key at
+  the path the Launcher already expects
+  (`/usr/share/genesys/keys/update.gpg`, `GENESYS_UPDATE_KEYRING_PATH`).
+- Confirmed evidence:
+  - `source/applications/launcher/` already implements `gpgv`-based,
+    fail-closed signature verification (`GpgvSignatureVerifier`) and the
+    Debian package's `/etc/genesys/update.conf` ships with
+    `require_signature=true` and remote updates disabled
+    (`enabled=false`, no `manifest_url`);
+  - no keypair, private key, or plausible-looking placeholder fingerprint
+    exists anywhere in the repository or CI configuration, and none was
+    invented while integrating the Launcher into the Debian package
+    (PR #522);
+  - without a provisioned public key, per-user runtime updates remain
+    fail-closed by construction — this is the current, intentional, safe
+    state, not a defect.
+- Decision required from the maintainer:
+  - who holds the private signing key and how it is protected (HSM,
+    offline key, CI secret, etc.);
+  - the key generation/rotation/revocation process;
+  - whether a single key or a key hierarchy (e.g. release + emergency
+    revocation) is used;
+  - where the corresponding public key is published/pinned for
+    installation by the Debian package.
+- Decision unlocks: installing the public key file, enabling
+  `require_signature=true` against a real signature, and eventually the
+  deferred `Runtime Release Publishing` phase (signed
+  `genesys-runtime-<version>-ubuntu24.04-x86_64.tar.zst` bundles). This
+  decision must not be made by an AI agent, and no CI workflow should
+  generate or embed a production private key.
 
 ### HUM-DOC-001 — Manual figure automation stack
 
