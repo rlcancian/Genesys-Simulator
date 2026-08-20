@@ -4,9 +4,10 @@ set -Eeuo pipefail
 PACKAGES_DIR="${1:-genesys-debian-packages}"
 EVIDENCE_DIR="${2:-genesys-debian-lifecycle-evidence}"
 STUDENT="genesysstudent"
+DATA_ROOT="/home/${STUDENT}/.local/share/genesys"
 RUNTIME_VERSION="9999.0.1"
-RUNTIME_ROOT="/home/${STUDENT}/.local/share/genesys/apps/${RUNTIME_VERSION}"
-CURRENT_LINK="/home/${STUDENT}/.local/share/genesys/current"
+RUNTIME_ROOT="${DATA_ROOT}/apps/${RUNTIME_VERSION}"
+CURRENT_LINK="${DATA_ROOT}/current"
 SYSTEM_CONFIG="/etc/genesys/update.conf"
 
 mkdir -p "${EVIDENCE_DIR}" "${EVIDENCE_DIR}/package-contents" "${EVIDENCE_DIR}/package-info"
@@ -94,11 +95,14 @@ wrapper_files=(
     "${worker_root}/usr/bin/genesys-web"
     "${common_root}/usr/bin/genesys-mcp"
 )
+: > "${EVIDENCE_DIR}/wrapper-contracts.txt"
 for wrapper in "${wrapper_files[@]}"; do
     [[ -x "${wrapper}" ]] || fail "public wrapper is not executable: ${wrapper}"
     if grep -Eq '\$HOME|~/|\.local/share/genesys' "${wrapper}"; then
         fail "public wrapper contains a user-home path: ${wrapper}"
     fi
+    printf '\n===== %s =====\n' "${wrapper#${workdir}/extract/}" >> "${EVIDENCE_DIR}/wrapper-contracts.txt"
+    cat "${wrapper}" >> "${EVIDENCE_DIR}/wrapper-contracts.txt"
 done
 
 grep -Fq 'exec "/usr/libexec/genesys/genesys-launcher" --app "genesys-gui" --interactive-update' "${gui_root}/usr/bin/genesys-gui" \
@@ -139,33 +143,39 @@ dpkg-query -W -f='${Conffiles}\n' genesys-common | tee "${EVIDENCE_DIR}/common-c
 grep -Fq '/etc/genesys/update.conf' "${EVIDENCE_DIR}/common-conffiles.txt" \
     || fail "/etc/genesys/update.conf is not registered as a conffile"
 
-for owned in \
-    /usr/bin/genesys-gui \
-    /usr/bin/genesys-shell \
-    /usr/bin/genesys-worker \
-    /usr/bin/genesys-web \
-    /usr/bin/genesys-mcp \
-    /usr/libexec/genesys/genesys-launcher \
-    /usr/libexec/genesys/genesys-dispatch \
-    /usr/libexec/genesys/system/bin/genesys-gui \
-    /usr/libexec/genesys/system/bin/genesys-shell \
-    /usr/libexec/genesys/system/bin/genesys-worker \
-    /etc/genesys/update.conf; do
-    dpkg-query -S "${owned}" | tee -a "${EVIDENCE_DIR}/ownership-checks.txt"
-done
+assert_owner() {
+    local expected_package="$1"
+    local path="$2"
+    local owner
+    owner="$(dpkg-query -S "${path}" | head -n1 | cut -d: -f1)"
+    printf '%s\t%s\n' "${owner}" "${path}" >> "${EVIDENCE_DIR}/ownership-checks.tsv"
+    [[ "${owner}" == "${expected_package}" ]] || fail "${path} is owned by ${owner}, expected ${expected_package}"
+}
+printf 'package\tpath\n' > "${EVIDENCE_DIR}/ownership-checks.tsv"
+assert_owner genesys-gui /usr/bin/genesys-gui
+assert_owner genesys-shell /usr/bin/genesys-shell
+assert_owner genesys-worker /usr/bin/genesys-worker
+assert_owner genesys-worker /usr/bin/genesys-web
+assert_owner genesys-common /usr/bin/genesys-mcp
+assert_owner genesys-common /usr/libexec/genesys/genesys-launcher
+assert_owner genesys-common /usr/libexec/genesys/genesys-dispatch
+assert_owner genesys-gui /usr/libexec/genesys/system/bin/genesys-gui
+assert_owner genesys-shell /usr/libexec/genesys/system/bin/genesys-shell
+assert_owner genesys-worker /usr/libexec/genesys/system/bin/genesys-worker
+assert_owner genesys-common /etc/genesys/update.conf
 
 if ! id -u "${STUDENT}" >/dev/null 2>&1; then
     sudo useradd --create-home --shell /bin/bash "${STUDENT}"
 fi
 
-sudo -u "${STUDENT}" -H /usr/bin/genesys-shell \
+sudo -u "${STUDENT}" -H timeout 30s /usr/bin/genesys-shell \
     "facade get-version" "plugin count" "exit" \
     > "${EVIDENCE_DIR}/system-shell.log" 2>&1
 grep -Fq 'Installed plugins:' "${EVIDENCE_DIR}/system-shell.log" || fail "system fallback shell did not execute"
 grep -Fq 'Quiting. Bye.' "${EVIDENCE_DIR}/system-shell.log" || fail "system fallback shell did not exit cleanly"
 
 set +e
-sudo -u "${STUDENT}" -H /usr/bin/genesys-mcp > "${EVIDENCE_DIR}/system-mcp.log" 2>&1
+sudo -u "${STUDENT}" -H timeout 10s /usr/bin/genesys-mcp > "${EVIDENCE_DIR}/system-mcp.log" 2>&1
 mcp_status=$?
 set -e
 [[ "${mcp_status}" -eq 127 ]] || fail "missing system MCP should return 127, got ${mcp_status}"
@@ -196,7 +206,11 @@ wait "${gui_sudo_pid}" 2>/dev/null || true
 sleep 1
 pgrep -u "${STUDENT}" -x genesys-gui >/dev/null && fail "residual genesys-gui process after bounded test"
 
-worker_port="$(python3 - <<'PY'
+run_worker_health() {
+    local public_command="$1"
+    local label="$2"
+    local port
+    port="$(python3 - <<'PY'
 import socket
 s = socket.socket()
 s.bind(('127.0.0.1', 0))
@@ -204,23 +218,27 @@ print(s.getsockname()[1])
 s.close()
 PY
 )"
-sudo -u "${STUDENT}" -H /usr/bin/genesys-worker --port "${worker_port}" --max-requests 1 \
-    > "${EVIDENCE_DIR}/system-worker.log" 2>&1 &
-worker_sudo_pid=$!
-for _ in {1..50}; do
-    if ss -ltn | grep -Eq ":${worker_port}[[:space:]]"; then
-        break
-    fi
+    sudo -u "${STUDENT}" -H "${public_command}" --port "${port}" --max-requests 1 \
+        > "${EVIDENCE_DIR}/${label}.log" 2>&1 &
+    local sudo_pid=$!
+    for _ in {1..50}; do
+        if ss -ltn | grep -Eq ":${port}[[:space:]]"; then
+            break
+        fi
+        sleep 0.2
+    done
+    ss -ltn | grep -E ":${port}[[:space:]]" | tee "${EVIDENCE_DIR}/${label}-listener.txt" \
+        || fail "${label} did not open the bounded test listener"
+    curl --fail --silent --show-error "http://127.0.0.1:${port}/health" \
+        | tee "${EVIDENCE_DIR}/${label}-health.json"
+    wait "${sudo_pid}"
+    grep -Fxq '{"ok":true,"status":"up"}' "${EVIDENCE_DIR}/${label}-health.json" \
+        || fail "${label} health body did not match the validated contract"
     sleep 0.2
-done
-ss -ltn | grep -E ":${worker_port}[[:space:]]" | tee "${EVIDENCE_DIR}/worker-listener.txt" \
-    || fail "worker did not open the bounded test listener"
-curl --fail --silent --show-error "http://127.0.0.1:${worker_port}/health" \
-    | tee "${EVIDENCE_DIR}/worker-health.json"
-wait "${worker_sudo_pid}"
-grep -Fxq '{"ok":true,"status":"up"}' "${EVIDENCE_DIR}/worker-health.json" \
-    || fail "worker health body did not match the validated contract"
-pgrep -u "${STUDENT}" -x genesys-worker >/dev/null && fail "residual genesys-worker process after bounded request"
+    pgrep -u "${STUDENT}" -x genesys-worker >/dev/null && fail "residual genesys-worker process after ${label} bounded request"
+}
+run_worker_health /usr/bin/genesys-worker system-worker
+run_worker_health /usr/bin/genesys-web system-web-compat
 
 snapshot_package_files() {
     local output="$1"
@@ -238,7 +256,8 @@ snapshot_package_files "${EVIDENCE_DIR}/package-checksums-before-user-runtime.tx
 sudo cp -a "${SYSTEM_CONFIG}" "${workdir}/update.conf.original"
 
 create_valid_runtime() {
-    sudo rm -rf "/home/${STUDENT}/.local/share/genesys"
+    sudo rm -rf "${DATA_ROOT}/apps"
+    sudo rm -f "${CURRENT_LINK}"
     sudo -u "${STUDENT}" -H mkdir -p "${RUNTIME_ROOT}/bin"
     printf '%s\n' "${RUNTIME_VERSION}" | sudo -u "${STUDENT}" -H tee "${RUNTIME_ROOT}/VERSION" >/dev/null
     cat <<JSON | sudo -u "${STUDENT}" -H tee "${RUNTIME_ROOT}/MANIFEST.json" >/dev/null
@@ -257,23 +276,23 @@ SCRIPT
 }
 
 create_valid_runtime
-sudo -u "${STUDENT}" -H /usr/bin/genesys-shell 'alpha beta' '--flag=value' \
+sudo -u "${STUDENT}" -H timeout 15s /usr/bin/genesys-shell 'alpha beta' '--flag=value' \
     > "${EVIDENCE_DIR}/user-runtime-shell.log" 2>&1
 grep -Fxq 'USER_RUNTIME:genesys-shell' "${EVIDENCE_DIR}/user-runtime-shell.log" || fail "dispatcher did not select user shell runtime"
 grep -Fxq 'ARG:[alpha beta]' "${EVIDENCE_DIR}/user-runtime-shell.log" || fail "dispatcher did not preserve spaced shell argument"
 grep -Fxq 'ARG:[--flag=value]' "${EVIDENCE_DIR}/user-runtime-shell.log" || fail "dispatcher did not preserve shell option argument"
 
-sudo -u "${STUDENT}" -H /usr/bin/genesys-worker 'worker arg' > "${EVIDENCE_DIR}/user-runtime-worker.log" 2>&1
+sudo -u "${STUDENT}" -H timeout 15s /usr/bin/genesys-worker 'worker arg' > "${EVIDENCE_DIR}/user-runtime-worker.log" 2>&1
 grep -Fxq 'USER_RUNTIME:genesys-worker' "${EVIDENCE_DIR}/user-runtime-worker.log" || fail "dispatcher did not select user worker runtime"
 
-sudo -u "${STUDENT}" -H /usr/bin/genesys-web 'legacy arg' > "${EVIDENCE_DIR}/user-runtime-web.log" 2>&1
+sudo -u "${STUDENT}" -H timeout 15s /usr/bin/genesys-web 'legacy arg' > "${EVIDENCE_DIR}/user-runtime-web.log" 2>&1
 grep -Fxq 'USER_RUNTIME:genesys-web' "${EVIDENCE_DIR}/user-runtime-web.log" || fail "legacy web wrapper did not select user runtime"
 
-sudo -u "${STUDENT}" -H /usr/bin/genesys-mcp 'mcp arg' > "${EVIDENCE_DIR}/user-runtime-mcp.log" 2>&1
+sudo -u "${STUDENT}" -H timeout 15s /usr/bin/genesys-mcp 'mcp arg' > "${EVIDENCE_DIR}/user-runtime-mcp.log" 2>&1
 grep -Fxq 'USER_RUNTIME:genesys-mcp' "${EVIDENCE_DIR}/user-runtime-mcp.log" || fail "MCP wrapper did not select user runtime"
 
 sudo -u "${STUDENT}" -H env DISPLAY=:99 QT_QPA_PLATFORM=xcb \
-    /usr/bin/genesys-gui --no-update -- 'gui arg' > "${EVIDENCE_DIR}/user-runtime-gui.log" 2>&1
+    timeout 15s /usr/bin/genesys-gui --no-update -- 'gui arg' > "${EVIDENCE_DIR}/user-runtime-gui.log" 2>&1
 grep -Fxq 'USER_RUNTIME:genesys-gui' "${EVIDENCE_DIR}/user-runtime-gui.log" || fail "launcher did not select user GUI runtime"
 grep -Fxq 'ARG:[gui arg]' "${EVIDENCE_DIR}/user-runtime-gui.log" || fail "launcher did not preserve GUI passthrough argument"
 
@@ -289,7 +308,7 @@ minimum_check_interval_hours=12
 max_user_versions=2
 EOF
 sudo install -m 0644 "${workdir}/update.conf.policy-override" "${SYSTEM_CONFIG}"
-sudo -u "${STUDENT}" -H /usr/bin/genesys-shell "facade get-version" "plugin count" "exit" \
+sudo -u "${STUDENT}" -H timeout 30s /usr/bin/genesys-shell "facade get-version" "plugin count" "exit" \
     > "${EVIDENCE_DIR}/policy-override-shell.log" 2>&1
 if grep -Fq 'USER_RUNTIME:' "${EVIDENCE_DIR}/policy-override-shell.log"; then
     fail "administrative allow_user_runtime=false did not override the active user runtime"
@@ -299,7 +318,7 @@ sudo install -m 0644 "${workdir}/update.conf.original" "${SYSTEM_CONFIG}"
 
 run_invalid_runtime_case() {
     local case_name="$1"
-    sudo -u "${STUDENT}" -H /usr/bin/genesys-shell "facade get-version" "exit" \
+    sudo -u "${STUDENT}" -H timeout 30s /usr/bin/genesys-shell "facade get-version" "exit" \
         > "${EVIDENCE_DIR}/invalid-${case_name}.log" 2>&1
     if grep -Fq 'USER_RUNTIME:' "${EVIDENCE_DIR}/invalid-${case_name}.log"; then
         fail "invalid runtime case ${case_name} unexpectedly executed user runtime"
@@ -334,6 +353,10 @@ sudo chmod 0644 "${RUNTIME_ROOT}/bin/genesys-shell"
 run_invalid_runtime_case app-not-executable
 
 create_valid_runtime
+if sudo test -f "${DATA_ROOT}/logs/launcher.log"; then
+    sudo cp "${DATA_ROOT}/logs/launcher.log" "${EVIDENCE_DIR}/launcher-dispatch.log"
+    sudo chown "$(id -u):$(id -g)" "${EVIDENCE_DIR}/launcher-dispatch.log"
+fi
 snapshot_package_files "${EVIDENCE_DIR}/package-checksums-after-user-runtime.txt"
 cmp "${EVIDENCE_DIR}/package-checksums-before-user-runtime.txt" "${EVIDENCE_DIR}/package-checksums-after-user-runtime.txt" \
     || fail "package-owned file content changed during user-runtime tests"
@@ -344,17 +367,20 @@ for package in genesys-common genesys-shell genesys-worker genesys-gui genesys-w
 done
 [[ ! -s "${EVIDENCE_DIR}/dpkg-verify.txt" ]] || fail "dpkg -V reported package file changes"
 
+printf '\n# lifecycle-admin-local-change\n' | sudo tee -a "${SYSTEM_CONFIG}" >/dev/null
 sudo apt-get install --reinstall -y --no-install-recommends "${absolute_debs[@]}" 2>&1 \
     | tee "${EVIDENCE_DIR}/reinstall.log"
+grep -Fxq '# lifecycle-admin-local-change' "${SYSTEM_CONFIG}" \
+    || fail "package reinstall overwrote a local administrative conffile modification"
 [[ -L "${CURRENT_LINK}" ]] || fail "package reinstall modified the user's active runtime link"
-sudo -u "${STUDENT}" -H /usr/bin/genesys-shell 'after reinstall' > "${EVIDENCE_DIR}/user-runtime-after-reinstall.log" 2>&1
+sudo -u "${STUDENT}" -H timeout 15s /usr/bin/genesys-shell 'after reinstall' > "${EVIDENCE_DIR}/user-runtime-after-reinstall.log" 2>&1
 grep -Fxq 'USER_RUNTIME:genesys-shell' "${EVIDENCE_DIR}/user-runtime-after-reinstall.log" \
     || fail "user runtime no longer works after package reinstall"
 
-sudo apt-get purge -y genesys-gui genesys-web genesys-shell genesys-worker genesys-common 2>&1 \
-    | tee "${EVIDENCE_DIR}/purge.log"
+sudo apt-get remove -y genesys-gui genesys-web genesys-shell genesys-worker genesys-common 2>&1 \
+    | tee "${EVIDENCE_DIR}/remove.log"
 
-removed_paths=(
+removed_before_purge=(
     /usr/bin/genesys-gui
     /usr/bin/genesys-shell
     /usr/bin/genesys-worker
@@ -368,11 +394,18 @@ removed_paths=(
     /usr/share/applications/io.github.rlcancian.genesys.desktop
     /usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml
     /usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg
-    /etc/genesys/update.conf
 )
-for path in "${removed_paths[@]}"; do
-    [[ ! -e "${path}" && ! -L "${path}" ]] || fail "package-owned path remains after purge: ${path}"
+for path in "${removed_before_purge[@]}"; do
+    [[ ! -e "${path}" && ! -L "${path}" ]] || fail "package-owned runtime path remains after remove: ${path}"
 done
+[[ -f "${SYSTEM_CONFIG}" ]] || fail "conffile did not remain after apt remove"
+grep -Fxq '# lifecycle-admin-local-change' "${SYSTEM_CONFIG}" || fail "modified conffile content was lost after apt remove"
+[[ -L "${CURRENT_LINK}" ]] || fail "package remove deleted the user's active runtime link"
+[[ -x "${RUNTIME_ROOT}/bin/genesys-shell" ]] || fail "package remove deleted user runtime data"
+
+sudo apt-get purge -y genesys-gui genesys-web genesys-shell genesys-worker genesys-common 2>&1 \
+    | tee "${EVIDENCE_DIR}/purge.log"
+[[ ! -e "${SYSTEM_CONFIG}" ]] || fail "administrative conffile remains after purge"
 [[ -L "${CURRENT_LINK}" ]] || fail "package purge removed the user's active runtime link"
 [[ -x "${RUNTIME_ROOT}/bin/genesys-shell" ]] || fail "package purge removed user runtime data"
 

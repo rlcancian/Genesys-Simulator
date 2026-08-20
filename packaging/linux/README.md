@@ -12,7 +12,7 @@ The Debian installation is a system-owned base runtime. It never points a global
 | `genesys-shell` | Public `genesys-shell` wrapper and system fallback shell. |
 | `genesys-worker` | Public `genesys-worker` wrapper, legacy `genesys-web` command, and system fallback worker. |
 | `genesys-gui` | Public interactive `genesys-gui` wrapper, system fallback GUI, desktop entry, AppStream metadata and icon. It depends on Shell and Worker so `apt install genesys-gui` provides the supported base application set. |
-| `genesys-web` | Transitional package depending on `genesys-worker`; it owns no executable. |
+| `genesys-web` | Transitional package depending on `genesys-worker`; it owns no application executable. |
 
 The public entry points are:
 
@@ -74,10 +74,12 @@ It runs on Ubuntu 24.04 and separates package creation from lifecycle validation
 - system-policy override of user runtime selection;
 - malformed/missing user-runtime fallback cases;
 - package-file integrity after user-runtime operations;
-- reinstall behavior;
+- reinstall and conffile behavior;
 - remove/purge behavior and preservation of user runtime data.
 
 No lifecycle test downloads a GenESyS runtime from GitHub Releases.
+
+For maintainers working from a local clone with an authenticated GitHub CLI, `scripts/run-debian-package-workflow.sh [branch] [output-directory]` dispatches this dedicated workflow and downloads its artifacts. The helper does not rewrite workflow YAML and does not switch to a historical development branch.
 
 ## Artifacts versus distribution
 
