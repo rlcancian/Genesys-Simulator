@@ -3,6 +3,7 @@
 #include <QCoreApplication>
 #include <QMessageBox>
 #include <QProgressDialog>
+#include <QPushButton>
 
 namespace genesys::launcher {
 
