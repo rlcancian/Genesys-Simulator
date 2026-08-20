@@ -29,6 +29,7 @@ jobs:
             cmake --version
             ninja --version
             g++ --version
+            dpkg-query -W -f='qt6-base-dev ${Version}\n' qt6-base-dev
             gpgv --version | head -n 2
             tar --version | head -n 1
             zstd --version
