@@ -1,4 +1,5 @@
 usr/bin/genesys-gui
+usr/libexec/genesys/system/bin/genesys-gui
 usr/share/applications/io.github.rlcancian.genesys.desktop
 usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml
 usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg

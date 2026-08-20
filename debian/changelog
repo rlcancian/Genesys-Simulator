@@ -1,3 +1,12 @@
+genesys-simulator (2026.1.0-2~wip20260820) noble; urgency=medium
+
+  * Integrate the stable Launcher/Dispatcher into the Debian installation.
+  * Install GUI, Shell and Worker system fallback runtimes under libexec.
+  * Add stable public wrappers and fail-closed administrative update policy.
+  * Add package lifecycle validation for Ubuntu 24.04 GitHub Actions.
+
+ -- GenESyS Maintainers <rlcancian@users.noreply.github.com>  Thu, 20 Aug 2026 15:51:00 -0300
+
 genesys-simulator (2026.1.0-1) noble; urgency=medium
 
   * Initial Debian packaging for the GenESyS Qt GUI and web application.
