@@ -3,7 +3,9 @@
 \label{chap:packaging-and-ci}
 
 This chapter is based on the current \texttt{WorkInProgress} branch.
-The recorded baseline commit is \texttt{5d7f013165b9a1681acbde8a5335d25fca08f896}.
+The recorded baseline commit is \texttt{0af9b8ec8b3961dd4cde05e690fc250cccd22ab0}
+(from pull request \#522, \texttt{packaging: integrate Launcher into Debian
+installation}).
 It uses the active build and packaging manifests in
 \texttt{CMakePresets.json}, \texttt{debian/}, \texttt{packaging/linux/}, and
 \texttt{.github/workflows/}. It documents the present build, CI, and Debian
@@ -16,12 +18,15 @@ layout, and packaging boundaries that are available in the repository today.
 inspect or reproduce the current build, packaging, or pipeline behavior.
 
 \noindent\textbf{Scope.} Cover the ordinary CI workflow, the Debian package
-workflow, the generated package names, the install layout, the AppStream and
-lintian checks, the artifact outputs, and the current release boundary.
+workflow, the generated package names, the install layout, the Launcher and
+Dispatcher packaging contract, the AppStream and lintian checks, the package
+lifecycle validation job, the artifact outputs, and the current release
+boundary.
 
-\noindent\textbf{Status.} Confirmed by source inspection on 2026-07-23. The
-chapter records the current automation surface rather than a hypothetical future
-gate.
+\noindent\textbf{Status.} Confirmed by source inspection and by a local and
+GitHub Actions execution of the full package build and lifecycle validation
+on 2026-08-20. The chapter records the current automation surface rather than
+a hypothetical future gate.
 
 The chapter follows this sequence:
 Figure~\ref{fig:packaging-ci-topology},
@@ -96,27 +101,57 @@ only confirms the narrow layout-regression surface that it targets.
 \label{sec:packaging-debian-workflow}
 
 The Debian package workflow is \texttt{.github/workflows/genesys-debian-package.yml}.
-It currently:
+It runs on \texttt{ubuntu-24.04} and is split into two jobs.
+
+\noindent\textbf{Triggers.} The workflow supports \texttt{workflow\_dispatch}
+and triggers on both push and pull-request events targeting
+\texttt{WorkInProgress}, \texttt{20262}, \texttt{currentStable}, and
+\texttt{master}, restricted to path filters covering \texttt{debian/**},
+\texttt{packaging/linux/**}, \texttt{source/**},
+\texttt{scripts/run-debian-package-workflow.sh}, \texttt{CMakeLists.txt},
+\texttt{CMakePresets.json}, and the workflow file itself. Because
+\texttt{WorkInProgress} is now a trigger branch (unlike the historical
+\texttt{WiP20261}/\texttt{20261} filter), an ordinary pull request against
+\texttt{WorkInProgress} that touches packaging-relevant paths runs this
+workflow automatically, and a push to \texttt{WorkInProgress} after merge
+runs it again on the merge commit.
+
+\noindent\textbf{Job 1 -- \texttt{Build Debian packages}.} It:
 \begin{itemize}
-\item runs on \texttt{ubuntu-24.04};
-\item triggers on \texttt{workflow\_dispatch};
-\item triggers on pushes to \texttt{WiP20261} when packaging-related paths change;
-\item triggers on pull requests to \texttt{WiP20261} and \texttt{20261} when
-  packaging-related paths change;
-\item installs the packaging toolchain and validation tools used by the job;
+\item records provenance (source head SHA, checkout SHA, toolchain versions);
+\item installs the packaging toolchain: \texttt{debhelper}, \texttt{devscripts},
+  \texttt{dpkg-dev}, \texttt{cmake}, \texttt{ninja-build}, \texttt{g++},
+  \texttt{pkgconf}, \texttt{qt6-base-dev(-tools)}, \texttt{libgl-dev},
+  \texttt{lintian}, \texttt{appstream}, \texttt{gpgv}, \texttt{zstd};
 \item runs \texttt{dpkg-buildpackage -us -uc -b};
-\item validates the metainfo file
+\item collects the build log, \texttt{.buildinfo}/\texttt{.changes}, and the
+  produced \texttt{.deb} files;
+\item verifies that exactly the five expected binary packages were produced,
+  one each;
+\item validates
   \texttt{packaging/linux/io.github.rlcancian.genesys.metainfo.xml} with
   \texttt{appstreamcli validate --no-net};
-\item runs \texttt{lintian} over the resulting \texttt{.deb} files;
-\item uploads \texttt{genesys-debian-packages} and
-  \texttt{genesys-debian-diagnostics};
-\item verifies that at least one Debian package was produced.
+\item runs \texttt{lintian --fail-on error} over all five \texttt{.deb} files,
+  so any Lintian \texttt{error}-severity finding fails the job while warnings
+  are recorded but do not block it;
+\item uploads the \texttt{genesys-debian-packages} and
+  \texttt{genesys-debian-diagnostics} artifacts.
 \end{itemize}
 
+\noindent\textbf{Job 2 -- \texttt{Validate Debian package lifecycle}.} It
+depends on job 1 and only runs if the build job succeeds. It downloads the
+exact \texttt{genesys-debian-packages} artifact produced by job 1 (never a
+different run's artifact), installs \texttt{xvfb}, \texttt{curl},
+\texttt{iproute2}, and \texttt{python3}, then runs
+\texttt{packaging/linux/validate-debian-lifecycle.sh}, uploading its output
+as the \texttt{genesys-debian-lifecycle-evidence} artifact. Section
+\ref{sec:packaging-lifecycle-validation} describes what that script exercises.
+
 The package workflow is separate from ordinary regression CI. A green
-\texttt{tests-unit} run does not imply package lifecycle validation, and a green
-Debian build does not replace the ordinary regression workflow.
+\texttt{tests-unit} run does not imply package lifecycle validation. A green
+build job does, however, unlock the lifecycle job in the same workflow run;
+only both jobs succeeding together constitute full packaging evidence, and
+neither replaces the ordinary regression workflow.
 
 \begin{figure}[htbp]
 \centering
@@ -127,29 +162,33 @@ Debian build does not replace the ordinary regression workflow.
 %   - ../debian/rules
 %   - ../debian/control
 %   - ../packaging/linux/io.github.rlcancian.genesys.metainfo.xml
+%   - ../packaging/linux/validate-debian-lifecycle.sh
 % Purpose:
-%   Show the current Debian package build pipeline from checkout to package
-%   validation, including the AppStream and lintian steps.
+%   Show the current two-job Debian package pipeline: build/validate-metadata,
+%   then a dependent lifecycle-validation job that consumes the exact same
+%   run's package artifact.
 % Required visual content:
-%   - workflow_dispatch and path-triggered entry
+%   - workflow_dispatch and path-triggered entry (push/PR to WorkInProgress,
+%     20262, currentStable, master)
 %   - dpkg-buildpackage
 %   - AppStream validation
-%   - lintian
-%   - package verification
+%   - lintian --fail-on error
+%   - package verification and upload (Job 1)
+%   - lifecycle job depending on Job 1, downloading its artifact
 % Accessibility description:
 %   A left-to-right pipeline that shows how source checkout becomes package
-%   artifacts and diagnostics.
+%   artifacts and diagnostics, then feeds a dependent lifecycle-validation job.
 % Validation:
-%   The commands and filenames must match the current workflow and packaging
-%   files.
+%   The commands, job names, and filenames must match the current workflow
+%   and packaging files.
 % FIGURE-SPEC-END
 \figureplaceholder{figs/generated/packaging-debian-pipeline}
-\caption{Current Debian package build and validation pipeline.}
+\caption{Current Debian package build and lifecycle-validation pipeline.}
 \label{fig:packaging-debian-pipeline}
 \end{figure}
 
 Figure~\ref{fig:packaging-debian-pipeline} should show the Debian packaging path
-as a distinct pipeline rather than as a side effect of ordinary CI.
+as a distinct, two-job pipeline rather than as a side effect of ordinary CI.
 
 \section{Package layout and install surface}
 \label{sec:packaging-package-layout}
@@ -157,29 +196,50 @@ as a distinct pipeline rather than as a side effect of ordinary CI.
 The Debian source package is \texttt{genesys-simulator}. The binary packages
 currently declared in \texttt{debian/control} are:
 \begin{itemize}
-\item \texttt{genesys-gui};
-\item \texttt{genesys-web}.
+\item \texttt{genesys-common} -- the stable launcher, the non-interactive
+  dispatcher, \texttt{/etc/genesys/update.conf}, and the public
+  \texttt{genesys-mcp} dispatcher entry point;
+\item \texttt{genesys-shell} -- the public \texttt{genesys-shell} wrapper and
+  the Debian-provided system fallback shell;
+\item \texttt{genesys-worker} -- the public \texttt{genesys-worker} wrapper,
+  the legacy \texttt{genesys-web} command alias, and the system fallback
+  worker;
+\item \texttt{genesys-gui} -- the Qt desktop GUI wrapper, the system fallback
+  GUI, and the desktop integration files; it depends on \texttt{genesys-common},
+  \texttt{genesys-shell}, and \texttt{genesys-worker} so that
+  \texttt{apt install genesys-gui} alone yields a complete supported base
+  install;
+\item \texttt{genesys-web} -- a transitional package with no payload of its
+  own, depending on \texttt{genesys-worker}, kept only so upgrades from the
+  historical \texttt{genesys-web} package name continue to work.
 \end{itemize}
 
-The current binary-package relationship is simple and explicit:
-\begin{itemize}
-\item \texttt{genesys-gui} depends on \texttt{genesys-web} at the same binary
-  version;
-\item \texttt{genesys-gui} is the Qt desktop package;
-\item \texttt{genesys-web} is the support executable package used by the
-  platform.
-\end{itemize}
+Every non-\texttt{genesys-common} package depends on \texttt{genesys-common}
+at the exact same binary version (\texttt{genesys-common (= \$\{binary:Version\})}),
+and \texttt{genesys-worker} carries \texttt{Breaks}/\texttt{Replaces} on older
+\texttt{genesys-web} versions so ownership of the \texttt{genesys-web} command
+transfers cleanly.
 
 The current \texttt{debian/rules} file builds the package with
 \texttt{cmake+ninja}, uses \texttt{build-debian} as the build directory, sets
 \texttt{CMAKE\_BUILD\_TYPE=Release}, installs under \texttt{/usr}, enables the
-GUI and web application paths, and disables the terminal application, tests, and
-Python integration for the Debian build.
+GUI, worker, terminal (shell), and Launcher application paths, and disables
+the test targets and Python integration for the Debian build; it also enables
+full hardening (\texttt{DEB\_BUILD\_MAINT\_OPTIONS=hardening=+all}).
 
 The install manifests currently place:
 \begin{itemize}
-\item \texttt{/usr/bin/genesys-gui};
-\item \texttt{/usr/bin/genesys-web};
+\item \texttt{/usr/bin/genesys-gui}, \texttt{/usr/bin/genesys-shell},
+  \texttt{/usr/bin/genesys-worker}, \texttt{/usr/bin/genesys-web},
+  \texttt{/usr/bin/genesys-mcp} -- stable public wrapper commands;
+\item \texttt{/usr/libexec/genesys/genesys-launcher} and
+  \texttt{/usr/libexec/genesys/genesys-dispatch} -- the two mechanisms those
+  wrappers invoke;
+\item \texttt{/usr/libexec/genesys/system/bin/\{genesys-gui,genesys-shell,genesys-worker\}}
+  -- the Debian-provided system fallback executables;
+\item \texttt{/etc/genesys/update.conf} -- the administrative update policy
+  conffile;
+\item \texttt{/usr/share/man/man1/*.1} -- one manual page per public command;
 \item \texttt{/usr/share/applications/io.github.rlcancian.genesys.desktop};
 \item \texttt{/usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml};
 \item \texttt{/usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg}.
@@ -187,7 +247,8 @@ The install manifests currently place:
 
 The desktop entry launches \texttt{genesys-gui} and marks the application as a
 non-terminal desktop app. The metainfo file describes the desktop package and
-its launchable desktop ID.
+its launchable desktop ID. Section~\ref{sec:packaging-launcher-contract}
+covers the wrapper/launcher/dispatcher/system-fallback contract in detail.
 
 \begin{figure}[htbp]
 \centering
@@ -197,19 +258,23 @@ its launchable desktop ID.
 %   - ../.github/workflows/genesys-debian-package.yml
 %   - ../scripts/run-debian-package-workflow.sh
 %   - ../debian/control
+%   - ../debian/genesys-common.install
 %   - ../debian/genesys-gui.install
-%   - ../debian/genesys-web.install
+%   - ../debian/genesys-shell.install
+%   - ../debian/genesys-worker.install
 % Purpose:
-%   Show the relationship between the Debian source package, the binary
-%   packages, and the generated diagnostics/artifact outputs.
+%   Show the relationship between the Debian source package, the five binary
+%   packages, and the generated diagnostics/package/lifecycle-evidence
+%   artifact outputs across both workflow jobs.
 % Required visual content:
 %   - source package
-%   - binary packages
-%   - diagnostics artifacts
-%   - package artifacts
-%   - upload destinations
+%   - five binary packages
+%   - genesys-debian-diagnostics artifact (Job 1)
+%   - genesys-debian-packages artifact (Job 1, consumed by Job 2)
+%   - genesys-debian-lifecycle-evidence artifact (Job 2)
 % Accessibility description:
-%   A package artifact map that separates source, build outputs, and diagnostics.
+%   A package artifact map that separates source, build outputs, diagnostics,
+%   and lifecycle evidence.
 % Validation:
 %   The package names and artifact names must match the current repository.
 % FIGURE-SPEC-END
@@ -229,22 +294,26 @@ installation and which are only for inspection.
 % Source of truth:
 %   - ../debian/control
 %   - ../debian/rules
+%   - ../debian/genesys-common.install
 %   - ../debian/genesys-gui.install
-%   - ../debian/genesys-web.install
+%   - ../debian/genesys-shell.install
+%   - ../debian/genesys-worker.install
 %   - ../packaging/linux/io.github.rlcancian.genesys.desktop
 %   - ../packaging/linux/io.github.rlcancian.genesys.metainfo.xml
 % Purpose:
-%   Show the installed filesystem layout and the current package dependency
-%   relationship between genesys-gui and genesys-web.
+%   Show the installed filesystem layout across the five binary packages: the
+%   public wrapper commands, the libexec launcher/dispatcher/system-fallback
+%   tree, and the desktop/metainfo/icon files.
 % Required visual content:
-%   - /usr/bin/genesys-gui
-%   - /usr/bin/genesys-web
-%   - desktop file
-%   - metainfo file
-%   - icon path
+%   - /usr/bin/{genesys-gui,genesys-shell,genesys-worker,genesys-web,genesys-mcp}
+%   - /usr/libexec/genesys/{genesys-launcher,genesys-dispatch}
+%   - /usr/libexec/genesys/system/bin/{genesys-gui,genesys-shell,genesys-worker}
+%   - /etc/genesys/update.conf
+%   - desktop file, metainfo file, icon path
 % Accessibility description:
-%   A package contents diagram with the desktop application on one side and the
-%   support executable/package on the other.
+%   A package contents diagram grouping public wrappers, the stable
+%   launcher/dispatcher mechanism, the system fallback binaries, and desktop
+%   integration assets by owning package.
 % Validation:
 %   The file paths and package names must match the current Debian manifests.
 % FIGURE-SPEC-END
@@ -253,9 +322,118 @@ installation and which are only for inspection.
 \label{fig:packaging-package-layout}
 \end{figure}
 
-Figure~\ref{fig:packaging-package-layout} should make it obvious that the GUI
-package is the desktop-facing artifact, while the web package is the supporting
-binary package paired with it in the Debian layout.
+Figure~\ref{fig:packaging-package-layout} should make it obvious that
+\texttt{genesys-common} owns the stable launcher/dispatcher mechanism and
+administrative policy, each application package owns its own public wrapper
+and system fallback binary, and \texttt{genesys-web} owns no payload of its
+own.
+
+\section{The Launcher/Dispatcher packaging contract}
+\label{sec:packaging-launcher-contract}
+
+The public commands installed by these packages are deliberately tiny
+wrappers, not the application binaries themselves. Each one execs a fixed,
+absolute path with a fixed set of arguments, so its behavior is stable
+independent of any future change to per-user runtime layout:
+\begin{itemize}
+\item \texttt{/usr/bin/genesys-gui} execs
+  \texttt{/usr/libexec/genesys/genesys-launcher --app genesys-gui\allowbreak{} --interactive-update "\$@"};
+\item \texttt{/usr/bin/genesys-shell}, \texttt{/usr/bin/genesys-worker},
+  \texttt{/usr/bin/genesys-web}, and \texttt{/usr/bin/genesys-mcp} each exec
+  \texttt{/usr/libexec/genesys/genesys-dispatch --app <name> -- "\$@"}.
+\end{itemize}
+These wrapper templates live at
+\texttt{source/applications/launcher/wrappers/launcher-wrapper.in} and
+\texttt{dispatch-wrapper.in} and are configured by CMake at build time, so the
+generic CMake install tree and the Debian package install the identical
+contract (Section~\ref{sec:packaging-cmake-install-tree}).
+
+The launcher (\texttt{genesys-gui} only) and the dispatcher (every other
+command) resolve which runtime actually serves the request through the same
+\texttt{RuntimeSelector} contract validated by the Launcher's own focused
+tests: a validated per-user runtime referenced by
+\texttt{\textasciitilde/.local/share/genesys/current}, or the Debian-provided
+system fallback under \texttt{/usr/libexec/genesys/system/bin/}. Only the
+launcher may perform a network update check; the dispatcher never does.
+\texttt{genesys-web} is resolved by the selector as a compatibility alias for
+the \texttt{genesys-worker} application, not as a separate application.
+
+\texttt{genesys-common} does not install a system fallback for
+\texttt{genesys-mcp}: \texttt{source/applications/mcp/} is a Python
+application whose dependencies (\texttt{mcp}, \texttt{httpx}) are outside the
+Debian build contract. The Debian build does not fetch anything from PyPI,
+vendor those dependencies, or reimplement MCP in C++. If no per-user runtime
+provides \texttt{bin/genesys-mcp}, the dispatcher returns a controlled
+diagnostic and exit status 127 instead of failing unpredictably.
+
+\section{Generic CMake install tree and DESTDIR staging}
+\label{sec:packaging-cmake-install-tree}
+
+The Launcher, GUI, Shell, and Worker install rules use \texttt{GNUInstallDirs}
+and are written once, in the generic CMake tree, independent of Debian. The
+Debian package build (\texttt{debian/rules}) configures with
+\texttt{-DCMAKE\_INSTALL\_PREFIX=/usr} and lets \texttt{dh\_auto\_install} run
+\texttt{DESTDIR=debian/tmp ninja install} through debhelper, exactly like any
+other \texttt{cmake+ninja} package. The \texttt{debian/*.install} files then
+only partition that single staged tree between the five binary packages; they
+never copy an executable directly from the build tree, and no Debian-specific
+install logic exists outside \texttt{debian/rules} and the per-package
+\texttt{.install}/\texttt{.manpages} files.
+
+A maintainer can reproduce the same staged tree without \texttt{dpkg-buildpackage}
+for a quick contract check:
+\begin{lstlisting}[language=bash,caption={Staged install without touching the running system},label={lst:packaging-destdir-install}]
+cmake --preset launcher-app
+cmake --build --preset launcher-app --parallel "$(nproc)"
+DESTDIR=/tmp/genesys-stage cmake --install build/launcher-app --prefix /usr
+\end{lstlisting}
+This is exactly the check the Launcher CI job performs after building; it
+never writes into \texttt{/usr} on the runner itself.
+
+\section{Package lifecycle validation}
+\label{sec:packaging-lifecycle-validation}
+
+\texttt{packaging/linux/validate-debian-lifecycle.sh} is the script executed
+by the workflow's second job. It takes the built \texttt{.deb} directory and
+an output directory as arguments, and exercises, in order, against the exact
+five packages produced by Job 1:
+\begin{enumerate}
+\item package contents/inventory inspection and forbidden-artifact scanning
+  (no \texttt{build-debian}, no \texttt{.git}, no stray \texttt{.deb}s inside
+  a \texttt{.deb});
+\item wrapper-contract checks (each public command execs the fixed
+  launcher/dispatcher path with the fixed arguments, and contains no
+  \texttt{\$HOME}/\texttt{\textasciitilde/} reference);
+\item installation with \texttt{apt}, so dependency resolution runs
+  normally, followed by \texttt{dpkg-query}/\texttt{dpkg -S} ownership checks
+  for every public, libexec, and configuration path;
+\item execution as a disposable, non-\texttt{sudoers} user
+  (\texttt{genesysstudent}) with a clean home directory: system fallback for
+  Shell, Worker (bounded, loopback-only \texttt{/health} on an ephemeral
+  port), the missing-MCP controlled diagnostic, and a bounded Xvfb GUI start
+  with \texttt{--no-update};
+\item a fake, schema-valid per-user runtime (\texttt{VERSION},
+  \texttt{MANIFEST.json}, \texttt{bin/*} fixtures) selected instead of the
+  system fallback, with arguments preserved through the dispatcher;
+\item the administrative \texttt{allow\_user\_runtime=false} override forcing
+  system fallback even with a valid \texttt{current} runtime present;
+\item six invalid-runtime cases (missing/broken \texttt{current}, missing
+  \texttt{VERSION}, missing \texttt{MANIFEST.json}, missing or
+  non-executable application binary), each expected to fall back cleanly with
+  no crash and no network access;
+\item package-owned file integrity (checksums and \texttt{dpkg -V}) before and
+  after all per-user-runtime exercises;
+\item reinstall with a locally edited conffile, confirming the local edit
+  survives and the active per-user runtime is untouched;
+\item \texttt{remove}, confirming package-owned paths are gone, the conffile
+  and per-user runtime remain;
+\item \texttt{purge}, confirming the conffile is gone and the per-user
+  runtime still remains.
+\end{enumerate}
+No step downloads a GenESyS runtime from GitHub Releases or otherwise reaches
+outside the packages produced by the same workflow run. Section
+\ref{sec:packaging-release-boundary} covers what this validation does and does
+not authorize.
 
 \section{Release boundary and limitations}
 \label{sec:packaging-release-boundary}
@@ -263,19 +441,30 @@ binary package paired with it in the Debian layout.
 The current automation surface still has clear boundaries:
 \begin{itemize}
 \item the ordinary CI workflow and the Debian package workflow are distinct;
-\item the Debian workflow is currently filtered to \texttt{WiP20261} and
-  \texttt{20261}, so its trigger surface is narrower than the ordinary CI
-  workflow;
-\item package build success does not imply install, upgrade, purge, or residual
-  file validation on a clean machine;
+\item the Debian workflow now triggers on \texttt{WorkInProgress},
+  \texttt{20262}, \texttt{currentStable}, and \texttt{master}, matching the
+  ordinary CI trigger surface for packaging-relevant path changes -- it is no
+  longer filtered to a dated \texttt{WiP20261}/\texttt{20261} pair;
+\item within one workflow run, a green build job does unlock install,
+  non-root-user, system-fallback, per-user-runtime, reinstall, remove, and
+  purge validation through the dependent lifecycle job
+  (Section~\ref{sec:packaging-lifecycle-validation}) -- but a green build job
+  alone, without a green lifecycle job on the same run, still does not
+  constitute that evidence;
 \item AppStream and lintian checks validate package metadata quality, not the
   supported-feature boundary of the whole project;
-\item package build success does not authorize public release or PPA
-  publication.
+\item a \texttt{genesys-debian-packages} GitHub Actions artifact is a
+  validation artifact for inspection and manual testing. It is not a GitHub
+  Release, it is not published to any APT/PPA repository, and package build
+  or lifecycle success does not by itself authorize public release,
+  official package signing, or PPA publication;
+\item no runtime signing key, GitHub Release, or APT/PPA publication is
+  produced by this workflow; those remain separate, explicitly authorized
+  release activities.
 \end{itemize}
 
-The chapter therefore treats packaging as a validated build-and-metadata
-surface, not as a release decision.
+The chapter therefore treats packaging as a validated build, install, and
+lifecycle surface, not as a release decision.
 
 \begin{figure}[htbp]
 \centering

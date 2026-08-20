@@ -83,6 +83,14 @@ For maintainers working from a local clone with an authenticated GitHub CLI, `sc
 
 ## Artifacts versus distribution
 
-`genesys-debian-packages` is a GitHub Actions artifact containing validation `.deb` files. It is suitable for inspection and manual testing, but it is not an official GitHub Release and it is not an APT/PPA repository.
+`genesys-debian-packages` is a GitHub Actions artifact containing validation `.deb` files. `genesys-debian-diagnostics` contains build/Lintian/AppStream logs and package metadata. `genesys-debian-lifecycle-evidence` contains the full lifecycle validation log and evidence described above. All three are ordinary workflow-run artifacts, not an official GitHub Release and not an APT/PPA repository.
+
+To obtain them from a specific run:
+
+```text
+gh run download <run-id> --repo rlcancian/Genesys-Simulator --name genesys-debian-packages --dir ./out
+```
+
+or download them from the run's page under **Actions -> GenESyS Debian Package -> <run> -> Artifacts** in the GitHub web UI. Artifacts expire after GitHub's default retention period; they are not a permanent distribution channel.
 
 Official package signing, a runtime signing key, runtime Release bundles, GitHub Release publication, and APT/PPA publication are separate release activities.
