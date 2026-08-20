@@ -194,8 +194,12 @@ DISPLAY=:99 xdpyinfo >/dev/null 2>&1 || fail "Xvfb did not become ready"
 sudo -u "${STUDENT}" -H env DISPLAY=:99 QT_QPA_PLATFORM=xcb \
     /usr/bin/genesys-gui --no-update > "${EVIDENCE_DIR}/system-gui.log" 2>&1 &
 gui_sudo_pid=$!
-sleep 5
-mapfile -t gui_pids < <(pgrep -u "${STUDENT}" -x genesys-gui || true)
+gui_pids=()
+for _ in {1..50}; do
+    mapfile -t gui_pids < <(pgrep -u "${STUDENT}" -x genesys-gui || true)
+    [[ ${#gui_pids[@]} -ge 1 ]] && break
+    sleep 0.2
+done
 [[ ${#gui_pids[@]} -eq 1 ]] || fail "expected exactly one system genesys-gui process, found ${#gui_pids[@]}"
 gui_exe="$(sudo readlink -f "/proc/${gui_pids[0]}/exe")"
 echo "${gui_exe}" | tee "${EVIDENCE_DIR}/system-gui-executable.txt"
@@ -204,7 +208,9 @@ echo "${gui_exe}" | tee "${EVIDENCE_DIR}/system-gui-executable.txt"
 sudo kill -TERM "${gui_pids[0]}"
 wait "${gui_sudo_pid}" 2>/dev/null || true
 sleep 1
-pgrep -u "${STUDENT}" -x genesys-gui >/dev/null && fail "residual genesys-gui process after bounded test"
+if pgrep -u "${STUDENT}" -x genesys-gui >/dev/null; then
+    fail "residual genesys-gui process after bounded test"
+fi
 
 run_worker_health() {
     local public_command="$1"
@@ -235,7 +241,9 @@ PY
     grep -Fxq '{"ok":true,"status":"up"}' "${EVIDENCE_DIR}/${label}-health.json" \
         || fail "${label} health body did not match the validated contract"
     sleep 0.2
-    pgrep -u "${STUDENT}" -x genesys-worker >/dev/null && fail "residual genesys-worker process after ${label} bounded request"
+    if pgrep -u "${STUDENT}" -x genesys-worker >/dev/null; then
+        fail "residual genesys-worker process after ${label} bounded request"
+    fi
 }
 run_worker_health /usr/bin/genesys-worker system-worker
 run_worker_health /usr/bin/genesys-web system-web-compat
@@ -372,7 +380,7 @@ sudo apt-get install --reinstall -y --no-install-recommends "${absolute_debs[@]}
     | tee "${EVIDENCE_DIR}/reinstall.log"
 grep -Fxq '# lifecycle-admin-local-change' "${SYSTEM_CONFIG}" \
     || fail "package reinstall overwrote a local administrative conffile modification"
-[[ -L "${CURRENT_LINK}" ]] || fail "package reinstall modified the user's active runtime link"
+sudo test -L "${CURRENT_LINK}" || fail "package reinstall modified the user's active runtime link"
 sudo -u "${STUDENT}" -H timeout 15s /usr/bin/genesys-shell 'after reinstall' > "${EVIDENCE_DIR}/user-runtime-after-reinstall.log" 2>&1
 grep -Fxq 'USER_RUNTIME:genesys-shell' "${EVIDENCE_DIR}/user-runtime-after-reinstall.log" \
     || fail "user runtime no longer works after package reinstall"
@@ -400,14 +408,22 @@ for path in "${removed_before_purge[@]}"; do
 done
 [[ -f "${SYSTEM_CONFIG}" ]] || fail "conffile did not remain after apt remove"
 grep -Fxq '# lifecycle-admin-local-change' "${SYSTEM_CONFIG}" || fail "modified conffile content was lost after apt remove"
-[[ -L "${CURRENT_LINK}" ]] || fail "package remove deleted the user's active runtime link"
-[[ -x "${RUNTIME_ROOT}/bin/genesys-shell" ]] || fail "package remove deleted user runtime data"
+sudo test -L "${CURRENT_LINK}" || fail "package remove deleted the user's active runtime link"
+sudo test -x "${RUNTIME_ROOT}/bin/genesys-shell" || fail "package remove deleted user runtime data"
 
-sudo apt-get purge -y genesys-gui genesys-web genesys-shell genesys-worker genesys-common 2>&1 \
+# Packages without a conffile are already fully removed (not just in
+# "config-files" state) by the preceding "apt-get remove", since apt/dpkg
+# have nothing left to preserve for them. A locally-installed package (never
+# indexed by an apt repository) that is no longer present in dpkg's status
+# database cannot be resolved by name through apt's dependency solver, so
+# "apt-get purge" would fail with "Unable to locate package" for those. Use
+# dpkg directly: it purges any remaining conffile-bearing package and warns
+# (without failing) about names that are already fully removed.
+sudo dpkg --purge genesys-gui genesys-web genesys-shell genesys-worker genesys-common 2>&1 \
     | tee "${EVIDENCE_DIR}/purge.log"
 [[ ! -e "${SYSTEM_CONFIG}" ]] || fail "administrative conffile remains after purge"
-[[ -L "${CURRENT_LINK}" ]] || fail "package purge removed the user's active runtime link"
-[[ -x "${RUNTIME_ROOT}/bin/genesys-shell" ]] || fail "package purge removed user runtime data"
+sudo test -L "${CURRENT_LINK}" || fail "package purge removed the user's active runtime link"
+sudo test -x "${RUNTIME_ROOT}/bin/genesys-shell" || fail "package purge removed user runtime data"
 
 for package in "${expected_packages[@]}"; do
     if dpkg-query -W -f='${db:Status-Status}' "${package}" 2>/dev/null | grep -Eq '^(installed|config-files)$'; then
