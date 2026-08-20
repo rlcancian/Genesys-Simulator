@@ -62,7 +62,10 @@ bool UpdateDialog::updateDownloadProgress(const qint64 receivedBytes,
         ? totalBytes
         : progress_->property("genesysTotalBytes").toLongLong();
     if (denominator > 0) {
-        const int percent = static_cast<int>(qBound<qint64>(0, (receivedBytes * 100) / denominator, 100));
+        const qint64 scaled = receivedBytes >= denominator
+            ? qint64{100}
+            : (receivedBytes > 0 ? (receivedBytes * qint64{100}) / denominator : qint64{0});
+        const int percent = static_cast<int>(qBound(qint64{0}, scaled, qint64{100}));
         progress_->setValue(percent);
     }
     QCoreApplication::processEvents();
