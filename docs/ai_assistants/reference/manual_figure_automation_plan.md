@@ -1,3 +1,12 @@
+---
+document_type: reference-plan
+authority: informative
+owner: project-maintainer
+last_reviewed: 2026-07-22
+status: active
+tracks: 511
+---
+
 # Manual Figure Automation Plan
 
 ## Purpose
@@ -78,16 +87,3 @@ Figure generation must remain reproducible and verified. Each figure should have
 an explicit source of truth, stable naming, versioned assets when needed,
 documented resolution, accessibility notes, and a human visual review before
 publication.
-
-The plan must prevent invented images and ensure that figures are updated when
-the GUI, kernel, parser, or architecture changes.
-
-## 5. Stop gates
-
-Human approval is required before:
-
-- adding external dependencies;
-- automating fragile GUI interaction;
-- using outside image-generation services;
-- publishing AI-generated images without factual verification;
-- making major visual style changes to the manual.
