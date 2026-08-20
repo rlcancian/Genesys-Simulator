@@ -2,8 +2,9 @@
 
 #include <QFile>
 #include <QFileInfo>
-#include <QTextStream>
 #include <QHash>
+#include <QRegularExpression>
+#include <QTextStream>
 
 namespace genesys::launcher {
 namespace {
@@ -64,8 +65,8 @@ bool parseBool(const QString& value, bool* ok) {
     return false;
 }
 
-void applyValues(LauncherConfig& config, const IniMap& values, bool systemPolicy, const QString& sourceName) {
-    auto applyBool = [&](const QString& key, bool& target, bool safeSystemValue) {
+void applyValues(LauncherConfig& config, const IniMap& values, const bool systemPolicy, const QString& sourceName) {
+    auto applyBool = [&](const QString& key, bool& target, const bool safeSystemValue) {
         if (!values.contains(key)) {
             return;
         }
@@ -127,7 +128,8 @@ void applyValues(LauncherConfig& config, const IniMap& values, bool systemPolicy
 
     if (values.contains(QStringLiteral("manifest_url"))) {
         const QUrl url(values.value(QStringLiteral("manifest_url")), QUrl::StrictMode);
-        if (url.isValid() && url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0 && !url.host().isEmpty()) {
+        if (url.isValid() && url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0 &&
+            !url.host().isEmpty() && url.userInfo().isEmpty()) {
             config.manifestUrl = url;
         } else {
             config.warnings.push_back(QStringLiteral("Invalid or non-HTTPS manifest_url in %1").arg(sourceName));
