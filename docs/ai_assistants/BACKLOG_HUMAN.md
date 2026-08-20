@@ -278,7 +278,7 @@ A decision recorded here is not implemented automatically unless a corresponding
 
 ## 9. Historical documentation decision
 
-### HUM-DOC-001 — Final deletion approval for `oldies/`
+### HUM-DOC-002 — Final deletion approval for `oldies/`
 
 - Priority: `P2`
 - Status: `deferred`
