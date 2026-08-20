@@ -134,7 +134,7 @@ void applyValues(LauncherConfig& config, const IniMap& values, const bool system
         } else {
             config.warnings.push_back(QStringLiteral("Invalid or non-HTTPS manifest_url in %1").arg(sourceName));
             if (systemPolicy) {
-                config.manifestUrl = {};
+                config.manifestUrl = QUrl{};
                 config.updatesEnabled = false;
             }
         }
