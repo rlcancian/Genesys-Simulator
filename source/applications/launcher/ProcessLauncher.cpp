@@ -2,6 +2,7 @@
 
 #include "LauncherLogger.h"
 
+#include <QFile>
 #include <QProcess>
 
 #include <cerrno>
@@ -45,7 +46,7 @@ ProcessLauncher::ProcessLauncher(LauncherLogger* logger)
 
 int ProcessLauncher::launchReplacingProcess(const RuntimeSelection& selection,
                                             const QStringList& arguments,
-                                            QString* error) const {
+                                            QString* error) {
     if (!selection.ok || selection.primaryExecutable.isEmpty()) {
         if (error) {
             *error = selection.reason.isEmpty() ? QStringLiteral("No executable selected") : selection.reason;
