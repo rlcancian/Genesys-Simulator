@@ -73,7 +73,7 @@ if(TARGET genesys_kernel)
 endif()
 
 install(TARGETS genesys_gui_application
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/genesys/system/bin
 )
 
 install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/io.github.rlcancian.genesys.desktop

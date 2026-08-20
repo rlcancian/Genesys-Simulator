@@ -43,13 +43,16 @@ Figure~\ref{fig:user-installation-structure-summary}.
     % Source of truth:
     %   - debian/control
     %   - debian/rules
+    %   - debian/genesys-common.install
     %   - debian/genesys-gui.install
+    %   - source/applications/launcher/wrappers/launcher-wrapper.in
     %   - CMakePresets.json
     %   - packaging/linux/io.github.rlcancian.genesys.desktop
     % Required visual content:
-    %   - supported Debian package path
+    %   - supported Debian package path (genesys-gui plus companion packages)
     %   - optional local artifact path
-    %   - installed launcher name
+    %   - installed stable genesys-gui command name
+    %   - launcher selecting per-user runtime or system fallback
     %   - first GUI startup
     %   - About-dialog version check
     % Accessibility description:
@@ -73,14 +76,31 @@ GenESyS GUI on the machine.
 \subsection{Preferred path: Debian package}
 \label{subsec:user-installation-debian-package}
 
-The packaged desktop application is named \texttt{genesys-gui}. The Debian
-metadata installs the executable to \path{/usr/bin/genesys-gui} and also ships
-the desktop integration files under the standard XDG locations:
+The packaged desktop application is named \texttt{genesys-gui}. Installing it
+pulls in four companion binary packages through ordinary \texttt{apt}
+dependency resolution: \texttt{genesys-common} (the stable launcher and
+dispatcher mechanism and the administrative update policy),
+\texttt{genesys-shell}, and \texttt{genesys-worker}. Together they form the
+supported base application set, so \texttt{apt install genesys-gui} is
+sufficient to obtain a working GUI, shell, and worker installation.
+
+The Debian metadata installs a small, stable command at
+\path{/usr/bin/genesys-gui} and also ships the desktop integration files under
+the standard XDG locations:
 \begin{itemize}
 \item \path{/usr/share/applications/io.github.rlcancian.genesys.desktop};
 \item \path{/usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml};
 \item \path{/usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg}.
 \end{itemize}
+
+\path{/usr/bin/genesys-gui} does not contain the GUI implementation itself.
+It is a wrapper that starts the stable launcher mechanism installed by
+\texttt{genesys-common}, which then starts the actual GUI: either a validated
+runtime the user installed in their own home directory, or the
+Debian-provided system installation if no per-user runtime is active. Section
+\ref{sec:user-installation-launcher-and-runtime-selection} explains this in
+detail; from a user's point of view, the important fact is that the same
+\texttt{genesys-gui} command keeps working across that choice.
 
 This is the clearest end-user route when a package artifact is available. It
 creates the expected desktop launcher and provides a direct command-line entry
@@ -149,11 +169,13 @@ headless background service.
     %   Show what is installed by the desktop package and where the launcher
     %   and metadata files live.
     % Source of truth:
+    %   - debian/genesys-common.install
     %   - debian/genesys-gui.install
     %   - packaging/linux/io.github.rlcancian.genesys.desktop
     %   - packaging/linux/io.github.rlcancian.genesys.metainfo.xml
     % Required visual content:
-    %   - /usr/bin/genesys-gui
+    %   - /usr/bin/genesys-gui public wrapper
+    %   - /usr/libexec/genesys/genesys-launcher and system fallback binary
     %   - desktop entry file
     %   - metainfo file
     %   - icon file
@@ -168,6 +190,69 @@ headless background service.
     \caption{Installed GenESyS desktop files and launcher locations.}
     \label{fig:user-installed-structure}
 \end{figure}
+
+\section{Launcher, system fallback, and per-user runtime}
+\label{sec:user-installation-launcher-and-runtime-selection}
+
+The Debian package installs a stable base that works completely on its own,
+with no per-user setup required. \path{/usr/bin/genesys-gui},
+\path{/usr/bin/genesys-shell}, \path{/usr/bin/genesys-worker}, the legacy
+\path{/usr/bin/genesys-web} alias, and \path{/usr/bin/genesys-mcp} are all
+small wrapper commands. \texttt{genesys-gui} starts the stable launcher;
+the other four start the stable, non-interactive dispatcher. Both mechanisms
+live under \path{/usr/libexec/genesys/} and are installed by
+\texttt{genesys-common}.
+
+At each invocation, the launcher or dispatcher decides which runtime actually
+serves the request:
+\begin{itemize}
+\item a validated runtime installed in the user's own home directory, under
+  \path{~/.local/share/genesys/apps/<version>/}, selected through the
+  \path{~/.local/share/genesys/current} symbolic link, if one is present and
+  passes validation; or otherwise
+\item the Debian-provided \emph{system fallback} runtime, installed under
+  \path{/usr/libexec/genesys/system/bin/} by the \texttt{genesys-gui},
+  \texttt{genesys-shell}, and \texttt{genesys-worker} packages.
+\end{itemize}
+
+A per-user runtime can therefore be updated without administrator privileges,
+without ever touching a file owned by the Debian package, and it can always
+fall back to the system-provided version if it is missing, incomplete, or
+disabled by policy. Only \texttt{genesys-gui} is allowed to check for and
+install an updated per-user runtime; the shell, worker, legacy web alias, and
+MCP commands only dispatch to whichever runtime is already selected and never
+perform network activity themselves.
+
+\subsection{Administrative and per-user configuration}
+\label{subsec:user-installation-update-configuration}
+
+Two configuration files control this behavior:
+\begin{itemize}
+\item \path{/etc/genesys/update.conf} -- the system-wide administrative
+  policy installed by \texttt{genesys-common} as a Debian conffile. It takes
+  precedence over the per-user configuration.
+\item \path{~/.config/genesys/update.conf} -- an optional per-user override,
+  read only where the administrative policy allows it.
+\end{itemize}
+
+As shipped, the administrative policy disables remote update checks and
+requires signature verification for any future update, so no network activity
+happens unless a maintainer deliberately provisions and enables it. This is a
+deliberate fail-closed default: the base application is fully usable from the
+Debian package alone, and enabling remote per-user updates is a separate,
+explicit administrative decision, not a side effect of installing the
+package.
+
+\subsection{Runtime status and troubleshooting}
+\label{subsec:user-installation-launcher-log}
+
+The launcher and dispatcher record their activity in
+\path{~/.cache/genesys/launcher.log}. If \texttt{genesys-gui} unexpectedly
+starts the system-provided runtime instead of an installed per-user runtime
+(or vice-versa), this log is the first place to check; the current
+\path{~/.local/share/genesys/current} link and the administrative
+\path{allow_user_runtime} setting are the two most common causes of an
+unexpected selection.
 
 \section{First launch of the GUI}
 \label{sec:user-installation-first-launch}
@@ -274,14 +359,33 @@ version information from inside the running program.
 \section{Where the files live after installation}
 \label{sec:user-installation-file-locations}
 
-From a user point of view, the important installed locations are the launcher
-binary and the desktop integration files. For package-based installs, the key
-paths are:
+From a user point of view, the important installed locations are the stable
+public commands and the desktop integration files. For package-based
+installs, the key paths are:
 \begin{itemize}
-\item \path{/usr/bin/genesys-gui};
+\item \path{/usr/bin/genesys-gui}, \path{/usr/bin/genesys-shell},
+  \path{/usr/bin/genesys-worker} -- stable public commands, never removed or
+  replaced by a per-user update;
+\item \path{/usr/libexec/genesys/} -- the launcher, the dispatcher, and the
+  Debian-provided system fallback GUI/Shell/Worker executables, under
+  \texttt{system/bin/};
+\item \path{/etc/genesys/update.conf} -- administrative configuration;
 \item \path{/usr/share/applications/io.github.rlcancian.genesys.desktop};
 \item \path{/usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml};
 \item \path{/usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg}.
+\end{itemize}
+
+If a per-user runtime has been installed, it lives entirely under the user's
+own home directory and is never mixed with the paths above:
+\begin{itemize}
+\item \path{~/.local/share/genesys/apps/<version>/} -- one directory per
+  installed runtime version;
+\item \path{~/.local/share/genesys/current} -- symbolic link to the active
+  version;
+\item \path{~/.config/genesys/update.conf} -- optional per-user
+  configuration;
+\item \path{~/.cache/genesys/launcher.log} -- launcher/dispatcher activity
+  log.
 \end{itemize}
 
 For local validation from source, the matching build-tree executable is:
@@ -355,10 +459,20 @@ If a full purge is desired, remove configuration files as well:
 sudo apt purge genesys-gui
 \end{lstlisting}
 
-Because the Debian package also declares \texttt{genesys-web} as a runtime
-dependency, a system that installed both packages explicitly may need both names
-in the removal command. The safe habit is to inspect the package list after the
-first uninstall if the goal is to clean the machine completely.
+The historical \texttt{genesys-web} package name is preserved as a transitional
+package that depends on \texttt{genesys-worker} and installs no files of its
+own, so upgrading an older \texttt{genesys-web} installation keeps working and
+the \path{genesys-web} command remains available as a compatibility alias for
+\path{genesys-worker}. A system that still has \texttt{genesys-web} explicitly
+installed may need to list it alongside the other package names when removing
+GenESyS completely; the safe habit is to inspect the package list
+(\texttt{dpkg -l 'genesys-*'}) after the first uninstall if the goal is to
+clean the machine entirely.
+
+Removing or purging the Debian package never touches a per-user runtime
+installed under \path{~/.local/share/genesys/}. That directory, and anything
+in it, is owned by the user, not by \texttt{dpkg}, and remains after the
+package is gone. Deleting it, if ever desired, is a separate, manual step.
 
 \section{Initial troubleshooting}
 \label{sec:user-installation-troubleshooting}

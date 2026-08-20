@@ -41,7 +41,7 @@ set_target_properties(genesys_worker_app
 )
 
 install(TARGETS genesys_worker_app
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/genesys/system/bin
 )
 
 add_executable(genesys_worker ALIAS genesys_worker_app)

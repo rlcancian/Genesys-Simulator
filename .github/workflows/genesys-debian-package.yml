@@ -6,22 +6,31 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - WiP20261
+      - WorkInProgress
+      - 20262
+      - currentStable
+      - master
     paths:
       - 'debian/**'
       - 'packaging/linux/**'
-      - 'source/**/CMakeLists.txt'
+      - 'source/**'
+      - 'scripts/run-debian-package-workflow.sh'
       - 'CMakeLists.txt'
+      - 'CMakePresets.json'
       - '.github/workflows/genesys-debian-package.yml'
   pull_request:
     branches:
-      - WiP20261
-      - 20261
+      - WorkInProgress
+      - 20262
+      - currentStable
+      - master
     paths:
       - 'debian/**'
       - 'packaging/linux/**'
-      - 'source/**/CMakeLists.txt'
+      - 'source/**'
+      - 'scripts/run-debian-package-workflow.sh'
       - 'CMakeLists.txt'
+      - 'CMakePresets.json'
       - '.github/workflows/genesys-debian-package.yml'
 
 permissions:
@@ -39,19 +48,34 @@ env:
   QT_QPA_PLATFORM: offscreen
 
 jobs:
-  debian-package:
+  build-debian-packages:
     name: Build Debian packages
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 70
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Record package workflow provenance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p genesys-debian-diagnostics genesys-debian-packages
+          printf '%s\n' "${SOURCE_HEAD_SHA}" > genesys-debian-diagnostics/source-head-sha.txt
+          printf '%s\n' "${GITHUB_SHA}" > genesys-debian-diagnostics/checkout-sha.txt
+          printf '%s\n' "${GITHUB_EVENT_NAME}" > genesys-debian-diagnostics/event-name.txt
+          uname -a > genesys-debian-diagnostics/uname.txt
+          cmake --version > genesys-debian-diagnostics/cmake-version.txt
+          ninja --version > genesys-debian-diagnostics/ninja-version.txt
+          g++ --version > genesys-debian-diagnostics/gxx-version.txt
+          dpkg-buildpackage --version > genesys-debian-diagnostics/dpkg-buildpackage-version.txt
+
       - name: Normalize Debian packaging permissions
         run: |
           set -Eeuo pipefail
-          chmod +x debian/rules
+          chmod +x debian/rules packaging/linux/validate-debian-lifecycle.sh
 
       - name: Install Debian packaging dependencies
         run: |
@@ -70,14 +94,16 @@ jobs:
             qt6-base-dev-tools \
             libgl-dev \
             lintian \
-            appstream
+            appstream \
+            gpgv \
+            zstd
 
       - name: Build Debian binary packages
         run: |
           set -Eeuo pipefail
           dpkg-buildpackage -us -uc -b 2>&1 | tee genesys-debian-build.log
 
-      - name: Collect artifacts and diagnostics
+      - name: Collect packages and build diagnostics
         if: always()
         run: |
           set +e
@@ -88,25 +114,59 @@ jobs:
           cp -v ../*.changes genesys-debian-diagnostics/ 2>/dev/null || true
           cp -v build-debian/CMakeFiles/CMakeOutput.log genesys-debian-diagnostics/ 2>/dev/null || true
           cp -v build-debian/CMakeFiles/CMakeError.log genesys-debian-diagnostics/ 2>/dev/null || true
-          find build-debian -type f \( -name '*.log' -o -name 'LastTest.log' \) -exec cp -v {} genesys-debian-diagnostics/ \; 2>/dev/null || true
+          find build-debian -type f \( -name '*.log' -o -name 'LastTest.log' \) -exec cp -v --parents {} genesys-debian-diagnostics/ \; 2>/dev/null || true
           cp -v ../*.deb genesys-debian-packages/ 2>/dev/null || true
           cp -v ../*.buildinfo genesys-debian-packages/ 2>/dev/null || true
           cp -v ../*.changes genesys-debian-packages/ 2>/dev/null || true
-          find genesys-debian-diagnostics genesys-debian-packages -maxdepth 2 -type f | sort
+          find genesys-debian-diagnostics genesys-debian-packages -maxdepth 4 -type f | sort
+
+      - name: Verify and inventory Debian package set
+        run: |
+          set -Eeuo pipefail
+          expected=(genesys-common genesys-shell genesys-worker genesys-gui genesys-web)
+          shopt -s nullglob
+          debs=(genesys-debian-packages/*.deb)
+          [[ ${#debs[@]} -eq ${#expected[@]} ]] || {
+            echo "::error::Expected ${#expected[@]} .deb packages, found ${#debs[@]}"
+            exit 1
+          }
+          printf 'package\tversion\tarchitecture\tfile\n' > genesys-debian-diagnostics/package-inventory.tsv
+          for deb in "${debs[@]}"; do
+            package="$(dpkg-deb -f "${deb}" Package)"
+            version="$(dpkg-deb -f "${deb}" Version)"
+            architecture="$(dpkg-deb -f "${deb}" Architecture)"
+            printf '%s\t%s\t%s\t%s\n' "${package}" "${version}" "${architecture}" "$(basename "${deb}")" \
+              >> genesys-debian-diagnostics/package-inventory.tsv
+            dpkg-deb --info "${deb}" > "genesys-debian-diagnostics/${package}.info.txt"
+            dpkg-deb --contents "${deb}" > "genesys-debian-diagnostics/${package}.contents.txt"
+          done
+          for package in "${expected[@]}"; do
+            count="$(awk -F '\t' -v package="${package}" 'NR > 1 && $1 == package { n++ } END { print n + 0 }' genesys-debian-diagnostics/package-inventory.tsv)"
+            [[ "${count}" -eq 1 ]] || {
+              echo "::error::Expected exactly one ${package} package, found ${count}"
+              exit 1
+            }
+          done
+          cat genesys-debian-diagnostics/package-inventory.tsv
 
       - name: Validate AppStream metadata
         if: always()
         run: |
-          set +e
-          appstreamcli validate --no-net packaging/linux/io.github.rlcancian.genesys.metainfo.xml 2>&1 | tee genesys-debian-diagnostics/genesys-appstream.log
-          exit 0
+          set -Eeuo pipefail
+          appstreamcli validate --no-net packaging/linux/io.github.rlcancian.genesys.metainfo.xml 2>&1 \
+            | tee genesys-debian-diagnostics/genesys-appstream.log
 
-      - name: Run lintian
+      - name: Run Lintian with errors blocking
         if: always()
         run: |
-          set +e
-          lintian genesys-debian-packages/*.deb 2>&1 | tee genesys-debian-diagnostics/genesys-lintian.log
-          exit 0
+          set -Eeuo pipefail
+          shopt -s nullglob
+          debs=(genesys-debian-packages/*.deb)
+          [[ ${#debs[@]} -gt 0 ]] || {
+            echo "No Debian packages are available for Lintian." | tee genesys-debian-diagnostics/genesys-lintian.log
+            exit 1
+          }
+          lintian --fail-on error "${debs[@]}" 2>&1 | tee genesys-debian-diagnostics/genesys-lintian.log
 
       - name: Upload Debian packages
         if: always()
@@ -114,7 +174,7 @@ jobs:
         with:
           name: genesys-debian-packages
           path: genesys-debian-packages/
-          if-no-files-found: ignore
+          if-no-files-found: error
 
       - name: Upload Debian diagnostics
         if: always()
@@ -122,15 +182,67 @@ jobs:
         with:
           name: genesys-debian-diagnostics
           path: genesys-debian-diagnostics/
-          if-no-files-found: ignore
+          if-no-files-found: error
 
-      - name: Verify Debian packages were produced
-        if: always()
+  validate-debian-packages:
+    name: Validate Debian package lifecycle
+    needs: build-debian-packages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Debian packages
+        uses: actions/download-artifact@v4
+        with:
+          name: genesys-debian-packages
+          path: genesys-debian-packages
+
+      - name: Download Debian build diagnostics
+        uses: actions/download-artifact@v4
+        with:
+          name: genesys-debian-diagnostics
+          path: genesys-debian-build-diagnostics
+
+      - name: Install lifecycle test tools
         run: |
           set -Eeuo pipefail
-          package_count="$(find genesys-debian-packages -maxdepth 1 -type f -name '*.deb' | wc -l)"
-          echo "debian_package_count=${package_count}"
-          if [[ "${package_count}" -eq 0 ]]; then
-            echo "::error::No Debian .deb package was produced. Check genesys-debian-diagnostics."
-            exit 1
-          fi
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xvfb \
+            x11-utils \
+            curl \
+            iproute2 \
+            python3
+
+      - name: Record lifecycle provenance
+        env:
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p genesys-debian-lifecycle-evidence
+          printf '%s\n' "${SOURCE_HEAD_SHA}" > genesys-debian-lifecycle-evidence/source-head-sha.txt
+          printf '%s\n' "${GITHUB_SHA}" > genesys-debian-lifecycle-evidence/checkout-sha.txt
+          printf '%s\n' "${GITHUB_RUN_ID}" > genesys-debian-lifecycle-evidence/workflow-run-id.txt
+          uname -a > genesys-debian-lifecycle-evidence/uname.txt
+          cp -v genesys-debian-build-diagnostics/genesys-appstream.log genesys-debian-lifecycle-evidence/ 2>/dev/null || true
+          cp -v genesys-debian-build-diagnostics/genesys-lintian.log genesys-debian-lifecycle-evidence/ 2>/dev/null || true
+          cp -v genesys-debian-build-diagnostics/package-inventory.tsv genesys-debian-lifecycle-evidence/build-package-inventory.tsv 2>/dev/null || true
+
+      - name: Exercise install, fallback, user runtime, reinstall and purge
+        run: |
+          set -Eeuo pipefail
+          chmod +x packaging/linux/validate-debian-lifecycle.sh
+          packaging/linux/validate-debian-lifecycle.sh \
+            genesys-debian-packages \
+            genesys-debian-lifecycle-evidence
+
+      - name: Upload lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-debian-lifecycle-evidence
+          path: genesys-debian-lifecycle-evidence/
+          if-no-files-found: error

@@ -80,6 +80,45 @@ install(TARGETS genesys-launcher genesys-dispatch
     RUNTIME DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/genesys
 )
 
+# Public entry points are deliberately tiny wrappers.  They are generated from
+# the configured install prefix so a staged CMake install and the Debian
+# package use the same launcher/dispatcher contract.
+set(_genesys_wrapper_dir "${CMAKE_CURRENT_BINARY_DIR}/wrappers")
+file(MAKE_DIRECTORY "${_genesys_wrapper_dir}")
+set(GENESYS_LAUNCHER_EXECUTABLE_PATH "${CMAKE_INSTALL_FULL_LIBEXECDIR}/genesys/genesys-launcher")
+set(GENESYS_DISPATCH_EXECUTABLE_PATH "${CMAKE_INSTALL_FULL_LIBEXECDIR}/genesys/genesys-dispatch")
+
+set(GENESYS_WRAPPER_APPLICATION "genesys-gui")
+configure_file(
+    wrappers/launcher-wrapper.in
+    "${_genesys_wrapper_dir}/genesys-gui"
+    @ONLY
+)
+
+foreach(_application IN ITEMS genesys-shell genesys-worker genesys-web genesys-mcp)
+    set(GENESYS_WRAPPER_APPLICATION "${_application}")
+    configure_file(
+        wrappers/dispatch-wrapper.in
+        "${_genesys_wrapper_dir}/${_application}"
+        @ONLY
+    )
+endforeach()
+
+install(PROGRAMS
+    "${_genesys_wrapper_dir}/genesys-gui"
+    "${_genesys_wrapper_dir}/genesys-shell"
+    "${_genesys_wrapper_dir}/genesys-worker"
+    "${_genesys_wrapper_dir}/genesys-web"
+    "${_genesys_wrapper_dir}/genesys-mcp"
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# The Debian package owns the administrative policy.  Installing this file via
+# CMake keeps the generic staging tree and debhelper's DESTDIR view identical.
+install(FILES "${CMAKE_SOURCE_DIR}/packaging/linux/update.conf"
+    DESTINATION "${CMAKE_INSTALL_FULL_SYSCONFDIR}/genesys"
+)
+
 if(GENESYS_BUILD_LAUNCHER_TESTS)
     add_subdirectory(tests)
 endif()
