@@ -1,5 +1,7 @@
 #include "Version.h"
 
+#include <QRegularExpression>
+
 #include <algorithm>
 
 namespace genesys::launcher {
