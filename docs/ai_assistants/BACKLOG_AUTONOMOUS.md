@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-07-22
+last_updated: 2026-08-20
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -98,7 +98,42 @@ This is the only approved source for work an AI agent may execute without a new 
   - exact root allowlist, links, front matter, backlog IDs, evidence placement and oldies retention are checked;
   - source branch removed automatically.
 
-## 4. Paused technical tasks
+## 4. Active bounded work
+
+### AUTO-APP-003 — Implement per-user runtime launcher and dispatcher
+
+- Priority: `P0`
+- Status: `running`
+- Environment: `github`
+- Branch: `WiP202608/launcher-user-runtime`
+- Authorization: explicit maintainer instruction dated 2026-08-20, with attached launcher/runtime specification.
+- Scope:
+  - add `source/applications/launcher/`;
+  - build `genesys-launcher` and `genesys-dispatch` with Qt6/C++23;
+  - implement XDG configuration/runtime paths, deterministic user/system selection, update manifest/version/platform validation, bounded HTTPS transport, SHA-256 verification, fail-closed signature verification, safe archive extraction, partial install, atomic activation, retention, logging and non-shell process launch;
+  - support `genesys-gui`, `genesys-shell`, canonical `genesys-worker`, legacy `genesys-web` compatibility, and existing Python `genesys-mcp` entry point;
+  - add focused unit/integration tests and GitHub-only CI evidence.
+- Non-goals:
+  - no Debian package layout/wrapper/control/install-file redesign;
+  - no release bundle publication/signing workflow;
+  - no Worker authentication/network exposure redesign;
+  - no MCP rewrite or Python package installation;
+  - no public compatibility change outside the launcher contracts defined by the maintainer specification.
+- Acceptance:
+  - dedicated CMake option/preset/targets;
+  - dispatcher has no network dependency and preserves arguments/process semantics where supported;
+  - update pipeline fails safely without changing `current` on intermediate failure;
+  - signature-required mode fails closed when verification prerequisites are unavailable;
+  - tests use local fakes/temporary roots and no public network;
+  - focused launcher CI and ordinary regression CI are green on final PR head;
+  - GitHub-only limits and required local/package follow-up are documented.
+- Stop/escalate:
+  - unresolved cryptographic trust/key policy beyond the specified `gpgv` fail-closed contract;
+  - any required Debian package mutation;
+  - any need to expose Worker services or alter authentication;
+  - any incompatible public application rename not explicitly covered by `genesys-web` -> `genesys-worker` compatibility.
+
+## 5. Paused technical tasks
 
 These tasks remain paused until the maintainer explicitly activates one. Completion of the documentation migration does not resume them automatically.
 
@@ -140,7 +175,7 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Acceptance: package build, metadata, install, startup, reinstall/upgrade when relevant, uninstall/purge and residual-file checks.
 - Non-goal: no PPA publication or package redesign.
 
-## 5. Completed technical baseline
+## 6. Completed technical baseline
 
 Do not reopen without new evidence:
 
@@ -154,7 +189,7 @@ Do not reopen without new evidence:
 - plugin target/codemodel/link evidence;
 - shell, worker, Data Analyser, Optimizer and AI Assistant startup validations.
 
-## 6. Activation and completion rules
+## 7. Activation and completion rules
 
 A paused task becomes eligible only after the maintainer changes it to `ready` and confirms scope, validation and stop conditions.
 
