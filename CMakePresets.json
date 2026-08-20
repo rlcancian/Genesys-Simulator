@@ -16,6 +16,8 @@
         "CMAKE_CXX_EXTENSIONS": "OFF",
         "GENESYS_BUILD_GUI_APPLICATION": "OFF",
         "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
+        "GENESYS_BUILD_LAUNCHER_APPLICATION": "OFF",
+        "GENESYS_BUILD_LAUNCHER_TESTS": "OFF",
         "GENESYS_BUILD_PLUGINS": "ON",
         "GENESYS_BUILD_PARSER": "ON",
         "GENESYS_BUILD_KERNEL": "ON",
@@ -238,6 +240,27 @@
       }
     },
     {
+      "name": "launcher-app",
+      "displayName": "Application - Launcher and Dispatcher",
+      "description": "Builds the isolated GenESyS launcher, dispatcher and focused launcher tests without kernel/parser/plugin applications.",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/launcher-app",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_LAUNCHER_APPLICATION": "ON",
+        "GENESYS_BUILD_LAUNCHER_TESTS": "ON",
+        "GENESYS_BUILD_GUI_APPLICATION": "OFF",
+        "GENESYS_BUILD_WORKER_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF",
+        "GENESYS_BUILD_TERMINAL_EXAMPLES": "OFF",
+        "GENESYS_BUILD_KERNEL": "OFF",
+        "GENESYS_BUILD_PARSER": "OFF",
+        "GENESYS_BUILD_PLUGINS": "OFF",
+        "GENESYS_BUILD_TOOLS": "OFF",
+        "GENESYS_ENABLE_PYTHON_INTEGRATION": "OFF"
+      }
+    },
+    {
       "name": "tests-smoke",
       "displayName": "Tests - Smoke",
       "inherits": "debug-base",
@@ -364,6 +387,15 @@
       ]
     },
     {
+      "name": "launcher-app",
+      "configurePreset": "launcher-app",
+      "targets": [
+        "genesys-launcher",
+        "genesys-dispatch",
+        "genesys_launcher_tests"
+      ]
+    },
+    {
       "name": "tests-smoke",
       "configurePreset": "tests-smoke",
       "targets": [
@@ -387,6 +419,18 @@
     {
       "name": "tests-kernel-unit",
       "configurePreset": "tests-kernel-unit",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "launcher-app",
+      "configurePreset": "launcher-app",
+      "filter": {
+        "include": {
+          "label": "launcher"
+        }
+      },
       "output": {
         "outputOnFailure": true
       }

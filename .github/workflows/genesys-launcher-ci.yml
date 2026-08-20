@@ -1,0 +1,84 @@
+name: GenESyS Launcher CI
+
+on:
+  pull_request:
+    branches: [WorkInProgress]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  launcher:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build qt6-base-dev libgtest-dev zstd gnupg xvfb xauth
+
+      - name: Record toolchain
+        run: |
+          mkdir -p launcher-ci-evidence
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            cat /etc/os-release
+            cmake --version
+            ninja --version
+            g++ --version
+            dpkg-query -W -f='qt6-base-dev ${Version}\n' qt6-base-dev
+            gpgv --version | head -n 2
+            tar --version | head -n 1
+            zstd --version
+          } | tee launcher-ci-evidence/toolchain.txt
+
+      - name: Configure
+        run: |
+          set -o pipefail
+          cmake --preset launcher-app 2>&1 | tee launcher-ci-evidence/configure.log
+
+      - name: Build
+        run: |
+          set -o pipefail
+          cmake --build --preset launcher-app --parallel "$(nproc)" 2>&1 | tee launcher-ci-evidence/build.log
+          cmake --build build/launcher-app --target genesys_launcher_gui_smoke --parallel "$(nproc)" 2>&1 | tee launcher-ci-evidence/gui-smoke-build.log
+
+      - name: Test
+        run: |
+          set -o pipefail
+          ctest --preset launcher-app --output-on-failure 2>&1 | tee launcher-ci-evidence/ctest.log
+
+      - name: Verify dispatcher isolation
+        run: |
+          dispatch=$(find build/launcher-app -type f -name genesys-dispatch -perm -111 | head -n 1)
+          launcher=$(find build/launcher-app -type f -name genesys-launcher -perm -111 | head -n 1)
+          test -n "${dispatch}" && test -n "${launcher}"
+          ldd "${dispatch}" | tee launcher-ci-evidence/dispatch-ldd.txt
+          ldd "${launcher}" | tee launcher-ci-evidence/launcher-ldd.txt
+          ! grep -Eq 'Qt6(Network|Widgets)' launcher-ci-evidence/dispatch-ldd.txt
+          "${dispatch}" --version | tee launcher-ci-evidence/dispatch-version.txt
+          QT_QPA_PLATFORM=offscreen "${launcher}" --version | tee launcher-ci-evidence/launcher-version.txt
+
+      - name: GUI smoke
+        run: |
+          set -o pipefail
+          smoke=$(find build/launcher-app -type f -name genesys_launcher_gui_smoke -perm -111 | head -n 1)
+          timeout 20s xvfb-run -a "${smoke}" 2>&1 | tee launcher-ci-evidence/gui-smoke.log
+
+      - name: Verify install contract
+        run: |
+          stage="${PWD}/launcher-ci-evidence/stage"
+          DESTDIR="${stage}" cmake --install build/launcher-app --prefix /usr 2>&1 | tee launcher-ci-evidence/install.log
+          test -x "${stage}/usr/libexec/genesys/genesys-launcher"
+          test -x "${stage}/usr/libexec/genesys/genesys-dispatch"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-launcher-ci-evidence-${{ github.sha }}
+          path: launcher-ci-evidence
+          if-no-files-found: error
