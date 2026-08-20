@@ -1,0 +1,56 @@
+.TH GENESYS-WORKER 1 "2026-08-20" "GenESyS" "GenESyS Manual"
+.SH NAME
+genesys-worker \- GenESyS HTTP worker runtime
+.SH SYNOPSIS
+.B genesys-worker
+.RI [ --port
+.IR port ]
+.RI [ --max-requests
+.IR count ]
+.RI [ application-arguments ...]
+.SH DESCRIPTION
+.B genesys-worker
+is the stable public entry point for the GenESyS HTTP worker. It is a small
+wrapper that execs
+.BR /usr/libexec/genesys/genesys-dispatch (8)
+with
+.BR "--app genesys-worker" .
+The dispatcher selects either the validated per-user runtime referenced by
+.I ~/.local/share/genesys/current
+or the Debian-provided system fallback installed at
+.I /usr/libexec/genesys/system/bin/genesys-worker
+and then replaces itself with the selected worker executable. All arguments
+given to
+.B genesys-worker
+are forwarded unchanged to the selected executable.
+.PP
+The worker is designed for a controlled academic intranet and is not intended
+for direct public-Internet exposure. It never performs a network update
+check; update behavior is exclusive to
+.BR genesys-gui (1).
+.SH OPTIONS
+The system fallback worker executable currently accepts at least:
+.TP
+.BI --port " port"
+Listen on the given TCP port on the loopback/bound interface instead of the
+default port.
+.TP
+.BI --max-requests " count"
+Serve at most the given number of requests before exiting.
+.SH ENDPOINTS
+.TP
+.B /health
+Returns a JSON liveness document while the worker is running.
+.SH FILES
+.TP
+.I /etc/genesys/update.conf
+System-wide administrative runtime-selection policy (conffile).
+.TP
+.I ~/.local/share/genesys/current
+Symbolic link selecting the active per-user runtime, if any.
+.SH EXIT STATUS
+The exit status of the selected worker executable, or 127 if no valid runtime
+could be selected.
+.SH SEE ALSO
+.BR genesys-gui (1),
+.BR genesys-web (1)

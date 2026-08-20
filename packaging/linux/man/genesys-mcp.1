@@ -1,0 +1,42 @@
+.TH GENESYS-MCP 1 "2026-08-20" "GenESyS" "GenESyS Manual"
+.SH NAME
+genesys-mcp \- GenESyS Model Context Protocol server entry point
+.SH SYNOPSIS
+.B genesys-mcp
+.RI [ application-arguments ...]
+.SH DESCRIPTION
+.B genesys-mcp
+is the stable public entry point for the GenESyS Model Context Protocol (MCP)
+server. It is a small wrapper that execs
+.BR /usr/libexec/genesys/genesys-dispatch (8)
+with
+.BR "--app genesys-mcp" .
+The dispatcher selects the validated per-user runtime referenced by
+.I ~/.local/share/genesys/current
+and, if it provides a
+.I bin/genesys-mcp
+executable, replaces itself with it. All arguments given to
+.B genesys-mcp
+are forwarded unchanged to the selected executable.
+.PP
+The Debian
+.B genesys-common
+package does not ship a system fallback MCP executable, because the upstream
+MCP implementation is a Python application
+.RI ( source/applications/mcp/ )
+whose dependencies are outside the Debian build contract. If no per-user
+runtime provides MCP, the dispatcher prints a controlled diagnostic and exits
+with status 127 instead of failing unpredictably or attempting a network
+installation.
+.PP
+.B genesys-mcp
+never performs a network update check.
+.SH FILES
+.TP
+.I ~/.local/share/genesys/current
+Symbolic link selecting the active per-user runtime, if any.
+.SH EXIT STATUS
+The exit status of the selected MCP executable, or 127 if no valid runtime
+provides MCP.
+.SH SEE ALSO
+.BR genesys-gui (1)

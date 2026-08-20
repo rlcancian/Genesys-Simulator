@@ -1,0 +1,70 @@
+.TH GENESYS-GUI 1 "2026-08-20" "GenESyS" "GenESyS Manual"
+.SH NAME
+genesys-gui \- GenESyS Qt graphical simulation environment
+.SH SYNOPSIS
+.B genesys-gui
+.RI [ --check-only | --no-update ]
+.RI [ --help | --version ]
+.RB [ -- ]
+.RI [ application-arguments ...]
+.SH DESCRIPTION
+.B genesys-gui
+is the stable public entry point for the GenESyS graphical user interface. It
+is a small wrapper that execs
+.BR /usr/libexec/genesys/genesys-launcher (8)
+with
+.B --app genesys-gui
+and
+.BR --interactive-update .
+The launcher selects either the validated per-user runtime referenced by
+.I ~/.local/share/genesys/current
+or the Debian-provided system fallback installed at
+.I /usr/libexec/genesys/system/bin/genesys-gui
+and then replaces itself with the selected GUI executable.
+.PP
+.B genesys-gui
+is the only GenESyS public command that is allowed to perform an interactive,
+network-based update check. The Shell, Worker, legacy Web and MCP entry
+points never contact the network.
+.SH OPTIONS
+.TP
+.B --check-only
+Check whether an update is available and exit without prompting or starting
+the GUI.
+.TP
+.B --no-update
+Never perform a network update check, overriding the wrapper's default
+interactive check request and the administrative
+.I check_on_gui_startup
+setting.
+.TP
+.B --help ", " -h
+Print launcher usage information and exit.
+.TP
+.B --version
+Print the launcher version and exit.
+.TP
+.RI [ application-arguments "...]"
+Any remaining arguments are forwarded unchanged to the selected GUI
+executable.
+.SH FILES
+.TP
+.I /etc/genesys/update.conf
+System-wide administrative update policy (conffile). Values here take
+precedence over the per-user configuration.
+.TP
+.I ~/.config/genesys/update.conf
+Optional per-user update configuration.
+.TP
+.I ~/.local/share/genesys/current
+Symbolic link selecting the active per-user runtime, if any.
+.TP
+.I ~/.cache/genesys/launcher.log
+Launcher activity log.
+.SH EXIT STATUS
+The exit status of the selected GUI executable, or 127 if no valid runtime
+could be selected.
+.SH SEE ALSO
+.BR genesys-shell (1),
+.BR genesys-worker (1),
+.BR genesys-mcp (1)

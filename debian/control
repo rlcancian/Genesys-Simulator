@@ -19,7 +19,7 @@ Vcs-Git: https://github.com/rlcancian/Genesys-Simulator.git
 
 Package: genesys-common
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates, gpgv, tar, zstd
+Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates, gpgv, zstd
 Description: GenESyS stable launcher and runtime dispatcher
  GenESyS is a C++ simulation platform designed as an extensible
  architecture for modeling and simulation.
