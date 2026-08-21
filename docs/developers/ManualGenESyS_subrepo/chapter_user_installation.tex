@@ -43,13 +43,12 @@ Figure~\ref{fig:user-installation-structure-summary}.
     % Source of truth:
     %   - debian/control
     %   - debian/rules
-    %   - debian/genesys-common.install
-    %   - debian/genesys-gui.install
+    %   - debian/genesys-simulator.install
     %   - source/applications/launcher/wrappers/launcher-wrapper.in
     %   - CMakePresets.json
     %   - packaging/linux/io.github.rlcancian.genesys.desktop
     % Required visual content:
-    %   - supported Debian package path (genesys-gui plus companion packages)
+    %   - supported Debian package path (single genesys-simulator package)
     %   - optional local artifact path
     %   - installed stable genesys-gui command name
     %   - launcher selecting per-user runtime or system fallback
@@ -76,13 +75,15 @@ GenESyS GUI on the machine.
 \subsection{Preferred path: Debian package}
 \label{subsec:user-installation-debian-package}
 
-The packaged desktop application is named \texttt{genesys-gui}. Installing it
-pulls in four companion binary packages through ordinary \texttt{apt}
-dependency resolution: \texttt{genesys-common} (the stable launcher and
-dispatcher mechanism and the administrative update policy),
-\texttt{genesys-shell}, and \texttt{genesys-worker}. Together they form the
-supported base application set, so \texttt{apt install genesys-gui} is
-sufficient to obtain a working GUI, shell, and worker installation.
+GenESyS is distributed as a single Debian binary package,
+\texttt{genesys-simulator}. Installing it is sufficient to obtain the complete
+supported base: the Qt GUI (\texttt{genesys-gui}), the command-line shell
+(\texttt{genesys-shell}), the HTTP worker (\texttt{genesys-worker}, with its
+legacy \texttt{genesys-web} command alias), the stable launcher and dispatcher
+mechanism, and the administrative update policy. GUI, Shell, and Worker remain
+separate executable applications; they are simply not separate Debian
+packages, so \texttt{apt install genesys-simulator} is enough to obtain a
+working GUI, shell, and worker installation.
 
 The Debian metadata installs a small, stable command at
 \path{/usr/bin/genesys-gui} and also ships the desktop integration files under
@@ -94,8 +95,8 @@ the standard XDG locations:
 \end{itemize}
 
 \path{/usr/bin/genesys-gui} does not contain the GUI implementation itself.
-It is a wrapper that starts the stable launcher mechanism installed by
-\texttt{genesys-common}, which then starts the actual GUI: either a validated
+It is a wrapper that starts the stable launcher mechanism installed by the
+\texttt{genesys-simulator} package, which then starts the actual GUI: either a validated
 runtime the user installed in their own home directory, or the
 Debian-provided system installation if no per-user runtime is active. Section
 \ref{sec:user-installation-launcher-and-runtime-selection} explains this in
@@ -110,14 +111,14 @@ If the package is available as a local file, install it with \texttt{apt} so
 dependency resolution happens automatically:
 
 \begin{lstlisting}[language=bash,caption={Installing the local GenESyS Debian package},label={lst:user-installation-local-deb}]
-sudo apt install ./genesys-gui_*.deb
+sudo apt install ./genesys-simulator_*.deb
 \end{lstlisting}
 
 If the package is already published in a configured repository, the same binary
 package can be installed by name:
 
 \begin{lstlisting}[language=bash,caption={Installing GenESyS from a repository},label={lst:user-installation-repo-deb}]
-sudo apt install genesys-gui
+sudo apt install genesys-simulator
 \end{lstlisting}
 
 \subsection{Manual artifact installation}
@@ -169,8 +170,7 @@ headless background service.
     %   Show what is installed by the desktop package and where the launcher
     %   and metadata files live.
     % Source of truth:
-    %   - debian/genesys-common.install
-    %   - debian/genesys-gui.install
+    %   - debian/genesys-simulator.install
     %   - packaging/linux/io.github.rlcancian.genesys.desktop
     %   - packaging/linux/io.github.rlcancian.genesys.metainfo.xml
     % Required visual content:
@@ -200,8 +200,8 @@ with no per-user setup required. \path{/usr/bin/genesys-gui},
 \path{/usr/bin/genesys-web} alias, and \path{/usr/bin/genesys-mcp} are all
 small wrapper commands. \texttt{genesys-gui} starts the stable launcher;
 the other four start the stable, non-interactive dispatcher. Both mechanisms
-live under \path{/usr/libexec/genesys/} and are installed by
-\texttt{genesys-common}.
+live under \path{/usr/libexec/genesys/} and are installed by the
+\texttt{genesys-simulator} package.
 
 At each invocation, the launcher or dispatcher decides which runtime actually
 serves the request:
@@ -211,8 +211,8 @@ serves the request:
   \path{~/.local/share/genesys/current} symbolic link, if one is present and
   passes validation; or otherwise
 \item the Debian-provided \emph{system fallback} runtime, installed under
-  \path{/usr/libexec/genesys/system/bin/} by the \texttt{genesys-gui},
-  \texttt{genesys-shell}, and \texttt{genesys-worker} packages.
+  \path{/usr/libexec/genesys/system/bin/} by the \texttt{genesys-simulator}
+  package.
 \end{itemize}
 
 A per-user runtime can therefore be updated without administrator privileges,
@@ -229,8 +229,8 @@ perform network activity themselves.
 Two configuration files control this behavior:
 \begin{itemize}
 \item \path{/etc/genesys/update.conf} -- the system-wide administrative
-  policy installed by \texttt{genesys-common} as a Debian conffile. It takes
-  precedence over the per-user configuration.
+  policy installed by the \texttt{genesys-simulator} package as a Debian
+  conffile. It takes precedence over the per-user configuration.
 \item \path{~/.config/genesys/update.conf} -- an optional per-user override,
   read only where the administrative policy allows it.
 \end{itemize}
@@ -402,7 +402,7 @@ For local validation from source, the matching build-tree executable is:
     % Purpose:
     %   Show the installed binary and the equivalent local build-tree path.
     % Source of truth:
-    %   - debian/genesys-gui.install
+    %   - debian/genesys-simulator.install
     %   - CMakePresets.json
     %   - packaging/linux/io.github.rlcancian.genesys.desktop
     % Required visual content:
@@ -430,14 +430,14 @@ standard flow is:
 
 \begin{lstlisting}[language=bash,caption={Updating an apt-based GenESyS installation},label={lst:user-installation-update}]
 sudo apt update
-sudo apt install --only-upgrade genesys-gui
+sudo apt install --only-upgrade genesys-simulator
 \end{lstlisting}
 
 If you are using a local \texttt{.deb} file, replace the package from the new
 artifact:
 
 \begin{lstlisting}[language=bash,caption={Replacing a local package artifact},label={lst:user-installation-update-local}]
-sudo apt install ./genesys-gui_*.deb
+sudo apt install ./genesys-simulator_*.deb
 \end{lstlisting}
 
 This keeps the package manager in control of file ownership and dependency
@@ -450,24 +450,25 @@ To remove the package, use the package manager instead of deleting files
 manually. A plain remove keeps configuration if the package has any:
 
 \begin{lstlisting}[language=bash,caption={Removing the GenESyS package},label={lst:user-installation-remove}]
-sudo apt remove genesys-gui
+sudo apt remove genesys-simulator
 \end{lstlisting}
 
 If a full purge is desired, remove configuration files as well:
 
 \begin{lstlisting}[language=bash,caption={Purging the GenESyS package},label={lst:user-installation-purge}]
-sudo apt purge genesys-gui
+sudo apt purge genesys-simulator
 \end{lstlisting}
 
-The historical \texttt{genesys-web} package name is preserved as a transitional
-package that depends on \texttt{genesys-worker} and installs no files of its
-own, so upgrading an older \texttt{genesys-web} installation keeps working and
-the \path{genesys-web} command remains available as a compatibility alias for
-\path{genesys-worker}. A system that still has \texttt{genesys-web} explicitly
-installed may need to list it alongside the other package names when removing
-GenESyS completely; the safe habit is to inspect the package list
-(\texttt{dpkg -l 'genesys-*'}) after the first uninstall if the goal is to
-clean the machine entirely.
+A single \texttt{genesys-simulator} package owns every installed file, so one
+remove or purge command is enough to uninstall GenESyS completely; there is no
+separate package name to track down afterward. The historical
+\path{genesys-web} command remains available as a compatibility alias for
+\path{genesys-worker} inside the same package. The historical development
+package names (\texttt{genesys-common}, \texttt{genesys-shell},
+\texttt{genesys-worker}, \texttt{genesys-gui}, and \texttt{genesys-web}) are
+declared as \texttt{Breaks}/\texttt{Replaces} only so that a machine with an
+earlier development installation can upgrade cleanly to
+\texttt{genesys-simulator}; they are not produced as binary packages anymore.
 
 Removing or purging the Debian package never touches a per-user runtime
 installed under \path{~/.local/share/genesys/}. That directory, and anything
