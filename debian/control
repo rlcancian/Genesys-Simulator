@@ -20,8 +20,8 @@ Vcs-Git: https://github.com/rlcancian/Genesys-Simulator.git
 Package: genesys-simulator
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates, gpgv, zstd
-Breaks: genesys-common, genesys-shell, genesys-worker, genesys-gui, genesys-web
-Replaces: genesys-common, genesys-shell, genesys-worker, genesys-gui, genesys-web
+Breaks: genesys-common (<< ${binary:Version}), genesys-shell (<< ${binary:Version}), genesys-worker (<< ${binary:Version}), genesys-gui (<< ${binary:Version}), genesys-web (<< ${binary:Version})
+Replaces: genesys-common (<< ${binary:Version}), genesys-shell (<< ${binary:Version}), genesys-worker (<< ${binary:Version}), genesys-gui (<< ${binary:Version}), genesys-web (<< ${binary:Version})
 Description: Generic and Expansible System Simulator
  GenESyS is a C++ simulation platform designed as an extensible
  architecture for modeling and simulation.
