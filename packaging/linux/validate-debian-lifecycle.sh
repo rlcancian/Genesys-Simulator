@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 PACKAGES_DIR="${1:-genesys-debian-packages}"
 EVIDENCE_DIR="${2:-genesys-debian-lifecycle-evidence}"
+PACKAGE="genesys-simulator"
 STUDENT="genesysstudent"
 DATA_ROOT="/home/${STUDENT}/.local/share/genesys"
 RUNTIME_VERSION="9999.0.1"
@@ -33,67 +34,51 @@ fail() {
 
 shopt -s nullglob
 debs=("${PACKAGES_DIR}"/*.deb)
-[[ ${#debs[@]} -eq 5 ]] || fail "expected exactly 5 Debian packages, found ${#debs[@]}"
+[[ ${#debs[@]} -eq 1 ]] || fail "expected exactly 1 Debian package, found ${#debs[@]}"
+deb="${debs[0]}"
+actual_package="$(dpkg-deb -f "${deb}" Package)"
+[[ "${actual_package}" == "${PACKAGE}" ]] || fail "expected package ${PACKAGE}, found ${actual_package}"
+printf '%s\n' "${PACKAGE}" > "${EVIDENCE_DIR}/expected-packages.txt"
 
-expected_packages=(genesys-common genesys-shell genesys-worker genesys-gui genesys-web)
-printf '%s\n' "${expected_packages[@]}" > "${EVIDENCE_DIR}/expected-packages.txt"
-
-printf 'package\tversion\tarchitecture\tdepends\n' > "${EVIDENCE_DIR}/package-inventory.tsv"
-for deb in "${debs[@]}"; do
-    package="$(dpkg-deb -f "${deb}" Package)"
-    version="$(dpkg-deb -f "${deb}" Version)"
-    architecture="$(dpkg-deb -f "${deb}" Architecture)"
-    depends="$(dpkg-deb -f "${deb}" Depends 2>/dev/null || true)"
-    printf '%s\t%s\t%s\t%s\n' "${package}" "${version}" "${architecture}" "${depends}" >> "${EVIDENCE_DIR}/package-inventory.tsv"
-    dpkg-deb --info "${deb}" > "${EVIDENCE_DIR}/package-info/${package}.txt"
-    dpkg-deb --contents "${deb}" > "${EVIDENCE_DIR}/package-contents/${package}.txt"
-    mkdir -p "${workdir}/extract/${package}"
-    dpkg-deb --extract "${deb}" "${workdir}/extract/${package}"
-done
-
-for package in "${expected_packages[@]}"; do
-    count="$(awk -F '\t' -v package="${package}" 'NR > 1 && $1 == package { count++ } END { print count + 0 }' "${EVIDENCE_DIR}/package-inventory.tsv")"
-    [[ "${count}" -eq 1 ]] || fail "package inventory does not contain exactly one ${package}"
-done
-
-common_root="${workdir}/extract/genesys-common"
-shell_root="${workdir}/extract/genesys-shell"
-worker_root="${workdir}/extract/genesys-worker"
-gui_root="${workdir}/extract/genesys-gui"
-web_root="${workdir}/extract/genesys-web"
+version="$(dpkg-deb -f "${deb}" Version)"
+architecture="$(dpkg-deb -f "${deb}" Architecture)"
+depends="$(dpkg-deb -f "${deb}" Depends 2>/dev/null || true)"
+breaks="$(dpkg-deb -f "${deb}" Breaks 2>/dev/null || true)"
+replaces="$(dpkg-deb -f "${deb}" Replaces 2>/dev/null || true)"
+printf 'package\tversion\tarchitecture\tdepends\tbreaks\treplaces\n' > "${EVIDENCE_DIR}/package-inventory.tsv"
+printf '%s\t%s\t%s\t%s\t%s\t%s\n' "${PACKAGE}" "${version}" "${architecture}" "${depends}" "${breaks}" "${replaces}" >> "${EVIDENCE_DIR}/package-inventory.tsv"
+dpkg-deb --info "${deb}" > "${EVIDENCE_DIR}/package-info/${PACKAGE}.txt"
+dpkg-deb --contents "${deb}" > "${EVIDENCE_DIR}/package-contents/${PACKAGE}.txt"
+package_root="${workdir}/extract/${PACKAGE}"
+mkdir -p "${package_root}"
+dpkg-deb --extract "${deb}" "${package_root}"
 
 expected_paths=(
-    "${common_root}/usr/libexec/genesys/genesys-launcher"
-    "${common_root}/usr/libexec/genesys/genesys-dispatch"
-    "${common_root}/usr/bin/genesys-mcp"
-    "${common_root}/etc/genesys/update.conf"
-    "${shell_root}/usr/bin/genesys-shell"
-    "${shell_root}/usr/libexec/genesys/system/bin/genesys-shell"
-    "${worker_root}/usr/bin/genesys-worker"
-    "${worker_root}/usr/bin/genesys-web"
-    "${worker_root}/usr/libexec/genesys/system/bin/genesys-worker"
-    "${gui_root}/usr/bin/genesys-gui"
-    "${gui_root}/usr/libexec/genesys/system/bin/genesys-gui"
-    "${gui_root}/usr/share/applications/io.github.rlcancian.genesys.desktop"
-    "${gui_root}/usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml"
-    "${gui_root}/usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg"
+    "${package_root}/usr/bin/genesys-gui"
+    "${package_root}/usr/bin/genesys-shell"
+    "${package_root}/usr/bin/genesys-worker"
+    "${package_root}/usr/bin/genesys-web"
+    "${package_root}/usr/bin/genesys-mcp"
+    "${package_root}/usr/libexec/genesys/genesys-launcher"
+    "${package_root}/usr/libexec/genesys/genesys-dispatch"
+    "${package_root}/usr/libexec/genesys/system/bin/genesys-gui"
+    "${package_root}/usr/libexec/genesys/system/bin/genesys-shell"
+    "${package_root}/usr/libexec/genesys/system/bin/genesys-worker"
+    "${package_root}/etc/genesys/update.conf"
+    "${package_root}/usr/share/applications/io.github.rlcancian.genesys.desktop"
+    "${package_root}/usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml"
+    "${package_root}/usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg"
 )
 for path in "${expected_paths[@]}"; do
-    [[ -e "${path}" ]] || fail "expected package path missing: ${path#${workdir}/extract/}"
+    [[ -e "${path}" ]] || fail "expected package path missing: ${path#${package_root}/}"
 done
 
-if [[ -e "${web_root}/usr/bin" || -e "${web_root}/usr/libexec" || -e "${web_root}/etc" ]]; then
-    fail "transitional genesys-web package unexpectedly owns executable/configuration payload"
-fi
-unexpected_web_payload="$(find "${web_root}" \( -type f -o -type l \) -print | grep -v "^${web_root}/usr/share/doc/genesys-web/" || true)"
-[[ -z "${unexpected_web_payload}" ]] || fail "transitional genesys-web package owns unexpected payload: ${unexpected_web_payload}"
-
 wrapper_files=(
-    "${gui_root}/usr/bin/genesys-gui"
-    "${shell_root}/usr/bin/genesys-shell"
-    "${worker_root}/usr/bin/genesys-worker"
-    "${worker_root}/usr/bin/genesys-web"
-    "${common_root}/usr/bin/genesys-mcp"
+    "${package_root}/usr/bin/genesys-gui"
+    "${package_root}/usr/bin/genesys-shell"
+    "${package_root}/usr/bin/genesys-worker"
+    "${package_root}/usr/bin/genesys-web"
+    "${package_root}/usr/bin/genesys-mcp"
 )
 : > "${EVIDENCE_DIR}/wrapper-contracts.txt"
 for wrapper in "${wrapper_files[@]}"; do
@@ -101,22 +86,20 @@ for wrapper in "${wrapper_files[@]}"; do
     if grep -Eq '\$HOME|~/|\.local/share/genesys' "${wrapper}"; then
         fail "public wrapper contains a user-home path: ${wrapper}"
     fi
-    printf '\n===== %s =====\n' "${wrapper#${workdir}/extract/}" >> "${EVIDENCE_DIR}/wrapper-contracts.txt"
+    printf '\n===== %s =====\n' "${wrapper#${package_root}/}" >> "${EVIDENCE_DIR}/wrapper-contracts.txt"
     cat "${wrapper}" >> "${EVIDENCE_DIR}/wrapper-contracts.txt"
 done
 
-grep -Fq 'exec "/usr/libexec/genesys/genesys-launcher" --app "genesys-gui" --interactive-update' "${gui_root}/usr/bin/genesys-gui" \
+grep -Fq 'exec "/usr/libexec/genesys/genesys-launcher" --app "genesys-gui" --interactive-update' "${package_root}/usr/bin/genesys-gui" \
     || fail "genesys-gui does not invoke the stable launcher contract"
 for app in genesys-shell genesys-worker genesys-web; do
-    package_root="${app}"
-    [[ "${app}" == "genesys-web" ]] && package_root="genesys-worker"
-    grep -Fq "exec \"/usr/libexec/genesys/genesys-dispatch\" --app \"${app}\" --" "${workdir}/extract/${package_root}/usr/bin/${app}" \
+    grep -Fq "exec \"/usr/libexec/genesys/genesys-dispatch\" --app \"${app}\" --" "${package_root}/usr/bin/${app}" \
         || fail "${app} does not invoke the stable dispatcher contract"
 done
-grep -Fq 'exec "/usr/libexec/genesys/genesys-dispatch" --app "genesys-mcp" --' "${common_root}/usr/bin/genesys-mcp" \
+grep -Fq 'exec "/usr/libexec/genesys/genesys-dispatch" --app "genesys-mcp" --' "${package_root}/usr/bin/genesys-mcp" \
     || fail "genesys-mcp does not invoke the stable dispatcher contract"
 
-cat "${common_root}/etc/genesys/update.conf" > "${EVIDENCE_DIR}/packaged-update.conf"
+cat "${package_root}/etc/genesys/update.conf" > "${EVIDENCE_DIR}/packaged-update.conf"
 grep -Fxq 'enabled=false' "${EVIDENCE_DIR}/packaged-update.conf" || fail "packaged remote updates are not fail-closed"
 grep -Fxq 'require_signature=true' "${EVIDENCE_DIR}/packaged-update.conf" || fail "packaged signature policy is not fail-closed"
 if grep -Eq '^manifest_url=' "${EVIDENCE_DIR}/packaged-update.conf"; then
@@ -127,42 +110,42 @@ if grep -R -E '(build-debian|CMakeCache\.txt|build\.ninja|/\.git/|\.o$|\.a$|\.de
     fail "forbidden build/CI artifact found in package contents"
 fi
 
-printf '%s\n' "${debs[@]}" | xargs -n1 realpath > "${EVIDENCE_DIR}/package-files.txt"
-mapfile -t absolute_debs < "${EVIDENCE_DIR}/package-files.txt"
+absolute_deb="$(realpath "${deb}")"
+printf '%s\n' "${absolute_deb}" > "${EVIDENCE_DIR}/package-files.txt"
 
 sudo apt-get update
-sudo apt-get install -y --no-install-recommends "${absolute_debs[@]}" 2>&1 | tee "${EVIDENCE_DIR}/install.log"
+sudo apt-get install -y --no-install-recommends "${absolute_deb}" 2>&1 | tee "${EVIDENCE_DIR}/install.log"
 
-dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\t${Status}\n' "${expected_packages[@]}" \
+dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\t${Status}\n' "${PACKAGE}" \
     | tee "${EVIDENCE_DIR}/installed-packages.tsv"
-for package in "${expected_packages[@]}"; do
-    dpkg-query -L "${package}" | sort > "${EVIDENCE_DIR}/installed-files-${package}.txt"
-done
+dpkg-query -L "${PACKAGE}" | sort > "${EVIDENCE_DIR}/installed-files-${PACKAGE}.txt"
 
-dpkg-query -W -f='${Conffiles}\n' genesys-common | tee "${EVIDENCE_DIR}/common-conffiles.txt"
-grep -Fq '/etc/genesys/update.conf' "${EVIDENCE_DIR}/common-conffiles.txt" \
+dpkg-query -W -f='${Conffiles}\n' "${PACKAGE}" | tee "${EVIDENCE_DIR}/package-conffiles.txt"
+grep -Fq '/etc/genesys/update.conf' "${EVIDENCE_DIR}/package-conffiles.txt" \
     || fail "/etc/genesys/update.conf is not registered as a conffile"
 
 assert_owner() {
-    local expected_package="$1"
-    local path="$2"
+    local path="$1"
     local owner
     owner="$(dpkg-query -S "${path}" | head -n1 | cut -d: -f1)"
     printf '%s\t%s\n' "${owner}" "${path}" >> "${EVIDENCE_DIR}/ownership-checks.tsv"
-    [[ "${owner}" == "${expected_package}" ]] || fail "${path} is owned by ${owner}, expected ${expected_package}"
+    [[ "${owner}" == "${PACKAGE}" ]] || fail "${path} is owned by ${owner}, expected ${PACKAGE}"
 }
 printf 'package\tpath\n' > "${EVIDENCE_DIR}/ownership-checks.tsv"
-assert_owner genesys-gui /usr/bin/genesys-gui
-assert_owner genesys-shell /usr/bin/genesys-shell
-assert_owner genesys-worker /usr/bin/genesys-worker
-assert_owner genesys-worker /usr/bin/genesys-web
-assert_owner genesys-common /usr/bin/genesys-mcp
-assert_owner genesys-common /usr/libexec/genesys/genesys-launcher
-assert_owner genesys-common /usr/libexec/genesys/genesys-dispatch
-assert_owner genesys-gui /usr/libexec/genesys/system/bin/genesys-gui
-assert_owner genesys-shell /usr/libexec/genesys/system/bin/genesys-shell
-assert_owner genesys-worker /usr/libexec/genesys/system/bin/genesys-worker
-assert_owner genesys-common /etc/genesys/update.conf
+for path in \
+    /usr/bin/genesys-gui \
+    /usr/bin/genesys-shell \
+    /usr/bin/genesys-worker \
+    /usr/bin/genesys-web \
+    /usr/bin/genesys-mcp \
+    /usr/libexec/genesys/genesys-launcher \
+    /usr/libexec/genesys/genesys-dispatch \
+    /usr/libexec/genesys/system/bin/genesys-gui \
+    /usr/libexec/genesys/system/bin/genesys-shell \
+    /usr/libexec/genesys/system/bin/genesys-worker \
+    /etc/genesys/update.conf; do
+    assert_owner "${path}"
+done
 
 if ! id -u "${STUDENT}" >/dev/null 2>&1; then
     sudo useradd --create-home --shell /bin/bash "${STUDENT}"
@@ -251,13 +234,11 @@ run_worker_health /usr/bin/genesys-web system-web-compat
 snapshot_package_files() {
     local output="$1"
     : > "${output}"
-    for package in genesys-common genesys-shell genesys-worker genesys-gui; do
-        while IFS= read -r path; do
-            if sudo test -f "${path}" && ! sudo test -L "${path}"; then
-                sudo sha256sum "${path}"
-            fi
-        done < <(dpkg-query -L "${package}" | sort -u)
-    done | sort -k2 > "${output}"
+    while IFS= read -r path; do
+        if sudo test -f "${path}" && ! sudo test -L "${path}"; then
+            sudo sha256sum "${path}"
+        fi
+    done < <(dpkg-query -L "${PACKAGE}" | sort -u) | sort -k2 > "${output}"
 }
 
 snapshot_package_files "${EVIDENCE_DIR}/package-checksums-before-user-runtime.txt"
@@ -361,22 +342,15 @@ sudo chmod 0644 "${RUNTIME_ROOT}/bin/genesys-shell"
 run_invalid_runtime_case app-not-executable
 
 create_valid_runtime
-if sudo test -f "${DATA_ROOT}/logs/launcher.log"; then
-    sudo cp "${DATA_ROOT}/logs/launcher.log" "${EVIDENCE_DIR}/launcher-dispatch.log"
-    sudo chown "$(id -u):$(id -g)" "${EVIDENCE_DIR}/launcher-dispatch.log"
-fi
 snapshot_package_files "${EVIDENCE_DIR}/package-checksums-after-user-runtime.txt"
 cmp "${EVIDENCE_DIR}/package-checksums-before-user-runtime.txt" "${EVIDENCE_DIR}/package-checksums-after-user-runtime.txt" \
     || fail "package-owned file content changed during user-runtime tests"
 
-: > "${EVIDENCE_DIR}/dpkg-verify.txt"
-for package in genesys-common genesys-shell genesys-worker genesys-gui genesys-web; do
-    dpkg -V "${package}" | tee -a "${EVIDENCE_DIR}/dpkg-verify.txt"
-done
+dpkg -V "${PACKAGE}" | tee "${EVIDENCE_DIR}/dpkg-verify.txt"
 [[ ! -s "${EVIDENCE_DIR}/dpkg-verify.txt" ]] || fail "dpkg -V reported package file changes"
 
 printf '\n# lifecycle-admin-local-change\n' | sudo tee -a "${SYSTEM_CONFIG}" >/dev/null
-sudo apt-get install --reinstall -y --no-install-recommends "${absolute_debs[@]}" 2>&1 \
+sudo apt-get install --reinstall -y --no-install-recommends "${absolute_deb}" 2>&1 \
     | tee "${EVIDENCE_DIR}/reinstall.log"
 grep -Fxq '# lifecycle-admin-local-change' "${SYSTEM_CONFIG}" \
     || fail "package reinstall overwrote a local administrative conffile modification"
@@ -385,8 +359,7 @@ sudo -u "${STUDENT}" -H timeout 15s /usr/bin/genesys-shell 'after reinstall' > "
 grep -Fxq 'USER_RUNTIME:genesys-shell' "${EVIDENCE_DIR}/user-runtime-after-reinstall.log" \
     || fail "user runtime no longer works after package reinstall"
 
-sudo apt-get remove -y genesys-gui genesys-web genesys-shell genesys-worker genesys-common 2>&1 \
-    | tee "${EVIDENCE_DIR}/remove.log"
+sudo apt-get remove -y "${PACKAGE}" 2>&1 | tee "${EVIDENCE_DIR}/remove.log"
 
 removed_before_purge=(
     /usr/bin/genesys-gui
@@ -411,24 +384,13 @@ grep -Fxq '# lifecycle-admin-local-change' "${SYSTEM_CONFIG}" || fail "modified 
 sudo test -L "${CURRENT_LINK}" || fail "package remove deleted the user's active runtime link"
 sudo test -x "${RUNTIME_ROOT}/bin/genesys-shell" || fail "package remove deleted user runtime data"
 
-# Packages without a conffile are already fully removed (not just in
-# "config-files" state) by the preceding "apt-get remove", since apt/dpkg
-# have nothing left to preserve for them. A locally-installed package (never
-# indexed by an apt repository) that is no longer present in dpkg's status
-# database cannot be resolved by name through apt's dependency solver, so
-# "apt-get purge" would fail with "Unable to locate package" for those. Use
-# dpkg directly: it purges any remaining conffile-bearing package and warns
-# (without failing) about names that are already fully removed.
-sudo dpkg --purge genesys-gui genesys-web genesys-shell genesys-worker genesys-common 2>&1 \
-    | tee "${EVIDENCE_DIR}/purge.log"
+sudo dpkg --purge "${PACKAGE}" 2>&1 | tee "${EVIDENCE_DIR}/purge.log"
 [[ ! -e "${SYSTEM_CONFIG}" ]] || fail "administrative conffile remains after purge"
 sudo test -L "${CURRENT_LINK}" || fail "package purge removed the user's active runtime link"
 sudo test -x "${RUNTIME_ROOT}/bin/genesys-shell" || fail "package purge removed user runtime data"
 
-for package in "${expected_packages[@]}"; do
-    if dpkg-query -W -f='${db:Status-Status}' "${package}" 2>/dev/null | grep -Eq '^(installed|config-files)$'; then
-        fail "package ${package} remains installed/config-files after purge"
-    fi
-done
+if dpkg-query -W -f='${db:Status-Status}' "${PACKAGE}" 2>/dev/null | grep -Eq '^(installed|config-files)$'; then
+    fail "package ${PACKAGE} remains installed/config-files after purge"
+fi
 
-echo 'Debian package lifecycle validation completed successfully.' | tee "${EVIDENCE_DIR}/result.txt"
+echo 'Unified Debian package lifecycle validation completed successfully.' | tee "${EVIDENCE_DIR}/result.txt"
