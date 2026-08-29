@@ -23,37 +23,26 @@
 #include "../../../kernel/simulator/essentialPlugins/EntityType.h"
 
 /*!
- Set module
-DESCRIPTION
-This data module defines various types of sets, including resource, counter, tally,
-entity type, and entity picture. Resource sets can be used in the Process modules (and
-Seize, Release, Enter, and Leave of the Advanced Process and Advanced Transfer
-panels). Counter and Tally sets can be used in the Record module. Queue sets can be
-used with the Seize, Hold, Access, Request, Leave, and Allocate modules of the
-Advanced Process and Advanced Transfer panels.
-TYPICAL USES
-* Machines that can perform the same operations in a manufacturing facility
-* Supervisors, check-out clerks in a store
-* Shipping clerks, receptionists in an office
-* Set of pictures corresponding to a set of entity types
-PROMPTS
-Prompt Description
-Name The unique name of the set being defined.
-Type Type of set being defined.
-Members Repeat group that specifies the resource members with the set.
-The order of listing the members within the repeat group is
-important when using selection rules such as Preferred Order and
-Cyclical.
-Resource Name Name of the resource to include in the resource set. Applies only
-when Type is Resource.
-Tally Name Name of the tally within the tally set. Applies only when Type is
-Tally.
-Counter Name Name of the counter within the counter set. Applies only when
-Type is Counter.
-Entity Type Name of the entity type within the entity type set. Applies only
-when Type is Entity.
-Picture Name Name of the picture within the picture set. Applies only when
-Type is Entity Picture.
+ * \brief Data definition grouping an ordered list of ModelDataDefinition
+ * members of one concrete type, used by selection-rule-based components
+ * (e.g. Resource sets consumed by Seize-family components).
+ *
+ * Arena correspondence: Arena's "Set module"/"Advanced Set module"
+ * (Rockwell Automation, *Getting Started with Arena*, "The Basic Process
+ * Panel" p. 51 and "The Advanced Process Panel" p. 69), which define
+ * closed, named set kinds: Resource, Counter, Tally, Entity (type), Entity
+ * Picture, Queue, Storage and Other.
+ *
+ * Known difference from Arena (broader, not narrower, than the Arena
+ * concept): this class is polymorphic rather than a fixed enumeration of
+ * kinds. \c setSetOfType()/getSetOfType() record the concrete
+ * ModelDataDefinition subclass name of the first inserted member, and
+ * \c setAllowedElementTypes()/addAllowedElementType() let a component
+ * owner (e.g. SeizableItem, QueueableItem) restrict a Set instance to one
+ * or more accepted subclasses. This means a GenESyS Set can, in principle,
+ * hold any registered ModelDataDefinition plugin type, not only the five
+ * kinds Arena hard-codes. There is no dedicated "picture" data definition,
+ * so Arena's Entity Picture sets have no GenESyS equivalent.
  */
 class Set : public ModelDataDefinition {
 public:

@@ -25,54 +25,24 @@
 //namespace GenesysKernel {
 
 /*!
- Entity module
-DESCRIPTION
-This data module defines the various entity types and their initial picture values in a
-simulation. Initial costing information and holding costs are also defined for the
-entity.
-TYPICAL USES
-* Items being produced or assembled (parts, pallets)
-* Documents (forms, e-mails, faxes, reports)
-* People moving through a process (customers, callers)
-PROMPTS
-Prompt Description
-Name The unique name of the attribute being defined.
-Rows Number of rows in a one- or two-dimensional attribute.
-Columns Number of columns in a two-dimensional attribute.
-Data Type The data type of the values stored in the attribute. Valid types are
-Real and String. The default type is Real.
-Initial Values Lists the initial value or values of the attribute. You can assign
-new values to the attribute by using the Assign module.
-Initial Value Entity attribute value when entity is created and enters the
-system.
-Prompt Description
-Entity Type The name of the entity type being defined. This name must be
-unique.
-Initial Picture Graphical representation of the entity at the start of the
-simulation. This value can be changed during the simulation
-using the Assign module.
-Holding Cost/Hour Hourly cost of processing the entity through the system. This
-cost is incurred when the entity is anywhere in the system.
-Initial VA Cost Initial cost value that will be assigned to the value-added cost
-attribute of the entity. This attribute accrues the costs incurred
-when an entity is spending time in a value-added activity.
-Initial NVA Cost Initial cost value that will be assigned to the non-value-added
-cost attribute of the entity. This attribute accrues the costs
-incurred when an entity is spending time in a non-value-added
-activity.
-Initial Waiting Cost Initial cost value that will be assigned to the waiting-cost
-attribute of the entity. This attribute accrues the costs incurred
-when an entity is spending time in a wait activity; for example,
-waiting to be batched or waiting for resource(s) at a Process
-module.
-Initial Transfer Cost Initial cost value that will be assigned to the transfer cost
-attribute of the entity. This attribute accrues the costs incurred
-when an entity is spending time in a transfer activity.
-Initial Other Cost Initial cost value that will be assigned to the other cost attribute
-of the entity. This attribute accrues the costs incurred when an
-entity is spending time in another activity.
-Report Statistics Specifies whether or not statistics will be collected automatically
-and stored in the report database for this entity type.
+ * \brief Runtime entity (token) flowing through the model during simulation.
+ *
+ * This is the live, per-replication object created and destroyed by \c Model
+ * for each simulated item (a "job", "customer", "part", etc.). It owns the
+ * sparse per-entity attribute values (see Attribute) and a pointer to its
+ * EntityType, but it is not itself the data definition an end user edits
+ * before running the model.
+ *
+ * Arena correspondence: the configurable "Entity module" (name, initial
+ * picture, holding cost/hour and initial VA/NVA/waiting/transfer/other costs;
+ * Rockwell Automation, *Getting Started with Arena*, "The Basic Process
+ * Panel", pp. 44-45) is a data definition and corresponds to EntityType, not
+ * to this class. This class is the closest correspondence to what Arena
+ * calls an "entity" at simulation time: an instance created from an entity
+ * type, carrying attribute values and a runtime identification number.
+ *
+ * Construction/destruction are restricted to \c Model so that entity
+ * lifetime always stays under simulator control.
  */
 class Entity : public ModelDataDefinition {
 private: // no one can create or destry entities directlly. This can be done one throught friend class Model

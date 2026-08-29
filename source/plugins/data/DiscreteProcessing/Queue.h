@@ -70,33 +70,26 @@ private:
 };
 
 /*!
- Queue module
-DESCRIPTION
-This data module may be utilized to change the ranking rule for a specified queue.
-The default ranking rule for all queues is First In, First Out unless otherwise specified
-in this module. There is an additional field that allows the queue to be defined as
-shared.
-TYPICAL USES
-* Stack of work waiting for a resource at a Process module
-* Holding area for documents waiting to be collated at a Batch module
-Prompt Description
-Name The name of the queue whose characteristics are being defined.
-This name must be unique.
-Type Ranking rule for the queue, which can be based on an attribute.
-Types include First In, First Out; Last In, First Out; Lowest
-Attribute Value (first); and Highest Attribute Value (first). A
-low attribute value would be 0 or 1, while a high value may be
-200 or 300.
-Attribute Name Attribute that will be evaluated for the Lowest Attribute Value or
-Highest Attribute Value types. Entities with lowest or highest
-values of the attribute will be ranked first in the queue, with ties
-being broken using the First In, First Out rule.
-Shared Check box that determines whether a specific queue is used in
-multiple places within the simulation model. Shared queues can
-only be used for seizing resources (for example, with the Seize
-module from the Advanced Process panel).
-Report Statistics Specifies whether or not statistics will be collected automatically
-and stored in the report database for this queue.
+ * \brief Data definition holding waiting entities for a component (a
+ * Seize-family component, Process, Batch, etc.) and defining their ranking
+ * rule.
+ *
+ * Arena correspondence: the "Queue module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", pp. 45-46). \c OrderRule
+ * mirrors Arena's four ranking rules (First In First Out, Last In First Out,
+ * lowest/highest attribute value first); \c _attributeName is the
+ * evaluated attribute for the two attribute-based rules.
+ *
+ * Known difference from Arena: this class has no explicit "Shared" flag.
+ * In GenESyS a Queue is simply a referenceable ModelDataDefinition, so any
+ * number of components may already reference the same instance; Arena needs
+ * an explicit opt-in because its queues are otherwise private to the module
+ * that created them.
+ *
+ * \c isReportStatistics()/setReportStatistics() (inherited from
+ * ModelDataDefinition) correspond to Arena's per-module "Report Statistics"
+ * checkbox and gate the internal \c StatisticsCollector instances created by
+ * \c _createInternalStatisticReporters().
  */
 class Queue : public ModelDataDefinition {
 public:

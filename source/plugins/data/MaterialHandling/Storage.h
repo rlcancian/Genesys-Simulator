@@ -20,19 +20,20 @@
 //#include "kernel/simulator/ParserChangesInformation.h"
 #include "kernel/simulator/PluginInformation.h"
 
-/*
-Storage module
-DESCRIPTION
-The Storage module defines the name of a storage. Storages are automatically created
-by any module that references the storage so that this module is seldom needed. The
-only time this module is needed is when a storage is defined as a member of a storage
-set or specified using an attribute or expression.
-TYPICAL USES
-* Defining an animate storage for a set of storages
-PROMPTS
-Prompt Description
-Name The name of the storage set being defined. This name must be
-unique.
+/*!
+ * \brief Data definition representing a named storage location with
+ * explicit area/capacity/density accounting.
+ *
+ * Arena correspondence: Arena's "Storage module" (Rockwell Automation,
+ * *Getting Started with Arena*, "The Advanced Process Panel", p. 78), which
+ * is a near-empty placeholder object (only a Name) auto-created by the
+ * Store/Unstore modules and only needed explicitly as a Storage-Set member.
+ *
+ * Known difference from Arena (GenESyS extends the concept rather than
+ * narrowing it): this class carries real capacity semantics — \c
+ * _totalArea, \c _capacity and \c _unitsPerArea — that Arena's Storage
+ * module does not model at all; Arena tracks storage occupancy purely
+ * through animation, not through a declared capacity/area contract.
  */
 class Storage : public ModelDataDefinition {
 public:
