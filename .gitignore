@@ -15,6 +15,9 @@ cmake_install.cmake
 compile_commands.json
 Testing/
 
+# Non versioned directories (named using the pattern gitignore_*)
+gitignore_*
+
 # Ninja
 .ninja_deps
 .ninja_log
