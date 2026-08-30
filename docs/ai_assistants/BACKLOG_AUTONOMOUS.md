@@ -197,6 +197,36 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local` preferred
 - Acceptance: active references mapped, Qt6 presets/tests green and no GUI redesign.
 
+### AUTO-MODAL-001 — Migrate DefaultNode onto the ModalModel/Network bridge
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local`
+- Branch: `WiP202608/modal-network-implementation`
+- Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
+- Current branch head: `1af87417`
+- Authorization: explicit maintainer continuation instruction on 2026-08-30 authorized resuming the ModalModel/network architecture from the current `DefaultNetwork` checkpoint without restarting the earlier phase-0 inventory.
+- Scope:
+  - migrate `DefaultNode` from `ModelComponent` to `ModelDataDefinition`;
+  - remove process-connection/dispatch semantics from the node layer;
+  - preserve persistence and plugin registration compatibility for existing modal-model models;
+  - keep `ModalModelDefault`/`ModalModelFSM`/`ModalModelPetriNet` behavior intact until the generic `ModalModel` adapter phase;
+  - add focused tests for the new node contract and any persistence/check regressions touched by the migration.
+- Non-goals:
+  - no EFSM/DTMC/CPN formalism implementation yet;
+  - no generic `ModalModel` adapter rewrite yet;
+  - no broad plugin-architecture refactor outside the modal-model path;
+  - no restart of the architecture phase-1/phase-2 `DefaultNetwork` work.
+- Acceptance:
+  - `DefaultNode` compiles as a data-definition-based modal element;
+  - plugin loading/persistence remains backward-compatible for the current branch scope;
+  - focused tests cover the migrated node contract and continue to pass;
+  - remaining architecture follow-ups are left isolated for the next phase.
+- Progress snapshot:
+  - `DefaultNetwork` is already in place with network activation frame/result, port schema and activation counter;
+  - `DefaultNode` has now moved to `ModelDataDefinition`, its old dispatch hook was removed, and node persistence now uses the data-definition serialization path;
+  - `tests/unit/test_default_network.cpp` and `tests/unit/test_default_node.cpp` cover the base network abstraction and the migrated node contract.
+
 ## 7. Completed technical baseline
 
 Do not reopen without new evidence:
