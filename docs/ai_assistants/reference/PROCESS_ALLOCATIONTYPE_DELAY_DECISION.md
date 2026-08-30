@@ -1,3 +1,13 @@
+---
+document_type: reference
+authority: technical-reference
+owner: project-maintainer
+last_reviewed: 2026-08-30
+review_cadence: on-process-allocation-contract-change
+status: active
+tracks: 511
+---
+
 # Process AllocationType vs internal Delay
 
 ## Purpose
