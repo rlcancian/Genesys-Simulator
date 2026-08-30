@@ -33,6 +33,7 @@ CMakeLists.txt.user
 # Local IDE and AI assistant metadata
 /.idea/
 /.aider*
+/CLAUDE.md
 /.claude*
 /.codex*
 /.crontab-execplan-codex/
@@ -63,6 +64,7 @@ temp*
 /debian/*.substvars
 /debian/genesys-common/
 /debian/genesys-gui/
+/debian/genesys-simulator/
 /debian/genesys-shell/
 /debian/genesys-worker/
 /debian/genesys-web/
