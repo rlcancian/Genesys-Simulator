@@ -82,6 +82,7 @@
 #undef protected
 #undef private
 #include "plugins/components/DiscreteProcessing/Delay.h"
+#include "../../plugins/components/Decisions/DropOff.h"
 #include "../../plugins/components/Logic/Dispose.h"
 #include "plugins/components/Grouping/Batch.h"
 #include "plugins/components/Grouping/Separate.h"
@@ -91,6 +92,8 @@
 #include "../../plugins/components/Logic/Assign.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
+#include "../../plugins/components/MaterialHandling/Store.h"
+#include "../../plugins/components/MaterialHandling/Unstore.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
@@ -984,6 +987,73 @@ public:
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
         _saveInstance(fields, saveDefaultValues);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class StoreProbe : public Store {
+public:
+    StoreProbe(Model* model, const std::string& name = "") : Store(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class UnstoreProbe : public Unstore {
+public:
+    UnstoreProbe(Model* model, const std::string& name = "") : Unstore(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class DropOffProbe : public DropOff {
+public:
+    DropOffProbe(Model* model, const std::string& name = "") : DropOff(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
     }
 };
 
@@ -3751,6 +3821,212 @@ TEST(SimulatorRuntimeTest, StorageRegistersMainControlsAsOwnedProperties) {
     EXPECT_TRUE(hasCapacity);
     EXPECT_TRUE(hasTotalArea);
     EXPECT_TRUE(hasUnitsPerArea);
+}
+
+TEST(SimulatorRuntimeTest, StorageStoreAndUnstoreUpdateCurrentOccupationAndResetBetweenReplications) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "StorageRuntimeOccupation");
+    storage.setCapacity(3u);
+
+    EXPECT_TRUE(storage.store(2u));
+    EXPECT_EQ(storage.getCurrentOccupation(), 2u);
+    EXPECT_FALSE(storage.store(2u));
+    EXPECT_EQ(storage.getCurrentOccupation(), 2u);
+
+    EXPECT_TRUE(storage.unstore(1u));
+    EXPECT_EQ(storage.getCurrentOccupation(), 1u);
+    EXPECT_FALSE(storage.unstore(2u));
+    EXPECT_EQ(storage.getCurrentOccupation(), 1u);
+
+    storage.InitBetweenReplicationsProbe();
+    EXPECT_EQ(storage.getCurrentOccupation(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, StoreDispatchIncrementsStorageAndForwardsEntity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "StoreDispatchStorage");
+    storage.setCapacity(5u);
+    StoreProbe store(model, "StoreDispatch");
+    CollectorSinkComponentProbe sink(model, "StoreDispatchSink");
+    store.setStorage(&storage);
+    store.setQuantityExpression("2");
+    store.connectTo(&sink);
+
+    std::string errorMessage;
+    ASSERT_TRUE(store.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("StoreDispatchEntity", true);
+    store.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    EXPECT_EQ(storage.getCurrentOccupation(), 2u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+}
+
+TEST(SimulatorRuntimeTest, StoreSaveAndLoadPreserveStorageAndQuantityExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorePersistStorage");
+    StoreProbe source(model, "StorePersistSource");
+    source.setStorage(&storage);
+    source.setQuantityExpression("3");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    StoreProbe loaded(model, "StorePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getStorage(), &storage);
+    EXPECT_EQ(loaded.getQuantityExpression(), "3");
+}
+
+TEST(SimulatorRuntimeTest, UnstoreDispatchDecrementsStorageAndForwardsEntity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "UnstoreDispatchStorage");
+    storage.setCapacity(5u);
+    ASSERT_TRUE(storage.store(4u));
+    UnstoreProbe unstore(model, "UnstoreDispatch");
+    CollectorSinkComponentProbe sink(model, "UnstoreDispatchSink");
+    unstore.setStorage(&storage);
+    unstore.setQuantityExpression("3");
+    unstore.connectTo(&sink);
+
+    std::string errorMessage;
+    ASSERT_TRUE(unstore.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("UnstoreDispatchEntity", true);
+    unstore.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    EXPECT_EQ(storage.getCurrentOccupation(), 1u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+}
+
+TEST(SimulatorRuntimeTest, UnstoreDispatchDoesNotForwardWhenStorageLacksRequestedQuantity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "UnstoreInsufficientStorage");
+    storage.setCapacity(5u);
+    ASSERT_TRUE(storage.store(1u));
+    UnstoreProbe unstore(model, "UnstoreInsufficient");
+    CollectorSinkComponentProbe sink(model, "UnstoreInsufficientSink");
+    unstore.setStorage(&storage);
+    unstore.setQuantityExpression("2");
+    unstore.connectTo(&sink);
+
+    Entity* entity = model->createEntity("UnstoreInsufficientEntity", true);
+    unstore.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    EXPECT_EQ(storage.getCurrentOccupation(), 1u);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+}
+
+TEST(SimulatorRuntimeTest, DropOffCheckRequiresGroupAttributeAndTwoOutputs) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DropOffProbe dropoff(model, "DropOffCheck");
+    std::string errorMessage;
+    EXPECT_FALSE(dropoff.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("two output connections"), std::string::npos);
+
+    Attribute entityGroup(model, "Entity.Group");
+    CollectorSinkComponentProbe sink(model, "DropOffCheckSink");
+    CollectorSinkComponentProbe removed(model, "DropOffRemovedSink");
+    dropoff.connectTo(&sink);
+    dropoff.getConnectionManager()->insertAtPort(1, new Connection{&removed, {0, ""}});
+
+    errorMessage.clear();
+    EXPECT_TRUE(dropoff.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, DropOffDispatchReleasesConfiguredMembersAndKeepsRepresentativeGrouped) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Attribute entityGroupAttribute(model, "Entity.Group");
+    EntityGroup entityGroup(model, "DropOffGroup");
+    DropOffProbe dropoff(model, "DropOffDispatch");
+    CollectorSinkComponentProbe representativeSink(model, "DropOffRepresentativeSink");
+    CollectorSinkComponentProbe removedSink(model, "DropOffRemovedDispatchSink");
+    dropoff.connectTo(&representativeSink);
+    dropoff.getConnectionManager()->insertAtPort(1, new Connection{&removedSink, {0, ""}});
+    dropoff.setQuantityExpression("2");
+    dropoff.setStartingRankExpression("2");
+
+    EntityType groupedType(model, "DropOffGroupedType");
+    Entity* representative = model->createEntity("DropOffRepresentative", true);
+    Entity* memberA = model->createEntity("DropOffMemberA", true);
+    Entity* memberB = model->createEntity("DropOffMemberB", true);
+    Entity* memberC = model->createEntity("DropOffMemberC", true);
+    representative->setEntityType(&groupedType);
+    memberA->setEntityType(&groupedType);
+    memberB->setEntityType(&groupedType);
+    memberC->setEntityType(&groupedType);
+
+    entityGroup.insertElement(representative->getId(), memberA);
+    entityGroup.insertElement(representative->getId(), memberB);
+    entityGroup.insertElement(representative->getId(), memberC);
+    representative->setAttributeValue(entityGroupAttribute.getId(), entityGroup.getId());
+    memberA->setAttributeValue(entityGroupAttribute.getId(), entityGroup.getId());
+    memberB->setAttributeValue(entityGroupAttribute.getId(), entityGroup.getId());
+    memberC->setAttributeValue(entityGroupAttribute.getId(), entityGroup.getId());
+
+    std::string errorMessage;
+    ASSERT_TRUE(dropoff.CheckProbe(errorMessage)) << errorMessage;
+
+    dropoff.DispatchEventProbe(representative);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(representativeSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(representativeSink.ReceivedEntities()[0], representative);
+    ASSERT_EQ(removedSink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(removedSink.ReceivedEntities()[0], memberB);
+    EXPECT_EQ(removedSink.ReceivedEntities()[1], memberC);
+    EXPECT_EQ(memberB->getAttributeValue(entityGroupAttribute.getId()), 0.0);
+    EXPECT_EQ(memberC->getAttributeValue(entityGroupAttribute.getId()), 0.0);
+    EXPECT_EQ(memberA->getAttributeValue(entityGroupAttribute.getId()), static_cast<double>(entityGroup.getId()));
+    ASSERT_NE(entityGroup.getGroup(representative->getId()), nullptr);
+    ASSERT_EQ(entityGroup.getGroup(representative->getId())->size(), 1u);
+    EXPECT_EQ(entityGroup.getGroup(representative->getId())->getAtRank(0), memberA);
+}
+
+TEST(SimulatorRuntimeTest, DropOffSaveAndLoadPreserveExpressions) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DropOffProbe source(model, "DropOffPersistSource");
+    source.setQuantityExpression("4");
+    source.setStartingRankExpression("3");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    DropOffProbe loaded(model, "DropOffPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getQuantityExpression(), "4");
+    EXPECT_EQ(loaded.getStartingRankExpression(), "3");
 }
 
 TEST(SimulatorRuntimeTest, DummyElementDefaultsAreInitializedAsExpected) {

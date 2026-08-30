@@ -873,28 +873,41 @@ and allocated as well" (quoted almost verbatim in `Delay.cpp`'s own
   read-then-assign round-trips.
 - **Needs human decision**: whether a read-capable counterpart is in scope.
 
-### 6.17 Dropoff, Store, Unstore — additional confirmed stub templates
+### 6.17 Dropoff, Store, Unstore
 
-**[confirmed]**: like `Access`/`Exit`/`Start`/`Stop` (§7), `DropOff`
-(`source/plugins/components/Decisions/DropOff.{h,cpp}`), `Store` and
-`Unstore` (`source/plugins/components/MaterialHandling/{Store,Unstore}.{h,cpp}`)
-are the identical incomplete-stub pattern: each header declares **no
-fields at all**, and each `_onDispatchEvent()` literally traces `"I'm just a
-dummy model and I'll just send the entity forward"` with `_check()`/
-`_loadInstance()`/`_saveInstance()` all `// @TODO: not implemented yet`.
-
-- Arena correspondence: "Dropoff module" (*Getting Started with Arena*, "The
-  Advanced Process Panel", p. 54 — release N entities from a group);
-  "Store module" (p. 66) and "Unstore module" (p. 67) — add/remove an entity
-  from a `Storage` (§5.11).
-- **Level**: `partial` (stub only, same as §7's conveyor-action stubs).
-- **Cross-reference**: this means the `Storage` data definition audited in
-  Phase A (§5.11) currently has **no functioning component** that actually
-  increments/decrements it — `Storage`'s real area/capacity fields exist,
-  but nothing populates them at simulation time.
-- **Needs human decision**: prioritization for completing these three stubs
-  (independent of the Conveyor/Transporter/Network work in §7, since Store/
-  Unstore/Dropoff do not depend on that missing subsystem at all).
+- **Arena**: "Dropoff module" (*Getting Started with Arena*, "The Advanced
+  Process Panel", p. 54 — release N entities from a group); "Store module"
+  (p. 66) and "Unstore module" (p. 67) — add/remove entities in a Storage.
+- **GenESyS**:
+  - `DropOff` — `source/plugins/components/Decisions/DropOff.{h,cpp}`;
+  - `Store` / `Unstore` —
+    `source/plugins/components/MaterialHandling/{Store,Unstore}.{h,cpp}`;
+  - `Storage` runtime state now exercised through
+    `source/plugins/data/MaterialHandling/Storage.{h,cpp}`.
+- **Level**: `partial`.
+- **DropOff behavior (implemented in this batch, 2026-08-30)**:
+  `quantityExpression` + `startingRankExpression` now remove a contiguous set
+  of members from the representative entity's `EntityGroup`, starting from a
+  1-based rank, send removed members to output port 1, and let the
+  representative continue on output port 0. Removed members have
+  `Entity.Group` cleared. Member-attribute propagation rules from Arena are
+  still not implemented.
+- **Store/Unstore behavior (implemented in this batch, 2026-08-30)**:
+  both now bind to a `Storage` plus `quantityExpression`. `Store` increments a
+  `Storage`'s runtime occupation if capacity permits; `Unstore` decrements it
+  if sufficient units are present. Both support persistence and validation and
+  then forward the entity.
+- **Storage cross-reference**: `Storage` now has real runtime occupation
+  tracking with reset between replications, so the Phase A data definition is
+  no longer detached from runtime use.
+- **Divergences**:
+  - `DropOff` uses a two-output contract in GenESyS to keep the representative
+    and the dropped members on explicit separate paths.
+  - `DropOff` currently retains original member attributes only; Arena's richer
+    member-attribute reassignment modes remain unsupported.
+  - `Store`/`Unstore` currently act immediately; there is no queueing/waiting
+    contract when capacity or inventory is insufficient.
+- **Needs human decision**: no for this minimum contract.
 
 ### 6.18 Adjust Variable
 
@@ -1127,9 +1140,9 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
   EntityGroup source); `Search` (§6.15) confirmed `partial` (no
   expression-only search Type); `ReadWrite`→`Write` (§6.16) confirmed
   `partial` (write-only, no read direction); `Dropoff`/`Store`/`Unstore`
-  (§6.17) confirmed as three more incomplete stub templates (same pattern
-  as §7's conveyor actions) — meaning `Storage` (§5.11) currently has no
-  functioning component consumer at all; `Adjust Variable` (§6.18) confirmed
+  (§6.17) are now implemented as a minimal runtime contract: `DropOff`
+  releases grouped members by rank/quantity, and `Store`/`Unstore` exercise
+  `Storage` occupation directly. `Adjust Variable` (§6.18) confirmed
   absent but reachable through `Assign`. Maintainer confirmed (2026-08-30)
   that `Clone` is the intentional substitute for Separate's missing
   "Duplicate Original" (§6.19), closing that Phase-B-batch-2 open question.
@@ -1146,6 +1159,10 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
 - **Phase C (parser/Arena Variables Guide cross-reference)**: not started;
   §8 above is a preliminary observation only, not a completed pass. Deferred
   by maintainer request (2026-08-29) — reminder needed in a later session.
+- **Deferred decision note**: the unresolved `Process::AllocationType` versus
+  internal `Delay` wiring question from §6.5 is isolated in
+  `docs/ai_assistants/reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md` so
+  the maintainer can decide it later without blocking the current close-out.
 - **Reminders for a later session (explicit maintainer request,
   2026-08-29)**: (a) revisit Statistic/Collector/Counter class-by-class detail
   once the maintainer explains the design further; (b) revisit Phase C

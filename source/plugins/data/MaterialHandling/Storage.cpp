@@ -51,7 +51,8 @@ std::string Storage::show() {
 	return ModelDataDefinition::show() +
 			", capacity=" + std::to_string(_capacity) +
 			", totalArea=" + Util::StrTruncIfInt(std::to_string(_totalArea)) +
-			", unitsPerArea=" + Util::StrTruncIfInt(std::to_string(_unitsPerArea));
+			", unitsPerArea=" + Util::StrTruncIfInt(std::to_string(_unitsPerArea)) +
+            ", currentOccupation=" + std::to_string(_currentOccupation);
 }
 
 void Storage::setTotalArea(double _totalArea) {
@@ -76,6 +77,26 @@ void Storage::setUnitsPerArea(double _unitsPerArea) {
 
 double Storage::getUnitsPerArea() const {
 	return _unitsPerArea;
+}
+
+unsigned int Storage::getCurrentOccupation() const {
+	return _currentOccupation;
+}
+
+bool Storage::store(unsigned int quantity) {
+	if (_currentOccupation + quantity > _capacity) {
+		return false;
+	}
+	_currentOccupation += quantity;
+	return true;
+}
+
+bool Storage::unstore(unsigned int quantity) {
+	if (quantity > _currentOccupation) {
+		return false;
+	}
+	_currentOccupation -= quantity;
+	return true;
 }
 
 PluginInformation* Storage::GetPluginInformation() {
@@ -135,6 +156,11 @@ ParserChangesInformation* Storage::_getParserChangesInformation() {
 	//changes->getProductionToAdd()->insert(...);
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
+}
+
+void Storage::_initBetweenReplications() {
+	ModelDataDefinition::_initBetweenReplications();
+	_currentOccupation = 0;
 }
 
 // void Storage::_createInternalStatisticReporters() { }

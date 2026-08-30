@@ -33,6 +33,11 @@ public: // constructors
 	virtual ~DropOff() = default;
 public: // virtual
 	virtual std::string show() override;
+public:
+    void setQuantityExpression(std::string quantityExpression);
+    std::string getQuantityExpression() const;
+    void setStartingRankExpression(std::string startingRankExpression);
+    std::string getStartingRankExpression() const;
 public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -53,6 +58,12 @@ protected:
 
 private: // methods
 private: // attributes 1:1
+    const struct DEFAULT_VALUES {
+        const std::string quantityExpression = "1";
+        const std::string startingRankExpression = "1";
+    } DEFAULT;
+    std::string _quantityExpression = DEFAULT.quantityExpression;
+    std::string _startingRankExpression = DEFAULT.startingRankExpression;
 private: // attributes 1:n
 };
 

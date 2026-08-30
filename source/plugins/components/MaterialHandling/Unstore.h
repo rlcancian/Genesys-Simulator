@@ -15,6 +15,7 @@
 #define UNSTORE_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../data/MaterialHandling/Storage.h"
 
 /*!
  * \brief Placeholder for removing an entity from a Storage (§5.11).
@@ -33,6 +34,11 @@ public: // constructors
 	virtual ~Unstore() = default;
 public: // virtual
 	virtual std::string show() override;
+public:
+    void setStorage(Storage* storage);
+    Storage* getStorage() const;
+    void setQuantityExpression(std::string quantityExpression);
+    std::string getQuantityExpression() const;
 public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -45,7 +51,7 @@ protected: // virtual
 	//virtual void _initBetweenReplications();
 	// virtual void _createInternalStatisticReporters() override;
 	// virtual void _createNonEditableDataDefinitions() override;
-	// virtual void _createEditableDataDefinitions() override;
+	virtual void _createEditableDataDefinitions() override;
 	// virtual void _createAttachedAttributes() override;
 	virtual bool _check(std::string& errorMessage) override;
 
@@ -53,6 +59,11 @@ protected:
 
 private: // methods
 private: // attributes 1:1
+    const struct DEFAULT_VALUES {
+        const std::string quantityExpression = "1";
+    } DEFAULT;
+    Storage* _storage = nullptr;
+    std::string _quantityExpression = DEFAULT.quantityExpression;
 private: // attributes 1:n
 };
 
