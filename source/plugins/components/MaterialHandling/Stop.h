@@ -15,6 +15,7 @@
 #define STOP_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../data/MaterialHandling/Conveyor.h"
 
 /*!
 Stop module
@@ -43,6 +44,9 @@ public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
+public:
+	void setConveyor(Conveyor* conveyor);
+	Conveyor* getConveyor() const;
 protected: // virtual
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
@@ -59,6 +63,7 @@ protected:
 
 private: // methods
 private: // attributes 1:1
+	Conveyor* _conveyor = nullptr;
 private: // attributes 1:n
 };
 

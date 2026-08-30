@@ -15,6 +15,7 @@
 #define START_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../data/MaterialHandling/Conveyor.h"
 
 /*!
 Start module
@@ -46,6 +47,11 @@ public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
+public:
+	void setConveyor(Conveyor* conveyor);
+	Conveyor* getConveyor() const;
+	void setVelocityExpression(std::string velocityExpression);
+	std::string getVelocityExpression() const;
 protected: // virtual
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
@@ -62,6 +68,8 @@ protected:
 
 private: // methods
 private: // attributes 1:1
+	Conveyor* _conveyor = nullptr;
+	std::string _velocityExpression = "";
 private: // attributes 1:n
 };
 

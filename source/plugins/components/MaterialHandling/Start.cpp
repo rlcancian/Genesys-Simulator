@@ -27,10 +27,39 @@ ModelDataDefinition* Start::NewInstance(Model* model, std::string name) {
 }
 
 Start::Start(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Start>(), name) {
+	auto* propConveyor = new SimulationControlGenericClass<Conveyor*, Model*, Conveyor>(
+			_parentModel,
+			std::bind(&Start::getConveyor, this),
+			std::bind(&Start::setConveyor, this, std::placeholders::_1),
+			Util::TypeOf<Start>(), getName(), "Conveyor", "");
+	auto* propVelocityExpression = new SimulationControlGeneric<std::string>(
+			std::bind(&Start::getVelocityExpression, this),
+			std::bind(&Start::setVelocityExpression, this, std::placeholders::_1),
+			Util::TypeOf<Start>(), getName(), "VelocityExpression", "");
+	_parentModel->getControls()->insert(propConveyor);
+	_parentModel->getControls()->insert(propVelocityExpression);
+	_addSimulationControl(propConveyor);
+	_addSimulationControl(propVelocityExpression);
 }
 
 std::string Start::show() {
-	return ModelComponent::show() + "";
+	return ModelComponent::show() + ", conveyor=\"" + (_conveyor != nullptr ? _conveyor->getName() : std::string()) + "\", velocityExpression=\"" + _velocityExpression + "\"";
+}
+
+void Start::setConveyor(Conveyor* conveyor) {
+	_conveyor = conveyor;
+}
+
+Conveyor* Start::getConveyor() const {
+	return _conveyor;
+}
+
+void Start::setVelocityExpression(std::string velocityExpression) {
+	_velocityExpression = velocityExpression;
+}
+
+std::string Start::getVelocityExpression() const {
+	return _velocityExpression;
 }
 
 ModelComponent* Start::LoadInstance(Model* model, PersistenceRecord *fields) {
@@ -44,34 +73,56 @@ ModelComponent* Start::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void Start::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	traceSimulation(this, "I'm just a dummy model and I'll just send the entity forward");
+	(void)inputPortNumber;
+	if (_conveyor == nullptr) {
+		traceError("Start \"" + getName() + "\" has no Conveyor configured");
+		return;
+	}
+	if (!_velocityExpression.empty()) {
+		const double velocity = _parentModel->parseExpression(_velocityExpression);
+		if (velocity <= 0.0) {
+			traceError("Start \"" + getName() + "\" evaluated a non-positive velocity");
+			return;
+		}
+		_conveyor->setVelocity(velocity);
+	}
+	_conveyor->setActive(true);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 bool Start::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_velocityExpression = fields->loadField("velocityExpression", std::string(""));
+		_conveyor = dynamic_cast<Conveyor*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Conveyor>(), fields->loadField("conveyor", std::string(""))));
 	}
 	return res;
 }
 
 void Start::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("velocityExpression", _velocityExpression, std::string(""), saveDefaultValues);
+	fields->saveField("conveyor", _conveyor != nullptr ? _conveyor->getName() : std::string(""), std::string(""), saveDefaultValues);
 }
 
 bool Start::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	// @TODO: not implemented yet
-	errorMessage += "";
+	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Conveyor>(), _conveyor, "Conveyor", errorMessage);
+	if (!_velocityExpression.empty()) {
+		resultAll &= _parentModel->checkExpression(_velocityExpression, "VelocityExpression", errorMessage);
+	}
+	if (this->getConnectionManager()->size() == 0) {
+		errorMessage += "Start \"" + getName() + "\" must forward to a downstream component. ";
+		resultAll = false;
+	}
 	return resultAll;
 }
 
 PluginInformation* Start::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Start>(), &Start::LoadInstance, &Start::NewInstance);
 	info->setCategory("MaterialHandling");
-	// ...
+	info->insertDynamicLibFileDependence("conveyor.so");
+	info->setDescriptionHelp("Activates a Conveyor and optionally updates its velocity before forwarding the entity.");
 	return info;
 }
 

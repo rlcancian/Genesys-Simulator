@@ -27,10 +27,25 @@ ModelDataDefinition* Stop::NewInstance(Model* model, std::string name) {
 }
 
 Stop::Stop(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Stop>(), name) {
+	auto* propConveyor = new SimulationControlGenericClass<Conveyor*, Model*, Conveyor>(
+			_parentModel,
+			std::bind(&Stop::getConveyor, this),
+			std::bind(&Stop::setConveyor, this, std::placeholders::_1),
+			Util::TypeOf<Stop>(), getName(), "Conveyor", "");
+	_parentModel->getControls()->insert(propConveyor);
+	_addSimulationControl(propConveyor);
 }
 
 std::string Stop::show() {
-	return ModelComponent::show() + "";
+	return ModelComponent::show() + ", conveyor=\"" + (_conveyor != nullptr ? _conveyor->getName() : std::string()) + "\"";
+}
+
+void Stop::setConveyor(Conveyor* conveyor) {
+	_conveyor = conveyor;
+}
+
+Conveyor* Stop::getConveyor() const {
+	return _conveyor;
 }
 
 ModelComponent* Stop::LoadInstance(Model* model, PersistenceRecord *fields) {
@@ -44,34 +59,43 @@ ModelComponent* Stop::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void Stop::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	traceSimulation(this, "I'm just a dummy model and I'll just send the entity forward");
+	(void)inputPortNumber;
+	if (_conveyor == nullptr) {
+		traceError("Stop \"" + getName() + "\" has no Conveyor configured");
+		return;
+	}
+	_conveyor->setActive(false);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 bool Stop::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_conveyor = dynamic_cast<Conveyor*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Conveyor>(), fields->loadField("conveyor", std::string(""))));
 	}
 	return res;
 }
 
 void Stop::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("conveyor", _conveyor != nullptr ? _conveyor->getName() : std::string(""), std::string(""), saveDefaultValues);
 }
 
 bool Stop::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	// @TODO: not implemented yet
-	errorMessage += "";
+	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Conveyor>(), _conveyor, "Conveyor", errorMessage);
+	if (this->getConnectionManager()->size() == 0) {
+		errorMessage += "Stop \"" + getName() + "\" must forward to a downstream component. ";
+		resultAll = false;
+	}
 	return resultAll;
 }
 
 PluginInformation* Stop::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Stop>(), &Stop::LoadInstance, &Stop::NewInstance);
 	info->setCategory("MaterialHandling");
-	// ...
+	info->insertDynamicLibFileDependence("conveyor.so");
+	info->setDescriptionHelp("Deactivates a Conveyor and forwards the entity.");
 	return info;
 }
 

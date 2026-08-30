@@ -212,16 +212,19 @@ TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins)
         "bacteriasignalgrid.so",
         "biosimulatorrunner.so",
         "cellularautomata.so",
+        "conveyor.so",
         "defaultnode.so",
         "distance.so",
         "dummyelement.so",
         "groprogram.so",
+        "move.so",
         "old_odeelement.so",
         "petriplace.so",
         "rsimulator.so",
         "rsimulatorrunner.so",
         "segment.so",
-        "submodel.so"
+        "submodel.so",
+        "transporter.so"
     };
 
     for (const std::string& filename : expectedPluginFiles) {
