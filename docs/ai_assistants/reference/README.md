@@ -2,7 +2,7 @@
 document_type: reference-index
 authority: informative
 owner: project-maintainer
-last_reviewed: 2026-07-22
+last_reviewed: 2026-08-30
 status: active
 tracks: 511
 ---
@@ -59,6 +59,18 @@ Use for:
 - biochemical/SBML/whole-cell;
 - AI virtual-cell direction;
 - scientific claim levels.
+
+### [`MODAL_MODELS_NETWORKS_ARCHITECTURE.md`](MODAL_MODELS_NETWORKS_ARCHITECTURE.md)
+
+Use for:
+
+- the maintainer-approved `ModalModel` ↔ `DefaultNetwork` separation;
+- process/entity-flow versus network-model semantics;
+- network-owned state and shared networks;
+- formal network input/output ports and activation frames;
+- EFSM, finite-state DTMC, and Colored Petri Net target semantics;
+- entity cloning/consumption at modal outputs;
+- future `ConnectionChannel`/heterogeneous model-of-computation evolution.
 
 ### [`APPLICATIONS_TOOLS_MODELS.md`](APPLICATIONS_TOOLS_MODELS.md)
 
