@@ -227,7 +227,7 @@ void Release::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		resource->release(quantity); //{releases and sets the 'LastTimeSeized'property}
 		if (_reportStatistics) {
 			double timeSeized = resource->getLastTimeSeized();
-			double allocationEntityResource = entity->getAttributeValue("Entity.Allocation."+resource->getName()); //@TODO: Seize is not setting this attribute. Fiz it.
+			double allocationEntityResource = entity->getAttributeValue("Entity.Allocation."+resource->getName()); // set by Seize::_onDispatchEvent() when the resource was seized
 			std::string allocationCategory = Util::StrAllocation(static_cast<Util::AllocationType>((int) allocationEntityResource));
 			std::string attribIndex="";
 			entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + "."+allocationCategory+"Time")->getStatistics()->getCollector()->addValue(timeSeized);

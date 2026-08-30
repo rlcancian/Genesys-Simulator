@@ -17,22 +17,18 @@
 #include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
-Remove module
-DESCRIPTION
-The Remove module removes a single entity from a specified position in a queue and
-sends it to a designated module.
-When an entity arrives at a Remove module, it removes the entity from the specified
-queue and sends it to the connected module. The rank of the entity signifies the
-location of the entity within the queue. The entity that caused the removal proceeds to
-the next module specified and is processed before the removed entity.
-TYPICAL USES
- * Removing an order from a queue that is due to be completed next
- * Calling a patient from a waiting room for an examination
- * Retrieving the next order to be processed from a pile of documents
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Queue Name Name of the queue from which the entity will be removed.
-Rank of Entity Rank of the entity to remove from within the queue.
+ * \brief Removes one or more entities at a given rank (or rank range) from
+ * a Queue or an EntityGroup and forwards them.
+ *
+ * Arena correspondence: the "Remove module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Advanced Process Panel", p. 61), which removes
+ * a single entity at one rank from a queue.
+ *
+ * Known difference from Arena (broader, not narrower): `RemoveFromType`
+ * (`QUEUE/ENTITYGROUP`) also supports removing from an EntityGroup, and
+ * `_removeStartRank`/`_removeEndRank` support a rank *range* rather than
+ * Arena's single-rank-only removal. PickUp (in this same directory) reuses
+ * this class for Arena's "Pickup module".
  */
 class Remove : public ModelComponent {
 public:

@@ -57,29 +57,24 @@ private:
 };
 
 /*!
- * Sequence module
-DESCRIPTION
-The Sequence module is used to define a sequence for entity flow through the model.
-A sequence consists of an ordered list of stations that an entity will visit. For each
-station in the visitation sequence, attributes and variables may be assigned values.
-Each station in the visitation sequence is referred to as a step (or jobstep) in the
-sequence.
-Three special-purpose attributes are provided for all entities. The Sequence attribute
-(Entity.Sequence) defines the sequence that an entity is to follow; a value of 0
-indicates that the entity is not following any sequence. In order for an entity to follow
-a sequence, its Sequence attribute must be assigned a value (for example, in the
-Assign module).
-The Jobstep attribute (Entity.Jobstep) stores the entity’s current step number in the
-sequence. This value is updated automatically each time an entity is transferred. You
-typically do not need to assign explicitly a value to Jobstep in the model.
-The PlannedStation attribute (Entity.PlannedStation) stores the number of the station
-associated with the next jobstep in the sequence. This attribute is not user-assignable. 
-It is automatically updated whenever Entity.Sequence or Entity.JobStep changes, or
-whenever the entity enters a station.
-Jobstep names must be globally unique.
-TYPICAL USES
-* Define a routing path for part processing
-* Define a sequence of steps patients must take upon arrival at an emergency room
+ * \brief Data definition holding an ordered list of visitation steps
+ * (\c SequenceStep), each naming a Station or Label an entity should reach
+ * next, with optional attribute/variable assignments per step.
+ *
+ * Arena correspondence: the "Sequence module" (Rockwell Automation,
+ * *Getting Started with Arena*, "The Advanced Transfer Panel", pp. 100-101),
+ * which defines an ordered visitation list of stations (jobsteps) plus
+ * per-step attribute/variable/picture assignments, tracked at runtime
+ * through the special-purpose Entity.Sequence/Entity.Jobstep/
+ * Entity.PlannedStation attributes.
+ *
+ * GenESyS extends the concept by letting a SequenceStep target a Label
+ * instead of a Station (useful outside pure station-to-station material
+ * handling flows).
+ *
+ * Known difference from Arena, to confirm in \c Sequence.cpp: steps are
+ * stored as a plain ordered \c List, so Arena's named, out-of-order "Step
+ * Name"/"Next Step" jump targets have no obvious equivalent here.
  */
 class Sequence : public ModelDataDefinition {
 public:

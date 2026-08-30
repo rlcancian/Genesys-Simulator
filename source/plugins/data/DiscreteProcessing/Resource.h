@@ -31,60 +31,31 @@
 class SeizableItem;
 
 /*!
-Resource module
-DESCRIPTION
-This data module defines the resources in the simulation system, including costing
-information and resource availability. Resources may have a fixed capacity that does
-not vary over the simulation run or may operate based on a schedule. Resource
-failures and states can also be specified in this module.
-TYPICAL USES
- * Equipment (machinery, cash register, phone line)
- * People (clerical, order processing, sales clerks, operators)
-PROMPTS
-Prompt Description
-Name The name of the resource whose characteristics are being
-defined. This name must be unique.
-Type Method for determining the capacity for a resource. Fixed
-Capacity will not change during the simulation run. Based on
-Schedule signifies that a Schedule module is used to specify the
-capacity and duration information for the resource.
-Capacity Number of resource units of a given name that are available to
-the system for processing. Applies only when Type is Fixed
-Capacity.
-Schedule Name Identifies the name of the schedule to be used by the resource.
-The schedule defines the capacity of a resource for a given
-period of time. Applies only when type is Schedule.
-Schedule Rule Dictates when the actual capacity change is to occur when a
-decrease in capacity is required for a busy resource unit. Applies
-only when Type is Schedule.
-Busy/TimeUnit Cost per timeUnit of a resource that is processing an entity. The
-resource becomes busy when it is originally allocated to an entity
-and becomes idle when it is released. During the time when it is
-busy, cost will accumulate based on the busy/timeUnit cost. The busy
-cost per timeUnit is automatically converted to the appropriate base
-time unit specified within the Replication Parameters page of the
-Run > Setup menu item.
-Idle/TimeUnit Cost per timeUnit of a resource that is idle. The resource is idle while
-it is not processing an entity. During the time when it is idle, cost
-will accumulate based on the idle/timeUnit cost. The idle cost per
-timeUnit is automatically converted to the appropriate base time unit
-specified within the Replication Parameters page of the Run >
-Setup menu item.
-Per Use Cost of a resource on a usage basis, regardless of the time for
-which it is used. Each time the resource is allocated to an entity,
-it will incur a per-use cost.
-StateSet Name Name of states that the resource may be assigned during the
-simulation run.
-Initial State Initial state of a resource. If specified, the name must be defined
-within the repeat group of state names. This field is shown only
-when a StateSet Name is defined.
-Failures Lists all failures that will be associated with the resource.
- * Failure Name–Name of the failure associated with the
-resource.
- * Failure Rule–Behavior that should occur when a failure is to
-occur for a busy resource unit.
-Report Statistics Specifies whether or not statistics will be collected automatically
-and stored in the report database for this resource.
+ * \brief Data definition representing a seizable capacity pool (equipment,
+ * staff, etc.), its costing, its optional capacity schedule, and its
+ * associated Failure definitions.
+ *
+ * Arena correspondence: the "Resource module" (Rockwell Automation,
+ * *Getting Started with Arena*, "The Basic Process Panel", pp. 46-48).
+ * \c _capacity is Arena's fixed "Capacity"; \c _capacitySchedule (a
+ * Schedule*) is Arena's "Based on Schedule" type; \c _costBusyTimeUnit,
+ * \c _costIdleTimeUnit and \c _costPerUse are Arena's Busy/Idle-per-time-unit
+ * and Per Use costs (GenESyS generalizes Arena's "per hour" to the model's
+ * base time unit); \c _failures is Arena's Failures list (see Failure).
+ *
+ * \c ResourceState (IDLE/BUSY/FAILED/INACTIVE/OTHER) is the closest
+ * correspondence to Arena's resource states, but it is a fixed enumeration.
+ *
+ * Known differences from Arena, to validate against \c Resource.cpp and
+ * \c Schedule.cpp before treating them as closed:
+ * - Arena's "StateSet" data module lets a modeler define arbitrary named
+ *   states mapped onto autostates or failures; this class only exposes the
+ *   fixed \c ResourceState enumeration, so a fully custom named-state
+ *   catalog has no GenESyS equivalent;
+ * - Arena's per-resource "Schedule Rule" (how a capacity decrease behaves
+ *   against a busy unit: ignore/preempt/wait) has no field on this class;
+ *   the closest candidate is the per-item \c SchedulableItem::Rule on
+ *   Schedule, which is a different granularity and needs confirmation.
  */
 class Resource : public ModelDataDefinition {
 public:

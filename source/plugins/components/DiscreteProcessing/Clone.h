@@ -18,7 +18,22 @@
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
 /*!
- This component ...
+ * \brief Creates `_numClonesExpression` copies of the incoming entity
+ * (same EntityType and Attribute values), sending clones out port 1 and the
+ * original out port 0.
+ *
+ * Arena correspondence: confirmed by the maintainer (2026-08-30) as the
+ * intended GenESyS counterpart to the "Duplicate Original" Type of Arena's
+ * "Separate module" (Rockwell Automation, *Getting Started with Arena*,
+ * "The Basic Process Panel", p. 39) — see Separate, whose own
+ * `_onDispatchEvent()` only implements Arena's other Type ("Split Existing
+ * Batch"). `_numClonesExpression` matches Arena's "# of Duplicates".
+ *
+ * Known difference from Arena: no "Percent Cost to Duplicates" — splitting
+ * accumulated category cost/time between the original and its clones is not
+ * implemented (see
+ * `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.3 and
+ * §6.19).
  */
 class Clone : public ModelComponent {
 public: // constructors

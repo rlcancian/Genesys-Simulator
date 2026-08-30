@@ -36,7 +36,16 @@
 #include "../../../kernel/simulator/model/Model.h"
 
 /*!
- * While the assign ans sequence classes allows you to perform multiple assignments, the assignmentItem class defines an assignment itself.
+ * \brief One (destination, expression) pair used by Assign and by
+ * Sequence's per-step assignments.
+ *
+ * \c destination is a free-form name, optionally with a `[index]` suffix
+ * (parsed by the owning component, e.g. \c Assign::_destinationBaseName()/
+ * \c _destinationIndex()); \c _isAttributeNotVariable selects whether it
+ * names an Attribute or a Variable. \c expression is evaluated through the
+ * parser at dispatch time. There is no dedicated destination kind for an
+ * entity's EntityType, its picture, or an arbitrary "system variable" —
+ * see Assign for the corresponding Arena divergence.
  */
 class Assignment {
 public:

@@ -17,35 +17,16 @@
 #include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
-Store module
-DESCRIPTION
-The Store module adds an entity to storage. The Unstore module may then be used to
-remove the entity from the storage.
-When an entity arrives at the Store module, the storage specified is incremented, and
-the entity immediately moves to the next module in the model.
-Storages are useful for displaying entity animation while an entity undergoes
-processing in other modules. Additionally, statistics may be kept on the number of
-entities in storage.
-TYPICAL USES
-* Animating a part through a number of delay operations (load, setup, process,
-unload)
-* Tracking the number of customers within a grocery store (place in storage upon
-entry)
-PROMPTS
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Type Method of specifying the storage name as a Storage, Set,
-Attribute, or Expression.
-Storage Name Name of the storage to which the entity will be added. Applies
-only when the Type is Storage.
-Set Name Name of the storage set from which the storage is to be selected.
-Applies only when the Type is Set.
-Set Index Index into the defined storage set that contains the desired
-storage name. Applies only when the Type is Set.
-Attribute Name of the attribute whose value contains the storage. Applies
-only when the Type is Attribute.
-Expression Expression that is evaluated to the storage into which the entity
-is placed. Applies only when the Type is Expression.
+ * \brief Placeholder for adding an entity to a Storage (§5.11).
+ *
+ * Arena correspondence: the "Store module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Advanced Process Panel", p. 66).
+ *
+ * \warning Incomplete stub template: this class declares no fields at all,
+ * and `_onDispatchEvent()` unconditionally forwards the entity without
+ * touching any Storage. `_check()`/`_loadInstance()`/`_saveInstance()` are
+ * not implemented either. See
+ * `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.17.
  */
 class Store : public ModelComponent {
 public: // constructors

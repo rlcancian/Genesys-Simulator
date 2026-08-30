@@ -89,6 +89,14 @@ Use for:
 - developer diagram generation planning;
 - figure governance and stop-gate decisions.
 
+### [`ARENA_GENESYS_COMPATIBILITY.md`](ARENA_GENESYS_COMPATIBILITY.md)
+
+Use for:
+
+- traceable Arena ↔ GenESyS data-definition/component equivalence audit;
+- confirmed/partial/missing/different classification per Arena module;
+- open questions requiring a maintainer decision before closing a gap.
+
 ## 3. Reference rules
 
 Reference files:

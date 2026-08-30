@@ -17,6 +17,18 @@
 #include "kernel/simulator/PluginInformation.h"
 #include "kernel/util/List.h"
 
+/*!
+ * \brief One (expression, duration, rule) triple inside a Schedule.
+ *
+ * \c expression is evaluated to produce the value that applies for
+ * \c duration time units before moving to the next item; this is the
+ * closest correspondence to one row of Arena's Schedule module
+ * "Durations" repeat group (Value/Duration pairs), generalized from a
+ * static value to a parsed expression. \c rule mirrors Arena's per-resource
+ * "Schedule Rule" (ignore/preempt/wait a busy unit on a capacity decrease),
+ * attached here per schedule item rather than per Resource; see Resource
+ * for the open question of how/whether the two map onto each other.
+ */
 class SchedulableItem {
 public:
 
