@@ -13,8 +13,11 @@
 
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
+#include "plugins/data/ModalModel/NetworkActivation.h"
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
@@ -146,6 +149,51 @@ void ModalModelDefault::removeOutputExpressionReference(DefaultNodeTransition* e
 	_optionalEditableDataDefinitionRemove(expressionReference->getName());
 }
 
+DefaultNetwork* ModalModelDefault::getNetwork() const {
+	return _network;
+}
+
+void ModalModelDefault::setNetwork(DefaultNetwork* network) {
+	_mandatoryAttachedAttributesClear();
+	_network = network;
+	_networkName = network != nullptr ? network->getName() : "";
+	_syncBindingsToNetwork();
+}
+
+std::string ModalModelDefault::getNetworkName() const {
+	return _networkName;
+}
+
+void ModalModelDefault::setNetworkName(const std::string& networkName) {
+	_mandatoryAttachedAttributesClear();
+	_networkName = networkName;
+	_network = nullptr;
+	_resolveNetworkReference();
+	_syncBindingsToNetwork();
+}
+
+void ModalModelDefault::setInputBinding(unsigned int port, const std::string& expression) {
+	if (_inputBindings.size() <= port) {
+		_inputBindings.resize(port + 1, "1");
+	}
+	_inputBindings[port] = expression;
+}
+
+std::string ModalModelDefault::getInputBinding(unsigned int port) const {
+	return port < _inputBindings.size() ? _inputBindings[port] : "";
+}
+
+void ModalModelDefault::setOutputBinding(unsigned int port, const std::string& attributeName) {
+	if (_outputBindings.size() <= port) {
+		_outputBindings.resize(port + 1, "");
+	}
+	_outputBindings[port] = attributeName;
+}
+
+std::string ModalModelDefault::getOutputBinding(unsigned int port) const {
+	return port < _outputBindings.size() ? _outputBindings[port] : "";
+}
+
 
 //
 // protected: /// virtual method that must be overridden
@@ -157,6 +205,18 @@ bool ModalModelDefault::_loadInstance(PersistenceRecord* fields) {
 		_maxTransitionsPerDispatch = fields->loadField("maxTransitionsPerDispatch", DEFAULT.maxTransitionsPerDispatch);
 		_timeDelayExpressionPerDispatch = fields->loadField("timeDelayExpressionPerDispatch", DEFAULT.timeDelayExpressionPerDispatch);
 		_timeDelayPerDispatchTimeUnit = fields->loadField("timeDelayPerDispatchTimeUnit", DEFAULT.timeDelayPerDispatchTimeUnit);
+		_networkName = fields->loadField("networkName", std::string(""));
+		_network = nullptr;
+		_resolveNetworkReference();
+		_syncBindingsToNetwork();
+		unsigned int inputBindings = fields->loadField("inputBindings", 0u);
+		for (unsigned int i = 0; i < inputBindings; i++) {
+			setInputBinding(i, fields->loadField("inputBinding" + Util::StrIndex(i), getInputBinding(i)));
+		}
+		unsigned int outputBindings = fields->loadField("outputBindings", 0u);
+		for (unsigned int i = 0; i < outputBindings; i++) {
+			setOutputBinding(i, fields->loadField("outputBinding" + Util::StrIndex(i), getOutputBinding(i)));
+		}
 
 		_nodes->clear();
 		_transitions->clear();
@@ -244,6 +304,18 @@ void ModalModelDefault::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 	                  DEFAULT.timeDelayExpressionPerDispatch, saveDefaultValues);
 	fields->saveField("timeDelayPerDispatchTimeUnit", _timeDelayPerDispatchTimeUnit,
 	                  DEFAULT.timeDelayPerDispatchTimeUnit, saveDefaultValues);
+	if (_network != nullptr) {
+		_networkName = _network->getName();
+	}
+	fields->saveField("networkName", _networkName, std::string(""), saveDefaultValues);
+	fields->saveField("inputBindings", static_cast<unsigned int>(_inputBindings.size()), 0u, saveDefaultValues);
+	for (unsigned int bindingIndex = 0; bindingIndex < _inputBindings.size(); bindingIndex++) {
+		fields->saveField("inputBinding" + Util::StrIndex(bindingIndex), _inputBindings[bindingIndex], std::string("1"), saveDefaultValues);
+	}
+	fields->saveField("outputBindings", static_cast<unsigned int>(_outputBindings.size()), 0u, saveDefaultValues);
+	for (unsigned int bindingIndex = 0; bindingIndex < _outputBindings.size(); bindingIndex++) {
+		fields->saveField("outputBinding" + Util::StrIndex(bindingIndex), _outputBindings[bindingIndex], std::string(""), saveDefaultValues);
+	}
 	if (_entryNode != nullptr) {
 		fields->saveField("entryNode", _entryNode->getName(), "", saveDefaultValues);
 	}
@@ -285,6 +357,37 @@ void ModalModelDefault::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 }
 
 bool ModalModelDefault::_check(std::string& errorMessage) {
+	if (_network != nullptr || _networkName != "") {
+		DefaultNetwork* network = _resolveNetworkReference();
+		if (network == nullptr) {
+			errorMessage += "ModalModelDefault \"" + getName() + "\" references unknown DefaultNetwork \"" + _networkName + "\". ";
+			return false;
+		}
+		_syncBindingsToNetwork();
+		bool resultAll = true;
+		resultAll &= ModelDataDefinition::Check(network, errorMessage);
+		for (unsigned int i = 0; i < network->getNumInputPorts(); i++) {
+			const std::string binding = getInputBinding(i);
+			if (binding == "") {
+				errorMessage += "ModalModelDefault \"" + getName() + "\" input binding " + Util::StrIndex(i) + " is empty. ";
+				resultAll = false;
+			} else {
+				resultAll &= _parentModel->checkExpression(binding, "modal input binding[" + Util::StrIndex(i) + "]", errorMessage);
+				_checkCreateAttachedReferencedDataDefinition(binding);
+			}
+		}
+		for (unsigned int i = 0; i < network->getNumOutputPorts(); i++) {
+			if (getOutputBinding(i) == "") {
+				errorMessage += "ModalModelDefault \"" + getName() + "\" output binding " + Util::StrIndex(i) + " is empty. ";
+				resultAll = false;
+			}
+			if (this->getConnectionManager()->getConnectionAtPort(i) == nullptr) {
+				errorMessage += "ModalModelDefault \"" + getName() + "\" output port " + Util::StrIndex(i) + " has no outgoing connection. ";
+				resultAll = false;
+			}
+		}
+		return resultAll;
+	}
 	bool resultAll = true;
 	for (auto transition : *_transitions->list()) {
 		std::string guard = transition->getGuardExpression();
@@ -305,6 +408,21 @@ void ModalModelDefault::_initBetweenReplications() {
 }
 
 void ModalModelDefault::_createAttachedAttributes() {
+	_mandatoryAttachedAttributesClear();
+	_syncBindingsToNetwork();
+	std::vector<std::string> outputAttributes;
+	for (const std::string& outputBinding : _outputBindings) {
+		if (outputBinding != "") {
+			outputAttributes.push_back(outputBinding);
+		}
+	}
+	if (!outputAttributes.empty()) {
+		_attachedAttributesInsert(outputAttributes);
+	}
+	if (_network != nullptr || _networkName != "") {
+		return;
+	}
+
 	std::string currentNodeAttribute = "Entity.ModalModel." + getName() + ".CurrentNode";
 	std::string lastNodeAttribute = "Entity.ModalModel." + getName() + ".LastNode";
 	_attachedAttributesInsert({currentNodeAttribute, lastNodeAttribute});
@@ -327,6 +445,129 @@ void ModalModelDefault::setTimeDelayPerDispatchTimeUnit(const Util::TimeUnit tim
 }
 
 void ModalModelDefault::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	if (_network != nullptr || _networkName != "") {
+		if (_dispatchNetworkActivation(entity, inputPortNumber)) {
+			return;
+		}
+	}
+	_dispatchLegacyNodeModel(entity, inputPortNumber);
+}
+
+DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
+	if (_network != nullptr || _networkName == "") {
+		return _network;
+	}
+	for (const std::string& className : _parentModel->getDataManager()->getDataDefinitionClassnames()) {
+		List<ModelDataDefinition*>* definitions = _parentModel->getDataManager()->getDataDefinitionList(className);
+		for (ModelDataDefinition* definition : *definitions->list()) {
+			DefaultNetwork* candidate = dynamic_cast<DefaultNetwork*>(definition);
+			if (candidate != nullptr && candidate->getName() == _networkName) {
+				_network = candidate;
+				return _network;
+			}
+		}
+	}
+	return nullptr;
+}
+
+void ModalModelDefault::_syncBindingsToNetwork() {
+	DefaultNetwork* network = _resolveNetworkReference();
+	if (network == nullptr) {
+		return;
+	}
+	_connections->setMinInputConnections(network->getNumInputPorts());
+	_connections->setMaxInputConnections(network->getNumInputPorts());
+	_connections->setMinOutputConnections(network->getNumOutputPorts());
+	_connections->setMaxOutputConnections(network->getNumOutputPorts());
+	if (_inputBindings.size() < network->getNumInputPorts()) {
+		_inputBindings.resize(network->getNumInputPorts(), "1");
+	}
+	if (_inputBindings.size() > network->getNumInputPorts()) {
+		_inputBindings.resize(network->getNumInputPorts());
+	}
+	if (_outputBindings.size() < network->getNumOutputPorts()) {
+		unsigned int oldSize = static_cast<unsigned int>(_outputBindings.size());
+		_outputBindings.resize(network->getNumOutputPorts(), "");
+		for (unsigned int i = oldSize; i < network->getNumOutputPorts(); i++) {
+			_outputBindings[i] = network->getOutputPortName(i);
+		}
+	}
+	if (_outputBindings.size() > network->getNumOutputPorts()) {
+		_outputBindings.resize(network->getNumOutputPorts());
+	}
+}
+
+bool ModalModelDefault::_dispatchNetworkActivation(Entity* entity, unsigned int inputPortNumber) {
+	DefaultNetwork* network = _resolveNetworkReference();
+	if (network == nullptr) {
+		traceError("ModalModelDefault \"" + getName() + "\" has no resolvable DefaultNetwork.");
+		return false;
+	}
+	_syncBindingsToNetwork();
+	if (inputPortNumber >= network->getNumInputPorts()) {
+		traceError("ModalModelDefault \"" + getName() + "\" received input port " + Util::StrIndex(inputPortNumber) +
+		           " but attached network \"" + network->getName() + "\" has only " + Util::StrIndex(network->getNumInputPorts()) + " inputs.");
+		_parentModel->removeEntity(entity);
+		return true;
+	}
+
+	NetworkActivationFrame frame(network->getNumInputPorts());
+	const std::string inputBinding = getInputBinding(inputPortNumber);
+	frame.setPresent(inputPortNumber, _parentModel->parseExpression(inputBinding));
+	NetworkActivationResult result = network->activate(frame);
+	_routeNetworkOutputs(entity, result);
+	return true;
+}
+
+Entity* ModalModelDefault::_cloneEntity(Entity* entity) {
+	if (entity == nullptr) {
+		return nullptr;
+	}
+	std::string cloneBaseName = entity->getEntityType() != nullptr ? entity->getEntityType()->getName() : entity->getName();
+	Entity* clone = _parentModel->createEntity(cloneBaseName + "_%", true);
+	clone->setEntityType(entity->getEntityType());
+	for (ModelDataDefinition* attributeDefinition : *_parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Attribute>())->list()) {
+		const std::string attributeName = attributeDefinition->getName();
+		clone->setAttributeValue(attributeName, entity->getAttributeValue(attributeName));
+	}
+	return clone;
+}
+
+void ModalModelDefault::_writeOutputBinding(Entity* entity, unsigned int outputPort, double value) {
+	const std::string attributeName = getOutputBinding(outputPort);
+	if (attributeName != "") {
+		entity->setAttributeValue(attributeName, value, "", true);
+	}
+}
+
+void ModalModelDefault::_routeNetworkOutputs(Entity* entity, const NetworkActivationResult& result) {
+	if (result.countPresent() == 0) {
+		_parentModel->removeEntity(entity);
+		return;
+	}
+
+	std::vector<unsigned int> presentOutputs;
+	for (unsigned int outputPort = 0; outputPort < result.size(); outputPort++) {
+		if (result.isPresent(outputPort)) {
+			presentOutputs.push_back(outputPort);
+		}
+	}
+
+	for (unsigned int i = 0; i < presentOutputs.size(); i++) {
+		const unsigned int outputPort = presentOutputs[i];
+		Entity* outgoing = i + 1 == presentOutputs.size() ? entity : _cloneEntity(entity);
+		_writeOutputBinding(outgoing, outputPort, result.getValue(outputPort));
+		Connection* connection = this->getConnectionManager()->getConnectionAtPort(outputPort);
+		if (connection == nullptr) {
+			traceError("ModalModelDefault \"" + getName() + "\" has no connection for present output port " + Util::StrIndex(outputPort) + ".");
+			_parentModel->removeEntity(outgoing);
+		} else {
+			_parentModel->sendEntityToComponent(outgoing, connection);
+		}
+	}
+}
+
+void ModalModelDefault::_dispatchLegacyNodeModel(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
 
 	std::string currentNodeAttribute = "Entity.ModalModel." + getName() + ".CurrentNode";

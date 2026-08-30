@@ -214,6 +214,45 @@ if(TARGET genesys_kernel_unit_tests_run)
     add_dependencies(genesys_kernel_unit_tests_run genesys_test_default_node_run)
 endif()
 
+# ModalModel/Network bridge: ModalModelDefault adapts process entities to an
+# attached DefaultNetwork through input/output bindings.
+add_executable(genesys_test_modal_model_default_network
+    unit/test_modal_model_default_network.cpp
+)
+
+target_include_directories(genesys_test_modal_model_default_network
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+)
+
+target_link_libraries(genesys_test_modal_model_default_network
+    PRIVATE
+        GTest::gtest_main
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+)
+
+target_compile_features(genesys_test_modal_model_default_network PRIVATE cxx_std_23)
+
+set_property(TARGET genesys_test_modal_model_default_network PROPERTY FOLDER tests/unit)
+
+gtest_discover_tests(genesys_test_modal_model_default_network
+    PROPERTIES
+        LABELS "unit;modalmodel;network;bridge"
+)
+
+if(TARGET genesys_kernel_unit_tests)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_modal_model_default_network)
+endif()
+
+if(TARGET genesys_kernel_unit_tests_run)
+    add_custom_target(genesys_test_modal_model_default_network_run
+        COMMAND $<TARGET_FILE:genesys_test_modal_model_default_network>
+        DEPENDS genesys_test_modal_model_default_network
+        USES_TERMINAL
+    )
+    add_dependencies(genesys_kernel_unit_tests_run genesys_test_modal_model_default_network_run)
+endif()
+
 # Station enter/leave operations are public and may occur before the model-wide
 # related-data lifecycle. Characterize statistics-enabled and disabled behavior.
 add_executable(genesys_test_station_statistics_lifecycle
