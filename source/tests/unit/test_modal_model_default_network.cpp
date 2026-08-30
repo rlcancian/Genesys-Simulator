@@ -231,3 +231,54 @@ TEST(ModalModelDefaultNetworkTest, PersistenceRoundTripPreservesNetworkReference
 	EXPECT_EQ(loaded.getInputBinding(0), "3");
 	EXPECT_EQ(loaded.getOutputBinding(0), "PersistedResult");
 }
+
+TEST(ModalModelDefaultNetworkTest, TwoModalModelsCanShareOneNetworkInstance) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	TestNetwork network(model, "SharedNetwork");
+	network.addInputPort("Trigger");
+	network.addOutputPort("Result");
+	network.setOutput(0, true, 5.0);
+	Attribute resultAttribute(model, "SharedResult");
+
+	ModalModelDefaultProbe modalA(model, "ModalA");
+	ModalModelDefaultProbe modalB(model, "ModalB");
+	CollectorSinkComponentProbe sinkA(model, "SinkA");
+	CollectorSinkComponentProbe sinkB(model, "SinkB");
+	modalA.getConnectionManager()->insert(&sinkA);
+	modalB.getConnectionManager()->insert(&sinkB);
+	modalA.setNetwork(&network);
+	modalB.setNetworkName("SharedNetwork");
+	modalA.setOutputBinding(0, "SharedResult");
+	modalB.setOutputBinding(0, "SharedResult");
+
+	Entity* entityA = model->createEntity("EntityA", true);
+	Entity* entityB = model->createEntity("EntityB", true);
+	modalA.dispatch(entityA, 0);
+	modalB.dispatch(entityB, 0);
+	drainFutureEvents(model);
+
+	EXPECT_EQ(modalB.getNetwork(), &network);
+	EXPECT_DOUBLE_EQ(network.getActivationCount(), 2.0);
+	ASSERT_EQ(sinkA.receivedEntities().size(), 1u);
+	ASSERT_EQ(sinkB.receivedEntities().size(), 1u);
+	EXPECT_EQ(sinkA.receivedEntities().front(), entityA);
+	EXPECT_EQ(sinkB.receivedEntities().front(), entityB);
+	EXPECT_DOUBLE_EQ(entityA->getAttributeValue("SharedResult"), 5.0);
+	EXPECT_DOUBLE_EQ(entityB->getAttributeValue("SharedResult"), 5.0);
+}
+
+TEST(ModalModelDefaultNetworkTest, CheckRejectsUnknownNetworkReference) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	ModalModelDefaultProbe modal(model, "BrokenModal");
+	modal.setNetworkName("MissingNetwork");
+
+	std::string errorMessage;
+	EXPECT_FALSE(modal.checkProbe(errorMessage));
+	EXPECT_NE(errorMessage.find("MissingNetwork"), std::string::npos);
+}
