@@ -19,21 +19,20 @@
 #include "kernel/simulator/Plugin.h"
 
 /*!
-Dispose module
-DESCRIPTION
-This module is intended as the ending point for entities in a simulation model. Entity
-statistics may be recorded before the entity is disposed of.
-TYPICAL USES
-* Parts leaving the modeled facility
-* The termination of a business process
-* Customers departing from the store
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Record Entity Statistics Determines whether or not the incoming entity’s statistics will be
-recorded. Statistics include value-added time, non-value-added
-time, wait time, transfer time, other time, total time, value-added
-cost, non-value-added cost, wait cost, transfer cost, other cost,
-and total cost. 
+ * \brief Sink component that ends an entity's life in the model, optionally
+ * recording its total time in system before removing it.
+ *
+ * Arena correspondence: the "Dispose module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", p. 32). \c
+ * isReportStatistics() (inherited) is the closest correspondence to Arena's
+ * "Record Entity Statistics" checkbox.
+ *
+ * Known difference from Arena: only a single collapsed
+ * \c TotalTimeInSystem statistic is produced per EntityType (gated by that
+ * EntityType's own \c isReportStatistics()); Arena's separate
+ * value-added/non-value-added/wait/transfer/other time-and-cost breakdown
+ * has no confirmed GenESyS runtime equivalent — see
+ * `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.2-§6.3.
  */
 class Dispose : public SinkModelComponent {
 public:

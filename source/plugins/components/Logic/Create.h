@@ -25,47 +25,27 @@
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 
 /*!
- * Create is the most basic component to include the first entities into the model, and therefore is a source component (derived from SourceModelComponent)
-Create module
-DESCRIPTION
-This module is intended as the starting point for entities in a simulation model.
-Entities are created using a schedule or based on a time between arrivals. Entities
-then leave the module to begin processing through the system. The entity type is
-specified in this module.
-TYPICAL USES
- * The start of a part’s production in a manufacturing line
- * A document’s arrival (for example, order, check, application) into a business
-process
- * A customer’s arrival at a service process (for example, retail store, restaurant,
-information desk)
-PROMPTS
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Entity Type Name of the entity type to be generated.
-Type Type of arrival stream to be generated. Types include Random
-(uses an exponential distribution, user specifies mean), Schedule
-(uses an exponential distribution, mean determined from the
-specified Schedule module), Constant (user specifies constant
-value; for example, 100), or Expression (drop-down list of
-various distributions).
- Value Determines the mean of the exponential distribution (if Random
-is used) or the constant value (if Constant is used) for the time
-between arrivals. Applies only when Type is Random or
-Constant.
-Schedule Name Identifies the name of the schedule to be used. The schedule
-defines the arrival pattern for entities arriving to the system.
-Applies only when Type is Schedule.
-Expression Any distribution or value specifying the time between arrivals.
-Applies only when Type is Expression.
-Units Time units used for interarrival and first creation times. Does not
-apply when Type is Schedule.
-Entities per Arrival Number of entities that will enter the system at a given time with
-each arrival.
-Max Arrivals Maximum number of entities that this module will generate.
-When this value is reached, the creation of new entities by this
-module ceases.
-First Creation Starting time for the first entity to arrive into the system. Does
-not apply when Type is Schedule.
+ * \brief Source component that generates entities and starts them into the
+ * model, driven by a parsed inter-arrival expression, a Schedule, or a
+ * Formula.
+ *
+ * Arena correspondence: the "Create module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", pp. 31-32). Entity Type,
+ * First Creation, Entities per Arrival and Max Arrivals are generalized on
+ * the base class SourceModelComponent; see that header for their accessors.
+ * Arena's Type field (Random/Schedule/Constant/Expression) is not a stored
+ * enum here — Random/Constant/Expression collapse into one parsed
+ * time-between-creations expression (SourceModelComponent's default
+ * `"EXPO(1.0)"` already matches Arena's default Random behavior), while
+ * `_timeBetweenCreationsSchedule` keeps Schedule as a separate, mutually
+ * exclusive alternative (\c _check() enforces exactly one active source).
+ * `_timeBetweenCreationsFormula` adds a Formula-backed alternative beyond
+ * what Arena exposes.
+ *
+ * See `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.1 for
+ * the full audited comparison, including an open question about whether
+ * Arena's VA/NVA/Wait/Transfer/Other per-entity cost/time accounting has any
+ * GenESyS runtime equivalent.
  */
 class Create : public SourceModelComponent {
 public:

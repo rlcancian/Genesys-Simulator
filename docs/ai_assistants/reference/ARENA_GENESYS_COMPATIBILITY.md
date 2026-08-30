@@ -56,7 +56,7 @@ printed p. 1).
   for Attribute/EntityType/Entity, which are kernel-level rather than
   plugin-level data definitions).
 - Arena **Flowchart Module** ≈ candidate GenESyS `ModelComponent`
-  (`source/plugins/components/**`). Not audited yet (Phase B).
+  (`source/plugins/components/**`). Audit started under Phase B, §6.
 - Equivalence is never assumed from name similarity alone; every entry below
   states what was actually inspected.
 
@@ -100,27 +100,28 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
 | Failure | Advanced Process | ✅ [§5.9](#59-failure) |
 | File | Advanced Process | ✅ [§5.10](#510-file) |
 | StateSet | Advanced Process | ✅ [§5.4](#54-resource) (recorded as missing) |
-| Statistic | Advanced Process | ⬜ |
+| Statistic | Advanced Process | ✅ covered by kernel `Statistics`/`Collector`/`StatisticsCollector`/`Counter`, attached to Record and to many components/data definitions — per maintainer clarification (2026-08-29); full class-by-class detail deferred, see §9 |
 | Storage | Advanced Process | ✅ [§5.11](#511-storage) |
 | Sequence | Advanced Transfer | ✅ [§5.12](#512-sequence) |
-| Conveyor | Advanced Transfer | ⬜ (strong indication of `missing`, §6) |
-| Segment | Advanced Transfer | ⬜ (strong indication of `missing`, §6) |
-| Transporter | Advanced Transfer | ⬜ (strong indication of `missing`, §6) |
-| Distance | Advanced Transfer | ⬜ (strong indication of `missing`, §6) |
-| Network | Advanced Transfer | ⬜ (strong indication of `missing`, §6) |
-| Network Link | Advanced Transfer | ⬜ (strong indication of `missing`, §6) |
-| Activity Area | Advanced Transfer | ⬜ (strong indication of `missing`, §6) |
+| Conveyor | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Segment | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Transporter | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Distance | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Network | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Network Link | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Activity Area | Advanced Transfer | ✅ `missing`, approved future work (§7) |
 | Regulator Set | Flow Process | ⬜ (Flow Process panel likely `not-applicable`; not confirmed) |
 
-### 4.2 Flowchart modules (components) — Phase B, not yet started
+### 4.2 Flowchart modules (components) — Phase B
 
 | Arena module | Panel | Status |
 |---|---|---|
-| Create, Dispose, Process, Decide, Batch, Separate, Assign, Record | Basic Process | ⬜ |
+| Create, Dispose, Assign | Basic Process | ✅ [§6](#6-phase-b--components-analyzed-entries) (batch 1) |
+| Process, Decide, Batch, Separate, Record | Basic Process | ⬜ (batch 2) |
 | Delay, Dropoff, Hold, Match, Pickup, ReadWrite, Release, Remove, Seize, Search, Signal, Store, Unstore, Adjust Variable | Advanced Process | ⬜ |
 | Enter, Leave, PickStation, Route, Station (as flowchart module) | Advanced Transfer (general) | ⬜ |
-| Access, Convey, Exit, Start, Stop | Advanced Transfer (conveyor) | ⬜ |
-| Activate, Allocate, Free, Halt, Move, Request, Transport | Advanced Transfer (transporter) | ⬜ |
+| Access, Convey, Exit, Start, Stop | Advanced Transfer (conveyor) | ✅ `Access`/`Exit`/`Start`/`Stop` confirmed as incomplete stub templates (§7); `Convey` has no GenESyS equivalent at all |
+| Activate, Allocate, Free, Halt, Move, Request, Transport | Advanced Transfer (transporter) | ⬜ (no GenESyS component found under these names; strong indication of `missing`, to confirm) |
 | Tank, Sensor, Flow, Regulate, Seize Regulator, Release Regulator | Flow Process | ⬜ (likely `not-applicable`) |
 
 ## 5. Phase A — Data definitions: analyzed entries
@@ -381,33 +382,181 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
   components; deferred to Phase B]**.
 - **Needs human decision**: no (pending Phase B confirmation first).
 
-## 6. Confirmed-missing subsystem: Advanced Transfer conveyor/transporter data
+## 6. Phase B — Components: analyzed entries
 
-**[strong indication, not yet exhaustively confirmed]**: `source/plugins/data/`
-and `source/plugins/components/` contain no `Conveyor`, `Segment`,
-`Transporter`, `Distance`, `Network`, `NetworkLink`, or `ActivityArea` classes
-under any domain directory (cross-checked against the full plugin listing taken
-at the start of this audit). Arena's Advanced Transfer Panel devotes an entire
-subsystem to these (*Getting Started with Arena*, "The Advanced Transfer
-Panel", pp. 79-108: Conveyor flowchart modules Access/Convey/Exit/Start/Stop;
-Transporter flowchart modules Activate/Allocate/Free/Halt/Move/Request/
-Transport; data modules Sequence/Conveyor/Segment/Transporter/Distance/
-Network/Network Link/Activity Area).
+### 6.1 Create
 
-GenESyS's `MaterialHandling` components include names that overlap with
-Arena's *Conveyor* panel (`Access`, `Exit`, `Start`, `Stop` — but not `Convey`),
-which raises an open question for Phase B: do these GenESyS components
-implement conveyor-like cell/segment semantics under a different name, or do
-they serve an unrelated purpose that happens to share Arena's vocabulary? This
-must not be assumed either way before reading
-`source/plugins/components/MaterialHandling/{Access,Exit,Start,Stop}.cpp`.
+- **Arena**: "Create module", *Getting Started with Arena*, "The Basic Process
+  Panel", pp. 31-32. Starting point for entities: Entity Type, Type
+  (Random/Schedule/Constant/Expression), Value, Schedule Name, Expression,
+  Units, Entities per Arrival, Max Arrivals, First Creation.
+- **GenESyS**: `Create` — `source/plugins/components/Logic/Create.{h,cpp}`,
+  built on the kernel base class `SourceModelComponent` —
+  `source/kernel/simulator/SourceModelComponent.{h,cpp}`.
+- **Level**: `partial` (an architectural generalization, not a narrow gap).
+- **Parameters**: `SourceModelComponent` generalizes Entity Type
+  (`_entityType`), First Creation (`_firstCreation`), Entities per Arrival
+  (`_entitiesPerCreation`), Max Arrivals (`_maxCreationsExpression`, a parsed
+  expression rather than a static integer) and Time Between Creations
+  (`_timeBetweenCreationsExpression` + `_timeBetweenCreationsTimeUnit`)
+  **[confirmed]**. `Create` adds two additional, mutually exclusive
+  time-between-creations sources on top of the base expression: a `Schedule*`
+  and a `Formula*` **[confirmed]**; `Create::_check()` enforces that exactly
+  one of {expression, schedule, formula} is active (`Create.cpp:157-165`)
+  **[confirmed]**.
+- **Divergence**: Arena's explicit `Type` enum (Random/Schedule/Constant/
+  Expression) does not exist as a stored field. GenESyS collapses
+  Random/Constant/Expression into one parsed expression string (default
+  `"EXPO(1.0)"`, itself equivalent to Arena's default Random behavior) and
+  keeps Schedule as a separate, mutually exclusive alternative — a
+  deliberate, behavior-preserving generalization, not a gap. GenESyS adds a
+  `Formula*` alternative with no direct Arena counterpart.
+- **Behavior** `_onDispatchEvent()` **[confirmed]**: sets
+  `Entity.ArrivalTime`/`Entity.Type` on the dispatched entity, schedules the
+  next arrival(s) via the active time source, respects
+  `_entitiesPerCreation` and the max-creations expression, and forwards the
+  entity to the front connection. Statistics: `_numberOut` (`Counter`) counts
+  entities created, gated by `isReportStatistics()`.
+- **Code hygiene note (not a behavior bug)**: `Create.h` declares
+  `testePropertyCreateDouble()`/`setTestePropertyCreateDouble()`, an
+  apparently leftover debug/test property with no Arena correspondence and no
+  use found in `Create.cpp`'s reviewed logic. Left untouched — removing
+  unrelated code is out of scope for this audit; flagged here for a future
+  cleanup pass.
+- **Needs human decision**: no.
+
+### 6.2 Dispose
+
+- **Arena**: "Dispose module", *Getting Started with Arena*, "The Basic
+  Process Panel", p. 32. Ending point for entities; optional "Record Entity
+  Statistics" covering value-added/non-value-added/wait/transfer/other time
+  and cost, plus total time and total cost.
+- **GenESyS**: `Dispose` — `source/plugins/components/Logic/Dispose.{h,cpp}`,
+  built on `SinkModelComponent`.
+- **Level**: `partial`.
+- **Parameters**: `isReportStatistics()` (inherited) is the closest
+  correspondence to "Record Entity Statistics" **[confirmed]**.
+- **Behavior** `_onDispatchEvent()` **[confirmed, `Dispose.cpp:38-51`]**: when
+  reporting is enabled, increments a `Counter` (`_numberOut`) and, only if the
+  entity's `EntityType` itself has `isReportStatistics()` enabled, records one
+  observation into a `TotalTimeInSystem` `StatisticsCollector` attached to
+  that `EntityType` (computed as current simulated time minus
+  `Entity.ArrivalTime`). The entity is then removed from the model.
+- **Divergence (cross-cutting, see also §6.3)**: only a single collapsed
+  `TotalTimeInSystem` statistic is produced. Arena's full breakdown
+  (value-added/non-value-added/wait/transfer/other **time and cost**,
+  separately) has no runtime equivalent here — consistent with §5.2's finding
+  that `EntityType`'s VA/NVA/Waiting/Other cost fields are only initial
+  values with no accumulation logic found so far.
+- **Needs human decision**: whether/when the full Arena-style cost/time
+  category breakdown should be implemented — `needs-human-decision` (see
+  §6.3 for the consolidated cross-cutting note).
+
+### 6.3 Cross-cutting finding: Arena's VA/NVA/Wait/Transfer/Other cost-and-time accounting has no confirmed runtime implementation
+
+**[strong indication, spans §5.2 and §6.2]**: Arena tracks five cost/time
+categories per entity throughout its life (value-added, non-value-added,
+wait, transfer, other) and reports both per-category totals and a grand
+total, fed by every module an entity passes through (Process, Delay, Seize/
+Release wait time, Route/transfer time, etc.). In GenESyS:
+
+- `EntityType` only exposes *initial* values for four of the five categories
+  (VA/NVA/Waiting/Other — see §5.2), with no dedicated Transfer Cost field;
+- `Dispose` only accumulates a single collapsed `TotalTimeInSystem` value,
+  not per-category totals;
+- no accumulation logic crediting time/cost to a specific category was found
+  in `Create`, `Dispose`, or `Assign` (the three components read so far in
+  Phase B).
+
+This does not yet prove the category breakdown is entirely absent — `Process`,
+`Delay`, `Seize`/`Release` (Phase B batch 2) are the components that would be
+expected to perform such accumulation in Arena and have not been read yet.
+Recorded now as a `strong indication` to avoid re-deriving it component by
+component, and to flag it explicitly for a `needs-human-decision` once batch
+2 confirms or refutes it: is a full VA/NVA/Wait/Transfer/Other cost-accounting
+subsystem an intended GenESyS feature, or is total-time/total-cost tracking
+(as currently implemented) the deliberate scope?
+
+### 6.4 Assign
+
+- **Arena**: "Assign module", *Getting Started with Arena*, "The Basic
+  Process Panel", pp. 40-41. One or more assignments per module; Type:
+  Attribute, Variable (+ Variable Array 1D/2D with Row/Column), Entity Type,
+  Entity Picture, or Other (system variables such as resource capacity or
+  simulation end time); New Value expression (not applicable for Entity
+  Type/Entity Picture).
+- **GenESyS**: `Assign` — `source/plugins/components/Logic/Assign.{h,cpp}`,
+  holding a `List<Assignment*>`; each `Assignment` is defined in
+  `source/plugins/data/Logic/AssignmentItem.{h,cpp}`.
+- **Level**: `partial`.
+- **Parameters**: `Assignment` stores a free-form `destination` string, an
+  `expression` string, and a single boolean `_isAttributeNotVariable`
+  **[confirmed]**. `Assign::_destinationBaseName()`/`_destinationIndex()`
+  parse an optional `name[index]` syntax out of `destination`, which is the
+  closest correspondence to Arena's separate Row/Column fields for Variable
+  Array assignments **[confirmed]**.
+- **Behavor** `_onDispatchEvent()` **[confirmed, `Assign.cpp:125-159`]**:
+  for each `Assignment`, evaluates `expression` through the parser and writes
+  it either to an `Attribute` (creating one on the model if it does not exist
+  yet) or to a `Variable` (same auto-creation behavior), depending on
+  `isAttributeNotVariable()`.
+- **Divergence**: Arena's Entity Type, Entity Picture and Other
+  (system-variable) assignment kinds have no dedicated `Assignment` field or
+  branch in `Assign::_onDispatchEvent()` — only Attribute and Variable
+  destinations (optionally indexed) are supported **[confirmed: only two
+  branches exist in `_onDispatchEvent()`]**. Reassigning an entity's
+  `EntityType` at runtime, or assigning a "system variable" such as a
+  Resource's capacity, is not reachable through this component as currently
+  implemented.
+- **Needs human decision**: whether Entity Type reassignment and Other
+  (system-variable) assignment targets are in scope for `Assign`, or whether
+  they are deliberately out of scope (e.g. left to dedicated components) —
+  `needs-human-decision`.
+
+## 7. Confirmed-missing subsystem: Advanced Transfer conveyor/transporter data
+
+**[confirmed]**: `source/plugins/data/` and `source/plugins/components/`
+contain no `Conveyor`, `Segment`, `Transporter`, `Distance`, `Network`,
+`NetworkLink`, or `ActivityArea` classes under any domain directory
+(cross-checked against the full plugin listing taken at the start of this
+audit). Arena's Advanced Transfer Panel devotes an entire subsystem to these
+(*Getting Started with Arena*, "The Advanced Transfer Panel", pp. 79-108:
+Conveyor flowchart modules Access/Convey/Exit/Start/Stop; Transporter
+flowchart modules Activate/Allocate/Free/Halt/Move/Request/Transport; data
+modules Sequence/Conveyor/Segment/Transporter/Distance/Network/Network
+Link/Activity Area).
+
+`source/plugins/components/MaterialHandling/{Access,Exit,Start,Stop}.cpp`
+were read in full and are confirmed **incomplete stub templates**, not
+finished components under any name: each is ~85 lines, its
+`_onDispatchEvent()` body literally traces `"I'm just a dummy model and I'll
+just send the entity forward"` and unconditionally passes the entity to the
+front connection, and `_check()`/`_loadInstance()`/`_saveInstance()` are all
+`// @TODO: not implemented yet` **[confirmed, all four files]**. Per
+maintainer clarification (2026-08-29): these four names are intended as the
+*action* components applied to a Conveyor or a Transporter unit (access/
+release a conveyor segment or transporter unit, start/stop it), sharing
+Arena's Conveyor-panel vocabulary because they play the same conceptual role
+Arena's Access/Exit/Start/Stop play for a conveyor — not an unrelated reuse of
+the names. They cannot be completed until the underlying Conveyor/Transporter
+data definitions exist.
 
 - **Level (data side)**: `missing`.
-- **Needs human decision**: whether conveyor/transporter/guided-network support
-  is a planned GenESyS feature area at all — `needs-human-decision` (this is a
-  scope question, not a bug).
+- **Level (Access/Exit/Start/Stop components)**: `partial` — present as
+  named stubs only, `needs-human-decision` resolved (see below), implementation
+  pending on the data-side subsystem.
+- **Decision (maintainer, 2026-08-29)**: `decision-recorded` — implementing
+  Conveyor, Segment, Transporter, Distance, Network, NetworkLink and
+  ActivityArea (and completing Access/Exit/Start/Stop, and the
+  Activate/Allocate/Free/Halt/Move/Request/Transport transporter components)
+  is an approved future direction for GenESyS. This is a substantial new
+  feature area, not a bug fix; before autonomous implementation work starts it
+  needs its own scoped plan and, per `GOVERNANCE.md`/`BACKLOG_AUTONOMOUS.md`
+  process, a tracked backlog entry/issue — not yet created as of this
+  revision. Recorded here so Phase B does not need to re-derive this
+  decision.
 
-## 7. Parser / `ParserChangesInformation` mechanism — preliminary note
+## 8. Parser / `ParserChangesInformation` mechanism — preliminary note
 
 Several audited classes override `_getParserChangesInformation()`
 (`ModelDataDefinition.h:264`) — confirmed on `Queue`, `Schedule`, `Set`, `File`,
@@ -417,22 +566,43 @@ currently returns an empty `ParserChangesInformation` object with commented-out
 **[confirmed]** — the mechanism exists structurally but is not populated for
 `Queue`. Whether other audited classes populate it, and the full
 registration/resolution pipeline, is deferred to a transversal parser-focused
-pass (task instructions §7) and is **not yet analyzed** in this document.
+pass (task instructions §8) and is **not yet analyzed** in this document.
 
-## 8. Phase status
+## 9. Phase status
 
-- **Phase A (data definitions)**: batch 1 of N complete — 14 classes analyzed
-  (§5.1–§5.12, counting `Entity`/`EntityType` together and `Set`/`Advanced Set`
-  together). Remaining Phase A scope: Statistic, and the Advanced Transfer
-  conveyor/transporter/network data classes (confirmed absent, §6, but not yet
-  exhaustively re-verified with a fresh repository-wide search at closure time).
-- **Phase B (components)**: not started. First candidates once Phase A closes:
-  `Create`, `Dispose`, `Assign`, `Process`, `Delay`, `Seize`, `Release`,
-  `Decide` (Basic Process — highest confidence 1:1 candidates per the task's
-  initial map).
+- **Phase A (data definitions)**: closed for this audit's purposes. 14 classes
+  analyzed in detail (§5.1–§5.12); Statistic resolved by maintainer
+  clarification (2026-08-29) as already covered by the kernel-level
+  `Statistics`/`Collector`/`StatisticsCollector`/`Counter` classes, attached to
+  the Record component and to many other components/data definitions —
+  a full class-by-class detail pass on that group is deferred (reminder
+  requested by the maintainer for a later session; do not forget). The
+  Advanced Transfer conveyor/transporter/network data classes are confirmed
+  `missing` (§7) with an approved future-implementation direction recorded,
+  not yet scheduled.
+- **Phase B (components)**: batch 1 of N complete (2026-08-29) — `Create`,
+  `Dispose`, `Assign` (Basic Process, Logic domain), §6. Raised a cross-cutting
+  `strong indication`/`needs-human-decision` (§6.3) about Arena's
+  VA/NVA/Wait/Transfer/Other cost-and-time accounting having no confirmed
+  runtime implementation, to be confirmed or refuted by batch 2. Also
+  confirmed `Access`/`Exit`/`Start`/`Stop` (Advanced Transfer conveyor
+  actions) as incomplete stub templates, and recorded the maintainer's
+  approval (2026-08-29) to eventually implement the missing
+  Conveyor/Transporter/Network subsystem (§7) as future work, not yet
+  scheduled or issue-tracked.
+  Batch 2 candidates: `Process`, `Decide`, `Batch`, `Separate`, `Record`
+  (remaining Basic Process flowchart modules), then `Delay`, `Seize`,
+  `Release` (Advanced Process — highest-confidence 1:1 candidates for the
+  DiscreteProcessing domain).
 - **Phase C (parser/Arena Variables Guide cross-reference)**: not started;
-  §7 above is a preliminary observation only, not a completed pass.
+  §8 above is a preliminary observation only, not a completed pass. Deferred
+  by maintainer request (2026-08-29) — reminder needed in a later session.
+- **Reminders for a later session (explicit maintainer request,
+  2026-08-29)**: (a) revisit Statistic/Collector/Counter class-by-class detail
+  once the maintainer explains the design further; (b) revisit Phase C
+  (parser + Arena Variables Guide cross-reference).
 
-No code behavior was changed in this batch — only documentation (this file and
-the corresponding class headers). No bug was demonstrated that would justify a
-source change under `GOVERNANCE.md` §5 change-policy.
+No code behavior was changed in Phase A or Phase B batch 1 — only
+documentation (this file and the corresponding class headers). No bug was
+demonstrated that would justify a source change under `GOVERNANCE.md` §5
+change-policy.

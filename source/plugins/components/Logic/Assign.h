@@ -22,41 +22,26 @@
 #include "../../data/Logic/Variable.h"
 
 /*!
- Assign module
-DESCRIPTION
-This module is used for assigning new values to variables, entity attributes, entity
-types, entity pictures, or other system variables. Multiple assignments can be made
-with a single Assign module.
-TYPICAL USES
-* Accumulate the number of subassemblies added to a part
-* Change an entity’s type to represent the customer copy of a multi-page form
-* Establish a customer’s priority
-PROMPTS
- Prompt Description
-Name Unique module identifier displayed on the module shape.
-Assignments Specifies the one or more assignments that will be made when an
-entity executes the module.
-Type Type of assignment to be made. Other can include system
-variables, such as resource capacity or simulation end time.
-Variable Name Name of the variable that will be assigned a new value when an
-entity enters the module. Applies only when Type is Variable,
-Variable Array (1D), or Variable Array (2D).
-Row Specifies the row index for a variable array.
-Column Specifies the column index for a variable array.
-Attribute Name Name of the entity attribute that will be assigned a new value
-when the entity enters the module. Applies only when Type is
-Attribute.
-Entity Type New entity type that will be assigned to the entity when the
-entity enters the module. Applies only when Type is Entity Type.
-Entity Picture New entity picture that will be assigned to the entity when the
-entity enters the module. Applies only when Type is Entity
-Picture.
-Other Identifies the special system variable that will be assigned a new
-value when an entity enters the module. Applies only when Type
-is Other.
-New Value Assignment value of the attribute, variable, or other system
-variable. Does not apply when Type is Entity Type or Entity
-Picture.
+ * \brief Component that evaluates one or more (destination, expression)
+ * pairs and writes each result into an Attribute or a Variable on the
+ * entity/model.
+ *
+ * Arena correspondence: the "Assign module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", pp. 40-41), which supports
+ * five assignment kinds: Attribute, Variable (optionally a 1D/2D array via
+ * Row/Column), Entity Type, Entity Picture, and Other (system variables such
+ * as resource capacity or simulation end time).
+ *
+ * Each entry in \c _assignments (see Assignment, in
+ * `plugins/data/Logic/AssignmentItem.h`) only distinguishes Attribute vs.
+ * Variable destinations; an optional `name[index]` syntax on the
+ * destination string is the closest correspondence to Arena's separate
+ * Row/Column fields.
+ *
+ * Known difference from Arena: there is no Entity Type, Entity Picture, or
+ * Other (system-variable) assignment kind — `_onDispatchEvent()` only has
+ * Attribute and Variable branches. See
+ * `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.4.
  */
 class Assign : public ModelComponent {
 public:
