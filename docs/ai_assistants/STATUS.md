@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-08-20
+last_updated: 2026-08-30
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -34,6 +34,26 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   and its integration into the Debian package (PR #522, merge
   `d8fce9562617525657e8cbf9870b32323364773f`) are integrated. Section 14
   records the current package/lifecycle validation scope.
+- Governance reconciliation after the Launcher/Debian merges (PR #523,
+  merge `7855af78c06583eaf4732a62aaa7ea085160da7d`) is integrated.
+- Arena ↔ GenESyS compatibility audit and Advanced Transfer/parser
+  closeout (PR #527, merged 2026-08-30) is integrated: `Distance`,
+  `Segment`, `Conveyor`, `Transporter` data definitions; completed
+  `Storage`/`Store`/`Unstore`/`DropOff` and `Access`/`Exit`/`Start`/`Stop`/`Move`
+  components; the compatibility matrix closed through Advanced Transfer,
+  with Flow Process classified and the parser/Arena Variables Guide overlap
+  documented. `Network`, `NetworkLink`, `ActivityArea` and CTMC-class
+  features remain intentionally out of this scope — see
+  [`reference/ARENA_GENESYS_COMPATIBILITY.md`](reference/ARENA_GENESYS_COMPATIBILITY.md).
+  A dedicated maintainer-decision note for `Process::AllocationType` versus
+  the internal `Delay` allocation category was also added:
+  [`reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md`](reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md).
+  Validation snapshot at merge time: focused Arena/MaterialHandling tests
+  green (28/28), `tests-smoke` green (3/3), `tests-kernel-unit` green except
+  the preexisting `genesys_test_optimizer_ownership_contract_NOT_BUILT`
+  failure (Section 4); `tests-unit` still shows 13 unrelated WholeCell/Bio
+  failures tied to a plugin-loading path involving `attribute.so`, outside
+  this scope and not yet triaged into a backlog entry.
 
 ## 3. Technical baseline
 

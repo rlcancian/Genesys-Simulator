@@ -98,7 +98,7 @@ This is the only approved source for work an AI agent may execute without a new 
   - exact root allowlist, links, front matter, backlog IDs, evidence placement and oldies retention are checked;
   - source branch removed automatically.
 
-## 4. Completed application and packaging work
+## 4. Completed application, packaging and Arena-compatibility work
 
 ### AUTO-APP-003 — Implement per-user runtime launcher and dispatcher
 
@@ -131,16 +131,17 @@ This is the only approved source for work an AI agent may execute without a new 
   - updated `packaging/linux/README.md` and the Developer/User manual chapters (`chapter_packaging_and_ci.tex`, `chapter_user_installation.tex`) to document the current five-package split and the Launcher/system-fallback/per-user-runtime contract; regenerated `docs/ManualGenESyS.pdf`.
 - Non-goals honored: no GitHub Release, PPA/APT repository, package signing, runtime signing key, or promotion beyond `WorkInProgress`.
 
-## 5. Active bounded work
-
 ### AUTO-ARENA-001 — Close Arena compatibility audit for Advanced Transfer and parser-variable scope
 
 - Priority: `P1`
-- Status: `running`
+- Status: `done`
 - Environment: `local`
-- Branch: `WiP202608/arena-advanced-transfer-closeout`
+- Branch: `WiP202608/arena-advanced-transfer-closeout` (merged, deleted)
 - Base: `origin/WorkInProgress` at `b4fe16289b1aa4d0924e979cf795c8cc4d562e88`
-- Current branch head: `4b76a7390e5ed02075a8a21700ff0764436ae152`
+- Merge: PR #527, merged 2026-08-30 into `WorkInProgress` at
+  `ebd6f30e8c662ae74da6f5745472235090a830ca` (merge commit), current
+  `WorkInProgress` head after this and one follow-up documentation commit:
+  `883046e22`.
 - Authorization: explicit maintainer continuation instruction dated 2026-08-30 authorized resuming the advanced Arena ↔ GenESyS front from the existing checkpoint without restarting Phase A or the already-closed Basic/Advanced Process audit.
 - Scope:
   - reconcile `Distance` and `Segment` with the current code, registration, tests and the compatibility matrix;
@@ -157,11 +158,19 @@ This is the only approved source for work an AI agent may execute without a new 
   - parser/Arena variables mapping documented from the real current pipeline;
   - focused validation green, plus required aggregate regression levels for any code changes performed;
   - remaining human decisions and future features isolated explicitly.
-- Progress snapshot:
-  - completed on the branch: `Distance`/`Segment` reconciliation, `Route` persistence/check fixes, minimum executable `Storage`/`Store`/`Unstore`/`DropOff`, minimum executable `Conveyor`/`Transporter` plus `Access`/`Exit`/`Start`/`Stop`/`Move`, and Phase C parser/Arena variables mapping;
-  - documentation updated: compatibility matrix closed through Advanced Transfer, Flow Process classification and parser-variable scope, plus dedicated maintainer decision note for `Process::AllocationType` versus internal `Delay`;
-  - validation snapshot on 2026-08-30: focused Arena/MaterialHandling tests green (`28/28`), `tests-smoke` green (`3/3`), `tests-kernel-unit` green except the preexisting `genesys_test_optimizer_ownership_contract_NOT_BUILT`, and `tests-unit` still shows unrelated WholeCell/Bio failures tied to plugin-loading paths outside the Arena scope;
-  - remains `running` because the branch has been pushed but not yet merged into `WorkInProgress`.
+- Delivered:
+  - `Distance`/`Segment` reconciliation, `Route` persistence/check fixes, minimum executable `Storage`/`Store`/`Unstore`/`DropOff`, minimum executable `Conveyor`/`Transporter` plus `Access`/`Exit`/`Start`/`Stop`/`Move`, and Phase C parser/Arena variables mapping;
+  - documentation updated: compatibility matrix closed through Advanced Transfer, Flow Process classification and parser-variable scope, plus dedicated maintainer decision note for `Process::AllocationType` versus internal `Delay`
+    ([`reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md`](reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md));
+  - `Network`, `NetworkLink`, `ActivityArea` and CTMC-class features were
+    intentionally left out of scope and remain documented as future/not-applicable
+    in the compatibility matrix.
+- Validation at merge time: focused Arena/MaterialHandling tests green (`28/28`), `tests-smoke` green (`3/3`), `tests-kernel-unit` green except the preexisting `genesys_test_optimizer_ownership_contract_NOT_BUILT`, and `tests-unit` still shows 13 unrelated WholeCell/Bio failures tied to a plugin-loading path involving `attribute.so`, outside this scope — these remain untriaged and are not yet a dedicated backlog entry; a maintainer should decide whether to open one before relying on `tests-unit` as a green gate.
+
+## 5. Active bounded work
+
+None currently. The most recent entry (`AUTO-ARENA-001`) closed `done` on
+2026-08-30 and moved to Section 4.
 
 ## 6. Paused technical tasks
 
