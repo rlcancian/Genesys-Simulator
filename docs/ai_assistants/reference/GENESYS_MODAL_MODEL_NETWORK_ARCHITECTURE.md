@@ -1,9 +1,11 @@
 ---
-document_type: architecture-reference
+document_type: reference
+authority: technical-reference
+owner: project-maintainer
+last_reviewed: 2026-08-30
+review_cadence: on-modal-contract-change
 status: design-baseline
-scope: GenESyS ModalModel, network models, ports, connections, and model-of-computation boundaries
-target_branch: WorkInProgress
-date: 2026-08-30
+tracks: 511
 ---
 
 # GenESyS ModalModel and Network Architecture
@@ -2006,6 +2008,9 @@ A later implementation must re-check the current HEAD rather than assuming this 
 
 ## Ptolemy II
 
+Ptolemaeus (ed.), *System Design, Modeling, and Simulation using Ptolemy II* — chapter on models of computation and FSM/modal models  
+https://ptolemy.berkeley.edu/books/Systems/chapters/IIModelsofComputation.pdf
+
 Ptolemy II `FSMActor` documentation  
 https://ptolemy.berkeley.edu/ptolemyII/ptII11.0/ptII/doc/codeDoc/ptolemy/domains/modal/kernel/FSMActor.html
 
@@ -2123,3 +2128,17 @@ states / places / transitions / arcs / tokens / probabilities
 inside the network formalism.
 
 This boundary is the key architectural decision.
+
+---
+
+# 65. Related GenESyS references
+
+Read together with:
+
+- [`../ARCHITECTURE.md`](../ARCHITECTURE.md);
+- [`SCIENTIFIC_DOMAINS.md`](SCIENTIFIC_DOMAINS.md);
+- [`PLUGINS.md`](PLUGINS.md);
+- [`KERNEL_PARSER_OWNERSHIP.md`](KERNEL_PARSER_OWNERSHIP.md);
+- [`APPLICATIONS_TOOLS_MODELS.md`](APPLICATIONS_TOOLS_MODELS.md).
+
+If this reference conflicts with a later maintainer-approved update to `ARCHITECTURE.md`, the canonical architecture document has precedence according to repository governance.

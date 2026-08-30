@@ -97,6 +97,15 @@ Use for:
 - confirmed/partial/missing/different classification per Arena module;
 - open questions requiring a maintainer decision before closing a gap.
 
+### [`GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md`](GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md)
+
+Use for:
+
+- ModalModel/DefaultNetwork architecture and process-versus-network-domain boundary;
+- EFSM/DTMC/CPN formalism semantics and scope;
+- migration plan for the legacy ModalModel classes;
+- settled decisions versus intentionally open implementation questions.
+
 ## 3. Reference rules
 
 Reference files:
