@@ -103,9 +103,9 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
 | Statistic | Advanced Process | ✅ covered by kernel `Statistics`/`Collector`/`StatisticsCollector`/`Counter`, attached to Record and to many components/data definitions — per maintainer clarification (2026-08-29); full class-by-class detail deferred, see §9 |
 | Storage | Advanced Process | ✅ [§5.11](#511-storage) |
 | Sequence | Advanced Transfer | ✅ [§5.12](#512-sequence) |
-| Conveyor | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Conveyor | Advanced Transfer | ✅ [§7](#7-advanced-transfer-conveyortransporter-subsystem-status) |
 | Segment | Advanced Transfer | ✅ [§5.14](#514-segment) |
-| Transporter | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Transporter | Advanced Transfer | ✅ [§7](#7-advanced-transfer-conveyortransporter-subsystem-status) |
 | Distance | Advanced Transfer | ✅ [§5.13](#513-distance) |
 | Network | Advanced Transfer | ✅ `missing`, approved future work (§7) |
 | Network Link | Advanced Transfer | ✅ `missing`, approved future work (§7) |
@@ -119,8 +119,8 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
 | Create, Dispose, Assign, Process, Decide, Batch, Separate, Record | Basic Process | ✅ [§6](#6-phase-b--components-analyzed-entries) (batches 1-2) — all Basic Process flowchart modules covered |
 | Delay, Seize, Release, Hold(→Wait), Match, Pickup, Remove, Search, ReadWrite(→Write), Dropoff, Store, Unstore, Signal, Adjust Variable | Advanced Process | ✅ §6.3, §6.5, §6.10–§6.19 — **all Advanced Process flowchart modules covered** |
 | Enter, Leave, PickStation, Route, Station (as flowchart module) | Advanced Transfer (general) | ✅ [§6.20](#620-advanced-transfer-general-enter-leave-pickstation-route-station-concept) |
-| Access, Convey, Exit, Start, Stop | Advanced Transfer (conveyor) | ✅ `Access`/`Exit`/`Start`/`Stop` confirmed as incomplete stub templates (§7); `Convey` has no GenESyS equivalent at all |
-| Activate, Allocate, Free, Halt, Move, Request, Transport | Advanced Transfer (transporter) | ✅ `missing`, approved future work (§7) |
+| Access, Convey, Exit, Start, Stop | Advanced Transfer (conveyor) | ✅ `Access`/`Exit`/`Start`/`Stop` now covered by a minimal executable Conveyor contract; `Convey` remains intentionally collapsed into that contract plus `Route`/station transfer (§6.21, §7) |
+| Activate, Allocate, Free, Halt, Move, Request, Transport | Advanced Transfer (transporter) | ✅ `Move` now covered by a minimal executable Transporter contract; the remaining named Arena modules stay classified as future/unsupported under the simplified GenESyS abstraction (§6.21, §7) |
 | Tank, Sensor, Flow, Regulate, Seize Regulator, Release Regulator | Flow Process | ✅ `future-domain-feature` (§6.22) |
 
 ## 5. Phase A — Data definitions: analyzed entries
@@ -994,18 +994,43 @@ the maintainer as the intended GenESyS component for that behavior.
   `Halt`, `Move`, `Request`, `Transport`, *Getting Started with Arena*,
   "The Advanced Transfer Panel", printed pp. 79-99.
 - **GenESyS status**:
-  - `Access`, `Exit`, `Start`, `Stop` exist as named classes in
-    `source/plugins/components/MaterialHandling/` but are still incomplete
-    dummy templates: `_onDispatchEvent()` only traces that the model is a
-    dummy and forwards the entity, while `_check()`/persistence remain
-    unimplemented.
-  - no `Convey` component was found.
-  - no `Activate`, `Allocate`, `Free`, `Halt`, `Move`, `Request`, or
-    `Transport` component was found under MaterialHandling or another plugin
-    family.
-- **Level**: `partial` for the four stubs; otherwise `missing`.
-- **Needs human decision**: no for classification; implementation remains
-  future work gated by the underlying data-side subsystem in §7.
+  - `Access`, `Exit`, `Start`, `Stop` —
+    `source/plugins/components/MaterialHandling/{Access,Exit,Start,Stop}.{h,cpp}`
+    — now implement a minimal executable Conveyor contract over the new
+    `Conveyor` data definition (§7): `Start` activates the conveyor and may
+    update its velocity, `Access` allocates simplified conveyor capacity,
+    `Exit` releases it, and `Stop` deactivates the conveyor.
+  - `Move` —
+    `source/plugins/components/MaterialHandling/Move.{h,cpp}` — now implements
+    the minimum approved transporter runtime: reserve one `Transporter`,
+    compute travel time from `Distance / speed`, dispatch the entity to the
+    destination station's `Enter` component, and free the transporter on
+    arrival through an internal event.
+  - no `Convey` component exists as a separate class. For the current minimum
+    GenESyS contract, conveyor movement is represented by the conveyor
+    allocation controls plus the already-audited station transfer flow
+    (`Route`/`Enter`/`Leave`) rather than by a distinct Arena-named
+    `Convey` block.
+  - no separate `Activate`, `Allocate`, `Free`, `Halt`, `Request`, or
+    `Transport` component exists. For the current minimum GenESyS contract,
+    those responsibilities are intentionally collapsed into the new minimal
+    `Transporter` data definition plus the atomic `Move` component.
+- **Level**: `partial`.
+- **Focused runtime evidence (2026-08-30)**:
+  - `Conveyor` data: validation, direct distance lookup through `Segment`,
+    persistence round-trip, and reset-between-replications;
+  - conveyor actions: `Start -> Access -> Exit -> Stop` integrated flow with
+    velocity update, allocation, release and deactivation;
+  - `Transporter` data: distance-driven travel-time calculation, persistence
+    round-trip, and reset-between-replications;
+  - `Move`: dispatch, delayed arrival, transporter release-on-arrival, and
+    persistence round-trip.
+- **Divergences**:
+  - Conveyor allocation is intentionally simplified to concurrent capacity,
+    not Arena's contiguous cell occupancy semantics.
+  - Transporter movement is intentionally exposed as one atomic `Move`
+    contract rather than Arena's separate request/transport/free family.
+- **Needs human decision**: no for this minimum contract.
 
 ### 6.22 Flow Process classification
 
@@ -1035,40 +1060,33 @@ were entirely missing.
   - `Sequence` (§5.12);
   - `Distance` (§5.13): direct/bidirectional station-pair lookup table;
   - `Segment` (§5.14): ordered forward conveyor path segments;
+  - `Conveyor`: minimal executable conveyor data definition over `Segment`,
+    with velocity, active state, simplified capacity/allocation, persistence,
+    validation and replication reset;
+  - `Transporter`: minimal executable free-path transporter data definition
+    over `Distance`, with current station, active/busy state, persistence,
+    validation and replication reset;
   - general transfer components `Enter`, `Leave`, `PickStation`, `Route`
-    (§6.20).
+    (§6.20);
+  - conveyor/transporter runtime components `Access`, `Exit`, `Start`, `Stop`
+    and `Move` (§6.21).
 - **Still missing on the data side**:
-  - `Conveyor`;
-  - `Transporter`;
   - `Network`;
   - `NetworkLink`;
   - `ActivityArea`.
-- **Still missing or stubbed on the component side**:
-  - conveyor: `Access`/`Exit`/`Start`/`Stop` are stubs; `Convey` absent;
-  - transporter: `Activate`/`Allocate`/`Free`/`Halt`/`Move`/`Request`/
-    `Transport` absent.
+- **Still missing or intentionally collapsed on the component side**:
+  - conveyor: no separate `Convey` component;
+  - transporter: no separate `Activate`, `Allocate`, `Free`, `Halt`,
+    `Request`, or `Transport` components beyond the minimum atomic `Move`
+    abstraction.
 
-`source/plugins/components/MaterialHandling/{Access,Exit,Start,Stop}.cpp`
-were read in full and are confirmed **incomplete stub templates**, not
-finished components under any name: each is ~85 lines, its
-`_onDispatchEvent()` body literally traces `"I'm just a dummy model and I'll
-just send the entity forward"` and unconditionally passes the entity to the
-front connection, and `_check()`/`_loadInstance()`/`_saveInstance()` are all
-`// @TODO: not implemented yet` **[confirmed, all four files]**. Per
-maintainer clarification (2026-08-29): these four names are intended as the
-*action* components applied to a Conveyor or a Transporter unit (access/
-release a conveyor segment or transporter unit, start/stop it), sharing
-Arena's Conveyor-panel vocabulary because they play the same conceptual role
-Arena's Access/Exit/Start/Stop play for a conveyor — not an unrelated reuse of
-the names. They cannot be completed coherently until the underlying
-Conveyor/Transporter data definitions exist.
-
-- **Level (data side)**: `partial` overall: `Sequence`, `Distance`, and
-  `Segment` exist, while `Conveyor`, `Transporter`, `Network`, `NetworkLink`,
-  and `ActivityArea` remain `missing`.
+- **Level (data side)**: `partial` overall: `Sequence`, `Distance`,
+  `Segment`, `Conveyor` and `Transporter` now exist, while `Network`,
+  `NetworkLink`, and `ActivityArea` remain `missing`.
 - **Level (component side)**: `partial` overall: the general transfer
-  components are real (§6.20), but conveyor/transporter-specific actions are
-  still stubbed or absent (§6.21).
+  components are real (§6.20), the minimum conveyor/transporter runtime is now
+  executable (§6.21), but Arena's fuller named module family is intentionally
+  collapsed or absent.
 - **Decision (maintainer, 2026-08-29)**: `decision-recorded` — implementing
   Conveyor, Segment, Transporter, Distance, Network, NetworkLink and
   ActivityArea (and completing Access/Exit/Start/Stop, and the
@@ -1080,17 +1098,59 @@ Conveyor/Transporter data definitions exist.
   revision. Recorded here so Phase B does not need to re-derive this
   decision.
 
-## 8. Parser / `ParserChangesInformation` mechanism — preliminary note
+## 8. Parser / Arena Variables Guide cross-reference
 
-Several audited classes override `_getParserChangesInformation()`
-(`ModelDataDefinition.h:264`) — confirmed on `Queue`, `Schedule`, `Set`, `File`,
-`Storage` **[confirmed via header inspection]**. `Queue::_getParserChangesInformation()`
-currently returns an empty `ParserChangesInformation` object with commented-out
-`getProductionToAdd()`/`getTokensToAdd()` calls (`Queue.cpp:244-249`)
-**[confirmed]** — the mechanism exists structurally but is not populated for
-`Queue`. Whether other audited classes populate it, and the full
-registration/resolution pipeline, is deferred to a transversal parser-focused
-pass (task instructions §8) and is **not yet analyzed** in this document.
+- **Pipeline reality (confirmed 2026-08-30)**:
+  - `ParserChangesInformation` exists as a structural API
+    (`source/kernel/simulator/ParserChangesInformation.{h,cpp}`);
+  - `ParserManager` exposes `generateNewParser()` / `connectNewParser()` in
+    its header, but the current runtime parser in use is the static
+    Bison/Flex grammar under `source/parser/parserBisonFlex/`;
+  - audited `_getParserChangesInformation()` overrides on `Queue`, `Set`,
+    `Schedule`, `File` and `Storage` currently return empty placeholder
+    objects, so the dynamic plugin-driven parser-extension path is not what
+    currently provides expression support.
+- **Implemented and registered now**:
+  - general simulation/kernel: `TNOW`, `TFIN`, `MAXREP`, `NUMREP`, `IDENT`,
+    `TAVG(CSTAT)`, `COUNT(COUNTER)`;
+  - generic data references by literal name: `Attribute`, `Variable`,
+    `Formula`, `StatisticsCollector`, `Counter`, simulation controls and
+    simulation responses;
+  - queue: `NQ`, `FIRSTINQ`, `SAQUE`, `AQUE`;
+  - resource: `MR`, `NR`, `STATE`, `IRF`, `SETSUM`;
+  - set: `NUMSET`.
+- **Partial / tokenized but not actually implemented**:
+  - `LASTINQ`: grammar production exists but has no runtime result body;
+  - `RESSEIZES`: grammar production exists but remains an explicit TODO;
+  - `RESUTIL`: token exists in the lexer, but no active grammar production was
+    found in `pluginFunction`;
+  - `ENTATRANK`: token exists, but no active grammar production was found;
+  - `NUMGR`, `ATRGR`: tokens exist for `EntityGroup`, but no active grammar
+    production was found.
+- **Semantics available under a different shape**:
+  - entity attributes/variables/formulas are available directly by the named
+    `Attribute`/`Variable`/`Formula` objects rather than by a broad Arena
+    catalog of predefined aliases;
+  - station transfer state is available through `Entity.Station` and the
+    `Station` runtime/data model, but the Arena Variables Guide functions such
+    as `MSQ`, station-time rollups, and activity-area rollups are not parser
+    functions today.
+- **Missing for currently supported MaterialHandling concepts**:
+  - no parser function was found for `Storage` occupation (`NSTO`);
+  - no parser function was found for `Distance`, `Segment`, `Conveyor`, or the
+    new minimal `Transporter`;
+  - no parser function was found for station/sequence helper functions such as
+    `MSQ` or station/activity-area aggregates.
+- **Out of scope / intentionally unsupported here**:
+  - Flow Process variables (tank, sensor, regulator, flow-rate family) remain
+    `future-domain-feature` with the subsystem itself (§6.22);
+  - guided-transporter/network variables remain `missing` together with
+    `Network` / `NetworkLink`.
+- **Phase-C conclusion**: completed for the current GenESyS-supported scope as
+  a mapping/classification pass. The main result is that parser support is
+  presently hardcoded and narrower than the Arena Variables Guide, with a
+  mixture of implemented functions, placeholder tokens and unsupported
+  families.
 
 ## 9. Phase status
 
@@ -1102,8 +1162,8 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
   a full class-by-class detail pass on that group is deferred (reminder
   requested by the maintainer for a later session; do not forget). The
   Advanced Transfer data side is now reconciled as `partial`: `Sequence`,
-  `Distance`, and `Segment` are implemented (§5.12–§5.14), while
-  `Conveyor`/`Transporter`/`Network`/`NetworkLink`/`ActivityArea` remain
+  `Distance`, `Segment`, `Conveyor`, and `Transporter` are implemented
+  (§5.12–§5.14, §7), while `Network`/`NetworkLink`/`ActivityArea` remain
   future work (§7).
 - **Phase B (components)**: batches 1-2 of N complete (2026-08-29). Batch 1:
   `Create`, `Dispose`, `Assign`. Batch 2: `Process`, `Decide`, `Batch`,
@@ -1149,27 +1209,31 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
   Batch 4 (this continuation, 2026-08-30) reconciled Advanced Transfer's
   already-existing `Distance` and `Segment` data definitions (§5.13–§5.14),
   audited the real general-transfer components `Enter`/`Leave`/`PickStation`/
-  `Route` plus the Station concept (§6.20), confirmed conveyor stubs and
-  transporter absences (§6.21), and fixed two proven `Route` defects:
+  `Route` plus the Station concept (§6.20), implemented the minimum approved
+  `Conveyor`/`Transporter` contract plus `Access`/`Exit`/`Start`/`Stop`/`Move`
+  (§6.21, §7), and fixed two proven `Route` defects:
   label-destination validation and persistence of `stationExpression`.
   **This closes 100% of Arena Basic Process and Advanced Process flowchart
-  modules.** Remaining Phase B scope is entirely Advanced Transfer (general/
-  conveyor/transporter minimum implementation) and the already-classified Flow
-  Process future domain feature (§6.22, not in scope for implementation here).
-- **Phase C (parser/Arena Variables Guide cross-reference)**: not started;
-  §8 above is a preliminary observation only, not a completed pass. Deferred
-  by maintainer request (2026-08-29) — reminder needed in a later session.
+  modules.** Advanced Transfer is now covered as a minimum executable
+  GenESyS-compatible subset plus explicit documented divergences; remaining
+  work is limited to future features such as `Network`, guided transport, and
+  fuller Arena module families that were intentionally not implemented here.
+- **Phase C (parser/Arena Variables Guide cross-reference)**: completed as a
+  current-state mapping/classification pass in §8. The dynamic parser
+  extension API remains structurally present but effectively unused; current
+  support is the hardcoded Bison/Flex grammar plus direct named object lookup.
 - **Deferred decision note**: the unresolved `Process::AllocationType` versus
   internal `Delay` wiring question from §6.5 is isolated in
   `docs/ai_assistants/reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md` so
   the maintainer can decide it later without blocking the current close-out.
 - **Reminders for a later session (explicit maintainer request,
-  2026-08-29)**: (a) revisit Statistic/Collector/Counter class-by-class detail
-  once the maintainer explains the design further; (b) revisit Phase C
-  (parser + Arena Variables Guide cross-reference).
+  2026-08-29)**: revisit Statistic/Collector/Counter class-by-class detail
+  once the maintainer explains the design further.
 
-No code behavior was changed in Phase A or Phase B (batches 1-2) — only
-documentation (this file and the corresponding class headers). No bug was
-demonstrated with enough certainty of intent to justify a source change under
-`GOVERNANCE.md` §5 change-policy; the `Process`/`Delay` allocation-wiring
-observation (§6.5) is a candidate, not a confirmed fix.
+Phase A and the already-closed Basic Process / earlier Advanced Process
+findings were preserved without reopening them. This continuation did change
+in-scope runtime behavior where the code had been stubbed or where concrete
+defects were demonstrated (`DropOff`, `Store`, `Unstore`, `Route`,
+`Conveyor`/`Transporter` minimum flow). The unresolved `Process`/`Delay`
+allocation-wiring observation (§6.5) remains a documented candidate, not an
+autonomous fix.
