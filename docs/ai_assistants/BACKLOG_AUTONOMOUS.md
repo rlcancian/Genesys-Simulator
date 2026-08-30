@@ -204,7 +204,7 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local`
 - Branch: `WiP202608/modal-network-implementation`
 - Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
-- Current branch head: `1af87417`
+- Current branch head: `2f449bf5`
 - Authorization: explicit maintainer continuation instruction on 2026-08-30 authorized resuming the ModalModel/network architecture from the current `DefaultNetwork` checkpoint without restarting the earlier phase-0 inventory.
 - Scope:
   - migrate `DefaultNode` from `ModelComponent` to `ModelDataDefinition`;
@@ -225,7 +225,9 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Progress snapshot:
   - `DefaultNetwork` is already in place with network activation frame/result, port schema and activation counter;
   - `DefaultNode` has now moved to `ModelDataDefinition`, its old dispatch hook was removed, and node persistence now uses the data-definition serialization path;
-  - `tests/unit/test_default_network.cpp` and `tests/unit/test_default_node.cpp` cover the base network abstraction and the migrated node contract.
+  - `ModalModelDefault` now has an optional `DefaultNetwork` bridge with network reference persistence, input/output bindings, activation, zero-output consume semantics, one-output routing, and multi-output cloning;
+  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, and `tests/unit/test_modal_model_default_network.cpp` cover the base network abstraction, the migrated node contract, and the generic adapter bridge.
+  - remaining phase-4 work: decide how aggressively to migrate legacy node/transition ownership into network specializations and how GUI/editor port synchronization should surface.
 
 ## 7. Completed technical baseline
 
