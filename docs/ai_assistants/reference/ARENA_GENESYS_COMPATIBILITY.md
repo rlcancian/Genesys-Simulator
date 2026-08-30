@@ -104,13 +104,13 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
 | Storage | Advanced Process | ✅ [§5.11](#511-storage) |
 | Sequence | Advanced Transfer | ✅ [§5.12](#512-sequence) |
 | Conveyor | Advanced Transfer | ✅ `missing`, approved future work (§7) |
-| Segment | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Segment | Advanced Transfer | ✅ [§5.14](#514-segment) |
 | Transporter | Advanced Transfer | ✅ `missing`, approved future work (§7) |
-| Distance | Advanced Transfer | ✅ `missing`, approved future work (§7) |
+| Distance | Advanced Transfer | ✅ [§5.13](#513-distance) |
 | Network | Advanced Transfer | ✅ `missing`, approved future work (§7) |
 | Network Link | Advanced Transfer | ✅ `missing`, approved future work (§7) |
 | Activity Area | Advanced Transfer | ✅ `missing`, approved future work (§7) |
-| Regulator Set | Flow Process | ⬜ (Flow Process panel likely `not-applicable`; not confirmed) |
+| Regulator Set | Flow Process | ✅ `future-domain-feature` (§6.22) |
 
 ### 4.2 Flowchart modules (components) — Phase B
 
@@ -118,10 +118,10 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
 |---|---|---|
 | Create, Dispose, Assign, Process, Decide, Batch, Separate, Record | Basic Process | ✅ [§6](#6-phase-b--components-analyzed-entries) (batches 1-2) — all Basic Process flowchart modules covered |
 | Delay, Seize, Release, Hold(→Wait), Match, Pickup, Remove, Search, ReadWrite(→Write), Dropoff, Store, Unstore, Signal, Adjust Variable | Advanced Process | ✅ §6.3, §6.5, §6.10–§6.19 — **all Advanced Process flowchart modules covered** |
-| Enter, Leave, PickStation, Route, Station (as flowchart module) | Advanced Transfer (general) | ⬜ |
+| Enter, Leave, PickStation, Route, Station (as flowchart module) | Advanced Transfer (general) | ✅ [§6.20](#620-advanced-transfer-general-enter-leave-pickstation-route-station-concept) |
 | Access, Convey, Exit, Start, Stop | Advanced Transfer (conveyor) | ✅ `Access`/`Exit`/`Start`/`Stop` confirmed as incomplete stub templates (§7); `Convey` has no GenESyS equivalent at all |
-| Activate, Allocate, Free, Halt, Move, Request, Transport | Advanced Transfer (transporter) | ⬜ (no GenESyS component found under these names; strong indication of `missing`, to confirm) |
-| Tank, Sensor, Flow, Regulate, Seize Regulator, Release Regulator | Flow Process | ⬜ (likely `not-applicable`) |
+| Activate, Allocate, Free, Halt, Move, Request, Transport | Advanced Transfer (transporter) | ✅ `missing`, approved future work (§7) |
+| Tank, Sensor, Flow, Regulate, Seize Regulator, Release Regulator | Flow Process | ✅ `future-domain-feature` (§6.22) |
 
 ## 5. Phase A — Data definitions: analyzed entries
 
@@ -380,6 +380,51 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
   **[hypothesis — not yet traced through `Sequence.cpp`/the routing
   components; deferred to Phase B]**.
 - **Needs human decision**: no (pending Phase B confirmation first).
+
+### 5.13 Distance
+
+- **Arena**: "Distance module", *Getting Started with Arena*, "The Advanced
+  Transfer Panel", p. 106. Defines named station-pair distances for
+  free-path transporters.
+- **GenESyS**: `Distance` —
+  `source/plugins/data/MaterialHandling/Distance.{h,cpp}`.
+- **Level**: `partial`.
+- **Parameters/behavior**: a `Distance` stores `DistanceEntry` rows with
+  `fromStationName`, `toStationName`, `length`, and `bidirectional`.
+  `getDistanceBetween()` resolves direct lookups by station-name pair and
+  mirrors the value when `bidirectional` is set. Missing pairs return `-1.0`.
+  Persistence round-trip, `_check()`, and plugin-factory registration are now
+  covered by focused tests **[confirmed]**.
+- **Divergence**: no transporter data definition consumes it yet, and no
+  composed/multi-hop path search exists. The current contract is just a
+  validated direct lookup table.
+- **Implementation note (2026-08-30)**: the class was already present, but the
+  dummy plugin connector used by unit tests had not been updated to discover
+  `distance.so`; this batch reconciled registration and strengthened `_check()`
+  to reject null, empty and negative entries.
+- **Needs human decision**: no.
+
+### 5.14 Segment
+
+- **Arena**: "Segment module", *Getting Started with Arena*, "The Advanced
+  Transfer Panel", p. 103. Defines an ordered conveyor path as station-to-next-
+  station steps with associated lengths.
+- **GenESyS**: `Segment` —
+  `source/plugins/data/MaterialHandling/Segment.{h,cpp}`.
+- **Level**: `partial`.
+- **Parameters/behavior**: a `Segment` stores an ordered list of
+  `SegmentStep { stationName, lengthToNext }`. `getDistanceBetween(a, b)`
+  accumulates forward distance only when both stations appear in order on the
+  same segment; reverse or disconnected requests return `-1.0`. Persistence
+  round-trip, `_check()`, and plugin-factory registration are now covered by
+  focused tests **[confirmed]**.
+- **Divergence**: no `Conveyor` data definition exists yet, and the current
+  semantics are strictly linear/forward, with no branching or control logic.
+- **Implementation note (2026-08-30)**: the class was already present, but the
+  dummy plugin connector used by unit tests had not been updated to discover
+  `segment.so`; this batch reconciled registration and strengthened `_check()`
+  to reject null, empty and negative steps.
+- **Needs human decision**: no.
 
 ## 6. Phase B — Components: analyzed entries
 
@@ -884,18 +929,111 @@ the maintainer as the intended GenESyS component for that behavior.
 - **Needs human decision**: no (naming/design split confirmed by maintainer);
   the cost-split sub-feature folds into the existing §6.3 cost question.
 
-## 7. Confirmed-missing subsystem: Advanced Transfer conveyor/transporter data
+### 6.20 Advanced Transfer general: Enter, Leave, PickStation, Route, Station concept
 
-**[confirmed]**: `source/plugins/data/` and `source/plugins/components/`
-contain no `Conveyor`, `Segment`, `Transporter`, `Distance`, `Network`,
-`NetworkLink`, or `ActivityArea` classes under any domain directory
-(cross-checked against the full plugin listing taken at the start of this
-audit). Arena's Advanced Transfer Panel devotes an entire subsystem to these
-(*Getting Started with Arena*, "The Advanced Transfer Panel", pp. 79-108:
-Conveyor flowchart modules Access/Convey/Exit/Start/Stop; Transporter
-flowchart modules Activate/Allocate/Free/Halt/Move/Request/Transport; data
-modules Sequence/Conveyor/Segment/Transporter/Distance/Network/Network
-Link/Activity Area).
+- **Arena**: "Enter", "Leave", "PickStation" and "Route" modules, plus
+  Station as the receiving flowchart concept, *Getting Started with Arena*,
+  "The Advanced Transfer Panel", printed pp. 89-101.
+- **GenESyS**:
+  - `Enter` / `Leave` / `PickStation` / `Route` —
+    `source/plugins/components/MaterialHandling/`;
+  - `Station` data definition —
+    `source/plugins/data/MaterialHandling/Station.{h,cpp}`.
+- **Level**: `partial`.
+- **Enter**: real receiving component, not a stub. It binds a `Station`,
+  registers itself as that station's entry component, calls
+  `station->enter(entity)` on dispatch, and forwards to its front connection.
+  Persistence and `_check()` are implemented. The help text in
+  `Enter::GetPluginInformation()` is still `//@TODO`, so the code is ahead of
+  its public description.
+- **Leave**: real component, not a stub. It validates a bound `Station`, calls
+  `station->leave(entity)` on dispatch, and forwards the entity onward.
+  It does not perform any conveyor/transporter request or release semantics by
+  itself.
+- **PickStation**: real component, not a stub. It evaluates one or more
+  `PickableStationItem`s using the enabled criteria (expression, queue size,
+  busy resources), stores the selected station id in the configured attribute,
+  and forwards the entity. This is best classified as a partial equivalence to
+  Arena's station-selection logic rather than a full movement module.
+- **Route**: real component, not a stub. It supports destination types
+  `Station`, `Sequence`, and `Label`; applies any `SequenceStep`
+  assignments; computes route delay from `routeTimeExpression`; schedules the
+  arrival event to the destination `Enter`/label receiver; and updates
+  transfer-time statistics/attributes when an `EntityType` is present.
+- **Station concept**: GenESyS models Station as a data definition plus
+  `Enter`/`Leave`/`Route` interactions, not as a standalone flowchart module
+  with Arena's UI shape. That is an architectural difference, not a missing
+  concept.
+- **Bugs fixed in this batch (2026-08-30)**:
+  - `Route::_check()` incorrectly validated `_station` when destination type
+    was `Label`; fixed to validate `_label`.
+  - `Route` persistence ignored `_stationExpression`; save/load now preserve it.
+- **Focused runtime evidence**: tests now cover label-only validation,
+  station-expression persistence, station-expression routing to a resolved
+  `Enter`, and delayed routing through a `Label` receiver.
+- **Needs human decision**: no for the current contract. The broader
+  transporter/conveyor semantics remain separate in §7.
+
+### 6.21 Advanced Transfer conveyor/transporter components
+
+- **Arena**: Conveyor flowchart modules `Access`, `Convey`, `Exit`, `Start`,
+  `Stop`, and transporter flowchart modules `Activate`, `Allocate`, `Free`,
+  `Halt`, `Move`, `Request`, `Transport`, *Getting Started with Arena*,
+  "The Advanced Transfer Panel", printed pp. 79-99.
+- **GenESyS status**:
+  - `Access`, `Exit`, `Start`, `Stop` exist as named classes in
+    `source/plugins/components/MaterialHandling/` but are still incomplete
+    dummy templates: `_onDispatchEvent()` only traces that the model is a
+    dummy and forwards the entity, while `_check()`/persistence remain
+    unimplemented.
+  - no `Convey` component was found.
+  - no `Activate`, `Allocate`, `Free`, `Halt`, `Move`, `Request`, or
+    `Transport` component was found under MaterialHandling or another plugin
+    family.
+- **Level**: `partial` for the four stubs; otherwise `missing`.
+- **Needs human decision**: no for classification; implementation remains
+  future work gated by the underlying data-side subsystem in §7.
+
+### 6.22 Flow Process classification
+
+- **Arena**: `Tank`, `Sensor`, `Flow`, `Regulate`, `Regulator Set`,
+  `Seize Regulator`, `Release Regulator`, plus related predefined variables,
+  belong to Arena's Flow Process template for continuous/semi-continuous bulk
+  material systems (*Simulation with Arena*, ch. 11; Arena Variables Guide
+  flow/tank/sensor sections).
+- **GenESyS**: no corresponding plugin family or data/component set was found
+  in the current codebase.
+- **Level**: `future-domain-feature`.
+- **Reasoning**: this is not just a missing naming layer on top of the current
+  discrete-event material-handling code. The Arena references place these
+  modules in a separate continuous/flow subsystem centered on tanks,
+  regulators, sensors and flow rates. Nothing equivalent was found in the
+  current GenESyS scope, and implementing it here would be a new domain
+  feature rather than a close-out of the current Arena compatibility front.
+- **Needs human decision**: no for this phase; leave outside the current close-
+  out scope unless explicitly activated later.
+
+## 7. Advanced Transfer conveyor/transporter subsystem status
+
+This section replaces the earlier obsolete claim that `Segment` and `Distance`
+were entirely missing.
+
+- **Present today**:
+  - `Sequence` (§5.12);
+  - `Distance` (§5.13): direct/bidirectional station-pair lookup table;
+  - `Segment` (§5.14): ordered forward conveyor path segments;
+  - general transfer components `Enter`, `Leave`, `PickStation`, `Route`
+    (§6.20).
+- **Still missing on the data side**:
+  - `Conveyor`;
+  - `Transporter`;
+  - `Network`;
+  - `NetworkLink`;
+  - `ActivityArea`.
+- **Still missing or stubbed on the component side**:
+  - conveyor: `Access`/`Exit`/`Start`/`Stop` are stubs; `Convey` absent;
+  - transporter: `Activate`/`Allocate`/`Free`/`Halt`/`Move`/`Request`/
+    `Transport` absent.
 
 `source/plugins/components/MaterialHandling/{Access,Exit,Start,Stop}.cpp`
 were read in full and are confirmed **incomplete stub templates**, not
@@ -909,13 +1047,15 @@ maintainer clarification (2026-08-29): these four names are intended as the
 release a conveyor segment or transporter unit, start/stop it), sharing
 Arena's Conveyor-panel vocabulary because they play the same conceptual role
 Arena's Access/Exit/Start/Stop play for a conveyor — not an unrelated reuse of
-the names. They cannot be completed until the underlying Conveyor/Transporter
-data definitions exist.
+the names. They cannot be completed coherently until the underlying
+Conveyor/Transporter data definitions exist.
 
-- **Level (data side)**: `missing`.
-- **Level (Access/Exit/Start/Stop components)**: `partial` — present as
-  named stubs only, `needs-human-decision` resolved (see below), implementation
-  pending on the data-side subsystem.
+- **Level (data side)**: `partial` overall: `Sequence`, `Distance`, and
+  `Segment` exist, while `Conveyor`, `Transporter`, `Network`, `NetworkLink`,
+  and `ActivityArea` remain `missing`.
+- **Level (component side)**: `partial` overall: the general transfer
+  components are real (§6.20), but conveyor/transporter-specific actions are
+  still stubbed or absent (§6.21).
 - **Decision (maintainer, 2026-08-29)**: `decision-recorded` — implementing
   Conveyor, Segment, Transporter, Distance, Network, NetworkLink and
   ActivityArea (and completing Access/Exit/Start/Stop, and the
@@ -941,16 +1081,17 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
 
 ## 9. Phase status
 
-- **Phase A (data definitions)**: closed for this audit's purposes. 14 classes
-  analyzed in detail (§5.1–§5.12); Statistic resolved by maintainer
+- **Phase A (data definitions)**: closed for this audit's purposes. 16 classes
+  analyzed in detail (§5.1–§5.14); Statistic resolved by maintainer
   clarification (2026-08-29) as already covered by the kernel-level
   `Statistics`/`Collector`/`StatisticsCollector`/`Counter` classes, attached to
   the Record component and to many other components/data definitions —
   a full class-by-class detail pass on that group is deferred (reminder
   requested by the maintainer for a later session; do not forget). The
-  Advanced Transfer conveyor/transporter/network data classes are confirmed
-  `missing` (§7) with an approved future-implementation direction recorded,
-  not yet scheduled.
+  Advanced Transfer data side is now reconciled as `partial`: `Sequence`,
+  `Distance`, and `Segment` are implemented (§5.12–§5.14), while
+  `Conveyor`/`Transporter`/`Network`/`NetworkLink`/`ActivityArea` remain
+  future work (§7).
 - **Phase B (components)**: batches 1-2 of N complete (2026-08-29). Batch 1:
   `Create`, `Dispose`, `Assign`. Batch 2: `Process`, `Decide`, `Batch`,
   `Separate`, `Record` — this closes out every Arena Basic Process flowchart
@@ -992,10 +1133,16 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
   absent but reachable through `Assign`. Maintainer confirmed (2026-08-30)
   that `Clone` is the intentional substitute for Separate's missing
   "Duplicate Original" (§6.19), closing that Phase-B-batch-2 open question.
+  Batch 4 (this continuation, 2026-08-30) reconciled Advanced Transfer's
+  already-existing `Distance` and `Segment` data definitions (§5.13–§5.14),
+  audited the real general-transfer components `Enter`/`Leave`/`PickStation`/
+  `Route` plus the Station concept (§6.20), confirmed conveyor stubs and
+  transporter absences (§6.21), and fixed two proven `Route` defects:
+  label-destination validation and persistence of `stationExpression`.
   **This closes 100% of Arena Basic Process and Advanced Process flowchart
   modules.** Remaining Phase B scope is entirely Advanced Transfer (general/
-  conveyor/transporter flowchart modules) and Flow Process (likely
-  `not-applicable`).
+  conveyor/transporter minimum implementation) and the already-classified Flow
+  Process future domain feature (§6.22, not in scope for implementation here).
 - **Phase C (parser/Arena Variables Guide cross-reference)**: not started;
   §8 above is a preliminary observation only, not a completed pass. Deferred
   by maintainer request (2026-08-29) — reminder needed in a later session.
