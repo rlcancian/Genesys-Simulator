@@ -204,7 +204,7 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local`
 - Branch: `WiP202608/modal-network-implementation`
 - Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
-- Current branch head: `6ed47e55`
+- Current branch head: `31c7dac9`
 - Authorization: explicit maintainer continuation instruction on 2026-08-30 authorized resuming the ModalModel/network architecture from the current `DefaultNetwork` checkpoint without restarting the earlier phase-0 inventory.
 - Scope:
   - migrate `DefaultNode` from `ModelComponent` to `ModelDataDefinition`;
