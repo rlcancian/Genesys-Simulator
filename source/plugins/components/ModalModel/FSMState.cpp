@@ -1,4 +1,5 @@
 #include "plugins/components/ModalModel/FSMState.h"
+#include "kernel/simulator/PluginInformation.h"
 
 FSMState::FSMState(Model* model, std::string name) : DefaultNode(model, Util::TypeOf<FSMState>(), name) {
 	std::string classname = Util::TypeOf<FSMState>();
@@ -29,7 +30,7 @@ PluginInformation* FSMState::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* FSMState::LoadInstance(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* FSMState::LoadInstance(Model* model, PersistenceRecord *fields) {
 	FSMState* component = new FSMState(model);
 	component->_loadInstance(fields);
 	return component;

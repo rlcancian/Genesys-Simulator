@@ -1,4 +1,5 @@
 #include "plugins/components/ModalModel/PetriPlace.h"
+#include "kernel/simulator/PluginInformation.h"
 
 PetriPlace::PetriPlace(Model* model, std::string name) : DefaultNode(model, Util::TypeOf<PetriPlace>(), name) {
 }
@@ -37,7 +38,7 @@ PluginInformation* PetriPlace::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* PetriPlace::LoadInstance(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* PetriPlace::LoadInstance(Model* model, PersistenceRecord *fields) {
 	PetriPlace* component = new PetriPlace(model);
 	component->_loadInstance(fields);
 	return component;

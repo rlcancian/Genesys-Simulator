@@ -124,10 +124,10 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 // public: /// constructors
 //
 
-DefaultNode::DefaultNode(Model* model, std::string componentTypename, std::string name) : ModelComponent(model, componentTypename, name), DEFAULT() {
+DefaultNode::DefaultNode(Model* model, std::string componentTypename, std::string name) : ModelDataDefinition(model, componentTypename, name), DEFAULT() {
 }
 
-DefaultNode::DefaultNode(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DefaultNode>(), name), DEFAULT() {
+DefaultNode::DefaultNode(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<DefaultNode>(), name), DEFAULT() {
 }
 
 
@@ -171,7 +171,9 @@ bool DefaultNode::isFinalNode() const {
 //
 
 std::string DefaultNode::show() {
-	return ModelComponent::show() + "";
+	return ModelDataDefinition::show() + " initialNode=" + std::string(_initialNode ? "true" : "false") +
+	       " finalNode=" + std::string(_finalNode ? "true" : "false") +
+	       " transitions=" + std::to_string(_transitions->size());
 }
 
 
@@ -198,7 +200,7 @@ PluginInformation* DefaultNode::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* DefaultNode::LoadInstance(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* DefaultNode::LoadInstance(Model* model, PersistenceRecord *fields) {
     DefaultNode* newComponent = new DefaultNode(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -217,7 +219,7 @@ ModelDataDefinition* DefaultNode::NewInstance(Model* model, std::string name) {
 //
 
 bool DefaultNode::_loadInstance(PersistenceRecord *fields) {
-	bool res = ModelComponent::_loadInstance(fields);
+	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		_initialNode = fields->loadField("initialNode", DEFAULT.initialNode);
 		_finalNode = fields->loadField("finalNode", DEFAULT.finalNode);
@@ -226,14 +228,9 @@ bool DefaultNode::_loadInstance(PersistenceRecord *fields) {
 }
 
 void DefaultNode::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
-	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("initialNode", _initialNode, DEFAULT.initialNode, saveDefaultValues);
 	fields->saveField("finalNode", _finalNode, DEFAULT.finalNode, saveDefaultValues);
-}
-
-void DefaultNode::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	traceSimulation(this, "I'm just a dummy model and I'll just send the entity forward");
-	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 

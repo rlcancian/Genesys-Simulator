@@ -253,7 +253,7 @@ void ModalModelDefault::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 	for (DefaultNode* node : *_nodes->list()) {
 		const std::string prefix = "node" + Util::StrIndex(i) + ".";
 		auto nodeFields = std::unique_ptr<PersistenceRecord>(fields->newInstance());
-		ModelComponent::SaveInstance(nodeFields.get(), node);
+		ModelDataDefinition::SaveInstance(nodeFields.get(), node);
 		for (auto it = nodeFields->begin(); it != nodeFields->end(); ++it) {
 			PersistenceRecord::Entry entry = it->second;
 			entry.first = prefix + it->first;

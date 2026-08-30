@@ -15,7 +15,7 @@ public:
 
 public: // static
 	static PluginInformation* GetPluginInformation();
-	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
+	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected:
