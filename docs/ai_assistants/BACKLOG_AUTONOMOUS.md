@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-08-20
+last_updated: 2026-08-30
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -133,7 +133,35 @@ This is the only approved source for work an AI agent may execute without a new 
 
 ## 5. Active bounded work
 
-No task is currently in `running` state.
+### AUTO-ARENA-001 — Close Arena compatibility audit for Advanced Transfer and parser-variable scope
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local`
+- Branch: `WiP202608/arena-advanced-transfer-closeout`
+- Base: `origin/WorkInProgress` at `b4fe16289b1aa4d0924e979cf795c8cc4d562e88`
+- Current branch head: `4b76a7390e5ed02075a8a21700ff0764436ae152`
+- Authorization: explicit maintainer continuation instruction dated 2026-08-30 authorized resuming the advanced Arena ↔ GenESyS front from the existing checkpoint without restarting Phase A or the already-closed Basic/Advanced Process audit.
+- Scope:
+  - reconcile `Distance` and `Segment` with the current code, registration, tests and the compatibility matrix;
+  - finish the remaining Advanced Transfer audit (`Enter`, `Leave`, `PickStation`, `Route`, `Station` as flowchart concept, conveyor stubs, transporter/network gaps) and classify Flow Process without broad re-audits;
+  - execute Phase C for the real parser/Arena Variables Guide overlap only, documenting implemented, partial, unsupported and future items;
+  - implement only the smallest justified fixes/additions needed to close proven in-scope gaps with tests.
+- Non-goals:
+  - no restart of the already completed Phase A / Basic Process / Advanced Process analysis;
+  - no broad plugin-architecture refactor, dynamic-plugin migration, incidental modernization, or premature ModalModel work;
+  - no implementation of unsupported Arena features merely to reach nominal 100% parity.
+- Acceptance:
+  - `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` reconciled with the current code and final area statuses;
+  - new/changed in-scope data definitions or components registered, persistible and covered by focused tests;
+  - parser/Arena variables mapping documented from the real current pipeline;
+  - focused validation green, plus required aggregate regression levels for any code changes performed;
+  - remaining human decisions and future features isolated explicitly.
+- Progress snapshot:
+  - completed on the branch: `Distance`/`Segment` reconciliation, `Route` persistence/check fixes, minimum executable `Storage`/`Store`/`Unstore`/`DropOff`, minimum executable `Conveyor`/`Transporter` plus `Access`/`Exit`/`Start`/`Stop`/`Move`, and Phase C parser/Arena variables mapping;
+  - documentation updated: compatibility matrix closed through Advanced Transfer, Flow Process classification and parser-variable scope, plus dedicated maintainer decision note for `Process::AllocationType` versus internal `Delay`;
+  - validation snapshot on 2026-08-30: focused Arena/MaterialHandling tests green (`28/28`), `tests-smoke` green (`3/3`), `tests-kernel-unit` green except the preexisting `genesys_test_optimizer_ownership_contract_NOT_BUILT`, and `tests-unit` still shows unrelated WholeCell/Bio failures tied to plugin-loading paths outside the Arena scope;
+  - remains `running` because the branch has been pushed but not yet merged into `WorkInProgress`.
 
 ## 6. Paused technical tasks
 

@@ -51,6 +51,9 @@ public:
     unsigned int getCapacity() const;
     void setUnitsPerArea(double _unitsPerArea);
     double getUnitsPerArea() const;
+    unsigned int getCurrentOccupation() const;
+    bool store(unsigned int quantity = 1);
+    bool unstore(unsigned int quantity = 1);
 
 protected: // must be overriden 
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
@@ -58,6 +61,7 @@ protected: // must be overriden
 protected: // could be overriden 
 	virtual bool _check(std::string& errorMessage) override;
 	virtual ParserChangesInformation* _getParserChangesInformation() override;
+    virtual void _initBetweenReplications() override;
 
 protected:
 	// virtual void _createInternalStatisticReporters() override;
@@ -75,6 +79,7 @@ private:
 	double _totalArea = DEFAULT.totalArea;
 	unsigned int _capacity = DEFAULT.capacity;
 	double _unitsPerArea = DEFAULT.unitsPerArea;
+    unsigned int _currentOccupation = 0;
 
 private:
 	//@TODO: Add statisticCollector for ProportionOfStorageUsage

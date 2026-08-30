@@ -225,6 +225,7 @@ bool Route::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		this->_routeTimeExpression = fields->loadField("routeTimeExpression", DEFAULT.routeTimeExpression);
+		this->_stationExpression = fields->loadField("stationExpression", DEFAULT.stationExpression);
 		this->_routeTimeTimeUnit = fields->loadField("routeTimeTimeUnit", DEFAULT.routeTimeTimeUnit);
 		this->_routeDestinationType = static_cast<Route::DestinationType> (fields->loadField("destinationType", static_cast<int> (DEFAULT.routeDestinationType)));
 		if (_routeDestinationType == DestinationType::Station) {
@@ -251,6 +252,7 @@ void Route::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 		fields->saveField("label", _label->getName());
 	}
 	fields->saveField("routeTimeExpression", _routeTimeExpression, DEFAULT.routeTimeExpression, saveDefaultValues);
+	fields->saveField("stationExpression", _stationExpression, DEFAULT.stationExpression, saveDefaultValues);
 	fields->saveField("routeTimeTimeUnit", _routeTimeTimeUnit, DEFAULT.routeTimeTimeUnit, saveDefaultValues);
 }
 
@@ -299,7 +301,7 @@ bool Route::_check(std::string& errorMessage) {
 		}
 	}
 	if (this->_routeDestinationType == Route::DestinationType::Label) {
-		resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Label>(), _station, "Label", errorMessage);
+		resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Label>(), _label, "Label", errorMessage);
 		if (resultAll) {
 			resultAll &= _label->getEnterIntoLabelComponent() != nullptr;
 			if (!resultAll) {
