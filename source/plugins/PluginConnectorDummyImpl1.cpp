@@ -107,6 +107,7 @@
 #include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/data/Template/DummyElement.h"
 #include "plugins/data/Grouping/EntityGroup.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/InputOutput/File.h"
 #include "data/Logic/Formula.h"
@@ -188,6 +189,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("dummyelement.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
+    filenames->insert("defaultnetwork.so");
     filenames->insert("formula.so");
     filenames->insert("groprogram.so");
     filenames->insert("bacteriasignalgrid.so");
@@ -365,6 +367,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")
         GetInfo = &Failure::GetPluginInformation;
+    else if (fn == "defaultnetwork.so")
+        GetInfo = &DefaultNetwork::GetPluginInformation;
     else if (fn == "formula.so")
         GetInfo = &Formula::GetPluginInformation;
     else if (fn == "groprogram.so")
