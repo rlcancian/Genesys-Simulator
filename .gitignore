@@ -61,9 +61,6 @@ temp*
 /debian/debhelper-build-stamp
 /debian/files
 /debian/*.substvars
-/debian/genesys-common/
-/debian/genesys-gui/
-/debian/genesys-shell/
-/debian/genesys-worker/
-/debian/genesys-web/
+/debian/genesys-simulator/
 /debian/tmp/
+/debian/*.debhelper.log

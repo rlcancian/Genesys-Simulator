@@ -1,3 +1,13 @@
+genesys-simulator (2026.1.0-2~wip20260821) noble; urgency=medium
+
+  * Consolidate GUI, Shell, Worker, Launcher/Dispatcher and desktop integration
+    into one genesys-simulator binary package.
+  * Preserve the per-user runtime and Debian system-fallback architecture.
+  * Replace the temporary five-package split with a single installable .deb.
+  * Update CI and lifecycle validation for the unified package contract.
+
+ -- GenESyS Maintainers <rlcancian@users.noreply.github.com>  Fri, 21 Aug 2026 13:59:00 -0300
+
 genesys-simulator (2026.1.0-2~wip20260820) noble; urgency=medium
 
   * Integrate the stable Launcher/Dispatcher into the Debian installation.

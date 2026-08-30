@@ -17,55 +17,19 @@ Homepage: https://github.com/rlcancian/Genesys-Simulator
 Vcs-Browser: https://github.com/rlcancian/Genesys-Simulator
 Vcs-Git: https://github.com/rlcancian/Genesys-Simulator.git
 
-Package: genesys-common
+Package: genesys-simulator
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ca-certificates, gpgv, zstd
-Description: GenESyS stable launcher and runtime dispatcher
+Breaks: genesys-common (<< ${binary:Version}), genesys-shell (<< ${binary:Version}), genesys-worker (<< ${binary:Version}), genesys-gui (<< ${binary:Version}), genesys-web (<< ${binary:Version})
+Replaces: genesys-common (<< ${binary:Version}), genesys-shell (<< ${binary:Version}), genesys-worker (<< ${binary:Version}), genesys-gui (<< ${binary:Version}), genesys-web (<< ${binary:Version})
+Description: Generic and Expansible System Simulator
  GenESyS is a C++ simulation platform designed as an extensible
  architecture for modeling and simulation.
  .
- This package provides the stable launcher, non-interactive dispatcher,
- administrative update policy and shared public entry points used to select
- either a per-user runtime or the Debian-provided system fallback.
-
-Package: genesys-shell
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, genesys-common (= ${binary:Version})
-Description: GenESyS command-line shell
- GenESyS is a C++ simulation platform designed as an extensible
- architecture for modeling and simulation.
- .
- This package provides the command-line shell system fallback and its public
- dispatcher entry point.
-
-Package: genesys-worker
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, genesys-common (= ${binary:Version})
-Breaks: genesys-web (<< ${binary:Version})
-Replaces: genesys-web (<< ${binary:Version})
-Description: GenESyS HTTP worker runtime
- GenESyS is a C++ simulation platform designed as an extensible
- architecture for modeling and simulation.
- .
- This package provides the canonical genesys-worker system fallback, the
- public dispatcher entry point and the legacy genesys-web command alias.
- The worker is not intended for direct public-Internet exposure.
-
-Package: genesys-gui
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, genesys-common (= ${binary:Version}), genesys-shell (= ${binary:Version}), genesys-worker (= ${binary:Version})
-Description: Generic and Expansible System Simulator Qt GUI
- GenESyS is a C++ simulation platform designed as an extensible
- architecture for modeling and simulation.
- .
- This package provides the Qt desktop graphical user interface, desktop
- integration and a complete GUI/Shell/Worker system fallback installation.
-
-Package: genesys-web
-Section: oldlibs
-Architecture: all
-Depends: ${misc:Depends}, genesys-worker (= ${binary:Version})
-Description: transitional package for the GenESyS worker
- This transitional package preserves upgrades from the historical genesys-web
- Debian package. The canonical package and executable are now genesys-worker;
- the public genesys-web command remains available as a compatibility alias.
+ This single package installs the complete supported GenESyS system base:
+ the Qt graphical interface, command-line shell, HTTP worker, legacy web
+ compatibility command, stable Launcher and Dispatcher, administrative
+ update policy, desktop integration, and the Debian-provided system fallback
+ runtime. The public genesys-mcp dispatcher entry point is also installed;
+ the Python MCP system fallback remains intentionally outside this Debian
+ build contract.

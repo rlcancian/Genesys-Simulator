@@ -49,7 +49,7 @@ env:
 
 jobs:
   build-debian-packages:
-    name: Build Debian packages
+    name: Build Debian package
     runs-on: ubuntu-24.04
     timeout-minutes: 70
 
@@ -98,12 +98,12 @@ jobs:
             gpgv \
             zstd
 
-      - name: Build Debian binary packages
+      - name: Build Debian binary package
         run: |
           set -Eeuo pipefail
           dpkg-buildpackage -us -uc -b 2>&1 | tee genesys-debian-build.log
 
-      - name: Collect packages and build diagnostics
+      - name: Collect package and build diagnostics
         if: always()
         run: |
           set +e
@@ -120,33 +120,29 @@ jobs:
           cp -v ../*.changes genesys-debian-packages/ 2>/dev/null || true
           find genesys-debian-diagnostics genesys-debian-packages -maxdepth 4 -type f | sort
 
-      - name: Verify and inventory Debian package set
+      - name: Verify and inventory unified Debian package
         run: |
           set -Eeuo pipefail
-          expected=(genesys-common genesys-shell genesys-worker genesys-gui genesys-web)
+          expected_package='genesys-simulator'
           shopt -s nullglob
           debs=(genesys-debian-packages/*.deb)
-          [[ ${#debs[@]} -eq ${#expected[@]} ]] || {
-            echo "::error::Expected ${#expected[@]} .deb packages, found ${#debs[@]}"
+          [[ ${#debs[@]} -eq 1 ]] || {
+            echo "::error::Expected exactly one .deb package, found ${#debs[@]}"
             exit 1
           }
           printf 'package\tversion\tarchitecture\tfile\n' > genesys-debian-diagnostics/package-inventory.tsv
-          for deb in "${debs[@]}"; do
-            package="$(dpkg-deb -f "${deb}" Package)"
-            version="$(dpkg-deb -f "${deb}" Version)"
-            architecture="$(dpkg-deb -f "${deb}" Architecture)"
-            printf '%s\t%s\t%s\t%s\n' "${package}" "${version}" "${architecture}" "$(basename "${deb}")" \
-              >> genesys-debian-diagnostics/package-inventory.tsv
-            dpkg-deb --info "${deb}" > "genesys-debian-diagnostics/${package}.info.txt"
-            dpkg-deb --contents "${deb}" > "genesys-debian-diagnostics/${package}.contents.txt"
-          done
-          for package in "${expected[@]}"; do
-            count="$(awk -F '\t' -v package="${package}" 'NR > 1 && $1 == package { n++ } END { print n + 0 }' genesys-debian-diagnostics/package-inventory.tsv)"
-            [[ "${count}" -eq 1 ]] || {
-              echo "::error::Expected exactly one ${package} package, found ${count}"
-              exit 1
-            }
-          done
+          deb="${debs[0]}"
+          package="$(dpkg-deb -f "${deb}" Package)"
+          version="$(dpkg-deb -f "${deb}" Version)"
+          architecture="$(dpkg-deb -f "${deb}" Architecture)"
+          [[ "${package}" == "${expected_package}" ]] || {
+            echo "::error::Expected package ${expected_package}, found ${package}"
+            exit 1
+          }
+          printf '%s\t%s\t%s\t%s\n' "${package}" "${version}" "${architecture}" "$(basename "${deb}")" \
+            >> genesys-debian-diagnostics/package-inventory.tsv
+          dpkg-deb --info "${deb}" > "genesys-debian-diagnostics/${package}.info.txt"
+          dpkg-deb --contents "${deb}" > "genesys-debian-diagnostics/${package}.contents.txt"
           cat genesys-debian-diagnostics/package-inventory.tsv
 
       - name: Validate AppStream metadata
@@ -162,13 +158,13 @@ jobs:
           set -Eeuo pipefail
           shopt -s nullglob
           debs=(genesys-debian-packages/*.deb)
-          [[ ${#debs[@]} -gt 0 ]] || {
-            echo "No Debian packages are available for Lintian." | tee genesys-debian-diagnostics/genesys-lintian.log
+          [[ ${#debs[@]} -eq 1 ]] || {
+            echo "Expected one unified Debian package for Lintian, found ${#debs[@]}." | tee genesys-debian-diagnostics/genesys-lintian.log
             exit 1
           }
-          lintian --fail-on error "${debs[@]}" 2>&1 | tee genesys-debian-diagnostics/genesys-lintian.log
+          lintian --fail-on error "${debs[0]}" 2>&1 | tee genesys-debian-diagnostics/genesys-lintian.log
 
-      - name: Upload Debian packages
+      - name: Upload Debian package
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -194,7 +190,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download Debian packages
+      - name: Download Debian package
         uses: actions/download-artifact@v4
         with:
           name: genesys-debian-packages
