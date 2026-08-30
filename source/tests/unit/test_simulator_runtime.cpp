@@ -26,7 +26,9 @@
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
+#include "plugins/data/MaterialHandling/Distance.h"
 #include "plugins/data/MaterialHandling/Sequence.h"
+#include "plugins/data/MaterialHandling/Segment.h"
 #include "../../plugins/data/Synchronization/SignalData.h"
 #include "../../plugins/data/MaterialHandling/Station.h"
 #include "../../plugins/data/Logic/Set.h"
@@ -95,7 +97,9 @@
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
+#include "../../plugins/components/MaterialHandling/Enter.h"
 #include "../../plugins/components/MaterialHandling/PickStation.h"
+#include "../../plugins/components/MaterialHandling/Route.h"
 #undef protected
 #undef private
 #define private public
@@ -411,6 +415,40 @@ public:
     }
 };
 
+class DistanceProbe : public Distance {
+public:
+    DistanceProbe(Model* model, const std::string& name = "") : Distance(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class SegmentProbe : public Segment {
+public:
+    SegmentProbe(Model* model, const std::string& name = "") : Segment(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
 class SignalDataProbe : public SignalData {
 public:
     SignalDataProbe(Model* model, const std::string& name = "") : SignalData(model, name) {}
@@ -573,6 +611,27 @@ public:
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class RouteProbe : public Route {
+public:
+    RouteProbe(Model* model, const std::string& name = "") : Route(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
     }
 
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
@@ -3098,6 +3157,155 @@ TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
     EXPECT_TRUE(errorMessage.empty());
 }
 
+TEST(SimulatorRuntimeTest, DistanceCheckFailsForMissingOrInvalidEntries) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DistanceProbe distance(model, "DistanceInvalid");
+    std::string errorMessage;
+    EXPECT_FALSE(distance.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("has no entries"), std::string::npos);
+
+    distance.insertEntry(new DistanceEntry("", "B", -1.0, true));
+    errorMessage.clear();
+    EXPECT_FALSE(distance.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("beginning station"), std::string::npos);
+    EXPECT_NE(errorMessage.find("negative distance"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, DistanceSupportsDirectAndBidirectionalLookup) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DistanceProbe distance(model, "DistanceLookup");
+    distance.insertEntry(new DistanceEntry("A", "B", 5.5, true));
+    distance.insertEntry(new DistanceEntry("B", "C", 2.0, false));
+
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("A", "B"), 5.5);
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("B", "A"), 5.5);
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("B", "C"), 2.0);
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("C", "B"), -1.0);
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("A", "C"), -1.0);
+}
+
+TEST(SimulatorRuntimeTest, DistanceSaveAndLoadPreservesEntries) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DistanceProbe source(model, "DistancePersistSource");
+    source.insertEntry(new DistanceEntry("DockA", "DockB", 3.25, true));
+    source.insertEntry(new DistanceEntry("DockB", "DockC", 4.75, false));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    DistanceProbe loaded(model, "DistancePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getEntries()->size(), 2u);
+
+    auto entries = loaded.getEntries()->list();
+    auto it = entries->begin();
+    DistanceEntry* first = *it++;
+    DistanceEntry* second = *it++;
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    EXPECT_EQ(first->fromStationName, "DockA");
+    EXPECT_EQ(first->toStationName, "DockB");
+    EXPECT_DOUBLE_EQ(first->length, 3.25);
+    EXPECT_TRUE(first->bidirectional);
+    EXPECT_EQ(second->fromStationName, "DockB");
+    EXPECT_EQ(second->toStationName, "DockC");
+    EXPECT_DOUBLE_EQ(second->length, 4.75);
+    EXPECT_FALSE(second->bidirectional);
+}
+
+TEST(SimulatorRuntimeTest, DistancePluginInformationExposesMaterialHandlingCategory) {
+    std::unique_ptr<PluginInformation> info(Distance::GetPluginInformation());
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<Distance>());
+    EXPECT_EQ(info->getCategory(), "MaterialHandling");
+}
+
+TEST(SimulatorRuntimeTest, SegmentCheckFailsForMissingStationsAndNegativeLengths) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SegmentProbe segment(model, "SegmentInvalid");
+    segment.insertStep(new SegmentStep("A", 1.0));
+    std::string errorMessage;
+    EXPECT_FALSE(segment.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("needs at least two stations"), std::string::npos);
+
+    segment.insertStep(new SegmentStep("", -3.0));
+    errorMessage.clear();
+    EXPECT_FALSE(segment.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("must define a station"), std::string::npos);
+    EXPECT_NE(errorMessage.find("negative length"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SegmentReturnsAccumulatedDistanceOnlyInForwardOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SegmentProbe segment(model, "SegmentLookup");
+    segment.insertStep(new SegmentStep("A", 2.0));
+    segment.insertStep(new SegmentStep("B", 3.5));
+    segment.insertStep(new SegmentStep("C", 0.0));
+
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("A", "B"), 2.0);
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("A", "C"), 5.5);
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("B", "C"), 3.5);
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("C", "B"), -1.0);
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("A", "Missing"), -1.0);
+}
+
+TEST(SimulatorRuntimeTest, SegmentSaveAndLoadPreservesOrderedSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SegmentProbe source(model, "SegmentPersistSource");
+    source.insertStep(new SegmentStep("Paint", 1.5));
+    source.insertStep(new SegmentStep("Dry", 2.0));
+    source.insertStep(new SegmentStep("Pack", 0.0));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SegmentProbe loaded(model, "SegmentPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getSteps()->size(), 3u);
+
+    auto steps = loaded.getSteps()->list();
+    auto it = steps->begin();
+    SegmentStep* first = *it++;
+    SegmentStep* second = *it++;
+    SegmentStep* third = *it++;
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    ASSERT_NE(third, nullptr);
+    EXPECT_EQ(first->stationName, "Paint");
+    EXPECT_DOUBLE_EQ(first->lengthToNext, 1.5);
+    EXPECT_EQ(second->stationName, "Dry");
+    EXPECT_DOUBLE_EQ(second->lengthToNext, 2.0);
+    EXPECT_EQ(third->stationName, "Pack");
+    EXPECT_DOUBLE_EQ(third->lengthToNext, 0.0);
+}
+
+TEST(SimulatorRuntimeTest, SegmentPluginInformationExposesMaterialHandlingCategory) {
+    std::unique_ptr<PluginInformation> info(Segment::GetPluginInformation());
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<Segment>());
+    EXPECT_EQ(info->getCategory(), "MaterialHandling");
+}
+
 TEST(SimulatorRuntimeTest, LabelCheckFailsWithoutEnteringComponent) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -4225,6 +4433,108 @@ TEST(SimulatorRuntimeTest, PickStationDispatchChoosesStationAndStoresSelectedId)
     ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
     EXPECT_EQ(sink.ReceivedEntities()[0], entity);
     EXPECT_EQ(entity->getAttributeValue(savedStationAttribute.getId()), stationB.getId());
+}
+
+TEST(SimulatorRuntimeTest, RouteCheckAcceptsLabelDestinationWithoutStation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CollectorSinkComponentProbe sink(model, "RouteLabelCheckSink");
+    Label label(model, "RouteLabelCheck");
+    label.setEnterIntoLabelComponent(&sink);
+
+    RouteProbe route(model, "RouteToLabel");
+    route.setRouteDestinationType(Route::DestinationType::Label);
+    route.setLabel(&label);
+    route.setRouteTimeExpression("0.0");
+
+    std::string errorMessage;
+    EXPECT_TRUE(route.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, RouteSaveAndLoadPreservesStationExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RouteProbe source(model, "RoutePersistSource");
+    source.setRouteDestinationType(Route::DestinationType::Station);
+    source.setStationExpression("42");
+    source.setRouteTimeExpression("3.5");
+    source.setRouteTimeTimeUnit(Util::TimeUnit::minute);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    RouteProbe loaded(model, "RoutePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRouteDestinationType(), Route::DestinationType::Station);
+    EXPECT_EQ(loaded.getStationExpression(), "42");
+    EXPECT_EQ(loaded.getRouteTimeExpression(), "3.5");
+    EXPECT_EQ(loaded.getRouteTimeTimeUnit(), Util::TimeUnit::minute);
+}
+
+TEST(SimulatorRuntimeTest, RouteDispatchUsesStationExpressionToReachResolvedEnterComponent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "RouteExprStation");
+    Enter enter(model, "RouteExprEnter");
+    CollectorSinkComponentProbe sink(model, "RouteExprSink");
+    EntityType routeEntityType(model, "RouteExprType");
+    enter.setStation(&station);
+    enter.setReportStatistics(false);
+    enter.connectTo(&sink);
+
+    RouteProbe route(model, "RouteExprDispatcher");
+    route.setReportStatistics(false);
+    route.setRouteDestinationType(Route::DestinationType::Station);
+    route.setStationExpression(std::to_string(station.getId()));
+    route.setRouteTimeExpression("0.0");
+
+    std::string errorMessage;
+    ASSERT_TRUE(route.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("RouteExprEntity", true);
+    entity->setEntityType(&routeEntityType);
+    route.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+}
+
+TEST(SimulatorRuntimeTest, RouteDispatchUsesLabelEnterComponentWhenDelayExpires) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CollectorSinkComponentProbe sink(model, "RouteLabelSink");
+    Label label(model, "RouteLabel");
+    EntityType routeEntityType(model, "RouteLabelType");
+    label.setEnterIntoLabelComponent(&sink);
+
+    RouteProbe route(model, "RouteLabelDispatcher");
+    route.setReportStatistics(false);
+    route.setRouteDestinationType(Route::DestinationType::Label);
+    route.setLabel(&label);
+    route.setRouteTimeExpression("2.0");
+
+    std::string errorMessage;
+    ASSERT_TRUE(route.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("RouteLabelEntity", true);
+    entity->setEntityType(&routeEntityType);
+    route.DispatchEventProbe(entity);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+
+    DrainFutureEvents(model);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
 }
 
 TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {

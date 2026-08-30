@@ -213,12 +213,14 @@ TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins)
         "biosimulatorrunner.so",
         "cellularautomata.so",
         "defaultnode.so",
+        "distance.so",
         "dummyelement.so",
         "groprogram.so",
         "old_odeelement.so",
         "petriplace.so",
         "rsimulator.so",
         "rsimulatorrunner.so",
+        "segment.so",
         "submodel.so"
     };
 

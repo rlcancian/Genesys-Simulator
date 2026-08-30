@@ -113,7 +113,9 @@
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "data/Logic/Label.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
+#include "plugins/data/MaterialHandling/Distance.h"
 #include "plugins/data/MaterialHandling/Sequence.h"
+#include "plugins/data/MaterialHandling/Segment.h"
 #include "data/Logic/Set.h"
 #include "plugins/data/Synchronization/SignalData.h"
 #include "data/ExternalIntegration/SPICERunner.h"
@@ -248,6 +250,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("write.so");
     filenames->insert("access.so");
     filenames->insert("defaultnode.so");
+    filenames->insert("distance.so");
     filenames->insert("enter.so");
     filenames->insert("exit.so");
     filenames->insert("leave.so");
@@ -255,6 +258,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("petriplace.so");
     filenames->insert("route.so");
     filenames->insert("rsimulator.so");
+    filenames->insert("segment.so");
     filenames->insert("start.so");
     filenames->insert("stop.so");
     filenames->insert("station.so");
@@ -485,6 +489,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Access::GetPluginInformation;
     else if (fn == "defaultnode.so")
         GetInfo = &DefaultNode::GetPluginInformation;
+    else if (fn == "distance.so")
+        GetInfo = &Distance::GetPluginInformation;
     else if (fn == "enter.so")
         GetInfo = &Enter::GetPluginInformation;
     else if (fn == "exit.so")
@@ -499,6 +505,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Route::GetPluginInformation;
     else if (fn == "rsimulator.so")
         GetInfo = &RSimulator::GetPluginInformation;
+    else if (fn == "segment.so")
+        GetInfo = &Segment::GetPluginInformation;
     else if (fn == "start.so")
         GetInfo = &Start::GetPluginInformation;
     else if (fn == "stop.so")

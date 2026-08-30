@@ -105,5 +105,29 @@ bool Distance::_check(std::string& errorMessage) {
 		errorMessage += "Distance \"" + getName() + "\" has no entries. ";
 		return false;
 	}
-	return true;
+	bool resultAll = true;
+	unsigned int index = 0;
+	for (DistanceEntry* entry : *_entries->list()) {
+		const std::string prefix = "Distance \"" + getName() + "\" entry " + Util::StrIndex(index);
+		if (entry == nullptr) {
+			errorMessage += prefix + " is null. ";
+			resultAll = false;
+			index++;
+			continue;
+		}
+		if (entry->fromStationName.empty()) {
+			errorMessage += prefix + " must define a beginning station. ";
+			resultAll = false;
+		}
+		if (entry->toStationName.empty()) {
+			errorMessage += prefix + " must define an ending station. ";
+			resultAll = false;
+		}
+		if (entry->length < 0.0) {
+			errorMessage += prefix + " cannot have a negative distance. ";
+			resultAll = false;
+		}
+		index++;
+	}
+	return resultAll;
 }

@@ -108,5 +108,25 @@ bool Segment::_check(std::string& errorMessage) {
 		errorMessage += "Segment \"" + getName() + "\" needs at least two stations. ";
 		return false;
 	}
-	return true;
+	bool resultAll = true;
+	unsigned int index = 0;
+	for (SegmentStep* step : *_steps->list()) {
+		const std::string prefix = "Segment \"" + getName() + "\" step " + Util::StrIndex(index);
+		if (step == nullptr) {
+			errorMessage += prefix + " is null. ";
+			resultAll = false;
+			index++;
+			continue;
+		}
+		if (step->stationName.empty()) {
+			errorMessage += prefix + " must define a station. ";
+			resultAll = false;
+		}
+		if (step->lengthToNext < 0.0) {
+			errorMessage += prefix + " cannot have a negative length. ";
+			resultAll = false;
+		}
+		index++;
+	}
+	return resultAll;
 }
