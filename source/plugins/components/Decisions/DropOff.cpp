@@ -152,7 +152,6 @@ PluginInformation* DropOff::GetPluginInformation() {
 	info->setMinimumOutputs(2);
 	info->setMaximumOutputs(2);
 	info->insertDynamicLibFileDependence("entitygroup.so");
-	info->insertDynamicLibFileDependence("attribute.so");
 	info->setDescriptionHelp("Drops a parsed number of grouped members starting at a parsed 1-based rank to output port 1 while the representative entity continues on port 0.");
 	return info;
 }

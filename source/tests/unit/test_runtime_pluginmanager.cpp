@@ -6,6 +6,7 @@
 #include "kernel/simulator/SystemDependencyResolver.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
 #include "../../plugins/components/BiochemicalSimulation/BacteriaColony.h"
+#include "../../plugins/components/Decisions/DropOff.h"
 #include "../../plugins/components/Logic/Create.h"
 #include "../../plugins/components/Logic/Dispose.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
@@ -236,6 +237,16 @@ TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins)
         EXPECT_TRUE(plugin->isIsValidPlugin()) << filename;
         EXPECT_FALSE(plugin->getPluginInfo()->getPluginTypename().empty()) << filename;
     }
+}
+
+TEST(RuntimePluginManagerClassTest, DropOffDoesNotDeclareEssentialAttributeAsDynamicDependency) {
+    std::unique_ptr<PluginInformation> info(DropOff::GetPluginInformation());
+    ASSERT_NE(info, nullptr);
+    ASSERT_NE(info->getDynamicLibFilenameDependencies(), nullptr);
+
+    const auto* dependencies = info->getDynamicLibFilenameDependencies();
+    EXPECT_NE(std::find(dependencies->begin(), dependencies->end(), "entitygroup.so"), dependencies->end());
+    EXPECT_EQ(std::find(dependencies->begin(), dependencies->end(), "attribute.so"), dependencies->end());
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyPluginExposesFlowPorts) {
