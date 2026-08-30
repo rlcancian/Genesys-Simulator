@@ -117,9 +117,7 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
 | Arena module | Panel | Status |
 |---|---|---|
 | Create, Dispose, Assign, Process, Decide, Batch, Separate, Record | Basic Process | ✅ [§6](#6-phase-b--components-analyzed-entries) (batches 1-2) — all Basic Process flowchart modules covered |
-| Delay | Advanced Process | ✅ [§6.3](#63-cross-cutting-finding-revised-in-batch-2-arenas-vanvawaittransferother-time-allocation-is-implemented-cost-allocation-is-not-confirmed), [§6.5](#65-process) (audited ahead of schedule via `Process`) |
-| Seize, Release | Advanced Process | ⬜ (touched only incidentally via `Process`/`Delay`; full audit pending, batch 3) |
-| Dropoff, Hold, Match, Pickup, ReadWrite, Remove, Search, Signal, Store, Unstore, Adjust Variable | Advanced Process | ⬜ (batch 3+) |
+| Delay, Seize, Release, Hold(→Wait), Match, Pickup, Remove, Search, ReadWrite(→Write), Dropoff, Store, Unstore, Signal, Adjust Variable | Advanced Process | ✅ §6.3, §6.5, §6.10–§6.19 — **all Advanced Process flowchart modules covered** |
 | Enter, Leave, PickStation, Route, Station (as flowchart module) | Advanced Transfer (general) | ⬜ |
 | Access, Convey, Exit, Start, Stop | Advanced Transfer (conveyor) | ✅ `Access`/`Exit`/`Start`/`Stop` confirmed as incomplete stub templates (§7); `Convey` has no GenESyS equivalent at all |
 | Activate, Allocate, Free, Halt, Move, Request, Transport | Advanced Transfer (transporter) | ⬜ (no GenESyS component found under these names; strong indication of `missing`, to confirm) |
@@ -651,11 +649,11 @@ and allocated as well" (quoted almost verbatim in `Delay.cpp`'s own
   `Separate::_onDispatchEvent()` at all **[confirmed: absence]**. A modeler
   who needs Arena's duplicate-and-fan-out behavior currently has no
   `Separate`-based way to achieve it.
-- **Needs human decision**: whether "Duplicate Original" semantics should be
-  added to `Separate`, or whether duplication is intended to be achieved
-  through a different mechanism (e.g. `Clone`, in
-  `source/plugins/components/DiscreteProcessing/Clone.{h,cpp}` — not yet
-  audited) — `needs-human-decision`.
+- **Resolved (maintainer, 2026-08-30)**: duplication is intentionally a
+  separate component, `Clone` — see §6.19 for the confirmed audit of
+  `Clone.cpp`. `Separate` is not expected to grow "Duplicate Original"
+  semantics.
+- **Needs human decision**: no (resolved).
 
 ### 6.9 Record
 
@@ -691,6 +689,200 @@ and allocated as well" (quoted almost verbatim in `Delay.cpp`'s own
 - **Needs human decision**: whether the other four Record Types are in
   scope for this component, or whether users are expected to reach
   `Counter`/`StatisticsCollector` directly for those cases.
+
+### 6.10 Seize and Release
+
+- **Arena**: "Seize module" and "Release module", *Getting Started with
+  Arena*, "The Advanced Process Panel", pp. 62-63 and p. 60. Seize allocates
+  one or more resources/set members to an entity (queueing if unavailable);
+  Release gives them back.
+- **GenESyS**: `Seize`/`Release` —
+  `source/plugins/components/DiscreteProcessing/{Seize,Release}.{h,cpp}`.
+- **Level**: `equivalent`, and this closes the §6.3 cost-time-allocation
+  question for resource-holding time.
+- **Parameters**: `SeizableItem` requests (Resource/Set, quantity,
+  selection rule, save attribute), `QueueableItem` (Queue/Set/Attribute/
+  Expression), `_priority`/`_priorityExpression`, `_allocationType` — all
+  confirmed matching Arena's Type/Resource Name/Set Name/Quantity/Selection
+  Rule/Save Attribute/Priority/Allocation/Queue Type fields **[confirmed,
+  `Seize.h`]**. `Release`'s `SeizableItem` release requests plus
+  `RemoveFromType`-independent quantity/rule match Arena's Release fields
+  **[confirmed, `Release.h`]**.
+- **Behavior (confirms and extends §6.3)** **[confirmed,
+  `Seize.cpp:192-238`, `Release.cpp:221-237`]**: `Seize` stamps
+  `Entity.Allocation.<ResourceName>` with the configured
+  `Util::AllocationType` when a resource is successfully seized; `Release`
+  reads that same attribute back when a resource is released, and credits
+  the resource's held duration (`resource->getLastTimeSeized()`) to both a
+  `<EntityType>.<Category>Time` `StatisticsCollector` and a running
+  `Entity.Total<Category>Time` attribute — the exact same two-sink pattern
+  as `Delay` (§6.3). So category **time** allocation is confirmed working
+  for both processing delay (`Delay`) and resource-holding time
+  (`Seize`/`Release`).
+- **Documentation-bug note (fixed in this batch)**: `Seize.cpp:227` carried
+  a `//@TODO: Check it!` comment as if the attribute write were unverified,
+  and `Release.cpp:230` carried a stale `//@TODO: Seize is not setting this
+  attribute. Fiz it.` comment claiming the opposite of what `Seize.cpp`
+  actually does. Both comments were misleading; removed as a zero-behavior
+  documentation correction (not a functional change).
+- **Needs human decision**: no (time allocation is confirmed correct); cost
+  allocation remains the open item tracked in §6.3.
+
+### 6.11 Hold → Wait
+
+- **Arena**: "Hold module", *Getting Started with Arena*, "The Advanced
+  Process Panel", p. 54. Type: Wait for Signal / Scan for Condition /
+  Infinite Hold; Queue Type (Queue/Set/Internal/Attribute/Expression).
+- **GenESyS**: `Wait` — `source/plugins/components/Synchronization/Wait.{h,cpp}`.
+  Note the name change: this is Arena's **Hold**, not a separate concept.
+- **Level**: `equivalent`.
+- **Parameters**: `WaitType` (`WaitForSignal/InfiniteHold/ScanForCondition`)
+  matches Arena's Type exactly; `_condition`, `_limitExpression`, attached
+  `SignalData`, and a `Queue*` (todo-noted in the source as "should be a
+  QueueableItem") all correspond to Arena's Wait for Value/Limit/Condition/
+  Queue Type fields **[confirmed, `Wait.h`]**.
+- **Divergence**: `_queue` is a plain `Queue*` rather than the richer
+  `QueueableItem` (Queue/Set/Attribute/Expression) that `Seize`/`Process`
+  use — the header itself flags this with a `@TODO`. Minor, self-acknowledged
+  gap.
+- **Needs human decision**: no.
+
+### 6.12 Signal
+
+- **Arena**: "Signal module", *Getting Started with Arena*, "The Advanced
+  Process Panel", p. 65. Sends a signal value to release entities waiting at
+  Hold modules, up to a Limit.
+- **GenESyS**: `Signal` — `source/plugins/components/Synchronization/Signal.{h,cpp}`.
+- **Level**: `equivalent`. `_signalData` (attached `SignalData`) and
+  `_limitExpression` match Arena's Signal Value and Limit fields
+  **[confirmed, `Signal.h`]**.
+- **Needs human decision**: no.
+
+### 6.13 Match
+
+- **Arena**: "Match module", *Getting Started with Arena*, "The Advanced
+  Process Panel", p. 56. Brings together one entity from each of up to five
+  queues, optionally requiring matching attribute values.
+- **GenESyS**: `Match` — `source/plugins/components/Synchronization/Match.{h,cpp}`.
+- **Level**: `equivalent` (and broader than Arena's five-queue limit).
+  `Rule` (`Any/ByAttribute`), `_attributeName`, `_matchSize`,
+  `_numberOfQueues` and a `List<Queue*>` match Arena's Number to
+  Match/Type/Attribute Name fields, with no hardcoded queue-count ceiling
+  **[confirmed, `Match.h`]**.
+- **Needs human decision**: no.
+
+### 6.14 Pickup and Remove
+
+- **Arena**: "Remove module", *Getting Started with Arena*, "The Advanced
+  Process Panel", p. 61 (remove one entity at a given rank from a queue) and
+  "Pickup module", p. 57 (remove a consecutive run of entities from a queue
+  into the incoming entity's group).
+- **GenESyS**: `Remove` —
+  `source/plugins/components/Decisions/Remove.{h,cpp}` — and `PickUp`
+  (`source/plugins/components/Decisions/PickUp.{h,cpp}`), which **inherits
+  from `Remove`** and reuses its rank/queue plumbing.
+- **Level**: `different` (broader than Arena, not narrower).
+  `RemoveFromType` (`QUEUE/ENTITYGROUP`) lets `Remove` pull from either a
+  Queue or an EntityGroup, and `_removeStartRank`/`_removeEndRank` support a
+  rank *range* rather than Arena's single-rank-only Remove
+  **[confirmed, `Remove.h`]**. (Two disabled historical unit tests,
+  `SimulatorRuntimeTest.RemoveEqualStartAndEndRankRemovesExactlyOneAndRoutesCorrectly`
+  and `...RemoveRangeRemovesOnlyEntitiesInsideConfiguredInterval`, confirm
+  the range behavior was deliberately built and tested.)
+- **Needs human decision**: no.
+
+### 6.15 Search
+
+- **Arena**: "Search module", *Getting Started with Arena*, "The Advanced
+  Process Panel", p. 64. Type: search a Queue, search an EntityGroup, or
+  search an arbitrary index range via an Expression (sets the global system
+  variable `J`).
+- **GenESyS**: `Search` — `source/plugins/components/Decisions/Search.{h,cpp}`.
+- **Level**: `partial`.
+- **Parameters**: `SearchInType` (`QUEUE/ENTITYGROUP`), `_startRank`/
+  `_endRank`, `_searchCondition`, `_saveFounRankAttribute` match Arena's
+  Type/Starting-Ending Value/Search Condition fields for the Queue and
+  EntityGroup cases **[confirmed, `Search.h`]**.
+- **Divergence**: `SearchInType` has only two members
+  (`num_elements = 2`) — Arena's third Type, a free-standing Expression
+  search over an index range with no queue/group at all, has no
+  corresponding enumerator **[confirmed: absence]**.
+- **Needs human decision**: whether expression-only search is in scope.
+
+### 6.16 ReadWrite → Write (write-only)
+
+- **Arena**: "ReadWrite module", *Getting Started with Arena*, "The Advanced
+  Process Panel", p. 58. Reads or writes values to/from Screen, File,
+  Attribute, Variable, or other Arena data sources (File module-backed).
+- **GenESyS**: `Write` — `source/plugins/components/InputOutput/Write.{h,cpp}`.
+  There is no corresponding "Read" component anywhere in
+  `source/plugins/components/InputOutput/` (only `Record` and `Write`
+  exist).
+- **Level**: `partial`.
+- **Parameters**: `WriteToType` (`SCREEN/FILE`) and a list of text elements
+  to write **[confirmed, `Write.h`]** — this covers only the "write text to
+  Screen or File" slice of Arena's ReadWrite module.
+- **Divergence**: no read direction at all, and no Attribute/Variable
+  data-source integration matching Arena's `File` data definition (§5.10) —
+  `Write` only ever emits literal/expression text, not structured
+  read-then-assign round-trips.
+- **Needs human decision**: whether a read-capable counterpart is in scope.
+
+### 6.17 Dropoff, Store, Unstore — additional confirmed stub templates
+
+**[confirmed]**: like `Access`/`Exit`/`Start`/`Stop` (§7), `DropOff`
+(`source/plugins/components/Decisions/DropOff.{h,cpp}`), `Store` and
+`Unstore` (`source/plugins/components/MaterialHandling/{Store,Unstore}.{h,cpp}`)
+are the identical incomplete-stub pattern: each header declares **no
+fields at all**, and each `_onDispatchEvent()` literally traces `"I'm just a
+dummy model and I'll just send the entity forward"` with `_check()`/
+`_loadInstance()`/`_saveInstance()` all `// @TODO: not implemented yet`.
+
+- Arena correspondence: "Dropoff module" (*Getting Started with Arena*, "The
+  Advanced Process Panel", p. 54 — release N entities from a group);
+  "Store module" (p. 66) and "Unstore module" (p. 67) — add/remove an entity
+  from a `Storage` (§5.11).
+- **Level**: `partial` (stub only, same as §7's conveyor-action stubs).
+- **Cross-reference**: this means the `Storage` data definition audited in
+  Phase A (§5.11) currently has **no functioning component** that actually
+  increments/decrements it — `Storage`'s real area/capacity fields exist,
+  but nothing populates them at simulation time.
+- **Needs human decision**: prioritization for completing these three stubs
+  (independent of the Conveyor/Transporter/Network work in §7, since Store/
+  Unstore/Dropoff do not depend on that missing subsystem at all).
+
+### 6.18 Adjust Variable
+
+- **Arena**: "Adjust Variable module", *Getting Started with Arena*, "The
+  Advanced Process Panel", p. 67. A small utility to increment/decrement a
+  variable by an expression inline in the flowchart.
+- **GenESyS**: no component with this name or an equivalent single-purpose
+  arithmetic-adjust component was found.
+- **Level**: `not-applicable`-leaning `missing` — `Assign` (§6.4) can
+  already express `MyVar + 1` style self-referential updates through its
+  general expression mechanism, so the capability is reachable, just not as
+  a dedicated named module.
+- **Needs human decision**: no.
+
+### 6.19 Clone confirmed as the substitute for Separate's "Duplicate Original" (per maintainer, 2026-08-30)
+
+**[confirmed]**: `Clone` —
+`source/plugins/components/DiscreteProcessing/Clone.{h,cpp}` — evaluates
+`_numClonesExpression`, creates that many new entities with the incoming
+entity's `EntityType` and a copy of every current `Attribute` value, sends
+each clone out output port 1 and the original out port 0, and increments a
+`Counter` when reporting is enabled (`Clone.cpp:81-101`). This is
+functionally Arena's Separate "Duplicate Original" Type (§6.8), confirmed by
+the maintainer as the intended GenESyS component for that behavior.
+
+- **Level**: `equivalent` (as the intentional split: `Separate` = Split
+  Existing Batch, `Clone` = Duplicate Original), modulo one gap.
+- **Divergence**: Arena's "Percent Cost to Duplicates" (splitting
+  accumulated VA/NVA/wait/transfer/other cost/time between the original and
+  its clones) has no equivalent in `Clone` — consistent with the still-open
+  cost-allocation gap tracked in §6.3.
+- **Needs human decision**: no (naming/design split confirmed by maintainer);
+  the cost-split sub-feature folds into the existing §6.3 cost question.
 
 ## 7. Confirmed-missing subsystem: Advanced Transfer conveyor/transporter data
 
@@ -783,11 +975,27 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
   refines, but does not contradict, the maintainer's Phase A clarification
   that Statistics/Collector/StatisticsCollector/Counter already cover the
   Statistic *data module*.
-  Batch 3 candidates: `Seize`, `Release` (finish DiscreteProcessing; resolve
-  the `Seize.cpp:227` `//@TODO: Check it!` allocation-attribute question and
-  the `Process` allocation-wiring question), then `Dropoff`, `Hold`, `Match`,
-  `Pickup`, `ReadWrite`, `Remove`, `Search`, `Signal`, `Store`, `Unstore`,
-  `Adjust Variable` (remaining Advanced Process).
+  Batch 3 (2026-08-30) closed out the rest of Advanced Process in one pass
+  (per maintainer request): `Seize`/`Release` (§6.10) confirmed the
+  category-**time** allocation loop end to end (Seize stamps
+  `Entity.Allocation.<Resource>`, Release reads it back and credits the
+  held time) and fixed two mutually-contradicting stale `@TODO` comments in
+  `Seize.cpp`/`Release.cpp` (doc-only, zero behavior change); `Hold`→`Wait`
+  (§6.11), `Signal` (§6.12), `Match` (§6.13) confirmed `equivalent`;
+  `Pickup`/`Remove` (§6.14) confirmed `different` (broader — rank ranges,
+  EntityGroup source); `Search` (§6.15) confirmed `partial` (no
+  expression-only search Type); `ReadWrite`→`Write` (§6.16) confirmed
+  `partial` (write-only, no read direction); `Dropoff`/`Store`/`Unstore`
+  (§6.17) confirmed as three more incomplete stub templates (same pattern
+  as §7's conveyor actions) — meaning `Storage` (§5.11) currently has no
+  functioning component consumer at all; `Adjust Variable` (§6.18) confirmed
+  absent but reachable through `Assign`. Maintainer confirmed (2026-08-30)
+  that `Clone` is the intentional substitute for Separate's missing
+  "Duplicate Original" (§6.19), closing that Phase-B-batch-2 open question.
+  **This closes 100% of Arena Basic Process and Advanced Process flowchart
+  modules.** Remaining Phase B scope is entirely Advanced Transfer (general/
+  conveyor/transporter flowchart modules) and Flow Process (likely
+  `not-applicable`).
 - **Phase C (parser/Arena Variables Guide cross-reference)**: not started;
   §8 above is a preliminary observation only, not a completed pass. Deferred
   by maintainer request (2026-08-29) — reminder needed in a later session.

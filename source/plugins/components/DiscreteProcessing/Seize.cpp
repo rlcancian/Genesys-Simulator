@@ -223,8 +223,9 @@ void Seize::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		else {
 			// alocate the resource
 			std::string attribIndex = "";
+			// Read back by Release, which credits the held time to this category (see Util::AllocationType).
 			entity->setAttributeValue("Entity.Allocation." + resource->getName(),
-			                          static_cast<int>(this->_allocationType), attribIndex, true); //@TODO: Check it!
+			                          static_cast<int>(this->_allocationType), attribIndex, true);
 			if (seizable->getSaveAttribute() != "") {
 				entity->setAttributeValue(seizable->getSaveAttribute(), index, attribIndex);
 			}

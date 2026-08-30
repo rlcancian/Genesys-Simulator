@@ -18,32 +18,15 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 
 /*!
-Match module
-DESCRIPTION
-The Match module brings together a specified number of entities waiting in different
-queues. The match may be accomplished when there is at least one entity in each of
-the desired queues. Additionally, an attribute may be specified such that the entities
-waiting in the queues must have the same attribute values before the match is
-initiated.
-When an entity arrives at the Match module, it is placed in one of up to five
-associated queues, based on the entry point to which it is connected. Entities will
-remain in their respective queues until a match exists.
-Once a match exists, one entity from each queue is released to be matched. The
-matched entities are then synchronized to depart from the module.
-TYPICAL USES
-* Assembling a part
-* Gathering various products for a customer order
-* Synchronizing a customer exit with a filled order
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Number to Match Number of matching entities that must reside in different queues
-before a match may be completed.
-Type Method for matching the incoming entities. If Type is Any
-Entities, one entity must reside in each queue for a match to be
-made. If Type is Based on Attribute, one entity must reside in
-each queue with the same attribute value.
-Attribute Name Attribute name that is used for identifying an arriving entity’s
-match value. Applies only when Type is Based on Attribute.
+ * \brief Brings together one entity from each of several input queues,
+ * optionally requiring a matching attribute value, and releases them in
+ * sync.
+ *
+ * Arena correspondence: the "Match module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Advanced Process Panel", p. 56). `Rule`
+ * (`Any/ByAttribute`) and `_attributeName` match Arena's Type/Attribute
+ * Name; `_matchSize` matches Number to Match; `_numberOfQueues` generalizes
+ * Arena's fixed five-queue limit to an arbitrary count.
  */
 class Match : public ModelComponent {
 public:
