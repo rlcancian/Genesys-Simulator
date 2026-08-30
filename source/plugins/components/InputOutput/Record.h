@@ -18,46 +18,27 @@
 #include <string>
 
 /*!
- Record module
-DESCRIPTION
-This module is used to collect statistics in the simulation model. Various types of
-observational statistics are available, including time between exits through the
-module, entity statistics (such as time or costing), general observations, and interval
-statistics (from some time stamp to the current simulation time). A count type of
-statistic is available as well. Tally and Counter sets can also be specified.
-TYPICAL USES
- * Collect the number of jobs completed each hour
- * Count how many orders have been late being fulfilled
- * Record the time spent by priority customers in the main check-out line
-PROMPTS
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Type Type of observational (tally) or count statistic to be generated.
-Count will increase or decrease the value of the named statistic
-by the specified value. Entity Statistics will generate general
-entity statistics, such as time and costing/duration information.
-Time Interval will calculate and record the difference between a
-specified attribute’s value and current simulation time. Time
-Between will track and record the time between entities entering
-the module. Expression will record the value of the specified
-expression.
-Attribute Name Name of the attribute whose value will be used for the interval
-statistics. Applies only when Type is Interval.
-Value Value that will be recorded to the observational statistic when
-Type is Expression or added to the counter when Type is Count.
-Tally Name This field defines the symbol name of the tally into which the
-observation is to be recorded. Applies only when Type is Time
-Interval, Time Between, or Expression.
-Counter This field defines the symbol name of the counter to Name
-increment/decrement. Applies only when Type is Counter.
-Record into Set Check box to specify whether or not a tally or counter set will be
-used.
-Tally Set Name Name of the tally set that will be used to record the
-observational-type statistic. Applies only when Type is Time
-Interval, Time Between, or Expression.
-Counter Set Name Name of the counter set that will be used to record the count-type
-statistic. Applies only when Type is Count.
-Set Index Index into the tally or counter set.
+ * \brief Evaluates a parser expression each time an entity passes through
+ * and records the value into a StatisticsCollector and/or an external file.
+ *
+ * Arena correspondence: the "Record module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", pp. 41-42), which offers
+ * five Types: Count, Entity Statistics, Time Interval, Time Between, and
+ * Expression, plus optional Tally/Counter Sets.
+ *
+ * Only the Expression Type is implemented — there is no \c Type field at
+ * all. GenESyS extends this single mode with dataset-export metadata that
+ * has no Arena counterpart (\c _datasetName, \c _randomVariableName,
+ * \c _variableType, \c _description) and direct file recording
+ * (\c _filename, \c _timeDependent) intended for external tooling such as
+ * the Data Analyser.
+ *
+ * Known differences from Arena: Count, Entity Statistics, Time Interval and
+ * Time Between have no equivalent Type here, and there is no Tally/Counter
+ * Set support ("Record into Set"). This does not mean statistics collection
+ * itself is unavailable in GenESyS — \c Counter and \c StatisticsCollector
+ * are used directly by several other components/data definitions — only
+ * that this specific component only reaches the Expression case.
  */
 class Record : public ModelComponent {
 public:

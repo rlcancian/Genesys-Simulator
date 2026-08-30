@@ -20,7 +20,29 @@
 #include "plugins/components/DiscreteProcessing/Release.h"
 
 /*!
- This component ...
+ * \brief Composite component that always chains an internal Seize, Delay
+ * and Release to model "seize a resource, hold it for a while, release it".
+ *
+ * Arena correspondence: the "Process module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", pp. 33-35, plus the
+ * "Process module — Resource dialog box", p. 35). Priority, the
+ * QueueableItem and the SeizeRequests list are forwarded to the internal
+ * Seize; the delay expression/time unit are forwarded to the internal
+ * Delay; see Seize, Delay and Release for their own accessors.
+ *
+ * Known differences from Arena, see
+ * `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.5 for
+ * full detail:
+ * - there is no Action selector (Delay / Seize Delay Release / Seize Delay /
+ *   Delay Release); a Process instance always builds all three
+ *   sub-components — a standalone Delay is the closest substitute for
+ *   Arena's resource-free Action variants;
+ * - `setAllocationType()`/`getAllocationType()` control the internal
+ *   Seize's allocation category, not the internal Delay's, so a Process
+ *   component's own processing time stays permanently categorized as
+ *   "Wait" (Delay's own default) rather than reaching Arena's typical
+ *   "Value Added" default — flagged as a bug candidate pending maintainer
+ *   confirmation, not fixed here.
  */
 class Process : public ModelComponent {
 public: // constructors

@@ -20,24 +20,25 @@
 #include "kernel/simulator/Plugin.h"
 
 /*!
-Delay module
-DESCRIPTION
-The Delay module delays an entity by a specified amount of time.
-When an entity arrives at a Delay module, the time delay expression is evaluated and
-the entity remains in the module for the resulting time period. The time is then
-allocated to the entity’s value-added, non-value added, transfer, wait, or other time.
-Associated costs are calculated and allocated as well.
-TYPICAL USES
-* Processing a check at a bank
-* Performing a setup on a machine
-* Transferring a document to another department
-PROMPTS
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Allocation Type of category to which the entity’s incurred delay time and
-cost will be added.
-Delay Time Determines the value of the delay for the entity.
-Units Time units used for the delay time. 
+ * \brief Holds an entity in place for an evaluated expression's worth of
+ * time, crediting that time to one of five allocation categories.
+ *
+ * Arena correspondence: the "Delay module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Advanced Process Panel", pp. 53-54).
+ * \c _allocation (a \c Util::AllocationType — ValueAdded/NonValueAdded/
+ * Transfer/Wait/Others, matching Arena's five categories exactly) is the
+ * closest correspondence to Arena's "Allocation" field.
+ *
+ * Confirmed behavior: `_onDispatchEvent()` credits the evaluated delay
+ * **time** to the configured category twice — into a
+ * `<EntityType>.<Category>Time` StatisticsCollector (when the EntityType
+ * reports statistics) and into a running `Entity.Total<Category>Time`
+ * attribute on the entity itself. This is the mechanism referenced by
+ * `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.3.
+ *
+ * Known difference from Arena: only **time** is allocated; no code path
+ * converts accumulated category time into category **cost** (Arena's "costs
+ * are calculated and allocated as well").
  */
 class Delay : public ModelComponent {
 public:

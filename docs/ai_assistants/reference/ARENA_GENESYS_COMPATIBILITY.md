@@ -116,9 +116,10 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
 
 | Arena module | Panel | Status |
 |---|---|---|
-| Create, Dispose, Assign | Basic Process | ✅ [§6](#6-phase-b--components-analyzed-entries) (batch 1) |
-| Process, Decide, Batch, Separate, Record | Basic Process | ⬜ (batch 2) |
-| Delay, Dropoff, Hold, Match, Pickup, ReadWrite, Release, Remove, Seize, Search, Signal, Store, Unstore, Adjust Variable | Advanced Process | ⬜ |
+| Create, Dispose, Assign, Process, Decide, Batch, Separate, Record | Basic Process | ✅ [§6](#6-phase-b--components-analyzed-entries) (batches 1-2) — all Basic Process flowchart modules covered |
+| Delay | Advanced Process | ✅ [§6.3](#63-cross-cutting-finding-revised-in-batch-2-arenas-vanvawaittransferother-time-allocation-is-implemented-cost-allocation-is-not-confirmed), [§6.5](#65-process) (audited ahead of schedule via `Process`) |
+| Seize, Release | Advanced Process | ⬜ (touched only incidentally via `Process`/`Delay`; full audit pending, batch 3) |
+| Dropoff, Hold, Match, Pickup, ReadWrite, Remove, Search, Signal, Store, Unstore, Adjust Variable | Advanced Process | ⬜ (batch 3+) |
 | Enter, Leave, PickStation, Route, Station (as flowchart module) | Advanced Transfer (general) | ⬜ |
 | Access, Convey, Exit, Start, Stop | Advanced Transfer (conveyor) | ✅ `Access`/`Exit`/`Start`/`Stop` confirmed as incomplete stub templates (§7); `Convey` has no GenESyS equivalent at all |
 | Activate, Allocate, Free, Halt, Move, Request, Transport | Advanced Transfer (transporter) | ⬜ (no GenESyS component found under these names; strong indication of `missing`, to confirm) |
@@ -442,40 +443,55 @@ Legend: ✅ analyzed in this document (see linked section), ⬜ not yet analyzed
   observation into a `TotalTimeInSystem` `StatisticsCollector` attached to
   that `EntityType` (computed as current simulated time minus
   `Entity.ArrivalTime`). The entity is then removed from the model.
-- **Divergence (cross-cutting, see also §6.3)**: only a single collapsed
-  `TotalTimeInSystem` statistic is produced. Arena's full breakdown
-  (value-added/non-value-added/wait/transfer/other **time and cost**,
-  separately) has no runtime equivalent here — consistent with §5.2's finding
-  that `EntityType`'s VA/NVA/Waiting/Other cost fields are only initial
-  values with no accumulation logic found so far.
-- **Needs human decision**: whether/when the full Arena-style cost/time
-  category breakdown should be implemented — `needs-human-decision` (see
-  §6.3 for the consolidated cross-cutting note).
+- **Divergence (revised in batch 2, see §6.3)**: `Dispose` only reports a
+  single collapsed `TotalTimeInSystem` statistic. As §6.3 details, `Delay`
+  *does* accumulate per-category time on the entity itself
+  (`Entity.Total<Category>Time`, e.g. `Entity.TotalWaitTime`) — but `Dispose`
+  does not read or report those attributes, so an entity's category-time
+  breakdown is computed and available on the entity, yet never surfaced in
+  the final disposal statistics. Cost allocation (VA/NVA/Waiting/Other cost
+  fields on `EntityType`, §5.2) is not tapped by either `Delay` or `Dispose`.
+- **Needs human decision**: whether `Dispose` should report the
+  per-category time totals that `Delay` already accumulates on the entity,
+  and whether cost allocation should be implemented at all — see §6.3.
 
-### 6.3 Cross-cutting finding: Arena's VA/NVA/Wait/Transfer/Other cost-and-time accounting has no confirmed runtime implementation
+### 6.3 Cross-cutting finding (revised in batch 2): Arena's VA/NVA/Wait/Transfer/Other **time** allocation is implemented; **cost** allocation is not confirmed
 
-**[strong indication, spans §5.2 and §6.2]**: Arena tracks five cost/time
-categories per entity throughout its life (value-added, non-value-added,
-wait, transfer, other) and reports both per-category totals and a grand
-total, fed by every module an entity passes through (Process, Delay, Seize/
-Release wait time, Route/transfer time, etc.). In GenESyS:
+**[confirmed, revises the batch-1 `strong indication`]**: batch 1 recorded
+this as an open question because `Create`/`Dispose`/`Assign` showed no
+accumulation logic. Reading `Delay` (Advanced Process, audited ahead of
+schedule because `Process` embeds it — see §6.5) resolves it:
 
-- `EntityType` only exposes *initial* values for four of the five categories
-  (VA/NVA/Waiting/Other — see §5.2), with no dedicated Transfer Cost field;
-- `Dispose` only accumulates a single collapsed `TotalTimeInSystem` value,
-  not per-category totals;
-- no accumulation logic crediting time/cost to a specific category was found
-  in `Create`, `Dispose`, or `Assign` (the three components read so far in
-  Phase B).
+- `Util::AllocationType` (`source/kernel/util/Util.h:92`) is exactly Arena's
+  five categories: `ValueAdded/NonValueAdded/Transfer/Wait/Others`
+  **[confirmed]**;
+- `Delay::_onDispatchEvent()` (`Delay.cpp:101-117`) **does** allocate the
+  evaluated delay **time** to the configured category: it adds the delay
+  time to a `<EntityType>.<Category>Time` `StatisticsCollector` (gated by the
+  EntityType's own `isReportStatistics()`), and separately accumulates a
+  running `Entity.Total<Category>Time` attribute on the entity itself
+  **[confirmed]**;
+- `Seize` also carries its own, independent `_allocationType` (default
+  `Others`) and writes it into a per-request attribute
+  (`Seize.cpp:227`, marked `//@TODO: Check it!` in the source) **[confirmed
+  field/call exists; exact semantics of that attribute not yet traced]**.
 
-This does not yet prove the category breakdown is entirely absent — `Process`,
-`Delay`, `Seize`/`Release` (Phase B batch 2) are the components that would be
-expected to perform such accumulation in Arena and have not been read yet.
-Recorded now as a `strong indication` to avoid re-deriving it component by
-component, and to flag it explicitly for a `needs-human-decision` once batch
-2 confirms or refutes it: is a full VA/NVA/Wait/Transfer/Other cost-accounting
-subsystem an intended GenESyS feature, or is total-time/total-cost tracking
-(as currently implemented) the deliberate scope?
+So **time** allocation by category is real and functioning, at least through
+`Delay`. What remains **not found** anywhere read so far (`EntityType`,
+`Create`, `Dispose`, `Assign`, `Process`, `Delay`): any logic that converts
+accumulated category **time** into category **cost** using `EntityType`'s
+initial VA/NVA/Waiting/Other cost fields (§5.2) or `Resource`'s busy/idle
+per-time-unit costs (§5.4) — i.e. Arena's "Associated costs are calculated
+and allocated as well" (quoted almost verbatim in `Delay.cpp`'s own
+`GetPluginInformation()` help text) has no confirmed GenESyS counterpart.
+
+- **Level**: `partial` (time: `equivalent`-leaning; cost: `missing`, not yet
+  exhaustively searched outside the components read so far).
+- **Needs human decision**: whether per-category **cost** accumulation
+  (turning `Entity.Total<Category>Time` plus a cost rate into a
+  `Entity.Total<Category>Cost`) is an intended GenESyS feature, or whether
+  cost reporting is deliberately out of scope beyond `Resource`'s own
+  busy/idle/per-use cost fields.
 
 ### 6.4 Assign
 
@@ -512,6 +528,169 @@ subsystem an intended GenESyS feature, or is total-time/total-cost tracking
   (system-variable) assignment targets are in scope for `Assign`, or whether
   they are deliberately out of scope (e.g. left to dedicated components) —
   `needs-human-decision`.
+
+### 6.5 Process
+
+- **Arena**: "Process module", *Getting Started with Arena*, "The Basic
+  Process Panel", pp. 33-35, plus "Process module — Resource dialog box",
+  p. 35. Action: Delay / Seize Delay Release / Seize Delay / Delay Release;
+  Priority; one or more Resources (repeat group: Type, Resource/Set Name,
+  Quantity, Save Attribute); Delay Type/Units; Allocation (governs the
+  module's own processing-time category, independent of any implicit queue
+  wait-time category); Report Statistics.
+- **GenESyS**: `Process` — `source/plugins/components/DiscreteProcessing/Process.{h,cpp}`,
+  a composite `ModelComponent` that always owns and internally chains three
+  mandatory sub-components: `Seize` → `Delay` → `Release`
+  (`Process::_ensureInternalComponents()`, `Process.cpp:178-210`)
+  **[confirmed]**.
+- **Level**: `partial`.
+- **Parameters**: `Priority`/`PriorityExpression`, `QueueableItem`, and the
+  `SeizeRequests` list are all forwarded to the internal `_seize`
+  **[confirmed, `Process.cpp:86-120`]**; the delay expression/time unit are
+  forwarded to the internal `_delay` **[confirmed]**; `_check()` requires
+  matching Seize/Release request cardinality and a consistent internal
+  Seize→Delay→Release chain **[confirmed, `Process.cpp:236-252,321-348`]**.
+- **Divergence 1**: there is no Action selector — a `Process` instance always
+  builds all three sub-components (Seize, Delay, Release) unconditionally.
+  Arena's "Delay" and "Delay Release" Action variants (no resource seizure at
+  all) have no direct `Process`-level equivalent; the closest workaround is
+  using a standalone `Delay` component instead of `Process`.
+- **Divergence 2 (confirmed bug candidate, `needs-human-decision`)**:
+  `Process::setAllocationType()`/`getAllocationType()` forward to the
+  internal `_seize`'s allocation (`Process.cpp:102-108`), **not** to the
+  internal `_delay`'s allocation. No code path was found that lets `Process`
+  change `_delay`'s `_allocation` field, which therefore stays permanently at
+  `Delay`'s own default, `Util::AllocationType::Wait`
+  (`Delay.h:82`) **[confirmed: no call to `_delay->setAllocation(...)`
+  anywhere in the reviewed sources]**. Net effect: a `Process` component's
+  own processing (Delay) time is always categorized and reported as "Wait"
+  time, never reachable as "Value Added" (Arena's typical default for
+  processing time) or any other category through `Process`'s public API —
+  while the exposed `AllocationType` control instead governs `Seize`'s
+  allocation, whose role is unclear (see §6.3's open note on `Seize.cpp:227`).
+  This looks like a plausible wiring oversight (the control may have been
+  intended to reach `_delay`, not `_seize`) rather than a deliberate design
+  choice, but it is not being "fixed" here without maintainer confirmation,
+  per audit governance.
+- **Needs human decision**: is `Process`'s exposed `AllocationType` supposed
+  to govern the internal `Delay`'s category (matching Arena's module-level
+  "Allocation" field) rather than the internal `Seize`'s? If so this is a
+  real, fixable bug; if the current wiring is intentional, the divergence
+  from Arena should be documented as `different` instead.
+
+### 6.6 Decide
+
+- **Arena**: "Decide module", *Getting Started with Arena*, "The Basic
+  Process Panel", pp. 36-37. Type: 2-way/N-way, by Condition or by Chance;
+  structured condition fields (Named/Is/Value with Row/Column for Variable
+  Array conditions) or Percentages for Chance branching; one exit per
+  condition/percentage plus a single "else"/"false" exit.
+- **GenESyS**: `Decide` — `source/plugins/components/Decisions/Decide.{h,cpp}`.
+- **Level**: `different` (a clean generalization, not a narrow gap).
+- **Parameters**: `_conditions` is a plain `List<std::string>` of parser
+  boolean expressions, one per output port in order, plus an implicit final
+  "else" port **[confirmed]**.
+- **Behavior** `_onDispatchEvent()` **[confirmed, `Decide.cpp:63-83`]**:
+  evaluates each condition expression in list order through the parser;
+  routes the entity to the first output port whose condition is truthy, or
+  to the trailing else port if none match. Each port has its own `Counter`
+  when reporting is enabled.
+- **Divergence**: Arena's structured condition builder (Named/Is/Value,
+  Row/Column, and a dedicated Percentages field for Chance-type branching)
+  collapses into one general parser-expression mechanism. There is no
+  dedicated "by Chance" percentage input — chance-based branching must be
+  expressed as a boolean expression by the modeler (e.g. comparing a random
+  draw against a threshold) rather than through a structured percentage
+  field. This is a deliberate simplification/generalization, not a missing
+  capability, but it does shift authoring ergonomics onto the modeler.
+- **Needs human decision**: no.
+
+### 6.7 Batch
+
+- **Arena**: "Batch module", *Getting Started with Arena*, "The Basic
+  Process Panel", p. 38. Type: Temporary/Permanent; Batch Size; Rule:
+  Any/By Attribute (+ Attribute Name); Save Criterion (representative
+  entity's attribute values: First/Last/Sum — GenESyS naming below matches
+  closely); Representative Entity (type).
+- **GenESyS**: `Batch` — `source/plugins/components/Grouping/Batch.{h,cpp}`.
+- **Level**: `equivalent` (header-level; full `_onDispatchEvent()` behavior
+  spot-checked, not exhaustively traced).
+- **Parameters**: `BatchType` (`Temporary/Permanent`), `Rule`
+  (`Any/ByAttribute`) + `_attributeName`, `GroupedAttribs`
+  (`FirstEntity/LastEntity/SumAttributes` — matching Arena's Save Criterion
+  First/Last/Sum), `_batchSize` (a parsed expression, generalizing Arena's
+  static number), `_groupedEntityType` (Representative Entity) **[confirmed,
+  `Batch.h:56-127`; enum-to-string mapping confirmed in `Batch.cpp:48-53`]**.
+- **Divergence**: none identified at the header/API level in this pass.
+- **Needs human decision**: no.
+
+### 6.8 Separate
+
+- **Arena**: "Separate module", *Getting Started with Arena*, "The Basic
+  Process Panel", p. 39. Type: Duplicate Original (# of Duplicates, Percent
+  Cost to Duplicates split between copies) or Split Existing Batch (Member
+  Attributes propagation rule, Attribute Name for the "Take Specific
+  Representative Values" option).
+- **GenESyS**: `Separate` — `source/plugins/components/Grouping/Separate.{h,cpp}`.
+- **Level**: `partial` (one of Arena's two Types is fully unimplemented, not
+  a stub — the implemented half is real).
+- **Parameters**: `Separate.h` declares **no fields at all**; behavior is
+  entirely hardcoded in `_onDispatchEvent()` **[confirmed]**.
+- **Behavior** `_onDispatchEvent()` **[confirmed, `Separate.cpp:48-79`]**:
+  implements only Arena's "Split Existing Batch" semantics — reads the
+  `Entity.Group` marker attribute, looks up the matching `EntityGroup`
+  (created by `Batch`), releases every original member entity with its
+  group marker cleared, forwards each to the front connection, and removes
+  the temporary representative entity. Members are **not** modified with any
+  representative-entity attribute values on the way out (no "Member
+  Attributes" propagation logic was found).
+- **Divergence**: Arena's "Duplicate Original" Type (clone the incoming
+  entity N times, optionally splitting VA/NVA/wait/transfer/other cost and
+  time between the copies via "Percent Cost to Duplicates") has **no**
+  implementation here — there is no entity-cloning code path in
+  `Separate::_onDispatchEvent()` at all **[confirmed: absence]**. A modeler
+  who needs Arena's duplicate-and-fan-out behavior currently has no
+  `Separate`-based way to achieve it.
+- **Needs human decision**: whether "Duplicate Original" semantics should be
+  added to `Separate`, or whether duplication is intended to be achieved
+  through a different mechanism (e.g. `Clone`, in
+  `source/plugins/components/DiscreteProcessing/Clone.{h,cpp}` — not yet
+  audited) — `needs-human-decision`.
+
+### 6.9 Record
+
+- **Arena**: "Record module", *Getting Started with Arena*, "The Basic
+  Process Panel", pp. 41-42. Type: Count, Entity Statistics, Time Interval,
+  Time Between, or Expression; optional Tally/Counter Set with Set Index.
+- **GenESyS**: `Record` — `source/plugins/components/InputOutput/Record.{h,cpp}`.
+- **Level**: `partial`.
+- **Parameters**: no `Type` field exists at all — `Record` only ever
+  evaluates one parser `_expression` into a `StatisticsCollector`
+  (`_cstatExpression`) **[confirmed]**. GenESyS extends this single mode
+  beyond Arena with dataset-export metadata with no Arena counterpart:
+  `_datasetName`, `_randomVariableName`, `_variableType`,
+  `_description`, and direct-to-file recording (`_filename`,
+  `_timeDependent`) for external tooling (e.g. the Data Analyser) **[confirmed,
+  `Record.h:68-148`]**.
+- **Behavior** `_onDispatchEvent()` **[confirmed, `Record.cpp:210-233`]**:
+  evaluates `_expression`, feeds the value to `_cstatExpression` when
+  present, and optionally appends it (with or without a simulated-time
+  column) to `_filename`.
+- **Divergence**: Arena's Count, Entity Statistics, Time Interval and Time
+  Between Types have no equivalent — only "Expression" is implemented.
+  Tally/Counter Sets ("Record into Set") are entirely absent **[confirmed:
+  absence]**. This directly bears on the maintainer's Phase A clarification
+  that "Statistic" is covered by `Statistics`/`Collector`/
+  `StatisticsCollector`/`Counter`: those kernel classes exist and are used
+  elsewhere (`Counter` inside `Create`/`Dispose`/`Decide`, for example), but
+  `Record` itself — the Arena module most directly responsible for ad hoc
+  observational statistics — only exposes the Expression path, so Count,
+  Entity Statistics, Time Interval and Time Between remain gaps at the
+  `Record` component level specifically, independent of the underlying
+  kernel classes being available.
+- **Needs human decision**: whether the other four Record Types are in
+  scope for this component, or whether users are expected to reach
+  `Counter`/`StatisticsCollector` directly for those cases.
 
 ## 7. Confirmed-missing subsystem: Advanced Transfer conveyor/transporter data
 
@@ -580,20 +759,35 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
   Advanced Transfer conveyor/transporter/network data classes are confirmed
   `missing` (§7) with an approved future-implementation direction recorded,
   not yet scheduled.
-- **Phase B (components)**: batch 1 of N complete (2026-08-29) — `Create`,
-  `Dispose`, `Assign` (Basic Process, Logic domain), §6. Raised a cross-cutting
-  `strong indication`/`needs-human-decision` (§6.3) about Arena's
-  VA/NVA/Wait/Transfer/Other cost-and-time accounting having no confirmed
-  runtime implementation, to be confirmed or refuted by batch 2. Also
-  confirmed `Access`/`Exit`/`Start`/`Stop` (Advanced Transfer conveyor
-  actions) as incomplete stub templates, and recorded the maintainer's
-  approval (2026-08-29) to eventually implement the missing
-  Conveyor/Transporter/Network subsystem (§7) as future work, not yet
-  scheduled or issue-tracked.
-  Batch 2 candidates: `Process`, `Decide`, `Batch`, `Separate`, `Record`
-  (remaining Basic Process flowchart modules), then `Delay`, `Seize`,
-  `Release` (Advanced Process — highest-confidence 1:1 candidates for the
-  DiscreteProcessing domain).
+- **Phase B (components)**: batches 1-2 of N complete (2026-08-29). Batch 1:
+  `Create`, `Dispose`, `Assign`. Batch 2: `Process`, `Decide`, `Batch`,
+  `Separate`, `Record` — this closes out every Arena Basic Process flowchart
+  module. `Delay` (Advanced Process) was also audited ahead of schedule
+  because `Process` embeds it.
+  All entries in §6.
+  The batch-1 cross-cutting `needs-human-decision` about VA/NVA/Wait/
+  Transfer/Other accounting (§6.3) is **resolved for time, still open for
+  cost**: `Delay` confirmed to allocate category **time** correctly via
+  `Util::AllocationType`, but no category **cost** accumulation was found
+  anywhere audited so far, and `Dispose` does not surface the per-category
+  time totals `Delay` already computes on the entity. A new likely-bug
+  candidate was found in `Process::setAllocationType()` (routes to the
+  internal `Seize`, not the internal `Delay`, leaving `Process`'s own
+  processing time permanently categorized as "Wait" — §6.5) — flagged
+  `needs-human-decision` rather than fixed, since intent is unconfirmed.
+  `Separate` was found to implement only Arena's "Split Existing Batch" Type
+  (real, working) with "Duplicate Original" entirely absent (§6.8). `Record`
+  was found to implement only Arena's "Expression" Type, extended with
+  dataset-export metadata beyond Arena, with Count/Entity Statistics/Time
+  Interval/Time Between and Tally/Counter Sets all absent (§6.9) — this
+  refines, but does not contradict, the maintainer's Phase A clarification
+  that Statistics/Collector/StatisticsCollector/Counter already cover the
+  Statistic *data module*.
+  Batch 3 candidates: `Seize`, `Release` (finish DiscreteProcessing; resolve
+  the `Seize.cpp:227` `//@TODO: Check it!` allocation-attribute question and
+  the `Process` allocation-wiring question), then `Dropoff`, `Hold`, `Match`,
+  `Pickup`, `ReadWrite`, `Remove`, `Search`, `Signal`, `Store`, `Unstore`,
+  `Adjust Variable` (remaining Advanced Process).
 - **Phase C (parser/Arena Variables Guide cross-reference)**: not started;
   §8 above is a preliminary observation only, not a completed pass. Deferred
   by maintainer request (2026-08-29) — reminder needed in a later session.
@@ -602,7 +796,8 @@ pass (task instructions §8) and is **not yet analyzed** in this document.
   once the maintainer explains the design further; (b) revisit Phase C
   (parser + Arena Variables Guide cross-reference).
 
-No code behavior was changed in Phase A or Phase B batch 1 — only
+No code behavior was changed in Phase A or Phase B (batches 1-2) — only
 documentation (this file and the corresponding class headers). No bug was
-demonstrated that would justify a source change under `GOVERNANCE.md` §5
-change-policy.
+demonstrated with enough certainty of intent to justify a source change under
+`GOVERNANCE.md` §5 change-policy; the `Process`/`Delay` allocation-wiring
+observation (§6.5) is a candidate, not a confirmed fix.
