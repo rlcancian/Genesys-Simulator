@@ -12,14 +12,16 @@
  */
 
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "kernel/TraitsKernel.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/statistics/SamplerDefaultImpl1.h"
+#include "kernel/statistics/Sampler_if.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 #include <algorithm>
-#include <cstdlib>
 #include <memory>
 #include <unordered_map>
 
@@ -42,6 +44,12 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 
 ModalModelDefault::ModalModelDefault(Model* model, std::string name) : ModelComponent(
 	model, Util::TypeOf<ModalModelDefault>(), name) {
+	_legacySampler = new TraitsKernel<Sampler_if>::Implementation();
+}
+
+ModalModelDefault::~ModalModelDefault() {
+	delete _legacySampler;
+	_legacySampler = nullptr;
 }
 
 
@@ -405,6 +413,7 @@ bool ModalModelDefault::_check(std::string& errorMessage) {
 }
 
 void ModalModelDefault::_initBetweenReplications() {
+	_resetLegacySampler();
 }
 
 void ModalModelDefault::_createAttachedAttributes() {
@@ -609,27 +618,7 @@ void ModalModelDefault::_dispatchLegacyNodeModel(Entity* entity, unsigned int in
 			break;
 		}
 		else {
-			std::sort(enabled.begin(), enabled.end(), [](DefaultNodeTransition* a, DefaultNodeTransition* b) {
-				return a->getPriority() < b->getPriority();
-			});
-			DefaultNodeTransition* chosen = enabled.front();
-			if (chosen->getTransitionKind() == DefaultNodeTransition::TransitionKind::PROBABILISTIC) {
-				double probabilitySum = 0.0;
-				for (DefaultNodeTransition* option : enabled) {
-					probabilitySum += option->getProbability();
-				}
-				if (probabilitySum > 0.0) {
-					double sample = (static_cast<double>(std::rand()) / static_cast<double>(RAND_MAX)) * probabilitySum;
-					double accum = 0.0;
-					for (DefaultNodeTransition* option : enabled) {
-						accum += option->getProbability();
-						if (sample <= accum) {
-							chosen = option;
-							break;
-						}
-					}
-				}
-			}
+			DefaultNodeTransition* chosen = _chooseLegacyTransition(enabled);
 			traceSimulation(this, "Transition \"" + chosen->getName() + "\" from \"" + chosen->getSource()->getName() + "\" to \"" +chosen->getDestination()->getName() + "\" fires.", TraceManager::Level::L7_internal);
 			chosen->execute(_parentModel, entity);
 			transitions++;
@@ -667,6 +656,50 @@ DefaultNode* ModalModelDefault::getEntryNode() {
 
 void ModalModelDefault::setEntryNode(DefaultNode* const entry_node) {
 	_entryNode = entry_node;
+}
+
+void ModalModelDefault::_resetLegacySampler() {
+	SamplerDefaultImpl1* defaultSampler = dynamic_cast<SamplerDefaultImpl1*>(_legacySampler);
+	if (defaultSampler != nullptr) {
+		defaultSampler->reset();
+	}
+}
+
+DefaultNodeTransition* ModalModelDefault::_chooseLegacyTransition(const std::vector<DefaultNodeTransition*>& enabled) {
+	if (enabled.empty()) {
+		return nullptr;
+	}
+	std::vector<DefaultNodeTransition*> ordered = enabled;
+	std::sort(ordered.begin(), ordered.end(), [](DefaultNodeTransition* a, DefaultNodeTransition* b) {
+		return a->getPriority() < b->getPriority();
+	});
+	DefaultNodeTransition* chosen = ordered.front();
+	if (chosen->getTransitionKind() != DefaultNodeTransition::TransitionKind::PROBABILISTIC) {
+		return chosen;
+	}
+
+	double probabilitySum = 0.0;
+	for (DefaultNodeTransition* option : ordered) {
+		if (option != nullptr) {
+			probabilitySum += option->getProbability();
+		}
+	}
+	if (probabilitySum <= 0.0) {
+		return chosen;
+	}
+
+	const double sample = _legacySampler->random() * probabilitySum;
+	double accum = 0.0;
+	for (DefaultNodeTransition* option : ordered) {
+		if (option == nullptr) {
+			continue;
+		}
+		accum += option->getProbability();
+		if (sample <= accum) {
+			return option;
+		}
+	}
+	return chosen;
 }
 
 //

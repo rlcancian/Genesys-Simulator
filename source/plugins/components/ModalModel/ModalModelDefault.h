@@ -20,6 +20,7 @@
 
 class DefaultNetwork;
 class NetworkActivationResult;
+class Sampler_if;
 
 /*!
  This component ...
@@ -27,7 +28,7 @@ class NetworkActivationResult;
 class ModalModelDefault : public ModelComponent {
 public: /// constructors
         ModalModelDefault(Model* model, std::string name = "");
-    virtual ~    ModalModelDefault() = default;
+	virtual ~ModalModelDefault() override;
 
 public: // getters and setters
 	virtual void setMaxTransitionsPerDispatch(unsigned int maxTransitionsPerDispatch);
@@ -125,11 +126,14 @@ private: /// new private user methods
 	Entity* _cloneEntity(Entity* entity);
 	void _writeOutputBinding(Entity* entity, unsigned int outputPort, double value);
 	void _routeNetworkOutputs(Entity* entity, const NetworkActivationResult& result);
+	void _resetLegacySampler();
+	DefaultNodeTransition* _chooseLegacyTransition(const std::vector<DefaultNodeTransition*>& enabled);
 
 private:
 	DefaultNetwork* _network = nullptr;
 	std::string _networkName = "";
 	std::vector<std::string> _inputBindings;
 	std::vector<std::string> _outputBindings;
+	Sampler_if* _legacySampler = nullptr;
 
 };
