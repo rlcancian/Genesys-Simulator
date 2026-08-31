@@ -1,5 +1,7 @@
 ---
 document_type: architecture-reference
+authority: technical-reference
+owner: project-maintainer
 status: design-baseline
 scope: GenESyS ModalModel, network models, ports, connections, and model-of-computation boundaries
 target_branch: WorkInProgress
@@ -16,6 +18,7 @@ The central goal is to support graph- and state-based models of computation insi
 
 The initial target network formalisms are:
 
+- mathematical graph networks (`GraphNetwork`, `DirectedGraphNetwork`, and optionally DAG-constrained directed graphs);
 - Extended Finite-State Machines (EFSMs);
 - finite-state Discrete-Time Markov Chains (DTMCs);
 - formal Coloured Petri Nets (CPNs).
@@ -55,6 +58,7 @@ However, what exists **inside the modal domain** is conceptually different.
 
 A modal/network model is not a set of ordinary GenESyS `ModelComponent`s connected by ordinary `Connection`s. It is a network consisting of formal network elements such as:
 
+- vertices and edges in a mathematical graph;
 - states and transitions in an EFSM;
 - states and probabilistic transitions in a DTMC;
 - places, transitions, arcs, markings, token values, guards, and bindings in a CPN.
@@ -281,6 +285,12 @@ ModelDataDefinition
     |
     +-- DefaultNetwork
     |      |
+    |      +-- GraphNetwork
+    |      |      |
+    |      |      +-- DirectedGraphNetwork
+    |      |             |
+    |      |             +-- DirectedAcyclicGraphNetwork
+    |      |
     |      +-- EFSMNetwork
     |      |
     |      +-- MarkovChainNetwork
@@ -288,6 +298,8 @@ ModelDataDefinition
     |      +-- ColoredPetriNetNetwork
     |
     +-- DefaultNode
+           |
+           +-- GraphNode
            |
            +-- EFSMState
            |
@@ -776,6 +788,125 @@ The exact C++ hierarchy is still subject to implementation review, but the seman
 > Do not collapse distinct formalisms into an abstraction that destroys their mathematical invariants.
 
 This principle is already consistent with the project's scientific-domain guidance.
+
+---
+
+# 22A. GraphNetwork
+
+`GraphNetwork` is the structural mathematical-graph specialization of `DefaultNetwork`.
+
+It represents:
+
+```text
+G = (V, E)
+```
+
+where:
+
+- `V` is a finite set of `GraphNode` vertices;
+- `E` is a finite set of `GraphEdge` edges.
+
+A `GraphNetwork` is not a process-flow submodel. Its `GraphEdge` objects are not GenESyS `Connection` objects, and a `GraphNode` is not a `ModelComponent` location through which an `Entity` automatically travels.
+
+The initial implementation treats graph algorithms as analyses over topology rather than simulation-time behavior:
+
+- BFS and DFS traverse the graph for analysis;
+- reachability and shortest path queries inspect the graph;
+- connected components and strongly connected components are computed from topology;
+- cycle detection and topological ordering are validation/analysis operations.
+
+Therefore a pure graph network does not define:
+
+- mandatory input/output ports;
+- `currentState`;
+- current vertex;
+- `activate() == move to next vertex`;
+- random walk;
+- entity routing over vertices.
+
+Those behaviors belong to future explicit specializations or adapters such as:
+
+- `GraphTraversalNetwork`;
+- `RandomWalkNetwork`;
+- `RoutingNetwork`;
+- `SpatialGraphNetwork`;
+- `CommunicationNetwork`;
+- `AgentGraphNetwork`.
+
+The base `DefaultNetwork::activate()` behavior remains sufficient for a structural graph: activation is inert unless a later dynamic graph specialization defines a temporal reaction.
+
+## GraphNode
+
+`GraphNode` reuses `DefaultNode` as its base because the previous migration made `DefaultNode` a `ModelDataDefinition` without process dispatch or `ConnectionManager` semantics.
+
+This is semantically acceptable because a graph vertex needs:
+
+- identity;
+- name;
+- persistence;
+- validation/inspection integration;
+- no process-flow dispatch.
+
+## GraphEdge
+
+`GraphEdge` is a separate model data definition rather than a reuse of `DefaultNodeTransition`.
+
+The reason is semantic: `DefaultNodeTransition` carries transition concepts such as guard expressions, output expressions, probability-like behavior and transition firing. A mathematical graph edge is simply an incidence relation between vertices with optional weight and optional direction.
+
+`GraphEdge` supports:
+
+- own identity/name;
+- source endpoint;
+- destination endpoint;
+- directed or undirected interpretation as configured by the owning graph;
+- optional numeric weight;
+- self-loops;
+- parallel edges.
+
+Weight is not a DTMC probability. It may later represent cost, distance, time, energy, capacity, risk or another domain metric. Algorithms that require specific weight properties must validate those preconditions before executing.
+
+## DirectedGraphNetwork
+
+`DirectedGraphNetwork` refines `GraphNetwork` with ordered-edge semantics:
+
+```text
+u -> v
+```
+
+means:
+
+- `v` is a successor of `u`;
+- `u` is a predecessor of `v`;
+- the reverse relationship is not implied.
+
+The API distinguishes predecessors, successors, incoming edges, outgoing edges, in-degree and out-degree.
+
+## DirectedAcyclicGraphNetwork
+
+`DirectedAcyclicGraphNetwork` is useful as a small semantic refinement of `DirectedGraphNetwork`.
+
+It enforces the invariant:
+
+```text
+no directed cycles
+```
+
+and supports topological ordering. A topological order is valid only when every directed edge goes from an earlier vertex to a later vertex in the returned order. If a directed cycle exists, no valid topological order is returned.
+
+## Graph algorithm complexity
+
+For the initial internal algorithms:
+
+- BFS: `O(V + E)`;
+- DFS: `O(V + E)`;
+- reachability and unweighted shortest path: `O(V + E)`;
+- connected components: `O(V + E)`;
+- directed strongly connected components with Tarjan DFS: `O(V + E)`;
+- directed cycle detection: `O(V + E)`;
+- topological ordering with Kahn's algorithm: `O(V + E)`;
+- Dijkstra with the current simple deterministic implementation: `O(V^2 + E)`.
+
+Temporary algorithm structures such as visited sets, queues, stacks, predecessor maps, distance maps, DFS colors and topological in-degree maps are not persisted.
 
 ---
 
@@ -1268,6 +1399,16 @@ The exact serialized format should be derived from existing GenESyS persistence 
 - internal activation counter/report configuration;
 - network-specific topology/state.
 
+## GraphNetwork
+
+- graph nodes;
+- graph edges;
+- endpoint references;
+- directed/undirected graph subtype;
+- optional numeric edge weights;
+- self-loops and parallel edges;
+- no algorithm-local traversal state.
+
 ## EFSMNetwork
 
 - states;
@@ -1311,6 +1452,12 @@ Expected examples:
 - reset activation counter;
 - clear activation-local presence flags;
 - restore initial interface/runtime values as defined.
+
+## GraphNetwork
+
+- preserve graph topology;
+- preserve nodes, edges and weights;
+- reset only inherited runtime/reporting data such as the activation counter.
 
 ## EFSMNetwork
 
@@ -1767,6 +1914,7 @@ Specifically deferred unless a concrete blocker requires them:
 - superdense time;
 - synchronous-reactive director;
 - generalized typed Connection payloads;
+- dynamic graph traversal state, random walks, graph-based routing, spatial graph semantics, communication-link semantics and agent movement on graphs;
 - replacing Entity as the general process-flow carrier;
 - CTMC;
 - Markov decision processes;
@@ -1789,7 +1937,7 @@ The following decisions are considered **settled** for the architectural baselin
 6. Modal state must no longer be stored in entity attributes.
 7. `DefaultNode` becomes a `ModelDataDefinition`, not a `ModelComponent`.
 8. Formalism specialization belongs to Network subclasses, not ModalModel subclasses.
-9. Initial network types are EFSM, finite-state DTMC, and formal CPN.
+9. Initial network types include mathematical graph networks, EFSM, finite-state DTMC, and formal CPN.
 10. EFSM should be structurally inspired by Ptolemy II.
 11. Initial EFSM excludes state refinements, preemption, and error transitions.
 12. Initial Markov support is DTMC only.
@@ -1816,6 +1964,9 @@ The following decisions are considered **settled** for the architectural baselin
 33. Ordinary `Connection` semantics remain process/entity-oriented for now.
 34. `ConnectionChannel` and Connection payload semantics are candidates for future generalization.
 35. ModalModel is treated as an adapter between models of computation.
+36. `GraphNetwork` represents mathematical graph topology and graph algorithms, not implicit Entity movement.
+37. `GraphEdge` is not a `Connection`.
+38. A pure graph network has no mandatory `currentState` or current vertex.
 
 ---
 
@@ -1877,6 +2028,14 @@ A safe implementation sequence is:
 - migrate existing FSM scaffolding;
 - implement validated EFSM subset;
 - add Ptolemy-inspired presence/output semantics.
+
+## Phase 5A — GraphNetwork
+
+- add `GraphNode` and `GraphEdge`;
+- add undirected and directed graph topology;
+- support optional weights, self-loops and parallel edges;
+- implement BFS, DFS, reachability, shortest paths, connected components, SCC, cycle detection and topological ordering;
+- keep graph algorithms separate from simulation-time movement semantics.
 
 ## Phase 6 — MarkovChainNetwork
 
@@ -2020,6 +2179,31 @@ https://ptolemy.berkeley.edu/ptolemyII/
 
 Relevant concepts taken as inspiration include explicit ports, current-state ownership, guards, output actions, set/commit actions, input presence/absence, controller/refinement interfaces, and composition of models of computation.
 
+Ptolemy II `ptolemy.graph` package documentation
+https://ptolemy.berkeley.edu/ptolemyII/ptII10.0/ptII10.0.1_20141217/doc/codeDoc/ptolemy/graph/package-summary.html
+
+Ptolemy II `ptolemy.graph` class hierarchy
+https://ptolemy.berkeley.edu/ptolemyII/ptII11.0/ptII/doc/codeDoc/ptolemy/graph/package-tree.html
+
+Ptolemy II `DirectedAcyclicGraph` documentation
+https://ptolemy.berkeley.edu/ptolemyII/ptII11.0/ptII/doc/codeDoc/ptolemy/graph/DirectedAcyclicGraph.html
+
+Relevant graph concepts taken as inspiration include separate graph/node/edge classes, directed graph and directed acyclic graph specializations, weighted/unweighted edges, graph analyses and topology exceptions. GenESyS does not copy Ptolemy code.
+
+## Graph algorithms
+
+Cormen, Leiserson, Rivest and Stein — *Introduction to Algorithms*, graph traversal and shortest-path algorithms.
+
+NetworkX DAG/topological-sort guide
+https://networkx.org/nx-guides/content/algorithms/dag/index.html
+
+Python `graphlib.TopologicalSorter` documentation
+https://docs.python.org/3/library/graphlib.html
+
+Tarjan, R. E. — *Depth-first search and linear graph algorithms*, SIAM Journal on Computing.
+
+Relevant concepts include BFS shortest paths for unweighted graphs, DFS traversal/cycle detection, Dijkstra for nonnegative weighted shortest paths, Tarjan strongly connected components, and Kahn-style topological ordering for DAGs.
+
 ## Coloured Petri Nets
 
 Jensen, Kristensen, Wells — *Coloured Petri Nets and CPN Tools for Modelling and Validation of Concurrent Systems*  
@@ -2070,11 +2254,19 @@ ModelDataDefinition
     |
     +-- DefaultNetwork
     |      |
+    |      +-- GraphNetwork
+    |      |      |
+    |      |      +-- DirectedGraphNetwork
+    |      |             |
+    |      |             +-- DirectedAcyclicGraphNetwork
+    |      |
     |      +-- EFSMNetwork
     |      +-- MarkovChainNetwork
     |      +-- ColoredPetriNetNetwork
     |
     +-- DefaultNode
+           |
+           +-- GraphNode
            |
            +-- EFSMState
            +-- MarkovState
@@ -2123,3 +2315,25 @@ states / places / transitions / arcs / tokens / probabilities
 inside the network formalism.
 
 This boundary is the key architectural decision.
+
+For graph networks specifically:
+
+```text
+GraphNode
+    |
+ GraphEdge
+    |
+GraphNode
+```
+
+is not equivalent to:
+
+```text
+ModelComponent
+    |
+ Connection
+    |
+ModelComponent
+```
+
+`GraphNetwork` represents mathematical topology and algorithms over that topology. Movement, random walks, routing and entity/agent traversal over the graph require future explicit specializations or adapters.

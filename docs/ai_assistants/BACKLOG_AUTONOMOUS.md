@@ -204,7 +204,7 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local`
 - Branch: `WiP202608/modal-network-implementation`
 - Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
-- Latest validated implementation commit: `a146b647bf78955f259bc22aea4eb07cca220c11`
+- Latest validated implementation commit: `e0fd8bd3a280db58617514c4d1d334a29cd75933`
 - Authorization: explicit maintainer continuation instruction on 2026-08-30 authorized resuming the ModalModel/network architecture from the current `DefaultNetwork` checkpoint without restarting the earlier phase-0 inventory.
 - Scope:
   - migrate `DefaultNode` from `ModelComponent` to `ModelDataDefinition`;
@@ -212,27 +212,87 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
   - preserve persistence and plugin registration compatibility for existing modal-model models;
   - keep `ModalModelDefault`/`ModalModelFSM`/`ModalModelPetriNet` behavior intact until the generic `ModalModel` adapter phase;
   - introduce the first formalism-owned network specialization (`EFSMNetwork`) with deterministic one-step activation semantics;
+  - introduce structural mathematical graph networks as `DefaultNetwork` specializations without process-flow `Connection` semantics;
   - add focused tests for the new node contract and any persistence/check regressions touched by the migration.
 - Non-goals:
   - no DTMC/CPN formalism implementation yet;
+  - no graph traversal simulation, random walk, graph routing, spatial-network behavior or agent movement implementation yet;
   - no full generic `ModalModel` adapter rewrite beyond the current `ModalModelDefault` bridge;
   - no broad plugin-architecture refactor outside the modal-model path;
   - no restart of the architecture phase-1/phase-2 `DefaultNetwork` work.
 - Acceptance:
   - `DefaultNode` compiles as a data-definition-based modal element;
   - `EFSMNetwork` compiles as a data-definition-based network specialization and is registered in the dummy/static plugin connector;
+  - `GraphNetwork`, `DirectedGraphNetwork`, `DirectedAcyclicGraphNetwork`, `GraphNode` and `GraphEdge` compile as data-definition-based graph abstractions and are registered in the dummy/static plugin connector;
   - plugin loading/persistence remains backward-compatible for the current branch scope;
-  - focused tests cover the migrated node contract, network bridge and EFSM activation/persistence contracts and continue to pass;
+  - focused tests cover the migrated node contract, network bridge, EFSM activation/persistence contracts and graph topology/algorithm/persistence contracts and continue to pass;
   - remaining architecture follow-ups are left isolated for the next phase.
 - Progress snapshot:
   - `DefaultNetwork` is already in place with network activation frame/result, port schema and activation counter;
   - `DefaultNode` has now moved to `ModelDataDefinition`, its old dispatch hook was removed, and node persistence now uses the data-definition serialization path;
   - `ModalModelDefault` now has an optional `DefaultNetwork` bridge with network reference persistence, input/output bindings, activation, zero-output consume semantics, one-output routing, and multi-output cloning;
   - `EFSMNetwork` now owns FSM states/transitions, default `input`/`output` ports, current/initial state, deterministic priority selection, output publication, replication reset and persistence round-trip;
+  - `GraphNetwork` now represents structural mathematical graphs with `GraphNode`/`GraphEdge`, undirected and directed semantics, optional weights, self-loops, parallel edges, BFS, DFS, reachability, unweighted shortest path, Dijkstra for nonnegative weights, connected components, Tarjan SCC, cycle detection, DAG cycle rejection and topological order;
   - `DefaultNetwork::_loadInstance()` now replaces an existing port schema instead of accumulating stale/default ports during load, which keeps subclass persistence round-trips stable;
-  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, `tests/unit/test_modal_model_default_network.cpp`, and `tests/unit/test_efsm_network.cpp` cover the base network abstraction, migrated node contract, generic adapter bridge, shared-network activation, invalid network references, EFSM activation, EFSM priority, EFSM reset, EFSM persistence and plugin metadata;
-  - validation snapshot on 2026-08-30: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1774 executed tests and 4 preexisting disabled tests;
+  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, `tests/unit/test_modal_model_default_network.cpp`, `tests/unit/test_efsm_network.cpp`, and `tests/unit/test_graph_network.cpp` cover the base network abstraction, migrated node contract, generic adapter bridge, shared-network activation, invalid network references, EFSM activation, EFSM priority, EFSM reset, EFSM persistence, GraphNetwork topology/algorithms/persistence and plugin metadata;
+  - validation snapshot on 2026-08-30 after the GraphNetwork documentation update: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit -R 'GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 44/44 focused tests; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1789/1789 executed tests and 4 preexisting disabled tests;
   - remaining work: DTMC and CPN network specializations, GUI/editor synchronization for network ports and bindings, and cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers.
+
+#### GraphNetwork extension
+
+##### Architecture
+
+- GraphNetwork: structural mathematical graph specialization of `DefaultNetwork`; inherited `activate()` remains inert and does not imply traversal, firing, movement or current vertex.
+- GraphNode: `DefaultNode` subclass used as a persistable graph vertex and not as a process-flow `ModelComponent`.
+- GraphEdge: separate `ModelDataDefinition` for graph incidence, endpoints, direction and optional numeric weight; it is not a GenESyS `Connection`.
+- reuse of DefaultNode/DefaultTransition: `GraphNode` reuses `DefaultNode`; `GraphEdge` deliberately does not reuse `DefaultNodeTransition` because transition guards/actions/probability semantics are not mathematical edge semantics.
+- directed/undirected representation: `GraphNetwork` is undirected; `DirectedGraphNetwork` overrides orientation-sensitive adjacency; `DirectedAcyclicGraphNetwork` extends directed graphs with a no-cycle invariant.
+
+##### Features
+
+- self loops: supported; directed self-loop contributes one in-edge and one out-edge and is detected as a directed cycle.
+- parallel edges: supported; edge identity is independent from `(source,destination)` and weights remain independent.
+- weights: optional numeric edge weight; absent weight is treated as cost `1.0` by shortest-path algorithms.
+- adjacency: deterministic insertion-order neighbors, predecessors, successors, incoming/outgoing and incident-edge queries.
+- degree: undirected degree counts self-loop as two; directed in-degree/out-degree count incoming/outgoing edge multiplicity.
+
+##### Algorithms
+
+- BFS: implemented with deterministic insertion-order traversal and predecessor/distance records.
+- DFS: implemented with deterministic insertion-order traversal.
+- reachability: implemented via BFS and respects directed orientation.
+- unweighted shortest path: implemented via BFS with node and edge path reconstruction.
+- Dijkstra: implemented for nonnegative weights and rejects negative weights with a diagnostic.
+- Bellman-Ford: not implemented; negative-weight shortest paths are explicitly rejected for now.
+- connected components: implemented for undirected `GraphNetwork`.
+- strongly connected components: implemented for `DirectedGraphNetwork` using Tarjan DFS.
+- cycle detection: implemented for undirected and directed graphs.
+- topological sorting: implemented for directed graphs with Kahn-style order; DAG subclass rejects cycle-closing insertion.
+
+##### Persistence
+
+- fields: `graphDirected`, `graphNodesSize`, `graphNodeN.*`, `graphEdgesSize`, `graphEdgeN.*`, plus `GraphEdge` endpoint/direction/weight fields.
+- round-trip validation: focused tests cover directed weighted multigraph persistence with isolated node, self-loop and parallel edges.
+
+##### Tests
+
+- focused: `genesys_test_graph_network` and CTest regex `GraphNetwork`.
+- regression: focused ModalModel/Network regex `GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork` passed after implementation.
+- sanitizers if applicable: not run for this structural graph pass; no dedicated sanitizer target was added.
+
+##### Limitations
+
+- `GraphNetwork` stores non-owning topology references to model-managed `GraphNode` and `GraphEdge` data definitions, matching the current ModelDataManager ownership style; external deletion must still be coordinated through graph APIs to avoid stale topology references.
+- Bellman-Ford and negative-cycle shortest-path analysis are deferred; Dijkstra rejects negative weights.
+
+##### Future extensions
+
+- GraphTraversalNetwork;
+- RandomWalkNetwork;
+- RoutingNetwork;
+- agent movement;
+- spatial networks;
+- generalized Connection/token integration.
 
 ## 7. Completed technical baseline
 
