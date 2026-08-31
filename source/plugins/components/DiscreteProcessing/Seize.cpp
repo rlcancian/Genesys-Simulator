@@ -247,13 +247,13 @@ bool Seize::_loadInstance(PersistenceRecord* fields) {
 		this->_priorityExpression = fields->loadField("priorityExpression", DEFAULT.priority);
 		QueueableItem* newQueueableItem = new QueueableItem(nullptr);
 		newQueueableItem->setElementManager(_parentModel->getDataManager());
-		newQueueableItem->loadInstance(fields);
+		res &= newQueueableItem->loadInstance(fields);
 		setQueueableItem(newQueueableItem);
 		unsigned short numRequests = fields->loadField("resquests", DEFAULT.seizeRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr, "", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
 			item->setElementManager(_parentModel->getDataManager());
-			item->loadInstance(fields, i);
+			res &= item->loadInstance(fields, i);
 			this->_seizeRequests->insert(item);
 		}
 	}

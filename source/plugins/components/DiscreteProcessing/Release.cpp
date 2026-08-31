@@ -254,7 +254,7 @@ bool Release::_loadInstance(PersistenceRecord *fields) {
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr, "", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
 			item->setElementManager(_parentModel->getDataManager());
-			item->loadInstance(fields, i);
+			res &= item->loadInstance(fields, i);
 			this->_releaseRequests->insert(item);
 		}
 	}

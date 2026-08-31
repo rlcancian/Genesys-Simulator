@@ -260,14 +260,14 @@ bool Process::_loadInstance(PersistenceRecord *fields) {
 		_seize->setPriorityExpression(fields->loadField("priorityExpression", _seize->DEFAULT.priorityExpression));
 		QueueableItem* queueableItem = new QueueableItem(nullptr);
 		queueableItem->setElementManager(_parentModel->getDataManager());
-		queueableItem->loadInstance(fields);
+		res &= queueableItem->loadInstance(fields);
 		_seize->setQueueableItem(queueableItem);
 		_seize->getSeizeRequests()->clear();
 		unsigned short numRequests = fields->loadField("resquests", _seize->DEFAULT.seizeRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr, "", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
 			item->setElementManager(_parentModel->getDataManager());
-			item->loadInstance(fields, i);
+			res &= item->loadInstance(fields, i);
 			_seize->getSeizeRequests()->insert(item);
 		}
 		_delay->setDelayExpression(fields->loadField("delayExpression", _delay->DEFAULT.delayExpression));

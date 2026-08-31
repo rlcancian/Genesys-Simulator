@@ -232,11 +232,22 @@ bool Route::_loadInstance(PersistenceRecord *fields) {
 			std::string stationName = fields->loadField("station", "");
 			Station* station = dynamic_cast<Station*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
 			this->_station = station;
+			if (station == nullptr && !stationName.empty()) {
+				// Dangling reference: the named Station is missing from the file being loaded.
+				// Report it instead of silently leaving _station null, which would otherwise
+				// surface later as an unexplained crash/misbehavior at check or simulation time.
+				this->traceError("Route could not resolve referenced Station named '" + stationName + "' on loading");
+				res = false;
+			}
 		}
 		if (_routeDestinationType == DestinationType::Label) {
-			std::string stationName = fields->loadField("label", "");
-			Label* label = dynamic_cast<Label*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Label>(), stationName));
+			std::string labelName = fields->loadField("label", "");
+			Label* label = dynamic_cast<Label*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Label>(), labelName));
 			this->_label = label;
+			if (label == nullptr && !labelName.empty()) {
+				this->traceError("Route could not resolve referenced Label named '" + labelName + "' on loading");
+				res = false;
+			}
 		}
 	}
 	return res;

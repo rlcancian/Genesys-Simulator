@@ -164,6 +164,17 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields) {
             } else if (_seizableType == SeizableItem::SeizableType::SET) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _seizableName);
             }
+            if (_resourceOrSet == nullptr && !_seizableName.empty()) {
+                // The referenced Resource/Set is missing from the file being loaded (e.g. renamed
+                // or deleted while this reference still pointed at the old name). Do not fabricate
+                // a fresh stand-in here: that would silently create an unrelated duplicate that
+                // passes downstream _check() trivially. Report the unresolved reference instead.
+                _modeldataManager->getParentModel()->getTracer()->traceError(
+                    "SeizableItem could not resolve referenced " +
+                    (_seizableType == SeizableItem::SeizableType::SET ? std::string("Set") : std::string("Resource")) +
+                    " named '" + _seizableName + "' on loading");
+                res = false;
+            }
             if (Set* set = dynamic_cast<Set*>(_resourceOrSet)) {
                 // Loading a SeizableItem re-applies the contextual contract for the GUI editor:
                 // this Set reference is intended to create/select Resource members.
@@ -171,7 +182,6 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields) {
                 set->setSetOfType(Util::TypeOf<Resource>());
             }
             _ensureSimulationControls(_modeldataManager->getParentModel());
-            //assert(_resourceOrSet != nullptr); // @TODO TraceError
         }
     } catch (...) {
         res = false;
@@ -192,16 +202,8 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
         if (_modeldataManager != nullptr) {
             if (_seizableType == SeizableItem::SeizableType::RESOURCE) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
-                if (_resourceOrSet == nullptr) {
-                    auto model = _modeldataManager->getParentModel();
-                    _resourceOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Resource>(model, _seizableName);
-                }
             } else if (_seizableType == SeizableItem::SeizableType::SET) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _seizableName);
-                if (_resourceOrSet == nullptr) {
-                    auto model = _modeldataManager->getParentModel();
-                    _resourceOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Set>(model, _seizableName);
-                }
                 if (Set* set = dynamic_cast<Set*>(_resourceOrSet)) {
                     // Loading indexed SeizableItems uses the same Set contract as direct GUI editing.
                     set->setAllowedElementTypes({Util::TypeOf<Resource>()});
@@ -209,7 +211,17 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
                 }
             } else {
                 _resourceOrSet = nullptr;
-                _modeldataManager->getParentModel()->getTracer()->traceError("SeizableItem named '" + _seizableName + "' could not be found on loading");
+            }
+            if (_resourceOrSet == nullptr && !_seizableName.empty()) {
+                // Do not fabricate a fresh stand-in Resource/Set here: the referenced object is
+                // missing from the file being loaded (dangling reference), and creating a new
+                // default one silently would insert an unrelated duplicate that later satisfies
+                // _check() trivially, hiding the real problem. Report it instead.
+                _modeldataManager->getParentModel()->getTracer()->traceError(
+                    "SeizableItem could not resolve referenced " +
+                    (_seizableType == SeizableItem::SeizableType::SET ? std::string("Set") : std::string("Resource")) +
+                    " named '" + _seizableName + "' on loading");
+                res = false;
             }
             _ensureSimulationControls(_modeldataManager->getParentModel());
         }

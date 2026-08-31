@@ -84,6 +84,11 @@ bool Leave::_loadInstance(PersistenceRecord *fields) {
 		std::string stationName = fields->loadField("station", "");
 		Station* station = dynamic_cast<Station*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
 		this->_station = station;
+		if (station == nullptr && !stationName.empty()) {
+			// Dangling reference: the named Station is missing from the file being loaded.
+			this->traceError("Leave could not resolve referenced Station named '" + stationName + "' on loading");
+			res = false;
+		}
 	}
 	return res;
 }

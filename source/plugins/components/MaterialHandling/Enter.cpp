@@ -87,6 +87,12 @@ bool Enter::_loadInstance(PersistenceRecord *fields) {
 		this->_station = station;
 		if (station != nullptr) {
 			_station->setEnterIntoStationComponent(this);
+		} else if (!stationName.empty()) {
+			// Dangling reference: the named Station is missing from the file being loaded.
+			// Report it instead of silently leaving _station null (later dereferenced
+			// unconditionally by show()/_onDispatchEvent()).
+			this->traceError("Enter could not resolve referenced Station named '" + stationName + "' on loading");
+			res = false;
 		}
 	}
 	return res;

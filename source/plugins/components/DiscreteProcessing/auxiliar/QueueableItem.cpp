@@ -108,13 +108,16 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 			} else if (_queueableType == QueueableItem::QueueableType::SET) {
 				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _queueableName);
 			}
-			if (_queueOrSet == nullptr) {
-				auto model = _modeldataManager->getParentModel();
-				if (_queueableType == QueueableItem::QueueableType::SET) {
-					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Set>(model, _queueableName);
-				} else {
-					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, _queueableName);
-				}
+			if (_queueOrSet == nullptr && !_queueableName.empty()) {
+				// Do not fabricate a fresh stand-in Queue/Set here: the referenced object is
+				// missing from the file being loaded (dangling reference), and creating a new
+				// default one silently would insert an unrelated duplicate instead of surfacing
+				// the real problem.
+				_modeldataManager->getParentModel()->getTracer()->traceError(
+					"QueueableItem could not resolve referenced " +
+					(_queueableType == QueueableItem::QueueableType::SET ? std::string("Set") : std::string("Queue")) +
+					" named '" + _queueableName + "' on loading");
+				res = false;
 			}
 			if (Set* set = dynamic_cast<Set*>(_queueOrSet)) {
 				// Loading a QueueableItem re-applies the same Set member-type contract used by
@@ -124,7 +127,6 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 			}
 			_ensureSimulationControls(_modeldataManager->getParentModel());
 		}
-		assert(_queueOrSet != nullptr);
 	} catch (...) {
 		res = false;
 	}
