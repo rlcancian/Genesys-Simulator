@@ -792,6 +792,184 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
     }
 }
 
+// Regression coverage for the GUI model save/load bug investigation: the
+// existing SerializerRoundTrip* tests above use exactly one Queue + one
+// Seize, with no "next" connections and no cross-component shared
+// reference -- the two scenarios that most plausibly explain a complex,
+// long-edited model failing to reload correctly. This test exercises a
+// small but genuinely "complex" model (two components, a next connection,
+// and a Resource referenced by both) through the real file-based
+// saveGraphicalModel/loadGraphicalModel path.
+TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedReference) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue* queue = new Queue(model, "Queue_Complex");
+    Resource* resource = new Resource(model, "Resource_Complex");
+    Seize* seize = new Seize(model, "Seize_Complex");
+    Release* release = new Release(model, "Release_Complex");
+    ASSERT_NE(queue, nullptr);
+    ASSERT_NE(resource, nullptr);
+    ASSERT_NE(seize, nullptr);
+    ASSERT_NE(release, nullptr);
+
+    seize->setQueueableItem(new QueueableItem(queue));
+    seize->addRequest(new SeizableItem(resource));
+    release->addReleaseRequests(new SeizableItem(resource));
+    seize->connectTo(release, 0);
+    ModelDataDefinition::CreateInternalData(seize);
+    ModelDataDefinition::CreateInternalData(release);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    QUndoStack undoStack;
+    scene->setUndoStack(&undoStack);
+    scene->setShowEditableDataDefinitions(true);
+    scene->setShowStatisticsDataDefinitions(true);
+    scene->setShowSharedDataDefinitions(true);
+    scene->setShowRecursiveDataDefinitions(false);
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    scene->setPropertyEditor(&propertyEditor);
+    scene->setPropertyList(&propertyList);
+    scene->setPropertyEditorUI(&propertyEditorUi);
+    scene->setComboBox(&propertyCombo);
+
+    Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
+    Plugin* releasePlugin = pluginManager->find(Util::TypeOf<Release>());
+    ASSERT_NE(seizePlugin, nullptr);
+    ASSERT_NE(releasePlugin, nullptr);
+    auto* graphicalSeize = new GraphicalModelComponent(seizePlugin, seize, QPointF(400.0, 400.0), QColor("#336699"));
+    auto* graphicalRelease = new GraphicalModelComponent(releasePlugin, release, QPointF(700.0, 400.0), QColor("#884422"));
+    scene->addItem(graphicalSeize);
+    scene->getGraphicalModelComponents()->append(graphicalSeize);
+    scene->getAllComponents()->append(graphicalSeize);
+    scene->addItem(graphicalRelease);
+    scene->getGraphicalModelComponents()->append(graphicalRelease);
+    scene->getAllComponents()->append(graphicalRelease);
+
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+
+    QPlainTextEdit modelTextEditor;
+    modelTextEditor.setPlainText(QString::fromStdString(model->showLanguage()));
+    QTextEdit console;
+    QSlider zoomSlider;
+    zoomSlider.setRange(10, 400);
+    zoomSlider.setValue(100);
+    QAction actionShowGrid;
+    QAction actionShowRule;
+    QAction actionShowSnap;
+    QAction actionShowGuides;
+    QAction actionShowInternalElements;
+    QAction actionShowEditableElements;
+    QAction actionShowAttachedElements;
+    QAction actionShowRecursiveElements;
+    actionShowGrid.setCheckable(true);
+    actionShowRule.setCheckable(true);
+    actionShowSnap.setCheckable(true);
+    actionShowGuides.setCheckable(true);
+    actionShowInternalElements.setCheckable(true);
+    actionShowEditableElements.setCheckable(true);
+    actionShowAttachedElements.setCheckable(true);
+    actionShowRecursiveElements.setCheckable(true);
+    actionShowGrid.setChecked(true);
+    actionShowRule.setChecked(true);
+    actionShowInternalElements.setChecked(true);
+    actionShowEditableElements.setChecked(true);
+    actionShowAttachedElements.setChecked(true);
+    QString modelFilename;
+    std::map<std::string, QColor> pluginCategoryColor;
+    GraphicalModelBuilder builder(&simulator, &graphicsView, scene, &pluginCategoryColor, &console);
+
+    auto clearSceneForReload = [&]() {
+        scene->grid()->clear();
+        scene->clearGraphicalModelConnections();
+        scene->clearGraphicalModelComponents();
+        scene->clearGraphicalDiagramConnections();
+        scene->clearGraphicalModelDataDefinitions();
+        scene->clearAnimations();
+        scene->clear();
+        scene->getGraphicalModelComponents()->clear();
+        scene->getGraphicalConnections()->clear();
+        scene->getGraphicalModelDataDefinitions()->clear();
+        scene->getGraphicalDiagramsConnections()->clear();
+        scene->getAllComponents()->clear();
+        scene->getAllConnections()->clear();
+        scene->getAllDataDefinitions()->clear();
+        scene->getAllGraphicalDiagramsConnections()->clear();
+    };
+
+    GraphicalModelSerializer serializer(&simulator,
+                                        &graphicsView,
+                                        &modelTextEditor,
+                                        &graphicsView,
+                                        &zoomSlider,
+                                        &actionShowGrid,
+                                        &actionShowRule,
+                                        &actionShowSnap,
+                                        &actionShowGuides,
+                                        &actionShowInternalElements,
+                                        &actionShowEditableElements,
+                                        &actionShowAttachedElements,
+                                        &actionShowRecursiveElements,
+                                        &console,
+                                        &modelFilename,
+                                        clearSceneForReload,
+                                        [&]() { builder.generateGraphicalModelFromModel(); },
+                                        [&]() {
+                                            scene->setShowStatisticsDataDefinitions(actionShowInternalElements.isChecked());
+                                            scene->requestGraphicalDataDefinitionsSync();
+                                        },
+                                        [&]() {
+                                            scene->setShowEditableDataDefinitions(actionShowEditableElements.isChecked());
+                                            scene->requestGraphicalDataDefinitionsSync();
+                                        },
+                                        [&]() {
+                                            scene->setShowSharedDataDefinitions(actionShowAttachedElements.isChecked());
+                                            scene->requestGraphicalDataDefinitionsSync();
+                                        });
+
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const QString guiFilename = temporaryDir.filePath("complex_round_trip.gui");
+    ASSERT_TRUE(serializer.saveGraphicalModel(guiFilename));
+
+    Model* loadedModel = serializer.loadGraphicalModel(guiFilename.toStdString());
+    ASSERT_NE(loadedModel, nullptr);
+    QApplication::processEvents();
+
+    Seize* loadedSeize = dynamic_cast<Seize*>(loadedModel->getComponentManager()->find("Seize_Complex"));
+    Release* loadedRelease = dynamic_cast<Release*>(loadedModel->getComponentManager()->find("Release_Complex"));
+    ASSERT_NE(loadedSeize, nullptr);
+    ASSERT_NE(loadedRelease, nullptr);
+
+    // The "next" transfer connection between the two top-level components must survive.
+    ASSERT_GT(loadedSeize->getConnectionManager()->size(), 0u);
+    EXPECT_EQ(loadedSeize->getConnectionManager()->getFrontConnection()->component, loadedRelease);
+
+    // Both components reference the SAME Resource, not two independently-fabricated ones.
+    ASSERT_NE(loadedSeize->getQueueableItem(), nullptr);
+    EXPECT_NE(loadedSeize->getQueueableItem()->getQueue(), nullptr);
+    ASSERT_EQ(loadedSeize->getSeizeRequests()->size(), 1u);
+    ASSERT_EQ(loadedRelease->getReleaseRequests()->size(), 1u);
+    Resource* seizeResource = loadedSeize->getSeizeRequests()->list()->front()->getResource();
+    Resource* releaseResource = loadedRelease->getReleaseRequests()->list()->front()->getResource();
+    ASSERT_NE(seizeResource, nullptr);
+    ASSERT_NE(releaseResource, nullptr);
+    EXPECT_EQ(seizeResource, releaseResource);
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Resource>())->size(), 1u);
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), 1u);
+}
+
 TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
     Simulator simulator;
     PluginManager* pluginManager = simulator.getPluginManager();
