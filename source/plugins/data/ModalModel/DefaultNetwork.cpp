@@ -133,6 +133,8 @@ ModelDataDefinition* DefaultNetwork::LoadInstance(Model* model, PersistenceRecor
 bool DefaultNetwork::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
+		_inputPortNames->clear();
+		_outputPortNames->clear();
 		unsigned int numInputs = fields->loadField("inputPorts", 0u);
 		for (unsigned int i = 0; i < numInputs; i++) {
 			_inputPortNames->insert(fields->loadField("inputPort" + Util::StrIndex(i), std::string("")));

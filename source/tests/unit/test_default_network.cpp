@@ -220,6 +220,31 @@ TEST(DefaultNetworkTest, PersistenceRoundTripPreservesPortSchema) {
 	EXPECT_EQ(destination.getOutputPortName(0), "State");
 }
 
+TEST(DefaultNetworkTest, LoadingPortSchemaReplacesExistingPorts) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	DefaultNetworkProbe source(model, "SourceNetwork");
+	source.addInputPort("PersistedInput");
+	source.addOutputPort("PersistedOutput");
+
+	FakeModelPersistenceRuntime persistence;
+	PersistenceRecord fields(persistence);
+	source.SaveInstanceProbe(&fields, true);
+
+	DefaultNetworkProbe destination(model, "DestinationNetwork");
+	destination.addInputPort("StaleInput");
+	destination.addOutputPort("StaleOutput");
+	ASSERT_TRUE(destination.LoadInstanceProbe(&fields));
+
+	ASSERT_EQ(destination.getNumInputPorts(), 1u);
+	ASSERT_EQ(destination.getNumOutputPorts(), 1u);
+	EXPECT_EQ(destination.getInputPortName(0), "PersistedInput");
+	EXPECT_EQ(destination.getOutputPortName(0), "PersistedOutput");
+	EXPECT_EQ(destination.getInputPortIndex("StaleInput"), -1);
+	EXPECT_EQ(destination.getOutputPortIndex("StaleOutput"), -1);
+}
+
 TEST(NetworkActivationFrameTest, AbsentIsNotTheSameAsPresentZero) {
 	NetworkActivationFrame frame(2);
 	frame.setPresent(0, 0.0);
