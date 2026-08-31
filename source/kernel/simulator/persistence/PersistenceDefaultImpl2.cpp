@@ -1,6 +1,7 @@
 #include "PersistenceDefaultImpl2.h"
 
 #include <cassert>
+#include <cstdio>
 #include <memory>
 #include <fstream>
 #include <vector>
@@ -100,12 +101,28 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	}
 	Util::DecIndent();
 
-	// write contents to file
+	// write contents to a temp file first, then atomically replace the destination. A plain
+	// std::ofstream on `filename` truncates it the instant it's opened, so a crash/disk-full/
+	// interrupted save would otherwise leave the previous good save gone and the new one
+	// incomplete.
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file");
 	Util::IncIndent();
-	std::ofstream file{filename};
-	bool ok = serializer->dump(file);
-	file.close();
+	const std::string tempFilename = filename + ".tmp";
+	bool ok;
+	{
+		std::ofstream file{tempFilename};
+		ok = file.is_open() && serializer->dump(file);
+		file.close();
+	}
+	if (ok) {
+		ok = std::rename(tempFilename.c_str(), filename.c_str()) == 0;
+		if (!ok) {
+			_model->getTracer()->traceError("Error saving file \"" + filename + "\": could not replace destination with \"" + tempFilename + "\"");
+		}
+	} else {
+		_model->getTracer()->traceError("Error saving file \"" + filename + "\": could not write temporary file \"" + tempFilename + "\"");
+		std::remove(tempFilename.c_str());
+	}
 	Util::DecIndent();
 
 	// finish save

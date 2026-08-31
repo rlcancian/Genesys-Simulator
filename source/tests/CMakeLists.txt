@@ -217,6 +217,47 @@ if(TARGET genesys_kernel_unit_tests_run)
     add_dependencies(genesys_kernel_unit_tests_run genesys_test_save_name_collision_run)
 endif()
 
+# Regression coverage: PersistenceDefaultImpl2::save() must write through a
+# temp file and atomically replace the destination instead of truncating it
+# directly, so an interrupted/failed save cannot corrupt or lose the
+# previous good file.
+add_executable(genesys_test_persistence_atomic_save
+    unit/test_persistence_atomic_save.cpp
+)
+
+target_include_directories(genesys_test_persistence_atomic_save
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+)
+
+target_link_libraries(genesys_test_persistence_atomic_save
+    PRIVATE
+        GTest::gtest_main
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+)
+
+target_compile_features(genesys_test_persistence_atomic_save PRIVATE cxx_std_23)
+
+set_property(TARGET genesys_test_persistence_atomic_save PROPERTY FOLDER tests/unit)
+
+gtest_discover_tests(genesys_test_persistence_atomic_save
+    PROPERTIES
+        LABELS "unit;persistence;save;atomicity;regression"
+)
+
+if(TARGET genesys_kernel_unit_tests)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_persistence_atomic_save)
+endif()
+
+if(TARGET genesys_kernel_unit_tests_run)
+    add_custom_target(genesys_test_persistence_atomic_save_run
+        COMMAND $<TARGET_FILE:genesys_test_persistence_atomic_save>
+        DEPENDS genesys_test_persistence_atomic_save
+        USES_TERMINAL
+    )
+    add_dependencies(genesys_kernel_unit_tests_run genesys_test_persistence_atomic_save_run)
+endif()
+
 # ModalModel/Network architecture, Phase 1: DefaultNetwork core (port schema,
 # activation counter, check, persistence, replication reset). See
 # docs/ai_assistants/reference/GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md.
