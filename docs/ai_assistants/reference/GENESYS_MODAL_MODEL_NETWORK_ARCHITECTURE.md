@@ -2106,10 +2106,11 @@ A safe implementation sequence is:
 
 ## Phase 8 — compatibility cleanup
 
-- remove obsolete per-entity state;
-- remove/reduce obsolete ModalModel formalism subclasses;
-- replace `std::rand()`;
-- migrate old tests/models where appropriate.
+- replaced `std::rand()` in the temporary legacy `ModalModelDefault` node-list path with a resettable GenESyS kernel sampler;
+- preserved the legacy per-entity state path only as an explicit compatibility path when no `DefaultNetwork` is attached;
+- preserved `ModalModelFSM` and `ModalModelPetriNet` as thin compatibility shims for now;
+- defer removal/reduction of obsolete formalism subclasses until the persistence compatibility strategy for old models is decided;
+- migrate old tests/models where appropriate after representative legacy fixtures are selected.
 
 ## Phase 9 — GUI and future architecture notes
 
