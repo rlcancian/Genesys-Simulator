@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-08-30
+last_updated: 2026-08-31
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -54,6 +54,24 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   failure (Section 4); `tests-unit` still shows 13 unrelated WholeCell/Bio
   failures tied to a plugin-loading path involving `attribute.so`, outside
   this scope and not yet triaged into a backlog entry.
+- The ModalModel/network-of-computation architecture (PR #528, merge
+  `e0185163`, and PR #529, merge `fdae135b`, both 2026-08-31) is integrated:
+  `DefaultNetwork`/`DefaultNode` core, the `ModalModelDefault` bridge, and
+  four formalism specializations — `EFSMNetwork`, the `GraphNetwork` family
+  (BFS/DFS/Dijkstra/Tarjan SCC/topological sort), `MarkovChainNetwork`
+  (finite time-homogeneous DTMC), and `ColoredPetriNetNetwork` (fixed-
+  inscription CPN, single-deterministic firing) — plus replacement of the
+  legacy `std::rand()` sampling in `ModalModelDefault` with the reproducible
+  kernel RNG. See
+  [`reference/GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md`](reference/GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md)
+  and `AUTO-MODAL-001` in `BACKLOG_AUTONOMOUS.md` for the full record.
+  A Phase 9 GUI/editor architecture is proposed but not implemented:
+  [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md).
+  CPN variable-binding/type-system/multi-firing semantics, CTMC/MDP support,
+  graph traversal/movement simulation, and legacy `ModalModelFSM`/
+  `ModalModelPetriNet` wrapper cleanup remain intentionally out of this scope.
+  Validation snapshot at merge time: `tests-kernel-unit` 1810/1810 executed
+  tests passed, 4 preexisting disabled tests unchanged.
 
 ## 3. Technical baseline
 
