@@ -1122,6 +1122,17 @@ The CPN must model at least:
 - persistence;
 - reproducible conflict selection where stochastic resolution is used.
 
+The implemented first subset is a pragmatic fixed-inscription CPN subset:
+
+- `PetriPlace` stores a symbolic-color multiset as `color -> quantity`;
+- `CPNTransition` is an explicit transition node, not an edge between places;
+- `CPNArc` is an explicit directed bipartite arc between one place and one transition;
+- arc inscriptions are fixed symbolic-color multiplicities;
+- optional transition guards use the current GenESyS expression parser and do not bind CPN variables;
+- one activation uses deterministic `SingleDeterministic` firing and fires at most one enabled transition;
+- priority breaks conflicts deterministically before insertion order;
+- multi-firing, typed token values and general variable bindings remain future work.
+
 ---
 
 # 31. CPN topology is bipartite
@@ -1195,6 +1206,8 @@ Implementation may store local token state in `PetriPlace` objects if that gives
 
 The current `std::map<std::string, unsigned int>` representation may be useful as an early/simple case, but is insufficient as the final representation of formal typed colored tokens.
 
+The implemented fixed-inscription subset uses that simple map explicitly as a limited symbolic-color multiset. The observable marking belongs to `ColoredPetriNetNetwork`, and the current token counts are stored in its `PetriPlace` objects for compatibility with the existing model-data lifecycle.
+
 ---
 
 # 33. CPN bindings and guards
@@ -1217,6 +1230,8 @@ A firing must atomically:
 
 - remove required token multisets from input places;
 - produce the output multisets defined by the output arc inscriptions.
+
+The implemented fixed-inscription subset has no CPN variable binding search. A transition is enabled when all fixed input inscriptions are available and the optional guard expression evaluates to nonzero.
 
 ---
 
@@ -1256,6 +1271,8 @@ The original design decision — designer-configurable single versus multiple fi
 The exact conflict-selection semantics for the multi-firing mode should be finalized during implementation using the CPN literature and deterministic/reproducible rules.
 
 A separate future `UntilQuiescence` mode may be considered, but it must not be confused with concurrent-step semantics and must handle possible nontermination.
+
+The implemented fixed-inscription subset supports only `SingleDeterministic`. It selects enabled transitions by priority and stable insertion order. `MaximalConcurrentStep` remains deferred until conflict-selection semantics are specified.
 
 ---
 
@@ -1452,6 +1469,8 @@ The exact serialized format should be derived from existing GenESyS persistence 
 - marking;
 - firing policy.
 
+The implemented fixed-inscription subset persists places, transition nodes, bipartite arcs, fixed arc inscriptions, transition guards/priorities, current marking, initial marking and firing mode.
+
 Load/save round trips must be covered by tests.
 
 ---
@@ -1491,6 +1510,8 @@ The implemented first subset restores the single initial state and resets the in
 - restore initial marking;
 - clear activation-local bindings;
 - restore any network-specific counters.
+
+The implemented fixed-inscription subset restores the initial symbolic-color marking and resets inherited activation counters. It has no persistent binding search state.
 
 The distinction between model configuration and replication runtime state must remain explicit.
 
@@ -1901,6 +1922,16 @@ At minimum:
 - multiset marking;
 - multiple input places;
 - multiple output places;
+- bipartite place-transition-arc topology;
+- input and output arc inscriptions;
+- guard-enabled transition selection;
+- atomic token consumption and production;
+- replication reset;
+- persistence;
+- shared CPN activation through multiple ModalModels.
+
+The implemented fixed-inscription subset covers symbolic color sets, symbolic-color multisets, multiple places, bipartite arcs, fixed inscriptions, parser-based guards, deterministic single firing, atomic marking updates, persistence, replication reset and shared-network activation. Typed token values, variable bindings and maximal concurrent steps remain deferred.
+- multiple output places;
 - weighted/multiset arc inscriptions;
 - transition guard;
 - valid binding enumeration/selection;
@@ -2065,13 +2096,13 @@ A safe implementation sequence is:
 
 ## Phase 7 — ColoredPetriNetNetwork
 
-- replace binary Petri transition assumption;
-- implement places/transitions/arcs;
-- typed colored tokens;
-- multisets;
-- inscriptions/guards/bindings;
-- firing policy;
-- validated CPN fixtures.
+- replaced binary Petri transition assumption with explicit bipartite arcs;
+- implemented places, transition nodes and directed arcs;
+- implemented symbolic-color multisets through `PetriPlace`;
+- implemented fixed arc inscriptions and parser-based guards;
+- implemented deterministic single firing policy;
+- validated focused CPN fixtures;
+- deferred typed token values, variable bindings and maximal concurrent-step firing.
 
 ## Phase 8 — compatibility cleanup
 
