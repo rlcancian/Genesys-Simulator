@@ -46,6 +46,7 @@
 #include <QStringList>
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <set>
 #include <vector>
 
@@ -573,16 +574,24 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             return false;
         }
 
-        // Persist the canonical kernel state directly into the .gui file before appending GUI overlays.
-        if (!_simulator->getModelManager()->saveModel(filename.toStdString())) {
+        // Write both the kernel model and the GUI overlay into a temp file, then atomically
+        // rename it over the real destination only once everything below succeeds. Writing
+        // either pass directly against `filename` would truncate/replace the previous good
+        // save before the new one is known to be complete.
+        const QString tempFilename = filename + ".tmp";
+
+        // Persist the canonical kernel state into the temp file before appending GUI overlays.
+        if (!_simulator->getModelManager()->saveModel(tempFilename.toStdString())) {
             QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"), QObject::tr("Could not save kernel model to file."));
+            QFile::remove(tempFilename);
             return false;
         }
 
-        QFile saveFile(filename);
+        QFile saveFile(tempFilename);
         if (!saveFile.open(QIODevice::Append | QIODevice::Text)) {
             QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
                                      saveFile.errorString());
+            QFile::remove(tempFilename);
             return false;
         }
 
@@ -892,6 +901,12 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
         }
 
         saveFile.close();
+
+        if (std::rename(tempFilename.toStdString().c_str(), filename.toStdString().c_str()) != 0) {
+            QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"),
+                                 QObject::tr("Could not replace destination file with the newly saved content."));
+            return false;
+        }
         return true;
     } catch (const std::exception&) {
         return false;
@@ -1081,19 +1096,22 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QString newFilename = QString("/tempFile-%1.gen").arg(currentDateTime.toString("yyyy-MM-dd-hh-mm-ss"));
     QString filePath = QDir::tempPath() + newFilename;
     QFile tempFile(filePath);
-    tempFile.open(QIODevice::ReadWrite | QIODevice::Text);
+    if (tempFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        QTextStream outStream(&tempFile);
+        outStream.setEncoding(QStringConverter::Utf8);
+        outStream.setGenerateByteOrderMark(false);
+        for (const QString& line : simulLang) {
+            outStream << line << Qt::endl;
+        }
+        outStream.flush();
 
-    QTextStream outStream(&tempFile);
-    outStream.setEncoding(QStringConverter::Utf8);
-    outStream.setGenerateByteOrderMark(false);
-    for (const QString& line : simulLang) {
-        outStream << line << Qt::endl;
+        model = _simulator->getModelManager()->loadModel(tempFile.fileName().toStdString());
+        tempFile.close();
+        QFile::remove(tempFile.fileName());
+    } else {
+        QMessageBox::warning(_ownerWidget, QObject::tr("Open Model"),
+                             QObject::tr("Could not create a temporary file to load the model."));
     }
-    outStream.flush();
-
-    model = _simulator->getModelManager()->loadModel(tempFile.fileName().toStdString());
-    tempFile.close();
-    QFile::remove(tempFile.fileName());
 
     if (model != nullptr) {
         ModelGraphicsScene* scene = _graphicsView->getScene();
