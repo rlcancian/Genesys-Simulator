@@ -2108,7 +2108,8 @@ A safe implementation sequence is:
 
 - replaced `std::rand()` in the temporary legacy `ModalModelDefault` node-list path with a resettable GenESyS kernel sampler;
 - preserved the legacy per-entity state path only as an explicit compatibility path when no `DefaultNetwork` is attached;
-- preserved `ModalModelFSM` and `ModalModelPetriNet` as thin compatibility shims for now;
+- preserved `ModalModelFSM` and `ModalModelPetriNet` as thin compatibility shims for now, but allow them to validate through the attached `DefaultNetwork` bridge without requiring obsolete legacy nodes;
+- removed the unused hidden `FSMState` allocation from `ModalModelFSM`;
 - defer removal/reduction of obsolete formalism subclasses until the persistence compatibility strategy for old models is decided;
 - migrate old tests/models where appropriate after representative legacy fixtures are selected.
 
