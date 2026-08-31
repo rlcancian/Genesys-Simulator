@@ -107,6 +107,18 @@
 #include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/data/Template/DummyElement.h"
 #include "plugins/data/Grouping/EntityGroup.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/ModalModel/GraphNode.h"
+#include "plugins/data/ModalModel/GraphEdge.h"
+#include "plugins/data/ModalModel/GraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedGraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
+#include "plugins/data/ModalModel/MarkovState.h"
+#include "plugins/data/ModalModel/MarkovChainNetwork.h"
+#include "plugins/data/ModalModel/CPNTransition.h"
+#include "plugins/data/ModalModel/CPNArc.h"
+#include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/InputOutput/File.h"
 #include "data/Logic/Formula.h"
@@ -188,6 +200,18 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("dummyelement.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
+    filenames->insert("defaultnetwork.so");
+    filenames->insert("efsmnetwork.so");
+    filenames->insert("graphnode.so");
+    filenames->insert("graphedge.so");
+    filenames->insert("graphnetwork.so");
+    filenames->insert("directedgraphnetwork.so");
+    filenames->insert("directedacyclicgraphnetwork.so");
+    filenames->insert("markovstate.so");
+    filenames->insert("markovchainnetwork.so");
+    filenames->insert("cpntransition.so");
+    filenames->insert("cpnarc.so");
+    filenames->insert("coloredpetrinetnetwork.so");
     filenames->insert("formula.so");
     filenames->insert("groprogram.so");
     filenames->insert("bacteriasignalgrid.so");
@@ -365,6 +389,30 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")
         GetInfo = &Failure::GetPluginInformation;
+    else if (fn == "defaultnetwork.so")
+        GetInfo = &DefaultNetwork::GetPluginInformation;
+    else if (fn == "efsmnetwork.so")
+        GetInfo = &EFSMNetwork::GetPluginInformation;
+    else if (fn == "graphnode.so")
+        GetInfo = &GraphNode::GetPluginInformation;
+    else if (fn == "graphedge.so")
+        GetInfo = &GraphEdge::GetPluginInformation;
+    else if (fn == "graphnetwork.so")
+        GetInfo = &GraphNetwork::GetPluginInformation;
+    else if (fn == "directedgraphnetwork.so")
+        GetInfo = &DirectedGraphNetwork::GetPluginInformation;
+    else if (fn == "directedacyclicgraphnetwork.so")
+        GetInfo = &DirectedAcyclicGraphNetwork::GetPluginInformation;
+    else if (fn == "markovstate.so")
+        GetInfo = &MarkovState::GetPluginInformation;
+    else if (fn == "markovchainnetwork.so")
+        GetInfo = &MarkovChainNetwork::GetPluginInformation;
+    else if (fn == "cpntransition.so")
+        GetInfo = &CPNTransition::GetPluginInformation;
+    else if (fn == "cpnarc.so")
+        GetInfo = &CPNArc::GetPluginInformation;
+    else if (fn == "coloredpetrinetnetwork.so")
+        GetInfo = &ColoredPetriNetNetwork::GetPluginInformation;
     else if (fn == "formula.so")
         GetInfo = &Formula::GetPluginInformation;
     else if (fn == "groprogram.so")

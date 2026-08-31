@@ -1,6 +1,5 @@
 #pragma once
 
-#include "FSMState.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 
 class ModalModelFSM : public ModalModelDefault {
@@ -23,8 +22,5 @@ protected: /// virtual protected methods that could be overriden by derived clas
 	virtual void _initBetweenReplications();
 	/*! This method is not used yet. It should be usefull for new UIs */
 	// virtual void _addSimulationControl(SimulationControl* property);
-
-private:
-	FSMState* _fsmInitialState;
 
 };

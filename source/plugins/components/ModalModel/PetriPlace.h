@@ -6,17 +6,19 @@
 class PetriPlace : public DefaultNode {
 public:
 	PetriPlace(Model* model, std::string name = "");
-	virtual ~PetriPlace() = default;
+	virtual ~PetriPlace() override;
 
 public:
 	unsigned int getTokens(std::string color = "default") const;
+	void setTokens(unsigned int quantity, std::string color = "default");
 	void addTokens(unsigned int quantity, std::string color = "default");
 	bool removeTokens(unsigned int quantity, std::string color = "default");
+	void clearTokens();
 	std::map<std::string, unsigned int>* getAllTokens();
 
 public: // static
 	static PluginInformation* GetPluginInformation();
-	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
+	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected:

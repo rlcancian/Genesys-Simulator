@@ -15,13 +15,20 @@
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
 #include "DefaultNode.h"
+#include <string>
+#include <vector>
+
+class DefaultNetwork;
+class NetworkActivationResult;
+class Sampler_if;
+
 /*!
  This component ...
  */
 class ModalModelDefault : public ModelComponent {
 public: /// constructors
         ModalModelDefault(Model* model, std::string name = "");
-    virtual ~    ModalModelDefault() = default;
+	virtual ~ModalModelDefault() override;
 
 public: // getters and setters
 	virtual void setMaxTransitionsPerDispatch(unsigned int maxTransitionsPerDispatch);
@@ -35,6 +42,14 @@ public: // getters and setters
 	void setTimeDelayExpressionPerDispatch(const std::string time_delay_expression_per_dispatch);
 	Util::TimeUnit getTimeDelayPerDispatchTimeUnit();
 	void setTimeDelayPerDispatchTimeUnit(const Util::TimeUnit time_delay_per_dispatch_time_unit);
+	DefaultNetwork* getNetwork() const;
+	void setNetwork(DefaultNetwork* network);
+	std::string getNetworkName() const;
+	void setNetworkName(const std::string& networkName);
+	void setInputBinding(unsigned int port, const std::string& expression);
+	std::string getInputBinding(unsigned int port) const;
+	void setOutputBinding(unsigned int port, const std::string& attributeName);
+	std::string getOutputBinding(unsigned int port) const;
 
 public: /// new public user methods for this component
 	virtual void addNode(DefaultNode* node);
@@ -96,7 +111,7 @@ protected:
 	// virtual void _createInternalStatisticReporters() override;
 	// virtual void _createNonEditableDataDefinitions() override;
 	// virtual void _createEditableDataDefinitions() override;
-	 virtual void _createAttachedAttributes() override;
+	virtual void _createAttachedAttributes() override;
 
 private: /// internal DataElements (Composition)
 	// ...
@@ -104,7 +119,21 @@ private: /// attached DataElements (Agrregation)
 	// ...
 
 private: /// new private user methods
-	// ...
+	DefaultNetwork* _resolveNetworkReference();
+	void _syncBindingsToNetwork();
+	bool _dispatchNetworkActivation(Entity* entity, unsigned int inputPortNumber);
+	void _dispatchLegacyNodeModel(Entity* entity, unsigned int inputPortNumber);
+	Entity* _cloneEntity(Entity* entity);
+	void _writeOutputBinding(Entity* entity, unsigned int outputPort, double value);
+	void _routeNetworkOutputs(Entity* entity, const NetworkActivationResult& result);
+	void _resetLegacySampler();
+	DefaultNodeTransition* _chooseLegacyTransition(const std::vector<DefaultNodeTransition*>& enabled);
 
+private:
+	DefaultNetwork* _network = nullptr;
+	std::string _networkName = "";
+	std::vector<std::string> _inputBindings;
+	std::vector<std::string> _outputBindings;
+	Sampler_if* _legacySampler = nullptr;
 
 };

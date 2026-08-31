@@ -2,7 +2,7 @@
 document_type: reference
 authority: technical-reference
 owner: project-maintainer
-last_reviewed: 2026-08-30
+last_reviewed: 2026-08-31
 review_cadence: on-modal-contract-change
 status: design-baseline
 tracks: 511
@@ -18,6 +18,7 @@ The central goal is to support graph- and state-based models of computation insi
 
 The initial target network formalisms are:
 
+- mathematical graph networks (`GraphNetwork`, `DirectedGraphNetwork`, and optionally DAG-constrained directed graphs);
 - Extended Finite-State Machines (EFSMs);
 - finite-state Discrete-Time Markov Chains (DTMCs);
 - formal Coloured Petri Nets (CPNs).
@@ -57,6 +58,7 @@ However, what exists **inside the modal domain** is conceptually different.
 
 A modal/network model is not a set of ordinary GenESyS `ModelComponent`s connected by ordinary `Connection`s. It is a network consisting of formal network elements such as:
 
+- vertices and edges in a mathematical graph;
 - states and transitions in an EFSM;
 - states and probabilistic transitions in a DTMC;
 - places, transitions, arcs, markings, token values, guards, and bindings in a CPN.
@@ -283,6 +285,12 @@ ModelDataDefinition
     |
     +-- DefaultNetwork
     |      |
+    |      +-- GraphNetwork
+    |      |      |
+    |      |      +-- DirectedGraphNetwork
+    |      |             |
+    |      |             +-- DirectedAcyclicGraphNetwork
+    |      |
     |      +-- EFSMNetwork
     |      |
     |      +-- MarkovChainNetwork
@@ -290,6 +298,8 @@ ModelDataDefinition
     |      +-- ColoredPetriNetNetwork
     |
     +-- DefaultNode
+           |
+           +-- GraphNode
            |
            +-- EFSMState
            |
@@ -781,6 +791,125 @@ This principle is already consistent with the project's scientific-domain guidan
 
 ---
 
+# 22A. GraphNetwork
+
+`GraphNetwork` is the structural mathematical-graph specialization of `DefaultNetwork`.
+
+It represents:
+
+```text
+G = (V, E)
+```
+
+where:
+
+- `V` is a finite set of `GraphNode` vertices;
+- `E` is a finite set of `GraphEdge` edges.
+
+A `GraphNetwork` is not a process-flow submodel. Its `GraphEdge` objects are not GenESyS `Connection` objects, and a `GraphNode` is not a `ModelComponent` location through which an `Entity` automatically travels.
+
+The initial implementation treats graph algorithms as analyses over topology rather than simulation-time behavior:
+
+- BFS and DFS traverse the graph for analysis;
+- reachability and shortest path queries inspect the graph;
+- connected components and strongly connected components are computed from topology;
+- cycle detection and topological ordering are validation/analysis operations.
+
+Therefore a pure graph network does not define:
+
+- mandatory input/output ports;
+- `currentState`;
+- current vertex;
+- `activate() == move to next vertex`;
+- random walk;
+- entity routing over vertices.
+
+Those behaviors belong to future explicit specializations or adapters such as:
+
+- `GraphTraversalNetwork`;
+- `RandomWalkNetwork`;
+- `RoutingNetwork`;
+- `SpatialGraphNetwork`;
+- `CommunicationNetwork`;
+- `AgentGraphNetwork`.
+
+The base `DefaultNetwork::activate()` behavior remains sufficient for a structural graph: activation is inert unless a later dynamic graph specialization defines a temporal reaction.
+
+## GraphNode
+
+`GraphNode` reuses `DefaultNode` as its base because the previous migration made `DefaultNode` a `ModelDataDefinition` without process dispatch or `ConnectionManager` semantics.
+
+This is semantically acceptable because a graph vertex needs:
+
+- identity;
+- name;
+- persistence;
+- validation/inspection integration;
+- no process-flow dispatch.
+
+## GraphEdge
+
+`GraphEdge` is a separate model data definition rather than a reuse of `DefaultNodeTransition`.
+
+The reason is semantic: `DefaultNodeTransition` carries transition concepts such as guard expressions, output expressions, probability-like behavior and transition firing. A mathematical graph edge is simply an incidence relation between vertices with optional weight and optional direction.
+
+`GraphEdge` supports:
+
+- own identity/name;
+- source endpoint;
+- destination endpoint;
+- directed or undirected interpretation as configured by the owning graph;
+- optional numeric weight;
+- self-loops;
+- parallel edges.
+
+Weight is not a DTMC probability. It may later represent cost, distance, time, energy, capacity, risk or another domain metric. Algorithms that require specific weight properties must validate those preconditions before executing.
+
+## DirectedGraphNetwork
+
+`DirectedGraphNetwork` refines `GraphNetwork` with ordered-edge semantics:
+
+```text
+u -> v
+```
+
+means:
+
+- `v` is a successor of `u`;
+- `u` is a predecessor of `v`;
+- the reverse relationship is not implied.
+
+The API distinguishes predecessors, successors, incoming edges, outgoing edges, in-degree and out-degree.
+
+## DirectedAcyclicGraphNetwork
+
+`DirectedAcyclicGraphNetwork` is useful as a small semantic refinement of `DirectedGraphNetwork`.
+
+It enforces the invariant:
+
+```text
+no directed cycles
+```
+
+and supports topological ordering. A topological order is valid only when every directed edge goes from an earlier vertex to a later vertex in the returned order. If a directed cycle exists, no valid topological order is returned.
+
+## Graph algorithm complexity
+
+For the initial internal algorithms:
+
+- BFS: `O(V + E)`;
+- DFS: `O(V + E)`;
+- reachability and unweighted shortest path: `O(V + E)`;
+- connected components: `O(V + E)`;
+- directed strongly connected components with Tarjan DFS: `O(V + E)`;
+- directed cycle detection: `O(V + E)`;
+- topological ordering with Kahn's algorithm: `O(V + E)`;
+- Dijkstra with the current simple deterministic implementation: `O(V^2 + E)`.
+
+Temporary algorithm structures such as visited sets, queues, stacks, predecessor maps, distance maps, DFS colors and topological in-degree maps are not persisted.
+
+---
+
 # 23. EFSMNetwork
 
 The initial EFSM target is a robust Extended Finite-State Machine inspired structurally and semantically by the relevant subset of Ptolemy II `FSMActor`/`ModalModel`.
@@ -919,6 +1048,18 @@ The current state belongs to `MarkovChainNetwork`.
 
 The implementation must use the reproducible GenESyS RNG infrastructure, never `std::rand()`.
 
+The implemented first subset uses:
+
+- `MarkovState` as the finite DTMC state data definition;
+- internal `MarkovTransition` relations with fixed numeric probabilities;
+- one default input port named `step`;
+- one default output port named `state`, which publishes the selected state index after each activation;
+- a single initial state rather than initial-distribution sampling;
+- row-stochastic validation for every state's outgoing transitions;
+- the kernel sampler infrastructure for probabilistic transition selection.
+
+The legacy `AnalyticalModeling/MarkovChain` process component remains separate. It is not the network-owned DTMC formalism because it reads/writes entity-associated state and matrix data, while `MarkovChainNetwork` owns the current state inside the network.
+
 ---
 
 # 28. Strict DTMC semantics versus future controlled chains
@@ -934,6 +1075,8 @@ Such extensions may be useful, but must be labeled correctly instead of being si
 A ModalModel input can still **trigger** a DTMC step without necessarily altering its transition matrix.
 
 Future extensions may explicitly support controlled Markov chains or Markov decision processes.
+
+The implemented first subset does not use network inputs to alter probabilities. Inputs only trigger activation through the generic `DefaultNetwork` adapter contract.
 
 ---
 
@@ -978,6 +1121,17 @@ The CPN must model at least:
 - atomic token consumption/production;
 - persistence;
 - reproducible conflict selection where stochastic resolution is used.
+
+The implemented first subset is a pragmatic fixed-inscription CPN subset:
+
+- `PetriPlace` stores a symbolic-color multiset as `color -> quantity`;
+- `CPNTransition` is an explicit transition node, not an edge between places;
+- `CPNArc` is an explicit directed bipartite arc between one place and one transition;
+- arc inscriptions are fixed symbolic-color multiplicities;
+- optional transition guards use the current GenESyS expression parser and do not bind CPN variables;
+- one activation uses deterministic `SingleDeterministic` firing and fires at most one enabled transition;
+- priority breaks conflicts deterministically before insertion order;
+- multi-firing, typed token values and general variable bindings remain future work.
 
 ---
 
@@ -1052,6 +1206,8 @@ Implementation may store local token state in `PetriPlace` objects if that gives
 
 The current `std::map<std::string, unsigned int>` representation may be useful as an early/simple case, but is insufficient as the final representation of formal typed colored tokens.
 
+The implemented fixed-inscription subset uses that simple map explicitly as a limited symbolic-color multiset. The observable marking belongs to `ColoredPetriNetNetwork`, and the current token counts are stored in its `PetriPlace` objects for compatibility with the existing model-data lifecycle.
+
 ---
 
 # 33. CPN bindings and guards
@@ -1074,6 +1230,8 @@ A firing must atomically:
 
 - remove required token multisets from input places;
 - produce the output multisets defined by the output arc inscriptions.
+
+The implemented fixed-inscription subset has no CPN variable binding search. A transition is enabled when all fixed input inscriptions are available and the optional guard expression evaluates to nonzero.
 
 ---
 
@@ -1113,6 +1271,8 @@ The original design decision — designer-configurable single versus multiple fi
 The exact conflict-selection semantics for the multi-firing mode should be finalized during implementation using the CPN literature and deterministic/reproducible rules.
 
 A separate future `UntilQuiescence` mode may be considered, but it must not be confused with concurrent-step semantics and must handle possible nontermination.
+
+The implemented fixed-inscription subset supports only `SingleDeterministic`. It selects enabled transitions by priority and stable insertion order. `MaximalConcurrentStep` remains deferred until conflict-selection semantics are specified.
 
 ---
 
@@ -1270,6 +1430,16 @@ The exact serialized format should be derived from existing GenESyS persistence 
 - internal activation counter/report configuration;
 - network-specific topology/state.
 
+## GraphNetwork
+
+- graph nodes;
+- graph edges;
+- endpoint references;
+- directed/undirected graph subtype;
+- optional numeric edge weights;
+- self-loops and parallel edges;
+- no algorithm-local traversal state.
+
 ## EFSMNetwork
 
 - states;
@@ -1285,6 +1455,7 @@ The exact serialized format should be derived from existing GenESyS persistence 
 - states;
 - initial/current state;
 - transition probabilities;
+- probability tolerance;
 - relevant output mappings.
 
 ## ColoredPetriNetNetwork
@@ -1297,6 +1468,8 @@ The exact serialized format should be derived from existing GenESyS persistence 
 - guards;
 - marking;
 - firing policy.
+
+The implemented fixed-inscription subset persists places, transition nodes, bipartite arcs, fixed arc inscriptions, transition guards/priorities, current marking, initial marking and firing mode.
 
 Load/save round trips must be covered by tests.
 
@@ -1314,6 +1487,12 @@ Expected examples:
 - clear activation-local presence flags;
 - restore initial interface/runtime values as defined.
 
+## GraphNetwork
+
+- preserve graph topology;
+- preserve nodes, edges and weights;
+- reset only inherited runtime/reporting data such as the activation counter.
+
 ## EFSMNetwork
 
 - restore initial state;
@@ -1324,11 +1503,15 @@ Expected examples:
 - restore initial state/distribution according to the final contract;
 - reset RNG-dependent runtime state according to GenESyS reproducibility policy.
 
+The implemented first subset restores the single initial state and resets the internal default sampler when a replication starts.
+
 ## ColoredPetriNetNetwork
 
 - restore initial marking;
 - clear activation-local bindings;
 - restore any network-specific counters.
+
+The implemented fixed-inscription subset restores the initial symbolic-color marking and resets inherited activation counters. It has no persistent binding search state.
 
 The distinction between model configuration and replication runtime state must remain explicit.
 
@@ -1404,6 +1587,8 @@ State ---- Transition ----> State
 ```text
 State ---- P(i,j) --------> State
 ```
+
+The implemented first subset persists explicit state-to-state transition relations instead of a dense matrix. The same row-stochastic invariant is checked by summing outgoing probabilities from each state.
 
 ## CPN
 
@@ -1737,6 +1922,16 @@ At minimum:
 - multiset marking;
 - multiple input places;
 - multiple output places;
+- bipartite place-transition-arc topology;
+- input and output arc inscriptions;
+- guard-enabled transition selection;
+- atomic token consumption and production;
+- replication reset;
+- persistence;
+- shared CPN activation through multiple ModalModels.
+
+The implemented fixed-inscription subset covers symbolic color sets, symbolic-color multisets, multiple places, bipartite arcs, fixed inscriptions, parser-based guards, deterministic single firing, atomic marking updates, persistence, replication reset and shared-network activation. Typed token values, variable bindings and maximal concurrent steps remain deferred.
+- multiple output places;
 - weighted/multiset arc inscriptions;
 - transition guard;
 - valid binding enumeration/selection;
@@ -1769,6 +1964,7 @@ Specifically deferred unless a concrete blocker requires them:
 - superdense time;
 - synchronous-reactive director;
 - generalized typed Connection payloads;
+- dynamic graph traversal state, random walks, graph-based routing, spatial graph semantics, communication-link semantics and agent movement on graphs;
 - replacing Entity as the general process-flow carrier;
 - CTMC;
 - Markov decision processes;
@@ -1791,7 +1987,7 @@ The following decisions are considered **settled** for the architectural baselin
 6. Modal state must no longer be stored in entity attributes.
 7. `DefaultNode` becomes a `ModelDataDefinition`, not a `ModelComponent`.
 8. Formalism specialization belongs to Network subclasses, not ModalModel subclasses.
-9. Initial network types are EFSM, finite-state DTMC, and formal CPN.
+9. Initial network types include mathematical graph networks, EFSM, finite-state DTMC, and formal CPN.
 10. EFSM should be structurally inspired by Ptolemy II.
 11. Initial EFSM excludes state refinements, preemption, and error transitions.
 12. Initial Markov support is DTMC only.
@@ -1818,6 +2014,9 @@ The following decisions are considered **settled** for the architectural baselin
 33. Ordinary `Connection` semantics remain process/entity-oriented for now.
 34. `ConnectionChannel` and Connection payload semantics are candidates for future generalization.
 35. ModalModel is treated as an adapter between models of computation.
+36. `GraphNetwork` represents mathematical graph topology and graph algorithms, not implicit Entity movement.
+37. `GraphEdge` is not a `Connection`.
+38. A pure graph network has no mandatory `currentState` or current vertex.
 
 ---
 
@@ -1880,28 +2079,39 @@ A safe implementation sequence is:
 - implement validated EFSM subset;
 - add Ptolemy-inspired presence/output semantics.
 
+## Phase 5A — GraphNetwork
+
+- add `GraphNode` and `GraphEdge`;
+- add undirected and directed graph topology;
+- support optional weights, self-loops and parallel edges;
+- implement BFS, DFS, reachability, shortest paths, connected components, SCC, cycle detection and topological ordering;
+- keep graph algorithms separate from simulation-time movement semantics.
+
 ## Phase 6 — MarkovChainNetwork
 
-- implement finite-state DTMC;
-- reproducible transition selection;
-- mathematical validation.
+- implemented finite-state DTMC subset;
+- implemented reproducible transition selection through GenESyS sampler infrastructure;
+- implemented mathematical validation of finite states, nonnegative probabilities and row sums;
+- deferred initial-distribution sampling, controlled chains, MDPs and CTMC.
 
 ## Phase 7 — ColoredPetriNetNetwork
 
-- replace binary Petri transition assumption;
-- implement places/transitions/arcs;
-- typed colored tokens;
-- multisets;
-- inscriptions/guards/bindings;
-- firing policy;
-- validated CPN fixtures.
+- replaced binary Petri transition assumption with explicit bipartite arcs;
+- implemented places, transition nodes and directed arcs;
+- implemented symbolic-color multisets through `PetriPlace`;
+- implemented fixed arc inscriptions and parser-based guards;
+- implemented deterministic single firing policy;
+- validated focused CPN fixtures;
+- deferred typed token values, variable bindings and maximal concurrent-step firing.
 
 ## Phase 8 — compatibility cleanup
 
-- remove obsolete per-entity state;
-- remove/reduce obsolete ModalModel formalism subclasses;
-- replace `std::rand()`;
-- migrate old tests/models where appropriate.
+- replaced `std::rand()` in the temporary legacy `ModalModelDefault` node-list path with a resettable GenESyS kernel sampler;
+- preserved the legacy per-entity state path only as an explicit compatibility path when no `DefaultNetwork` is attached;
+- preserved `ModalModelFSM` and `ModalModelPetriNet` as thin compatibility shims for now, but allow them to validate through the attached `DefaultNetwork` bridge without requiring obsolete legacy nodes;
+- removed the unused hidden `FSMState` allocation from `ModalModelFSM`;
+- defer removal/reduction of obsolete formalism subclasses until the persistence compatibility strategy for old models is decided;
+- migrate old tests/models where appropriate after representative legacy fixtures are selected.
 
 ## Phase 9 — GUI and future architecture notes
 
@@ -2025,6 +2235,31 @@ https://ptolemy.berkeley.edu/ptolemyII/
 
 Relevant concepts taken as inspiration include explicit ports, current-state ownership, guards, output actions, set/commit actions, input presence/absence, controller/refinement interfaces, and composition of models of computation.
 
+Ptolemy II `ptolemy.graph` package documentation
+https://ptolemy.berkeley.edu/ptolemyII/ptII10.0/ptII10.0.1_20141217/doc/codeDoc/ptolemy/graph/package-summary.html
+
+Ptolemy II `ptolemy.graph` class hierarchy
+https://ptolemy.berkeley.edu/ptolemyII/ptII11.0/ptII/doc/codeDoc/ptolemy/graph/package-tree.html
+
+Ptolemy II `DirectedAcyclicGraph` documentation
+https://ptolemy.berkeley.edu/ptolemyII/ptII11.0/ptII/doc/codeDoc/ptolemy/graph/DirectedAcyclicGraph.html
+
+Relevant graph concepts taken as inspiration include separate graph/node/edge classes, directed graph and directed acyclic graph specializations, weighted/unweighted edges, graph analyses and topology exceptions. GenESyS does not copy Ptolemy code.
+
+## Graph algorithms
+
+Cormen, Leiserson, Rivest and Stein — *Introduction to Algorithms*, graph traversal and shortest-path algorithms.
+
+NetworkX DAG/topological-sort guide
+https://networkx.org/nx-guides/content/algorithms/dag/index.html
+
+Python `graphlib.TopologicalSorter` documentation
+https://docs.python.org/3/library/graphlib.html
+
+Tarjan, R. E. — *Depth-first search and linear graph algorithms*, SIAM Journal on Computing.
+
+Relevant concepts include BFS shortest paths for unweighted graphs, DFS traversal/cycle detection, Dijkstra for nonnegative weighted shortest paths, Tarjan strongly connected components, and Kahn-style topological ordering for DAGs.
+
 ## Coloured Petri Nets
 
 Jensen, Kristensen, Wells — *Coloured Petri Nets and CPN Tools for Modelling and Validation of Concurrent Systems*  
@@ -2075,11 +2310,19 @@ ModelDataDefinition
     |
     +-- DefaultNetwork
     |      |
+    |      +-- GraphNetwork
+    |      |      |
+    |      |      +-- DirectedGraphNetwork
+    |      |             |
+    |      |             +-- DirectedAcyclicGraphNetwork
+    |      |
     |      +-- EFSMNetwork
     |      +-- MarkovChainNetwork
     |      +-- ColoredPetriNetNetwork
     |
     +-- DefaultNode
+           |
+           +-- GraphNode
            |
            +-- EFSMState
            +-- MarkovState
@@ -2128,6 +2371,28 @@ states / places / transitions / arcs / tokens / probabilities
 inside the network formalism.
 
 This boundary is the key architectural decision.
+
+For graph networks specifically:
+
+```text
+GraphNode
+    |
+ GraphEdge
+    |
+GraphNode
+```
+
+is not equivalent to:
+
+```text
+ModelComponent
+    |
+ Connection
+    |
+ModelComponent
+```
+
+`GraphNetwork` represents mathematical topology and algorithms over that topology. Movement, random walks, routing and entity/agent traversal over the graph require future explicit specializations or adapters.
 
 ---
 

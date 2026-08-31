@@ -206,6 +206,223 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local` preferred
 - Acceptance: active references mapped, Qt6 presets/tests green and no GUI redesign.
 
+### AUTO-MODAL-001 — Migrate ModalModel onto the Network bridge
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local`
+- Branch: `WiP202608/modal-network-implementation`
+- Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
+- Latest validated implementation commit: `4e5f4201` (Phase 8 compatibility-cleanup validation checkpoint); `d55a8fba` (proposed GUI architecture, docs-only, added and pushed 2026-08-31 after a session handoff -- re-verified: full build green, `ctest --preset tests-kernel-unit` 1810/1810 executed tests passed, 0 failed, 4 preexisting disabled)
+- Push state: all commits through `d55a8fba` are pushed to `origin/WiP202608/modal-network-implementation` (branch was previously 23 commits ahead of `origin` only locally; pushed 2026-08-31 to avoid loss across a session/provider handoff)
+- Authorization: explicit maintainer continuation instruction on 2026-08-30 authorized resuming the ModalModel/network architecture from the current `DefaultNetwork` checkpoint without restarting the earlier phase-0 inventory.
+- Scope:
+  - migrate `DefaultNode` from `ModelComponent` to `ModelDataDefinition`;
+  - remove process-connection/dispatch semantics from the node layer;
+  - preserve persistence and plugin registration compatibility for existing modal-model models;
+  - keep `ModalModelDefault`/`ModalModelFSM`/`ModalModelPetriNet` behavior intact until the generic `ModalModel` adapter phase;
+  - introduce the first formalism-owned network specialization (`EFSMNetwork`) with deterministic one-step activation semantics;
+  - introduce structural mathematical graph networks as `DefaultNetwork` specializations without process-flow `Connection` semantics;
+  - introduce finite time-homogeneous DTMC support through `MarkovChainNetwork`;
+  - introduce a pragmatic fixed-inscription CPN subset through `ColoredPetriNetNetwork`;
+  - add focused tests for the new node contract and any persistence/check regressions touched by the migration.
+- Non-goals:
+  - no full CPN variable-binding/type-system implementation yet;
+  - no CPN maximal-concurrent-step firing implementation yet;
+  - no CTMC, controlled Markov chain, Markov decision process or time-inhomogeneous Markov process implementation yet;
+  - no graph traversal simulation, random walk, graph routing, spatial-network behavior or agent movement implementation yet;
+  - no full generic `ModalModel` adapter rewrite beyond the current `ModalModelDefault` bridge;
+  - no broad plugin-architecture refactor outside the modal-model path;
+  - no restart of the architecture phase-1/phase-2 `DefaultNetwork` work.
+- Acceptance:
+  - `DefaultNode` compiles as a data-definition-based modal element;
+  - `EFSMNetwork` compiles as a data-definition-based network specialization and is registered in the dummy/static plugin connector;
+  - `GraphNetwork`, `DirectedGraphNetwork`, `DirectedAcyclicGraphNetwork`, `GraphNode` and `GraphEdge` compile as data-definition-based graph abstractions and are registered in the dummy/static plugin connector;
+  - `MarkovChainNetwork` and `MarkovState` compile as data-definition-based DTMC abstractions and are registered in the dummy/static plugin connector;
+  - `ColoredPetriNetNetwork`, `CPNTransition` and `CPNArc` compile as data-definition-based fixed-inscription CPN abstractions and are registered in the dummy/static plugin connector;
+  - plugin loading/persistence remains backward-compatible for the current branch scope;
+  - focused tests cover the migrated node contract, network bridge, EFSM activation/persistence contracts, graph topology/algorithm/persistence contracts, DTMC activation/persistence/validation contracts and CPN fixed-inscription activation/persistence/validation contracts and continue to pass;
+  - remaining architecture follow-ups are left isolated for the next phase.
+- Progress snapshot:
+  - `DefaultNetwork` is already in place with network activation frame/result, port schema and activation counter;
+  - `DefaultNode` has now moved to `ModelDataDefinition`, its old dispatch hook was removed, and node persistence now uses the data-definition serialization path;
+  - `ModalModelDefault` now has an optional `DefaultNetwork` bridge with network reference persistence, input/output bindings, activation, zero-output consume semantics, one-output routing, and multi-output cloning;
+  - `EFSMNetwork` now owns FSM states/transitions, default `input`/`output` ports, current/initial state, deterministic priority selection, output publication, replication reset and persistence round-trip;
+  - `GraphNetwork` now represents structural mathematical graphs with `GraphNode`/`GraphEdge`, undirected and directed semantics, optional weights, self-loops, parallel edges, BFS, DFS, reachability, unweighted shortest path, Dijkstra for nonnegative weights, connected components, Tarjan SCC, cycle detection, DAG cycle rejection and topological order;
+  - `MarkovChainNetwork` now represents finite time-homogeneous DTMCs with network-owned current/initial state, fixed transition probabilities, row-stochastic validation, one-step activation, kernel sampler usage, output of selected state index, replication reset and persistence round-trip;
+  - `ColoredPetriNetNetwork` now represents a fixed-inscription CPN subset with bipartite `PetriPlace`/`CPNTransition`/`CPNArc` topology, symbolic-color token multisets, parser-based guards, deterministic single firing, atomic consume/produce semantics, initial marking reset, persistence round-trip and shared-network activation;
+  - `DefaultNetwork::_loadInstance()` now replaces an existing port schema instead of accumulating stale/default ports during load, which keeps subclass persistence round-trips stable;
+  - the legacy `ModalModelDefault` node-list execution path now uses a resettable GenESyS kernel sampler instead of `std::rand()` for proportional probabilistic transition selection, preserving the temporary compatibility path while aligning stochastic choices with the new network formalism policy;
+  - `ModalModelFSM` no longer allocates an unused hidden `FSMState`, and both `ModalModelFSM` and `ModalModelPetriNet` now validate through the attached `DefaultNetwork` bridge without requiring obsolete legacy nodes when a network is configured;
+  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, `tests/unit/test_modal_model_default_network.cpp`, `tests/unit/test_efsm_network.cpp`, `tests/unit/test_graph_network.cpp`, `tests/unit/test_markov_chain_network.cpp`, and `tests/unit/test_colored_petri_net_network.cpp` cover the base network abstraction, migrated node contract, generic adapter bridge, shared-network activation, invalid network references, EFSM activation, EFSM priority, EFSM reset, EFSM persistence, GraphNetwork topology/algorithms/persistence, MarkovChainNetwork DTMC behavior, ColoredPetriNetNetwork fixed-inscription CPN behavior and plugin metadata;
+  - validation snapshot on 2026-08-30 after the GraphNetwork documentation update: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit -R 'GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 44/44 focused tests; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1789/1789 executed tests and 4 preexisting disabled tests;
+  - validation snapshot on 2026-08-31 after `MarkovChainNetwork`: `cmake --build build/tests-unit -j2 --target genesys_test_markov_chain_network` passed; `ctest --test-dir build/tests-unit -R 'MarkovChainNetwork' --output-on-failure` passed with 9/9 focused tests; `ctest --test-dir build/tests-unit -R 'MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 53/53 modal/network tests; `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1798/1798 executed tests and 4 preexisting disabled tests;
+  - validation snapshot on 2026-08-31 after `ColoredPetriNetNetwork`: `cmake --build build/tests-unit -j2 --target genesys_test_colored_petri_net_network` passed; `ctest --test-dir build/tests-unit -R 'ColoredPetriNetNetwork' --output-on-failure` passed with 10/10 focused tests; `ctest --test-dir build/tests-unit -R 'ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 63/63 modal/network tests; `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1808/1808 executed tests and 4 preexisting disabled tests;
+  - validation snapshot on 2026-08-31 after the legacy sampler cleanup: `cmake --build build/tests-unit -j2 --target genesys_test_modal_model_default_network` passed; `ctest --test-dir build/tests-unit -R 'LegacyProbabilisticSelectionUsesResettableKernelSampler' --output-on-failure` passed with 1/1 focused test; `ctest --test-dir build/tests-unit -R 'ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 64/64 modal/network tests;
+  - validation snapshot on 2026-08-31 after wrapper shim cleanup: `cmake --build build/tests-unit -j2 --target genesys_test_modal_model_default_network` passed; `ctest --test-dir build/tests-unit -R 'ModalModelDefaultNetwork' --output-on-failure` passed with 8/8 bridge/shim tests;
+  - full regression snapshot on 2026-08-31 after Phase 8 safe compatibility cleanup: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1810/1810 executed tests and 4 preexisting disabled tests;
+  - remaining work: GUI/editor synchronization for network ports and bindings, cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers, and future full CPN variable-binding/type-system/multi-firing semantics.
+
+#### GraphNetwork extension
+
+##### Architecture
+
+- GraphNetwork: structural mathematical graph specialization of `DefaultNetwork`; inherited `activate()` remains inert and does not imply traversal, firing, movement or current vertex.
+- GraphNode: `DefaultNode` subclass used as a persistable graph vertex and not as a process-flow `ModelComponent`.
+- GraphEdge: separate `ModelDataDefinition` for graph incidence, endpoints, direction and optional numeric weight; it is not a GenESyS `Connection`.
+- reuse of DefaultNode/DefaultTransition: `GraphNode` reuses `DefaultNode`; `GraphEdge` deliberately does not reuse `DefaultNodeTransition` because transition guards/actions/probability semantics are not mathematical edge semantics.
+- directed/undirected representation: `GraphNetwork` is undirected; `DirectedGraphNetwork` overrides orientation-sensitive adjacency; `DirectedAcyclicGraphNetwork` extends directed graphs with a no-cycle invariant.
+
+##### Features
+
+- self loops: supported; directed self-loop contributes one in-edge and one out-edge and is detected as a directed cycle.
+- parallel edges: supported; edge identity is independent from `(source,destination)` and weights remain independent.
+- weights: optional numeric edge weight; absent weight is treated as cost `1.0` by shortest-path algorithms.
+- adjacency: deterministic insertion-order neighbors, predecessors, successors, incoming/outgoing and incident-edge queries.
+- degree: undirected degree counts self-loop as two; directed in-degree/out-degree count incoming/outgoing edge multiplicity.
+
+##### Algorithms
+
+- BFS: implemented with deterministic insertion-order traversal and predecessor/distance records.
+- DFS: implemented with deterministic insertion-order traversal.
+- reachability: implemented via BFS and respects directed orientation.
+- unweighted shortest path: implemented via BFS with node and edge path reconstruction.
+- Dijkstra: implemented for nonnegative weights and rejects negative weights with a diagnostic.
+- Bellman-Ford: not implemented; negative-weight shortest paths are explicitly rejected for now.
+- connected components: implemented for undirected `GraphNetwork`.
+- strongly connected components: implemented for `DirectedGraphNetwork` using Tarjan DFS.
+- cycle detection: implemented for undirected and directed graphs.
+- topological sorting: implemented for directed graphs with Kahn-style order; DAG subclass rejects cycle-closing insertion.
+
+##### Persistence
+
+- fields: `graphDirected`, `graphNodesSize`, `graphNodeN.*`, `graphEdgesSize`, `graphEdgeN.*`, plus `GraphEdge` endpoint/direction/weight fields.
+- round-trip validation: focused tests cover directed weighted multigraph persistence with isolated node, self-loop and parallel edges.
+
+##### Tests
+
+- focused: `genesys_test_graph_network` and CTest regex `GraphNetwork`.
+- regression: focused ModalModel/Network regex `GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork` passed after implementation.
+- sanitizers if applicable: not run for this structural graph pass; no dedicated sanitizer target was added.
+
+##### Limitations
+
+- `GraphNetwork` stores non-owning topology references to model-managed `GraphNode` and `GraphEdge` data definitions, matching the current ModelDataManager ownership style; external deletion must still be coordinated through graph APIs to avoid stale topology references.
+- Bellman-Ford and negative-cycle shortest-path analysis are deferred; Dijkstra rejects negative weights.
+
+##### Future extensions
+
+- GraphTraversalNetwork;
+- RandomWalkNetwork;
+- RoutingNetwork;
+- agent movement;
+- spatial networks;
+- generalized Connection/token integration.
+
+#### MarkovChainNetwork extension
+
+##### Architecture
+
+- MarkovChainNetwork: finite time-homogeneous DTMC specialization of `DefaultNetwork`; one activation performs exactly one Markov step.
+- MarkovState: `DefaultNode` subclass used as a finite DTMC state and not as a process-flow `ModelComponent`.
+- MarkovTransition: internal transition relation from source state to destination state with fixed numeric probability.
+- legacy component boundary: `AnalyticalModeling/MarkovChain` remains a separate process component that reads/writes entity-associated data; it is not the new network-owned DTMC implementation.
+
+##### Features
+
+- current state: owned by `MarkovChainNetwork`, not by `Entity` attributes.
+- initial state: persisted and restored between replications.
+- probabilities: fixed numeric transition probabilities for the initial strict DTMC implementation.
+- row validation: every state's outgoing probabilities must sum to 1.0 within configured tolerance.
+- output: default `state` output publishes the selected state index after activation.
+
+##### Algorithms
+
+- transition selection: uses the GenESyS sampler infrastructure, not `std::rand()`.
+- deterministic transitions: probability-one rows are supported.
+- absorbing states: represented by a self-transition with probability `1.0`.
+- empirical sanity: focused tests verify approximate frequencies for a two-branch stochastic row.
+
+##### Persistence
+
+- fields: `probabilityTolerance`, `initialState`, `currentState`, `markovStatesSize`, `markovStateN.*`, `markovTransitionsSize`, `markovTransitionSourceN`, `markovTransitionDestinationN`, `markovTransitionNameN`, and `markovTransitionProbabilityN`.
+- precision: small probability/tolerance values are saved with explicit string precision to avoid `std::to_string` rounding to zero.
+- round-trip validation: focused tests cover states, transitions, probabilities, ports, tolerance, current state and initial state.
+
+##### Tests
+
+- focused: `genesys_test_markov_chain_network` and CTest regex `MarkovChainNetwork`.
+- regression: focused ModalModel/Network regex `MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork` passed after implementation.
+- shared activation: focused tests activate one chain through two `ModalModelDefault` adapters and verify network-owned state progression.
+
+##### Limitations
+
+- no CTMC support.
+- no controlled Markov chain, Markov decision process or time-inhomogeneous transition update semantics.
+- no state-specific output mapping beyond the default selected-state-index output.
+- `MarkovTransition` is currently an internal network relation rather than a standalone plugin data definition.
+
+##### Future extensions
+
+- initial distribution sampling rather than only a single initial state;
+- controlled Markov chains;
+- Markov decision processes;
+- CTMC with event-calendar integration;
+- richer output mappings per state or transition.
+
+#### ColoredPetriNetNetwork extension
+
+##### Architecture
+
+- ColoredPetriNetNetwork: fixed-inscription CPN subset specialization of `DefaultNetwork`; one activation fires at most one enabled transition.
+- PetriPlace: reused as the place data definition with symbolic-color token multiset storage.
+- CPNTransition: explicit transition node with guard expression and priority.
+- CPNArc: explicit directed bipartite arc between one `PetriPlace` and one `CPNTransition`; it is not a place-to-place edge.
+- firing mode: currently `SingleDeterministic` only.
+
+##### Features
+
+- color sets: symbolic color names only in this subset.
+- token values: represented as multiset counts per symbolic color; typed token payloads are deferred.
+- inscriptions: fixed `color -> quantity` inscriptions on arcs.
+- guards: optional parser expressions on transitions without CPN variable bindings.
+- marking: observable marking belongs to `ColoredPetriNetNetwork` and is stored in its places for compatibility with the existing data-definition lifecycle.
+
+##### Algorithms
+
+- enabling: checks all fixed input inscriptions and transition guard.
+- firing: atomically consumes input multisets and produces output multisets.
+- conflict selection: deterministic by transition priority, preserving insertion order for equal priorities.
+- multi-firing: not implemented; maximal concurrent-step semantics remain future work.
+
+##### Persistence
+
+- fields: default network ports, firing mode, `cpnPlaceN.*`, `cpnTransitionN.*`, `cpnArcN.*`, current place markings and explicit initial marking entries.
+- round-trip validation: focused tests cover bipartite topology, arc inscriptions, guards/priorities, current marking and initial marking.
+
+##### Tests
+
+- focused: `genesys_test_colored_petri_net_network` and CTest regex `ColoredPetriNetNetwork`.
+- regression: focused ModalModel/Network regex `ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork` passed after implementation.
+- shared activation: focused tests activate one CPN through two `ModalModelDefault` adapters and verify network-owned marking.
+
+##### Limitations
+
+- no typed token payloads.
+- no CPN variable binding search.
+- no evaluated arc inscriptions beyond fixed symbolic-color multiplicities.
+- no maximal concurrent-step or stochastic conflict resolution.
+- `PetriTransition` legacy binary source/destination helper remains separate and is not the new CPN transition node.
+
+##### Future extensions
+
+- typed color sets and token values;
+- binding enumeration;
+- expression-based arc inscriptions;
+- maximal concurrent-step firing;
+- stochastic conflict resolution through the GenESyS sampler;
+- CPN reference fixtures from literature.
+
 ## 7. Completed technical baseline
 
 Do not reopen without new evidence:

@@ -1,6 +1,11 @@
 #include "plugins/components/ModalModel/PetriPlace.h"
+#include "kernel/simulator/PluginInformation.h"
 
 PetriPlace::PetriPlace(Model* model, std::string name) : DefaultNode(model, Util::TypeOf<PetriPlace>(), name) {
+}
+
+PetriPlace::~PetriPlace() {
+	delete _tokensByColor;
 }
 
 unsigned int PetriPlace::getTokens(std::string color) const {
@@ -9,6 +14,10 @@ unsigned int PetriPlace::getTokens(std::string color) const {
 		return 0;
 	}
 	return it->second;
+}
+
+void PetriPlace::setTokens(unsigned int quantity, std::string color) {
+	(*_tokensByColor)[color] = quantity;
 }
 
 void PetriPlace::addTokens(unsigned int quantity, std::string color) {
@@ -24,6 +33,10 @@ bool PetriPlace::removeTokens(unsigned int quantity, std::string color) {
 	return true;
 }
 
+void PetriPlace::clearTokens() {
+	_tokensByColor->clear();
+}
+
 std::map<std::string, unsigned int>* PetriPlace::getAllTokens() {
 	return _tokensByColor;
 }
@@ -37,7 +50,7 @@ PluginInformation* PetriPlace::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* PetriPlace::LoadInstance(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* PetriPlace::LoadInstance(Model* model, PersistenceRecord *fields) {
 	PetriPlace* component = new PetriPlace(model);
 	component->_loadInstance(fields);
 	return component;
