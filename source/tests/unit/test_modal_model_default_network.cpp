@@ -10,6 +10,8 @@
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponent.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModelFSM.h"
+#include "plugins/components/ModalModel/ModalModelPetriNet.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 
@@ -82,6 +84,24 @@ public:
 
 	void saveProbe(PersistenceRecord* fields, bool saveDefaultValues = true) {
 		_saveInstance(fields, saveDefaultValues);
+	}
+};
+
+class ModalModelFSMProbe final : public ModalModelFSM {
+public:
+	ModalModelFSMProbe(Model* model, const std::string& name) : ModalModelFSM(model, name) {}
+
+	bool checkProbe(std::string& errorMessage) {
+		return _check(errorMessage);
+	}
+};
+
+class ModalModelPetriNetProbe final : public ModalModelPetriNet {
+public:
+	ModalModelPetriNetProbe(Model* model, const std::string& name) : ModalModelPetriNet(model, name) {}
+
+	bool checkProbe(std::string& errorMessage) {
+		return _check(errorMessage);
 	}
 };
 
@@ -298,6 +318,30 @@ TEST(ModalModelDefaultNetworkTest, CheckRejectsUnknownNetworkReference) {
 	std::string errorMessage;
 	EXPECT_FALSE(modal.checkProbe(errorMessage));
 	EXPECT_NE(errorMessage.find("MissingNetwork"), std::string::npos);
+}
+
+TEST(ModalModelDefaultNetworkTest, LegacyFormalismWrappersAcceptAttachedNetworkBridgeWithoutLegacyNodes) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	TestNetwork network(model, "SharedFormalismNetwork");
+	network.addInputPort("input");
+	network.addOutputPort("output");
+	Attribute outputAttribute(model, "output");
+	CollectorSinkComponentProbe sink(model, "Sink");
+
+	ModalModelFSMProbe fsm(model, "FSMShim");
+	fsm.getConnectionManager()->insert(&sink);
+	fsm.setNetwork(&network);
+	std::string fsmError;
+	EXPECT_TRUE(fsm.checkProbe(fsmError)) << fsmError;
+
+	ModalModelPetriNetProbe petriNet(model, "PetriShim");
+	petriNet.getConnectionManager()->insert(&sink);
+	petriNet.setNetworkName("SharedFormalismNetwork");
+	std::string petriError;
+	EXPECT_TRUE(petriNet.checkProbe(petriError)) << petriError;
 }
 
 TEST(ModalModelDefaultNetworkTest, LegacyProbabilisticSelectionUsesResettableKernelSampler) {
