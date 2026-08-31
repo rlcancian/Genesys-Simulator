@@ -114,6 +114,8 @@
 #include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/data/ModalModel/DirectedGraphNetwork.h"
 #include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
+#include "plugins/data/ModalModel/MarkovState.h"
+#include "plugins/data/ModalModel/MarkovChainNetwork.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/InputOutput/File.h"
 #include "data/Logic/Formula.h"
@@ -202,6 +204,8 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("graphnetwork.so");
     filenames->insert("directedgraphnetwork.so");
     filenames->insert("directedacyclicgraphnetwork.so");
+    filenames->insert("markovstate.so");
+    filenames->insert("markovchainnetwork.so");
     filenames->insert("formula.so");
     filenames->insert("groprogram.so");
     filenames->insert("bacteriasignalgrid.so");
@@ -393,6 +397,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &DirectedGraphNetwork::GetPluginInformation;
     else if (fn == "directedacyclicgraphnetwork.so")
         GetInfo = &DirectedAcyclicGraphNetwork::GetPluginInformation;
+    else if (fn == "markovstate.so")
+        GetInfo = &MarkovState::GetPluginInformation;
+    else if (fn == "markovchainnetwork.so")
+        GetInfo = &MarkovChainNetwork::GetPluginInformation;
     else if (fn == "formula.so")
         GetInfo = &Formula::GetPluginInformation;
     else if (fn == "groprogram.so")
