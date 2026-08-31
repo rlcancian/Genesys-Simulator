@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-08-30
+last_updated: 2026-08-31
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -167,51 +167,13 @@ This is the only approved source for work an AI agent may execute without a new 
     in the compatibility matrix.
 - Validation at merge time: focused Arena/MaterialHandling tests green (`28/28`), `tests-smoke` green (`3/3`), `tests-kernel-unit` green except the preexisting `genesys_test_optimizer_ownership_contract_NOT_BUILT`, and `tests-unit` still shows 13 unrelated WholeCell/Bio failures tied to a plugin-loading path involving `attribute.so`, outside this scope — these remain untriaged and are not yet a dedicated backlog entry; a maintainer should decide whether to open one before relying on `tests-unit` as a green gate.
 
-## 5. Active bounded work
-
-None currently. The most recent entry (`AUTO-ARENA-001`) closed `done` on
-2026-08-30 and moved to Section 4.
-
-## 6. Paused technical tasks
-
-These tasks remain paused until the maintainer explicitly activates one. Completion of the documentation migration does not resume them automatically.
-
-### AUTO-APP-001 — Validate standalone HTTP Worker GUI startup
-
-- Priority: `P1`
-- Status: `paused`
-- Environment: `github`
-- Acceptance: preset/build, PID-associated window, bounded liveness, controlled teardown and ordinary CI green.
-- Non-goal: no worker security redesign.
-
-### AUTO-APP-002 — Validate standalone main GUI startup
-
-- Priority: `P1`
-- Status: `paused`
-- Environment: `github`
-- Acceptance: `gui-app` preset/build/Xvfb startup evidence before minimal interaction work.
-
-### AUTO-TEST-001 — Remove four historical duplicate Search/Remove test blocks
-
-- Priority: `P2`
-- Status: `paused`
-- Environment: `local`
-- Acceptance: active focused tests remain green, exact inventory updated and ordinary/kernel/smoke paths green.
-- Stop: connector-only environments must not replace the large source file blindly.
-
-### AUTO-QT-001 — Remove active Qt5 fallback
-
-- Priority: `P1`
-- Status: `paused`
-- Environment: `local` preferred
-- Acceptance: active references mapped, Qt6 presets/tests green and no GUI redesign.
-
 ### AUTO-MODAL-001 — Migrate ModalModel onto the Network bridge
 
 - Priority: `P1`
-- Status: `running`
+- Status: `done`
 - Environment: `local`
 - Branch: `WiP202608/modal-network-implementation`
+- Merge: PR #528, merged 2026-08-31 into `WorkInProgress` at `e0185163` (docs sync + architecture consolidation), and PR #529, merged 2026-08-31 into `WorkInProgress` at `fdae135b` (ModalModel/network architecture, Phases 1-8), current `WorkInProgress` head after both merges: `fdae135b3`.
 - Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
 - Latest validated implementation commit: `4e5f4201` (Phase 8 compatibility-cleanup validation checkpoint); `d55a8fba` (proposed GUI architecture, docs-only, added and pushed 2026-08-31 after a session handoff -- re-verified: full build green, `ctest --preset tests-kernel-unit` 1810/1810 executed tests passed, 0 failed, 4 preexisting disabled)
 - Push state: all commits through `d55a8fba` are pushed to `origin/WiP202608/modal-network-implementation` (branch was previously 23 commits ahead of `origin` only locally; pushed 2026-08-31 to avoid loss across a session/provider handoff)
@@ -422,6 +384,46 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - maximal concurrent-step firing;
 - stochastic conflict resolution through the GenESyS sampler;
 - CPN reference fixtures from literature.
+
+## 5. Active bounded work
+
+None currently. The most recent entries (`AUTO-ARENA-001` on 2026-08-30 and
+`AUTO-MODAL-001` on 2026-08-31) closed `done` and moved to Section 4.
+
+## 6. Paused technical tasks
+
+These tasks remain paused until the maintainer explicitly activates one. Completion of the documentation migration does not resume them automatically.
+
+### AUTO-APP-001 — Validate standalone HTTP Worker GUI startup
+
+- Priority: `P1`
+- Status: `paused`
+- Environment: `github`
+- Acceptance: preset/build, PID-associated window, bounded liveness, controlled teardown and ordinary CI green.
+- Non-goal: no worker security redesign.
+
+### AUTO-APP-002 — Validate standalone main GUI startup
+
+- Priority: `P1`
+- Status: `paused`
+- Environment: `github`
+- Acceptance: `gui-app` preset/build/Xvfb startup evidence before minimal interaction work.
+
+### AUTO-TEST-001 — Remove four historical duplicate Search/Remove test blocks
+
+- Priority: `P2`
+- Status: `paused`
+- Environment: `local`
+- Acceptance: active focused tests remain green, exact inventory updated and ordinary/kernel/smoke paths green.
+- Stop: connector-only environments must not replace the large source file blindly.
+
+### AUTO-QT-001 — Remove active Qt5 fallback
+
+- Priority: `P1`
+- Status: `paused`
+- Environment: `local` preferred
+- Acceptance: active references mapped, Qt6 presets/tests green and no GUI redesign.
+
 
 ## 7. Completed technical baseline
 
