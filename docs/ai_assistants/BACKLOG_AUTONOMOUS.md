@@ -197,37 +197,42 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local` preferred
 - Acceptance: active references mapped, Qt6 presets/tests green and no GUI redesign.
 
-### AUTO-MODAL-001 — Migrate DefaultNode onto the ModalModel/Network bridge
+### AUTO-MODAL-001 — Migrate ModalModel onto the Network bridge
 
 - Priority: `P1`
 - Status: `running`
 - Environment: `local`
 - Branch: `WiP202608/modal-network-implementation`
 - Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
-- Latest validated implementation commit: `6ed47e55`
+- Latest validated implementation commit: `a146b647bf78955f259bc22aea4eb07cca220c11`
 - Authorization: explicit maintainer continuation instruction on 2026-08-30 authorized resuming the ModalModel/network architecture from the current `DefaultNetwork` checkpoint without restarting the earlier phase-0 inventory.
 - Scope:
   - migrate `DefaultNode` from `ModelComponent` to `ModelDataDefinition`;
   - remove process-connection/dispatch semantics from the node layer;
   - preserve persistence and plugin registration compatibility for existing modal-model models;
   - keep `ModalModelDefault`/`ModalModelFSM`/`ModalModelPetriNet` behavior intact until the generic `ModalModel` adapter phase;
+  - introduce the first formalism-owned network specialization (`EFSMNetwork`) with deterministic one-step activation semantics;
   - add focused tests for the new node contract and any persistence/check regressions touched by the migration.
 - Non-goals:
-  - no EFSM/DTMC/CPN formalism implementation yet;
-  - no generic `ModalModel` adapter rewrite yet;
+  - no DTMC/CPN formalism implementation yet;
+  - no full generic `ModalModel` adapter rewrite beyond the current `ModalModelDefault` bridge;
   - no broad plugin-architecture refactor outside the modal-model path;
   - no restart of the architecture phase-1/phase-2 `DefaultNetwork` work.
 - Acceptance:
   - `DefaultNode` compiles as a data-definition-based modal element;
+  - `EFSMNetwork` compiles as a data-definition-based network specialization and is registered in the dummy/static plugin connector;
   - plugin loading/persistence remains backward-compatible for the current branch scope;
-  - focused tests cover the migrated node contract and continue to pass;
+  - focused tests cover the migrated node contract, network bridge and EFSM activation/persistence contracts and continue to pass;
   - remaining architecture follow-ups are left isolated for the next phase.
 - Progress snapshot:
   - `DefaultNetwork` is already in place with network activation frame/result, port schema and activation counter;
   - `DefaultNode` has now moved to `ModelDataDefinition`, its old dispatch hook was removed, and node persistence now uses the data-definition serialization path;
   - `ModalModelDefault` now has an optional `DefaultNetwork` bridge with network reference persistence, input/output bindings, activation, zero-output consume semantics, one-output routing, and multi-output cloning;
-  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, and `tests/unit/test_modal_model_default_network.cpp` cover the base network abstraction, the migrated node contract, the generic adapter bridge, shared-network activation, and invalid network references.
-  - remaining phase-4 work: decide how aggressively to migrate legacy node/transition ownership into network specializations and how GUI/editor port synchronization should surface.
+  - `EFSMNetwork` now owns FSM states/transitions, default `input`/`output` ports, current/initial state, deterministic priority selection, output publication, replication reset and persistence round-trip;
+  - `DefaultNetwork::_loadInstance()` now replaces an existing port schema instead of accumulating stale/default ports during load, which keeps subclass persistence round-trips stable;
+  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, `tests/unit/test_modal_model_default_network.cpp`, and `tests/unit/test_efsm_network.cpp` cover the base network abstraction, migrated node contract, generic adapter bridge, shared-network activation, invalid network references, EFSM activation, EFSM priority, EFSM reset, EFSM persistence and plugin metadata;
+  - validation snapshot on 2026-08-30: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1774 executed tests and 4 preexisting disabled tests;
+  - remaining work: DTMC and CPN network specializations, GUI/editor synchronization for network ports and bindings, and cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers.
 
 ## 7. Completed technical baseline
 
