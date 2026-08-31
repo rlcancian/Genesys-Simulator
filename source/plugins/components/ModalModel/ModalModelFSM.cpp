@@ -8,9 +8,6 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 #endif
 
 ModalModelFSM::ModalModelFSM(Model* model, std::string name) : ModalModelDefault(model, name) {
-	_fsmInitialState = new FSMState(model);
-	_fsmInitialState->setModelLevel(_id);
-
 }
 
 PluginInformation* ModalModelFSM::GetPluginInformation() {
