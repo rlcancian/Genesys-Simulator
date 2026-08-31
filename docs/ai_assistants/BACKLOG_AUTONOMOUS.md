@@ -204,7 +204,7 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local`
 - Branch: `WiP202608/modal-network-implementation`
 - Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
-- Latest validated implementation commit: `e0fd8bd3a280db58617514c4d1d334a29cd75933`
+- Latest validated implementation commit: `d8b5c2187320de5985af16d0b5e4cc3a3c4f1a79`
 - Authorization: explicit maintainer continuation instruction on 2026-08-30 authorized resuming the ModalModel/network architecture from the current `DefaultNetwork` checkpoint without restarting the earlier phase-0 inventory.
 - Scope:
   - migrate `DefaultNode` from `ModelComponent` to `ModelDataDefinition`;
@@ -213,9 +213,11 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
   - keep `ModalModelDefault`/`ModalModelFSM`/`ModalModelPetriNet` behavior intact until the generic `ModalModel` adapter phase;
   - introduce the first formalism-owned network specialization (`EFSMNetwork`) with deterministic one-step activation semantics;
   - introduce structural mathematical graph networks as `DefaultNetwork` specializations without process-flow `Connection` semantics;
+  - introduce finite time-homogeneous DTMC support through `MarkovChainNetwork`;
   - add focused tests for the new node contract and any persistence/check regressions touched by the migration.
 - Non-goals:
-  - no DTMC/CPN formalism implementation yet;
+  - no CPN formalism implementation yet;
+  - no CTMC, controlled Markov chain, Markov decision process or time-inhomogeneous Markov process implementation yet;
   - no graph traversal simulation, random walk, graph routing, spatial-network behavior or agent movement implementation yet;
   - no full generic `ModalModel` adapter rewrite beyond the current `ModalModelDefault` bridge;
   - no broad plugin-architecture refactor outside the modal-model path;
@@ -224,8 +226,9 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
   - `DefaultNode` compiles as a data-definition-based modal element;
   - `EFSMNetwork` compiles as a data-definition-based network specialization and is registered in the dummy/static plugin connector;
   - `GraphNetwork`, `DirectedGraphNetwork`, `DirectedAcyclicGraphNetwork`, `GraphNode` and `GraphEdge` compile as data-definition-based graph abstractions and are registered in the dummy/static plugin connector;
+  - `MarkovChainNetwork` and `MarkovState` compile as data-definition-based DTMC abstractions and are registered in the dummy/static plugin connector;
   - plugin loading/persistence remains backward-compatible for the current branch scope;
-  - focused tests cover the migrated node contract, network bridge, EFSM activation/persistence contracts and graph topology/algorithm/persistence contracts and continue to pass;
+  - focused tests cover the migrated node contract, network bridge, EFSM activation/persistence contracts, graph topology/algorithm/persistence contracts and DTMC activation/persistence/validation contracts and continue to pass;
   - remaining architecture follow-ups are left isolated for the next phase.
 - Progress snapshot:
   - `DefaultNetwork` is already in place with network activation frame/result, port schema and activation counter;
@@ -233,10 +236,12 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
   - `ModalModelDefault` now has an optional `DefaultNetwork` bridge with network reference persistence, input/output bindings, activation, zero-output consume semantics, one-output routing, and multi-output cloning;
   - `EFSMNetwork` now owns FSM states/transitions, default `input`/`output` ports, current/initial state, deterministic priority selection, output publication, replication reset and persistence round-trip;
   - `GraphNetwork` now represents structural mathematical graphs with `GraphNode`/`GraphEdge`, undirected and directed semantics, optional weights, self-loops, parallel edges, BFS, DFS, reachability, unweighted shortest path, Dijkstra for nonnegative weights, connected components, Tarjan SCC, cycle detection, DAG cycle rejection and topological order;
+  - `MarkovChainNetwork` now represents finite time-homogeneous DTMCs with network-owned current/initial state, fixed transition probabilities, row-stochastic validation, one-step activation, kernel sampler usage, output of selected state index, replication reset and persistence round-trip;
   - `DefaultNetwork::_loadInstance()` now replaces an existing port schema instead of accumulating stale/default ports during load, which keeps subclass persistence round-trips stable;
-  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, `tests/unit/test_modal_model_default_network.cpp`, `tests/unit/test_efsm_network.cpp`, and `tests/unit/test_graph_network.cpp` cover the base network abstraction, migrated node contract, generic adapter bridge, shared-network activation, invalid network references, EFSM activation, EFSM priority, EFSM reset, EFSM persistence, GraphNetwork topology/algorithms/persistence and plugin metadata;
+  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, `tests/unit/test_modal_model_default_network.cpp`, `tests/unit/test_efsm_network.cpp`, `tests/unit/test_graph_network.cpp`, and `tests/unit/test_markov_chain_network.cpp` cover the base network abstraction, migrated node contract, generic adapter bridge, shared-network activation, invalid network references, EFSM activation, EFSM priority, EFSM reset, EFSM persistence, GraphNetwork topology/algorithms/persistence, MarkovChainNetwork DTMC behavior and plugin metadata;
   - validation snapshot on 2026-08-30 after the GraphNetwork documentation update: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit -R 'GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 44/44 focused tests; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1789/1789 executed tests and 4 preexisting disabled tests;
-  - remaining work: DTMC and CPN network specializations, GUI/editor synchronization for network ports and bindings, and cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers.
+  - validation snapshot on 2026-08-31 after `MarkovChainNetwork`: `cmake --build build/tests-unit -j2 --target genesys_test_markov_chain_network` passed; `ctest --test-dir build/tests-unit -R 'MarkovChainNetwork' --output-on-failure` passed with 9/9 focused tests; `ctest --test-dir build/tests-unit -R 'MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 53/53 modal/network tests; `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1798/1798 executed tests and 4 preexisting disabled tests;
+  - remaining work: CPN network specialization, GUI/editor synchronization for network ports and bindings, and cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers.
 
 #### GraphNetwork extension
 
@@ -293,6 +298,57 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - agent movement;
 - spatial networks;
 - generalized Connection/token integration.
+
+#### MarkovChainNetwork extension
+
+##### Architecture
+
+- MarkovChainNetwork: finite time-homogeneous DTMC specialization of `DefaultNetwork`; one activation performs exactly one Markov step.
+- MarkovState: `DefaultNode` subclass used as a finite DTMC state and not as a process-flow `ModelComponent`.
+- MarkovTransition: internal transition relation from source state to destination state with fixed numeric probability.
+- legacy component boundary: `AnalyticalModeling/MarkovChain` remains a separate process component that reads/writes entity-associated data; it is not the new network-owned DTMC implementation.
+
+##### Features
+
+- current state: owned by `MarkovChainNetwork`, not by `Entity` attributes.
+- initial state: persisted and restored between replications.
+- probabilities: fixed numeric transition probabilities for the initial strict DTMC implementation.
+- row validation: every state's outgoing probabilities must sum to 1.0 within configured tolerance.
+- output: default `state` output publishes the selected state index after activation.
+
+##### Algorithms
+
+- transition selection: uses the GenESyS sampler infrastructure, not `std::rand()`.
+- deterministic transitions: probability-one rows are supported.
+- absorbing states: represented by a self-transition with probability `1.0`.
+- empirical sanity: focused tests verify approximate frequencies for a two-branch stochastic row.
+
+##### Persistence
+
+- fields: `probabilityTolerance`, `initialState`, `currentState`, `markovStatesSize`, `markovStateN.*`, `markovTransitionsSize`, `markovTransitionSourceN`, `markovTransitionDestinationN`, `markovTransitionNameN`, and `markovTransitionProbabilityN`.
+- precision: small probability/tolerance values are saved with explicit string precision to avoid `std::to_string` rounding to zero.
+- round-trip validation: focused tests cover states, transitions, probabilities, ports, tolerance, current state and initial state.
+
+##### Tests
+
+- focused: `genesys_test_markov_chain_network` and CTest regex `MarkovChainNetwork`.
+- regression: focused ModalModel/Network regex `MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork` passed after implementation.
+- shared activation: focused tests activate one chain through two `ModalModelDefault` adapters and verify network-owned state progression.
+
+##### Limitations
+
+- no CTMC support.
+- no controlled Markov chain, Markov decision process or time-inhomogeneous transition update semantics.
+- no state-specific output mapping beyond the default selected-state-index output.
+- `MarkovTransition` is currently an internal network relation rather than a standalone plugin data definition.
+
+##### Future extensions
+
+- initial distribution sampling rather than only a single initial state;
+- controlled Markov chains;
+- Markov decision processes;
+- CTMC with event-calendar integration;
+- richer output mappings per state or transition.
 
 ## 7. Completed technical baseline
 

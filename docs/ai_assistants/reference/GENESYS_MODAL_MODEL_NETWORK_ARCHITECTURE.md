@@ -1048,6 +1048,18 @@ The current state belongs to `MarkovChainNetwork`.
 
 The implementation must use the reproducible GenESyS RNG infrastructure, never `std::rand()`.
 
+The implemented first subset uses:
+
+- `MarkovState` as the finite DTMC state data definition;
+- internal `MarkovTransition` relations with fixed numeric probabilities;
+- one default input port named `step`;
+- one default output port named `state`, which publishes the selected state index after each activation;
+- a single initial state rather than initial-distribution sampling;
+- row-stochastic validation for every state's outgoing transitions;
+- the kernel sampler infrastructure for probabilistic transition selection.
+
+The legacy `AnalyticalModeling/MarkovChain` process component remains separate. It is not the network-owned DTMC formalism because it reads/writes entity-associated state and matrix data, while `MarkovChainNetwork` owns the current state inside the network.
+
 ---
 
 # 28. Strict DTMC semantics versus future controlled chains
@@ -1063,6 +1075,8 @@ Such extensions may be useful, but must be labeled correctly instead of being si
 A ModalModel input can still **trigger** a DTMC step without necessarily altering its transition matrix.
 
 Future extensions may explicitly support controlled Markov chains or Markov decision processes.
+
+The implemented first subset does not use network inputs to alter probabilities. Inputs only trigger activation through the generic `DefaultNetwork` adapter contract.
 
 ---
 
@@ -1424,6 +1438,7 @@ The exact serialized format should be derived from existing GenESyS persistence 
 - states;
 - initial/current state;
 - transition probabilities;
+- probability tolerance;
 - relevant output mappings.
 
 ## ColoredPetriNetNetwork
@@ -1468,6 +1483,8 @@ Expected examples:
 
 - restore initial state/distribution according to the final contract;
 - reset RNG-dependent runtime state according to GenESyS reproducibility policy.
+
+The implemented first subset restores the single initial state and resets the internal default sampler when a replication starts.
 
 ## ColoredPetriNetNetwork
 
@@ -1549,6 +1566,8 @@ State ---- Transition ----> State
 ```text
 State ---- P(i,j) --------> State
 ```
+
+The implemented first subset persists explicit state-to-state transition relations instead of a dense matrix. The same row-stochastic invariant is checked by summing outgoing probabilities from each state.
 
 ## CPN
 
@@ -2039,9 +2058,10 @@ A safe implementation sequence is:
 
 ## Phase 6 — MarkovChainNetwork
 
-- implement finite-state DTMC;
-- reproducible transition selection;
-- mathematical validation.
+- implemented finite-state DTMC subset;
+- implemented reproducible transition selection through GenESyS sampler infrastructure;
+- implemented mathematical validation of finite states, nonnegative probabilities and row sums;
+- deferred initial-distribution sampling, controlled chains, MDPs and CTMC.
 
 ## Phase 7 — ColoredPetriNetNetwork
 
