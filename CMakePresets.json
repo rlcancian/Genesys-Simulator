@@ -37,6 +37,7 @@
     },
     {
       "name": "tests-unit",
+      "hidden": true,
       "displayName": "Tests - Unit",
       "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/tests-unit",
@@ -50,6 +51,7 @@
     },
     {
       "name": "tests-kernel-unit",
+      "hidden": true,
       "displayName": "Tests - Kernel Unit",
       "inherits": "tests-unit",
       "binaryDir": "${sourceDir}/build/tests-kernel-unit",
@@ -170,6 +172,7 @@
     {
       "name": "gui-app",
       "displayName": "Application - GUI",
+      "description": "Builds the main GenESyS Qt GUI application genesys_gui_application and its GUI-only dependencies.",
       "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/gui-app",
       "cacheVariables": {
@@ -262,6 +265,7 @@
     },
     {
       "name": "tests-smoke",
+      "hidden": true,
       "displayName": "Tests - Smoke",
       "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/tests-smoke",
@@ -276,6 +280,7 @@
   "buildPresets": [
     {
       "name": "tests-unit",
+      "hidden": true,
       "configurePreset": "tests-unit",
       "targets": [
         "genesys_kernel_unit_tests"
@@ -283,6 +288,7 @@
     },
     {
       "name": "tests-kernel-unit-run",
+      "hidden": true,
       "configurePreset": "tests-kernel-unit",
       "targets": [
         "genesys_kernel_unit_tests_run"
@@ -290,6 +296,7 @@
     },
     {
       "name": "tests-kernel-unit",
+      "hidden": true,
       "configurePreset": "tests-kernel-unit",
       "targets": [
         "genesys_kernel_unit_tests_run"
@@ -397,6 +404,7 @@
     },
     {
       "name": "tests-smoke",
+      "hidden": true,
       "configurePreset": "tests-smoke",
       "targets": [
         "genesys_smoke_tests"
@@ -406,6 +414,7 @@
   "testPresets": [
     {
       "name": "tests-unit",
+      "hidden": true,
       "configurePreset": "tests-unit",
       "filter": {
         "include": {
@@ -418,6 +427,7 @@
     },
     {
       "name": "tests-kernel-unit",
+      "hidden": true,
       "configurePreset": "tests-kernel-unit",
       "output": {
         "outputOnFailure": true
@@ -437,6 +447,7 @@
     },
     {
       "name": "tests-smoke",
+      "hidden": true,
       "configurePreset": "tests-smoke",
       "filter": {
         "include": {
