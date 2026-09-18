@@ -59,7 +59,7 @@ Consequences:
 - do not spend development effort preserving old `.gen` files solely because they existed before the migration;
 - persistence testing remains required for the **current supported representation**;
 - save/load round-trip for current objects remains required;
-- factories, registration, GUI, examples, tests, and current code references must still be checked before obsolete classes are moved or removed.
+- factories, registration, GUI, examples, tests, and current code references must still be checked before obsolete classes are removed.
 
 ### 3.2 Meaning of `closed` and `done_confirmed`
 
@@ -73,23 +73,37 @@ Accordingly, `AUTO-MODAL-001` must be interpreted as **closed**, not as proof th
 
 Historical uses of `done` elsewhere in the backlog are legacy records and must not be silently reinterpreted as `done_confirmed` without explicit re-verification.
 
-### 3.3 Legacy ModalModel classes
+### 3.3 Legacy ModalModel classes and source-tree removal
 
-Maintainer direction:
+Maintainer decision:
 
-- historical/obsolete implementation artifacts may be moved temporarily under a `deprecated/` subdirectory beneath their current logical directory;
-- directories named `deprecated/` are not compiled;
-- physical deletion may be preferable if local dependency analysis proves the files are unused and removal is safer/cleaner;
+- obsolete Modal/Network implementation classes must **not** be retained anywhere under `source/` merely for historical reference;
+- once current dependency analysis proves that an old class is no longer needed, remove its source/header files from the `source` tree;
+- do **not** modify the component CMake source-selection policy merely to keep obsolete source files present but uncompiled;
+- if a short-lived safety copy is useful during local work, it may be placed outside the repository source tree (for example under `/tmp`) and must not be committed;
+- Git history is the durable archival mechanism for removed source;
 - do not preserve a class solely for historical `.gen` compatibility;
-- before moving or deleting anything, map current includes, CMake sources, plugin registration, factories, GUI references, tests, examples, and current persistence references.
+- before deleting anything, map current includes, inheritance, CMake/build discovery, plugin registration, factories/connectors, GUI references, tests, model-specific examples, and current persistence references.
 
-Preferred directory spelling is `deprecated/` rather than `deprected/`.
+Confirmed CMake fact motivating this decision:
+
+`source/plugins/components/CMakeLists.txt` currently uses:
+
+```cmake
+file(GLOB_RECURSE GENESYS_PLUGINS_COMPONENTS_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+)
+```
+
+Therefore, moving an obsolete `.cpp` to another subdirectory below `source/plugins/components/` would still include it in `genesys_plugins_components`. The cleanup strategy is removal from `source/`, not creation of a special source subdirectory or a CMake exclusion solely for obsolete code retention.
 
 Candidate legacy types to reassess include at least:
 
 - `ModalModelFSM`;
 - `ModalModelPetriNet`;
 - legacy `State` / `Transition` artifacts and any predecessor node/transition structures shown by the current dependency graph.
+
+The list above is a verification target, not a deletion order. Remove a class only after current-code evidence establishes that its functionality has been superseded and all required callers/registrations/tests have been migrated.
 
 This is a migration-cleanup activity, not the first implementation step.
 
@@ -239,23 +253,24 @@ construct -> check -> save -> destroy/recreate -> load -> check -> execute -> co
 
 The exact fixture mechanism should follow current GenESyS test patterns.
 
-## 8. Candidate work B — migration cleanup / deprecated artifacts
+## 8. Candidate work B — compatibility and migration cleanup
 
 Only after Section 7 is stable and green:
 
-1. map current dependencies of legacy modal classes;
+1. map all current dependencies of candidate legacy modal classes;
 2. determine whether each class is:
    - still part of the current runtime/API;
-   - a temporary bridge;
+   - a temporary bridge whose callers still require migration;
    - redundant with `DefaultNetwork` formalism classes;
    - unused/dead;
-3. remove obsolete source files from every build target before moving them;
-4. prefer `source/.../<logical-dir>/deprecated/` for temporarily retained source when retention is useful for short-term review;
-5. ensure `deprecated/` is excluded from CMake source lists/globs and plugin registration;
-6. if dependency analysis demonstrates that retention has no value, physical removal is allowed and may be cleaner;
-7. update tests, documentation, examples, factories and connectors consistently.
+3. migrate any legitimate current caller, factory/connector registration, GUI reference, test, or example to the approved architecture before removing the obsolete class;
+4. once dependency analysis proves the old class is unnecessary, delete its implementation/header from `source/` rather than retaining obsolete code inside the source tree;
+5. do not add CMake exclusions solely to retain obsolete classes; the current recursive component source discovery is a reason to remove the files, not to complicate the build;
+6. if a temporary safety copy is useful during the local edit, keep it outside the repository (for example `/tmp`) and do not commit it;
+7. update tests, documentation, examples, factories/connectors, and current persistence references consistently;
+8. rebuild and rerun focused plus aggregate tests after each bounded removal.
 
-Acceptance is based on the current supported architecture, not historical `.gen` files.
+Acceptance is based on the current supported architecture, not historical `.gen` files. Git history remains available if removed source ever needs to be inspected again.
 
 ## 9. Candidate work C — EFSM completion
 
@@ -476,7 +491,7 @@ This is a recommended order, not a mandate. Reorder only when current-code evide
 6. Graph family verification;
 7. DTMC verification;
 8. pragmatic CPN support matrix and completion of only confirmed required gaps;
-9. legacy dependency audit and `deprecated/` or physical removal cleanup;
+9. legacy dependency audit and physical removal from `source/` of obsolete classes whose migration is proven complete;
 10. complete focused + aggregate + sanitizer validation as appropriate;
 11. reconcile canonical status/backlog/reference/evidence;
 12. only then begin GUI/editor work;
@@ -496,7 +511,7 @@ The current development may be marked `done_confirmed` only when all approved in
 - each supported network type has focused unit tests;
 - current persistence round-trips are verified;
 - required plugin/factory registrations are verified;
-- obsolete legacy paths are either removed from the build or deliberately retained with an explicit current purpose;
+- obsolete legacy source paths have been removed from `source/` after all required current callers/registrations/tests are migrated;
 - required regression suites pass;
 - sanitizer/ownership diagnostics required by changes pass;
 - GUI work that is part of the approved current architecture is complete and verified, or explicitly reclassified by the maintainer as outside the completion gate;
