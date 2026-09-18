@@ -63,18 +63,20 @@ The maintainer, Prof. Rafael Cancian, established the following on 2026-09-18:
 2. `closed` means only that a task/development cycle is inactive. It does not imply completion.
 3. `done_confirmed` is reserved for scope that is fully implemented according to plan, tested, functioning, verified, documented, and accepted with no known unmet in-scope criterion.
 4. `AUTO-MODAL-001` therefore must not be interpreted as proof that the Modal/Network architecture is complete.
-5. Legacy Modal artifacts may be moved under a non-built `deprecated/` directory after dependency analysis, or physically removed if that is cleaner and current references permit it. They must not be retained solely for historical `.gen` compatibility.
-6. The initial CPN target is a pragmatic subset sufficient for GenESyS, not a complete academic CPN platform.
-7. Cellular Automata is intended eventually to migrate to the `DefaultNetwork` architecture, but that work is deferred until the current Modal/Network architecture is complete, functional, tested, and validated.
-8. Multiple enabled EFSM transitions shall use a configurable EFSM-level policy with three semantic choices: model error; nondeterministic random choice using the GenESyS reproducible RNG/sampler infrastructure; deterministic priority.
-9. Every supported network type shall have dedicated unit tests, with local build/test/runtime verification before claims of completion.
-10. GUI/editor work should follow backend contract stabilization rather than precede it.
+5. Obsolete Modal/Network implementation classes must be removed from the repository `source/` tree once current dependency analysis proves that their migration/removal is safe. They must not be retained in another source subdirectory merely for historical reference. A temporary local copy may be kept outside the repository (for example `/tmp`) during work, but Git history is the durable archive.
+6. The source-removal decision is specifically supported by current CMake evidence: `source/plugins/components/CMakeLists.txt` uses recursive `*.cpp` discovery (`GLOB_RECURSE`), so relocating an obsolete `.cpp` below that tree would continue compiling it. The project should not complicate CMake merely to retain obsolete source.
+7. The initial CPN target is a pragmatic subset sufficient for GenESyS, not a complete academic CPN platform.
+8. Cellular Automata is intended eventually to migrate to the `DefaultNetwork` architecture, but that work is deferred until the current Modal/Network architecture is complete, functional, tested, and validated.
+9. Multiple enabled EFSM transitions shall use a configurable EFSM-level policy with three semantic choices: model error; nondeterministic random choice using the GenESyS reproducible RNG/sampler infrastructure; deterministic priority.
+10. Every supported network type shall have dedicated unit tests, with local build/test/runtime verification before claims of completion.
+11. GUI/editor work should follow backend contract stabilization rather than precede it.
 
 ## Documentation changes in this branch
 
 - Added `reference/MODAL_NETWORK_COMPLETION_PLAN.md` with the verification-first continuation roadmap.
 - Updated `STATUS.md` to mark the current Modal/Network state as verification-pending and not `done_confirmed`, record the maintainer decisions, remove historical `.gen` compatibility as a requirement, and link the continuation guide.
 - Updated `GOVERNANCE.md` with normative lifecycle semantics for `closed`, `done_confirmed`, and legacy `done` records.
+- Reconciled the legacy-source cleanup guidance after inspecting `source/plugins/components/CMakeLists.txt`: obsolete classes are to leave `source/`, not be retained in a nested source directory.
 
 ## Backlog reconciliation boundary
 
@@ -86,7 +88,7 @@ Required first local documentation action before autonomous Modal implementation
 
 - change `AUTO-MODAL-001` from historical `done` to `closed` and preserve its PR/validation record as historical evidence;
 - add/activate a bounded continuation task, recommended ID `AUTO-MODAL-002`, whose scope is to verify the current HEAD and complete only confirmed gaps described by `reference/MODAL_NETWORK_COMPLETION_PLAN.md`;
-- reconcile `HUM-MODAL-001`: historical `.gen` compatibility is no longer a decision or requirement; remaining legacy-class handling is implementation/dependency analysis under the maintainer direction recorded above;
+- reconcile `HUM-MODAL-001`: historical `.gen` compatibility is no longer a decision or requirement; remaining legacy-class handling is implementation/dependency analysis under the maintainer direction recorded above, with obsolete classes removed from `source/` when safe;
 - reconcile `HUM-MODAL-002` against the existing GUI architecture reference: backend stabilization precedes broad editor implementation; only genuinely unresolved GUI product/architecture choices should remain human-decision items;
 - use the new normative status vocabulary from `GOVERNANCE.md`.
 
