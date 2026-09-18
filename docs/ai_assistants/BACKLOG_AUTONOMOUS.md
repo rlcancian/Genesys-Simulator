@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-08-31
+last_updated: 2026-09-18
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -14,15 +14,23 @@ tracks: 511
 
 This is the only approved source for work an AI agent may execute without a new material human decision. A task may run only when its status is `ready`, its environment is available, dependencies are resolved and no maintainer freeze excludes it.
 
+Detailed executed evidence belongs under `history/evidence/`; durable technical design belongs under `reference/`. Historical task entries below retain enough provenance to identify what was integrated without turning a merged PR into proof that a broader subsystem is complete.
+
 ## 2. Status values
 
-- `ready` — fully specified and eligible;
-- `running` — owned by one active branch/PR;
-- `blocked-review` — prepared but waiting for review;
-- `blocked-dependency` — waits for another task or decision;
-- `paused` — executable but disabled by maintainer instruction;
-- `done` — accepted, validated and merged;
-- `cancelled` — intentionally removed.
+- `ready` — fully specified and eligible for execution;
+- `running` — actively owned by one bounded branch/PR or local worktree;
+- `blocked-review` — implementation/evidence prepared but waiting for required review;
+- `blocked-dependency` — cannot proceed until another technical dependency or approved prerequisite is resolved;
+- `paused` — planned/executable work intentionally not active; explicit maintainer activation is required;
+- `closed` — not currently being developed; **no completeness, correctness or validation claim is implied**; a closed task may later be re-evaluated, resumed, replaced or found incomplete;
+- `done` — the explicitly bounded task scope was accepted, validated at its declared level and integrated; this does **not** certify that a broader feature, subsystem or initiative is complete;
+- `done_confirmed` — strongest completion state: all currently approved required scope for the bounded task/initiative is implemented, functioning, tested and verified at the final relevant commit, required documentation/evidence is synchronized and no required non-deferred item remains;
+- `cancelled` — intentionally removed from the plan.
+
+GitHub issue/PR state `closed` is transport/repository metadata and must not be translated into `done` or `done_confirmed` without the evidence required by this backlog.
+
+No historical task is upgraded to `done_confirmed` merely because an older PR merged or an older test run was green. The status must be supported by current-plan acceptance criteria and final-commit evidence.
 
 ## 3. Completed documentation migration
 
@@ -70,7 +78,7 @@ This is the only approved source for work an AI agent may execute without a new 
 - Issue/PR: #511 / #516
 - Merge: `d375d9e68e5c1dc84e214a772fb15cb05944f0d8`
 - Validation: run `29936506990`, ordinary tests and GUI GMDD green.
-- Result: six technical references, canonical routing and removal of superseded active guides, plans and redirects.
+- Result: technical references, canonical routing and removal of superseded active guides/plans/redirects.
 
 ### AUTO-DOC-007 — Consolidate retained oldies governance
 
@@ -92,13 +100,9 @@ This is the only approved source for work an AI agent may execute without a new 
 - Validation:
   - documentation-governance run `29938886903`: passed;
   - ordinary CI run `29938886807`: configure, build, CTest and GUI GMDD passed.
-- Result:
-  - `scripts/validate-ai-docs.py` validates the final structure locally;
-  - `.github/workflows/genesys-docs-governance.yml` enforces it on relevant PRs;
-  - exact root allowlist, links, front matter, backlog IDs, evidence placement and oldies retention are checked;
-  - source branch removed automatically.
+- Result: `scripts/validate-ai-docs.py` plus GitHub Actions enforce the governed structure.
 
-## 4. Completed application, packaging and Arena-compatibility work
+## 4. Integrated bounded work and historical checkpoints
 
 ### AUTO-APP-003 — Implement per-user runtime launcher and dispatcher
 
@@ -108,12 +112,8 @@ This is the only approved source for work an AI agent may execute without a new 
 - Issue/PR: #521
 - Merge: `d88b4b20b5163891e47c9e63bb04eca68a9e40d0`
 - Validation: Launcher CI green (33 focused tests, dispatcher isolation, install contract), ordinary regression CI green on final PR head.
-- Scope delivered:
-  - `source/applications/launcher/` with `genesys-launcher` and `genesys-dispatch` (Qt6/C++23);
-  - XDG configuration/runtime paths, deterministic user/system runtime selection, update manifest/version/platform validation, bounded HTTPS transport, SHA-256 verification, fail-closed signature verification, safe archive extraction, partial install, atomic activation, retention, logging and non-shell (`execv`) process launch;
-  - `genesys-gui`, `genesys-shell`, canonical `genesys-worker`, legacy `genesys-web` compatibility, and existing Python `genesys-mcp` entry point.
-- Non-goals honored: no Debian package layout/wrapper/control/install-file redesign in this PR (delivered separately by `AUTO-PKG-001`/PR #522); no release bundle publication/signing workflow; no Worker authentication/network exposure redesign; no MCP rewrite or Python package installation.
-- Reconciled 2026-08-20 while executing `AUTO-PKG-001`: this task was recorded `running` after its PR had already merged; re-verified against current `source/applications/launcher/` and a fresh green Launcher CI run before marking `done`.
+- Result: `genesys-launcher`/`genesys-dispatch`, XDG runtime selection/update validation, public application dispatch and system-fallback contract integrated.
+- Remaining boundaries such as runtime-release signing/publishing are separate tasks/decisions.
 
 ### AUTO-PKG-001 — Execute Debian package lifecycle validation
 
@@ -122,14 +122,8 @@ This is the only approved source for work an AI agent may execute without a new 
 - Environment: `github` and `local`
 - Issue/PR: #522
 - Merge: `d8fce9562617525657e8cbf9870b32323364773f`
-- Authorization: this task was recorded `paused` (see historical Section 6 baseline); explicit maintainer instruction dated 2026-08-20 authorized executing it, including integrating the Launcher (`AUTO-APP-003`) into the Debian package, fixing the discovered Lintian and lifecycle-script defects, and merging when all objective criteria were satisfied.
-- Scope delivered:
-  - integrated the stable Launcher/Dispatcher into the Debian install tree (`/usr/libexec/genesys/`), added the `genesys-common` package (launcher, dispatcher, `/etc/genesys/update.conf`, public `genesys-mcp` entry) and split the GUI/Shell/Worker packages into public wrapper + Debian-provided system fallback, keeping `genesys-web` as a payload-free transitional package;
-  - fixed real Lintian findings on GitHub Actions run `32407760833`: `depends-on-essential-package-without-using-version` (dropped an unneeded explicit `tar` dependency on an Essential package), `copyright-without-copyright-notice` (added copyright years), `no-manual-page` (added five section-1 manual pages); confirmed by re-inspection that `hardening-no-pie` and `possible-gpl-code-linked-with-openssl` do not occur on this branch (`readelf` confirms PIE binaries with no OpenSSL linkage);
-  - found and fixed four real, previously unexercised defects in `packaging/linux/validate-debian-lifecycle.sh` (a `set -e`/`pgrep && fail` function-return bug, missing `sudo` on five per-user-home path checks, an insufficiently bounded GUI-startup poll, and `apt-get purge` failing to resolve locally-installed no-conffile packages by name) — the lifecycle job had never previously run to completion because the build job was always blocked earlier by Lintian;
-  - validated locally (disposable Ubuntu 24.04 Docker container with `CAP_SYS_PTRACE`, matching GitHub Actions runner fidelity) and on GitHub Actions run `32421072334`: `dpkg-buildpackage` produces exactly 5 packages, `lintian --fail-on error` and `lintian` (no filter) report zero findings, `appstreamcli validate --no-net` passes, and the full lifecycle script (install, ownership, non-root user, system fallback, per-user runtime, admin-policy override, six invalid-runtime cases, file-integrity, reinstall/conffile, remove, purge) completes with exit 0;
-  - updated `packaging/linux/README.md` and the Developer/User manual chapters (`chapter_packaging_and_ci.tex`, `chapter_user_installation.tex`) to document the current five-package split and the Launcher/system-fallback/per-user-runtime contract; regenerated `docs/ManualGenESyS.pdf`.
-- Non-goals honored: no GitHub Release, PPA/APT repository, package signing, runtime signing key, or promotion beyond `WorkInProgress`.
+- Validation: GitHub Actions run `32421072334` plus disposable Ubuntu 24.04 local/container lifecycle validation; five packages, Lintian/AppStream and full install/reinstall/remove/purge lifecycle green.
+- Result: Launcher/dispatcher integrated into the Debian package split; runtime release signing/publication remains out of scope.
 
 ### AUTO-ARENA-001 — Close Arena compatibility audit for Advanced Transfer and parser-variable scope
 
@@ -137,262 +131,88 @@ This is the only approved source for work an AI agent may execute without a new 
 - Status: `done`
 - Environment: `local`
 - Branch: `WiP202608/arena-advanced-transfer-closeout` (merged, deleted)
-- Base: `origin/WorkInProgress` at `b4fe16289b1aa4d0924e979cf795c8cc4d562e88`
-- Merge: PR #527, merged 2026-08-30 into `WorkInProgress` at
-  `ebd6f30e8c662ae74da6f5745472235090a830ca` (merge commit), current
-  `WorkInProgress` head after this and one follow-up documentation commit:
-  `883046e22`.
-- Authorization: explicit maintainer continuation instruction dated 2026-08-30 authorized resuming the advanced Arena ↔ GenESyS front from the existing checkpoint without restarting Phase A or the already-closed Basic/Advanced Process audit.
-- Scope:
-  - reconcile `Distance` and `Segment` with the current code, registration, tests and the compatibility matrix;
-  - finish the remaining Advanced Transfer audit (`Enter`, `Leave`, `PickStation`, `Route`, `Station` as flowchart concept, conveyor stubs, transporter/network gaps) and classify Flow Process without broad re-audits;
-  - execute Phase C for the real parser/Arena Variables Guide overlap only, documenting implemented, partial, unsupported and future items;
-  - implement only the smallest justified fixes/additions needed to close proven in-scope gaps with tests.
-- Non-goals:
-  - no restart of the already completed Phase A / Basic Process / Advanced Process analysis;
-  - no broad plugin-architecture refactor, dynamic-plugin migration, incidental modernization, or premature ModalModel work;
-  - no implementation of unsupported Arena features merely to reach nominal 100% parity.
-- Acceptance:
-  - `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` reconciled with the current code and final area statuses;
-  - new/changed in-scope data definitions or components registered, persistible and covered by focused tests;
-  - parser/Arena variables mapping documented from the real current pipeline;
-  - focused validation green, plus required aggregate regression levels for any code changes performed;
-  - remaining human decisions and future features isolated explicitly.
-- Delivered:
-  - `Distance`/`Segment` reconciliation, `Route` persistence/check fixes, minimum executable `Storage`/`Store`/`Unstore`/`DropOff`, minimum executable `Conveyor`/`Transporter` plus `Access`/`Exit`/`Start`/`Stop`/`Move`, and Phase C parser/Arena variables mapping;
-  - documentation updated: compatibility matrix closed through Advanced Transfer, Flow Process classification and parser-variable scope, plus dedicated maintainer decision note for `Process::AllocationType` versus internal `Delay`
-    ([`reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md`](reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md));
-  - `Network`, `NetworkLink`, `ActivityArea` and CTMC-class features were
-    intentionally left out of scope and remain documented as future/not-applicable
-    in the compatibility matrix.
-- Validation at merge time: focused Arena/MaterialHandling tests green (`28/28`), `tests-smoke` green (`3/3`), `tests-kernel-unit` green except the preexisting `genesys_test_optimizer_ownership_contract_NOT_BUILT`, and `tests-unit` still shows 13 unrelated WholeCell/Bio failures tied to a plugin-loading path involving `attribute.so`, outside this scope — these remain untriaged and are not yet a dedicated backlog entry; a maintainer should decide whether to open one before relying on `tests-unit` as a green gate.
+- Merge: PR #527, 2026-08-30, merge commit `ebd6f30e8c662ae74da6f5745472235090a830ca`.
+- Delivered: Advanced Transfer/material-handling bounded additions, Flow Process classification and parser/Arena variable-scope mapping.
+- Validation at merge time: focused Arena/MaterialHandling tests 28/28 and `tests-smoke` 3/3 green; kernel/unit limitations unrelated to the bounded scope remain recorded in status/history.
 
 ### AUTO-MODAL-001 — Migrate ModalModel onto the Network bridge
 
 - Priority: `P1`
-- Status: `done`
+- Status: `closed`
 - Environment: `local`
-- Branch: `WiP202608/modal-network-implementation`
-- Merge: PR #528, merged 2026-08-31 into `WorkInProgress` at `e0185163` (docs sync + architecture consolidation), and PR #529, merged 2026-08-31 into `WorkInProgress` at `fdae135b` (ModalModel/network architecture, Phases 1-8), current `WorkInProgress` head after both merges: `fdae135b3`.
-- Base: `origin/WorkInProgress` at `f40d067fd15c3fb57275dedd9852a7fe4100b2ce`
-- Latest validated implementation commit: `4e5f4201` (Phase 8 compatibility-cleanup validation checkpoint); `d55a8fba` (proposed GUI architecture, docs-only, added and pushed 2026-08-31 after a session handoff -- re-verified: full build green, `ctest --preset tests-kernel-unit` 1810/1810 executed tests passed, 0 failed, 4 preexisting disabled)
-- Push state: all commits through `d55a8fba` are pushed to `origin/WiP202608/modal-network-implementation` (branch was previously 23 commits ahead of `origin` only locally; pushed 2026-08-31 to avoid loss across a session/provider handoff)
-- Authorization: explicit maintainer continuation instruction on 2026-08-30 authorized resuming the ModalModel/network architecture from the current `DefaultNetwork` checkpoint without restarting the earlier phase-0 inventory.
-- Scope:
-  - migrate `DefaultNode` from `ModelComponent` to `ModelDataDefinition`;
-  - remove process-connection/dispatch semantics from the node layer;
-  - preserve persistence and plugin registration compatibility for existing modal-model models;
-  - keep `ModalModelDefault`/`ModalModelFSM`/`ModalModelPetriNet` behavior intact until the generic `ModalModel` adapter phase;
-  - introduce the first formalism-owned network specialization (`EFSMNetwork`) with deterministic one-step activation semantics;
-  - introduce structural mathematical graph networks as `DefaultNetwork` specializations without process-flow `Connection` semantics;
-  - introduce finite time-homogeneous DTMC support through `MarkovChainNetwork`;
-  - introduce a pragmatic fixed-inscription CPN subset through `ColoredPetriNetNetwork`;
-  - add focused tests for the new node contract and any persistence/check regressions touched by the migration.
-- Non-goals:
-  - no full CPN variable-binding/type-system implementation yet;
-  - no CPN maximal-concurrent-step firing implementation yet;
-  - no CTMC, controlled Markov chain, Markov decision process or time-inhomogeneous Markov process implementation yet;
-  - no graph traversal simulation, random walk, graph routing, spatial-network behavior or agent movement implementation yet;
-  - no full generic `ModalModel` adapter rewrite beyond the current `ModalModelDefault` bridge;
-  - no broad plugin-architecture refactor outside the modal-model path;
-  - no restart of the architecture phase-1/phase-2 `DefaultNetwork` work.
-- Acceptance:
-  - `DefaultNode` compiles as a data-definition-based modal element;
-  - `EFSMNetwork` compiles as a data-definition-based network specialization and is registered in the dummy/static plugin connector;
-  - `GraphNetwork`, `DirectedGraphNetwork`, `DirectedAcyclicGraphNetwork`, `GraphNode` and `GraphEdge` compile as data-definition-based graph abstractions and are registered in the dummy/static plugin connector;
-  - `MarkovChainNetwork` and `MarkovState` compile as data-definition-based DTMC abstractions and are registered in the dummy/static plugin connector;
-  - `ColoredPetriNetNetwork`, `CPNTransition` and `CPNArc` compile as data-definition-based fixed-inscription CPN abstractions and are registered in the dummy/static plugin connector;
-  - plugin loading/persistence remains backward-compatible for the current branch scope;
-  - focused tests cover the migrated node contract, network bridge, EFSM activation/persistence contracts, graph topology/algorithm/persistence contracts, DTMC activation/persistence/validation contracts and CPN fixed-inscription activation/persistence/validation contracts and continue to pass;
-  - remaining architecture follow-ups are left isolated for the next phase.
-- Progress snapshot:
-  - `DefaultNetwork` is already in place with network activation frame/result, port schema and activation counter;
-  - `DefaultNode` has now moved to `ModelDataDefinition`, its old dispatch hook was removed, and node persistence now uses the data-definition serialization path;
-  - `ModalModelDefault` now has an optional `DefaultNetwork` bridge with network reference persistence, input/output bindings, activation, zero-output consume semantics, one-output routing, and multi-output cloning;
-  - `EFSMNetwork` now owns FSM states/transitions, default `input`/`output` ports, current/initial state, deterministic priority selection, output publication, replication reset and persistence round-trip;
-  - `GraphNetwork` now represents structural mathematical graphs with `GraphNode`/`GraphEdge`, undirected and directed semantics, optional weights, self-loops, parallel edges, BFS, DFS, reachability, unweighted shortest path, Dijkstra for nonnegative weights, connected components, Tarjan SCC, cycle detection, DAG cycle rejection and topological order;
-  - `MarkovChainNetwork` now represents finite time-homogeneous DTMCs with network-owned current/initial state, fixed transition probabilities, row-stochastic validation, one-step activation, kernel sampler usage, output of selected state index, replication reset and persistence round-trip;
-  - `ColoredPetriNetNetwork` now represents a fixed-inscription CPN subset with bipartite `PetriPlace`/`CPNTransition`/`CPNArc` topology, symbolic-color token multisets, parser-based guards, deterministic single firing, atomic consume/produce semantics, initial marking reset, persistence round-trip and shared-network activation;
-  - `DefaultNetwork::_loadInstance()` now replaces an existing port schema instead of accumulating stale/default ports during load, which keeps subclass persistence round-trips stable;
-  - the legacy `ModalModelDefault` node-list execution path now uses a resettable GenESyS kernel sampler instead of `std::rand()` for proportional probabilistic transition selection, preserving the temporary compatibility path while aligning stochastic choices with the new network formalism policy;
-  - `ModalModelFSM` no longer allocates an unused hidden `FSMState`, and both `ModalModelFSM` and `ModalModelPetriNet` now validate through the attached `DefaultNetwork` bridge without requiring obsolete legacy nodes when a network is configured;
-  - `tests/unit/test_default_network.cpp`, `tests/unit/test_default_node.cpp`, `tests/unit/test_modal_model_default_network.cpp`, `tests/unit/test_efsm_network.cpp`, `tests/unit/test_graph_network.cpp`, `tests/unit/test_markov_chain_network.cpp`, and `tests/unit/test_colored_petri_net_network.cpp` cover the base network abstraction, migrated node contract, generic adapter bridge, shared-network activation, invalid network references, EFSM activation, EFSM priority, EFSM reset, EFSM persistence, GraphNetwork topology/algorithms/persistence, MarkovChainNetwork DTMC behavior, ColoredPetriNetNetwork fixed-inscription CPN behavior and plugin metadata;
-  - validation snapshot on 2026-08-30 after the GraphNetwork documentation update: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit -R 'GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 44/44 focused tests; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1789/1789 executed tests and 4 preexisting disabled tests;
-  - validation snapshot on 2026-08-31 after `MarkovChainNetwork`: `cmake --build build/tests-unit -j2 --target genesys_test_markov_chain_network` passed; `ctest --test-dir build/tests-unit -R 'MarkovChainNetwork' --output-on-failure` passed with 9/9 focused tests; `ctest --test-dir build/tests-unit -R 'MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 53/53 modal/network tests; `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1798/1798 executed tests and 4 preexisting disabled tests;
-  - validation snapshot on 2026-08-31 after `ColoredPetriNetNetwork`: `cmake --build build/tests-unit -j2 --target genesys_test_colored_petri_net_network` passed; `ctest --test-dir build/tests-unit -R 'ColoredPetriNetNetwork' --output-on-failure` passed with 10/10 focused tests; `ctest --test-dir build/tests-unit -R 'ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 63/63 modal/network tests; `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1808/1808 executed tests and 4 preexisting disabled tests;
-  - validation snapshot on 2026-08-31 after the legacy sampler cleanup: `cmake --build build/tests-unit -j2 --target genesys_test_modal_model_default_network` passed; `ctest --test-dir build/tests-unit -R 'LegacyProbabilisticSelectionUsesResettableKernelSampler' --output-on-failure` passed with 1/1 focused test; `ctest --test-dir build/tests-unit -R 'ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 64/64 modal/network tests;
-  - validation snapshot on 2026-08-31 after wrapper shim cleanup: `cmake --build build/tests-unit -j2 --target genesys_test_modal_model_default_network` passed; `ctest --test-dir build/tests-unit -R 'ModalModelDefaultNetwork' --output-on-failure` passed with 8/8 bridge/shim tests;
-  - full regression snapshot on 2026-08-31 after Phase 8 safe compatibility cleanup: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1810/1810 executed tests and 4 preexisting disabled tests;
-  - remaining work: GUI/editor synchronization for network ports and bindings, cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers, and future full CPN variable-binding/type-system/multi-firing semantics.
-
-#### GraphNetwork extension
-
-##### Architecture
-
-- GraphNetwork: structural mathematical graph specialization of `DefaultNetwork`; inherited `activate()` remains inert and does not imply traversal, firing, movement or current vertex.
-- GraphNode: `DefaultNode` subclass used as a persistable graph vertex and not as a process-flow `ModelComponent`.
-- GraphEdge: separate `ModelDataDefinition` for graph incidence, endpoints, direction and optional numeric weight; it is not a GenESyS `Connection`.
-- reuse of DefaultNode/DefaultTransition: `GraphNode` reuses `DefaultNode`; `GraphEdge` deliberately does not reuse `DefaultNodeTransition` because transition guards/actions/probability semantics are not mathematical edge semantics.
-- directed/undirected representation: `GraphNetwork` is undirected; `DirectedGraphNetwork` overrides orientation-sensitive adjacency; `DirectedAcyclicGraphNetwork` extends directed graphs with a no-cycle invariant.
-
-##### Features
-
-- self loops: supported; directed self-loop contributes one in-edge and one out-edge and is detected as a directed cycle.
-- parallel edges: supported; edge identity is independent from `(source,destination)` and weights remain independent.
-- weights: optional numeric edge weight; absent weight is treated as cost `1.0` by shortest-path algorithms.
-- adjacency: deterministic insertion-order neighbors, predecessors, successors, incoming/outgoing and incident-edge queries.
-- degree: undirected degree counts self-loop as two; directed in-degree/out-degree count incoming/outgoing edge multiplicity.
-
-##### Algorithms
-
-- BFS: implemented with deterministic insertion-order traversal and predecessor/distance records.
-- DFS: implemented with deterministic insertion-order traversal.
-- reachability: implemented via BFS and respects directed orientation.
-- unweighted shortest path: implemented via BFS with node and edge path reconstruction.
-- Dijkstra: implemented for nonnegative weights and rejects negative weights with a diagnostic.
-- Bellman-Ford: not implemented; negative-weight shortest paths are explicitly rejected for now.
-- connected components: implemented for undirected `GraphNetwork`.
-- strongly connected components: implemented for `DirectedGraphNetwork` using Tarjan DFS.
-- cycle detection: implemented for undirected and directed graphs.
-- topological sorting: implemented for directed graphs with Kahn-style order; DAG subclass rejects cycle-closing insertion.
-
-##### Persistence
-
-- fields: `graphDirected`, `graphNodesSize`, `graphNodeN.*`, `graphEdgesSize`, `graphEdgeN.*`, plus `GraphEdge` endpoint/direction/weight fields.
-- round-trip validation: focused tests cover directed weighted multigraph persistence with isolated node, self-loop and parallel edges.
-
-##### Tests
-
-- focused: `genesys_test_graph_network` and CTest regex `GraphNetwork`.
-- regression: focused ModalModel/Network regex `GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork` passed after implementation.
-- sanitizers if applicable: not run for this structural graph pass; no dedicated sanitizer target was added.
-
-##### Limitations
-
-- `GraphNetwork` stores non-owning topology references to model-managed `GraphNode` and `GraphEdge` data definitions, matching the current ModelDataManager ownership style; external deletion must still be coordinated through graph APIs to avoid stale topology references.
-- Bellman-Ford and negative-cycle shortest-path analysis are deferred; Dijkstra rejects negative weights.
-
-##### Future extensions
-
-- GraphTraversalNetwork;
-- RandomWalkNetwork;
-- RoutingNetwork;
-- agent movement;
-- spatial networks;
-- generalized Connection/token integration.
-
-#### MarkovChainNetwork extension
-
-##### Architecture
-
-- MarkovChainNetwork: finite time-homogeneous DTMC specialization of `DefaultNetwork`; one activation performs exactly one Markov step.
-- MarkovState: `DefaultNode` subclass used as a finite DTMC state and not as a process-flow `ModelComponent`.
-- MarkovTransition: internal transition relation from source state to destination state with fixed numeric probability.
-- legacy component boundary: `AnalyticalModeling/MarkovChain` remains a separate process component that reads/writes entity-associated data; it is not the new network-owned DTMC implementation.
-
-##### Features
-
-- current state: owned by `MarkovChainNetwork`, not by `Entity` attributes.
-- initial state: persisted and restored between replications.
-- probabilities: fixed numeric transition probabilities for the initial strict DTMC implementation.
-- row validation: every state's outgoing probabilities must sum to 1.0 within configured tolerance.
-- output: default `state` output publishes the selected state index after activation.
-
-##### Algorithms
-
-- transition selection: uses the GenESyS sampler infrastructure, not `std::rand()`.
-- deterministic transitions: probability-one rows are supported.
-- absorbing states: represented by a self-transition with probability `1.0`.
-- empirical sanity: focused tests verify approximate frequencies for a two-branch stochastic row.
-
-##### Persistence
-
-- fields: `probabilityTolerance`, `initialState`, `currentState`, `markovStatesSize`, `markovStateN.*`, `markovTransitionsSize`, `markovTransitionSourceN`, `markovTransitionDestinationN`, `markovTransitionNameN`, and `markovTransitionProbabilityN`.
-- precision: small probability/tolerance values are saved with explicit string precision to avoid `std::to_string` rounding to zero.
-- round-trip validation: focused tests cover states, transitions, probabilities, ports, tolerance, current state and initial state.
-
-##### Tests
-
-- focused: `genesys_test_markov_chain_network` and CTest regex `MarkovChainNetwork`.
-- regression: focused ModalModel/Network regex `MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork` passed after implementation.
-- shared activation: focused tests activate one chain through two `ModalModelDefault` adapters and verify network-owned state progression.
-
-##### Limitations
-
-- no CTMC support.
-- no controlled Markov chain, Markov decision process or time-inhomogeneous transition update semantics.
-- no state-specific output mapping beyond the default selected-state-index output.
-- `MarkovTransition` is currently an internal network relation rather than a standalone plugin data definition.
-
-##### Future extensions
-
-- initial distribution sampling rather than only a single initial state;
-- controlled Markov chains;
-- Markov decision processes;
-- CTMC with event-calendar integration;
-- richer output mappings per state or transition.
-
-#### ColoredPetriNetNetwork extension
-
-##### Architecture
-
-- ColoredPetriNetNetwork: fixed-inscription CPN subset specialization of `DefaultNetwork`; one activation fires at most one enabled transition.
-- PetriPlace: reused as the place data definition with symbolic-color token multiset storage.
-- CPNTransition: explicit transition node with guard expression and priority.
-- CPNArc: explicit directed bipartite arc between one `PetriPlace` and one `CPNTransition`; it is not a place-to-place edge.
-- firing mode: currently `SingleDeterministic` only.
-
-##### Features
-
-- color sets: symbolic color names only in this subset.
-- token values: represented as multiset counts per symbolic color; typed token payloads are deferred.
-- inscriptions: fixed `color -> quantity` inscriptions on arcs.
-- guards: optional parser expressions on transitions without CPN variable bindings.
-- marking: observable marking belongs to `ColoredPetriNetNetwork` and is stored in its places for compatibility with the existing data-definition lifecycle.
-
-##### Algorithms
-
-- enabling: checks all fixed input inscriptions and transition guard.
-- firing: atomically consumes input multisets and produces output multisets.
-- conflict selection: deterministic by transition priority, preserving insertion order for equal priorities.
-- multi-firing: not implemented; maximal concurrent-step semantics remain future work.
-
-##### Persistence
-
-- fields: default network ports, firing mode, `cpnPlaceN.*`, `cpnTransitionN.*`, `cpnArcN.*`, current place markings and explicit initial marking entries.
-- round-trip validation: focused tests cover bipartite topology, arc inscriptions, guards/priorities, current marking and initial marking.
-
-##### Tests
-
-- focused: `genesys_test_colored_petri_net_network` and CTest regex `ColoredPetriNetNetwork`.
-- regression: focused ModalModel/Network regex `ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork` passed after implementation.
-- shared activation: focused tests activate one CPN through two `ModalModelDefault` adapters and verify network-owned marking.
-
-##### Limitations
-
-- no typed token payloads.
-- no CPN variable binding search.
-- no evaluated arc inscriptions beyond fixed symbolic-color multiplicities.
-- no maximal concurrent-step or stochastic conflict resolution.
-- `PetriTransition` legacy binary source/destination helper remains separate and is not the new CPN transition node.
-
-##### Future extensions
-
-- typed color sets and token values;
-- binding enumeration;
-- expression-based arc inscriptions;
-- maximal concurrent-step firing;
-- stochastic conflict resolution through the GenESyS sampler;
-- CPN reference fixtures from literature.
+- Branch: `WiP202608/modal-network-implementation` (historical implementation branch)
+- Merge: PR #528 (`e0185163`, documentation/architecture consolidation) and PR #529 (`fdae135b`, implementation phases), merged 2026-08-31 into `WorkInProgress`.
+- Historical scope integrated:
+  - `DefaultNode` migration toward the network/data-definition boundary;
+  - `DefaultNetwork` activation frame/result, port schema and activation counter;
+  - `ModalModelDefault` network bridge and input/output binding path;
+  - `EFSMNetwork`;
+  - structural `GraphNetwork` / `DirectedGraphNetwork` / `DirectedAcyclicGraphNetwork` family;
+  - finite time-homogeneous `MarkovChainNetwork` DTMC support;
+  - pragmatic fixed-inscription `ColoredPetriNetNetwork` subset;
+  - replacement of the exercised legacy `std::rand()` path with GenESyS sampler infrastructure;
+  - focused unit tests for the introduced network types and bridge behavior.
+- Historical executed evidence: the final recorded 2026-08-31 checkpoint reports full build green and `tests-kernel-unit` 1810/1810 executed tests passed, 0 failed, with four pre-existing disabled tests.
+- Interpretation of this status: the historical development session is no longer active. `closed` **does not mean the broader ModalModel/DefaultNetwork architecture is complete** and does not constitute `done_confirmed`.
+- Current-head verification: **pending local confirmation**. The 2026-09-18 GitHub-only reconciliation did not build/run the current `WorkInProgress` HEAD.
+- Superseded historical requirement: compatibility with old persisted ModalModel `.gen` files is not a requirement for the continuation work.
+- Continuation: `AUTO-MODAL-002` and [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md).
 
 ## 5. Active bounded work
 
-None currently. The most recent entries (`AUTO-ARENA-001` on 2026-08-30 and
-`AUTO-MODAL-001` on 2026-08-31) closed `done` and moved to Section 4.
+None currently.
+
+`AUTO-MODAL-002` is intentionally `paused` until the maintainer starts the local continuation. `AUTO-MODAL-001` is `closed` because its historical development session ended; that status makes no completeness claim.
 
 ## 6. Paused technical tasks
 
-These tasks remain paused until the maintainer explicitly activates one. Completion of the documentation migration does not resume them automatically.
+These tasks remain paused until the maintainer explicitly activates one. Completion of another task does not resume them automatically.
+
+### AUTO-MODAL-002 — Complete and verify ModalModel / DefaultNetwork architecture
+
+- Priority: `P1`
+- Status: `paused`
+- Environment: `local`
+- Source plan: [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md)
+- Maintainer decisions already recorded: `HUM-MODAL-001` through `HUM-MODAL-005`.
+- Starting point: current `origin/WorkInProgress`; the local agent must record the actual HEAD before doing any work rather than assuming the 2026-09-18 remote checkpoint remains current.
+- Purpose: verify the current implementation against the approved network-centered architecture and complete only gaps demonstrated by current code, build, tests and runtime evidence.
+- Guidance, subject to local verification:
+  - re-establish `DefaultNetwork`/`DefaultNode` ownership, port, activation, check, reset and current-format persistence contracts;
+  - re-establish `ModalModelDefault` input/output binding, presence, activation, zero/one/multiple-output entity handling, cloning/consumption and persistence contracts;
+  - implement/verify the maintainer-approved three-mode EFSM conflict policy;
+  - verify Graph supported invariants/algorithms without adding implicit Entity movement;
+  - mathematically validate current DTMC semantics, RNG, reset and persistence;
+  - define and fully validate the pragmatic GenESyS CPN subset without automatically expanding to full CPN semantics;
+  - inventory current uses of legacy ModalModel classes, migrate current-required callers, and then quarantine under `ModalModel/deprecated/` or delete when locally justified;
+  - before moving `.cpp` files under `deprecated/`, correct the current recursive component-source discovery so that deprecated sources are actually excluded from the build;
+  - ensure focused unit tests exist for every supported network type and fill real gaps only;
+  - use required aggregate regressions and focused ASan/LSan/UBSan where ownership/lifetime paths change;
+  - defer broad GUI editing until the backend completion gate is satisfied; then revalidate `MODAL_NETWORK_GUI_ARCHITECTURE.md` against the current GUI before implementing it.
+- Explicit non-requirements for this task:
+  - historical `.gen` compatibility/migration;
+  - CTMC;
+  - MDP/controlled/time-inhomogeneous Markov models;
+  - dynamic graph traversal/random walk/routing/entity movement;
+  - automatically completing every advanced CPN feature;
+  - Cellular Automata migration itself (planned separately after this architecture is `done_confirmed`);
+  - broad dynamic-plugin or unrelated CMake refactoring.
+- Acceptance for `done_confirmed`:
+  - every required, non-deferred item in the source plan is either demonstrated already satisfied or implemented and verified at the final current commit;
+  - focused unit tests are green for all supported network types and the ModalModel adapter;
+  - required ordinary/kernel/smoke regressions are green, or unrelated baseline failures are precisely characterized according to governance;
+  - current-format persistence round trips and plugin/factory registrations are verified;
+  - stochastic semantics are reproducible under controlled seeds;
+  - relevant ownership/lifetime changes have focused sanitizer evidence;
+  - required backend/GUI integration in the approved current scope is functional and validated;
+  - documentation, evidence, backlog/status and manual impact are synchronized;
+  - no required non-deferred gap remains classified only by assumption.
+- Stop/reassess conditions:
+  - current code already supersedes a recommendation in the source plan;
+  - a proposed legacy move breaks a still-valid current contract;
+  - a new material scientific/architectural decision is discovered;
+  - a broad unrelated refactor would be required;
+  - test/sanitizer evidence reveals a larger defect boundary.
 
 ### AUTO-APP-001 — Validate standalone HTTP Worker GUI startup
 
@@ -424,10 +244,9 @@ These tasks remain paused until the maintainer explicitly activates one. Complet
 - Environment: `local` preferred
 - Acceptance: active references mapped, Qt6 presets/tests green and no GUI redesign.
 
-
 ## 7. Completed technical baseline
 
-Do not reopen without new evidence:
+Do not reopen bounded completed work without new evidence:
 
 - CI trigger corrections and AI test aggregation;
 - Phase 0 kernel/smoke workflow;
@@ -440,8 +259,16 @@ Do not reopen without new evidence:
 - shell, worker, Data Analyser, Optimizer and AI Assistant startup validations;
 - per-user runtime launcher/dispatcher (`AUTO-APP-003`, PR #521) and its integration into the Debian package with lifecycle validation (`AUTO-PKG-001`, PR #522).
 
+This section is a baseline index, not a claim that broader product areas are `done_confirmed`.
+
 ## 8. Activation and completion rules
 
 A paused task becomes eligible only after the maintainer changes it to `ready` and confirms scope, validation and stop conditions.
 
-A task moves to `done` only after required validation is green, evidence is reviewed, the PR is merged, source-branch deletion is confirmed, issue/status/backlog/changelog are updated and remaining boundaries are explicit.
+A `closed` task is inactive and makes no completion claim. Before resuming it or deriving a replacement task, re-check the current code and current plan.
+
+A task moves to `done` only after its explicitly bounded required validation is green, evidence is reviewed, the PR/change is integrated as applicable, status/backlog/changelog are synchronized and remaining boundaries are explicit. `done` must never be extrapolated to a broader subsystem or initiative.
+
+A task or initiative moves to `done_confirmed` only after the complete currently approved **required, non-deferred** scope has been verified at the final relevant commit, including build/tests/runtime/scientific or functional evidence appropriate to that scope. Optional future extensions do not block `done_confirmed` unless they are promoted into the current approved scope.
+
+If evidence is unavailable, use explicit language such as `verification pending`, `current status not confirmed`, or identify the exact test/inspection required. Never upgrade status by inference.
