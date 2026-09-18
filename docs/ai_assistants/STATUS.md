@@ -186,7 +186,7 @@ Whole-cell/biochemical/AI virtual-cell work remains experimental/research-orient
 | D0 | done (historical) | #512 / `958cdc6f63c02d004f1ffdf55e104b58a245bb88` | canonical layer and runbooks |
 | D1 | done (historical) | #513 / `b48697e77d39b25cafc19271ce574bdead60f94d` | normative governance consolidated |
 | D2 | done (historical) | #514 / `53b49f7518509823fe2265a3f017b5aa76f09d2f` | sole current state and backlogs |
-| D3 | done (historical) | #515 / `ca910a2ef3722a2b8b377da7e9e02ca` | date-first evidence ledger |
+| D3 | done (historical) | #515 / `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | date-first evidence ledger |
 | D4 | done (historical) | #516 / `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | six technical references and active-root cleanup |
 | D6 | done (historical) | #517 / `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | single oldies tracker; 25 retained files protected |
 | D5 | done (historical) | #518 / `610d8ab21c87cfd11663af78370b39262cf4da81` | local and GitHub Actions governance enforcement |
