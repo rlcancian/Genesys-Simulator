@@ -2,7 +2,7 @@
 document_type: history-index
 authority: informative
 owner: project-maintainer
-last_updated: 2026-08-20
+last_updated: 2026-09-18
 status: active
 tracks: 511
 ---
@@ -44,6 +44,7 @@ This is a concise index of material AI-assisted development and governance chang
 | 2026-07-22 | Restructure GenESyS manual sources and manual-impact governance | local | branch `docs/manual-genesys-restructure-20260722` | in progress | LaTeX rebuild and final PDF validation pending | chapter map, README, manual-impact rule and figure automation plan introduced |
 | 2026-08-20 | Add per-user runtime launcher/dispatcher (`AUTO-APP-003`) | GitHub | PR #521 | `d88b4b20b5163891e47c9e63bb04eca68a9e40d0` | Launcher CI green (33 focused tests, dispatcher isolation, install contract); ordinary CI green | Debian packaging integration deferred to `AUTO-PKG-001` |
 | 2026-08-20 | Integrate Launcher into Debian package; fix Lintian and lifecycle-script defects (`AUTO-PKG-001`) | local + GitHub | PR #522 | `d8fce9562617525657e8cbf9870b32323364773f` | run `32421072334`: build+lifecycle jobs green, Lintian/AppStream clean, 5-package `dpkg-buildpackage` and full lifecycle script verified locally in a disposable Ubuntu 24.04 container and on the GitHub-hosted runner; manual rebuilt (`docs/ManualGenESyS.pdf`) | runtime signing key provisioning (`HUM-SEC-004`), GitHub Release/APT/PPA publication remain out of scope |
+| 2026-09-18 | Reconcile ModalModel/DefaultNetwork continuation, lifecycle semantics and maintainer decisions | GitHub | PR #532 | branch checkpoint `49a6583a95975801e7c75bef0ad3206eff3559ff`; merge pending | documentation-governance/ordinary CI pending; detailed remote evidence in `history/evidence/2026/09/2026-09-18_modal_network_reconciliation.md` | local current-HEAD build/test verification and safe canonical backlog reconciliation remain required |
 
 ## 3. Update rule
 
