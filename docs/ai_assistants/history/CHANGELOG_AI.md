@@ -18,7 +18,7 @@ This is a concise index of material AI-assisted development and governance chang
 | Date | Scope | Environment | PR/issue | Merge/checkpoint | Validation/evidence | Remaining boundary |
 |---|---|---|---|---|---|---|
 | 2026-07-20 | Correct CI/Debian branch and path triggers | GitHub | PR #470 | `5b24ab9277306b26a8742ac5b25cbca9d89ed6df` | ordinary CI green | package lifecycle still required |
-| 2026-07-20 | Add AI plugin tests to ordinary/direct-runner baseline | GitHub | PR #471 | `1fcac9f678c3c96a40b73f1d0a3d54ea03bdf64c` | ordinary and kernel paths green | provider/security breadth pending |
+| 2026-07-20 | Add AI plugin tests to ordinary/direct-runner baseline | GitHub | PR #471 | `1fcac9f678c3c96a40cd921c0a3d54ea03bdf64c` | ordinary and kernel paths green | provider/security breadth pending |
 | 2026-07-20 | Add reusable Phase 0 kernel/smoke validation | GitHub | PR #472 | `802b8aec7ac129559692bd574e70fd9991aaec1d` | kernel/smoke artifacts green | applications/packages not covered |
 | 2026-07-20 | Record consolidation decisions and initial evidence | GitHub | PRs #469/#473 | `9c52b61532b847668adc3be92c780966301bcf7c`, `a56b92cc83f1da5573def1f7dda26da7f9c56938` | documentation plus ordinary CI | later status documents supersede volatile claims |
 | 2026-07-21 | Stabilize legacy solver contract | GitHub | PR #474 | `82af912d369f92d9365536ec5a6ba5ee75f3414d` | focused red/green and full baseline | authoritative broader numerical validation pending |
