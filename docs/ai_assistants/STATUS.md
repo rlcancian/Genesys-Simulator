@@ -80,9 +80,13 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   multiple-enabled-transition semantics with three modes: model error,
   nondeterministic random choice through the GenESyS RNG/sampler, and
   deterministic priority.
-- Legacy modal classes may be moved to an excluded `deprecated/` subdirectory
-  or physically removed after current dependency analysis proves the safe path;
-  they are not to be retained solely for historical `.gen` compatibility.
+- Obsolete Modal/Network classes must be removed from the `source/` tree once
+  current dependency analysis proves their migration/removal is safe. They
+  must not be retained under another `source/` subdirectory. This decision is
+  motivated by the current recursive `*.cpp` discovery in
+  `source/plugins/components/CMakeLists.txt`, which would continue compiling
+  component sources placed in nested directories. Do not complicate CMake
+  solely to retain obsolete implementation files; Git history is the archive.
 - A Phase 9 GUI/editor architecture remains proposed rather than established as
   implemented; backend contracts must be stabilized and revalidated first:
   [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md).
@@ -161,7 +165,7 @@ Startup does not imply functional or scientific maturity.
 - `HUM-VC-001`: initial AI virtual-cell organism/use case/data package;
 - `HUM-REL-001`: final supported set and promotion gate.
 
-For Modal/Network, the decisions recorded on 2026-09-18 remove the previously assumed need for a human decision about historical `.gen` compatibility, CPN target depth, Cellular Automata direction, and EFSM multiple-enabled-transition policy. Any remaining implementation uncertainty in those areas is a current-code/current-test verification question, not permission to invent a new policy.
+For Modal/Network, the decisions recorded on 2026-09-18 remove the previously assumed need for a human decision about historical `.gen` compatibility, CPN target depth, Cellular Automata direction, EFSM multiple-enabled-transition policy, and retention of obsolete source classes. Any remaining implementation uncertainty in those areas is a current-code/current-test verification question, not permission to invent a new policy.
 
 These other listed boundaries must not be guessed by autonomous agents.
 
@@ -182,7 +186,7 @@ Whole-cell/biochemical/AI virtual-cell work remains experimental/research-orient
 | D0 | done (historical) | #512 / `958cdc6f63c02d004f1ffdf55e104b58a245bb88` | canonical layer and runbooks |
 | D1 | done (historical) | #513 / `b48697e77d39b25cafc19271ce574bdead60f94d` | normative governance consolidated |
 | D2 | done (historical) | #514 / `53b49f7518509823fe2265a3f017b5aa76f09d2f` | sole current state and backlogs |
-| D3 | done (historical) | #515 / `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | date-first evidence ledger |
+| D3 | done (historical) | #515 / `ca910a2ef3722a2b8b377da7e9e02ca` | date-first evidence ledger |
 | D4 | done (historical) | #516 / `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | six technical references and active-root cleanup |
 | D6 | done (historical) | #517 / `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | single oldies tracker; 25 retained files protected |
 | D5 | done (historical) | #518 / `610d8ab21c87cfd11663af78370b39262cf4da81` | local and GitHub Actions governance enforcement |
@@ -284,7 +288,7 @@ The next local continuation should first prove the current state before editing 
 5. verify Graph/DAG advertised invariants and algorithms without adding process-flow semantics;
 6. verify the finite time-homogeneous DTMC contract, probability validation and reproducible sampling;
 7. define and verify the pragmatic CPN subset before adding any advanced CPN semantics;
-8. map current dependencies on legacy modal classes, then move unused retained artifacts to a non-built `deprecated/` directory or remove them if current dependency evidence supports deletion;
+8. map current dependencies on legacy modal classes and, after all legitimate current callers/registrations/tests are migrated, remove obsolete class files from `source/`; do not add build exclusions solely to retain obsolete source;
 9. keep Cellular Automata migration deferred until the current Modal/Network architecture is complete, functioning, tested and validated;
 10. address GUI/editor implementation only after backend contracts are stable;
 11. reconcile the canonical backlogs and evidence records after each material result.
