@@ -2,7 +2,7 @@
 document_type: architecture
 authority: normative-reference
 owner: project-maintainer
-last_reviewed: 2026-07-22
+last_reviewed: 2026-09-18
 review_cadence: 90d
 status: active
 tracks: 511
@@ -95,7 +95,7 @@ The parser owns expression and model-language interpretation. Parser grammar and
 Changes to expression semantics require:
 
 - explicit language contract;
-- compatibility analysis for persisted `.gen` models;
+- compatibility analysis for persisted models that are part of the currently supported compatibility set;
 - nominal, invalid, and regression tests;
 - no assumption that a GUI-side list of functions is the parser source of truth.
 
@@ -110,7 +110,7 @@ Current consolidation priorities are:
 - one unambiguous source-to-target ownership model;
 - consistent optional dependency behavior;
 - explicit registration and metadata;
-- preserved persistence and factories;
+- preserved persistence and factories for the currently supported contract;
 - testable lifecycle and ownership;
 - no broad dynamic migration during baseline stabilization.
 
@@ -222,9 +222,40 @@ Tests and callers must distinguish:
 
 Statistics and accounting objects must be initialized safely for supported public operations and must remain absent when reporting is explicitly disabled.
 
-## 9. Modal, continuous, and hybrid simulation
+## 9. Modal, network, continuous, and hybrid simulation
 
-Modal models, EFSMs, Petri nets, cellular automata, and continuous systems are distinct semantic domains.
+Modal models, EFSMs, Petri nets, mathematical graphs, Markov chains, cellular automata, and continuous systems are distinct semantic domains. Shared infrastructure must not erase each formalism's invariants.
+
+The durable network-centered boundary is:
+
+- `ModalModel` / `ModalModelDefault` remains a process-world `ModelComponent` adapter;
+- `DefaultNetwork` is network-domain model data and owns persistent network state according to the specialization;
+- formalism-specific topology/state/activation semantics belong in `DefaultNetwork` specializations, not in new process-component subclasses merely for naming symmetry;
+- `DefaultNode` and formalism-owned states/nodes are model data, not ordinary process-flow locations;
+- graph/EFSM/Markov/CPN relations are not ordinary process `Connection` objects;
+- a pure mathematical graph does not imply Entity movement, a current vertex, random walk or routing semantics;
+- stochastic network choices use reproducible GenESyS random-number infrastructure.
+
+Current approved initial formalism direction:
+
+- EFSM;
+- mathematical Graph / Directed Graph / DAG;
+- finite time-homogeneous DTMC;
+- a pragmatic Colored Petri Net subset sufficient for current GenESyS use cases.
+
+The complete academic CPN feature set is **not** a current mandatory completion requirement. Typed token payloads, general variable-binding enumeration, general expression-based inscriptions and concurrent/multi-firing semantics require a concrete approved GenESyS/scientific need before becoming required scope.
+
+EFSM conflict resolution for multiple simultaneously enabled transitions is a persisted configurable semantic policy with three approved modes:
+
+1. model error;
+2. nondeterministic selection using the reproducible GenESyS RNG infrastructure;
+3. deterministic selection by explicit priority.
+
+The exact C++ identifiers and default policy are implementation details to be resolved against current code/tests, but behavior must never depend accidentally on container iteration order.
+
+Cellular Automata is intended to migrate into the `DefaultNetwork` architecture in a later bounded effort. That migration is deferred until the current ModalModel/DefaultNetwork architecture is fully functional, tested, validated and completion-confirmed. The later design must preserve regular spatial/lattice structure, neighborhood/boundary semantics and synchronous/asynchronous update behavior rather than forcing a generic graph representation solely for hierarchy uniformity.
+
+The detailed current completion/verification guidance is [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md). The Qt6 GUI plan is [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md) and remains backend-dependent.
 
 Discrete-event calendar time and continuous solver time must not be conflated. A component that advances a continuous state must define:
 
@@ -309,13 +340,15 @@ Generated C++/Python code, compilers, external processes, dynamic loading, tempo
 
 Persistence changes require:
 
-- load/save symmetry;
-- compatibility fixtures for supported historical models;
-- explicit defaults for missing fields;
+- load/save symmetry for the currently supported representation;
+- compatibility fixtures only for historical models explicitly included in the current supported compatibility set;
+- explicit defaults for missing fields where the current format permits them;
 - diagnostics for unsupported or invalid data;
-- no casual renaming of plugin types, field names, exported identifiers, targets, or installed binaries.
+- no casual renaming of currently supported plugin types, field names, exported identifiers, targets, or installed binaries without an approved migration.
 
-Directory and target refactors must preserve user-visible names unless a separately approved compatibility migration exists.
+Maintainer decision dated 2026-09-18: old persisted `ModalModelFSM` / `ModalModelPetriNet` `.gen` models are **not part of the compatibility requirements** for completion of the ModalModel/DefaultNetwork migration. They must not force retention of superseded wrappers or legacy execution paths. Current-format ModalModel/DefaultNetwork save/load symmetry and round-trip behavior remain required.
+
+Directory and target refactors must preserve currently supported user-visible names unless a separately approved migration exists. Superseded internal/legacy types may be isolated or removed after current dependency, registration, build and test impact is demonstrated.
 
 ## 16. Maturity boundary
 
