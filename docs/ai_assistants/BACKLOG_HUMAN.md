@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-08-31
+last_updated: 2026-09-18
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -27,50 +27,101 @@ A decision recorded here is not implemented automatically unless a corresponding
 
 ## 3. Architectural decisions
 
-### HUM-MODAL-001 — Legacy ModalModel wrapper and persistence compatibility
+### HUM-MODAL-001 — Legacy ModalModel cleanup and compatibility boundary
 
 - Priority: `P1`
-- Status: `open`
-- Decision required: define how existing persisted models and public plugin type names that use `ModalModelFSM` and `ModalModelPetriNet` are migrated to the network-centric architecture.
-- Confirmed evidence:
-  - `ModalModelDefault` now supports a `DefaultNetwork` bridge with explicit input/output bindings;
-  - `EFSMNetwork`, `MarkovChainNetwork`, `GraphNetwork` and `ColoredPetriNetNetwork` are registered network data definitions;
-  - `ModalModelFSM` and `ModalModelPetriNet` remain thin subclasses of `ModalModelDefault`;
-  - the legacy `ModalModelDefault` node-list execution path still exists for compatibility when no `DefaultNetwork` is attached;
-  - the legacy probabilistic path now uses a resettable GenESyS kernel sampler instead of `std::rand()`.
-- Options:
-  - keep wrappers indefinitely as compatibility aliases over `ModalModelDefault`;
-  - convert wrappers into explicit shims that auto-create or bind `EFSMNetwork` / `ColoredPetriNetNetwork` for new instances while still loading old serialized fields;
-  - migrate saved legacy node/transition fields into standalone network data definitions during load;
-  - deprecate wrappers and require explicit model-file migration tooling before removal.
-- Recommendation: keep wrappers as compatibility shims in this PR; select representative legacy `.gen` fixtures before implementing automatic persistence migration.
-- Decision unlocks:
-  - bounded wrapper rewrite or deprecation path;
-  - persisted-model migration tests;
-  - documentation of supported legacy model-file compatibility.
-- Must not be combined with: full CPN variable binding, GUI network editor implementation, broad ModelDataManager ownership redesign or dynamic-plugin migration.
+- Status: `decision-recorded`
+- Decision date: 2026-09-18
+- Decision:
+  - historical `.gen` model compatibility is **not a requirement** for completing the ModalModel/DefaultNetwork migration and must not constrain the new architecture;
+  - current-format save/load symmetry for the supported network-centered implementation remains required;
+  - legacy classes such as `ModalModelFSM`, `ModalModelPetriNet` and other superseded modal scaffolding may be removed from the active build after a local dependency audit;
+  - temporary quarantine under `source/plugins/components/ModalModel/deprecated/` is preferred when it helps a safe staged migration; permanent deletion is acceptable later when local evidence proves it is safer/clearer;
+  - files below `deprecated/` are intended not to compile.
+- Confirmed current-code constraint:
+  - `source/plugins/components/CMakeLists.txt` currently uses recursive `*.cpp` globbing, so merely moving sources beneath `ModalModel/deprecated/` would still compile them; build exclusion or a safer source-selection adjustment must precede that move.
+- Verification pending locally:
+  - identify every current code/factory/registration/test/example/GUI reference to the legacy classes;
+  - determine which types can be quarantined immediately and which current callers first require migration;
+  - validate that active plugin registration and current persistence continue to work after removal from the build.
+- Implementation guidance: see [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md), especially Sections 3.3 and 5B.
+- This decision supersedes the former requirement to select legacy `.gen` fixtures or design automatic migration of historical ModalModel files.
+- Must not be combined with: broad plugin-architecture redesign, dynamic-plugin migration or unrelated CMake cleanup.
 
 ### HUM-MODAL-002 — GUI editor architecture for DataDefinition-based networks
 
 - Priority: `P1`
-- Status: `open`
-- Decision required: choose how the GUI creates, edits and visualizes `DefaultNetwork` data definitions and their formalism-owned elements without treating them as process-flow `ModelComponent` + `Connection` topologies.
+- Status: `decision-recorded`
+- Decision date: 2026-09-18
+- Decision:
+  - retain the dedicated network/data-definition editor direction in [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md);
+  - do not overload the process-flow `ModelComponent + Connection` canvas with mathematical/formal network topology;
+  - broad GUI implementation is deferred until the backend ModalModel/DefaultNetwork architecture has been locally revalidated and satisfies its completion gate;
+  - once backend-ready, the local agent must re-check the current Qt6 GUI before treating the previously proposed G0-G6 phases as executable literally.
 - Confirmed evidence:
-  - `DefaultNode` is now a `ModelDataDefinition`;
+  - `DefaultNode` is a `ModelDataDefinition` in the network-centered design;
   - graph, EFSM, Markov and CPN topology elements belong to network data definitions;
   - `GraphEdge` and `CPNArc` are not process `Connection` objects;
-  - `ModalModelDefault` mirrors the attached network's logical port schema, but the current GUI synchronization for network ports and bindings remains unfinished.
-- Options:
-  - add a dedicated network/data-definition editor independent from the process-flow canvas;
-  - add modal-network editing panels inside the existing component property editor;
-  - provide model-file/API construction first and defer GUI editing;
-  - temporarily expose only read-only network visualization until editing contracts are stable.
-- Recommendation: implement a dedicated network/data-definition editor after the compatibility and persistence strategy is settled; do not overload the existing process `Connection` canvas with graph/CPN arcs.
-- Decision unlocks:
+  - `ModalModelDefault` mirrors/bridges the attached network interface according to the current design.
+- Verification pending locally:
+  - current GUI synchronization for network ports/bindings;
+  - current serializer/property-editor/navigation contracts;
+  - whether any GUI work landed after the original 2026-08-31 proposal.
+- Decision unlocks after backend completion:
   - GUI creation/editing of network-owned nodes, places, transitions, arcs and graph edges;
   - synchronized `ModalModelDefault` input/output bindings;
   - visual distinction between process topology and mathematical/formal network topology.
-- Must not be combined with: process `Connection` payload generalization or release/promotion gates.
+
+### HUM-MODAL-003 — Initial Colored Petri Net supported scope
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-09-18
+- Decision: the initial supported objective is a **pragmatic CPN subset sufficient for GenESyS**, not automatic implementation of every feature of the complete academic CPN formalism.
+- Consequences:
+  - the local continuation must first establish exactly what the current `ColoredPetriNetNetwork` implements and tests;
+  - places, explicit transition nodes, bipartite arcs, marking, symbolic colors/token counts, inscriptions, guards, enabling, atomic firing, reset and persistence should be evaluated against the current GenESyS use cases;
+  - typed token payloads, general variable-binding enumeration, general expression-based arc inscriptions, maximal concurrent-step firing and stochastic conflict policies are future extensions unless a concrete approved GenESyS/scientific requirement makes one necessary.
+- Verification pending locally: construct a feature/test matrix for the current CPN subset and close only demonstrated gaps.
+- Implementation guidance: [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md), Section 5C4.
+
+### HUM-MODAL-004 — EFSM multiple-enabled-transition policy
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-09-18
+- Decision: `EFSMNetwork` shall have a persisted configurable policy, represented by an enum or equivalent strongly typed configuration, with exactly these semantic choices:
+  1. **model error**;
+  2. **nondeterministic selection**;
+  3. **deterministic by priority**.
+- Semantic requirements:
+  - model-error mode reports an invalid/ambiguous model when more than one transition is enabled;
+  - nondeterministic mode selects among enabled transitions using the reproducible GenESyS RNG infrastructure, never `std::rand()`;
+  - deterministic-priority mode uses an explicit documented priority rule and must not depend accidentally on container iteration order.
+- Exact C++ enum/type/member names: implementation detail to be selected from the current code style.
+- Default policy: **verification/implementation decision still required locally**; it must be chosen explicitly and documented rather than inherited accidentally from current behavior.
+- Required local validation: `_check()`/runtime agreement, all three modes, seed reproducibility, priority/tie behavior, reset and persistence round trip.
+- Reference direction: Ptolemy II may be used for semantic comparison, without requiring API compatibility.
+
+### HUM-MODAL-005 — Cellular Automata integration into DefaultNetwork
+
+- Priority: `P2`
+- Status: `decision-recorded`
+- Decision date: 2026-09-18
+- Decision:
+  - Cellular Automata is intended to migrate into the `DefaultNetwork` architecture;
+  - implementation is intentionally deferred until the current ModalModel/DefaultNetwork architecture is fully functional, tested, validated and eligible for `done_confirmed`;
+  - the later migration must preserve CA-specific semantics, including regular spatial/lattice structure and update semantics, rather than forcing an artificial generic-graph representation merely for hierarchy uniformity.
+- Required later design evidence must cover at least:
+  - lattice/mesh representation;
+  - neighborhood definition;
+  - boundary conditions;
+  - synchronous/asynchronous update policy;
+  - deterministic/stochastic rules;
+  - state ownership/persistence;
+  - simulation-time/event interaction.
+- Current implementation evidence: `source/plugins/components/ModalModel/CellularAutomata/` and `CellularAutomataComp.*` are present in the current source tree.
+- Activation condition: create/activate a separate bounded autonomous task only after the current ModalModel/DefaultNetwork initiative reaches `done_confirmed`.
 
 ### HUM-ARCH-001 — Static component target consolidation
 
