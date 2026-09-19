@@ -136,6 +136,80 @@ TEST(EFSMNetworkTest, ActivationChoosesLowestPriorityEnabledTransition) {
 	EXPECT_EQ(network.getCurrentState(), &fast);
 }
 
+TEST(EFSMNetworkTest, ModelErrorPolicyReportsAmbiguousActivationAndKeepsState) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork network(model, "Machine");
+	FSMState initial(model, "Initial");
+	FSMState left(model, "Left");
+	FSMState right(model, "Right");
+	EFSMTransition first(&initial, &left, "First");
+	EFSMTransition second(&initial, &right, "Second");
+	first.setGuardExpression("1");
+	second.setGuardExpression("1");
+	network.setInitialState(&initial);
+	network.addState(&left);
+	network.addState(&right);
+	network.addTransition(&first);
+	network.addTransition(&second);
+	network.setConflictPolicy(EFSMNetwork::ConflictPolicy::MODEL_ERROR);
+
+	NetworkActivationResult result = network.activate(NetworkActivationFrame(network.getNumInputPorts()));
+
+	EXPECT_FALSE(result.isPresent(0));
+	EXPECT_EQ(network.getCurrentState(), &initial);
+	ASSERT_NE(model->getTracer()->errorMessages(), nullptr);
+	EXPECT_NE(model->getTracer()->errorMessages()->front().find("multiple enabled transitions"), std::string::npos);
+}
+
+TEST(EFSMNetworkTest, NondeterministicChoiceUsesResettableKernelSampler) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetworkProbe network(model, "Machine");
+	FSMState initial(model, "Initial");
+	FSMState left(model, "Left");
+	FSMState right(model, "Right");
+	EFSMTransition first(&initial, &left, "First");
+	EFSMTransition second(&initial, &right, "Second");
+	first.setGuardExpression("1");
+	second.setGuardExpression("1");
+	network.setInitialState(&initial);
+	network.addState(&left);
+	network.addState(&right);
+	network.addTransition(&first);
+	network.addTransition(&second);
+	network.setConflictPolicy(EFSMNetwork::ConflictPolicy::NONDETERMINISTIC_CHOICE);
+
+	const NetworkActivationFrame frame(network.getNumInputPorts());
+	network.activate(frame);
+	FSMState* firstChoice = network.getCurrentState();
+	network.setCurrentState(&initial);
+	network.InitBetweenReplicationsProbe();
+	network.activate(frame);
+
+	EXPECT_EQ(network.getCurrentState(), firstChoice);
+}
+
+TEST(EFSMNetworkTest, ConflictPolicyPersistencePreservesSelectionMode) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetworkProbe source(model, "Machine");
+	source.setConflictPolicy(EFSMNetwork::ConflictPolicy::MODEL_ERROR);
+	FakeModelPersistenceRuntime persistence;
+	PersistenceRecord fields(persistence);
+	source.SaveInstanceProbe(&fields, true);
+
+	EFSMNetworkProbe loaded(model, "LoadedMachine");
+	ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+	EXPECT_EQ(loaded.getConflictPolicy(), EFSMNetwork::ConflictPolicy::MODEL_ERROR);
+}
+
 TEST(EFSMNetworkTest, ReplicationResetRestoresInitialStateAndActivationCounter) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();

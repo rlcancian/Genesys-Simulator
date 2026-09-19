@@ -15,6 +15,8 @@
 #include <string>
 #include <unordered_map>
 
+class Sampler_if;
+
 /*!
  * \brief Extended finite-state-machine network specialization.
  *
@@ -30,8 +32,14 @@
  */
 class EFSMNetwork : public DefaultNetwork {
 public:
+	enum class ConflictPolicy : unsigned int {
+		MODEL_ERROR = 0,
+		NONDETERMINISTIC_CHOICE = 1,
+		DETERMINISTIC_PRIORITY = 2
+	};
+
 	EFSMNetwork(Model* model, std::string name = "");
-	virtual ~EFSMNetwork() override = default;
+	virtual ~EFSMNetwork() override;
 
 public: // static
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord* fields);
@@ -49,6 +57,10 @@ public:
 	FSMState* getInitialState() const;
 	FSMState* getCurrentState() const;
 	void setCurrentState(FSMState* state);
+	void setConflictPolicy(ConflictPolicy policy);
+	ConflictPolicy getConflictPolicy() const;
+	static std::string convertConflictPolicyToString(ConflictPolicy policy);
+	static ConflictPolicy convertStringToConflictPolicy(const std::string& policy);
 
 public:
 	virtual std::string show() override;
@@ -68,6 +80,8 @@ private:
 	List<EFSMTransition*>* _transitions = new List<EFSMTransition*>();
 	FSMState* _initialState = nullptr;
 	FSMState* _currentState = nullptr;
+	ConflictPolicy _conflictPolicy = ConflictPolicy::DETERMINISTIC_PRIORITY;
+	Sampler_if* _sampler = nullptr;
 };
 
 #endif /* EFSMNETWORK_H */

@@ -10,6 +10,9 @@
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
+#include "kernel/TraitsKernel.h"
+#include "kernel/statistics/SamplerDefaultImpl1.h"
+#include "kernel/statistics/Sampler_if.h"
 
 #include <algorithm>
 #include <memory>
@@ -25,6 +28,14 @@ EFSMNetwork::EFSMNetwork(Model* model, std::string name)
 	: DefaultNetwork(model, name, Util::TypeOf<EFSMNetwork>()) {
 	addInputPort("input");
 	addOutputPort("output");
+	_sampler = new TraitsKernel<Sampler_if>::Implementation();
+}
+
+EFSMNetwork::~EFSMNetwork() {
+	delete _states;
+	delete _transitions;
+	delete _sampler;
+	_sampler = nullptr;
 }
 
 ModelDataDefinition* EFSMNetwork::NewInstance(Model* model, std::string name) {
@@ -116,6 +127,36 @@ void EFSMNetwork::setCurrentState(FSMState* state) {
 	}
 }
 
+void EFSMNetwork::setConflictPolicy(ConflictPolicy policy) {
+	_conflictPolicy = policy;
+}
+
+EFSMNetwork::ConflictPolicy EFSMNetwork::getConflictPolicy() const {
+	return _conflictPolicy;
+}
+
+std::string EFSMNetwork::convertConflictPolicyToString(ConflictPolicy policy) {
+	switch (policy) {
+	case ConflictPolicy::MODEL_ERROR:
+		return "MODEL_ERROR";
+	case ConflictPolicy::NONDETERMINISTIC_CHOICE:
+		return "NONDETERMINISTIC_CHOICE";
+	case ConflictPolicy::DETERMINISTIC_PRIORITY:
+		return "DETERMINISTIC_PRIORITY";
+	}
+	return "DETERMINISTIC_PRIORITY";
+}
+
+EFSMNetwork::ConflictPolicy EFSMNetwork::convertStringToConflictPolicy(const std::string& policy) {
+	if (policy == "MODEL_ERROR") {
+		return ConflictPolicy::MODEL_ERROR;
+	}
+	if (policy == "NONDETERMINISTIC_CHOICE") {
+		return ConflictPolicy::NONDETERMINISTIC_CHOICE;
+	}
+	return ConflictPolicy::DETERMINISTIC_PRIORITY;
+}
+
 std::string EFSMNetwork::show() {
 	return DefaultNetwork::show() +
 	       ", states=" + std::to_string(_states->size()) +
@@ -200,12 +241,14 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 		if (_currentState == nullptr) {
 			_currentState = _initialState;
 		}
+		_conflictPolicy = convertStringToConflictPolicy(fields->loadField("conflictPolicy", convertConflictPolicyToString(ConflictPolicy::DETERMINISTIC_PRIORITY)));
 	}
 	return res;
 }
 
 void EFSMNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
 	DefaultNetwork::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("conflictPolicy", convertConflictPolicyToString(_conflictPolicy), convertConflictPolicyToString(ConflictPolicy::DETERMINISTIC_PRIORITY), saveDefaultValues);
 	if (_initialState != nullptr) {
 		fields->saveField("initialState", _initialState->getName(), std::string(""), saveDefaultValues);
 	}
@@ -277,6 +320,9 @@ bool EFSMNetwork::_check(std::string& errorMessage) {
 void EFSMNetwork::_initBetweenReplications() {
 	DefaultNetwork::_initBetweenReplications();
 	_currentState = _resolveInitialState();
+	if (auto* defaultSampler = dynamic_cast<SamplerDefaultImpl1*>(_sampler); defaultSampler != nullptr) {
+		defaultSampler->reset();
+	}
 }
 
 NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& frame) {
@@ -299,11 +345,25 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
 	if (enabled.empty()) {
 		return result;
 	}
-	std::sort(enabled.begin(), enabled.end(), [](EFSMTransition* a, EFSMTransition* b) {
-		return a->getPriority() < b->getPriority();
-	});
-
-	EFSMTransition* chosen = enabled.front();
+	EFSMTransition* chosen = nullptr;
+	if (enabled.size() == 1) {
+		chosen = enabled.front();
+	} else if (_conflictPolicy == ConflictPolicy::MODEL_ERROR) {
+		traceError("EFSMNetwork \"" + getName() + "\" has multiple enabled transitions with MODEL_ERROR conflict policy.", TraceManager::Level::L3_errorRecover);
+		return result;
+	} else if (_conflictPolicy == ConflictPolicy::NONDETERMINISTIC_CHOICE) {
+		const double sample = _sampler != nullptr ? _sampler->random() : 0.0;
+		const auto index = std::min(static_cast<std::size_t>(sample * enabled.size()), enabled.size() - 1);
+		chosen = enabled[index];
+	} else {
+		std::stable_sort(enabled.begin(), enabled.end(), [](EFSMTransition* a, EFSMTransition* b) {
+			return a->getPriority() < b->getPriority();
+		});
+		chosen = enabled.front();
+	}
+	if (chosen == nullptr) {
+		return result;
+	}
 	FSMState* source = dynamic_cast<FSMState*>(chosen->getSource());
 	FSMState* destination = dynamic_cast<FSMState*>(chosen->getDestination());
 	if (source != nullptr && source->getExitActionExpression() != "") {
