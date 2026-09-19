@@ -9,12 +9,17 @@
 #include "kernel/simulator/essentialPlugins/Entity.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponent.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/components/ModalModel/ModalModelFSM.h"
 #include "plugins/components/ModalModel/ModalModelPetriNet.h"
+#include "plugins/components/ModalModel/FSMState.h"
+#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 
+#include <unistd.h>
 #include <vector>
 
 namespace {
@@ -267,6 +272,57 @@ TEST(ModalModelDefaultNetworkTest, PersistenceRoundTripPreservesNetworkReference
 	EXPECT_EQ(loaded.getNetworkName(), "PersistentNetwork");
 	EXPECT_EQ(loaded.getInputBinding(0), "3");
 	EXPECT_EQ(loaded.getOutputBinding(0), "PersistedResult");
+}
+
+TEST(ModalModelDefaultNetworkTest, ModelFileRoundTripPreservesAttachedNetworkBinding) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork* network = new EFSMNetwork(model, "BoundNetwork");
+	FSMState* idle = new FSMState(model, "Idle");
+	FSMState* busy = new FSMState(model, "Busy");
+	EFSMTransition* start = new EFSMTransition(idle, busy, "Start");
+	start->setGuardExpression("1");
+	start->setOutputExpression("55");
+	network->setInitialState(idle);
+	network->addState(busy);
+	network->addTransition(start);
+
+	ModalModelDefault* modal = new ModalModelDefault(model, "BoundModal");
+	Dispose* sink = new Dispose(model, "BoundSink");
+	modal->getConnectionManager()->insert(sink);
+	modal->setNetwork(network);
+	modal->setInputBinding(0, "1");
+	modal->setOutputBinding(0, "BoundResult");
+
+	std::string errorMessage;
+	ASSERT_TRUE(ModelDataDefinition::Check(network, errorMessage)) << errorMessage;
+	ASSERT_TRUE(ModelComponent::Check(modal)) << errorMessage;
+
+	const std::string filename = "/tmp/genesys_modal_network_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+
+	Model* loadedModel = simulator.getModelManager()->newModel();
+	ASSERT_TRUE(loadedModel->load(filename));
+
+	ModalModelDefault* loadedModal =
+		dynamic_cast<ModalModelDefault*>(loadedModel->getComponentManager()->find("BoundModal"));
+	ASSERT_NE(loadedModal, nullptr);
+	EXPECT_EQ(loadedModal->getNetworkName(), "BoundNetwork");
+	EXPECT_EQ(loadedModal->getInputBinding(0), "1");
+	EXPECT_EQ(loadedModal->getOutputBinding(0), "BoundResult");
+
+	ModelDataDefinition* loadedDefinition =
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), "BoundNetwork");
+	ASSERT_NE(loadedDefinition, nullptr);
+	EFSMNetwork* loadedNetwork = dynamic_cast<EFSMNetwork*>(loadedDefinition);
+	ASSERT_NE(loadedNetwork, nullptr);
+	EXPECT_EQ(loadedNetwork->getConflictPolicy(), EFSMNetwork::ConflictPolicy::DETERMINISTIC_PRIORITY);
+
+	::unlink(filename.c_str());
 }
 
 TEST(ModalModelDefaultNetworkTest, TwoModalModelsCanShareOneNetworkInstance) {

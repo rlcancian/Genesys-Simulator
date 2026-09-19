@@ -14,6 +14,8 @@
 #include "plugins/data/ModalModel/NetworkActivation.h"
 
 #include <memory>
+#include <string>
+#include <unistd.h>
 
 namespace {
 
@@ -310,6 +312,56 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	EXPECT_EQ(loadedTransition->getInputEvent(), "go");
 	EXPECT_EQ(loadedTransition->getPriority(), 3u);
 	EXPECT_EQ(loadedTransition->getProbabilityExpression(), "1");
+}
+
+TEST(EFSMNetworkTest, ModelFileRoundTripPreservesConflictPolicyAndActivation) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork* network = new EFSMNetwork(model, "FileMachine");
+	FSMState* idle = new FSMState(model, "Idle");
+	FSMState* busy = new FSMState(model, "Busy");
+	EFSMTransition* start = new EFSMTransition(idle, busy, "Start");
+	start->setGuardExpression("1");
+	start->setOutputExpression("91");
+	start->setPriority(2u);
+	network->setInitialState(idle);
+	network->addState(busy);
+	network->addTransition(start);
+	network->setConflictPolicy(EFSMNetwork::ConflictPolicy::MODEL_ERROR);
+
+	std::string errorMessage;
+	ASSERT_TRUE(ModelDataDefinition::Check(network, errorMessage)) << errorMessage;
+
+	const std::string filename = "/tmp/genesys_efsm_model_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+
+	Model* loadedModel = simulator.getModelManager()->newModel();
+	ASSERT_NE(loadedModel, nullptr);
+	ASSERT_TRUE(loadedModel->load(filename));
+
+	ModelDataDefinition* loadedDefinition =
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), "FileMachine");
+	ASSERT_NE(loadedDefinition, nullptr);
+	EFSMNetwork* loadedNetwork = dynamic_cast<EFSMNetwork*>(loadedDefinition);
+	ASSERT_NE(loadedNetwork, nullptr);
+	EXPECT_EQ(loadedNetwork->getConflictPolicy(), EFSMNetwork::ConflictPolicy::MODEL_ERROR);
+	ASSERT_NE(loadedNetwork->getInitialState(), nullptr);
+	EXPECT_EQ(loadedNetwork->getInitialState()->getName(), "Idle");
+	EXPECT_EQ(loadedNetwork->getCurrentState()->getName(), "Idle");
+	ASSERT_EQ(loadedNetwork->getStates()->size(), 2u);
+	ASSERT_EQ(loadedNetwork->getTransitions()->size(), 1u);
+
+	NetworkActivationResult result = loadedNetwork->activate(NetworkActivationFrame(loadedNetwork->getNumInputPorts()));
+	EXPECT_TRUE(result.isPresent(0));
+	EXPECT_DOUBLE_EQ(result.getValue(0), 91.0);
+	ASSERT_NE(loadedNetwork->getCurrentState(), nullptr);
+	EXPECT_EQ(loadedNetwork->getCurrentState()->getName(), "Busy");
+
+	::unlink(filename.c_str());
 }
 
 TEST(EFSMNetworkTest, PluginInformationDeclaresADataDefinitionInModalModelCategory) {
