@@ -21,7 +21,9 @@ This is the only approved source for work an AI agent may execute without a new 
 - `blocked-review` — prepared but waiting for review;
 - `blocked-dependency` — waits for another task or decision;
 - `paused` — executable but disabled by maintainer instruction;
-- `done` — accepted, validated and merged;
+- `closed` — development inactive; this does not assert completeness;
+- `done_confirmed` — approved scope implemented, tested, functioning, verified, documented and accepted with no known unmet criterion;
+- `done` — historical legacy state; do not reinterpret it as `done_confirmed` without revalidation;
 - `cancelled` — intentionally removed.
 
 ## 3. Completed documentation migration
@@ -170,7 +172,7 @@ This is the only approved source for work an AI agent may execute without a new 
 ### AUTO-MODAL-001 — Migrate ModalModel onto the Network bridge
 
 - Priority: `P1`
-- Status: `done`
+- Status: `closed`
 - Environment: `local`
 - Branch: `WiP202608/modal-network-implementation`
 - Merge: PR #528, merged 2026-08-31 into `WorkInProgress` at `e0185163` (docs sync + architecture consolidation), and PR #529, merged 2026-08-31 into `WorkInProgress` at `fdae135b` (ModalModel/network architecture, Phases 1-8), current `WorkInProgress` head after both merges: `fdae135b3`.
@@ -223,7 +225,19 @@ This is the only approved source for work an AI agent may execute without a new 
   - validation snapshot on 2026-08-31 after the legacy sampler cleanup: `cmake --build build/tests-unit -j2 --target genesys_test_modal_model_default_network` passed; `ctest --test-dir build/tests-unit -R 'LegacyProbabilisticSelectionUsesResettableKernelSampler' --output-on-failure` passed with 1/1 focused test; `ctest --test-dir build/tests-unit -R 'ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork' --output-on-failure` passed with 64/64 modal/network tests;
   - validation snapshot on 2026-08-31 after wrapper shim cleanup: `cmake --build build/tests-unit -j2 --target genesys_test_modal_model_default_network` passed; `ctest --test-dir build/tests-unit -R 'ModalModelDefaultNetwork' --output-on-failure` passed with 8/8 bridge/shim tests;
   - full regression snapshot on 2026-08-31 after Phase 8 safe compatibility cleanup: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1810/1810 executed tests and 4 preexisting disabled tests;
-  - remaining work: GUI/editor synchronization for network ports and bindings, cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers, and future full CPN variable-binding/type-system/multi-firing semantics.
+  - remaining work: GUI/editor synchronization for network ports and bindings, cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers, and future full CPN variable-binding/type-system/multi-firing semantics. This historical record is not a completion claim.
+
+### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
+
+- Priority: `P1`
+- Status: `ready`
+- Environment: `local`
+- Base: current `origin/WorkInProgress`
+- Dependency: `AUTO-MODAL-001` is closed; current-HEAD verification is required before implementation.
+- Scope: verify the current `DefaultNetwork` contract and `ModalModelDefault` adapter; validate current persistence and plugin registration; audit EFSM, Graph, finite homogeneous DTMC and pragmatic CPN behavior; implement only confirmed gaps; remove obsolete Modal/Network source classes only after dependency proof; defer Cellular Automata migration until this task is genuinely complete.
+- Non-goals: historical `.gen` compatibility, full academic CPN semantics, CTMC/MDP/time-inhomogeneous Markov models, graph movement/routing simulation, broad plugin redesign, and Cellular Automata migration.
+- Acceptance: all approved in-scope behavior is implemented, compiled, tested, runtime-verified, documented and integrated in `WorkInProgress`; no known in-scope criterion remains pending. Only then may this task become `done_confirmed`.
+- Current evidence: clean current-HEAD baseline is being established after the independent public-preset correction; historical counts in `AUTO-MODAL-001` remain historical until re-executed.
 
 #### GraphNetwork extension
 
@@ -387,8 +401,9 @@ This is the only approved source for work an AI agent may execute without a new 
 
 ## 5. Active bounded work
 
-None currently. The most recent entries (`AUTO-ARENA-001` on 2026-08-30 and
-`AUTO-MODAL-001` on 2026-08-31) closed `done` and moved to Section 4.
+`AUTO-MODAL-002` is ready for current-HEAD verification. `AUTO-MODAL-001`
+remains in Section 4 as a closed historical development cycle, not as
+`done_confirmed`.
 
 ## 6. Paused technical tasks
 
