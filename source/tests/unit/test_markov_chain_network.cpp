@@ -16,7 +16,9 @@
 #include "plugins/data/ModalModel/MarkovChainNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 
+#include <algorithm>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace {
@@ -244,6 +246,51 @@ TEST(MarkovChainNetworkTest, PersistenceRoundTripPreservesStatesTransitionsAndCu
 	EXPECT_EQ(loadedTransition->getSource()->getName(), "A");
 	EXPECT_EQ(loadedTransition->getDestination()->getName(), "B");
 	EXPECT_DOUBLE_EQ(loadedTransition->getProbability(), 1.0);
+}
+
+TEST(MarkovChainNetworkTest, StochasticSequenceReproducibleAfterReplicationReset) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	MarkovChainNetworkProbe network(model, "ReproChain");
+	MarkovState a(model, "A");
+	MarkovState b(model, "B");
+	MarkovState c(model, "C");
+	network.setInitialState(&a);
+	network.addState(&b);
+	network.addState(&c);
+	// Non-trivial stochastic row from A; B and C return to A so each step reuses the sampler.
+	network.addTransition(transition(&a, &b, 0.35, "AB"));
+	network.addTransition(transition(&a, &c, 0.65, "AC"));
+	network.addTransition(transition(&b, &a, 1.0, "BA"));
+	network.addTransition(transition(&c, &a, 1.0, "CA"));
+
+	auto captureSequence = [&](std::vector<std::string>& names) {
+		names.clear();
+		network.setCurrentState(&a);
+		const NetworkActivationFrame frame(network.getNumInputPorts());
+		for (unsigned int i = 0; i < 32; i++) {
+			network.activate(frame);
+			if (network.getCurrentState() == nullptr) {
+				return false;
+			}
+			names.push_back(network.getCurrentState()->getName());
+		}
+		return true;
+	};
+
+	std::vector<std::string> first;
+	std::vector<std::string> second;
+	ASSERT_TRUE(captureSequence(first));
+	network.InitBetweenReplicationsProbe();
+	ASSERT_TRUE(captureSequence(second));
+
+	ASSERT_EQ(first.size(), 32u);
+	EXPECT_EQ(second, first);
+	// Sanity: a non-trivial stochastic row must not collapse to a single destination.
+	EXPECT_TRUE(std::find(first.begin(), first.end(), "B") != first.end());
+	EXPECT_TRUE(std::find(first.begin(), first.end(), "C") != first.end());
 }
 
 TEST(MarkovChainNetworkTest, EmpiricalFrequencyUsesConfiguredProbabilities) {
