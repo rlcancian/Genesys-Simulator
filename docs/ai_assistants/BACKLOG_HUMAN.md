@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-08-31
+last_updated: 2026-09-19
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -30,31 +30,24 @@ A decision recorded here is not implemented automatically unless a corresponding
 ### HUM-MODAL-001 — Legacy ModalModel wrapper and persistence compatibility
 
 - Priority: `P1`
-- Status: `open`
-- Decision required: define how existing persisted models and public plugin type names that use `ModalModelFSM` and `ModalModelPetriNet` are migrated to the network-centric architecture.
+- Status: `decision-recorded`
+- Decision: historical `.gen` compatibility is not a requirement for the current continuation; current persistence must remain supported, and obsolete wrappers may be removed only after current consumers, registrations, tests, examples and persistence paths are migrated and proven unnecessary.
 - Confirmed evidence:
   - `ModalModelDefault` now supports a `DefaultNetwork` bridge with explicit input/output bindings;
   - `EFSMNetwork`, `MarkovChainNetwork`, `GraphNetwork` and `ColoredPetriNetNetwork` are registered network data definitions;
   - `ModalModelFSM` and `ModalModelPetriNet` remain thin subclasses of `ModalModelDefault`;
   - the legacy `ModalModelDefault` node-list execution path still exists for compatibility when no `DefaultNetwork` is attached;
   - the legacy probabilistic path now uses a resettable GenESyS kernel sampler instead of `std::rand()`.
-- Options:
-  - keep wrappers indefinitely as compatibility aliases over `ModalModelDefault`;
-  - convert wrappers into explicit shims that auto-create or bind `EFSMNetwork` / `ColoredPetriNetNetwork` for new instances while still loading old serialized fields;
-  - migrate saved legacy node/transition fields into standalone network data definitions during load;
-  - deprecate wrappers and require explicit model-file migration tooling before removal.
-- Recommendation: keep wrappers as compatibility shims in this PR; select representative legacy `.gen` fixtures before implementing automatic persistence migration.
-- Decision unlocks:
-  - bounded wrapper rewrite or deprecation path;
-  - persisted-model migration tests;
-  - documentation of supported legacy model-file compatibility.
+- Decision source: maintainer reconciliation recorded in PR #532 on 2026-09-18.
+- Implementation status: pending dependency audit and backend verification; this is not permission to delete wrappers immediately.
+- Decision unlocks: bounded wrapper migration/removal after current-code evidence proves it safe.
 - Must not be combined with: full CPN variable binding, GUI network editor implementation, broad ModelDataManager ownership redesign or dynamic-plugin migration.
 
 ### HUM-MODAL-002 — GUI editor architecture for DataDefinition-based networks
 
 - Priority: `P1`
-- Status: `open`
-- Decision required: choose how the GUI creates, edits and visualizes `DefaultNetwork` data definitions and their formalism-owned elements without treating them as process-flow `ModelComponent` + `Connection` topologies.
+- Status: `decision-recorded`
+- Decision: stabilize and verify the backend first; then use a dedicated network/data-definition editor or bounded read-only first slice, keeping formal-network topology distinct from process `Connection` topology and keeping network semantics in the backend.
 - Confirmed evidence:
   - `DefaultNode` is now a `ModelDataDefinition`;
   - graph, EFSM, Markov and CPN topology elements belong to network data definitions;
@@ -65,7 +58,8 @@ A decision recorded here is not implemented automatically unless a corresponding
   - add modal-network editing panels inside the existing component property editor;
   - provide model-file/API construction first and defer GUI editing;
   - temporarily expose only read-only network visualization until editing contracts are stable.
-- Recommendation: implement a dedicated network/data-definition editor after the compatibility and persistence strategy is settled; do not overload the existing process `Connection` canvas with graph/CPN arcs.
+- Recommendation retained: implement the GUI only after backend contracts and the compatibility/persistence audit are stable; do not overload the existing process `Connection` canvas with graph/CPN arcs.
+- Implementation status: deferred until `AUTO-MODAL-002` backend work is verified.
 - Decision unlocks:
   - GUI creation/editing of network-owned nodes, places, transitions, arcs and graph edges;
   - synchronized `ModalModelDefault` input/output bindings;

@@ -2,7 +2,7 @@
 document_type: governance
 authority: normative
 owner: project-maintainer
-last_reviewed: 2026-07-22
+last_reviewed: 2026-09-18
 review_cadence: 90d
 status: active
 tracks: 511
@@ -64,6 +64,23 @@ Assistants must not:
 - claim that configuration success proves compilation, that compilation proves tests, or that tests prove unregistered paths;
 - claim scientific validity based only on successful build, startup, unit tests, or plausible-looking output;
 - claim local execution when operating only through GitHub or another remote connector.
+
+### 4.1 Task lifecycle status semantics
+
+Task state and implementation completeness are separate concepts. The following semantics are normative for new or reconciled work:
+
+- `ready` — fully specified and eligible to start when its required environment and dependencies are available;
+- `running` — actively owned by one bounded implementation branch/PR or equivalent local workstream;
+- `blocked-review` — implementation/evidence is prepared but progress depends on review;
+- `blocked-dependency` — progress waits for another task, decision, environment, or prerequisite;
+- `paused` — the task is intentionally inactive but remains potentially executable;
+- `closed` — the task/development cycle is inactive and no longer being worked; **this state makes no claim that the planned work is complete**;
+- `done_confirmed` — the approved task scope is fully implemented according to its current plan, required build/tests/runtime or scientific validation have been executed successfully, documentation/evidence are reconciled, no known in-scope acceptance criterion remains unmet or unverified, and the result has been accepted;
+- `cancelled` — the task was intentionally removed from the active plan and is not expected to be completed under its former scope.
+
+Historical backlog entries using `done` retain their historical meaning under the rules in force when they were recorded. `done` is a legacy status for new work: it must not be silently interpreted as `done_confirmed`, and existing entries must not be mass-upgraded without explicit re-verification against the stronger `done_confirmed` criterion.
+
+A merged PR, a closed issue, a green build, a passing focused test, or the end of an implementation session is never sufficient by itself to justify `done_confirmed`.
 
 ## 5. Change policy
 

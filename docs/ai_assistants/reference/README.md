@@ -102,9 +102,26 @@ Use for:
 Use for:
 
 - ModalModel/DefaultNetwork architecture and process-versus-network-domain boundary;
-- EFSM/DTMC/CPN formalism semantics and scope;
-- migration plan for the legacy ModalModel classes;
-- settled decisions versus intentionally open implementation questions.
+- EFSM/DTMC/CPN formalism semantics and original scope;
+- historical migration rationale and the design integrated in PRs #528/#529.
+
+For continuation work, read it together with the newer completion plan below. When the older reference leaves a Modal/Network item open or treats legacy `.gen` compatibility or a broader CPN feature set as mandatory, apply the maintainer decisions recorded in the completion plan.
+
+### [`MODAL_NETWORK_COMPLETION_PLAN.md`](MODAL_NETWORK_COMPLETION_PLAN.md)
+
+Use for:
+
+- the current maintainer decisions for completing and verifying ModalModel/DefaultNetwork;
+- the distinction between historical implementation evidence and current-head verification;
+- the verification-led roadmap for DefaultNetwork, ModalModelDefault, EFSM, Graph, DTMC and the pragmatic CPN subset;
+- safe legacy removal via `git rm` after dependency proof (never a `source/.../deprecated/` quarantine);
+- the three-mode EFSM conflict policy;
+- the deferred Cellular Automata -> DefaultNetwork migration;
+- the `done_confirmed` completion gate before broad GUI work or later CA migration.
+
+### [`MODAL_NETWORK_GUI_ARCHITECTURE.md`](MODAL_NETWORK_GUI_ARCHITECTURE.md)
+
+Use for the proposed Qt6 editor/viewer architecture after the backend contracts and completion gate in `MODAL_NETWORK_COMPLETION_PLAN.md` have been revalidated locally.
 
 ## 3. Reference rules
 

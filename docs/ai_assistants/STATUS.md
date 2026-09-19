@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-08-31
+last_updated: 2026-09-19
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -19,12 +19,15 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
+- Current remote `WorkInProgress` HEAD confirmed on 2026-09-19: `dd7bd64978ee80b1af3cc19fad0d9bde2e3f97fb` (`feat(efsm): add configurable transition conflict policy (#534)`).
+- Immediately preceding integrated Modal/Network-relevant merges on this line:
+  - PR #533 (`85626d3a`) — expose official `tests-unit` / `tests-kernel-unit` / `tests-smoke` presets;
+  - PR #534 (`dd7bd649`) — EFSM configurable conflict policy (`MODEL_ERROR`, `NONDETERMINISTIC_CHOICE`, `DETERMINISTIC_PRIORITY`) with persistence and focused tests.
 - Latest integrated documentation checkpoint: `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` — completion record through PR #519.
-- Final completion validation:
+- Final documentation-governance completion validation:
   - documentation-governance run `29939815697`: passed;
   - ordinary CI run `29939816032`: configure, build, CTest and GUI GMDD diagnostics passed.
-- AI-assistant documentation migration D0–D6: **complete**.
-- Issue #511: **closed as completed**.
+- AI-assistant documentation migration D0–D6: complete according to its historical acceptance record. Issue #511 is closed; under the current status semantics, historical closure/completion wording is not automatically equivalent to the newer `done_confirmed` state unless explicitly revalidated under that criterion.
 - Stable promotion target: `20262`, only near the end of the second semester of 2026.
 - Release readiness: **not established**.
 - GenESyS manual restructuring and governance follow-up: in progress on
@@ -54,24 +57,48 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   failure (Section 4); `tests-unit` still shows 13 unrelated WholeCell/Bio
   failures tied to a plugin-loading path involving `attribute.so`, outside
   this scope and not yet triaged into a backlog entry.
-- The ModalModel/network-of-computation architecture (PR #528, merge
-  `e0185163`, and PR #529, merge `fdae135b`, both 2026-08-31) is integrated:
-  `DefaultNetwork`/`DefaultNode` core, the `ModalModelDefault` bridge, and
-  four formalism specializations — `EFSMNetwork`, the `GraphNetwork` family
-  (BFS/DFS/Dijkstra/Tarjan SCC/topological sort), `MarkovChainNetwork`
-  (finite time-homogeneous DTMC), and `ColoredPetriNetNetwork` (fixed-
-  inscription CPN, single-deterministic firing) — plus replacement of the
-  legacy `std::rand()` sampling in `ModalModelDefault` with the reproducible
-  kernel RNG. See
-  [`reference/GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md`](reference/GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md)
-  and `AUTO-MODAL-001` in `BACKLOG_AUTONOMOUS.md` for the full record.
-  A Phase 9 GUI/editor architecture is proposed but not implemented:
+- The ModalModel/network-of-computation implementation cycle represented by
+  PR #528 (merge `e0185163`) and PR #529 (merge `fdae135b`), both 2026-08-31,
+  is integrated. Historical evidence from that cycle records
+  `DefaultNetwork`/`DefaultNode`, the `ModalModelDefault` bridge,
+  `EFSMNetwork`, the `GraphNetwork` family, `MarkovChainNetwork` and
+  `ColoredPetriNetNetwork`, with a kernel-unit snapshot of 1810/1810 executed
+  tests passed and 4 preexisting disabled tests. This is historical evidence,
+  not current-HEAD execution evidence.
+- `AUTO-MODAL-001` must now be interpreted as **closed**: its development
+  cycle is inactive, but this does **not** prove that the full approved
+  ModalModel/DefaultNetwork architecture is complete. The current Modal/Network
+  development is **not `done_confirmed`**.
+- Current-HEAD baseline verification was executed locally on 2026-09-19 against
+  `dd7bd649` (toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
+  - `tests-unit`: 1,829 registered; 1,825 executed/passed; 0 failed; 4 disabled;
+  - `tests-kernel-unit`: 1,829 registered; 1,825 executed/passed; 0 failed; 4 disabled;
+  - `tests-smoke`: 3/3 passed;
+  - focused Modal/Network suite: 68/68 passed.
+  This establishes a clean regression baseline; it does **not** by itself make
+  Modal/Network `done_confirmed`. Remaining verification/gap work continues under
+  `AUTO-MODAL-002` (`running`). The continuation guide is
+  [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md).
+- Historical `.gen` compatibility is explicitly **not a requirement** for the
+  Modal/Network continuation. Current supported persistence/round-trip remains
+  a requirement.
+- Maintainer decisions recorded 2026-09-18 for the continuation include:
+  a pragmatic GenESyS CPN subset rather than a full academic CPN target;
+  eventual Cellular Automata migration to `DefaultNetwork`, deferred until the
+  current architecture is complete and validated; and configurable EFSM
+  multiple-enabled-transition semantics with three modes: model error,
+  nondeterministic random choice through the GenESyS RNG/sampler, and
+  deterministic priority.
+- Obsolete Modal/Network classes must be removed from the `source/` tree once
+  current dependency analysis proves their migration/removal is safe. They
+  must not be retained under another `source/` subdirectory. This decision is
+  motivated by the current recursive `*.cpp` discovery in
+  `source/plugins/components/CMakeLists.txt`, which would continue compiling
+  component sources placed in nested directories. Do not complicate CMake
+  solely to retain obsolete implementation files; Git history is the archive.
+- A Phase 9 GUI/editor architecture remains proposed rather than established as
+  implemented; backend contracts must be stabilized and revalidated first:
   [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md).
-  CPN variable-binding/type-system/multi-firing semantics, CTMC/MDP support,
-  graph traversal/movement simulation, and legacy `ModalModelFSM`/
-  `ModalModelPetriNet` wrapper cleanup remain intentionally out of this scope.
-  Validation snapshot at merge time: `tests-kernel-unit` 1810/1810 executed
-  tests passed, 4 preexisting disabled tests unchanged.
 
 ## 3. Technical baseline
 
@@ -88,22 +115,24 @@ Recent CI evidence used CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. Those exact v
 
 ## 4. Exact core test baseline
 
-Latest retained exact Phase 0 inventory:
+Current exact inventory on `WorkInProgress` HEAD `dd7bd649` (executed 2026-09-19 locally):
 
-- registered: 1,721;
-- executed/passed: 1,717;
+- registered: 1,829;
+- executed/passed: 1,825;
 - failed: 0;
 - disabled: 4 historical duplicate Search/Remove blocks.
 
-Equivalent active Search/Remove tests are mandatory, so the four disabled blocks are source-cleanup debt rather than current behavioral coverage gaps.
+The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 68/68 passed.
+
+Equivalent active Search/Remove tests are mandatory, so the four disabled blocks remain source-cleanup debt rather than current behavioral coverage gaps.
 
 Validated core paths include ordinary unit CI, GUI GMDD diagnostics, kernel/direct runner/CTest inventory, three smoke tests, focused plugin-completion ASan/LSan, AI plugin tests, legacy solver regression, Search/Remove runtime, Queue/Station/Delay/Resource lifecycle and the optimizer non-copy/non-move contract.
 
-No later production test-graph change has established a different exact inventory.
+The older Phase 0 inventory (1,721/1,717/0/4) and the 2026-08-31 Modal/Network checkpoint (1,810 executed) remain historical evidence only.
 
 ## 5. Integrated bounded work
 
-Completed work includes:
+Completed historical work includes:
 
 - CI trigger corrections and AI test aggregation;
 - reusable Phase 0 validation;
@@ -116,6 +145,8 @@ Completed work includes:
 - Data Analyser, Optimizer and AI Assistant GUI startup validation.
 
 Executed details are indexed in [`history/evidence/2026/07/VALIDATION_LEDGER.md`](history/evidence/2026/07/VALIDATION_LEDGER.md).
+
+Historical completion wording in this section records prior task acceptance under the rules then in force; it is not an automatic `done_confirmed` classification under the status semantics adopted on 2026-09-18.
 
 ## 6. Application status
 
@@ -145,7 +176,9 @@ Startup does not imply functional or scientific maturity.
 - `HUM-VC-001`: initial AI virtual-cell organism/use case/data package;
 - `HUM-REL-001`: final supported set and promotion gate.
 
-These must not be guessed by autonomous agents.
+For Modal/Network, the decisions recorded on 2026-09-18 remove the previously assumed need for a human decision about historical `.gen` compatibility, CPN target depth, Cellular Automata direction, EFSM multiple-enabled-transition policy, and retention of obsolete source classes. Any remaining implementation uncertainty in those areas is a current-code/current-test verification question, not permission to invent a new policy.
+
+These other listed boundaries must not be guessed by autonomous agents.
 
 ## 8. Ownership, scientific and maturity boundaries
 
@@ -153,20 +186,22 @@ Confirmed only for exercised ownership paths: temporary plugin-completion Model 
 
 Not established: repository-wide leak freedom, thread safety, broad UBSan/Valgrind, complete optimizer behavior, broad numerical/statistical validation, biological predictive validity or release readiness.
 
+For Modal/Network specifically, ownership/lifetime conclusions on the current HEAD remain verification-pending until the local continuation maps current ownership and executes the required tests/diagnostics.
+
 Whole-cell/biochemical/AI virtual-cell work remains experimental/research-oriented. Software maturity and scientific claim level remain independent.
 
 ## 9. Documentation migration result
 
 | Phase | Status | PR / merge | Result |
 |---|---|---|---|
-| D0 | done | #512 / `958cdc6f63c02d004f1ffdf55e104b58a245bb88` | canonical layer and runbooks |
-| D1 | done | #513 / `b48697e77d39b25cafc19271ce574bdead60f94d` | normative governance consolidated |
-| D2 | done | #514 / `53b49f7518509823fe2265a3f017b5aa76f09d2f` | sole current state and backlogs |
-| D3 | done | #515 / `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | date-first evidence ledger |
-| D4 | done | #516 / `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | six technical references and active-root cleanup |
-| D6 | done | #517 / `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | single oldies tracker; 25 retained files protected |
-| D5 | done | #518 / `610d8ab21c87cfd11663af78370b39262cf4da81` | local and GitHub Actions governance enforcement |
-| Completion | done | #519 / `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` | final canonical record and issue closure basis |
+| D0 | done (historical) | #512 / `958cdc6f63c02d004f1ffdf55e104b58a245bb88` | canonical layer and runbooks |
+| D1 | done (historical) | #513 / `b48697e77d39b25cafc19271ce574bdead60f94d` | normative governance consolidated |
+| D2 | done (historical) | #514 / `53b49f7518509823fe2265a3f017b5aa76f09d2f` | sole current state and backlogs |
+| D3 | done (historical) | #515 / `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | date-first evidence ledger |
+| D4 | done (historical) | #516 / `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | six technical references and active-root cleanup |
+| D6 | done (historical) | #517 / `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | single oldies tracker; 25 retained files protected |
+| D5 | done (historical) | #518 / `610d8ab21c87cfd11663af78370b39262cf4da81` | local and GitHub Actions governance enforcement |
+| Completion | done (historical) | #519 / `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` | final canonical record and issue closure basis |
 
 All migration source branches through PR #519 were removed automatically after merge.
 
@@ -204,11 +239,16 @@ The documentation-migration-specific freeze has ended.
 
 Previously paused technical tasks remain `paused`; they do not resume automatically. A maintainer must explicitly activate the selected next task in `BACKLOG_AUTONOMOUS.md`.
 
+For Modal/Network, the maintainer has approved the continuation direction recorded in `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. `AUTO-MODAL-001` is `closed`. `AUTO-MODAL-002` is `running` on the local continuation after the 2026-09-19 baseline and the integration of PRs #533 and #534.
+
 ## 13. Ongoing governance
 
 - Future AI-assistant documentation changes must pass the focused governance workflow.
 - Canonical facts, tasks, decisions, evidence and historical material must remain in their designated locations.
 - The completed migration record is `history/migrations/ai_docs_governance_completion_20260722.md`.
+- `closed` must not be used as evidence of implementation completeness.
+- `done_confirmed` is reserved for a task/scope that is fully developed according to its approved plan, built, tested, functioning, verified, documented and accepted with no known unmet acceptance criterion in that scope.
+- Existing historical `done` labels remain legacy records until individually reconciled; they are not automatically upgraded to `done_confirmed`.
 
 ## 14. Launcher and Debian packaging
 
@@ -245,3 +285,23 @@ Previously paused technical tasks remain `paused`; they do not resume automatica
   `require_signature=true`. No GitHub Release, PPA/APT repository, or
   package signing was produced by this work; `genesys-debian-packages` is a
   workflow artifact, not a distribution channel.
+
+## 15. ModalModel / DefaultNetwork continuation checkpoint
+
+Current status: **baseline established on HEAD `dd7bd649`; continuation `running` under `AUTO-MODAL-002`; not `done_confirmed`**.
+
+Completed since the 2026-09-18 documentation reconcile draft:
+
+1. public test presets restored (#533);
+2. EFSM conflict policy implemented, reviewed for ownership, and merged (#534);
+3. current unit/kernel/smoke and focused Modal/Network baselines re-executed on HEAD.
+
+Remaining before any `done_confirmed` claim:
+
+1. finish the verification matrix for `DefaultNetwork`, `ModalModelDefault`, Graph, DTMC and pragmatic CPN, including current-format persistence round-trips where still only internal `_saveInstance`/`_loadInstance` coverage exists;
+2. map and safely remove obsolete legacy Modal classes only after current consumers are migrated (`git rm`; no `source/.../deprecated/`);
+3. implement GUI only after backend contracts are stable, starting from the approved G0/G1 plan;
+4. keep Cellular Automata deferred;
+5. reconcile evidence/manual impact for each material result.
+
+The authoritative detailed continuation guide is `reference/MODAL_NETWORK_COMPLETION_PLAN.md`.
