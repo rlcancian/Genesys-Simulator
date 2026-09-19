@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-08-31
+last_updated: 2026-09-19
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -227,18 +227,6 @@ This is the only approved source for work an AI agent may execute without a new 
   - full regression snapshot on 2026-08-31 after Phase 8 safe compatibility cleanup: `cmake --build build/tests-unit -j2 --target genesys_kernel_unit_tests` passed; `ctest --test-dir build/tests-unit --output-on-failure` passed with 1810/1810 executed tests and 4 preexisting disabled tests;
   - remaining work: GUI/editor synchronization for network ports and bindings, cleanup/migration strategy for legacy `ModalModelFSM`/`ModalModelPetriNet` wrappers, and future full CPN variable-binding/type-system/multi-firing semantics. This historical record is not a completion claim.
 
-### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
-
-- Priority: `P1`
-- Status: `ready`
-- Environment: `local`
-- Base: current `origin/WorkInProgress`
-- Dependency: `AUTO-MODAL-001` is closed; current-HEAD verification is required before implementation.
-- Scope: verify the current `DefaultNetwork` contract and `ModalModelDefault` adapter; validate current persistence and plugin registration; audit EFSM, Graph, finite homogeneous DTMC and pragmatic CPN behavior; implement only confirmed gaps; remove obsolete Modal/Network source classes only after dependency proof; defer Cellular Automata migration until this task is genuinely complete.
-- Non-goals: historical `.gen` compatibility, full academic CPN semantics, CTMC/MDP/time-inhomogeneous Markov models, graph movement/routing simulation, broad plugin redesign, and Cellular Automata migration.
-- Acceptance: all approved in-scope behavior is implemented, compiled, tested, runtime-verified, documented and integrated in `WorkInProgress`; no known in-scope criterion remains pending. Only then may this task become `done_confirmed`.
-- Current evidence: clean current-HEAD baseline is being established after the independent public-preset correction; historical counts in `AUTO-MODAL-001` remain historical until re-executed.
-
 #### GraphNetwork extension
 
 ##### Architecture
@@ -401,9 +389,26 @@ This is the only approved source for work an AI agent may execute without a new 
 
 ## 5. Active bounded work
 
-`AUTO-MODAL-002` is ready for current-HEAD verification. `AUTO-MODAL-001`
-remains in Section 4 as a closed historical development cycle, not as
-`done_confirmed`.
+### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local`
+- Base: `origin/WorkInProgress` at `dd7bd64978ee80b1af3cc19fad0d9bde2e3f97fb`
+- Branch/worktree: `WiP202609/modal-network-continuation` (local)
+- Authorization: explicit maintainer continuation instruction dated 2026-09-19.
+- Dependency: `AUTO-MODAL-001` is closed; current-HEAD verification is required before implementation.
+- Scope: verify the current `DefaultNetwork` contract and `ModalModelDefault` adapter; validate current persistence and plugin registration; audit EFSM, Graph, finite homogeneous DTMC and pragmatic CPN behavior; implement only confirmed gaps; remove obsolete Modal/Network source classes only after dependency proof; defer Cellular Automata migration until this task is genuinely complete.
+- Non-goals: historical `.gen` compatibility, full academic CPN semantics, CTMC/MDP/time-inhomogeneous Markov models, graph movement/routing simulation, broad plugin redesign, and Cellular Automata migration.
+- Acceptance: all approved in-scope behavior is implemented, compiled, tested, runtime-verified, documented and integrated in `WorkInProgress`; no known in-scope criterion remains pending. Only then may this task become `done_confirmed`.
+- Current evidence (executed 2026-09-19 on HEAD `dd7bd649`, Ubuntu 24.04, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
+  - `tests-unit`: 1,829 registered; 1,825 executed/passed; 0 failed; 4 disabled;
+  - `tests-kernel-unit`: 1,829 registered; 1,825 executed/passed; 0 failed; 4 disabled;
+  - `tests-smoke`: 3/3 passed;
+  - focused Modal/Network regex `ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork`: 68/68 passed (includes EFSM conflict-policy tests from PR #534);
+  - PR #533 (`tests-unit`/`tests-kernel-unit`/`tests-smoke` public presets) and PR #534 (EFSM conflict policy) are integrated in this HEAD.
+
+`AUTO-MODAL-001` remains in Section 4 as a closed historical development cycle, not as `done_confirmed`.
 
 ## 6. Paused technical tasks
 

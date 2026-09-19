@@ -2,7 +2,7 @@
 document_type: reference
 authority: technical-plan
 owner: project-maintainer
-last_reviewed: 2026-09-18
+last_reviewed: 2026-09-19
 review_cadence: on-modal-contract-change
 status: active
 tracks: AUTO-MODAL-001,AUTO-MODAL-002
@@ -22,6 +22,18 @@ The companion architectural baseline remains:
 - `reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`.
 
 This document narrows the continuation work, records maintainer decisions made on 2026-09-18, and distinguishes verified historical evidence from **verification pending on the current branch**.
+
+## 1.1 Current integration checkpoint (2026-09-19)
+
+Confirmed by executed local evidence on `WorkInProgress` HEAD `dd7bd64978ee80b1af3cc19fad0d9bde2e3f97fb`:
+
+- public presets restored by PR #533;
+- EFSM three-mode conflict policy merged by PR #534;
+- `tests-unit` / `tests-kernel-unit`: 1,829 registered, 1,825 passed, 0 failed, 4 disabled;
+- `tests-smoke`: 3/3;
+- focused Modal/Network: 68/68.
+
+This checkpoint updates historical counts but does not close the verification matrix or authorize `done_confirmed`.
 
 ## 2. Evidence discipline for this plan
 

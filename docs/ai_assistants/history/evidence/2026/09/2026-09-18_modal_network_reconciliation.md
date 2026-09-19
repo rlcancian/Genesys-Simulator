@@ -109,3 +109,16 @@ The next local agent must establish these facts before classifying implementatio
 ## Next step
 
 Use `reference/MODAL_NETWORK_COMPLETION_PLAN.md` as the technical guide. Begin with current-HEAD inventory and executable verification, then reconcile the two canonical backlogs before implementing confirmed gaps. Do not treat historical `closed`/`done` labels as completion evidence.
+
+## Follow-up: 2026-09-19 local baseline after PR #533/#534
+
+- Classification: confirmed by executed evidence (local worktree `Genesys-ModalNetwork`).
+- HEAD: `dd7bd64978ee80b1af3cc19fad0d9bde2e3f97fb`.
+- Toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1, Ubuntu 24.04.
+- `cmake --list-presets=all` exposes `tests-unit`, `tests-kernel-unit`, `tests-smoke`.
+- `tests-unit`: 1,829 registered; 1,825 passed; 0 failed; 4 disabled.
+- `tests-kernel-unit`: 1,829 registered; 1,825 passed; 0 failed; 4 disabled.
+- `tests-smoke`: 3/3 passed.
+- Focused Modal/Network regex: 68/68 passed.
+- PR #534 ownership review: `EFSMNetwork` destructor deletes only the `List` containers and network-owned sampler, matching `MarkovChainNetwork`/`ColoredPetriNetNetwork`; `List::~List` does not delete pointees; `FSMState` remains ModelDataManager-owned; heap `EFSMTransition` objects created during load remain a pre-existing residual ownership gap, not introduced by #534.
+- This baseline does not authorize `done_confirmed`.

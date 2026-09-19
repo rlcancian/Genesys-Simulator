@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-09-18
+last_updated: 2026-09-19
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -19,7 +19,10 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Current remote `WorkInProgress` HEAD confirmed on 2026-09-18: `4c745d7181c1584c7cf859a4db4ca93d46c95615` (`Enabling gui bilds in clion`, authored 2026-09-02).
+- Current remote `WorkInProgress` HEAD confirmed on 2026-09-19: `dd7bd64978ee80b1af3cc19fad0d9bde2e3f97fb` (`feat(efsm): add configurable transition conflict policy (#534)`).
+- Immediately preceding integrated Modal/Network-relevant merges on this line:
+  - PR #533 (`85626d3a`) — expose official `tests-unit` / `tests-kernel-unit` / `tests-smoke` presets;
+  - PR #534 (`dd7bd649`) — EFSM configurable conflict policy (`MODEL_ERROR`, `NONDETERMINISTIC_CHOICE`, `DETERMINISTIC_PRIORITY`) with persistence and focused tests.
 - Latest integrated documentation checkpoint: `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` — completion record through PR #519.
 - Final documentation-governance completion validation:
   - documentation-governance run `29939815697`: passed;
@@ -66,9 +69,15 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   cycle is inactive, but this does **not** prove that the full approved
   ModalModel/DefaultNetwork architecture is complete. The current Modal/Network
   development is **not `done_confirmed`**.
-- Current-HEAD build/test/runtime verification of Modal/Network is pending in
-  a local environment with Git, CMake, Ninja, CTest and sanitizer access.
-  The continuation and verification guide is
+- Current-HEAD baseline verification was executed locally on 2026-09-19 against
+  `dd7bd649` (toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
+  - `tests-unit`: 1,829 registered; 1,825 executed/passed; 0 failed; 4 disabled;
+  - `tests-kernel-unit`: 1,829 registered; 1,825 executed/passed; 0 failed; 4 disabled;
+  - `tests-smoke`: 3/3 passed;
+  - focused Modal/Network suite: 68/68 passed.
+  This establishes a clean regression baseline; it does **not** by itself make
+  Modal/Network `done_confirmed`. Remaining verification/gap work continues under
+  `AUTO-MODAL-002` (`running`). The continuation guide is
   [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md).
 - Historical `.gen` compatibility is explicitly **not a requirement** for the
   Modal/Network continuation. Current supported persistence/round-trip remains
@@ -106,18 +115,20 @@ Recent CI evidence used CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. Those exact v
 
 ## 4. Exact core test baseline
 
-Latest retained exact Phase 0 inventory:
+Current exact inventory on `WorkInProgress` HEAD `dd7bd649` (executed 2026-09-19 locally):
 
-- registered: 1,721;
-- executed/passed: 1,717;
+- registered: 1,829;
+- executed/passed: 1,825;
 - failed: 0;
 - disabled: 4 historical duplicate Search/Remove blocks.
 
-Equivalent active Search/Remove tests are mandatory, so the four disabled blocks are source-cleanup debt rather than current behavioral coverage gaps.
+The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 68/68 passed.
+
+Equivalent active Search/Remove tests are mandatory, so the four disabled blocks remain source-cleanup debt rather than current behavioral coverage gaps.
 
 Validated core paths include ordinary unit CI, GUI GMDD diagnostics, kernel/direct runner/CTest inventory, three smoke tests, focused plugin-completion ASan/LSan, AI plugin tests, legacy solver regression, Search/Remove runtime, Queue/Station/Delay/Resource lifecycle and the optimizer non-copy/non-move contract.
 
-No later production test-graph change has established a different exact inventory in the canonical baseline. Modal/Network historical evidence records later focused/regression counts for the 2026-08-31 implementation checkpoint, but those counts must be re-established on the current `WorkInProgress` HEAD before being promoted to current execution evidence.
+The older Phase 0 inventory (1,721/1,717/0/4) and the 2026-08-31 Modal/Network checkpoint (1,810 executed) remain historical evidence only.
 
 ## 5. Integrated bounded work
 
@@ -228,7 +239,7 @@ The documentation-migration-specific freeze has ended.
 
 Previously paused technical tasks remain `paused`; they do not resume automatically. A maintainer must explicitly activate the selected next task in `BACKLOG_AUTONOMOUS.md`.
 
-For Modal/Network, the maintainer has approved the continuation direction recorded in `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. Because the canonical autonomous backlog is a large file whose connector response is truncated, this GitHub-only documentation pass must not reconstruct it unsafely. The local continuation must reconcile `AUTO-MODAL-001` to `closed` and add/activate the bounded continuation task (recommended ID `AUTO-MODAL-002`) before autonomous implementation begins.
+For Modal/Network, the maintainer has approved the continuation direction recorded in `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. `AUTO-MODAL-001` is `closed`. `AUTO-MODAL-002` is `running` on the local continuation after the 2026-09-19 baseline and the integration of PRs #533 and #534.
 
 ## 13. Ongoing governance
 
@@ -277,20 +288,20 @@ For Modal/Network, the maintainer has approved the continuation direction record
 
 ## 15. ModalModel / DefaultNetwork continuation checkpoint
 
-Current status: **verification pending; not `done_confirmed`**.
+Current status: **baseline established on HEAD `dd7bd649`; continuation `running` under `AUTO-MODAL-002`; not `done_confirmed`**.
 
-The next local continuation should first prove the current state before editing code. At minimum it should:
+Completed since the 2026-09-18 documentation reconcile draft:
 
-1. establish the current build and Modal/Network focused-test baseline;
-2. verify `DefaultNetwork` ownership/lifecycle/contracts;
-3. verify the `ModalModelDefault` adapter end-to-end, including zero/one/multiple outputs, presence, bindings, entity consumption/cloning, `_check()`, reset and current persistence;
-4. verify EFSM and implement only any confirmed gap for the maintainer-approved configurable multiple-enabled-transition policy;
-5. verify Graph/DAG advertised invariants and algorithms without adding process-flow semantics;
-6. verify the finite time-homogeneous DTMC contract, probability validation and reproducible sampling;
-7. define and verify the pragmatic CPN subset before adding any advanced CPN semantics;
-8. map current dependencies on legacy modal classes and, after all legitimate current callers/registrations/tests are migrated, remove obsolete class files from `source/`; do not add build exclusions solely to retain obsolete source;
-9. keep Cellular Automata migration deferred until the current Modal/Network architecture is complete, functioning, tested and validated;
-10. address GUI/editor implementation only after backend contracts are stable;
-11. reconcile the canonical backlogs and evidence records after each material result.
+1. public test presets restored (#533);
+2. EFSM conflict policy implemented, reviewed for ownership, and merged (#534);
+3. current unit/kernel/smoke and focused Modal/Network baselines re-executed on HEAD.
+
+Remaining before any `done_confirmed` claim:
+
+1. finish the verification matrix for `DefaultNetwork`, `ModalModelDefault`, Graph, DTMC and pragmatic CPN, including current-format persistence round-trips where still only internal `_saveInstance`/`_loadInstance` coverage exists;
+2. map and safely remove obsolete legacy Modal classes only after current consumers are migrated (`git rm`; no `source/.../deprecated/`);
+3. implement GUI only after backend contracts are stable, starting from the approved G0/G1 plan;
+4. keep Cellular Automata deferred;
+5. reconcile evidence/manual impact for each material result.
 
 The authoritative detailed continuation guide is `reference/MODAL_NETWORK_COMPLETION_PLAN.md`.
