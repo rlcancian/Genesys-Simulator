@@ -2,7 +2,7 @@
 document_type: reference
 authority: technical-plan
 owner: project-maintainer
-last_reviewed: 2026-09-19
+last_reviewed: 2026-09-20
 review_cadence: on-modal-contract-change
 status: active
 tracks: AUTO-MODAL-001,AUTO-MODAL-002
@@ -25,20 +25,22 @@ This document narrows the continuation work, records maintainer decisions made o
 
 ## 1.1 Current integration checkpoint (2026-09-20)
 
-Confirmed by executed local evidence on `WorkInProgress` HEAD `e0a6a73b`:
+Confirmed by executed local evidence on `WorkInProgress` HEAD `5bd10bb5`:
 
 - public presets restored by PR #533;
 - EFSM three-mode conflict policy merged by PR #534;
 - Model-file EFSM/Modal + DTMC reproducibility by PR #535;
 - canonical LoadInstance reuse (identity) by PR #536;
 - full Model round-trips Graph/DTMC/CPN + Modal execute-after-load by PR #537;
-- `tests-unit` / `tests-kernel-unit`: 1,836 registered, 1,832 passed, 0 failed, 4 disabled;
+- List/transition ownership closed by PRs #538/#540;
+- legacy wrappers/node-list/`PetriTransition` removed and smart apps migrated by PR #541;
+- `tests-unit`: 1,834 registered, 1,830 passed, 0 failed, 4 disabled;
 - `tests-smoke`: 3/3;
-- focused Modal/Network: 75/75.
+- focused Modal/Network: 73/73.
 
-This checkpoint advances the verification matrix for persistence/identity but does **not** close legacy cleanup, sanitizer residual ownership, GUI, or authorize `done_confirmed`.
+**Backend gate: PASSED.** `AUTO-MODAL-002` backend scope is `done_confirmed`. Global Modal/Network architecture remains **not** `done_confirmed` while GUI (`HUM-MODAL-002` / Section 13) is still an approved completion-plan phase.
 
-Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_progress.md`.
+Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 ## 2. Evidence discipline for this plan
 
@@ -212,8 +214,8 @@ At minimum, classify each item below using current-code/current-run evidence.
 | pragmatic CPN subset | verify | verify | verify | pending |
 | persistence/current round-trip | verify | verify | verify | pending |
 | plugin/factory registration | verify | verify where possible | verify | pending |
-| legacy classes/current references | verify | N/A | build/test | pending |
-| GUI integration | verify | verify existing GUI tests | verify | pending |
+| legacy classes/current references | removed (#541) | N/A | build/test | confirmed by execution |
+| GUI integration | deferred | deferred | deferred | pending (post-backend; HUM-MODAL-002) |
 | Cellular Automata migration prerequisites | inspect only | N/A | N/A | deferred |
 
 ## 7. Candidate work A — complete the already-approved backend architecture
