@@ -392,25 +392,26 @@ This is the only approved source for work an AI agent may execute without a new 
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
 
 - Priority: `P1`
-- Status: `running`
+- Status: `done_confirmed`
 - Environment: `local`
-- Base: `origin/WorkInProgress` at `e0a6a73b` (after #537)
-- Branch/worktree: continuation across `WiP202609/modal-persistence-identity` (#536), `WiP202609/modal-full-model-roundtrips` (#537), `WiP202609/modal-legacy-leak-cleanup` (#538)
+- Base: `origin/WorkInProgress` at `5bd10bb5` (after #541)
+- Branch/worktree: continuation through #536–#541; docs close-out on `WiP202609/modal-backend-gate-docs`
 - Authorization: explicit maintainer continuation instruction dated 2026-09-19; backend-gate continuation 2026-09-20.
-- Dependency: `AUTO-MODAL-001` is closed; current-HEAD verification is required before implementation.
+- Dependency: `AUTO-MODAL-001` is closed; current-HEAD verification completed before and after #540/#541.
 - Scope: verify the current `DefaultNetwork` contract and `ModalModelDefault` adapter; validate current persistence and plugin registration; audit EFSM, Graph, finite homogeneous DTMC and pragmatic CPN behavior; implement only confirmed gaps; remove obsolete Modal/Network source classes only after dependency proof; defer Cellular Automata migration until this task is genuinely complete.
 - Non-goals: historical `.gen` compatibility, full academic CPN semantics, CTMC/MDP/time-inhomogeneous Markov models, graph movement/routing simulation, broad plugin redesign, Cellular Automata migration, and GUI (explicit backend-gate stop).
-- Acceptance: all approved in-scope behavior is implemented, compiled, tested, runtime-verified, documented and integrated in `WorkInProgress`; no known in-scope criterion remains pending. Only then may this task become `done_confirmed`. GUI remains outside backend-gate acceptance but may still block global architecture `done_confirmed` per the completion plan.
-- Progress (2026-09-20):
-  - #536/#537 integrated: canonical LoadInstance reuse; full Model round-trips Graph/DTMC/CPN/Modal;
-  - focused Modal/Network: 75/75; unit/kernel 1832/1832 passed (+4 disabled); smoke 3/3;
-  - remaining: legacy smart-app migration + physical removal of obsolete wrappers/node-list path; residual sanitizer/ownership closure; docs/manual reconcile; GUI deferred.
-- Current evidence (executed 2026-09-20 on HEAD `e0a6a73b`, Ubuntu 24.04, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
-  - `tests-unit`: 1,836 registered; 1,832 executed/passed; 0 failed; 4 disabled;
-  - `tests-kernel-unit`: 1,836 registered; 1,832 executed/passed; 0 failed; 4 disabled;
+- Acceptance: all approved **backend** in-scope behavior is implemented, compiled, tested, runtime-verified, documented and integrated in `WorkInProgress`; no known backend-gate criterion remains pending. GUI remains outside this task (`HUM-MODAL-002`) and still blocks **global** Modal/Network architecture `done_confirmed` per the completion plan.
+- Progress (2026-09-20 close-out):
+  - #536/#537: identity + full Model round-trips Graph/DTMC/CPN/Modal;
+  - #538/#540: List/transition ownership (ASan/LSan focused paths exit 0 excluding process-lifetime Buffer noise);
+  - #541: physical removal of `ModalModelFSM`/`ModalModelPetriNet`/node-list/`PetriTransition`; smart apps migrated;
+  - focused Modal/Network: 73/73; unit 1830/1830 passed (+4 disabled); smoke 3/3; CI #541 green.
+- Current evidence (executed 2026-09-20 on HEAD `5bd10bb5`, Ubuntu 24.04, g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
+  - `tests-unit`: 1,834 registered; 1,830 executed/passed; 0 failed; 4 disabled;
+  - `tests-kernel-unit`: 1,834 registered; 1,830 executed/passed; 0 failed; 4 disabled;
   - `tests-smoke`: 3/3 passed;
-  - focused Modal/Network regex `ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork`: 75/75 passed;
-  - evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_progress.md`.
+  - focused Modal/Network regex `ColoredPetriNetNetwork|MarkovChainNetwork|GraphNetwork|EFSMNetwork|ModalModelDefaultNetwork|DefaultNode|DefaultNetwork`: 73/73 passed;
+  - evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 `AUTO-MODAL-001` remains in Section 4 as a closed historical development cycle, not as `done_confirmed`.
 

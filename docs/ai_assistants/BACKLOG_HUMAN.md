@@ -30,17 +30,17 @@ A decision recorded here is not implemented automatically unless a corresponding
 ### HUM-MODAL-001 — Legacy ModalModel wrapper and persistence compatibility
 
 - Priority: `P1`
-- Status: `decision-recorded`
+- Status: `done_confirmed`
 - Decision: historical `.gen` compatibility is not a requirement for the current continuation; current persistence must remain supported, and obsolete wrappers may be removed only after current consumers, registrations, tests, examples and persistence paths are migrated and proven unnecessary.
 - Confirmed evidence:
-  - `ModalModelDefault` now supports a `DefaultNetwork` bridge with explicit input/output bindings;
+  - `ModalModelDefault` supports a `DefaultNetwork` bridge with explicit input/output bindings;
   - `EFSMNetwork`, `MarkovChainNetwork`, `GraphNetwork` and `ColoredPetriNetNetwork` are registered network data definitions;
-  - `ModalModelFSM` and `ModalModelPetriNet` remain thin subclasses of `ModalModelDefault`;
-  - the legacy `ModalModelDefault` node-list execution path still exists for compatibility when no `DefaultNetwork` is attached;
-  - the legacy probabilistic path now uses a resettable GenESyS kernel sampler instead of `std::rand()`.
-- Decision source: maintainer reconciliation recorded in PR #532 on 2026-09-18.
-- Implementation status: pending dependency audit and backend verification; this is not permission to delete wrappers immediately.
-- Decision unlocks: bounded wrapper migration/removal after current-code evidence proves it safe.
+  - `ModalModelFSM` and `ModalModelPetriNet` were removed from `source/` after smart-app consumers migrated to `ModalModelDefault` + networks (PR #541);
+  - the legacy `ModalModelDefault` node-list execution path and `PetriTransition` were removed with #541;
+  - probabilistic paths use a resettable GenESyS kernel sampler instead of `std::rand()`.
+- Decision source: maintainer reconciliation recorded in PR #532 on 2026-09-18; implementation closed by PR #541 on 2026-09-20.
+- Implementation status: completed and integrated on `WorkInProgress` HEAD `5bd10bb5`.
+- Decision unlocks: GUI phase under `HUM-MODAL-002` on the stabilized backend.
 - Must not be combined with: full CPN variable binding, GUI network editor implementation, broad ModelDataManager ownership redesign or dynamic-plugin migration.
 
 ### HUM-MODAL-002 — GUI editor architecture for DataDefinition-based networks
@@ -59,7 +59,7 @@ A decision recorded here is not implemented automatically unless a corresponding
   - provide model-file/API construction first and defer GUI editing;
   - temporarily expose only read-only network visualization until editing contracts are stable.
 - Recommendation retained: implement the GUI only after backend contracts and the compatibility/persistence audit are stable; do not overload the existing process `Connection` canvas with graph/CPN arcs.
-- Implementation status: deferred until `AUTO-MODAL-002` backend work is verified.
+- Implementation status: backend prerequisite closed (`AUTO-MODAL-002` / #541); GUI phase remains deferred until explicitly activated.
 - Decision unlocks:
   - GUI creation/editing of network-owned nodes, places, transitions, arcs and graph edges;
   - synchronized `ModalModelDefault` input/output bindings;

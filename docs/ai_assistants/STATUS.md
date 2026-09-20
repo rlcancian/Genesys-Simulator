@@ -19,13 +19,16 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Current remote `WorkInProgress` HEAD confirmed on 2026-09-20: `e0a6a73b` (`test(modal): full Model round-trips for Graph, DTMC, CPN and Modal (#537)`).
+- Current remote `WorkInProgress` HEAD confirmed on 2026-09-20: `5bd10bb5` (`refactor(modal): remove legacy wrappers and ModalModelDefault node-list path (#541)`).
 - Immediately preceding integrated Modal/Network-relevant merges on this line:
   - PR #533 (`85626d3a`) — expose official `tests-unit` / `tests-kernel-unit` / `tests-smoke` presets;
   - PR #534 (`dd7bd649`) — EFSM configurable conflict policy;
   - PR #535 (`de0fbc1f`) — Model-file EFSM/Modal persistence + DTMC reproducibility;
   - PR #536 (`5494b237`) — canonical `LoadInstance` reuse (identity / no duplicate FSMState/Graph/CPN elements);
-  - PR #537 (`e0a6a73b`) — full Model round-trips for Graph/DTMC/CPN + Modal execute-after-load.
+  - PR #537 (`e0a6a73b`) — full Model round-trips for Graph/DTMC/CPN + Modal execute-after-load;
+  - PR #538 (`811c2525`) — `ModalModelDefault` List container ownership;
+  - PR #540 (`a913a07a`) — EFSM/Markov heap transition ownership + `DefaultNode` List dtor;
+  - PR #541 (`5bd10bb5`) — legacy wrapper/node-list/`PetriTransition` removal + smart-app migration.
 - Latest integrated documentation checkpoint: `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` — completion record through PR #519.
 - Final documentation-governance completion validation:
   - documentation-governance run `29939815697`: passed;
@@ -73,17 +76,16 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   ModalModel/DefaultNetwork architecture is complete. The current Modal/Network
   development is **not `done_confirmed`**.
 - Current-HEAD baseline verification was executed locally on 2026-09-20 against
-  `e0a6a73b` (toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
-  - `tests-unit`: 1,836 registered; 1,832 executed/passed; 0 failed; 4 disabled;
-  - `tests-kernel-unit`: 1,836 registered; 1,832 executed/passed; 0 failed; 4 disabled;
+  `5bd10bb5` (toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
+  - `tests-unit`: 1,834 registered; 1,830 executed/passed; 0 failed; 4 disabled;
+  - `tests-kernel-unit`: 1,834 registered; 1,830 executed/passed; 0 failed; 4 disabled;
   - `tests-smoke`: 3/3 passed;
-  - focused Modal/Network suite: 75/75 passed.
-  Persistence identity (no duplicate network element DataDefinitions after Model
-  save/load) and full-model round-trips for EFSM/Graph/DTMC/CPN/Modal are
-  confirmed by execution. This still does **not** make Modal/Network
-  `done_confirmed`: legacy `ModalModelFSM`/`ModalModelPetriNet`/node-list path
-  remain, and GUI remains a separate phase. Continuation under `AUTO-MODAL-002`
-  (`running`). Guide:
+  - focused Modal/Network suite: 73/73 passed.
+  Persistence identity, full-model round-trips, EFSM/Markov transition ownership,
+  and physical removal of legacy `ModalModelFSM`/`ModalModelPetriNet`/node-list
+  path are confirmed. **Backend gate: PASSED.** Global Modal/Network remains
+  **not `done_confirmed`** because GUI is a separate approved phase
+  (`HUM-MODAL-002`). `AUTO-MODAL-002` backend scope: `done_confirmed`. Guide:
   [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md).
 - Historical `.gen` compatibility is explicitly **not a requirement** for the
   Modal/Network continuation. Current supported persistence/round-trip remains
@@ -121,14 +123,14 @@ Recent CI evidence used CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. Those exact v
 
 ## 4. Exact core test baseline
 
-Current exact inventory on `WorkInProgress` HEAD `e0a6a73b` (executed 2026-09-20 locally):
+Current exact inventory on `WorkInProgress` HEAD `5bd10bb5` (executed 2026-09-20 locally):
 
-- registered: 1,836;
-- executed/passed: 1,832;
+- registered: 1,834;
+- executed/passed: 1,830;
 - failed: 0;
 - disabled: 4 historical duplicate Search/Remove blocks.
 
-The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 75/75 passed.
+The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 73/73 passed.
 
 Equivalent active Search/Remove tests are mandatory, so the four disabled blocks remain source-cleanup debt rather than current behavioral coverage gaps.
 
@@ -294,7 +296,7 @@ For Modal/Network, the maintainer has approved the continuation direction record
 
 ## 15. ModalModel / DefaultNetwork continuation checkpoint
 
-Current status: **persistence identity and full-model round-trips confirmed on HEAD `e0a6a73b`; continuation `running` under `AUTO-MODAL-002`; backend gate not closed; not `done_confirmed`**.
+Current status: **backend gate PASSED on HEAD `5bd10bb5`; `AUTO-MODAL-002` backend scope `done_confirmed`; global Modal/Network not `done_confirmed` (GUI deferred under `HUM-MODAL-002`)**.
 
 Completed since the 2026-09-19 baseline on `dd7bd649`:
 
@@ -303,18 +305,20 @@ Completed since the 2026-09-19 baseline on `dd7bd649`:
 3. Model-file EFSM/Modal persistence + DTMC reproducibility (#535);
 4. canonical LoadInstance reuse fixing duplicate DataDefinitions after Model reload (#536);
 5. full Model round-trips for Graph/DTMC/CPN and Modal execute-after-load (#537);
-6. unit/kernel/smoke and focused Modal/Network baselines re-executed (75/75 focused).
+6. `ModalModelDefault` List ownership (#538);
+7. EFSM/Markov heap transition ownership + `DefaultNode` List dtor (#540);
+8. legacy wrappers/node-list/`PetriTransition` removed; smart apps migrated (#541);
+9. focused Modal/Network 73/73; unit 1830/1830 (+4 disabled); smoke 3/3.
 
-Remaining before backend-gate closure (still before GUI):
+Remaining outside backend gate:
 
-1. migrate/remove legacy `ModalModelFSM` / `ModalModelPetriNet` / `ModalModelDefault` node-list path after smart-app consumers are migrated (`git rm`; no `source/.../deprecated/`);
-2. close residual ownership/sanitizer findings (heap `EFSMTransition` on load; other List leaks under focused ASan);
-3. reconcile evidence/manual impact for each material result;
-4. implement GUI only after backend contracts are stable (separate phase).
+1. GUI/editor phase (`HUM-MODAL-002` / `MODAL_NETWORK_GUI_ARCHITECTURE.md`);
+2. Cellular Automata migration (deferred);
+3. process-lifetime plugin-template Buffer leaks outside Modal ownership.
 
-**Backend gate (this mission):** not passed while legacy paths remain with live consumers.
+**Backend gate (this mission):** PASSED.
 
 **Global Modal/Network `done_confirmed`:** not applicable until GUI phase is decided/executed per the completion plan.
 
 The authoritative detailed continuation guide is `reference/MODAL_NETWORK_COMPLETION_PLAN.md`.
-Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_progress.md`.
+Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
