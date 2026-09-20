@@ -1,5 +1,6 @@
 #include "plugins/components/ModalModel/FSMState.h"
 #include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/model/Model.h"
 
 FSMState::FSMState(Model* model, std::string name) : DefaultNode(model, Util::TypeOf<FSMState>(), name) {
 	std::string classname = Util::TypeOf<FSMState>();
@@ -31,6 +32,16 @@ PluginInformation* FSMState::GetPluginInformation() {
 }
 
 ModelDataDefinition* FSMState::LoadInstance(Model* model, PersistenceRecord *fields) {
+	// Prefer the canonical ModelDataManager instance when nested network fields and
+	// top-level serialization both refer to the same named state.
+	const std::string name = fields->loadField("name", std::string(""));
+	if (model != nullptr && !name.empty()) {
+		if (FSMState* existing = dynamic_cast<FSMState*>(
+				model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), name))) {
+			existing->_loadInstance(fields);
+			return existing;
+		}
+	}
 	FSMState* component = new FSMState(model);
 	component->_loadInstance(fields);
 	return component;

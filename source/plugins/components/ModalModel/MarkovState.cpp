@@ -1,6 +1,7 @@
 #include "plugins/data/ModalModel/MarkovState.h"
 
 #include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
@@ -20,6 +21,20 @@ PluginInformation* MarkovState::GetPluginInformation() {
 }
 
 ModelDataDefinition* MarkovState::LoadInstance(Model* model, PersistenceRecord* fields) {
+	// Prefer the canonical ModelDataManager instance when nested network fields and
+	// top-level serialization both refer to the same named state.
+	const std::string name = fields->loadField("name", std::string(""));
+	if (model != nullptr && !name.empty()) {
+		if (MarkovState* existing = dynamic_cast<MarkovState*>(
+				model->getDataManager()->getDataDefinition(Util::TypeOf<MarkovState>(), name))) {
+			try {
+				existing->_loadInstance(fields);
+			} catch (const std::exception& e) {
+				existing->traceError("Failed to load MarkovState instance: " + std::string(e.what()));
+			}
+			return existing;
+		}
+	}
 	MarkovState* state = new MarkovState(model);
 	try {
 		state->_loadInstance(fields);

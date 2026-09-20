@@ -42,6 +42,20 @@ PluginInformation* CPNTransition::GetPluginInformation() {
 }
 
 ModelDataDefinition* CPNTransition::LoadInstance(Model* model, PersistenceRecord* fields) {
+	// Prefer the canonical ModelDataManager instance when nested network fields and
+	// top-level serialization both refer to the same named transition.
+	const std::string name = fields->loadField("name", std::string(""));
+	if (model != nullptr && !name.empty()) {
+		if (CPNTransition* existing = dynamic_cast<CPNTransition*>(
+				model->getDataManager()->getDataDefinition(Util::TypeOf<CPNTransition>(), name))) {
+			try {
+				existing->_loadInstance(fields);
+			} catch (const std::exception& e) {
+				existing->traceError("Failed to load CPNTransition instance: " + std::string(e.what()));
+			}
+			return existing;
+		}
+	}
 	CPNTransition* transition = new CPNTransition(model);
 	try {
 		transition->_loadInstance(fields);

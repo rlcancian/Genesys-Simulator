@@ -301,6 +301,10 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	ASSERT_NE(loaded.getCurrentState(), nullptr);
 	EXPECT_EQ(loaded.getInitialState()->getName(), "Idle");
 	EXPECT_EQ(loaded.getCurrentState()->getName(), "Busy");
+	// Same-model internal round-trip must reuse ModelDataManager-owned states.
+	ASSERT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<FSMState>())->size(), 2u);
+	EXPECT_EQ(loaded.getInitialState(), &idle);
+	EXPECT_EQ(loaded.getCurrentState(), &busy);
 
 	EFSMTransition* loadedTransition = loaded.getTransitions()->front();
 	ASSERT_NE(loadedTransition, nullptr);
@@ -355,11 +359,31 @@ TEST(EFSMNetworkTest, ModelFileRoundTripPreservesConflictPolicyAndActivation) {
 	ASSERT_EQ(loadedNetwork->getStates()->size(), 2u);
 	ASSERT_EQ(loadedNetwork->getTransitions()->size(), 1u);
 
+	// Canonical identity: FSMState is ModelDataManager-owned. Nested network
+	// fields must not materialize a second pair of Idle/Busy instances.
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<FSMState>())->size(), 2u);
+	ModelDataDefinition* idleCanonical =
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "Idle");
+	ModelDataDefinition* busyCanonical =
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "Busy");
+	ASSERT_NE(idleCanonical, nullptr);
+	ASSERT_NE(busyCanonical, nullptr);
+	EXPECT_EQ(loadedNetwork->getInitialState(), idleCanonical);
+	EXPECT_EQ(loadedNetwork->getCurrentState(), idleCanonical);
+	ASSERT_NE(loadedNetwork->getTransitions()->front(), nullptr);
+	EXPECT_EQ(loadedNetwork->getTransitions()->front()->getSource(), idleCanonical);
+	EXPECT_EQ(loadedNetwork->getTransitions()->front()->getDestination(), busyCanonical);
+	for (FSMState* state : *loadedNetwork->getStates()->list()) {
+		ASSERT_NE(state, nullptr);
+		EXPECT_EQ(state, loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), state->getName()));
+	}
+
 	NetworkActivationResult result = loadedNetwork->activate(NetworkActivationFrame(loadedNetwork->getNumInputPorts()));
 	EXPECT_TRUE(result.isPresent(0));
 	EXPECT_DOUBLE_EQ(result.getValue(0), 91.0);
 	ASSERT_NE(loadedNetwork->getCurrentState(), nullptr);
 	EXPECT_EQ(loadedNetwork->getCurrentState()->getName(), "Busy");
+	EXPECT_EQ(loadedNetwork->getCurrentState(), busyCanonical);
 
 	::unlink(filename.c_str());
 }
