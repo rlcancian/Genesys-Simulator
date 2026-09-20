@@ -3,9 +3,10 @@
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/ModalModel/ModalModelFSM.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
 
 Smart_FSMState::Smart_FSMState() {
 }
@@ -18,20 +19,25 @@ int Smart_FSMState::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 
 	Create* create = plugins->newInstance<Create>(model);
-	ModalModelFSM* modal = new ModalModelFSM(model, "SingleStateFSM");
+	ModalModelDefault* modal = new ModalModelDefault(model, "SingleStateFSM");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
+	EFSMNetwork* network = new EFSMNetwork(model, "IdleNetwork");
 	FSMState* s = new FSMState(model, "Idle");
 	s->setInitialNode(true);
 	s->setEntryActionExpression("enteredIdle=1");
 	s->setExitActionExpression("leftIdle=1");
-	modal->addNode(s);
-	modal->setEntryNode(s);
+	network->addState(s);
+	network->setInitialState(s);
 
 	EFSMTransition* self = new EFSMTransition(s, s, "StayIdle");
 	self->setGuardExpression("1");
 	self->setOutputExpression("visits=visits+1");
-	modal->addTransition(self);
+	network->addTransition(self);
+
+	modal->setNetwork(network);
+	modal->setInputBinding(0, "1");
+	modal->setOutputBinding(0, "visits");
 
 	create->getConnectionManager()->insert(modal);
 	modal->getConnectionManager()->insert(dispose);

@@ -60,8 +60,6 @@
 #include "components/MaterialHandling/PickStation.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
-#include "plugins/components/ModalModel/ModalModelFSM.h"
-#include "plugins/components/ModalModel/ModalModelPetriNet.h"
 //#include "../../plugins/components/Read.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/Decisions/Remove.h"
@@ -258,9 +256,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("continuoussystemcomponent.so");
     //filenames->insert("finiteelement.so");
     filenames->insert("old_odeelement.so");
-    filenames->insert("modalmodelfsm.so");
     filenames->insert("fsmstate.so");
-    filenames->insert("modalmodelpetrinet.so");
     //filenames->insert("finitevolume.so");
     filenames->insert("cppcompiler.so");
     filenames->insert("odesolver.so");
@@ -294,8 +290,6 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("transporter.so");
     filenames->insert("sequence.so");
     /*
-    if (fn == "cellularautomata.so");"modalmodelfsm.so");
-    filenames->insert(("modalmodelpetrinet.so"
     filenames->insert("efsmData.so");
     filenames->insert("efsm.so");
     filenames->insert("fsm_state.so");
@@ -504,12 +498,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
     //else if (fn == "finiteelement.so")
     else if (fn == "old_odeelement.so")
         GetInfo = &OLD_ODEelement::GetPluginInformation;
-    else if (fn == "modalmodelfsm.so")
-        GetInfo = &ModalModelFSM::GetPluginInformation;
     else if (fn == "fsmstate.so")
         GetInfo = &FSMState::GetPluginInformation;
-    else if (fn == "modalmodelpetrinet.so")
-        GetInfo = &ModalModelPetriNet::GetPluginInformation;
     //    GetInfo = &LSODE::GetPluginInformation;
     //else if (fn == "finitevolume.so")
     //    GetInfo = &LSODE::GetPluginInformation;

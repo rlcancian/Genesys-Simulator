@@ -231,22 +231,29 @@ validated.
 \section{Modal models and hybrid execution}
 \label{sec:modal-and-hybrid-execution}
 
-The modal-model layer groups several related formalisms under the same
-component family. \texttt{ModalModelDefault} is the base network container.
-\texttt{ModalModelFSM} extends it with finite-state semantics, while
-\texttt{ModalModelPetriNet} extends it with Petri-net semantics. The transition
-helpers also remain explicit: \texttt{EFSMTransition} carries trigger and
-probability semantics, and \texttt{PetriTransition} carries token-based input
-and output arc weights.
+The modal-model layer separates the process adapter from the network of
+computation. \texttt{ModalModelDefault} is the process-world adapter that
+activates an attached \texttt{DefaultNetwork}. Formalism semantics live in
+network specializations such as \texttt{EFSMNetwork}, the mathematical
+\texttt{GraphNetwork} family, \texttt{MarkovChainNetwork} (finite homogeneous
+DTMC), and \texttt{ColoredPetriNetNetwork} (pragmatic fixed-inscription CPN
+subset). Transition helpers remain explicit where needed:
+\texttt{EFSMTransition} carries trigger and probability semantics for EFSM
+networks, while CPN arcs and transitions are first-class network data
+definitions rather than process \texttt{Connection} objects.
 
 This is the right place to keep the boundary clear:
 \begin{itemize}
-\item an FSM transition is not the same thing as a Petri transition;
-\item the model holds the state and transition topology;
-\item the current code keeps the semantics in dedicated classes instead of
-  collapsing everything into one generic transition type;
-\item the chapter does not claim a finished unified modal runtime beyond what
-  the classes in the tree actually implement.
+\item an EFSM transition is not the same thing as a CPN arc or Petri place
+  marking update;
+\item the attached network holds the state and transition topology;
+\item the current code keeps the semantics in dedicated network classes instead
+  of collapsing everything into one generic process transition type;
+\item obsolete wrappers such as \texttt{ModalModelFSM}/\texttt{ModalModelPetriNet}
+  and the legacy node-list path inside \texttt{ModalModelDefault} have been
+  removed from the source tree after migration to the network architecture;
+\item the chapter does not claim a finished Qt network editor; GUI work remains
+  a separate phase after backend contracts are stable.
 \end{itemize}
 
 Figure~\ref{fig:modal-state-transitions} summarizes the current modal state
@@ -258,8 +265,8 @@ path.
 % ID: fig:modal-state-transitions
 % Source of truth:
 %   - source/plugins/components/ModalModel/ModalModelDefault.h
-%   - source/plugins/components/ModalModel/ModalModelFSM.h
-%   - source/plugins/components/ModalModel/ModalModelPetriNet.h
+%   - source/plugins/data/ModalModel/EFSMNetwork.h
+%   - source/plugins/data/ModalModel/ColoredPetriNetNetwork.h
 %   - source/plugins/components/ModalModel/DefaultTransitionExtensions.h
 %   - source/applications/modelSpecific/smarts/ModalModel/Smart_ModalModelDefaultNetwork.cpp
 %   - source/applications/modelSpecific/smarts/ModalModel/Smart_ModalModelFSM.cpp

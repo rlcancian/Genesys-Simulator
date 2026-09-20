@@ -12,10 +12,7 @@
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
-#include "plugins/components/ModalModel/ModalModelFSM.h"
-#include "plugins/components/ModalModel/ModalModelPetriNet.h"
 #include "plugins/components/ModalModel/FSMState.h"
-#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 
@@ -92,24 +89,6 @@ public:
 	}
 };
 
-class ModalModelFSMProbe final : public ModalModelFSM {
-public:
-	ModalModelFSMProbe(Model* model, const std::string& name) : ModalModelFSM(model, name) {}
-
-	bool checkProbe(std::string& errorMessage) {
-		return _check(errorMessage);
-	}
-};
-
-class ModalModelPetriNetProbe final : public ModalModelPetriNet {
-public:
-	ModalModelPetriNetProbe(Model* model, const std::string& name) : ModalModelPetriNet(model, name) {}
-
-	bool checkProbe(std::string& errorMessage) {
-		return _check(errorMessage);
-	}
-};
-
 class CollectorSinkComponentProbe final : public ModelComponent {
 public:
 	CollectorSinkComponentProbe(Model* model, const std::string& name)
@@ -137,19 +116,6 @@ void drainFutureEvents(Model* model) {
 		ModelComponent::DispatchEvent(event);
 		delete event;
 	}
-}
-
-std::vector<unsigned int> sampleLegacyProbabilisticDestinations(Model* model, ModalModelDefaultProbe& modal, unsigned int samples) {
-	std::vector<unsigned int> destinations;
-	destinations.reserve(samples);
-	const std::string currentNodeAttribute = "Entity.ModalModel." + modal.getName() + ".CurrentNode";
-	for (unsigned int i = 0; i < samples; i++) {
-		Entity* entity = model->createEntity("LegacyProbabilisticEntity_%", true);
-		modal.dispatch(entity, 0);
-		drainFutureEvents(model);
-		destinations.push_back(static_cast<unsigned int>(entity->getAttributeValue(currentNodeAttribute)));
-	}
-	return destinations;
 }
 
 } // namespace
@@ -405,72 +371,3 @@ TEST(ModalModelDefaultNetworkTest, CheckRejectsUnknownNetworkReference) {
 	EXPECT_NE(errorMessage.find("MissingNetwork"), std::string::npos);
 }
 
-TEST(ModalModelDefaultNetworkTest, LegacyFormalismWrappersAcceptAttachedNetworkBridgeWithoutLegacyNodes) {
-	Simulator simulator;
-	Model* model = simulator.getModelManager()->newModel();
-	ASSERT_NE(model, nullptr);
-
-	TestNetwork network(model, "SharedFormalismNetwork");
-	network.addInputPort("input");
-	network.addOutputPort("output");
-	Attribute outputAttribute(model, "output");
-	CollectorSinkComponentProbe sink(model, "Sink");
-
-	ModalModelFSMProbe fsm(model, "FSMShim");
-	fsm.getConnectionManager()->insert(&sink);
-	fsm.setNetwork(&network);
-	std::string fsmError;
-	EXPECT_TRUE(fsm.checkProbe(fsmError)) << fsmError;
-
-	ModalModelPetriNetProbe petriNet(model, "PetriShim");
-	petriNet.getConnectionManager()->insert(&sink);
-	petriNet.setNetworkName("SharedFormalismNetwork");
-	std::string petriError;
-	EXPECT_TRUE(petriNet.checkProbe(petriError)) << petriError;
-}
-
-TEST(ModalModelDefaultNetworkTest, LegacyProbabilisticSelectionUsesResettableKernelSampler) {
-	Simulator simulator;
-	Model* model = simulator.getModelManager()->newModel();
-	ASSERT_NE(model, nullptr);
-
-	ModalModelDefaultProbe modal(model, "LegacyProbabilistic");
-	CollectorSinkComponentProbe sink(model, "Sink");
-	modal.getConnectionManager()->insert(&sink);
-	DefaultNode source(model, "A");
-	DefaultNode low(model, "B");
-	DefaultNode high(model, "C");
-	modal.addNode(&source);
-	modal.addNode(&low);
-	modal.addNode(&high);
-	modal.setEntryNode(&source);
-	Attribute currentNodeAttribute(model, "Entity.ModalModel.LegacyProbabilistic.CurrentNode");
-	Attribute lastNodeAttribute(model, "Entity.ModalModel.LegacyProbabilistic.LastNode");
-	DefaultNodeTransition* toLow = new DefaultNodeTransition(&source, &low, "AB");
-	toLow->setTransitionKind(DefaultNodeTransition::TransitionKind::PROBABILISTIC);
-	toLow->setProbability(0.25);
-	DefaultNodeTransition* toHigh = new DefaultNodeTransition(&source, &high, "AC");
-	toHigh->setTransitionKind(DefaultNodeTransition::TransitionKind::PROBABILISTIC);
-	toHigh->setProbability(0.75);
-	modal.addTransition(toLow);
-	modal.addTransition(toHigh);
-
-	const std::vector<unsigned int> firstRun = sampleLegacyProbabilisticDestinations(model, modal, 200u);
-	unsigned int lowCount = 0u;
-	unsigned int highCount = 0u;
-	for (unsigned int destination : firstRun) {
-		if (destination == 1u) {
-			lowCount++;
-		} else if (destination == 2u) {
-			highCount++;
-		}
-	}
-	EXPECT_GT(lowCount, 25u);
-	EXPECT_LT(lowCount, 75u);
-	EXPECT_GT(highCount, 125u);
-	EXPECT_LT(highCount, 175u);
-
-	modal.initBetweenReplications();
-	const std::vector<unsigned int> secondRun = sampleLegacyProbabilisticDestinations(model, modal, 200u);
-	EXPECT_EQ(secondRun, firstRun);
-}

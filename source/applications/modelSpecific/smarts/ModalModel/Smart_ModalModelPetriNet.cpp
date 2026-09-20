@@ -3,9 +3,11 @@
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/ModalModel/ModalModelPetriNet.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/ModalModel/PetriPlace.h"
-#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
+#include "plugins/data/ModalModel/CPNArc.h"
+#include "plugins/data/ModalModel/CPNTransition.h"
+#include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 
 Smart_ModalModelPetriNet::Smart_ModalModelPetriNet() {
 }
@@ -18,25 +20,32 @@ int Smart_ModalModelPetriNet::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 
 	Create* create = plugins->newInstance<Create>(model);
-	ModalModelPetriNet* petri = new ModalModelPetriNet(model, "PetriFlow");
+	ModalModelDefault* modal = new ModalModelDefault(model, "PetriFlow");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
+	ColoredPetriNetNetwork* network = new ColoredPetriNetNetwork(model, "PetriNetwork");
 	PetriPlace* pIn = new PetriPlace(model, "P_In");
 	PetriPlace* pOut = new PetriPlace(model, "P_Out");
+	CPNTransition* moveRed = new CPNTransition(model, "MoveRedToken");
 	pIn->setInitialNode(true);
-	pIn->addTokens(5, "red");
-	petri->addNode(pIn);
-	petri->addNode(pOut);
-	petri->setEntryNode(pIn);
+	network->addPlace(pIn);
+	network->addPlace(pOut);
+	network->addTransition(moveRed);
+	network->setInitialTokens(pIn, "red", 5);
 
-	PetriTransition* t = new PetriTransition(pIn, pOut, "MoveRedToken");
-	t->setInputArcWeight("red", 1);
-	t->setOutputArcWeight("red", 1);
-	t->setPriority(0);
-	petri->addTransition(t);
+	CPNArc* inArc = new CPNArc(model, pIn, moveRed, CPNArc::Direction::PlaceToTransition, "In");
+	inArc->setInscription("red", 1);
+	CPNArc* outArc = new CPNArc(model, pOut, moveRed, CPNArc::Direction::TransitionToPlace, "Out");
+	outArc->setInscription("red", 1);
+	network->addArc(inArc);
+	network->addArc(outArc);
 
-	create->getConnectionManager()->insert(petri);
-	petri->getConnectionManager()->insert(dispose);
+	modal->setNetwork(network);
+	modal->setInputBinding(0, "1");
+	modal->setOutputBinding(0, "fired");
+
+	create->getConnectionManager()->insert(modal);
+	modal->getConnectionManager()->insert(dispose);
 
 	model->getSimulation()->setReplicationLength(20, Util::TimeUnit::second);
 	model->save("./models/Smart_ModalModelPetriNet.gen");

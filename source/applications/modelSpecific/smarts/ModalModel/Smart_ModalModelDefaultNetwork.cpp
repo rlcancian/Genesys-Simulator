@@ -4,7 +4,9 @@
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
-#include "plugins/components/ModalModel/DefaultNode.h"
+#include "plugins/components/ModalModel/FSMState.h"
+#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
 
 Smart_ModalModelDefaultNetwork::Smart_ModalModelDefaultNetwork() {
 }
@@ -20,18 +22,23 @@ int Smart_ModalModelDefaultNetwork::main(int argc, char** argv) {
 	ModalModelDefault* modal = new ModalModelDefault(model, "ModalDefault");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
-	DefaultNode* n1 = new DefaultNode(model, "NodeA");
-	DefaultNode* n2 = new DefaultNode(model, "NodeB");
+	EFSMNetwork* network = new EFSMNetwork(model, "DefaultBridgeNetwork");
+	FSMState* n1 = new FSMState(model, "NodeA");
+	FSMState* n2 = new FSMState(model, "NodeB");
 	n1->setInitialNode(true);
 	n2->setFinalNode(true);
-	modal->addNode(n1);
-	modal->addNode(n2);
-	modal->setEntryNode(n1);
+	network->addState(n1);
+	network->addState(n2);
+	network->setInitialState(n1);
 
-	DefaultNodeTransition* t1 = new DefaultNodeTransition(n1, n2, "A_to_B");
+	EFSMTransition* t1 = new EFSMTransition(n1, n2, "A_to_B");
 	t1->setGuardExpression("1");
 	t1->setPriority(0);
-	modal->addTransition(t1);
+	network->addTransition(t1);
+
+	modal->setNetwork(network);
+	modal->setInputBinding(0, "1");
+	modal->setOutputBinding(0, "stepped");
 
 	create->getConnectionManager()->insert(modal);
 	modal->getConnectionManager()->insert(dispose);
