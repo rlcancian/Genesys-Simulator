@@ -75,8 +75,11 @@ MarkovChainNetwork::MarkovChainNetwork(Model* model, std::string name)
 }
 
 MarkovChainNetwork::~MarkovChainNetwork() {
+	_destroyOwnedTransitions();
 	delete _states;
+	_states = nullptr;
 	delete _transitions;
+	_transitions = nullptr;
 	delete _sampler;
 	_sampler = nullptr;
 }
@@ -120,6 +123,7 @@ void MarkovChainNetwork::removeState(MarkovState* state) {
 		MarkovTransition* transition = *it;
 		if (transition != nullptr && (transition->getSource() == state || transition->getDestination() == state)) {
 			it = _transitions->list()->erase(it);
+			delete transition;
 		} else {
 			++it;
 		}
@@ -144,7 +148,11 @@ void MarkovChainNetwork::addTransition(MarkovTransition* transition) {
 }
 
 void MarkovChainNetwork::removeTransition(MarkovTransition* transition) {
+	if (transition == nullptr) {
+		return;
+	}
 	_transitions->remove(transition);
+	delete transition;
 }
 
 List<MarkovChainNetwork::MarkovTransition*>* MarkovChainNetwork::getTransitions() const {
@@ -227,7 +235,7 @@ bool MarkovChainNetwork::_loadInstance(PersistenceRecord* fields) {
 	bool res = DefaultNetwork::_loadInstance(fields);
 	if (res) {
 		_states->clear();
-		_transitions->clear();
+		_destroyOwnedTransitions();
 		_initialState = nullptr;
 		_currentState = nullptr;
 		_probabilityTolerance = fields->loadField("probabilityTolerance", 1e-9);
@@ -436,6 +444,16 @@ NetworkActivationResult MarkovChainNetwork::_activate(const NetworkActivationFra
 		}
 	}
 	return result;
+}
+
+void MarkovChainNetwork::_destroyOwnedTransitions() {
+	if (_transitions == nullptr) {
+		return;
+	}
+	for (MarkovTransition* transition : *_transitions->list()) {
+		delete transition;
+	}
+	_transitions->clear();
 }
 
 MarkovState* MarkovChainNetwork::_resolveInitialState() {

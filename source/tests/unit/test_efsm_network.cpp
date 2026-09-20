@@ -65,12 +65,12 @@ TEST(EFSMNetworkTest, ActivationFiresOneEnabledTransitionAndPublishesOutput) {
 	EFSMNetwork network(model, "Machine");
 	FSMState idle(model, "Idle");
 	FSMState busy(model, "Busy");
-	EFSMTransition transition(&idle, &busy, "Start");
-	transition.setGuardExpression("1");
-	transition.setOutputExpression("99");
+	EFSMTransition* transition = new EFSMTransition(&idle, &busy, "Start");
+	transition->setGuardExpression("1");
+	transition->setOutputExpression("99");
 	network.setInitialState(&idle);
 	network.addState(&busy);
-	network.addTransition(&transition);
+	network.addTransition(transition);
 
 	NetworkActivationFrame frame(network.getNumInputPorts());
 	frame.setPresent(0, 1.0);
@@ -91,12 +91,12 @@ TEST(EFSMNetworkTest, ActivationWithoutEnabledTransitionKeepsStateAndOutputsAbse
 	EFSMNetwork network(model, "Machine");
 	FSMState idle(model, "Idle");
 	FSMState busy(model, "Busy");
-	EFSMTransition transition(&idle, &busy, "Blocked");
-	transition.setGuardExpression("0");
-	transition.setOutputExpression("99");
+	EFSMTransition* transition = new EFSMTransition(&idle, &busy, "Blocked");
+	transition->setGuardExpression("0");
+	transition->setOutputExpression("99");
 	network.setInitialState(&idle);
 	network.addState(&busy);
-	network.addTransition(&transition);
+	network.addTransition(transition);
 
 	NetworkActivationFrame frame(network.getNumInputPorts());
 	NetworkActivationResult result = network.activate(frame);
@@ -116,19 +116,19 @@ TEST(EFSMNetworkTest, ActivationChoosesLowestPriorityEnabledTransition) {
 	FSMState initial(model, "Initial");
 	FSMState slow(model, "Slow");
 	FSMState fast(model, "Fast");
-	EFSMTransition lowPriority(&initial, &slow, "SlowTransition");
-	EFSMTransition highPriority(&initial, &fast, "FastTransition");
-	lowPriority.setGuardExpression("1");
-	lowPriority.setOutputExpression("10");
-	lowPriority.setPriority(10);
-	highPriority.setGuardExpression("1");
-	highPriority.setOutputExpression("20");
-	highPriority.setPriority(1);
+	EFSMTransition* lowPriority = new EFSMTransition(&initial, &slow, "SlowTransition");
+	EFSMTransition* highPriority = new EFSMTransition(&initial, &fast, "FastTransition");
+	lowPriority->setGuardExpression("1");
+	lowPriority->setOutputExpression("10");
+	lowPriority->setPriority(10);
+	highPriority->setGuardExpression("1");
+	highPriority->setOutputExpression("20");
+	highPriority->setPriority(1);
 	network.setInitialState(&initial);
 	network.addState(&slow);
 	network.addState(&fast);
-	network.addTransition(&lowPriority);
-	network.addTransition(&highPriority);
+	network.addTransition(lowPriority);
+	network.addTransition(highPriority);
 
 	NetworkActivationFrame frame(network.getNumInputPorts());
 	NetworkActivationResult result = network.activate(frame);
@@ -147,15 +147,15 @@ TEST(EFSMNetworkTest, ModelErrorPolicyReportsAmbiguousActivationAndKeepsState) {
 	FSMState initial(model, "Initial");
 	FSMState left(model, "Left");
 	FSMState right(model, "Right");
-	EFSMTransition first(&initial, &left, "First");
-	EFSMTransition second(&initial, &right, "Second");
-	first.setGuardExpression("1");
-	second.setGuardExpression("1");
+	EFSMTransition* first = new EFSMTransition(&initial, &left, "First");
+	EFSMTransition* second = new EFSMTransition(&initial, &right, "Second");
+	first->setGuardExpression("1");
+	second->setGuardExpression("1");
 	network.setInitialState(&initial);
 	network.addState(&left);
 	network.addState(&right);
-	network.addTransition(&first);
-	network.addTransition(&second);
+	network.addTransition(first);
+	network.addTransition(second);
 	network.setConflictPolicy(EFSMNetwork::ConflictPolicy::MODEL_ERROR);
 
 	NetworkActivationResult result = network.activate(NetworkActivationFrame(network.getNumInputPorts()));
@@ -175,15 +175,15 @@ TEST(EFSMNetworkTest, NondeterministicChoiceUsesResettableKernelSampler) {
 	FSMState initial(model, "Initial");
 	FSMState left(model, "Left");
 	FSMState right(model, "Right");
-	EFSMTransition first(&initial, &left, "First");
-	EFSMTransition second(&initial, &right, "Second");
-	first.setGuardExpression("1");
-	second.setGuardExpression("1");
+	EFSMTransition* first = new EFSMTransition(&initial, &left, "First");
+	EFSMTransition* second = new EFSMTransition(&initial, &right, "Second");
+	first->setGuardExpression("1");
+	second->setGuardExpression("1");
 	network.setInitialState(&initial);
 	network.addState(&left);
 	network.addState(&right);
-	network.addTransition(&first);
-	network.addTransition(&second);
+	network.addTransition(first);
+	network.addTransition(second);
 	network.setConflictPolicy(EFSMNetwork::ConflictPolicy::NONDETERMINISTIC_CHOICE);
 
 	const NetworkActivationFrame frame(network.getNumInputPorts());
@@ -220,11 +220,11 @@ TEST(EFSMNetworkTest, ReplicationResetRestoresInitialStateAndActivationCounter) 
 	EFSMNetworkProbe network(model, "Machine");
 	FSMState initial(model, "Initial");
 	FSMState final(model, "Final");
-	EFSMTransition transition(&initial, &final, "Advance");
-	transition.setGuardExpression("1");
+	EFSMTransition* transition = new EFSMTransition(&initial, &final, "Advance");
+	transition->setGuardExpression("1");
 	network.setInitialState(&initial);
 	network.addState(&final);
-	network.addTransition(&transition);
+	network.addTransition(transition);
 
 	NetworkActivationFrame frame(network.getNumInputPorts());
 	network.activate(frame);
@@ -250,13 +250,13 @@ TEST(EFSMNetworkTest, CheckRejectsMissingStateAndAcceptsWellFormedMachine) {
 	EFSMNetworkProbe valid(model, "ValidMachine");
 	FSMState initial(model, "Initial");
 	FSMState destination(model, "Destination");
-	EFSMTransition transition(&initial, &destination, "Advance");
-	transition.setGuardExpression("1");
-	transition.setOutputExpression("2");
-	transition.setProbabilityExpression("1");
+	EFSMTransition* transition = new EFSMTransition(&initial, &destination, "Advance");
+	transition->setGuardExpression("1");
+	transition->setOutputExpression("2");
+	transition->setProbabilityExpression("1");
 	valid.setInitialState(&initial);
 	valid.addState(&destination);
-	valid.addTransition(&transition);
+	valid.addTransition(transition);
 
 	errorMessage.clear();
 	EXPECT_TRUE(valid.CheckProbe(errorMessage)) << errorMessage;
@@ -273,15 +273,15 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	FSMState busy(model, "Busy");
 	idle.setEntryActionExpression("1");
 	busy.setExitActionExpression("1");
-	EFSMTransition transition(&idle, &busy, "Start");
-	transition.setGuardExpression("1");
-	transition.setOutputExpression("77");
-	transition.setInputEvent("go");
-	transition.setPriority(3);
-	transition.setProbabilityExpression("1");
+	EFSMTransition* transition = new EFSMTransition(&idle, &busy, "Start");
+	transition->setGuardExpression("1");
+	transition->setOutputExpression("77");
+	transition->setInputEvent("go");
+	transition->setPriority(3);
+	transition->setProbabilityExpression("1");
 	source.setInitialState(&idle);
 	source.addState(&busy);
-	source.addTransition(&transition);
+	source.addTransition(transition);
 	source.setCurrentState(&busy);
 
 	FakeModelPersistenceRuntime persistence;
