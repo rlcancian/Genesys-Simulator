@@ -50,6 +50,11 @@ ModalModelDefault::ModalModelDefault(Model* model, std::string name) : ModelComp
 ModalModelDefault::~ModalModelDefault() {
 	delete _legacySampler;
 	_legacySampler = nullptr;
+	// List containers are owned by this component; pointees remain ModelDataManager-owned.
+	delete _nodes;
+	_nodes = nullptr;
+	delete _transitions;
+	_transitions = nullptr;
 }
 
 
