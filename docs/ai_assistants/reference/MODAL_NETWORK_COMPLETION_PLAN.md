@@ -23,17 +23,22 @@ The companion architectural baseline remains:
 
 This document narrows the continuation work, records maintainer decisions made on 2026-09-18, and distinguishes verified historical evidence from **verification pending on the current branch**.
 
-## 1.1 Current integration checkpoint (2026-09-19)
+## 1.1 Current integration checkpoint (2026-09-20)
 
-Confirmed by executed local evidence on `WorkInProgress` HEAD `dd7bd64978ee80b1af3cc19fad0d9bde2e3f97fb`:
+Confirmed by executed local evidence on `WorkInProgress` HEAD `e0a6a73b`:
 
 - public presets restored by PR #533;
 - EFSM three-mode conflict policy merged by PR #534;
-- `tests-unit` / `tests-kernel-unit`: 1,829 registered, 1,825 passed, 0 failed, 4 disabled;
+- Model-file EFSM/Modal + DTMC reproducibility by PR #535;
+- canonical LoadInstance reuse (identity) by PR #536;
+- full Model round-trips Graph/DTMC/CPN + Modal execute-after-load by PR #537;
+- `tests-unit` / `tests-kernel-unit`: 1,836 registered, 1,832 passed, 0 failed, 4 disabled;
 - `tests-smoke`: 3/3;
-- focused Modal/Network: 68/68.
+- focused Modal/Network: 75/75.
 
-This checkpoint updates historical counts but does not close the verification matrix or authorize `done_confirmed`.
+This checkpoint advances the verification matrix for persistence/identity but does **not** close legacy cleanup, sanitizer residual ownership, GUI, or authorize `done_confirmed`.
+
+Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_progress.md`.
 
 ## 2. Evidence discipline for this plan
 

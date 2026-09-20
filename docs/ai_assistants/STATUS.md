@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-09-19
+last_updated: 2026-09-20
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -19,10 +19,13 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Current remote `WorkInProgress` HEAD confirmed on 2026-09-19: `dd7bd64978ee80b1af3cc19fad0d9bde2e3f97fb` (`feat(efsm): add configurable transition conflict policy (#534)`).
+- Current remote `WorkInProgress` HEAD confirmed on 2026-09-20: `e0a6a73b` (`test(modal): full Model round-trips for Graph, DTMC, CPN and Modal (#537)`).
 - Immediately preceding integrated Modal/Network-relevant merges on this line:
   - PR #533 (`85626d3a`) — expose official `tests-unit` / `tests-kernel-unit` / `tests-smoke` presets;
-  - PR #534 (`dd7bd649`) — EFSM configurable conflict policy (`MODEL_ERROR`, `NONDETERMINISTIC_CHOICE`, `DETERMINISTIC_PRIORITY`) with persistence and focused tests.
+  - PR #534 (`dd7bd649`) — EFSM configurable conflict policy;
+  - PR #535 (`de0fbc1f`) — Model-file EFSM/Modal persistence + DTMC reproducibility;
+  - PR #536 (`5494b237`) — canonical `LoadInstance` reuse (identity / no duplicate FSMState/Graph/CPN elements);
+  - PR #537 (`e0a6a73b`) — full Model round-trips for Graph/DTMC/CPN + Modal execute-after-load.
 - Latest integrated documentation checkpoint: `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` — completion record through PR #519.
 - Final documentation-governance completion validation:
   - documentation-governance run `29939815697`: passed;
@@ -69,15 +72,18 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   cycle is inactive, but this does **not** prove that the full approved
   ModalModel/DefaultNetwork architecture is complete. The current Modal/Network
   development is **not `done_confirmed`**.
-- Current-HEAD baseline verification was executed locally on 2026-09-19 against
-  `dd7bd649` (toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
-  - `tests-unit`: 1,829 registered; 1,825 executed/passed; 0 failed; 4 disabled;
-  - `tests-kernel-unit`: 1,829 registered; 1,825 executed/passed; 0 failed; 4 disabled;
+- Current-HEAD baseline verification was executed locally on 2026-09-20 against
+  `e0a6a73b` (toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
+  - `tests-unit`: 1,836 registered; 1,832 executed/passed; 0 failed; 4 disabled;
+  - `tests-kernel-unit`: 1,836 registered; 1,832 executed/passed; 0 failed; 4 disabled;
   - `tests-smoke`: 3/3 passed;
-  - focused Modal/Network suite: 68/68 passed.
-  This establishes a clean regression baseline; it does **not** by itself make
-  Modal/Network `done_confirmed`. Remaining verification/gap work continues under
-  `AUTO-MODAL-002` (`running`). The continuation guide is
+  - focused Modal/Network suite: 75/75 passed.
+  Persistence identity (no duplicate network element DataDefinitions after Model
+  save/load) and full-model round-trips for EFSM/Graph/DTMC/CPN/Modal are
+  confirmed by execution. This still does **not** make Modal/Network
+  `done_confirmed`: legacy `ModalModelFSM`/`ModalModelPetriNet`/node-list path
+  remain, and GUI remains a separate phase. Continuation under `AUTO-MODAL-002`
+  (`running`). Guide:
   [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md).
 - Historical `.gen` compatibility is explicitly **not a requirement** for the
   Modal/Network continuation. Current supported persistence/round-trip remains
@@ -115,14 +121,14 @@ Recent CI evidence used CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. Those exact v
 
 ## 4. Exact core test baseline
 
-Current exact inventory on `WorkInProgress` HEAD `dd7bd649` (executed 2026-09-19 locally):
+Current exact inventory on `WorkInProgress` HEAD `e0a6a73b` (executed 2026-09-20 locally):
 
-- registered: 1,829;
-- executed/passed: 1,825;
+- registered: 1,836;
+- executed/passed: 1,832;
 - failed: 0;
 - disabled: 4 historical duplicate Search/Remove blocks.
 
-The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 68/68 passed.
+The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 75/75 passed.
 
 Equivalent active Search/Remove tests are mandatory, so the four disabled blocks remain source-cleanup debt rather than current behavioral coverage gaps.
 
@@ -239,7 +245,7 @@ The documentation-migration-specific freeze has ended.
 
 Previously paused technical tasks remain `paused`; they do not resume automatically. A maintainer must explicitly activate the selected next task in `BACKLOG_AUTONOMOUS.md`.
 
-For Modal/Network, the maintainer has approved the continuation direction recorded in `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. `AUTO-MODAL-001` is `closed`. `AUTO-MODAL-002` is `running` on the local continuation after the 2026-09-19 baseline and the integration of PRs #533 and #534.
+For Modal/Network, the maintainer has approved the continuation direction recorded in `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. `AUTO-MODAL-001` is `closed`. `AUTO-MODAL-002` is `running` after the 2026-09-20 integration of PRs #535–#537 (persistence identity + full-model round-trips).
 
 ## 13. Ongoing governance
 
@@ -288,20 +294,27 @@ For Modal/Network, the maintainer has approved the continuation direction record
 
 ## 15. ModalModel / DefaultNetwork continuation checkpoint
 
-Current status: **baseline established on HEAD `dd7bd649`; continuation `running` under `AUTO-MODAL-002`; not `done_confirmed`**.
+Current status: **persistence identity and full-model round-trips confirmed on HEAD `e0a6a73b`; continuation `running` under `AUTO-MODAL-002`; backend gate not closed; not `done_confirmed`**.
 
-Completed since the 2026-09-18 documentation reconcile draft:
+Completed since the 2026-09-19 baseline on `dd7bd649`:
 
 1. public test presets restored (#533);
-2. EFSM conflict policy implemented, reviewed for ownership, and merged (#534);
-3. current unit/kernel/smoke and focused Modal/Network baselines re-executed on HEAD.
+2. EFSM conflict policy implemented and merged (#534);
+3. Model-file EFSM/Modal persistence + DTMC reproducibility (#535);
+4. canonical LoadInstance reuse fixing duplicate DataDefinitions after Model reload (#536);
+5. full Model round-trips for Graph/DTMC/CPN and Modal execute-after-load (#537);
+6. unit/kernel/smoke and focused Modal/Network baselines re-executed (75/75 focused).
 
-Remaining before any `done_confirmed` claim:
+Remaining before backend-gate closure (still before GUI):
 
-1. finish the verification matrix for `DefaultNetwork`, `ModalModelDefault`, Graph, DTMC and pragmatic CPN, including current-format persistence round-trips where still only internal `_saveInstance`/`_loadInstance` coverage exists;
-2. map and safely remove obsolete legacy Modal classes only after current consumers are migrated (`git rm`; no `source/.../deprecated/`);
-3. implement GUI only after backend contracts are stable, starting from the approved G0/G1 plan;
-4. keep Cellular Automata deferred;
-5. reconcile evidence/manual impact for each material result.
+1. migrate/remove legacy `ModalModelFSM` / `ModalModelPetriNet` / `ModalModelDefault` node-list path after smart-app consumers are migrated (`git rm`; no `source/.../deprecated/`);
+2. close residual ownership/sanitizer findings (heap `EFSMTransition` on load; other List leaks under focused ASan);
+3. reconcile evidence/manual impact for each material result;
+4. implement GUI only after backend contracts are stable (separate phase).
+
+**Backend gate (this mission):** not passed while legacy paths remain with live consumers.
+
+**Global Modal/Network `done_confirmed`:** not applicable until GUI phase is decided/executed per the completion plan.
 
 The authoritative detailed continuation guide is `reference/MODAL_NETWORK_COMPLETION_PLAN.md`.
+Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_progress.md`.
