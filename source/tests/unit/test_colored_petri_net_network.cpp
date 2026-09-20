@@ -20,6 +20,7 @@
 #include "plugins/data/ModalModel/NetworkActivation.h"
 
 #include <memory>
+#include <unistd.h>
 #include <vector>
 
 namespace {
@@ -350,6 +351,74 @@ TEST(ColoredPetriNetNetworkTest, SharedNetActivatedThroughTwoModalModelsKeepsNet
 	ASSERT_EQ(sinkB.receivedEntities().size(), 1u);
 	EXPECT_EQ(modalB.getNetwork(), &network);
 	(void)firedAttribute;
+}
+
+TEST(ColoredPetriNetNetworkTest, ModelFileRoundTripPreservesTopologyMarkingIdentityAndFiring) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	ColoredPetriNetNetwork* network = new ColoredPetriNetNetwork(model, "FileCPN");
+	PetriPlace* input = new PetriPlace(model, "Input");
+	PetriPlace* output = new PetriPlace(model, "Output");
+	CPNTransition* transition = new CPNTransition(model, "Transform");
+	transition->setGuardExpression("1");
+	transition->setPriority(4);
+	network->addPlace(input);
+	network->addPlace(output);
+	network->addTransition(transition);
+	network->setInitialTokens(input, "red", 2);
+	network->setInitialTokens(output, "blue", 0);
+	ASSERT_TRUE(network->addArc(inputArc(model, input, transition, 2, "red", "In")));
+	ASSERT_TRUE(network->addArc(outputArc(model, transition, output, 3, "blue", "Out")));
+
+	std::string errorMessage;
+	ASSERT_TRUE(ModelDataDefinition::Check(network, errorMessage)) << errorMessage;
+
+	const std::string filename = "/tmp/genesys_cpn_model_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+
+	Model* loadedModel = simulator.getModelManager()->newModel();
+	ASSERT_TRUE(loadedModel->load(filename));
+
+	ColoredPetriNetNetwork* loadedNetwork = dynamic_cast<ColoredPetriNetNetwork*>(
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<ColoredPetriNetNetwork>(), "FileCPN"));
+	ASSERT_NE(loadedNetwork, nullptr);
+	ASSERT_EQ(loadedNetwork->getPlaces()->size(), 2u);
+	ASSERT_EQ(loadedNetwork->getTransitions()->size(), 1u);
+	ASSERT_EQ(loadedNetwork->getArcs()->size(), 2u);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<PetriPlace>())->size(), 2u);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<CPNTransition>())->size(), 1u);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<CPNArc>())->size(), 2u);
+
+	PetriPlace* loadedInput = dynamic_cast<PetriPlace*>(
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<PetriPlace>(), "Input"));
+	PetriPlace* loadedOutput = dynamic_cast<PetriPlace*>(
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<PetriPlace>(), "Output"));
+	CPNTransition* loadedTransition = dynamic_cast<CPNTransition*>(
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<CPNTransition>(), "Transform"));
+	ASSERT_NE(loadedInput, nullptr);
+	ASSERT_NE(loadedOutput, nullptr);
+	ASSERT_NE(loadedTransition, nullptr);
+	EXPECT_EQ(loadedNetwork->getPlaces()->front(), loadedInput);
+	EXPECT_EQ(loadedNetwork->getTransitions()->front(), loadedTransition);
+	EXPECT_EQ(loadedNetwork->getInitialTokens(loadedInput, "red"), 2u);
+	EXPECT_EQ(loadedInput->getTokens("red"), 2u);
+	EXPECT_EQ(loadedOutput->getTokens("blue"), 0u);
+	EXPECT_EQ(loadedTransition->getPriority(), 4u);
+	EXPECT_EQ(loadedTransition->getGuardExpression(), "1");
+
+	ASSERT_TRUE(loadedNetwork->isEnabled(loadedTransition));
+	NetworkActivationResult result = loadedNetwork->activate(NetworkActivationFrame(loadedNetwork->getNumInputPorts()));
+	EXPECT_TRUE(result.isPresent(0));
+	EXPECT_DOUBLE_EQ(result.getValue(0), 1.0);
+	EXPECT_EQ(loadedInput->getTokens("red"), 0u);
+	EXPECT_EQ(loadedOutput->getTokens("blue"), 3u);
+	EXPECT_FALSE(loadedNetwork->isEnabled(loadedTransition));
+
+	::unlink(filename.c_str());
 }
 
 TEST(ColoredPetriNetNetworkTest, PluginRegistrationCreatesCpnDataDefinitions) {
