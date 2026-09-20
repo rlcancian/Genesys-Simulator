@@ -77,7 +77,7 @@ class DefaultNode : public ModelDataDefinition {
 public: /// constructors
     DefaultNode(Model* model, std::string componentTypename, std::string name);
     DefaultNode(Model* model, std::string name = "");
-    virtual ~DefaultNode() = default;
+    virtual ~DefaultNode() override;
 
 public: /// new public user methods for this component
 	void addTransition(DefaultNodeTransition* transition);

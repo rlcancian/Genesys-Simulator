@@ -130,6 +130,11 @@ DefaultNode::DefaultNode(Model* model, std::string componentTypename, std::strin
 DefaultNode::DefaultNode(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<DefaultNode>(), name), DEFAULT() {
 }
 
+DefaultNode::~DefaultNode() {
+	delete _transitions;
+	_transitions = nullptr;
+}
+
 
 //
 // public: /// new public user methods for this component

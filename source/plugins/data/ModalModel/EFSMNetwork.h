@@ -25,6 +25,11 @@ class Sampler_if;
  * EFSM transitions. A `ModalModelDefault` only adapts process entities to this
  * network through explicit input/output bindings.
  *
+ * Transition ownership: `addTransition()` and persistence reload take exclusive
+ * ownership of heap-allocated `EFSMTransition` objects and delete them from the
+ * network destructor / reload path. Callers must not stack-allocate transitions
+ * that are registered with the network and must not delete them separately.
+ *
  * This first implementation supports one deterministic activation step:
  * evaluate outgoing transitions of the current state, select the enabled
  * transition with the lowest priority value, update the current state, and
@@ -74,6 +79,7 @@ protected:
 
 private:
 	FSMState* _resolveInitialState();
+	void _destroyOwnedTransitions();
 
 private:
 	List<FSMState*>* _states = new List<FSMState*>();

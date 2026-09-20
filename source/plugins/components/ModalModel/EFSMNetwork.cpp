@@ -32,8 +32,11 @@ EFSMNetwork::EFSMNetwork(Model* model, std::string name)
 }
 
 EFSMNetwork::~EFSMNetwork() {
+	_destroyOwnedTransitions();
 	delete _states;
+	_states = nullptr;
 	delete _transitions;
+	_transitions = nullptr;
 	delete _sampler;
 	_sampler = nullptr;
 }
@@ -93,10 +96,14 @@ void EFSMNetwork::addTransition(EFSMTransition* transition) {
 }
 
 void EFSMNetwork::removeTransition(EFSMTransition* transition) {
+	if (transition == nullptr) {
+		return;
+	}
 	_transitions->remove(transition);
-	if (transition != nullptr && transition->getSource() != nullptr) {
+	if (transition->getSource() != nullptr) {
 		transition->getSource()->removeTransition(transition);
 	}
+	delete transition;
 }
 
 List<EFSMTransition*>* EFSMNetwork::getTransitions() const {
@@ -165,11 +172,23 @@ std::string EFSMNetwork::show() {
 	       ", currentState=\"" + (_currentState != nullptr ? _currentState->getName() : "") + "\"";
 }
 
+void EFSMNetwork::_destroyOwnedTransitions() {
+	if (_transitions == nullptr) {
+		return;
+	}
+	// Do not touch source-state transition lists here: during network/model
+	// teardown those DefaultNode instances may already be destroyed.
+	for (EFSMTransition* transition : *_transitions->list()) {
+		delete transition;
+	}
+	_transitions->clear();
+}
+
 bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 	bool res = DefaultNetwork::_loadInstance(fields);
 	if (res) {
 		_states->clear();
-		_transitions->clear();
+		_destroyOwnedTransitions();
 		_initialState = nullptr;
 		_currentState = nullptr;
 

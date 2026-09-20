@@ -23,6 +23,10 @@ class Sampler_if;
  * sampling the outgoing transition probabilities of that state using the
  * GenESyS sampler infrastructure. The current state belongs to the network,
  * not to a process Entity attribute.
+ *
+ * Transition ownership: `addTransition()` and persistence reload take exclusive
+ * ownership of heap-allocated `MarkovTransition` objects and delete them from
+ * the network destructor / reload / remove paths.
  */
 class MarkovChainNetwork : public DefaultNetwork {
 public:
@@ -87,6 +91,7 @@ protected:
 
 private:
 	MarkovState* _resolveInitialState();
+	void _destroyOwnedTransitions();
 	unsigned int _sampleNextStateIndex(const std::vector<MarkovTransition*>& outgoing);
 	bool _hasState(MarkovState* state) const;
 
