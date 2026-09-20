@@ -40,11 +40,8 @@ ModelDataDefinition* CPNArc::LoadInstance(Model* model, PersistenceRecord* field
 	if (model != nullptr && !name.empty()) {
 		if (CPNArc* existing = dynamic_cast<CPNArc*>(
 				model->getDataManager()->getDataDefinition(Util::TypeOf<CPNArc>(), name))) {
-			try {
-				existing->_loadInstance(fields);
-			} catch (const std::exception& e) {
-				existing->traceError("Failed to load CPNArc instance: " + std::string(e.what()));
-			}
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
 			return existing;
 		}
 	}

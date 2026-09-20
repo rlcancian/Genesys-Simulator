@@ -34,11 +34,8 @@ ModelDataDefinition* GraphEdge::LoadInstance(Model* model, PersistenceRecord* fi
 	if (model != nullptr && !name.empty()) {
 		if (GraphEdge* existing = dynamic_cast<GraphEdge*>(
 				model->getDataManager()->getDataDefinition(Util::TypeOf<GraphEdge>(), name))) {
-			try {
-				existing->_loadInstance(fields);
-			} catch (const std::exception& e) {
-				existing->traceError("Failed to load GraphEdge instance: " + std::string(e.what()));
-			}
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
 			return existing;
 		}
 	}

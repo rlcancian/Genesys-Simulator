@@ -58,7 +58,8 @@ ModelDataDefinition* PetriPlace::LoadInstance(Model* model, PersistenceRecord *f
 	if (model != nullptr && !name.empty()) {
 		if (PetriPlace* existing = dynamic_cast<PetriPlace*>(
 				model->getDataManager()->getDataDefinition(Util::TypeOf<PetriPlace>(), name))) {
-			existing->_loadInstance(fields);
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
 			return existing;
 		}
 	}

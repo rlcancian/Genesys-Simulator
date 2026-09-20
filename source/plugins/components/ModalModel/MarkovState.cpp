@@ -27,11 +27,8 @@ ModelDataDefinition* MarkovState::LoadInstance(Model* model, PersistenceRecord* 
 	if (model != nullptr && !name.empty()) {
 		if (MarkovState* existing = dynamic_cast<MarkovState*>(
 				model->getDataManager()->getDataDefinition(Util::TypeOf<MarkovState>(), name))) {
-			try {
-				existing->_loadInstance(fields);
-			} catch (const std::exception& e) {
-				existing->traceError("Failed to load MarkovState instance: " + std::string(e.what()));
-			}
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
 			return existing;
 		}
 	}

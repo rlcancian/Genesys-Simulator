@@ -38,7 +38,8 @@ ModelDataDefinition* FSMState::LoadInstance(Model* model, PersistenceRecord *fie
 	if (model != nullptr && !name.empty()) {
 		if (FSMState* existing = dynamic_cast<FSMState*>(
 				model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), name))) {
-			existing->_loadInstance(fields);
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
 			return existing;
 		}
 	}

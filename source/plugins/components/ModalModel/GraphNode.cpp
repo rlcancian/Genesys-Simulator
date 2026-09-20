@@ -27,11 +27,8 @@ ModelDataDefinition* GraphNode::LoadInstance(Model* model, PersistenceRecord* fi
 	if (model != nullptr && !name.empty()) {
 		if (GraphNode* existing = dynamic_cast<GraphNode*>(
 				model->getDataManager()->getDataDefinition(Util::TypeOf<GraphNode>(), name))) {
-			try {
-				existing->_loadInstance(fields);
-			} catch (const std::exception& e) {
-				existing->traceError("Failed to load GraphNode instance: " + std::string(e.what()));
-			}
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
 			return existing;
 		}
 	}

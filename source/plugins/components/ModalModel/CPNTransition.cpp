@@ -48,11 +48,8 @@ ModelDataDefinition* CPNTransition::LoadInstance(Model* model, PersistenceRecord
 	if (model != nullptr && !name.empty()) {
 		if (CPNTransition* existing = dynamic_cast<CPNTransition*>(
 				model->getDataManager()->getDataDefinition(Util::TypeOf<CPNTransition>(), name))) {
-			try {
-				existing->_loadInstance(fields);
-			} catch (const std::exception& e) {
-				existing->traceError("Failed to load CPNTransition instance: " + std::string(e.what()));
-			}
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
 			return existing;
 		}
 	}
