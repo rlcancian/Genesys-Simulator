@@ -3,9 +3,11 @@
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/ModalModel/ModalModelPetriNet.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/ModalModel/PetriPlace.h"
-#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
+#include "plugins/data/ModalModel/CPNArc.h"
+#include "plugins/data/ModalModel/CPNTransition.h"
+#include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 
 Smart_PetriPlace::Smart_PetriPlace() {
 }
@@ -18,21 +20,29 @@ int Smart_PetriPlace::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 
 	Create* create = plugins->newInstance<Create>(model);
-	ModalModelPetriNet* modal = new ModalModelPetriNet(model, "SingleFlowPetri");
+	ModalModelDefault* modal = new ModalModelDefault(model, "SingleFlowPetri");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
+	ColoredPetriNetNetwork* network = new ColoredPetriNetNetwork(model, "SingleFlowNetwork");
 	PetriPlace* source = new PetriPlace(model, "Source");
 	PetriPlace* sink = new PetriPlace(model, "Sink");
+	CPNTransition* moveBlue = new CPNTransition(model, "MoveBlue");
 	source->setInitialNode(true);
-	source->addTokens(3, "blue");
-	modal->addNode(source);
-	modal->addNode(sink);
-	modal->setEntryNode(source);
+	network->addPlace(source);
+	network->addPlace(sink);
+	network->addTransition(moveBlue);
+	network->setInitialTokens(source, "blue", 3);
 
-	PetriTransition* moveBlue = new PetriTransition(source, sink, "MoveBlue");
-	moveBlue->setInputArcWeight("blue", 1);
-	moveBlue->setOutputArcWeight("blue", 1);
-	modal->addTransition(moveBlue);
+	CPNArc* inArc = new CPNArc(model, source, moveBlue, CPNArc::Direction::PlaceToTransition, "In");
+	inArc->setInscription("blue", 1);
+	CPNArc* outArc = new CPNArc(model, sink, moveBlue, CPNArc::Direction::TransitionToPlace, "Out");
+	outArc->setInscription("blue", 1);
+	network->addArc(inArc);
+	network->addArc(outArc);
+
+	modal->setNetwork(network);
+	modal->setInputBinding(0, "1");
+	modal->setOutputBinding(0, "fired");
 
 	create->getConnectionManager()->insert(modal);
 	modal->getConnectionManager()->insert(dispose);

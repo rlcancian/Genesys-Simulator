@@ -1,8 +1,7 @@
 #pragma once
 
 #include "DefaultNode.h"
-#include "plugins/components/ModalModel/PetriPlace.h"
-#include <map>
+#include <string>
 
 class EFSMTransition : public DefaultNodeTransition {
 public:
@@ -24,20 +23,3 @@ private:
 	std::string _probabilityExpression = "";
 };
 
-class PetriTransition : public DefaultNodeTransition {
-public:
-	PetriTransition(DefaultNode* source, DefaultNode* destination, std::string name = "");
-	virtual ~PetriTransition() = default;
-
-public:
-	void setInputArcWeight(std::string color, unsigned int weight);
-	void setOutputArcWeight(std::string color, unsigned int weight);
-
-public:
-	virtual bool canFire(Model* model, Entity* entity) const override;
-	virtual void execute(Model* model, Entity* entity) const override;
-
-private:
-	std::map<std::string, unsigned int> _inputArcWeights;
-	std::map<std::string, unsigned int> _outputArcWeights;
-};
