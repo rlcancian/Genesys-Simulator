@@ -1,6 +1,7 @@
 #include "plugins/data/ModalModel/GraphEdge.h"
 
 #include "plugins/data/ModalModel/GraphNode.h"
+#include "kernel/simulator/model/Model.h"
 
 #include <cmath>
 
@@ -27,6 +28,17 @@ PluginInformation* GraphEdge::GetPluginInformation() {
 }
 
 ModelDataDefinition* GraphEdge::LoadInstance(Model* model, PersistenceRecord* fields) {
+	// Prefer the canonical ModelDataManager instance when nested network fields and
+	// top-level serialization both refer to the same named edge.
+	const std::string name = fields->loadField("name", std::string(""));
+	if (model != nullptr && !name.empty()) {
+		if (GraphEdge* existing = dynamic_cast<GraphEdge*>(
+				model->getDataManager()->getDataDefinition(Util::TypeOf<GraphEdge>(), name))) {
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
+			return existing;
+		}
+	}
 	GraphEdge* edge = new GraphEdge(model);
 	try {
 		edge->_loadInstance(fields);

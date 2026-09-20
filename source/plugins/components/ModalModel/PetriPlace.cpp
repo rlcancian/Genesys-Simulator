@@ -1,5 +1,6 @@
 #include "plugins/components/ModalModel/PetriPlace.h"
 #include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/model/Model.h"
 
 PetriPlace::PetriPlace(Model* model, std::string name) : DefaultNode(model, Util::TypeOf<PetriPlace>(), name) {
 }
@@ -51,6 +52,17 @@ PluginInformation* PetriPlace::GetPluginInformation() {
 }
 
 ModelDataDefinition* PetriPlace::LoadInstance(Model* model, PersistenceRecord *fields) {
+	// Prefer the canonical ModelDataManager instance when nested network fields and
+	// top-level serialization both refer to the same named place.
+	const std::string name = fields->loadField("name", std::string(""));
+	if (model != nullptr && !name.empty()) {
+		if (PetriPlace* existing = dynamic_cast<PetriPlace*>(
+				model->getDataManager()->getDataDefinition(Util::TypeOf<PetriPlace>(), name))) {
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
+			return existing;
+		}
+	}
 	PetriPlace* component = new PetriPlace(model);
 	component->_loadInstance(fields);
 	return component;
