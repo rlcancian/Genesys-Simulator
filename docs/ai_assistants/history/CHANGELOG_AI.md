@@ -2,7 +2,7 @@
 document_type: history-index
 authority: informative
 owner: project-maintainer
-last_updated: 2026-09-19
+last_updated: 2026-09-20
 status: active
 tracks: 511
 ---
@@ -17,6 +17,9 @@ This is a concise index of material AI-assisted development and governance chang
 
 | Date | Scope | Environment | PR/issue | Merge/checkpoint | Validation/evidence | Remaining boundary |
 |---|---|---|---|---|---|---|
+| 2026-09-20 | Modal LoadInstance canonical reuse (identity) | local | PR #536 | `5494b237` | focused 71→75 path; unit/kernel/smoke green | legacy cleanup; sanitizer residuals |
+| 2026-09-20 | Modal full Model round-trips Graph/DTMC/CPN/Modal | local | PR #537 | `e0a6a73b` | focused 75/75; unit/kernel 1832; smoke 3/3 | legacy smart-app migration; GUI deferred |
+| 2026-09-20 | Modal backend-gate progress evidence + STATUS sync | local | docs PR (pending) | evidence `2026-09-20_modal_backend_gate_progress.md` | docs-only | backend gate not passed |
 | 2026-07-20 | Correct CI/Debian branch and path triggers | GitHub | PR #470 | `5b24ab9277306b26a8742ac5b25cbca9d89ed6df` | ordinary CI green | package lifecycle still required |
 | 2026-07-20 | Add AI plugin tests to ordinary/direct-runner baseline | GitHub | PR #471 | `1fcac9f678c3c96a40cd921c0a3d54ea03bdf64c` | ordinary and kernel paths green | provider/security breadth pending |
 | 2026-07-20 | Add reusable Phase 0 kernel/smoke validation | GitHub | PR #472 | `802b8aec7ac129559692bd574e70fd9991aaec1d` | kernel/smoke artifacts green | applications/packages not covered |
