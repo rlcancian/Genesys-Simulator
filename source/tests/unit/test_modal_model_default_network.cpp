@@ -321,6 +321,35 @@ TEST(ModalModelDefaultNetworkTest, ModelFileRoundTripPreservesAttachedNetworkBin
 	EFSMNetwork* loadedNetwork = dynamic_cast<EFSMNetwork*>(loadedDefinition);
 	ASSERT_NE(loadedNetwork, nullptr);
 	EXPECT_EQ(loadedNetwork->getConflictPolicy(), EFSMNetwork::ConflictPolicy::DETERMINISTIC_PRIORITY);
+	EXPECT_EQ(loadedModal->getNetwork(), loadedNetwork);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<FSMState>())->size(), 2u);
+
+	std::string loadedError;
+	ASSERT_TRUE(ModelDataDefinition::Check(loadedNetwork, loadedError)) << loadedError;
+	ASSERT_TRUE(ModelComponent::Check(loadedModal)) << loadedError;
+
+	Attribute resultAttribute(loadedModel, "BoundResult");
+	(void)resultAttribute;
+
+	// Dispose internals may be incomplete in unit-test load paths; route the
+	// loaded modal to a probe sink for end-to-end entity/activation checks.
+	CollectorSinkComponentProbe* loadedSink = new CollectorSinkComponentProbe(loadedModel, "LoadedSink");
+	loadedModal->getConnectionManager()->removeAtPort(0);
+	loadedModal->getConnectionManager()->insert(loadedSink);
+
+	Entity* entity = loadedModel->createEntity("AfterLoad", true);
+	ASSERT_NE(entity, nullptr);
+	Event* arrival = new Event(0.0, entity, loadedModal, 0);
+	ModelComponent::DispatchEvent(arrival);
+	delete arrival;
+	drainFutureEvents(loadedModel);
+
+	ASSERT_NE(loadedNetwork->getCurrentState(), nullptr);
+	EXPECT_EQ(loadedNetwork->getCurrentState()->getName(), "Busy");
+	EXPECT_DOUBLE_EQ(loadedNetwork->getActivationCount(), 1.0);
+	EXPECT_DOUBLE_EQ(entity->getAttributeValue("BoundResult"), 55.0);
+	ASSERT_EQ(loadedSink->receivedEntities().size(), 1u);
+	EXPECT_EQ(loadedSink->receivedEntities().front(), entity);
 
 	::unlink(filename.c_str());
 }

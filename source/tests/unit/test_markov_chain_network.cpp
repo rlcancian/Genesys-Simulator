@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 namespace {
@@ -373,6 +374,71 @@ TEST(MarkovChainNetworkTest, SharedChainActivatedThroughTwoModalModelsKeepsNetwo
 	EXPECT_DOUBLE_EQ(entityB->getAttributeValue("SharedState"), 2.0);
 	EXPECT_EQ(modalB.getNetwork(), &network);
 	(void)stateAttribute;
+}
+
+TEST(MarkovChainNetworkTest, ModelFileRoundTripPreservesStatesProbabilitiesIdentityAndActivation) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	MarkovChainNetwork* network = new MarkovChainNetwork(model, "FileChain");
+	network->setProbabilityTolerance(1e-8);
+	MarkovState* a = new MarkovState(model, "A");
+	MarkovState* b = new MarkovState(model, "B");
+	MarkovState* c = new MarkovState(model, "C");
+	network->setInitialState(a);
+	network->addState(b);
+	network->addState(c);
+	network->addTransition(transition(a, b, 1.0, "AB"));
+	network->addTransition(transition(b, c, 1.0, "BC"));
+	network->addTransition(transition(c, c, 1.0, "CC"));
+
+	std::string errorMessage;
+	ASSERT_TRUE(ModelDataDefinition::Check(network, errorMessage)) << errorMessage;
+
+	const std::string filename = "/tmp/genesys_markov_model_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+
+	Model* loadedModel = simulator.getModelManager()->newModel();
+	ASSERT_TRUE(loadedModel->load(filename));
+
+	MarkovChainNetwork* loadedNetwork = dynamic_cast<MarkovChainNetwork*>(
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovChainNetwork>(), "FileChain"));
+	ASSERT_NE(loadedNetwork, nullptr);
+	EXPECT_DOUBLE_EQ(loadedNetwork->getProbabilityTolerance(), 1e-8);
+	ASSERT_EQ(loadedNetwork->getStates()->size(), 3u);
+	ASSERT_EQ(loadedNetwork->getTransitions()->size(), 3u);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<MarkovState>())->size(), 3u);
+
+	ModelDataDefinition* aCanonical =
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovState>(), "A");
+	ModelDataDefinition* bCanonical =
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovState>(), "B");
+	ModelDataDefinition* cCanonical =
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovState>(), "C");
+	ASSERT_NE(aCanonical, nullptr);
+	ASSERT_NE(bCanonical, nullptr);
+	ASSERT_NE(cCanonical, nullptr);
+	EXPECT_EQ(loadedNetwork->getInitialState(), aCanonical);
+	EXPECT_EQ(loadedNetwork->getCurrentState(), aCanonical);
+	for (MarkovState* state : *loadedNetwork->getStates()->list()) {
+		ASSERT_NE(state, nullptr);
+		EXPECT_EQ(state, loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovState>(), state->getName()));
+	}
+
+	NetworkActivationResult step1 = loadedNetwork->activate(NetworkActivationFrame(loadedNetwork->getNumInputPorts()));
+	EXPECT_TRUE(step1.isPresent(0));
+	EXPECT_EQ(loadedNetwork->getCurrentState(), bCanonical);
+	NetworkActivationResult step2 = loadedNetwork->activate(NetworkActivationFrame(loadedNetwork->getNumInputPorts()));
+	EXPECT_TRUE(step2.isPresent(0));
+	EXPECT_EQ(loadedNetwork->getCurrentState(), cCanonical);
+	NetworkActivationResult step3 = loadedNetwork->activate(NetworkActivationFrame(loadedNetwork->getNumInputPorts()));
+	EXPECT_TRUE(step3.isPresent(0));
+	EXPECT_EQ(loadedNetwork->getCurrentState(), cCanonical);
+
+	::unlink(filename.c_str());
 }
 
 TEST(MarkovChainNetworkTest, PluginRegistrationCreatesMarkovNetworkDataDefinitions) {

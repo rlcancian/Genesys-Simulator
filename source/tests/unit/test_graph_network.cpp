@@ -17,6 +17,7 @@
 
 #include <memory>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 namespace {
@@ -438,6 +439,115 @@ TEST(GraphNetworkTest, PersistenceRoundTripPreservesDirectedWeightedMultigraph) 
 	EXPECT_DOUBLE_EQ(between[1]->getWeight(), 2.3);
 	EXPECT_TRUE(loaded.hasEdge(loadedA, loadedA));
 	EXPECT_TRUE(loaded.hasCycle());
+}
+
+TEST(GraphNetworkTest, ModelFileRoundTripPreservesDirectedWeightedTopologyAndIdentity) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	DirectedGraphNetwork* network = new DirectedGraphNetwork(model, "FileDigraph");
+	GraphNode* a = new GraphNode(model, "A");
+	GraphNode* b = new GraphNode(model, "B");
+	GraphNode* c = new GraphNode(model, "C");
+	GraphEdge* ab1 = new GraphEdge(model, a, b, "AB1");
+	GraphEdge* ab2 = new GraphEdge(model, a, b, "AB2");
+	GraphEdge* aa = new GraphEdge(model, a, a, "AA");
+	ab1->setWeight(4.7);
+	ab2->setWeight(2.3);
+	for (GraphNode* node : {a, b, c}) {
+		network->addNode(node);
+	}
+	for (GraphEdge* edge : {ab1, ab2, aa}) {
+		network->addEdge(edge);
+	}
+
+	std::string errorMessage;
+	ASSERT_TRUE(ModelDataDefinition::Check(network, errorMessage)) << errorMessage;
+
+	const std::string filename = "/tmp/genesys_graph_model_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+
+	Model* loadedModel = simulator.getModelManager()->newModel();
+	ASSERT_TRUE(loadedModel->load(filename));
+
+	DirectedGraphNetwork* loadedNetwork = dynamic_cast<DirectedGraphNetwork*>(
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<DirectedGraphNetwork>(), "FileDigraph"));
+	ASSERT_NE(loadedNetwork, nullptr);
+	ASSERT_EQ(loadedNetwork->getNodes().size(), 3u);
+	ASSERT_EQ(loadedNetwork->getEdges().size(), 3u);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<GraphNode>())->size(), 3u);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<GraphEdge>())->size(), 3u);
+
+	GraphNode* loadedA = loadedNetwork->findNodeByName("A");
+	GraphNode* loadedB = loadedNetwork->findNodeByName("B");
+	GraphNode* loadedC = loadedNetwork->findNodeByName("C");
+	ASSERT_NE(loadedA, nullptr);
+	ASSERT_NE(loadedB, nullptr);
+	ASSERT_NE(loadedC, nullptr);
+	EXPECT_EQ(loadedA, loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<GraphNode>(), "A"));
+	EXPECT_EQ(loadedB, loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<GraphNode>(), "B"));
+	EXPECT_EQ(loadedC, loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<GraphNode>(), "C"));
+	EXPECT_TRUE(loadedNetwork->getIncidentEdges(loadedC).empty());
+
+	std::vector<GraphEdge*> between = loadedNetwork->getEdgesBetween(loadedA, loadedB);
+	ASSERT_EQ(between.size(), 2u);
+	EXPECT_TRUE(between[0]->isDirected());
+	EXPECT_TRUE(between[0]->hasWeight());
+	EXPECT_DOUBLE_EQ(between[0]->getWeight(), 4.7);
+	EXPECT_DOUBLE_EQ(between[1]->getWeight(), 2.3);
+	EXPECT_TRUE(loadedNetwork->hasEdge(loadedA, loadedA));
+	EXPECT_TRUE(loadedNetwork->hasCycle());
+	EXPECT_TRUE(loadedNetwork->hasPath(loadedA, loadedB));
+
+	::unlink(filename.c_str());
+}
+
+TEST(GraphNetworkTest, ModelFileRoundTripPreservesDagTopologicalOrder) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	DirectedAcyclicGraphNetwork* network = new DirectedAcyclicGraphNetwork(model, "FileDAG");
+	GraphNode* a = new GraphNode(model, "A");
+	GraphNode* b = new GraphNode(model, "B");
+	GraphNode* c = new GraphNode(model, "C");
+	GraphEdge* ab = new GraphEdge(model, a, b, "AB");
+	GraphEdge* bc = new GraphEdge(model, b, c, "BC");
+	for (GraphNode* node : {a, b, c}) {
+		network->addNode(node);
+	}
+	ASSERT_TRUE(network->addEdge(ab));
+	ASSERT_TRUE(network->addEdge(bc));
+
+	std::string errorMessage;
+	ASSERT_TRUE(ModelDataDefinition::Check(network, errorMessage)) << errorMessage;
+
+	const std::string filename = "/tmp/genesys_dag_model_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+
+	Model* loadedModel = simulator.getModelManager()->newModel();
+	ASSERT_TRUE(loadedModel->load(filename));
+
+	DirectedAcyclicGraphNetwork* loadedNetwork = dynamic_cast<DirectedAcyclicGraphNetwork*>(
+		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<DirectedAcyclicGraphNetwork>(), "FileDAG"));
+	ASSERT_NE(loadedNetwork, nullptr);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<GraphNode>())->size(), 3u);
+	ASSERT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<GraphEdge>())->size(), 2u);
+	EXPECT_FALSE(loadedNetwork->hasCycle());
+
+	GraphTopologicalOrderResult order = loadedNetwork->topologicalOrder();
+	ASSERT_TRUE(order.acyclic);
+	ASSERT_EQ(order.order.size(), 3u);
+	EXPECT_EQ(order.order[0]->getName(), "A");
+	EXPECT_EQ(order.order[1]->getName(), "B");
+	EXPECT_EQ(order.order[2]->getName(), "C");
+
+	::unlink(filename.c_str());
 }
 
 TEST(GraphNetworkTest, PluginRegistrationCreatesGraphNetworkDataDefinitions) {
