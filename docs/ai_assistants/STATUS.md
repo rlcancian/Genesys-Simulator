@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-09-20
+last_updated: 2026-10-04
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -19,7 +19,7 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Current remote `WorkInProgress` HEAD confirmed on 2026-09-20: `5bd10bb5` (`refactor(modal): remove legacy wrappers and ModalModelDefault node-list path (#541)`).
+- Current remote `WorkInProgress` HEAD confirmed on 2026-10-04: `4d83e94082e2f7cd81e9f56956c18f0170442bd0` (`docs(modal): close backend gate after #540/#541 (#542)`).
 - Immediately preceding integrated Modal/Network-relevant merges on this line:
   - PR #533 (`85626d3a`) — expose official `tests-unit` / `tests-kernel-unit` / `tests-smoke` presets;
   - PR #534 (`dd7bd649`) — EFSM configurable conflict policy;
@@ -28,8 +28,9 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   - PR #537 (`e0a6a73b`) — full Model round-trips for Graph/DTMC/CPN + Modal execute-after-load;
   - PR #538 (`811c2525`) — `ModalModelDefault` List container ownership;
   - PR #540 (`a913a07a`) — EFSM/Markov heap transition ownership + `DefaultNode` List dtor;
-  - PR #541 (`5bd10bb5`) — legacy wrapper/node-list/`PetriTransition` removal + smart-app migration.
-- Latest integrated documentation checkpoint: `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` — completion record through PR #519.
+  - PR #541 (`5bd10bb5`) — legacy wrapper/node-list/`PetriTransition` removal + smart-app migration;
+  - PR #542 (`4d83e940`) — documentation/evidence reconciliation declaring the Modal/Network backend gate passed.
+- Latest integrated documentation-migration checkpoint: `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` — completion record through PR #519; later topic-specific documentation includes the Modal/Network close-out in PR #542.
 - Final documentation-governance completion validation:
   - documentation-governance run `29939815697`: passed;
   - ordinary CI run `29939816032`: configure, build, CTest and GUI GMDD diagnostics passed.
@@ -75,7 +76,7 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   cycle is inactive, but this does **not** prove that the full approved
   ModalModel/DefaultNetwork architecture is complete. The current Modal/Network
   development is **not `done_confirmed`**.
-- Current-HEAD baseline verification was executed locally on 2026-09-20 against
+- Current backend baseline verification was executed locally on 2026-09-20 against
   `5bd10bb5` (toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
   - `tests-unit`: 1,834 registered; 1,830 executed/passed; 0 failed; 4 disabled;
   - `tests-kernel-unit`: 1,834 registered; 1,830 executed/passed; 0 failed; 4 disabled;
@@ -107,6 +108,7 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 - A Phase 9 GUI/editor architecture remains proposed rather than established as
   implemented; backend contracts must be stabilized and revalidated first:
   [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md).
+- Maintainer direction recorded 2026-10-04: the next Modal/Network backend research phase is an academically grounded **continuous-time Markov chain / Markov jump process for biochemical reaction networks**. The first step is specification and validation design, explicitly reconciling the existing WholeCell Gillespie SSA path with `DefaultNetwork` and the GenESyS event calendar; see [`reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`](reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md). GUI remains deferred.
 
 ## 3. Technical baseline
 
@@ -123,14 +125,14 @@ Recent CI evidence used CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. Those exact v
 
 ## 4. Exact core test baseline
 
-Current exact inventory on `WorkInProgress` HEAD `5bd10bb5` (executed 2026-09-20 locally):
+Current exact inventory on the backend implementation checkpoint `5bd10bb5` (executed 2026-09-20 locally):
 
 - registered: 1,834;
 - executed/passed: 1,830;
 - failed: 0;
 - disabled: 4 historical duplicate Search/Remove blocks.
 
-The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 73/73 passed.
+The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 73/73 passed. PR #542 is documentation-only and does not alter that source/runtime baseline.
 
 Equivalent active Search/Remove tests are mandatory, so the four disabled blocks remain source-cleanup debt rather than current behavioral coverage gaps.
 
@@ -180,6 +182,7 @@ Startup does not imply functional or scientific maturity.
 - `HUM-SEC-002`: worker authentication architecture;
 - `HUM-SEC-004`: runtime signing public key provisioning for per-user Launcher updates;
 - `HUM-SCI-001`: authoritative numerical/statistical reference packages;
+- `HUM-SCI-002`: modal/hybrid time synchronization contract; now directly relevant to the planned biochemical CTMC phase because sampled CTMC holding times must be reconciled with the GenESyS event calendar;
 - `HUM-OPT-001`: initial optimizer algorithm/benchmark package;
 - `HUM-VC-001`: initial AI virtual-cell organism/use case/data package;
 - `HUM-REL-001`: final supported set and promotion gate.
@@ -194,9 +197,9 @@ Confirmed only for exercised ownership paths: temporary plugin-completion Model 
 
 Not established: repository-wide leak freedom, thread safety, broad UBSan/Valgrind, complete optimizer behavior, broad numerical/statistical validation, biological predictive validity or release readiness.
 
-For Modal/Network specifically, ownership/lifetime conclusions on the current HEAD remain verification-pending until the local continuation maps current ownership and executes the required tests/diagnostics.
+For Modal/Network specifically, the backend-gate ownership/lifetime paths changed in PRs #538/#540 were mapped and validated on `5bd10bb5`, including focused ASan/LSan evidence for EFSM and Markov transition ownership. This is bounded evidence for the exercised Modal/Network paths, not a claim of repository-wide leak freedom.
 
-Whole-cell/biochemical/AI virtual-cell work remains experimental/research-oriented. Software maturity and scientific claim level remain independent.
+Whole-cell/biochemical/AI virtual-cell work remains experimental/research-oriented. Software maturity and scientific claim level remain independent. The planned biochemical CTMC phase must add reference-backed scientific validation before maturity claims are raised.
 
 ## 9. Documentation migration result
 
@@ -247,7 +250,7 @@ The documentation-migration-specific freeze has ended.
 
 Previously paused technical tasks remain `paused`; they do not resume automatically. A maintainer must explicitly activate the selected next task in `BACKLOG_AUTONOMOUS.md`.
 
-For Modal/Network, the maintainer has approved the continuation direction recorded in `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. `AUTO-MODAL-001` is `closed`. `AUTO-MODAL-002` is `running` after the 2026-09-20 integration of PRs #535–#537 (persistence identity + full-model round-trips).
+For Modal/Network, `AUTO-MODAL-001` is `closed` and `AUTO-MODAL-002` backend scope is `done_confirmed`. The next maintainer-selected direction is the academic biochemical CTMC phase defined in `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`. Its immediate work is specification/current-code audit/reference-validation design; runtime implementation must not begin by assumption while the `HUM-SCI-002` simulation-time contract remains unresolved.
 
 ## 13. Ongoing governance
 
@@ -296,7 +299,7 @@ For Modal/Network, the maintainer has approved the continuation direction record
 
 ## 15. ModalModel / DefaultNetwork continuation checkpoint
 
-Current status: **backend gate PASSED on HEAD `5bd10bb5`; `AUTO-MODAL-002` backend scope `done_confirmed`; global Modal/Network not `done_confirmed` (GUI deferred under `HUM-MODAL-002`)**.
+Current status: **backend gate PASSED on implementation checkpoint `5bd10bb5`; `AUTO-MODAL-002` backend scope `done_confirmed`; global Modal/Network not `done_confirmed` (GUI deferred under `HUM-MODAL-002`)**. Current `WorkInProgress` HEAD `4d83e940` is the documentation-only #542 close-out of that gate.
 
 Completed since the 2026-09-19 baseline on `dd7bd649`:
 
@@ -308,17 +311,25 @@ Completed since the 2026-09-19 baseline on `dd7bd649`:
 6. `ModalModelDefault` List ownership (#538);
 7. EFSM/Markov heap transition ownership + `DefaultNode` List dtor (#540);
 8. legacy wrappers/node-list/`PetriTransition` removed; smart apps migrated (#541);
-9. focused Modal/Network 73/73; unit 1830/1830 (+4 disabled); smoke 3/3.
+9. focused Modal/Network 73/73; unit 1830/1830 (+4 disabled); smoke 3/3;
+10. backend-gate documentation/evidence reconciled (#542).
 
-Remaining outside backend gate:
+Remaining outside the completed backend gate:
 
-1. GUI/editor phase (`HUM-MODAL-002` / `MODAL_NETWORK_GUI_ARCHITECTURE.md`);
-2. Cellular Automata migration (deferred);
+1. GUI/editor phase (`HUM-MODAL-002` / `MODAL_NETWORK_GUI_ARCHITECTURE.md`) — still deferred;
+2. Cellular Automata migration — still deferred;
 3. process-lifetime plugin-template Buffer leaks outside Modal ownership.
 
-**Backend gate (this mission):** PASSED.
+Next maintainer-selected backend research phase:
+
+1. academically grounded CTMC / Markov jump process for biochemical reaction networks;
+2. reconcile `MarkovChainNetwork` (DTMC), existing `StochasticReactionComponent`/`StochasticReactionRule`, GenESyS RNG and simulation/event time;
+3. establish reference-backed CME/SSA semantics and analytical/statistical validation before runtime implementation;
+4. detailed plan: `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`.
+
+**Backend gate (completed mission):** PASSED.
 
 **Global Modal/Network `done_confirmed`:** not applicable until GUI phase is decided/executed per the completion plan.
 
-The authoritative detailed continuation guide is `reference/MODAL_NETWORK_COMPLETION_PLAN.md`.
+The authoritative completed-backend guide remains `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. The next backend research plan is `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`.
 Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.

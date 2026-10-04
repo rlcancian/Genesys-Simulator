@@ -2,7 +2,7 @@
 document_type: reference-index
 authority: informative
 owner: project-maintainer
-last_reviewed: 2026-07-22
+last_reviewed: 2026-10-04
 status: active
 tracks: 511
 ---
@@ -118,6 +118,16 @@ Use for:
 - the three-mode EFSM conflict policy;
 - the deferred Cellular Automata -> DefaultNetwork migration;
 - the `done_confirmed` completion gate before broad GUI work or later CA migration.
+
+### [`MODAL_CTMC_BIOCHEMICAL_PLAN.md`](MODAL_CTMC_BIOCHEMICAL_PLAN.md)
+
+Use for the next backend research phase after the Modal/Network backend gate:
+
+- academically grounded CTMC / Markov jump process semantics for biochemical reaction networks;
+- reconciliation of the existing DTMC, WholeCell Gillespie SSA, stochastic reaction rules and `DefaultNetwork` architecture;
+- reaction stoichiometry, propensities/hazards, generator/CME semantics and exact SSA validation;
+- the mandatory GenESyS simulation-time/event-calendar integration gate under `HUM-SCI-002`;
+- analytical/statistical fixtures and authoritative literature required before runtime implementation.
 
 ### [`MODAL_NETWORK_GUI_ARCHITECTURE.md`](MODAL_NETWORK_GUI_ARCHITECTURE.md)
 
