@@ -152,10 +152,13 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleCont
 
     auto commitNetworkDouble = [&](const QString& propertyName,
                                    const QString& localizedText,
-                                   const std::function<double()>& getter) {
+                                   const std::function<double()>& getter) -> double {
         const int countBefore = modelChangedCount;
         QDoubleSpinBox* spinBox = beginDoubleEdit(browser, propertyName);
-        ASSERT_NE(spinBox, nullptr);
+        if (spinBox == nullptr) {
+            ADD_FAILURE() << "Expected QDoubleSpinBox for " << propertyName.toStdString();
+            return getter();
+        }
         commitTextWithEnter(spinBox->findChild<QLineEdit*>(), localizedText);
         EXPECT_EQ(modelChangedCount, countBefore + 1);
         drainGuiEvents();
@@ -172,10 +175,13 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleCont
     bindEditableKernelObject(browser, grid, &modelChangedCount);
     auto commitGridDouble = [&](const QString& propertyName,
                                 const QString& localizedText,
-                                const std::function<double()>& getter) {
+                                const std::function<double()>& getter) -> double {
         const int countBefore = modelChangedCount;
         QDoubleSpinBox* spinBox = beginDoubleEdit(browser, propertyName);
-        ASSERT_NE(spinBox, nullptr);
+        if (spinBox == nullptr) {
+            ADD_FAILURE() << "Expected QDoubleSpinBox for " << propertyName.toStdString();
+            return getter();
+        }
         commitTextWithEnter(spinBox->findChild<QLineEdit*>(), localizedText);
         EXPECT_EQ(modelChangedCount, countBefore + 1);
         drainGuiEvents();
