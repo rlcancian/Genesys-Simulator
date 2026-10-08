@@ -922,6 +922,30 @@ TEST(RuntimePluginManagerClassTest, GroProgramCompilerExpandsComposedNamedProgra
     EXPECT_EQ(allDefinition.commands[4].functionName, "observe");
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeTimeExpressionReturnsColonyTimeInsteadOfFailing) {
+    // "time()" is not a required builtin for the selected GenESyS Gro
+    // subset, but an expression using an unsupported function must not
+    // abort the whole statement/program: it must either be a recognized,
+    // defined expression function or fail only the specific construct, not
+    // the entire execution. Defensively support it directly as the colony
+    // time, matching the original Gro "time()" intent.
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse("program bacterium() { t := time(); }");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+
+    GroProgramRuntimeState state;
+    state.colonyTime = 3.5;
+
+    GroProgramRuntime runtime;
+    GroProgramRuntime::ExecutionResult result = runtime.execute(ir, state);
+
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_DOUBLE_EQ(state.variables.at("t"), 3.5);
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand) {
 	GroProgramParser parser;
 	GroProgramParser::Result parsed = parser.parse(

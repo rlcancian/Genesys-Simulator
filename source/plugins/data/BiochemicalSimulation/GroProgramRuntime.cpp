@@ -473,6 +473,19 @@ private:
 			return true;
 		}
 
+		if (functionName == "time") {
+			// Not required by the selected GenESyS Gro subset, but an
+			// unsupported expression function must not abort the whole
+			// statement/program; return the colony time defensively,
+			// matching the original Gro "time()" intent.
+			if (!arguments.empty()) {
+				errorMessage = "GroProgramRuntime time expression does not accept arguments. ";
+				return false;
+			}
+			value = _state.colonyTime;
+			return true;
+		}
+
 		errorMessage = "GroProgramRuntime expression does not support function \"" + functionName + "\". ";
 		return false;
 	}
