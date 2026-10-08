@@ -329,6 +329,8 @@ TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndK
 
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
+    ASSERT_NE(model->getPersistence(), nullptr);
+    model->getPersistence()->setHasChanged(true);
 
     GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_TextSync");
     ASSERT_NE(program, nullptr);
@@ -361,6 +363,8 @@ TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndK
     EXPECT_FALSE(displayed.isEmpty());
     EXPECT_FALSE(textModelHasChanged);
     EXPECT_EQ(textChangedCount, 0);
+    EXPECT_TRUE(model->getPersistence()->hasChanged())
+        << "Generating the TextCodeEditor representation must not mark persistence clean";
     EXPECT_FALSE(QFile::exists(QStringLiteral("./temp.tmp")));
 
     const QStringList lines = displayed.split(QLatin1Char('\n'));
