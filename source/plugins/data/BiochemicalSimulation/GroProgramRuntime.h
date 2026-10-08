@@ -24,6 +24,13 @@ struct GroProgramRuntimeState {
 	unsigned int tickCount = 0;
 	std::map<std::string, double> contextVariables;
 	std::map<std::string, double> variables;
+	// Counts "VAR := signal(kdiff, kdeg);" assignments executed so far in
+	// this pass, in source order. The Nth such assignment always yields the
+	// same channel handle N across every bacterium and every colony step,
+	// because every bacterium executes the identical program text in the
+	// same order: no name tracking or persisted registry is needed for
+	// idempotent, alias-free channel identity.
+	unsigned int signalDeclarationOrdinal = 0;
 };
 
 /*!
@@ -64,6 +71,12 @@ public:
 	struct SignalMutation {
 		SignalMutationType type = SignalMutationType::Emit;
 		double value = 0.0;
+		// Channel 0 is the colony's single default/legacy field (backward
+		// compatible with pre-multi-channel behavior). Channel N >= 1 is the
+		// Nth distinct "signal(...)" declaration encountered in program
+		// order, matching GroProgramCompiler/GroProgramRuntime's ordinal
+		// channel-handle assignment (see executeCommands' Assignment case).
+		unsigned int channel = 0;
 	};
 
 	struct MotionMutation {
@@ -87,7 +100,8 @@ public:
 			SetSignalGridWidth,
 			SetSignalGridHeight,
 			GetSignalMatrix,
-			DumpSignalField
+			DumpSignalField,
+			EnsureSignalChannel
 		};
 
 			Type type = Type::Reset;
