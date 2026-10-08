@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 
 #include "mainwindow.h"
+#include "actions/AddUndoCommand.h"
+#include "actions/DeleteUndoCommand.h"
+#include "graphicals/GraphicalConnection.h"
+#include "graphicals/GraphicalModelComponent.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "services/ModelLanguageSynchronizer.h"
 
@@ -29,6 +33,7 @@
 #include <QSpinBox>
 #include <QString>
 #include <QTabWidget>
+#include <QUndoStack>
 
 namespace {
 
@@ -475,4 +480,192 @@ TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTe
     drainGuiEvents();
     EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Create_SceneSync")));
     delete source;
+}
+
+
+TEST(ModelLanguageSynchronizerRegression, VisualOnlySceneEventPreservesManualText) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+
+    QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
+    ASSERT_NE(modelTabs, nullptr);
+    modelTabs->setCurrentIndex(0);
+    drainGuiEvents();
+
+    QPlainTextEdit* editor =
+        window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(editor, nullptr);
+
+    const QString manualText = QStringLiteral("manual text must survive a drawing-only scene event");
+    editor->setPlainText(manualText);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), manualText);
+
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::EDIT,
+        GraphicalModelEvent::EventObjectType::DRAWING,
+        nullptr);
+    drainGuiEvents();
+
+    EXPECT_EQ(editor->toPlainText(), manualText);
+}
+
+TEST(ModelLanguageSynchronizerRegression, ModelTabsKeepManualTextIsolated) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    QPlainTextEdit* editor =
+        window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(editor, nullptr);
+    QTabWidget* graphicsTabs =
+        window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
+    ASSERT_NE(graphicsTabs, nullptr);
+
+    const QString firstText = QStringLiteral("manual text for model A");
+    editor->setPlainText(firstText);
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+    ASSERT_GE(graphicsTabs->count(), 2);
+
+    const int secondIndex = graphicsTabs->currentIndex();
+    ASSERT_GE(secondIndex, 0);
+    const int firstIndex = secondIndex == 0 ? 1 : 0;
+
+    const QString secondText = QStringLiteral("manual text for model B");
+    editor->setPlainText(secondText);
+    drainGuiEvents();
+
+    graphicsTabs->setCurrentIndex(firstIndex);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), firstText);
+
+    graphicsTabs->setCurrentIndex(secondIndex);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), secondText);
+}
+
+TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoRefreshTextView) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    QUndoStack* undoStack = scene->getUndoStack();
+    ASSERT_NE(undoStack, nullptr);
+
+    Simulator* simulator = scene->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    PluginManager* manager = simulator->getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+
+    QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
+    ASSERT_NE(modelTabs, nullptr);
+    modelTabs->setCurrentIndex(0);
+    drainGuiEvents();
+
+    QPlainTextEdit* editor =
+        window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(editor, nullptr);
+
+    Create* source = manager->newInstance<Create>(model, "Create_UndoSync");
+    Dispose* destination = manager->newInstance<Dispose>(model, "Dispose_UndoSync");
+    ASSERT_NE(source, nullptr);
+    ASSERT_NE(destination, nullptr);
+
+    Plugin* createPlugin = manager->find(source->getClassname());
+    Plugin* disposePlugin = manager->find(destination->getClassname());
+    ASSERT_NE(createPlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+
+    GraphicalModelComponent* graphicalSource =
+        scene->addGraphicalModelComponent(createPlugin, source, QPointF(120.0, 120.0), Qt::blue, true);
+    GraphicalModelComponent* graphicalDestination =
+        scene->addGraphicalModelComponent(disposePlugin, destination, QPointF(360.0, 120.0), Qt::blue, true);
+    ASSERT_NE(graphicalSource, nullptr);
+    ASSERT_NE(graphicalDestination, nullptr);
+    drainGuiEvents();
+
+    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Create_UndoSync")));
+    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Dispose_UndoSync")));
+
+    undoStack->undo();
+    drainGuiEvents();
+    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Dispose_UndoSync")));
+
+    undoStack->redo();
+    drainGuiEvents();
+    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Dispose_UndoSync")));
+
+    const QList<GraphicalComponentPort*> sourcePorts = graphicalSource->getGraphicalOutputPorts();
+    const QList<GraphicalComponentPort*> destinationPorts = graphicalDestination->getGraphicalInputPorts();
+    ASSERT_FALSE(sourcePorts.isEmpty());
+    ASSERT_FALSE(destinationPorts.isEmpty());
+
+    auto* connection = new GraphicalConnection(sourcePorts.first(), destinationPorts.first());
+    undoStack->push(new AddUndoCommand(connection, scene));
+    drainGuiEvents();
+
+    const QString destinationId =
+        QStringLiteral("nextId=") + QString::number(destination->getId());
+    EXPECT_TRUE(editor->toPlainText().contains(destinationId));
+
+    undoStack->undo();
+    drainGuiEvents();
+    EXPECT_FALSE(editor->toPlainText().contains(destinationId));
+
+    undoStack->redo();
+    drainGuiEvents();
+    EXPECT_TRUE(editor->toPlainText().contains(destinationId));
+
+    Create* deleted = manager->newInstance<Create>(model, "Create_DeleteUndoSync");
+    ASSERT_NE(deleted, nullptr);
+    Plugin* deletedPlugin = manager->find(deleted->getClassname());
+    ASSERT_NE(deletedPlugin, nullptr);
+    GraphicalModelComponent* graphicalDeleted =
+        scene->addGraphicalModelComponent(deletedPlugin, deleted, QPointF(120.0, 320.0), Qt::blue, true);
+    ASSERT_NE(graphicalDeleted, nullptr);
+    drainGuiEvents();
+    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
+
+    QList<QGraphicsItem*> deleteItems;
+    deleteItems.append(graphicalDeleted);
+    undoStack->push(new DeleteUndoCommand(deleteItems, scene));
+    drainGuiEvents();
+    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
+
+    undoStack->undo();
+    drainGuiEvents();
+    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
+
+    undoStack->redo();
+    drainGuiEvents();
+    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
 }
