@@ -5,6 +5,7 @@
 
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/model/Model.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
@@ -61,6 +62,29 @@ public:
 
 private:
     QLocale _previous;
+};
+
+class GenericDoubleDataDefinition final : public ModelDataDefinition {
+public:
+    explicit GenericDoubleDataDefinition(Model* model)
+        : ModelDataDefinition(model, "GenericDoubleDataDefinition", "GenericDouble_PropertyEditor") {
+        auto* control = new SimulationControlDouble(
+            [this]() { return _value; },
+            [this](double value) { _value = value; },
+            getClassname(),
+            getName(),
+            "Value",
+            "Generic SimulationControlDouble regression value");
+        _parentModel->getControls()->insert(control);
+        _addSimulationControl(control);
+    }
+
+    double value() const {
+        return _value;
+    }
+
+private:
+    double _value = 0.0;
 };
 
 } // namespace
@@ -124,6 +148,34 @@ QSpinBox* beginIntegerEdit(ObjectPropertyBrowser& browser, const QString& proper
     browser.editItem(item);
     drainGuiEvents();
     return browser.findChild<QSpinBox*>();
+}
+
+TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {
+    ScopedDefaultLocale locale(QLocale(QLocale::Portuguese, QLocale::Brazil));
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* object = new GenericDoubleDataDefinition(model);
+    ASSERT_NE(object, nullptr);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+
+    int modelChangedCount = 0;
+    bindEditableKernelObject(browser, object, &modelChangedCount);
+
+    QDoubleSpinBox* spinBox = beginDoubleEdit(browser, QStringLiteral("Value"));
+    ASSERT_NE(spinBox, nullptr);
+    const int countBefore = modelChangedCount;
+    commitTextWithEnter(spinBox->findChild<QLineEdit*>(), QStringLiteral("1,25"));
+
+    EXPECT_NEAR(object->value(), 1.25, 1e-12);
+    EXPECT_EQ(modelChangedCount, countBefore + 1);
+    drainGuiEvents();
+    EXPECT_NEAR(object->value(), 1.25, 1e-12);
 }
 
 TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleControlsOnce) {
