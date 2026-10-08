@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-09-20
+last_updated: 2026-10-08
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -414,6 +414,160 @@ This is the only approved source for work an AI agent may execute without a new 
   - evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 `AUTO-MODAL-001` remains in Section 4 as a closed historical development cycle, not as `done_confirmed`.
+
+## 5.1. Scientific rigor program — biochemical and WholeCell models (S0–S13)
+
+Maintainer authorization: 2026-10-08. The program is sequential: execute exactly one bounded microtask per hourly iteration, continue the same microtask until its PR is integrated and verified, and only begin its successor in a later iteration. A stage may be subdivided into smaller PRs, but never run concurrently with its unfinished predecessor. S0 is the documentation-only PR #543, already merged in WorkInProgress at 065c5adb58b1435efae9c31c37f3b92d6a0f714c; this record does not reclassify any unverified scientific behavior as validated.
+
+Common execution contract for AUTO-SCI-001 through AUTO-SCI-013:
+- Integration: start from the current real WorkInProgress HEAD, use a small WiPYYYYMM/<scope> branch, open a draft PR targeting WorkInProgress, inspect final-head CI, mandatory checks, review threads, mergeability, and required artifacts; merge only after every gate passes; verify post-merge HEAD; remove the source branch when safe.
+- Evidence: distinguish current-code inspection, executed validation, canonical documentation, strong indication, hypothesis, and maintainer decision. Scientific references and analytical/numerical oracles precede behavioral implementation. Build/test green never implies predictive validity.
+- Documentation and closure: reconcile the applicable canonical backlog, STATUS, AI changelog, scientific evidence, and affected manuals; mark done_confirmed only when all in-scope acceptance criteria are demonstrated, reviewed, and integrated.
+- Shared stop gate: stop on red/unknown mandatory CI, material review, conflicting branch, missing scientific reference/oracle, unsafe persistence or ownership change, unresolved human scientific/architectural decision, or environment incapable of required validation. Record the exact blocker; do not start another stage.
+- Scope boundary: backend before GUI; preserve existing DTMC; do not initiate Cellular Automata, MDP, RDME, Chemical Langevin, advanced tau-leaping, broad SBML redesign, or cosmetic refactoring.
+
+### AUTO-SCI-001 (S1) — Consolidated scientific model inventory
+
+- Priority: P1
+- Status: ready
+- Environment: github (documentation inventory; current source inspection and CI evidence), or local.
+- Dependency: S0 / PR #543 integrated; no scientific runtime decision required for inventory.
+- Scope: inspect current WholeCellModeling, BiochemicalSimulation, source/tools/Biochemical, Modal/Network, Continuous, tests and models. Produce a canonical per-mechanism matrix of mathematical formulation, state, variables/units, parameters, time, RNG, solver, persistence, references, tests/oracles, scientific claim level and gaps. Cover MolecularSpecies/WholeCellState/BioCompartment, SSA/reaction rules, stochastic gene expression, ODE/kinetics, steady state/FBA, growth/division/cycle/compartments/projections, DTMC and planned CTMC.
+- Acceptance: source-linked matrix and explicit uncertainties are committed; plan/status/evidence are reconciled; documentation governance and required CI pass; PR is reviewed, merged and post-merge HEAD verified.
+- Non-goals: implement or silently repair algorithms; choose CTMC clock policy; promote scientific claims.
+- Stop: missing source or unsafe/incomplete repository read must be reported, not guessed.
+
+### AUTO-SCI-002 (S2) — Stochastic reaction scientific contract
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-001 done_confirmed.
+- Scope: audit StochasticReactionRule, species and stoichiometry; analytically test zero-, uni- and bimolecular reactions, repeated reactants (2A), insufficient reagents, non-negativity, conservation where applicable and microscopic rate units.
+- Acceptance: explicit reference/units contract, focused oracles and passing relevant regression; production corrections only for demonstrated defects, integrated through gated PR.
+- Non-goals: introduce new CTMC engine.
+- Stop: unresolved stochastic parameterization or failed oracle requires escalation.
+
+### AUTO-SCI-003 (S3) — CTMC event-time and RNG contract
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-002 done_confirmed.
+- Scope: audit GenESyS event calendar, ModalModelDefault, DefaultNetwork, WholeCell clocks and RNG; specify CTMC holding-time scheduling, reset/seed reproducibility and explicit legacy windowed-SSA coexistence without hidden clock drift.
+- Acceptance: evidence-backed temporal/RNG contract and reproducibility tests precede any runtime change; document resolved boundaries.
+- Non-goals: silently choose between materially different event-calendar architectures.
+- Stop: if HUM-SCI-002 requires a material maintainer decision, record exact options/tradeoffs, STOP, and notify the maintainer. Resume only after the decision is recorded; do not block S1/S2 preemptively.
+
+### AUTO-SCI-004 (S4) — CTMC analytical oracle package
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-003 done_confirmed.
+- Scope: reference fixtures for first-order A->B, N-molecule binomial decay, competing A->B/A->C, reversible two-state CTMC, combinatorics, absorbing states, generator Q invariants, seed/reset and persistence.
+- Acceptance: distinguish exact analytical assertions from ensemble Monte Carlo tests, justify tolerances, and integrate passing oracle suite before runtime implementation.
+- Non-goals: implement CTMC network.
+- Stop: unreferenced expected results or unjustified statistical tolerances.
+
+### AUTO-SCI-005 (S5) — CTMC network backend
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-004 done_confirmed.
+- Scope: implement smallest distinct CTMC specialization compatible with DefaultNetwork, preserving DTMC semantics; discrete state, channels/propensities, exponential holding times, channel choice, reset, persistence, factory registration and diagnostics. Split S5a/S5b if required.
+- Acceptance: S4 oracles and focused/regression/persistence tests pass; required runtime evidence and gated PR integration.
+- Non-goals: reinterpret MarkovChainNetwork probabilities as rates.
+- Stop: unresolved time integration, public API or persistence semantics.
+
+### AUTO-SCI-006 (S6) — SSA/CTMC/WholeCell consolidation
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-005 done_confirmed.
+- Scope: reconcile StochasticReactionComponent with CTMC reaction/propensity kernel, RNG/reset and shared scientific semantics while retaining the legacy windowed path until equivalence is demonstrated.
+- Acceptance: reference-equivalent supported cases, reproducibility and compatibility regressions, gated PR integration.
+- Non-goals: remove legacy path without migration evidence.
+- Stop: behavior divergence without explained contract or safe migration.
+
+### AUTO-SCI-007 (S7) — Deterministic ODE and kinetic-law rigor
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-006 done_confirmed.
+- Scope: audit MassActionOdeSystem, BioKineticLawExpression, BioSimulate and solvers; test first-order decay, reversible reactions, conservation, coupled systems, amount/concentration/volume units, convergence and invalid/nonfinite behavior.
+- Acceptance: mathematical reference and passing numerical/regression evidence; corrections only for demonstrated gaps; gated PR integration.
+- Non-goals: unrelated solver redesign.
+- Stop: unresolved dimensional conventions or scientific formulation.
+
+### AUTO-SCI-008 (S8) — Steady-state and FBA rigor
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-007 done_confirmed.
+- Scope: audit MetabolicFluxBalanceSolver, GLPK and BioSteadyState, Sv=0, bounds, objective, flux units, infeasible/unbounded handling, small analytical LP fixtures and optional-dependency/persistence behavior.
+- Acceptance: reference-backed focused tests and regression, limitations and claim level documented, gated PR integration.
+- Non-goals: equate LP correctness with biological validation.
+- Stop: unresolved objective/unit semantics or unsupported solver behavior.
+
+### AUTO-SCI-009 (S9) — Stochastic gene expression rigor
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-008 done_confirmed.
+- Scope: audit StochasticTranscription, StochasticTranslation, GeneticExpressionStep/Simulate and related processes; state Poisson/tau-leaping approximations, step/parameter/validity assumptions; test analytically tractable birth-death mean/variance/distributions.
+- Acceptance: referenced oracles, justified statistical tolerances, passing tests and gated PR integration.
+- Non-goals: label tau-leaping as exact SSA or add advanced tau-leaping.
+- Stop: unresolved biological rate/parameter meaning.
+
+### AUTO-SCI-010 (S10) — Growth, division and compartment invariants
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-009 done_confirmed.
+- Scope: audit CellGrowth, CellDivisionEvent, CellCycleCheckpoint, CompartmentExchange, BioStateProjection and related mechanisms for non-negativity, applicable conservation, partitioning, volume/units, time/order and stochasticity.
+- Acceptance: minimal reproducible fixtures, documented educational versus quantitative limits, passing regression and gated PR integration.
+- Non-goals: unsupported predictive cell physiology.
+- Stop: missing biological invariants or unresolved mass-balance assumptions.
+
+### AUTO-SCI-011 (S11) — WholeCell hybrid integration
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-010 done_confirmed.
+- Scope: small end-to-end fixtures combining at least two validated mechanisms to detect double time advancement, semantic race/order, state drift, unit inconsistencies and non-reproducibility; revisit HUM-SCI-002 with evidence.
+- Acceptance: passing integrated reference fixtures, explicit remaining decisions and gated PR integration.
+- Non-goals: hide unresolved time-contract choices.
+- Stop: material scientific synchronization decision goes to maintainer.
+
+### AUTO-SCI-012 (S12) — Parameter provenance and interoperability
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-011 done_confirmed.
+- Scope: audit WholeCellParameterReader, .gen models, annotations and actual SBML bridge subset; record parameter/dataset units, source, transformations, version and diagnostics against silent semantic loss.
+- Acceptance: provenance/round-trip or diagnostic fixtures for actual supported subset, passing regression and gated PR integration.
+- Non-goals: expand SBML scope without HUM-VC-002.
+- Stop: subset extension or material interoperability policy requires maintainer decision.
+
+### AUTO-SCI-013 (S13) — Scientific validation and maturity gate
+
+- Priority: P1
+- Status: blocked-dependency
+- Environment: local or github with approved executable CI.
+- Dependency: AUTO-SCI-012 done_confirmed.
+- Scope: final per-subsystem reference/oracle/test matrix including nominal, edge, error, reproducibility, persistence, limitations, scientific claim level and independent software maturity; aggregate regression, appropriate sanitizers and manual impact.
+- Acceptance: final-head executed evidence and documentation support every scoped claim; mark each work package done_confirmed only with complete demonstrated acceptance and integrated PR.
+- Non-goals: infer predictive validity from build/test green.
+- Stop: any unknown/failed mandatory scientific gate remains open, never silently waived.
 
 ## 6. Paused technical tasks
 
