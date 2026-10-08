@@ -152,7 +152,34 @@ protected:
             return editor;
         }
 
-        if (QLineEdit* lineEdit = editor->findChild<QLineEdit*>()) {
+        // Numeric Qt property editors are spin boxes containing an internal QLineEdit.
+        // Detect the semantic editor first so localized display text never crosses the
+        // commit boundary as a QString (for example "0,18" under pt_BR).
+        QAbstractSpinBox* spinBox = qobject_cast<QAbstractSpinBox*>(editor);
+        if (spinBox == nullptr) {
+            spinBox = editor->findChild<QAbstractSpinBox*>();
+        }
+        if (spinBox != nullptr) {
+            _registerEditor(spinBox, manager, property, editor);
+            if (QLineEdit* spinLineEdit = spinBox->findChild<QLineEdit*>()) {
+                spinLineEdit->installEventFilter(this);
+            }
+            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [this, callback = _commitCallback, property, spinBox]() {
+                const auto stateIt = _editorStates.find(spinBox);
+                if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
+                    stateIt.value().suppressCommit = false;
+                    return;
+                }
+                callback(property, spinBox->property("value"));
+            });
+            return editor;
+        }
+
+        QLineEdit* lineEdit = qobject_cast<QLineEdit*>(editor);
+        if (lineEdit == nullptr) {
+            lineEdit = editor->findChild<QLineEdit*>();
+        }
+        if (lineEdit != nullptr) {
             _registerEditor(lineEdit, manager, property, editor);
             QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [this, callback = _commitCallback, property, lineEdit]() {
                 const auto stateIt = _editorStates.find(lineEdit);
@@ -162,26 +189,25 @@ protected:
                 }
                 callback(property, QVariant(lineEdit->text()));
             });
-            return editor;
-        }
-
-        if (QAbstractSpinBox* spinBox = editor->findChild<QAbstractSpinBox*>()) {
-            _registerEditor(spinBox, manager, property, editor);
-            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [this, callback = _commitCallback, property, spinBox]() {
-                const auto stateIt = _editorStates.find(spinBox);
-                if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
-                    stateIt.value().suppressCommit = false;
-                    return;
-                }
-                callback(property, spinBox->property("value"));
-            });
         }
 
         return editor;
     }
 
     bool eventFilter(QObject* watched, QEvent* event) override {
-        auto stateIt = _editorStates.find(watched);
+        QObject* stateOwner = watched;
+        auto stateIt = _editorStates.find(stateOwner);
+        if (stateIt == _editorStates.end()) {
+            // Key events for a spin box are commonly delivered to its internal line edit.
+            // Resolve that child back to the registered numeric editor so Escape keeps the
+            // existing cancel semantics without registering a second commit source.
+            if (auto* lineEdit = qobject_cast<QLineEdit*>(watched)) {
+                if (auto* parentSpinBox = qobject_cast<QAbstractSpinBox*>(lineEdit->parentWidget())) {
+                    stateOwner = parentSpinBox;
+                    stateIt = _editorStates.find(stateOwner);
+                }
+            }
+        }
         if (stateIt == _editorStates.end()) {
             return QtVariantEditorFactory::eventFilter(watched, event);
         }
@@ -190,7 +216,7 @@ protected:
             auto* keyEvent = static_cast<QKeyEvent*>(event);
             if (keyEvent->key() == Qt::Key_Escape) {
                 stateIt.value().suppressCommit = true;
-                _restoreEditorValue(watched, stateIt.value());
+                _restoreEditorValue(stateOwner, stateIt.value());
                 if (stateIt.value().editor != nullptr) {
                     stateIt.value().editor->clearFocus();
                     if (QWidget* parentWidget = stateIt.value().editor->parentWidget()) {
