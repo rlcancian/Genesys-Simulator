@@ -1,14 +1,17 @@
 #include <gtest/gtest.h>
 
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "services/ModelLanguageSynchronizer.h"
 
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
+#include "plugins/data/BiochemicalSimulation/GroProgram.h"
 
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDoubleSpinBox>
+#include <QFile>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QLocale>
@@ -113,4 +116,62 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleEnterCommitsNumericVariant) {
     // The deferred Property Editor rebuild must not revert the committed kernel value.
     drainGuiEvents();
     EXPECT_NEAR(network->getStartTime(), 0.18, 1e-12);
+}
+
+
+TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndKeepsGroPayload) {
+    QFile::remove(QStringLiteral("./temp.tmp"));
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_TextSync");
+    ASSERT_NE(program, nullptr);
+    const std::string sourceCode =
+        "include gro;\n"
+        "set ( \"dt\", 0.18 );\n"
+        "# payload line that belongs to GRO source\n"
+        "// another GRO source comment\n"
+        "program p() := { message ( 1, \"x=y\" ) };\n";
+    program->setSourceCode(sourceCode);
+
+    QPlainTextEdit editor;
+    bool textModelHasChanged = true;
+    int textChangedCount = 0;
+    QObject::connect(&editor, &QPlainTextEdit::textChanged, [&]() {
+        ++textChangedCount;
+    });
+
+    QWidget owner;
+    ModelLanguageSynchronizer synchronizer(
+        &simulator,
+        &editor,
+        &textModelHasChanged,
+        &owner,
+        {});
+
+    synchronizer.actualizeModelSimLanguage();
+
+    const QString displayed = editor.toPlainText();
+    EXPECT_FALSE(displayed.isEmpty());
+    EXPECT_FALSE(textModelHasChanged);
+    EXPECT_EQ(textChangedCount, 0);
+    EXPECT_FALSE(QFile::exists(QStringLiteral("./temp.tmp")));
+
+    const QStringList lines = displayed.split(QLatin1Char('\n'));
+    for (const QString& line : lines) {
+        EXPECT_FALSE(line.trimmed().startsWith(QLatin1Char('#')))
+            << line.toStdString();
+    }
+
+    EXPECT_TRUE(displayed.contains(QStringLiteral("GroProgram")));
+    EXPECT_TRUE(displayed.contains(QStringLiteral("sourceCode=e\"")));
+    EXPECT_TRUE(displayed.contains(QStringLiteral("\\\"dt\\\"")));
+    EXPECT_TRUE(displayed.contains(QStringLiteral("\\n# payload line that belongs to GRO source")));
+    EXPECT_TRUE(displayed.contains(QStringLiteral("// another GRO source comment")));
 }
