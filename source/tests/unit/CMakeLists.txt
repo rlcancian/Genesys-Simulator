@@ -195,6 +195,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
 
     add_executable(genesys_test_gui_gmdd_layout
         test_gui_gmdd_layout.cpp
+        test_gui_property_editor.cpp
         ${GENESYS_QT_GUI_TEST_SOURCES}
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/GenesysQtGUI_resources.qrc
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
