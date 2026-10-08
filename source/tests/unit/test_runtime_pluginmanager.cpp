@@ -946,6 +946,58 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeTimeExpressionReturnsColony
     EXPECT_DOUBLE_EQ(state.variables.at("t"), 3.5);
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeAssignsIndependentOrdinalSignalChannelHandles) {
+    // Corpus B (signals) acceptance criterion: two "signal(...)" channel
+    // declarations must yield two distinct, stable handles, and reading
+    // one channel must never reflect what was emitted into the other.
+    // Handle 1 (the first declaration) intentionally maps to the colony's
+    // existing legacy single field ("local_signal", channel 0 downstream)
+    // so every pre-multi-channel program/fixture keeps its exact behavior;
+    // handle 2+ addresses genuinely new, independently stored channels.
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse(
+        "program bacterium() { "
+        "s0 := signal(1, 0.1); "
+        "s1 := signal(1, 0.1); "
+        "emit_signal(s1, 10); "
+        "}");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+
+    GroProgramRuntimeState state;
+    state.contextVariables["local_signal"] = 2.0;
+    state.contextVariables["local_signal_2"] = 5.0;
+
+    GroProgramRuntime runtime;
+    GroProgramRuntime::ExecutionResult result = runtime.execute(ir, state);
+
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_DOUBLE_EQ(state.variables.at("s0"), 1.0);
+    EXPECT_DOUBLE_EQ(state.variables.at("s1"), 2.0);
+
+    ASSERT_EQ(result.colonyMutations.size(), 2u);
+    EXPECT_EQ(result.colonyMutations[0].type, GroProgramRuntime::ColonyMutation::Type::EnsureSignalChannel);
+    ASSERT_EQ(result.colonyMutations[0].numericArguments.size(), 3u);
+    EXPECT_DOUBLE_EQ(result.colonyMutations[0].numericArguments[0], 1.0);
+    EXPECT_DOUBLE_EQ(result.colonyMutations[0].numericArguments[1], 1.0);
+    EXPECT_DOUBLE_EQ(result.colonyMutations[0].numericArguments[2], 0.1);
+    EXPECT_EQ(result.colonyMutations[1].type, GroProgramRuntime::ColonyMutation::Type::EnsureSignalChannel);
+    EXPECT_DOUBLE_EQ(result.colonyMutations[1].numericArguments[0], 2.0);
+
+    ASSERT_EQ(result.signalMutations.size(), 1u);
+    EXPECT_EQ(result.signalMutations[0].channel, 2u);
+    EXPECT_DOUBLE_EQ(result.signalMutations[0].value, 10.0);
+
+    double s0Value = 0.0, s1Value = 0.0;
+    std::string errorMessage;
+    ASSERT_TRUE(GroProgramRuntime::evaluateExpression("get_signal(s0)", state, s0Value, errorMessage)) << errorMessage;
+    ASSERT_TRUE(GroProgramRuntime::evaluateExpression("get_signal(s1)", state, s1Value, errorMessage)) << errorMessage;
+    EXPECT_DOUBLE_EQ(s0Value, 2.0);
+    EXPECT_DOUBLE_EQ(s1Value, 5.0);
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand) {
 	GroProgramParser parser;
 	GroProgramParser::Result parsed = parser.parse(

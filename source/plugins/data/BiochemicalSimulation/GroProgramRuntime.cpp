@@ -448,7 +448,18 @@ private:
 				errorMessage = "GroProgramRuntime get_signal expression accepts zero or one argument in the current subset. ";
 				return false;
 			}
-			value = resolveIdentifierValue("local_signal", _state);
+			// No argument, or handle 0 or 1, all keep reading the legacy
+			// "local_signal" context variable: handle 1 is always the
+			// *first* "signal(...)" declaration in a program, which reuses
+			// the colony's existing single default field rather than
+			// allocating new storage, so single-signal programs (and every
+			// pre-multi-channel fixture) see unchanged behavior. Handle
+			// N >= 2 reads the independent "local_signal_N" variable the
+			// owning component populates per additional channel, so
+			// distinct handles never alias.
+			const long long channel = arguments.empty() ? 0 : std::llround(arguments.front());
+			value = resolveIdentifierValue(channel <= 1 ? "local_signal" : "local_signal_" + std::to_string(channel),
+			                               _state);
 			return true;
 		}
 
@@ -625,12 +636,79 @@ GroProgramRuntime::PopulationMutation makePopulationMutation(GroProgramRuntime::
 	return mutation;
 }
 
+// Recognizes "VAR := signal(kdiff, kdeg);" and assigns VAR the ordinal
+// channel handle for that declaration (see GroProgramRuntimeState's
+// signalDeclarationOrdinal comment), reporting an EnsureSignalChannel
+// colony mutation so the owning component can lazily allocate the
+// channel's field. Any other shape of "signal(...)" usage (nested in a
+// larger expression, used without being assigned, etc.) is intentionally
+// left to the generic expression evaluator's legacy single-argument
+// fallback: this subset only covers the declaration form every real Gro
+// program in the original corpus actually uses.
+bool tryHandleSignalDeclarationAssignment(const GroProgramIr::Command& command, GroProgramRuntimeState& state,
+                                          GroProgramRuntime::ExecutionResult& result) {
+	const std::string& text = command.expressionText;
+	std::size_t position = 0;
+	while (position < text.size() && std::isspace(static_cast<unsigned char>(text[position]))) {
+		++position;
+	}
+
+	static const std::string keyword = "signal";
+	if (text.compare(position, keyword.size(), keyword) != 0) {
+		return false;
+	}
+	const std::size_t afterKeyword = position + keyword.size();
+	if (afterKeyword < text.size()) {
+		const unsigned char next = static_cast<unsigned char>(text[afterKeyword]);
+		if (std::isalnum(next) || text[afterKeyword] == '_') {
+			return false; // e.g. "signal_grid_width", not the "signal" builtin.
+		}
+	}
+
+	position = afterKeyword;
+	while (position < text.size() && std::isspace(static_cast<unsigned char>(text[position]))) {
+		++position;
+	}
+	if (position >= text.size() || text[position] != '(' || text.back() != ')') {
+		return false;
+	}
+
+	const std::string argumentsText = text.substr(position + 1, text.size() - position - 2);
+	const std::size_t commaPosition = argumentsText.find(',');
+	if (commaPosition == std::string::npos) {
+		return false;
+	}
+
+	double diffusionRate = 0.0;
+	double decayRate = 0.0;
+	std::string ignoredError;
+	if (!evaluateExpression(argumentsText.substr(0, commaPosition), state, diffusionRate, ignoredError) ||
+	    !evaluateExpression(argumentsText.substr(commaPosition + 1), state, decayRate, ignoredError)) {
+		return false;
+	}
+
+	const unsigned int channel = ++state.signalDeclarationOrdinal;
+	state.variables[command.assignmentTarget] = static_cast<double>(channel);
+	result.assignedVariables[command.assignmentTarget] = static_cast<double>(channel);
+
+	GroProgramRuntime::ColonyMutation mutation;
+	mutation.type = GroProgramRuntime::ColonyMutation::Type::EnsureSignalChannel;
+	mutation.numericArguments = {static_cast<double>(channel), diffusionRate, decayRate};
+	result.colonyMutations.push_back(mutation);
+
+	++result.executedCommands;
+	return true;
+}
+
 bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProgramRuntimeState& state,
 	                 GroProgramRuntime::ExecutionResult& result, std::uint64_t& stochasticSampleIndex) {
 	for (const GroProgramIr::Command& command : commands) {
 		if (command.isAssignment()) {
 			if (command.assignmentOnlyIfUnset &&
 			    state.variables.find(command.assignmentTarget) != state.variables.end()) {
+				continue;
+			}
+			if (tryHandleSignalDeclarationAssignment(command, state, result)) {
 				continue;
 			}
 			double assignedValue = 0.0;
@@ -1022,11 +1100,27 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 					return false;
 				}
 
+				// A leading handle argument addresses an additional channel.
+				// Handle 1 (the first "signal(...)" declaration) still maps
+				// to channel 0, the legacy single field, so single-signal
+				// programs keep their exact existing behavior; only handle
+				// >= 2 is a genuinely new, independently stored channel.
+				unsigned int channel = 0;
+				if (command.arguments.size() == 2) {
+					double channelValue = 0.0;
+					if (!evaluateExpression(command.arguments.front(), state, channelValue, result.errorMessage)) {
+						result.succeeded = false;
+						return false;
+					}
+					channel = channelValue > 1.0 ? static_cast<unsigned int>(std::llround(channelValue)) : 0u;
+				}
+
 				GroProgramRuntime::SignalMutation mutation;
 				mutation.type = command.functionName == "emit_signal" ? GroProgramRuntime::SignalMutationType::Emit :
 				                (command.functionName == "consume_signal" || command.functionName == "absorb_signal") ? GroProgramRuntime::SignalMutationType::Consume :
 				                                                          GroProgramRuntime::SignalMutationType::Set;
 				mutation.value = signalValue;
+				mutation.channel = channel;
 			result.signalMutations.push_back(mutation);
 			++result.executedCommands;
 			continue;
