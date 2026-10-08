@@ -170,8 +170,12 @@ protected:
                     stateIt.value().suppressCommit = false;
                     return;
                 }
+                // QAbstractSpinBox may emit editingFinished before the concrete spin box
+                // publishes its final valueChanged signal. Run this commit callback on the
+                // next event-loop turn so the QVariant comes from the parsed numeric value,
+                // not from the previous value or from locale-formatted line-edit text.
                 callback(property, spinBox->property("value"));
-            });
+            }, Qt::QueuedConnection);
             return editor;
         }
 
