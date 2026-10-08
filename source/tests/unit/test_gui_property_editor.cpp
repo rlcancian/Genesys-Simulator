@@ -1,11 +1,14 @@
 #include <gtest/gtest.h>
 
+#include "mainwindow.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "services/ModelLanguageSynchronizer.h"
 
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
@@ -25,6 +28,7 @@
 #include <QSet>
 #include <QSpinBox>
 #include <QString>
+#include <QTabWidget>
 
 namespace {
 
@@ -378,4 +382,97 @@ TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndK
     EXPECT_TRUE(displayed.contains(QStringLiteral("\\\"dt\\\"")));
     EXPECT_TRUE(displayed.contains(QStringLiteral("\\n# payload line that belongs to GRO source")));
     EXPECT_TRUE(displayed.contains(QStringLiteral("// another GRO source comment")));
+}
+
+
+TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTextView) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    Simulator* simulator = scene->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    PluginManager* manager = simulator->getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+
+    QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
+    ASSERT_NE(modelTabs, nullptr);
+    modelTabs->setCurrentIndex(0);
+    drainGuiEvents();
+
+    QPlainTextEdit* editor =
+        window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(editor, nullptr);
+
+    GroProgram* program =
+        manager->newInstance<GroProgram>(model, "GroProgram_SceneSync");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode("include gro;\nset ( \"dt\", 0.18 );\n");
+
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::CREATE,
+        GraphicalModelEvent::EventObjectType::DATADEFINITION,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("GroProgram_SceneSync")));
+
+    model->getDataManager()->remove(program);
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::REMOVE,
+        GraphicalModelEvent::EventObjectType::DATADEFINITION,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("GroProgram_SceneSync")));
+    delete program;
+
+    Create* source = manager->newInstance<Create>(model, "Create_SceneSync");
+    Dispose* destination = manager->newInstance<Dispose>(model, "Dispose_SceneSync");
+    ASSERT_NE(source, nullptr);
+    ASSERT_NE(destination, nullptr);
+
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::CREATE,
+        GraphicalModelEvent::EventObjectType::COMPONENT,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Create_SceneSync")));
+    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Dispose_SceneSync")));
+
+    source->getConnectionManager()->insert(destination);
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::CREATE,
+        GraphicalModelEvent::EventObjectType::CONNECTION,
+        nullptr);
+    drainGuiEvents();
+    const QString destinationId =
+        QStringLiteral("nextId=") + QString::number(destination->getId());
+    EXPECT_TRUE(editor->toPlainText().contains(destinationId));
+
+    source->getConnectionManager()->removeAtPort(0);
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::REMOVE,
+        GraphicalModelEvent::EventObjectType::CONNECTION,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_FALSE(editor->toPlainText().contains(destinationId));
+
+    model->getComponentManager()->remove(source);
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::REMOVE,
+        GraphicalModelEvent::EventObjectType::COMPONENT,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Create_SceneSync")));
+    delete source;
 }
