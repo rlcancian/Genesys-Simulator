@@ -69,6 +69,13 @@ genesys_add_unit_test(genesys_test_support_persistence
     genesys_kernel_util
 )
 
+genesys_add_unit_test(genesys_test_gen_serializer_text
+    test_gen_serializer_text.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+)
+
 genesys_add_unit_test(genesys_test_runtime_pluginmanager
     test_runtime_pluginmanager.cpp
     genesys_kernel_simulator_runtime
@@ -313,6 +320,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_cellular_automata_neighborhood
         genesys_test_support_modelmanager
         genesys_test_support_persistence
+        genesys_test_gen_serializer_text
         genesys_test_runtime_pluginmanager
         genesys_test_support_oneventmanager
         genesys_test_support_parsermanager
@@ -396,6 +404,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_cellular_automata_neighborhood>
     COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_persistence>
+    COMMAND $<TARGET_FILE:genesys_test_gen_serializer_text>
     COMMAND $<TARGET_FILE:genesys_test_runtime_pluginmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_oneventmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_parsermanager>
