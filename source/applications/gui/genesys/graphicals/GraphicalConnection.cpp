@@ -43,6 +43,7 @@ GraphicalConnection::GraphicalConnection(const GraphicalConnection& orig) {
 
 GraphicalConnection::~GraphicalConnection() {
 	Connection* sourceConnection = _sourceConnection;
+	Connection* destinationConnection = _destinationConnection;
 	GraphicalComponentPort* sourceGraphicalPort = _sourceGraphicalPort.data();
 	GraphicalComponentPort* destinationGraphicalPort = _destinationGraphicalPort.data();
 
@@ -58,11 +59,10 @@ GraphicalConnection::~GraphicalConnection() {
 		destinationGraphicalPort->removeGraphicalConnection(this);
 	}
 
-	// Destination connection lifetime is coordinated by ConnectionManager/removeAtPort in
-	// most teardown paths. Deleting it here can double-free during close/reload sequences.
-	// Keep teardown crash-safe by not reclaiming it from this destructor.
-
+	// GraphicalConnection owns only its stable endpoint metadata. ConnectionManager owns
+	// independent kernel Connection copies created when the graphical link is committed.
 	delete sourceConnection;
+	delete destinationConnection;
 }
 
 GraphicalConnection::ConnectionType GraphicalConnection::connectionType() const

@@ -1,4 +1,5 @@
 #include "DeleteUndoCommand.h"
+#include <algorithm>
 #include <QSet>
 #include "graphicals/GraphicalModelDataDefinition.h"
 
@@ -228,6 +229,16 @@ void DeleteUndoCommand::undo() {
 
     GraphicalModelEvent::EventType eventType = GraphicalModelEvent::EventType::CREATE;
     GraphicalModelEvent::EventObjectType eventObjectType = GraphicalModelEvent::EventObjectType::OTHER;
+    const bool containsGroupedComponents = std::any_of(
+        _myGroupItems->cbegin(), _myGroupItems->cend(),
+        [](const GroupItem& group) { return !group.myComponentItems.isEmpty(); });
+    if (!_myComponentItems->isEmpty() || containsGroupedComponents) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::COMPONENT;
+    } else if (!_myDataDefinitions->isEmpty()) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::DATADEFINITION;
+    } else if (!_myConnectionItems->isEmpty()) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::CONNECTION;
+    }
 
     _myGraphicsScene->notifyGraphicalModelChange(eventType, eventObjectType, nullptr);
 
@@ -321,6 +332,16 @@ void DeleteUndoCommand::redo() {
 
     GraphicalModelEvent::EventType eventType = GraphicalModelEvent::EventType::REMOVE;
     GraphicalModelEvent::EventObjectType eventObjectType = GraphicalModelEvent::EventObjectType::OTHER;
+    const bool containsGroupedComponents = std::any_of(
+        _myGroupItems->cbegin(), _myGroupItems->cend(),
+        [](const GroupItem& group) { return !group.myComponentItems.isEmpty(); });
+    if (!_myComponentItems->isEmpty() || containsGroupedComponents) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::COMPONENT;
+    } else if (!_myDataDefinitions->isEmpty()) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::DATADEFINITION;
+    } else if (!_myConnectionItems->isEmpty()) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::CONNECTION;
+    }
 
     _myGraphicsScene->notifyGraphicalModelChange(eventType, eventObjectType, nullptr);
 
