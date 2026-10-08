@@ -11,10 +11,12 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QDoubleSpinBox>
+#include <QEventLoop>
 #include <QFile>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QLocale>
+#include <QPlainTextEdit>
 #include <QSet>
 #include <QString>
 
