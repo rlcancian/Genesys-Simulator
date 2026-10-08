@@ -5,10 +5,14 @@
 
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
+#include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 
+#include <functional>
+
 #include <QApplication>
+#include <QCheckBox>
 #include <QCoreApplication>
 #include <QDoubleSpinBox>
 #include <QEventLoop>
@@ -18,6 +22,7 @@
 #include <QLocale>
 #include <QPlainTextEdit>
 #include <QSet>
+#include <QSpinBox>
 #include <QString>
 
 namespace {
@@ -60,7 +65,68 @@ private:
 
 } // namespace
 
-TEST(PropertyEditorDoubleCommit, PortugueseLocaleEnterCommitsNumericVariant) {
+void bindEditableKernelObject(ObjectPropertyBrowser& browser,
+                              ModelDataDefinition* object,
+                              int* modelChangedCount = nullptr) {
+    ASSERT_NE(object, nullptr);
+    if (modelChangedCount != nullptr) {
+        browser.setModelChangedCallback([modelChangedCount]() {
+            ++(*modelChangedCount);
+        });
+    }
+
+    QSet<QString> editableObjects;
+    editableObjects.insert(QString::fromStdString(object->getName()));
+    browser.setActiveObject(
+        nullptr,
+        object,
+        {},
+        editableObjects,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
+    drainGuiEvents();
+}
+
+void commitTextWithEnter(QLineEdit* lineEdit, const QString& text) {
+    ASSERT_NE(lineEdit, nullptr);
+    lineEdit->setFocus();
+    lineEdit->selectAll();
+    lineEdit->setText(text);
+
+    QKeyEvent press(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &press);
+    QKeyEvent release(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &release);
+    drainGuiEvents();
+}
+
+QDoubleSpinBox* beginDoubleEdit(ObjectPropertyBrowser& browser, const QString& propertyName) {
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+    EXPECT_NE(item, nullptr);
+    if (item == nullptr) {
+        return nullptr;
+    }
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    return browser.findChild<QDoubleSpinBox*>();
+}
+
+QSpinBox* beginIntegerEdit(ObjectPropertyBrowser& browser, const QString& propertyName) {
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+    EXPECT_NE(item, nullptr);
+    if (item == nullptr) {
+        return nullptr;
+    }
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    return browser.findChild<QSpinBox*>();
+}
+
+TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleControlsOnce) {
     ScopedDefaultLocale locale(QLocale(QLocale::Portuguese, QLocale::Brazil));
 
     Simulator simulator;
@@ -73,53 +139,115 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleEnterCommitsNumericVariant) {
 
     BioNetwork* network = manager->newInstance<BioNetwork>(model, "BioNetwork_PropertyEditor");
     ASSERT_NE(network, nullptr);
-    network->setStartTime(0.0);
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_PropertyEditor");
+    ASSERT_NE(grid, nullptr);
 
     ObjectPropertyBrowser browser;
     browser.resize(640, 480);
     browser.show();
 
-    QSet<QString> editableObjects;
-    editableObjects.insert(QString::fromStdString(network->getName()));
-    browser.setActiveObject(
-        nullptr,
-        network,
-        {},
-        editableObjects,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr);
-    drainGuiEvents();
+    int modelChangedCount = 0;
+    bindEditableKernelObject(browser, network, &modelChangedCount);
 
-    QtBrowserItem* startTimeItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("StartTime"));
-    ASSERT_NE(startTimeItem, nullptr);
-    browser.setCurrentItem(startTimeItem);
-    browser.editItem(startTimeItem);
-    drainGuiEvents();
+    auto commitNetworkDouble = [&](const QString& propertyName,
+                                   const QString& localizedText,
+                                   const std::function<double()>& getter) {
+        const int countBefore = modelChangedCount;
+        QDoubleSpinBox* spinBox = beginDoubleEdit(browser, propertyName);
+        ASSERT_NE(spinBox, nullptr);
+        commitTextWithEnter(spinBox->findChild<QLineEdit*>(), localizedText);
+        EXPECT_EQ(modelChangedCount, countBefore + 1);
+        drainGuiEvents();
+        return getter();
+    };
 
-    auto* spinBox = browser.findChild<QDoubleSpinBox*>();
-    ASSERT_NE(spinBox, nullptr);
-    auto* lineEdit = spinBox->findChild<QLineEdit*>();
-    ASSERT_NE(lineEdit, nullptr);
+    EXPECT_NEAR(commitNetworkDouble("StartTime", "0,18", [&]() { return network->getStartTime(); }),
+                0.18, 1e-12);
+    EXPECT_NEAR(commitNetworkDouble("StopTime", "1,25", [&]() { return network->getStopTime(); }),
+                1.25, 1e-12);
+    EXPECT_NEAR(commitNetworkDouble("StepSize", "0,1", [&]() { return network->getStepSize(); }),
+                0.1, 1e-12);
 
-    lineEdit->setFocus();
-    lineEdit->selectAll();
-    lineEdit->setText(QStringLiteral("0,18"));
+    bindEditableKernelObject(browser, grid, &modelChangedCount);
+    auto commitGridDouble = [&](const QString& propertyName,
+                                const QString& localizedText,
+                                const std::function<double()>& getter) {
+        const int countBefore = modelChangedCount;
+        QDoubleSpinBox* spinBox = beginDoubleEdit(browser, propertyName);
+        ASSERT_NE(spinBox, nullptr);
+        commitTextWithEnter(spinBox->findChild<QLineEdit*>(), localizedText);
+        EXPECT_EQ(modelChangedCount, countBefore + 1);
+        drainGuiEvents();
+        return getter();
+    };
 
-    QKeyEvent press(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
-    QApplication::sendEvent(lineEdit, &press);
-    QKeyEvent release(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
-    QApplication::sendEvent(lineEdit, &release);
-    drainGuiEvents();
-
-    EXPECT_NEAR(network->getStartTime(), 0.18, 1e-12);
-
-    // The deferred Property Editor rebuild must not revert the committed kernel value.
-    drainGuiEvents();
-    EXPECT_NEAR(network->getStartTime(), 0.18, 1e-12);
+    EXPECT_NEAR(commitGridDouble("InitialSignal", "-0,5", [&]() { return grid->getInitialSignal(); }),
+                -0.5, 1e-12);
+    EXPECT_NEAR(commitGridDouble("DiffusionRate", "1,0", [&]() { return grid->getDiffusionRate(); }),
+                1.0, 1e-12);
+    EXPECT_NEAR(commitGridDouble("DecayRate", "0,25", [&]() { return grid->getDecayRate(); }),
+                0.25, 1e-12);
 }
 
+TEST(PropertyEditorDoubleCommit, IntegerStringAndBoolEditorsRemainFunctional) {
+    ScopedDefaultLocale locale(QLocale(QLocale::Portuguese, QLocale::Brazil));
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_NonDoubleRegression");
+    ASSERT_NE(grid, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+
+    int modelChangedCount = 0;
+    bindEditableKernelObject(browser, grid, &modelChangedCount);
+
+    const int countBeforeWidth = modelChangedCount;
+    QSpinBox* widthEditor = beginIntegerEdit(browser, QStringLiteral("Width"));
+    ASSERT_NE(widthEditor, nullptr);
+    commitTextWithEnter(widthEditor->findChild<QLineEdit*>(), QStringLiteral("7"));
+    EXPECT_EQ(grid->getWidth(), 7u);
+    EXPECT_EQ(modelChangedCount, countBeforeWidth + 1);
+
+    QtBrowserItem* initialValues =
+        findBrowserItemByName(browser.topLevelItems(), QStringLiteral("InitialValues"));
+    ASSERT_NE(initialValues, nullptr);
+    browser.setCurrentItem(initialValues);
+    browser.editItem(initialValues);
+    drainGuiEvents();
+    QLineEdit* stringEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(stringEditor, nullptr);
+    const int countBeforeString = modelChangedCount;
+    commitTextWithEnter(stringEditor, QStringLiteral("1, 2, 3"));
+    EXPECT_EQ(grid->getInitialValues(), "1, 2, 3");
+    EXPECT_EQ(modelChangedCount, countBeforeString + 1);
+
+    BioNetwork* network =
+        manager->newInstance<BioNetwork>(model, "BioNetwork_BoolRegression");
+    ASSERT_NE(network, nullptr);
+    network->setAutoSchedule(false);
+    bindEditableKernelObject(browser, network, &modelChangedCount);
+
+    QtBrowserItem* autoSchedule =
+        findBrowserItemByName(browser.topLevelItems(), QStringLiteral("AutoSchedule"));
+    ASSERT_NE(autoSchedule, nullptr);
+    browser.setCurrentItem(autoSchedule);
+    browser.editItem(autoSchedule);
+    drainGuiEvents();
+    QCheckBox* checkBox = browser.findChild<QCheckBox*>();
+    ASSERT_NE(checkBox, nullptr);
+    checkBox->click();
+    drainGuiEvents();
+    EXPECT_TRUE(network->getAutoSchedule());
+}
 
 TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndKeepsGroPayload) {
     QFile::remove(QStringLiteral("./temp.tmp"));
