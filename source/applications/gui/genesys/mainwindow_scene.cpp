@@ -49,8 +49,16 @@ void MainWindow::_onSceneWheelOutEvent() {
  * @brief Refreshes dependent panes when the graphical model changes.
  * @param event Graphical change event (currently unused by this compatibility wrapper).
  */
-void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*/) {
-    // Any structural graphical event changes the persisted .gui representation.
+void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& event) {
+    // Any scene-level event changes the persisted .gui representation. Only events
+    // that mutate the kernel model invalidate a cached SimulLang snapshot.
+    const bool changesSimulLang =
+        event.eventObjectType == GraphicalModelEvent::EventObjectType::COMPONENT
+        || event.eventObjectType == GraphicalModelEvent::EventObjectType::DATADEFINITION
+        || event.eventObjectType == GraphicalModelEvent::EventObjectType::CONNECTION;
+    if (changesSimulLang) {
+        _actualizeModelTextHasChanged(false);
+    }
     setGraphicalModelHasChanged(true);
 }
 
@@ -66,14 +74,13 @@ void MainWindow::sceneChanged(const QList<QRectF> &region) {
         return;
     }
     Q_UNUSED(region);
-    // Synchronize undo/redo state and textual model dirty flag.
+    // Synchronize undo/redo state. QGraphicsScene dirtiness is not evidence that
+    // the user edited TextCodeEditor; conflating those states prevents kernel-to-text refresh.
     bool canUndo = ui->graphicsView->getScene()->getUndoStack()->canUndo();
     bool canRedo = ui->graphicsView->getScene()->getUndoStack()->canRedo();
 
     ui->actionEditUndo->setEnabled(canUndo);
     ui->actionEditRedo->setEnabled(canRedo);
-
-    _actualizeModelTextHasChanged(canUndo);
 
     ui->graphicsView->scene()->update();
 
