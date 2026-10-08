@@ -97,6 +97,19 @@ Use for:
 - confirmed/partial/missing/different classification per Arena module;
 - open questions requiring a maintainer decision before closing a gap.
 
+### [`BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md`](BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md)
+
+Use for:
+
+- the Gro (University of Washington) bacterial micro-colony language
+  integration continuation under `BiochemicalSimulation`/`BacteriaColony`;
+- the original-Gro reference baseline (grammar, builtins, signal/
+  diffusion, growth/division, world-step order) and its licensing
+  boundary;
+- the current GenESyS language/builtin/example compatibility matrices;
+- the phased plan, known deviations, explicitly unsupported behavior and
+  open decisions for this integration.
+
 ### [`GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md`](GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md)
 
 Use for:
