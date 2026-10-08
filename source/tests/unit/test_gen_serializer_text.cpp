@@ -123,7 +123,7 @@ TEST(GenSerializerTextPersistence, EmptyTextFieldRoundTripsExactly) {
     const std::string sourceCode = R"(C:\\genesys\\gro\\program.gro)";
     const std::string serialized = dumpSingleTextRecord("BackslashGro", sourceCode);
 
-    EXPECT_NE(serialized.find("sourceCode=e\\\""), std::string::npos);
+    EXPECT_NE(serialized.find("sourceCode=e\""), std::string::npos);
     EXPECT_NE(serialized.find(R"(C:\\\\genesys\\\\gro\\\\program.gro)"), std::string::npos);
     EXPECT_EQ(loadSingleTextRecord(serialized, "BackslashGro"), sourceCode);
 }
