@@ -37,6 +37,32 @@ std::unique_ptr<PersistenceRecord> makeGroProgramRecord(GenSerializer& serialize
 
 } // namespace
 
+std::string dumpSingleTextRecord(const std::string& name, const std::string& sourceCode) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    GenSerializer writer(model);
+    auto fields = makeGroProgramRecord(writer, name, sourceCode);
+    EXPECT_TRUE(writer.put(name, "GroProgram", 143u, fields.get()));
+
+    std::ostringstream serialized;
+    EXPECT_TRUE(writer.dump(serialized));
+    return serialized.str();
+}
+
+std::string loadSingleTextRecord(const std::string& serialized, const std::string& name) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    GenSerializer reader(model);
+    std::istringstream input(serialized);
+    EXPECT_TRUE(reader.load(input));
+
+    auto loadedFields = std::unique_ptr<PersistenceRecord>(reader.newPersistenceRecord());
+    EXPECT_TRUE(reader.get(name, loadedFields.get()));
+    return loadedFields->loadField("sourceCode", std::string{});
+}
+
 TEST(GenSerializerTextPersistence, ComplexTextFieldRoundTripsExactly) {
     Simulator savingSimulator;
     ASSERT_NE(savingSimulator.getPluginManager(), nullptr);
@@ -67,4 +93,46 @@ TEST(GenSerializerTextPersistence, ComplexTextFieldRoundTripsExactly) {
     auto loadedFields = std::unique_ptr<PersistenceRecord>(reader.newPersistenceRecord());
     ASSERT_TRUE(reader.get("ComplexGro", loadedFields.get()));
     EXPECT_EQ(loadedFields->loadField("sourceCode", std::string{}), sourceCode);
+}
+
+TEST(GenSerializerTextPersistence, SimpleLegacyQuotedTextRemainsLoadable) {
+    const std::string legacy =
+        "143 GroProgram \"LegacyGro\" sourceCode=\"C:\\\\new\\\\test program p() := { tick(); }\" \n";
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    GenSerializer reader(model);
+    std::istringstream input(legacy);
+    ASSERT_TRUE(reader.load(input));
+
+    auto fields = std::unique_ptr<PersistenceRecord>(reader.newPersistenceRecord());
+    ASSERT_TRUE(reader.get("LegacyGro", fields.get()));
+    EXPECT_EQ(fields->loadField("sourceCode", std::string{}),
+              "C:\\new\\test program p() := { tick(); }");
+}
+
+TEST(GenSerializerTextPersistence, EmptyTextFieldRoundTripsExactly) {
+    const std::string serialized = dumpSingleTextRecord("EmptyGro", "");
+    EXPECT_EQ(loadSingleTextRecord(serialized, "EmptyGro"), "");
+}
+
+TEST(GenSerializerTextPersistence, ComplexTextUsesEscapedLiteralAndSurvivesSecondRoundTrip) {
+    const std::string sourceCode = complexTextPayload();
+    const std::string firstSerialization = dumpSingleTextRecord("ComplexGro2", sourceCode);
+
+    EXPECT_NE(firstSerialization.find("sourceCode=e\\\""), std::string::npos);
+    EXPECT_NE(firstSerialization.find("\\\\n"), std::string::npos);
+    EXPECT_NE(firstSerialization.find("\\\\\\\"dt\\\\\\\""), std::string::npos);
+    EXPECT_EQ(loadSingleTextRecord(firstSerialization, "ComplexGro2"), sourceCode);
+
+    Simulator secondSimulator;
+    secondSimulator.getPluginManager()->autoInsertPlugins();
+    Model* secondModel = secondSimulator.getModelManager()->newModel();
+    GenSerializer secondReader(secondModel);
+    std::istringstream firstInput(firstSerialization);
+    ASSERT_TRUE(secondReader.load(firstInput));
+
+    std::ostringstream secondSerialization;
+    ASSERT_TRUE(secondReader.dump(secondSerialization));
+    EXPECT_EQ(loadSingleTextRecord(secondSerialization.str(), "ComplexGro2"), sourceCode);
 }
