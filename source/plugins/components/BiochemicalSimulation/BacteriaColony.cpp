@@ -489,6 +489,13 @@ double BacteriaColony::getSignalValueAt(unsigned int x, unsigned int y) const {
 	return _signalValueAt(x, y);
 }
 
+double BacteriaColony::getAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const {
+	if (x >= getGridWidth() || y >= getGridHeight()) {
+		throw std::out_of_range("BacteriaColony signal coordinate is out of range");
+	}
+	return _additionalSignalValueAt(channel, x, y);
+}
+
 std::vector<std::vector<double>> BacteriaColony::getSignalMatrix() const {
 	return _buildSignalMatrix();
 }
@@ -1191,8 +1198,117 @@ unsigned int BacteriaColony::_computeLocalBacteriaCount(unsigned int x, unsigned
 	return count;
 }
 
+void BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate) {
+	if (channel < 2) {
+		return; // Channel 0/1 is the existing legacy field; nothing to allocate.
+	}
+	const std::size_t index = static_cast<std::size_t>(channel) - 2;
+	if (index >= _additionalSignalChannels.size()) {
+		_additionalSignalChannels.resize(index + 1);
+	}
+	AdditionalSignalChannel& additionalChannel = _additionalSignalChannels[index];
+	additionalChannel.diffusionRate = diffusionRate;
+	additionalChannel.decayRate = decayRate;
+	const std::size_t requiredSize = static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight());
+	if (additionalChannel.field.size() != requiredSize) {
+		additionalChannel.field.assign(requiredSize, 0.0);
+	}
+}
+
+double BacteriaColony::_additionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const {
+	if (channel < 2 || getGridWidth() == 0 || getGridHeight() == 0 || x >= getGridWidth() || y >= getGridHeight()) {
+		return 0.0;
+	}
+	const std::size_t index = static_cast<std::size_t>(channel) - 2;
+	if (index >= _additionalSignalChannels.size()) {
+		return 0.0;
+	}
+	const std::vector<double>& field = _additionalSignalChannels[index].field;
+	const std::size_t fieldIndex = _signalIndex(x, y);
+	return fieldIndex < field.size() ? field[fieldIndex] : 0.0;
+}
+
+void BacteriaColony::_setAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y, double value) {
+	if (channel < 2 || x >= getGridWidth() || y >= getGridHeight()) {
+		return;
+	}
+	const std::size_t index = static_cast<std::size_t>(channel) - 2;
+	if (index >= _additionalSignalChannels.size()) {
+		return;
+	}
+	std::vector<double>& field = _additionalSignalChannels[index].field;
+	const std::size_t fieldIndex = _signalIndex(x, y);
+	if (fieldIndex < field.size()) {
+		field[fieldIndex] = value;
+	}
+}
+
+void BacteriaColony::_addAdditionalSignalAt(unsigned int channel, unsigned int x, unsigned int y, double value) {
+	if (channel < 2 || x >= getGridWidth() || y >= getGridHeight()) {
+		return;
+	}
+	const std::size_t index = static_cast<std::size_t>(channel) - 2;
+	if (index >= _additionalSignalChannels.size()) {
+		return;
+	}
+	std::vector<double>& field = _additionalSignalChannels[index].field;
+	const std::size_t fieldIndex = _signalIndex(x, y);
+	if (fieldIndex < field.size()) {
+		field[fieldIndex] += value;
+	}
+}
+
+void BacteriaColony::_applyAdditionalSignalChannelsStep() {
+	const unsigned int width = getGridWidth();
+	const unsigned int height = getGridHeight();
+	for (std::size_t channelIndex = 0; channelIndex < _additionalSignalChannels.size(); ++channelIndex) {
+		AdditionalSignalChannel& channel = _additionalSignalChannels[channelIndex];
+		if (channel.field.empty()) {
+			continue;
+		}
+		const double diffusionRate = channel.diffusionRate;
+		const double decayFactor = 1.0 - channel.decayRate;
+		if (diffusionRate == 0.0 && decayFactor == 1.0) {
+			continue;
+		}
+		const unsigned int channelNumber = static_cast<unsigned int>(channelIndex) + 2;
+		std::vector<double> updatedField = channel.field;
+		for (unsigned int y = 0; y < height; ++y) {
+			for (unsigned int x = 0; x < width; ++x) {
+				const double currentValue = _additionalSignalValueAt(channelNumber, x, y);
+				double neighborSum = 0.0;
+				unsigned int neighborCount = 0;
+				if (x > 0) {
+					neighborSum += _additionalSignalValueAt(channelNumber, x - 1, y);
+					++neighborCount;
+				}
+				if (x + 1 < width) {
+					neighborSum += _additionalSignalValueAt(channelNumber, x + 1, y);
+					++neighborCount;
+				}
+				if (y > 0) {
+					neighborSum += _additionalSignalValueAt(channelNumber, x, y - 1);
+					++neighborCount;
+				}
+				if (y + 1 < height) {
+					neighborSum += _additionalSignalValueAt(channelNumber, x, y + 1);
+					++neighborCount;
+				}
+				double relaxedValue = currentValue;
+				if (neighborCount > 0) {
+					const double neighborAverage = neighborSum / static_cast<double>(neighborCount);
+					relaxedValue += diffusionRate * (neighborAverage - currentValue);
+				}
+				updatedField[_signalIndex(x, y)] = std::max(0.0, relaxedValue * decayFactor);
+			}
+		}
+		channel.field = std::move(updatedField);
+	}
+}
+
 void BacteriaColony::_applySignalFieldStep() {
 	if (_signalGrid == nullptr || _signalField.empty()) {
+		_applyAdditionalSignalChannelsStep();
 		return;
 	}
 
@@ -1241,6 +1357,18 @@ void BacteriaColony::_applySignalFieldStep() {
 void BacteriaColony::_applyBacteriumSignalMutations(const BacteriumState& bacterium,
                                                     const std::vector<GroProgramRuntime::SignalMutation>& mutations) {
 	for (const GroProgramRuntime::SignalMutation& mutation : mutations) {
+		if (mutation.channel >= 2) {
+			if (mutation.type == GroProgramRuntime::SignalMutationType::Emit) {
+				_addAdditionalSignalAt(mutation.channel, bacterium.gridX, bacterium.gridY, mutation.value);
+			} else if (mutation.type == GroProgramRuntime::SignalMutationType::Consume) {
+				const double currentValue = _additionalSignalValueAt(mutation.channel, bacterium.gridX, bacterium.gridY);
+				_setAdditionalSignalValueAt(mutation.channel, bacterium.gridX, bacterium.gridY,
+				                           std::max(0.0, currentValue - mutation.value));
+			} else if (mutation.type == GroProgramRuntime::SignalMutationType::Set) {
+				_setAdditionalSignalValueAt(mutation.channel, bacterium.gridX, bacterium.gridY, mutation.value);
+			}
+			continue;
+		}
 		if (mutation.type == GroProgramRuntime::SignalMutationType::Emit) {
 			_addSignalAt(bacterium.gridX, bacterium.gridY, mutation.value);
 			continue;
@@ -1442,12 +1570,19 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 				errorMessage = "BacteriaColony received an invalid set_signal mutation. ";
 				return false;
 			}
+			const unsigned int channel = mutation.numericArguments[0] > 1.0
+			                                  ? static_cast<unsigned int>(std::llround(mutation.numericArguments[0]))
+			                                  : 0u;
 			const double xValue = mutation.numericArguments[1];
 			const double yValue = mutation.numericArguments[2];
 			const double signalValue = mutation.numericArguments[3];
 			const unsigned int x = toCenteredGridIndex(xValue, getGridWidth());
 			const unsigned int y = toCenteredGridIndex(yValue, getGridHeight());
-			_setSignalValueAt(x, y, signalValue);
+			if (channel >= 2) {
+				_setAdditionalSignalValueAt(channel, x, y, signalValue);
+			} else {
+				_setSignalValueAt(x, y, signalValue);
+			}
 			continue;
 		}
 
@@ -1456,6 +1591,9 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 				errorMessage = "BacteriaColony received an invalid set_signal_rect mutation. ";
 				return false;
 			}
+			const unsigned int channel = mutation.numericArguments[0] > 1.0
+			                                  ? static_cast<unsigned int>(std::llround(mutation.numericArguments[0]))
+			                                  : 0u;
 			const double x1Value = mutation.numericArguments[1];
 			const double y1Value = mutation.numericArguments[2];
 			const double x2Value = mutation.numericArguments[3];
@@ -1473,7 +1611,12 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			const long long upperY = static_cast<long long>(getGridHeight() > 0 ? getGridHeight() - 1 : 0);
 			for (long long x = std::max(0ll, minX); x <= std::min(upperX, maxX); ++x) {
 				for (long long y = std::max(0ll, minY); y <= std::min(upperY, maxY); ++y) {
-					_setSignalValueAt(static_cast<unsigned int>(x), static_cast<unsigned int>(y), signalValue);
+					if (channel >= 2) {
+						_setAdditionalSignalValueAt(channel, static_cast<unsigned int>(x), static_cast<unsigned int>(y),
+						                           signalValue);
+					} else {
+						_setSignalValueAt(static_cast<unsigned int>(x), static_cast<unsigned int>(y), signalValue);
+					}
 				}
 			}
 			continue;
@@ -1482,6 +1625,16 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::GetSignalMatrix ||
 		    mutation.type == GroProgramRuntime::ColonyMutation::Type::DumpSignalField) {
 			_captureSignalFieldSnapshot(result, mutation.previewRows, mutation.previewColumns);
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::EnsureSignalChannel) {
+			if (mutation.numericArguments.size() != 3) {
+				errorMessage = "BacteriaColony received an invalid signal channel declaration. ";
+				return false;
+			}
+			const unsigned int channel = static_cast<unsigned int>(std::llround(mutation.numericArguments[0]));
+			_ensureAdditionalSignalChannel(channel, mutation.numericArguments[1], mutation.numericArguments[2]);
 			continue;
 		}
 	}
@@ -1722,7 +1875,11 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			result.colonyMutations.push_back(mutation);
 		}
 
-		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
+		// Colony mutations (e.g. EnsureSignalChannel) must be applied before
+		// the signal mutations that may target a channel they declare,
+		// otherwise a same-step "s1 := signal(...); emit_signal(s1, v);"
+		// sequence would try to write into a channel that does not exist
+		// yet.
 		if (!bacteriumResult.colonyMutations.empty() &&
 		    !_applyColonyMutations(bacteriumResult.colonyMutations, result, false, result.errorMessage)) {
 			result.succeeded = false;
@@ -1730,6 +1887,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
 			return false;
 		}
+		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
 		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
 		                                         bacteriumResult.populationMutations, result);
 		if (!result.succeeded) {
@@ -1836,6 +1994,17 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 			result.motionMutations.push_back(mutation);
 		}
 
+		// Colony mutations (e.g. EnsureSignalChannel for a newly declared
+		// "signal(...)" channel) must be applied before the signal
+		// mutations that may target the channel they declare in the same
+		// step.
+		if (!bacteriumResult.colonyMutations.empty() &&
+		    !_applyColonyMutations(bacteriumResult.colonyMutations, result, false, result.errorMessage)) {
+			result.succeeded = false;
+			result.errorMessage = "BacteriaColony bacterium-scoped execution failed for bacterium id " +
+			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
+			return false;
+		}
 		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
 		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
 		                                         bacteriumResult.populationMutations, result);
@@ -1928,6 +2097,11 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.contextVariables["just_divided"] = bacterium.justDivided ? 1.0 : 0.0;
 	runtimeState.contextVariables["daughter"] = bacterium.daughter ? 1.0 : 0.0;
 	runtimeState.contextVariables["local_signal"] = _signalValueAt(bacterium.gridX, bacterium.gridY);
+	for (std::size_t channelIndex = 0; channelIndex < _additionalSignalChannels.size(); ++channelIndex) {
+		const unsigned int channelNumber = static_cast<unsigned int>(channelIndex) + 2;
+		runtimeState.contextVariables["local_signal_" + std::to_string(channelNumber)] =
+		        _additionalSignalValueAt(channelNumber, bacterium.gridX, bacterium.gridY);
+	}
 	runtimeState.contextVariables["neighbor_signal_sum"] = _computeNeighborSignalSum(bacterium.gridX, bacterium.gridY);
 	runtimeState.contextVariables["local_bacteria_count"] = static_cast<double>(
 			_computeLocalBacteriaCount(bacterium.gridX, bacterium.gridY));

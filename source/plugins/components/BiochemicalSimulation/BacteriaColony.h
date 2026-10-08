@@ -143,6 +143,8 @@ public:
 	bool hasRuntimeVariable(const std::string& variableName) const;
 	/*! \brief Returns the runtime signal value stored at one grid coordinate. */
 	double getSignalValueAt(unsigned int x, unsigned int y) const;
+	/*! \brief Returns the runtime value for one additional (handle >= 2) signal channel at one grid coordinate. */
+	double getAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const;
 	/*! \brief Returns the current runtime signal field as a row-major matrix. */
 	std::vector<std::vector<double>> getSignalMatrix() const;
 	/*! \brief Returns a textual dump of the current runtime signal field. */
@@ -220,6 +222,22 @@ private:
 	std::vector<double> _mappedCellValues;
 	std::string _mappedCellExpression;
 	std::vector<double> _signalField;
+	struct AdditionalSignalChannel {
+		double diffusionRate = 0.0;
+		double decayRate = 0.0;
+		std::vector<double> field;
+	};
+	// Channel 0/1 (no "signal()" handle, or the first declaration) always
+	// means the legacy single field above, so every pre-multi-channel
+	// program/fixture is unaffected. Channel N >= 2 is the (N-2)th entry
+	// here: a genuinely independent field with its own diffusion/decay
+	// rate, created lazily the first time a program declares a second (or
+	// later) "signal(...)" channel. Purely runtime state, not persisted:
+	// dynamically-declared channels are reconstructed by re-running the
+	// Gro program's own declarations, matching the original Gro model
+	// where signals are created by the running program, not by the
+	// modeler.
+	std::vector<AdditionalSignalChannel> _additionalSignalChannels;
 	struct GroSeedDefinition {
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
@@ -256,6 +274,11 @@ private:
 	                                 std::size_t maxColumns = 0) const;
 	double _computeNeighborSignalSum(unsigned int x, unsigned int y) const;
 	unsigned int _computeLocalBacteriaCount(unsigned int x, unsigned int y) const;
+	void _ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate);
+	double _additionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const;
+	void _setAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y, double value);
+	void _addAdditionalSignalAt(unsigned int channel, unsigned int x, unsigned int y, double value);
+	void _applyAdditionalSignalChannelsStep();
 	void _applySignalFieldStep();
 	void _applyBacteriumSignalMutations(const BacteriumState& bacterium,
 	                                    const std::vector<GroProgramRuntime::SignalMutation>& mutations);
