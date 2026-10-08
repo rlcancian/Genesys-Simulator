@@ -262,7 +262,6 @@ TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndK
 
     GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_TextSync");
     ASSERT_NE(program, nullptr);
-    model->insert(program);
     const std::string sourceCode =
         "include gro;\n"
         "set ( \"dt\", 0.18 );\n"
