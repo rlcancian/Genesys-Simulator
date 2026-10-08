@@ -68,23 +68,37 @@ class GenericDoubleDataDefinition final : public ModelDataDefinition {
 public:
     explicit GenericDoubleDataDefinition(Model* model)
         : ModelDataDefinition(model, "GenericDoubleDataDefinition", "GenericDouble_PropertyEditor") {
-        auto* control = new SimulationControlDouble(
+        auto* doubleControl = new SimulationControlDouble(
             [this]() { return _value; },
             [this](double value) { _value = value; },
             getClassname(),
             getName(),
             "Value",
             "Generic SimulationControlDouble regression value");
-        _parentModel->getControls()->insert(control);
-        _addSimulationControl(control);
+        auto* boolControl = new SimulationControlBool(
+            [this]() { return _enabled; },
+            [this](bool enabled) { _enabled = enabled; },
+            getClassname(),
+            getName(),
+            "Enabled",
+            "Generic SimulationControlBool regression value");
+        _parentModel->getControls()->insert(doubleControl);
+        _parentModel->getControls()->insert(boolControl);
+        _addSimulationControl(doubleControl);
+        _addSimulationControl(boolControl);
     }
 
     double value() const {
         return _value;
     }
 
+    bool enabled() const {
+        return _enabled;
+    }
+
 private:
     double _value = 0.0;
+    bool _enabled = false;
 };
 
 } // namespace
@@ -288,23 +302,21 @@ TEST(PropertyEditorDoubleCommit, IntegerStringAndBoolEditorsRemainFunctional) {
     EXPECT_EQ(grid->getInitialValues(), "1, 2, 3");
     EXPECT_EQ(modelChangedCount, countBeforeString + 1);
 
-    BioNetwork* network =
-        manager->newInstance<BioNetwork>(model, "BioNetwork_BoolRegression");
-    ASSERT_NE(network, nullptr);
-    network->setAutoSchedule(false);
-    bindEditableKernelObject(browser, network, &modelChangedCount);
+    auto* genericObject = new GenericDoubleDataDefinition(model);
+    ASSERT_NE(genericObject, nullptr);
+    bindEditableKernelObject(browser, genericObject, &modelChangedCount);
 
-    QtBrowserItem* autoSchedule =
-        findBrowserItemByName(browser.topLevelItems(), QStringLiteral("AutoSchedule"));
-    ASSERT_NE(autoSchedule, nullptr);
-    browser.setCurrentItem(autoSchedule);
-    browser.editItem(autoSchedule);
+    QtBrowserItem* enabled =
+        findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Enabled"));
+    ASSERT_NE(enabled, nullptr);
+    browser.setCurrentItem(enabled);
+    browser.editItem(enabled);
     drainGuiEvents();
     QCheckBox* checkBox = browser.findChild<QCheckBox*>();
     ASSERT_NE(checkBox, nullptr);
     checkBox->click();
     drainGuiEvents();
-    EXPECT_TRUE(network->getAutoSchedule());
+    EXPECT_TRUE(genericObject->enabled());
 }
 
 TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndKeepsGroPayload) {
