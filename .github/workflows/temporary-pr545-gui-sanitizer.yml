@@ -1,0 +1,50 @@
+name: Temporary PR545 GUI Sanitizer
+
+on:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - source/applications/gui/genesys/graphicals/GraphicalConnection.cpp
+      - source/applications/gui/genesys/graphicals/ModelGraphicsScene.cpp
+      - source/tests/unit/test_gui_property_editor.cpp
+      - .github/workflows/temporary-pr545-gui-sanitizer.yml
+
+permissions:
+  contents: read
+
+env:
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  gui-connection-lifetime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build python3 python3-dev \
+            libsbml5-dev ngspice r-base octave \
+            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libgl1-mesa-dev
+
+      - name: Configure ASan and UBSan
+        run: |
+          cmake --preset tests-unit \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" \
+            -DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build focused GUI test
+        run: cmake --build --preset tests-unit --target genesys_test_gui_gmdd_layout --parallel "$(nproc)"
+
+      - name: Run focused connection undo-redo sanitizer regression
+        run: |
+          binary="$(find build/tests-unit -type f -name genesys_test_gui_gmdd_layout -perm -111 -print -quit)"
+          test -n "${binary}"
+          ASAN_OPTIONS="detect_leaks=0:halt_on_error=1:symbolize=1" \
+          UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1" \
+            "${binary}" --gtest_filter=ModelLanguageSynchronizerRegression.ComponentAndConnectionUndoRedoRefreshTextView
