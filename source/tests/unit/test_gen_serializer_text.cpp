@@ -178,6 +178,7 @@ TEST(GenSerializerTextPersistence, RealGroProgramModelSaveLoadRoundTripsExactly)
         savingManager->newInstance<GroProgram>(savingModel, "GroProgram_RoundTrip");
     ASSERT_NE(savingProgram, nullptr);
     savingProgram->setSourceCode(sourceCode);
+    savingModel->insert(savingProgram);
 
     ASSERT_TRUE(savingModel->save(filename.string()));
 
