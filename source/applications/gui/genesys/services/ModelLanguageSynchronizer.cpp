@@ -3,10 +3,15 @@
 #include "kernel/simulator/Simulator.h"
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/persistence/Persistence_if.h"
+#include <QDir>
+#include <QFile>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QSignalBlocker>
+#include <QStringList>
+#include <QTemporaryFile>
+#include <QTextStream>
 
-#include <fstream>
 #include <string>
 
 /**
@@ -33,23 +38,52 @@ void ModelLanguageSynchronizer::actualizeModelSimLanguage() const {
     }
 
     Model* model = _simulator->getModelManager()->current();
-    if (model != nullptr) {
-        model->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, true);
-        std::string tempFilename = "./temp.tmp";
-        model->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, false);
-        model->save(tempFilename);
-
-        std::string line;
-        std::ifstream file(tempFilename);
-        if (file.is_open()) {
-            _modelTextEditor->clear();
-            while (std::getline(file, line)) {
-                _modelTextEditor->appendPlainText(QString::fromStdString(line));
-            }
-            file.close();
-            *_textModelHasChangedFlag = false;
-        }
+    if (model == nullptr || model->getPersistence() == nullptr) {
+        return;
     }
+
+    // Keep the .gen suffix so Model::save selects GenSerializer, but avoid a
+    // process-global working-directory filename and let Qt own cleanup.
+    QTemporaryFile temporaryFile(QDir::tempPath() + QStringLiteral("/genesys-model-XXXXXX.gen"));
+    temporaryFile.setAutoRemove(true);
+    if (!temporaryFile.open()) {
+        return;
+    }
+    const QString temporaryFilename = temporaryFile.fileName();
+    temporaryFile.close();
+
+    auto* persistence = model->getPersistence();
+    const bool previousSaveDefaults =
+        persistence->getOption(Persistence_if::Options::SAVEDEFAULTS);
+    persistence->setOption(Persistence_if::Options::SAVEDEFAULTS, true);
+    const bool saved = model->save(temporaryFilename.toStdString());
+    persistence->setOption(Persistence_if::Options::SAVEDEFAULTS, previousSaveDefaults);
+    if (!saved) {
+        return;
+    }
+
+    QFile file(temporaryFilename);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return;
+    }
+
+    QStringList visibleLines;
+    QTextStream input(&file);
+    while (!input.atEnd()) {
+        const QString line = input.readLine();
+        // GenSerializer structural comments are physical # lines. Complex text
+        // literals encode embedded newlines, so a payload line beginning with #
+        // remains inside e"..." and is not mistaken for serializer metadata.
+        if (line.trimmed().startsWith(QLatin1Char('#'))) {
+            continue;
+        }
+        visibleLines.push_back(line);
+    }
+
+    const QString refreshedText = visibleLines.join(QLatin1Char('\n'));
+    const QSignalBlocker blocker(_modelTextEditor);
+    _modelTextEditor->setPlainText(refreshedText);
+    *_textModelHasChangedFlag = false;
 }
 
 /**
