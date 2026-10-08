@@ -13,34 +13,66 @@ status: active
 
 Bring the existing GenESyS integration of the `gro` bacterial micro-colony
 language (University of Washington, SOS Lab) to a technically consistent,
-modular, testable and persistable state, with documented semantics derived
-from the original Gro source and its example corpus.
+modular, testable and persistable state.
 
 This is a **continuation**, not a from-scratch implementation. A substantial
 integration already exists under
 `source/plugins/data/BiochemicalSimulation/Gro*` and
 `source/plugins/components/BiochemicalSimulation/BacteriaColony.*`, with a
-GUI viewer and 46+ focused unit tests. The goal is not to compile the
-original `gro` application inside GenESyS; it is to give the existing
-GenESyS-native language frontend/runtime a documented, verified subset of
-Gro syntax and semantics, with explicit, tested deviations where full
-fidelity is not adopted.
+GUI viewer and 46+ focused unit tests.
 
-Non-goals (unless a later maintainer decision changes them): Chipmunk or any
-external 2D physics engine; a full academic implementation of the Gro
-grammar (`fun`, `let/in/end`, lambdas, general list/record values,
-`foreach`/`cross`/`maptocells ... end`); FEM/PDE solvers; arbitrary
-filesystem access via `fopen`/`fprint`; GUI-only builtins inside the
-headless runtime.
+**Scope redefinition (2026-10-08, maintainer instruction — see §2):** the
+goal is **not** full compatibility with the original Gro language, its
+underlying CCL runtime, every original builtin, or all 23 original example
+programs. The goal is a **GenESyS-native implementation of a coherent,
+useful, scientifically defensible and well-tested subset** of the
+functionality needed to model and simulate bacterial colonies inside
+GenESyS. The original `~/Repositories/bacteria_programming_language`
+checkout remains an essential *behavioral reference* (syntax, semantics,
+contracts, algorithms, oracles) but is explicitly **not a specification
+GenESyS must reproduce in full**.
 
 Working branch: `WiP20261008/BacteriaColony`, based on `WorkInProgress` at
 `41419bcc75e232387d307053369e5e495a194e3a`.
 
-## 2. Original Gro reference baseline
+## 2. Maintainer scope decisions
+
+Recorded 2026-10-08. These are closed decisions; a future assistant must
+not reopen, second-guess, or silently revert them without new, explicit
+human instruction.
+
+1. Full Gro compatibility is **not** a goal.
+2. The 23 original example programs are a compatibility/reference corpus,
+   not a 100% acceptance gate.
+3. Only the Gro language subset actually needed by the GenESyS bacteria
+   -colony capabilities selected for this integration should be
+   implemented (see §6, §9).
+4. **Chipmunk2D will not be incorporated.** This decision is closed; do not
+   re-present it as an option to decide later.
+5. **No other external physics engine** (Box2D, Bullet, or equivalent)
+   will be incorporated either.
+6. GenESyS will use a **simpler, GenESyS-native internal 2D bacterial
+   mechanics model** (see §12).
+7. Rigid-body fidelity (forces, torques, true rigid-body collision) is
+   **not required**.
+8. Unsupported high-complexity Gro language constructs (e.g. `fun`,
+   `let/in/end`, lambdas, general list/record values, `foreach`/`cross`,
+   the `maptocells ... end` keyword form) may remain **explicitly
+   unsupported** when no selected GenESyS capability depends on them.
+9. The completion gate is based on **selected GenESyS capabilities** (§9,
+   §21), not percentage compatibility with the original Gro.
+
+There is consequently **no open stop gate about adopting an external
+physics engine**: that question is closed by decision 4/5 above, not
+pending.
+
+## 3. Original Gro reference baseline
 
 Reference checkout: `~/Repositories/bacteria_programming_language`
 (`rlcancian/bacteria_programming_language`, local HEAD `d3ef577`, branch
-`master` tracking `origin/master`). Not modified by this work.
+`master` tracking `origin/master`). Not modified by this work. Retained in
+full as the behavioral reference described in §1/§2 — not a target to
+replicate wholesale.
 
 Confirmed by direct inspection of `Gro.cpp`, `Programs.h/.cpp`, `World.h/.cpp`,
 `Signal.cpp`, `Micro.h`, `Cell.h/.cpp`, `EColi.h/.cpp`, `reaction.cpp`,
@@ -82,15 +114,18 @@ Confirmed by direct inspection of `Gro.cpp`, `Programs.h/.cpp`, `World.h/.cpp`,
   `v = rate * product(reactant concentrations at (i,j))`; all reactants
   decremented by `v*dt`, all products incremented by `v*dt`; applied once
   per reaction per grid cell, over the *entire* grid (not just interior
-  cells), *before* diffusion in `World::update()`.
+  cells), *before* diffusion in `World::update()`. Not required by the
+  selected GenESyS capability subset (§6/§9); retained here only as
+  reference in case a future model needs it.
 - **`World::update()` pipeline order** (confirmed exactly):
   `prog->world_update()` → per-cell `cell->update()` (growth, Gro program
   step) then `cell->divide()` (adds daughter if produced) → reactions over
   the whole signal grid → diffusion/degradation (`signal->integrate(dt)`)
   for every signal → death removal (`marked_for_death`) → chemostat flow
-  force + out-of-bounds removal → 3× `cpSpaceStep` (physics) → `t += dt`.
-  The whole `update()` is skipped (with a one-shot warning and
-  `stop_flag=true`) if `population->size() >= population_max`.
+  force + out-of-bounds removal → 3× `cpSpaceStep` (Chipmunk physics,
+  **not** reproduced — see §2 decision 4/5) → `t += dt`. The whole
+  `update()` is skipped (one-shot warning, `stop_flag=true`) if
+  `population->size() >= population_max`.
 - **EColi growth/division** (`EColi.cpp`):
   ```
   lambda  = sqrt(10 * growth_rate^2 / division_size_variance)
@@ -108,19 +143,22 @@ Confirmed by direct inspection of `Gro.cpp`, `Programs.h/.cpp`, `World.h/.cpp`,
   ```
   `just_divided`/`daughter` are read by `gro_Program::update()` at the start
   of the *next* step after division and cleared (`set_division_indicator
-  (false)`) in that same read, i.e. visible for exactly one step.
+  (false)`) in that same read, i.e. visible for exactly one step. This
+  behavioral *contract* (growth-rate-zero invariant, division fraction
+  randomization, one-step division-flag visibility) is adopted as the
+  GenESyS reference oracle; the Chipmunk-coupled geometry/physics details
+  are not.
 - **Movement** (`run`/`tumble`, `Programs.cpp`): both operate directly on
-  the Chipmunk `cpBody` (`cpBodyApplyForce`/`cpBodySetTorque`), damping the
-  orthogonal component; there is no GenESyS-equivalent custom integrator in
-  the original — physics is entirely delegated to Chipmunk, stepped 3×
-  per `World::update()`.
-- **Barriers/chemostat**: `barrier(...)` both registers a real Chipmunk
-  static segment shape (`cpSpaceAddShape`) *and* records it in
-  `World::barriers` for rendering; `chemostat(bool)` toggles
-  `chemostat_mode`, which both adds four static Chipmunk wall segments in
-  `World::init()` and applies a one-directional flow force
-  (`chemostat_flow`) plus out-of-bounds cell removal every step. Both have
-  real physical effect in the original.
+  the Chipmunk `cpBody` (`cpBodyApplyForce`/`cpBodySetTorque`). GenESyS does
+  **not** reproduce this — see §12 for the GenESyS-native kinematic
+  contract. Only the behavioral intent (`run` propels along current
+  heading, `tumble` reorients) is carried over.
+- **Barriers/chemostat**: `barrier(...)` registers a real Chipmunk static
+  segment shape *and* records it for rendering; `chemostat(bool)` toggles
+  `chemostat_mode`, which both adds Chipmunk wall segments and applies a
+  one-directional flow force plus out-of-bounds removal. GenESyS does not
+  reproduce the Chipmunk mechanics; see §12 for the simplified, deferred
+  treatment.
 - **Known original-Gro defect (not to be replicated):** `include/standard.gro`
   sets the default parameter `"ecoli_division_size_var"`, but
   `EColi::compute_parameter_derivatives()` reads
@@ -134,10 +172,10 @@ Confirmed by direct inspection of `Gro.cpp`, `Programs.h/.cpp`, `World.h/.cpp`,
   `examples/yeast_example.gro` file therefore does not run against the
   original `gro` binary either. Yeast is out of scope here.
 - Full example corpus (`examples/*.gro`, 23 files) was read in full; see
-  §7 for the per-example compatibility matrix against the *current*
-  GenESyS implementation.
+  §8 for the per-example compatibility matrix, now including a
+  `TargetForGenesys` column per §2 decision 2.
 
-## 3. Licensing/provenance boundary
+## 4. Licensing/provenance boundary
 
 `~/Repositories/bacteria_programming_language/LICENSE.md`: UW Open Source
 License (noncommercial, requires attribution, requires derivative works to
@@ -145,22 +183,27 @@ be clearly marked and distributed under a license prohibiting commercial
 use, requires the license text to accompany copies).
 
 Rule applied in this work: **no direct code copying** from the reference
-repository into GenESyS. Semantics (grammar shapes, builtin signatures,
-the diffusion/degradation stencil, the growth/division formulation, the
-`World::update()` pipeline order) are treated as a *behavioral contract* to
-reimplement independently in GenESyS's own C++ style and test
+repository into GenESyS. Semantics are treated as a *behavioral contract*
+to reimplement independently in GenESyS's own C++ style and test
 infrastructure, not as source to port verbatim. No `.gro` example file is
 copied into the GenESyS tree as a fixture; GenESyS-authored fixtures use
 equivalent syntax written from scratch for the specific construct under
-test. If any future step appears to require incorporating UW source
+test (§9). If any future step appears to require incorporating UW source
 verbatim, this plan requires stopping and presenting the maintainer with
 the exact code, the reason, a copy-free alternative, and the relevant
 license obligations (governance §18, stop gate 1) before proceeding.
 
-## 4. Current GenESyS implementation inventory
+Note: an untracked directory `models/gro_examples/` containing ~19 of the
+23 original `.gro` files (pre-existing in the working tree, not created by
+this work, not committed) was found during Phase 0. It is explicitly not
+part of this plan's fixtures and must not be treated as a GenESyS-authored
+corpus; its provenance/disposition is a separate question for the
+maintainer, not resolved here.
 
-Confirmed by full-file inspection (`a2e1719b` investigation, 2026-10-08,
-read-only, no production changes):
+## 5. Current GenESyS implementation inventory
+
+Confirmed by full-file inspection (2026-10-08, read-only, no production
+changes at the time of inspection):
 
 | File | Lines | Role |
 |---|---|---|
@@ -184,129 +227,186 @@ Dependency note: `WiP2026108/PE_Fix` (PR #545, draft, open at inspection
 time) already touches `GenSerializer.cpp`, `ObjectPropertyBrowser.cpp` and
 `ModelLanguageSynchronizer.cpp`, including a test explicitly named "cover
 real GroProgram model round trip". This work treats PE_Fix as an external
-dependency for Phase 11 (persistence) and does not duplicate its scope
+dependency for the persistence phase and does not duplicate its scope
 while it remains in draft.
 
-## 5. Language compatibility matrix
+## 6. Language subset strategy
 
-Status values: `supported`, `partial`, `missing`, `broken` (reaches the
-parser/compiler but produces wrong structure), `unknown` (not yet executed
-against real input).
+Per §2 decision 3, every missing or partial construct is evaluated against
+four questions before any implementation effort: (1) which concrete
+GenESyS bacteria-modeling capability needs it; (2) is there a simpler way
+to express that capability; (3) does a *selected* fixture (§9) actually
+depend on it; (4) would implementing it require turning the current
+frontend into a substantial CCL reimplementation. A construct that fails
+this test is recorded `deferred` or `intentionally-unsupported`, not
+implemented.
 
-| Construct | Status | Evidence |
-|---|---|---|
-| `//` and `/* */` comments | supported | `GroProgramParser::skipWhitespaceAndComments` |
-| String literals (balance/skip only) | supported | string-aware scanning in `findMatchingDelimiter`/`parse` |
-| Balanced `()`, `[]`, `{}` | supported | `GroProgramParser::findMatchingDelimiter` |
-| `program name(params) := { ... };` | supported | `tryParseNamedProgram` |
-| `program name(params) := <single-stmt>;` (no braces) | supported | same method, brace-less branch |
-| `program name(params)` as a first-class **expression/value** | missing as a dedicated construct; works operationally only through textual name resolution inside `ecoli(...)`'s second raw argument | parser has no AST node for it |
-| `condition : { actions }` rule | supported (compiles to `IfStatement`, no `else`) | `GroProgramCompiler::tryCompileRuleStatement` |
-| `:=` assignment | supported | `findTopLevelAssignment` |
-| `=` as comparison vs. legacy assignment | partial (heuristic) | `GroProgramCompiler.cpp` disambiguation |
-| `if (cond) { } else { }` (C-style statement) | supported | `tryCompileIfStatement` |
-| `if EXPR then EXPR else EXPR end` (Gro expression form, used by `fun`) | missing | no `then`/`end` keyword handling anywhere |
-| Records `[ field := value, ... ]` | partial — only as direct RHS of `x := [...]`, flattened to `x.field := value`; read access to a record field **inside an expression/condition** (`p.mode = GO`) is unconfirmed/unknown | `compileSimpleStatement` |
-| Lists `{ a, b, c }` as a value | missing | preserved only as raw text inside arguments |
-| Indexing `a[i]` | missing | no handling outside record/parameter brackets |
-| `sharing a, b, c` | parsed only to strip text; **no real scoping** — all composed sub-programs share one flat global variable map, so `sharing` is a no-op rather than selective | `stripSharingClause`, `compileNamedProgramBody` |
-| `needs a, b;` | broken — `needs q, t;` is split into two bogus statements `"needs q"` and `"t"` because the top-level statement splitter cuts on both `;` and `,` | `consumeSimpleStatement` |
-| `fun name args . body;` | missing | zero occurrences of `fun` handling |
-| `foreach v in EXPR do ... end` | missing | zero occurrences |
-| `range`, `cross` | missing as constructs (identifiers only, inert) | zero occurrences |
-| `let ... in ... end` | missing | zero occurrences |
-| `map`, lambda `\x.expr` | missing | zero occurrences |
-| `maptocells EXPR end` (original keyword form) | missing; GenESyS only has `map_to_cells(EXPR)` as an ordinary function call | `GroProgramRuntime.cpp` |
-| `@` (cons), `#` (concat) | missing | not present anywhere |
-| `rate(k)` | supported, as an ordinary function call (not a language keyword) | `GroProgramRuntime::parseFunctionCall` |
-| `&`, `|`, `!` logical operators | supported | `NumericExpressionParser` |
-| `<>` string concatenation | unknown (not exercised by the current fork-level inspection; needs a focused probe) | — |
-| `<<` record-override operator | unknown, used only in theme records in examples (GUI-only path); not exercised | — |
-| Program composition `A() + B() sharing ...` | supported via static textual inlining (not independent `Program`/`SymbolTable` objects) | compiler composition path |
+Current status (`supported`/`partial`/`missing`/`broken`), evidence, and
+the subset decision:
 
-A not-raw (`RawStatement`) outcome is produced for every supported
-construct; everything else silently becomes a `RawStatement` with **no
-diagnostic**, confirmed at `GroProgramCompiler::compileSimpleStatement`.
-This is the single most load-bearing gap for Phase 1: unsupported syntax is
-currently indistinguishable from a deliberate no-op statement.
+| Construct | Status | Evidence | Needed for selected subset? |
+|---|---|---|---|
+| `//` and `/* */` comments | supported | `GroProgramParser::skipWhitespaceAndComments` | yes (already works) |
+| String literals (balance/skip only) | supported | string-aware scanning | yes (already works) |
+| Balanced `()`, `[]`, `{}` | supported | `GroProgramParser::findMatchingDelimiter` | yes (already works) |
+| `program name(params) := { ... };` | supported | `tryParseNamedProgram` | yes (already works) |
+| `condition : { actions }` rule | supported (`IfStatement`, no `else`) | `tryCompileRuleStatement` | yes (already works) |
+| `:=` assignment | supported | `findTopLevelAssignment` | yes (already works) |
+| `if (cond) { } else { }` (C-style) | supported | `tryCompileIfStatement` | yes (already works) |
+| Unsupported syntax silently becomes `RawStatement` | **broken architecture gap** | `compileSimpleStatement` | **yes — explicit diagnostic required regardless of grammar scope** |
+| `needs a, b;` (comma form) | broken (mis-split) | `consumeSimpleStatement` | **yes — low-cost parser bug, not a new feature** |
+| Record field **read** inside an expression/condition (`p.mode = GO`) | unknown/likely missing | `compileSimpleStatement` only handles the assignment LHS case | **yes — unblocks the two strongest acceptance-corpus candidates (§8)** |
+| `if EXPR then EXPR else EXPR end` (Gro expression form) | missing | no `then`/`end` handling | no — the existing C-style `if/else` statement already covers the needed conditional-branching capability |
+| Records `[ field := value, ... ]` as a declaration | partial (flattened to `x.field := value`) | `compileSimpleStatement` | yes (already partially works; pair with the read-access fix above) |
+| Lists `{ a, b, c }` as a value | missing | raw text only | no — no selected capability needs list-valued state |
+| Indexing `a[i]` | missing | no handling | no — not needed once lists are out of scope |
+| `sharing a, b, c` | no real scoping (flat global map) | `stripSharingClause` | no — acceptable as a documented simplification; real per-program scoping is not needed by the selected subset |
+| `fun name args . body;` / higher-order functions / lambdas | missing | zero occurrences | no — every selected fixture can express its logic with plain rules/expressions |
+| `foreach`/`range`/`cross`/`let/in/end`/`map` | missing | zero occurrences | no — bulk seeding and statistics aggregation are not required; the selected corpus seeds a handful of bacteria with explicit `ecoli(...)` calls, matching the existing `Smart_BacteriaColony_GRO.gen` fixture style |
+| `maptocells EXPR end` (keyword form) | missing (only `map_to_cells(expr)` call form exists) | — | no — the existing call-form is sufficient if ever needed |
+| `@` (cons), `#` (concat) | missing | — | no — tied to the deferred list feature |
+| `rate(k)` | supported (ordinary call) | `parseFunctionCall` | yes (already works) |
+| `&`, `|`, `!` | supported | `NumericExpressionParser` | yes (already works) |
+| `<>` string concatenation | unknown | not yet probed | maybe — cheap to confirm/add if genuinely missing; useful for readable viewer/message output, not required for simulation correctness |
+| `<<` record-override operator | unknown, GUI-theme-only in the examples that use it | not yet probed | no — only exercised by GUI theme records, out of scope |
+| Program composition `A() + B() sharing ...` | supported via static inlining | compiler composition path | no further work needed; existing flat-scope behavior is accepted (see `sharing` row) |
 
-## 6. Builtin compatibility matrix
+## 7. Builtin compatibility matrix
 
-Status values follow governance evidence discipline: `equivalent`,
-`partial`, `different-semantics`, `missing`, `intentionally-unsupported`,
-`gui-only`, `unsafe/deferred`, `extension` (GenESyS-only, no Gro
-equivalent).
+Status values: `equivalent`, `partial`, `different-semantics`, `missing`,
+`intentionally-unsupported`, `gui-only`, `unsafe/deferred`, `extension`
+(GenESyS-only). A `Needed?` column records the §6 subset decision.
 
-| Gro builtin | GenESyS status | Current GenESyS behavior (confirmed in code) |
-|---|---|---|
-| `signal(kdiff,kdeg)` | different-semantics | Returns `arguments.front()` verbatim; creates no channel, no handle (`GroProgramRuntime.cpp:455-462`) |
-| `get_signal(n)` | different-semantics | Ignores `n`; always returns `local_signal` from the single colony-wide field (`:446-453`) |
-| `emit_signal`/`absorb_signal`/`consume_signal` | different-semantics | Only the last argument (value) is used; a leading handle argument is silently dropped (`:1000-1020`) |
-| `set_signal(n,x,y,v)` / `set_signal_rect` | partial | All arguments including `n` are preserved into `ColonyMutation.numericArguments`, but `BacteriaColony` has only one field, so `n` is effectively unused downstream |
-| `reaction(reactants,products,rate)` | missing | Zero occurrences in `BiochemicalSimulation/` |
-| `get_signal_matrix(n)` | different-semantics | Current signature requires **zero** arguments; call with an argument errors (`:914-926`) |
-| `ecoli([...], program p())` | partial | Structurally equivalent (2 args, record + program reference); see §10 for the coordinate-handling gap |
-| `die()` / `die(n)` | extension + different-semantics | GenESyS accepts an optional `amount` argument (original `die()` takes none and only marks the current cell) |
-| `divide()` | different-semantics | Outside bacterium-scoped mode, doubles the whole aggregate population instead of splitting one cell |
-| `run(v)` / `tumble(v)` | different-semantics | Synthetic scalar formulas (clamped velocity add / random-angle jitter); no physics engine involved at all |
-| `geometry()` | missing | Not in dispatch table |
-| `time()` | different-semantics (worse than missing) | Explicitly rejected by `parseFunctionCall` with a hard error if used in an expression |
-| `stats(...)` | missing | Not in dispatch table |
-| `message(n, text)` | partial | Quadrant argument `n` accepted but discarded; stored as a flat message string |
-| `clear_messages(n)` | missing | Not in dispatch table |
-| `set(name, value)` | equivalent (structurally) | Special-cased `dt`/`signal_grid_width`/`signal_grid_height`; everything else goes to a generic variable map |
-| `barrier(x1,y1,x2,y2)` | partial | Recorded in `_barriers`, exposed to the viewer; **no physical effect** (confirmed: no motion code reads `_barriers`) |
-| `chemostat(bool)` | partial | `_chemostatMode` stored; **no physical effect** (confirmed: nothing reads it outside the setter/getter) |
-| `reset()` | partial | Clears variables/population/tick count; see §11 for colony-level effect |
-| `stop()` / `start()` | missing | Not in dispatch table |
-| `print(...)` / `clear()` | missing | Not in dispatch table |
-| `zoom(...)` / `set_theme(...)` / `snapshot(...)` | gui-only, currently missing even as a documented no-op | Not in dispatch table; headless runtime correctly has no Qt dependency, but there is no explicit "GUI-only, intentionally inert" diagnostic either |
-| `fopen` / `fprint` / `dump` | unsafe/deferred, correctly absent | Governance §15 requires an explicit security decision before any file I/O surface; current absence is the correct state, not yet documented as intentional |
-| `map_to_cells(expr)` | partial | Implemented as an ordinary function call; the original's dedicated `maptocells EXPR end` keyword syntax is not recognized |
-| `tick()`, `grow(n)`, `set_population(n)`, `dump_signal_field(r,c)` | extension | GenESyS-only commands with no Gro-original equivalent |
+| Gro builtin | GenESyS status | Current GenESyS behavior (confirmed in code) | Needed for selected subset? |
+|---|---|---|---|
+| `signal(kdiff,kdeg)` | different-semantics | Returns `arguments.front()` verbatim; creates no channel, no handle (`GroProgramRuntime.cpp:455-462`) | **yes — core of capability B (§9)** |
+| `get_signal(n)` | different-semantics | Ignores `n`; always returns `local_signal` (`:446-453`) | **yes** |
+| `emit_signal`/`absorb_signal` | different-semantics | Only the last argument (value) is used; handle silently dropped (`:1000-1020`) | **yes** |
+| `set_signal`/`set_signal_rect` | partial | Preserves `n` structurally, but the single-field colony ignores it | yes, once multi-channel lands |
+| `reaction(reactants,products,rate)` | missing | Zero occurrences | **no — not required by any selected fixture (§9)**; retained as documented reference only |
+| `get_signal_matrix(n)` | different-semantics | Requires zero arguments today (signature mismatch) | no — not required by the selected subset; defer |
+| `ecoli([...], program p())` | partial | Structurally equivalent; see §12 for the coordinate gap | yes (already mostly works) |
+| `die()` / `die(n)` | extension + different-semantics | Optional `amount` argument (extension) | yes (already works; document deviation, §19) |
+| `divide()` | different-semantics (aggregate mode) | Doubles the whole population outside bacterium-scoped mode | yes in bacterium-scoped mode (already works); aggregate-mode semantics documented as a deviation (§19) |
+| `run(v)` / `tumble(v)` | different-semantics | Synthetic scalar formulas, no physics | **yes — redefine per §12, not reimplement physics** |
+| `geometry()` | missing | Not in dispatch table | no — bacterium-scoped context already exposes position/direction as plain variables |
+| `time()` | different-semantics (hard error) | Explicitly rejected with an error if used in an expression | **yes, defensively — must stop hard-failing even though not central to any fixture** |
+| `stats(...)` / `stop()` / `start()` / `print(...)` / `clear()` | missing | Not in dispatch table | no — GUI/control conveniences, not required |
+| `message(n, text)` | partial | Quadrant discarded | no further work required |
+| `clear_messages(n)` | missing | Not in dispatch table | no |
+| `set(name, value)` | equivalent (structurally) | Special-cased `dt`/signal-grid keys; rest generic | yes (already works) |
+| `barrier(x1,y1,x2,y2)` | partial, inert | Stored, not applied to motion | no — deferred; corpus C's "domain limits" means boundary reflection, already implemented, not barrier segments |
+| `chemostat(bool)` | partial, inert | Stored, not applied to motion | no — deferred (§12/§20) |
+| `reset()` | partial | Clears variables/population/tick count | yes (already works) |
+| `zoom(...)` / `set_theme(...)` / `snapshot(...)` | gui-only, missing | Not in dispatch table | no |
+| `fopen` / `fprint` / `dump` | unsafe/deferred | Correctly absent | no — security decision required first regardless (governance §15) |
+| `map_to_cells(expr)` | partial | Call-form only | no further work required |
+| `tick()`, `grow(n)`, `set_population(n)`, `dump_signal_field(r,c)` | extension | GenESyS-only | yes (already works; document as extensions, §19) |
 
-## 7. Original example compatibility matrix
+## 8. Original example compatibility matrix
 
 All 23 files under `~/Repositories/bacteria_programming_language/examples/`
-were read in full and cross-checked against §5/§6. No example has been
-executed yet against the current GenESyS parser/compiler/runtime — all
-"likely" verdicts below are **strong indications from static reading**,
-not executed evidence, and must be confirmed with real fixtures in Phase 1.
+were read in full and cross-checked against §6/§7. Per §2 decision 2, this
+matrix is a **coverage map, not a 100% acceptance gate**. `TargetForGenesys`
+records whether the example's *concept* informs the selected subset (§9),
+independent of whether the literal file would parse today.
 
-| Example | Status | First real blocker |
-|---|---|---|
-| `growth.gro` | untested (no confirmed-missing construct) | unexecuted; `tostring` support unconfirmed |
-| `signal_demo.gro` | unsupported | top-level and in-program `foreach ... in (range n) do ... end` |
-| `signal_grid.gro` | unsupported | `foreach p in cross (range 16) (range 16) do ... end`, nested list literal, `bitmap[p[1]][p[0]]` indexing |
-| `morphogenesis.gro` | unsupported | `fun`, `if...then...else...end` expression, curried call `gr(a)(b)`, broken `needs q, t;` |
-| `chemotaxis.gro` | unsupported | top-level `foreach q in range 50 do ecoli(...) end` |
-| `barriers.gro` | untested (likely compiles) | barriers are inert at runtime (semantic gap, not a parse blocker) |
-| `foreach.gro` | unsupported | top-level `foreach q in range 100 do ecoli(...) end` |
-| `maptocells.gro` | unsupported | `fun`, `let ... in ... end`, lambda `\x.expr`, `maptocells EXPR end` keyword form |
-| `bandpass.gro` | unsupported | `fun f a . ...` |
-| `coupled_oscillator.gro` | partial/untested | record-field read in a condition (`p.mode = GO`) unconfirmed; `snapshot` missing |
-| `dilution.gro` | unsupported | broken `needs gfp;` path, nested parenthesized composition untested |
-| `edge.gro` | partial/untested | record-field read in a condition unconfirmed; `emit_signal` channel silently discarded (semantic, not parse) |
-| `game.gro` | unsupported | `stats(...)`, `stop()` missing |
-| `geometry.gro` | unsupported | `fopen`/`fprint`/`geometry()` missing, `time()` hard errors, list literal + `@` |
-| `gfp.gro` | unsupported | `needs gfp, mRNA;` (comma-separated `needs` is worse-broken) |
-| `inducer.gro` | unsupported (closest near-miss) | `clear_messages(1)` missing |
-| `signal_dump.gro` | unsupported | `reaction(...)` missing, `<<` record override, `foreach`, `fopen`/`fprint` |
-| `skin.gro` | unsupported | `<<` record override, `if...then...else...end` expression, `start()` missing |
-| `spatial_oscillations.gro` | partial/untested (near-miss) | record-field read in a condition unconfirmed |
-| `spots.gro` | unsupported | list literal `nutrient := { signal(...), signal(...) }` |
-| `symbiosis.gro` | partial/untested (near-miss) | record-field read in a condition unconfirmed |
-| `wave.gro` | unsupported | `reaction(...)` missing, `<<`, `foreach`, lists |
-| `yeast_example.gro` | not-applicable | `yeast()` is disabled in the *original* Gro too; out of scope here |
+| Example | Status (unchanged from Phase 0) | TargetForGenesys | Reason |
+|---|---|---|---|
+| `growth.gro` | untested | partial | growth/rate/`divide()` concepts align with corpus A; not selected verbatim |
+| `signal_demo.gro` | unsupported (`foreach`/`range`) | no | bulk procedural signal creation via loops not required |
+| `signal_grid.gro` | unsupported (`foreach`/`cross`/lists/indexing) | no | bitmap-to-signal loading is not a selected capability |
+| `morphogenesis.gro` | unsupported (`fun`, expression `if/then/else/end`, curried calls, `needs` bug) | no | full composable state-machine-via-`fun` exceeds the subset; corpus D covers a simpler record-based internal state instead |
+| `chemotaxis.gro` | unsupported (top-level `foreach`) | partial | `run`/`tumble`/`get_signal` align with corpus C; bulk 50-cell seeding via loop not required |
+| `barriers.gro` | untested (compiles, inert barriers) | no | barriers deferred (§7); corpus C's domain limits are boundary reflection, already present |
+| `foreach.gro` | unsupported | no | pure loop-seeding demo, not a modeling capability |
+| `maptocells.gro` | unsupported (`fun`/`let`/lambda/keyword form) | no | statistics-aggregation DSL not required |
+| `bandpass.gro` | unsupported (`fun`) | no | band-pass filter function not required |
+| `coupled_oscillator.gro` | partial/untested | partial | oscillator-with-internal-state concept aligns with corpus D; needs the record-read fix (§6) |
+| `dilution.gro` | unsupported (`needs` bug) | partial | rate-based production/dilution aligns loosely with corpus D; not selected verbatim |
+| `edge.gro` | partial/untested | partial | record-read + 2-arg `emit_signal` align with corpus B/D |
+| `game.gro` | unsupported (`stats`/`stop`) | no | interactive game demo, not a modeling capability |
+| `geometry.gro` | unsupported (`fopen`/`geometry`/`time`/lists) | no | file I/O and list state not required |
+| `gfp.gro` | unsupported (`needs` bug, comma form) | partial | GFP production/degradation rate pattern aligns with corpus D |
+| `inducer.gro` | unsupported (`clear_messages`) | partial | rate()-driven production pattern aligns with corpus D |
+| `signal_dump.gro` | unsupported (`reaction`, `<<`, `foreach`, `fopen`) | no | reaction-diffusion + file dump not required |
+| `skin.gro` | unsupported (`<<`, expression `if/then/else/end`, `start`) | no | pattern-formation state machine exceeds the subset |
+| `spatial_oscillations.gro` | partial/untested | **yes — primary acceptance-corpus inspiration** | record-based internal state, `just_divided`/`daughter`, `emit_signal`, `die()` — matches corpus D almost directly |
+| `spots.gro` | unsupported (list literal for `nutrient`) | partial | two-cell signal-exchange concept aligns with corpus B, but as two explicit `signal()` declarations, not a list |
+| `symbiosis.gro` | partial/untested | **yes — primary acceptance-corpus inspiration** | two signal channels, record-based state, leader/follower pattern — matches corpus B+D directly |
+| `wave.gro` | unsupported (`reaction`, `<<`, `foreach`, lists) | no | reaction-diffusion pattern formation not required |
+| `yeast_example.gro` | not-applicable | no | `yeast()` disabled upstream too; out of scope |
 
-Observation for Phase 1 prioritization: the single open question "is a
-record field readable inside a boolean condition/expression, not just
-assignable as a flattened LHS" gates `coupled_oscillator`, `edge`,
-`spatial_oscillations` and `symbiosis` simultaneously, and the `needs`
-comma-splitting bug gates `morphogenesis`, `dilution` and `gfp`. These are
-high-leverage, low-risk fixes to resolve early.
+`spatial_oscillations.gro` and `symbiosis.gro` are the strongest conceptual
+templates for the GenESyS-authored acceptance fixtures in §9 — written from
+scratch, not copied, per §4.
 
-## 8. Signal / reaction-diffusion contract
+## 9. GenESyS acceptance corpus
+
+This is the real completion target (§2 decision 9), replacing "percentage
+of 23 original examples passing." Each capability below must have an
+executed, passing, GenESyS-authored fixture/test before the integration can
+be called complete for that capability.
+
+### A. Growth and division
+
+- bacterium created (`ecoli`-equivalent seeding);
+- parameterized growth;
+- **`growthRate = 0` ⇒ no volume growth** (closes the confirmed §11 defect);
+- division with parent/daughter volume split;
+- `justDivided`/`daughter` state visible for exactly one step post-division.
+- Existing coverage: most of this is already exercised by
+  `BacteriaColonyAppliesVisibleGrowthToBacteria`,
+  `BacteriumScopedGroPreservesDivisionFlagsAndAbsorbSignalAlias`,
+  `BacteriaColonySupportsBacteriumScopedDivide`. **Gap: no test for
+  `growthRate=0`.**
+
+### B. Signals
+
+- creation of a signal channel with a real, stable handle;
+- **at least two independent channels that do not alias** (closes the
+  confirmed §6/§14 defect);
+- emission, absorption, read, all respecting the handle;
+- diffusion; degradation.
+- Existing coverage: single-field diffusion/decay and command dispatch are
+  tested; **no test exists for two independent channels** because the
+  feature does not exist yet.
+
+### C. Spatial interaction
+
+- continuous position;
+- movement via the GenESyS-native kinematic model (§12);
+- `run`/`tumble` redefined per §12 (no Chipmunk);
+- domain-limit behavior (boundary reflection, already implemented);
+- **`speed = 0` ⇒ no displacement** and **`dt`/`simulationStep = 0` ⇒ no
+  displacement** (closes the confirmed §12 defects).
+- Existing coverage: `BacteriaColonyProducesVisibleMotionSignalsAndFluorescence`,
+  `BacteriaColonyAppliesRunAndTumbleToBacteriumScopedState`. **Gap: no test
+  for `speed=0` or zero-step invariants.**
+
+### D. Program-colony integration
+
+- a selected Gro-subset program controls one bacterium;
+- internal record-like state (`p.field`) read and written, including
+  inside conditions (closes the §6 open question);
+- reacts to local signal;
+- drives growth/movement from program logic.
+- Existing coverage: `BacteriaColonyExecutesSignalAwareBacteriumProgram`
+  covers the signal-reaction half; the record-field-read-in-condition path
+  has no passing test today because the capability is unconfirmed/missing.
+
+### E. Viewer fidelity
+
+- population, position, orientation rendered faithfully;
+- signal field rendered faithfully;
+- division and death reflected;
+- selection preserved across refresh;
+- no viewer-invented physics or hidden second simulation model.
+- Existing coverage: extensive GUI implementation exists (§13); **no
+  automated test exists for viewer-state-adapter fidelity or for the
+  concurrent manual-step/event-calendar interaction risk noted in §14.**
+
+## 10. Signal / reaction-diffusion contract
 
 Current: one unnamed scalar field per colony (`BacteriaSignalGrid`), 4
 -neighbor (von Neumann) relaxation, no explicit `dt`
@@ -320,66 +420,107 @@ reflected, not periodic). No multi-channel addressing exists: `signal()`
 does not create anything, and `get_signal`/`emit_signal`/`absorb_signal`
 ignore any handle argument.
 
-Target contract (Phase 3, not yet implemented): `signal(kdiff,kdeg)` must
-create or reference a real, independently addressable channel and return a
-stable handle; `get_signal`/`emit_signal`/`absorb_signal`/`set_signal`/
-`set_signal_rect`/`get_signal_matrix` must operate on the channel named by
-that handle. The GenESyS discretization does not have to copy the original
-8-neighbor/`dt`-scaled stencil verbatim, but any change to the current
-4-neighbor/no-`dt` formulation is a behavior change for the existing three
-`.gen` fixtures and must be treated as such (documented impact + migration
-note), not a silent fix.
+Target contract (capability B, §9): `signal(kdiff,kdeg)` must create or
+reference a real, independently addressable channel and return a stable
+handle; `get_signal`/`emit_signal`/`absorb_signal`/`set_signal`/
+`set_signal_rect` must operate on the channel named by that handle. The
+GenESyS discretization does not have to copy the original 8-neighbor/`dt`
+-scaled stencil verbatim (the current 4-neighbor/no-`dt` formulation may be
+kept or revised), but any change to the existing field formulation is a
+behavior change for the three existing `.gen` fixtures and must be treated
+as such (documented impact + migration note), not a silent fix.
+`reaction()` is explicitly **not** part of the selected subset (§7) and is
+retained here only as reference.
 
-## 9. Bacterial growth/division contract
+## 11. Bacterial growth/division contract
 
 Confirmed defect (`BacteriaColony.cpp:2144-2170`,
 `_applyBacteriumGrowth()`): `deltaVolume = clamp(growthRate * stepScale,
 0.01, 0.35)`. With `growthRate` driven to exactly `0.0` (explicit
 `ecoli_growth_rate=0`, generation 0, no local signal contribution), the
 minimum clamp of `0.01` still applies, producing deterministic non-zero
-growth. This is reproducible from the formula alone (no randomness
-involved) and is treated as `CONFIRMED`, not hypothesis.
+growth. **CONFIRMED** from the formula alone, part of acceptance corpus A.
 
 Division flag timing (`just_divided`/`daughter`): confirmed functionally
 equivalent to the original's one-step visibility window, though
 implemented via a different set/clear sequence spread across
 `BacteriaColony.cpp:1806-1809` (clear) and `:1988-2032` (set after a
-`divide()` mutation in the same step) rather than the original's
-clear-before-next-step-read. Classified `no bug found`, pending an explicit
-regression test before Phase 5 touches this code.
+`divide()` mutation in the same step). Classified `no bug found`, pending
+an explicit regression test (corpus A) before this code is touched.
 
-## 10. 2D spatial/motion/mechanics contract
+## 12. 2D spatial/motion/mechanics contract (GenESyS-native)
 
-Confirmed defect (`BacteriaColony.cpp:2301-2336`,
-`_updateBacteriumSpatialMotion()`): `if (!isfinite(speed) || speed <= 0.0)
-speed = 0.08 + 0.01*generation;` — a deliberately-set `speed := 0` in a Gro
-program is silently replaced by a positive fallback velocity, so the
-bacterium keeps moving. `CONFIRMED`, not hypothesis.
+Per §2 decisions 4–7, this contract replaces Chipmunk with a simple,
+explicit, testable 2D kinematic model. Current state variables
+(`BacteriumState`) already include continuous `positionX`/`positionY`,
+`direction` (radians), `speed` and `volume` — reconciliation starts from
+these, not from an assumed-fresh state shape.
 
-Coordinate handling: two **inconsistent** conventions are confirmed in the
-current code simultaneously:
-- `ecoli([x:=...,y:=...])` seed coordinates are shifted to be non-negative
-  (`shiftX/shiftY = -min(0, minSeedCoordinate)`) and rounded to integer
-  grid cells immediately, destroying continuous position before any
-  execution (`BacteriaColony.cpp:975-1020`).
-- `set_signal`/`set_signal_rect` instead use `toCenteredGridIndex()`
-  (`:162-172`), which assumes the grid origin is centered.
-`_setBacteriumPosition()` always recomputes `gridX/gridY` via
-`llround(position)`, so even though `BacteriumState.positionX/Y` are
-`double`, signal sampling/emission always collapses to one rounded grid
-cell — the original's 3-point sampling along the cell's heading
-(`World::get_signal_value`) has no equivalent.
+**Confirmed defects (both reproducible from the formula alone, both must
+be closed under corpus C, §9):**
 
-Barriers and chemostat are confirmed **inert** for motion: `_barriers` and
-`_chemostatMode` are stored but never read by
-`_updateBacteriumSpatialMotion()` or `_applyBacteriumGrowth()`.
+1. `_updateBacteriumSpatialMotion()` (`BacteriaColony.cpp:2301-2336`):
+   `if (!isfinite(speed) || speed <= 0.0) speed = 0.08 + 0.01*generation;`
+   — a deliberate `speed := 0` is replaced by a positive fallback, so the
+   bacterium keeps moving. Violates the required invariant "`speed == 0` ⇒
+   position does not change."
+2. Same function: `stepScale = max(0.35, simulationStep * 2.5);` — when
+   `simulationStep` (the colony's step-time parameter) is `0`, `stepScale`
+   is clamped to `0.35`, not `0`, so motion still occurs with zero elapsed
+   step. Violates the required invariant "`dt == 0` ⇒ position does not
+   change." This is the same clamp-floor anti-pattern as the growth defect
+   in §11, confirmed by formula during this scope-refinement pass, not
+   previously documented.
 
-No external physics engine (Chipmunk or otherwise) is adopted by this
-plan; §10/Phase 6 of the task mandate requires presenting options to the
-maintainer if an internal mechanics approach proves insufficient for a
-required feature — not yet reached.
+**Coordinate handling** (two inconsistent conventions, both confirmed):
+`ecoli([x:=...,y:=...])` seed coordinates are shifted to be non-negative
+and rounded to integer grid cells immediately (`:975-1020`), destroying
+continuous position before any execution; `set_signal`/`set_signal_rect`
+instead use a centered-origin convention (`toCenteredGridIndex`, `:162
+-172`). `_setBacteriumPosition()` always recomputes `gridX/gridY` via
+`llround(position)` for signal sampling — single-point sampling, no
+heading-aware multi-point sampling.
 
-## 11. GenESyS event-time integration
+**GenESyS-native kinematic contract (to implement):**
+- State: `positionX`, `positionY` (continuous `double`), `direction`
+  (radians, consistent with the existing `cos(direction)`/`sin(direction)`
+  convention), `speed` (nonnegative scalar; `0` means stationary, with
+  **no** positive fallback). `generation`-dependent speed increments found
+  in the current growth code are a heuristic to review for removal, not a
+  required part of the kinematic contract itself.
+- Update rule, using the real elapsed step (no artificial minimum floor):
+  `x(t+step) = x(t) + speed*cos(direction)*step`;
+  `y(t+step) = y(t) + speed*sin(direction)*step`, where `step` is the
+  colony's actual `simulationStep` for that dispatch, reconciled with
+  existing units (already the convention `_updateBacteriumSpatialMotion`
+  intends, modulo the floor defects above).
+- `run(v)`: sets `speed := v` (propel along current heading at speed `v`);
+  no force/torque, no Chipmunk.
+- `tumble(v)`: reorients `direction` by a randomized amount parameterized
+  by `v`, using **the GenESyS kernel RNG/sampler infrastructure** for
+  reproducibility — **not** the current ad hoc FNV/SplitMix hash used by
+  `rate(k)` in `GroProgramRuntime` (`deterministicUnitInterval`,
+  confirmed self-contained and not kernel-seeded; flagged here as a
+  reproducibility gap to close when `run`/`tumble` are touched, consistent
+  with mandate requirement "randomização usa a infraestrutura RNG
+  reprodutível do GenESyS").
+- Domain limits: keep the existing boundary-reflection convention
+  (direction mirrored at grid edges) — this already satisfies corpus C's
+  "limites do domínio" requirement; no change needed structurally, only
+  documentation.
+- **Barriers**: deferred. Not required by corpus C (which asks for domain
+  limits, already covered by boundary reflection, not line-segment
+  barriers). If later required: model as 2D segment-crossing detection
+  with position back-projection or velocity-normal removal (simple,
+  deterministic, documented) — never a rigid-body engine.
+- **Chemostat**: deferred. Not required by the selected subset. If later
+  required: a simple directional velocity bias and/or boundary-region exit
+  removal — never Chipmunk-equivalent mechanics.
+- **Bacteria-bacteria collision**: explicitly **not** required. Bacteria
+  may overlap; this is an accepted simplification per §2 decision 7, not a
+  defect to track.
+
+## 13. GenESyS event-time integration
 
 Confirmed pipeline for one bacterium-scoped colony step
 (`_executeBacteriumScopedGroProgram`, `BacteriaColony.cpp:1742-1847`): per
@@ -390,28 +531,20 @@ after the full population loop: refresh update time, apply the single
 signal-field diffusion/decay step, update spatial motion for every
 bacterium, rebuild grid positions.
 
-Compared to the original's `World::update()` order (world program → cells
-update+divide → reactions → diffusion → death removal → chemostat →
-physics → time advance): reactions have no equivalent stage at all
-(because `reaction()` is unimplemented); chemostat has no motion-affecting
-stage; diffusion-then-motion ordering is directionally similar to the
-original's reaction/diffusion-then-physics ordering.
-
 `executeGroProgram()` reparses and recompiles the full source text from
 scratch on **every** call (`BacteriaColony.cpp:559-643`), with no cache by
-hash/identity/revision — confirmed, not hypothesis. This is a Phase 10
-(performance) concern, not a Phase 0 blocker, and must not be fixed by
-caching until correctness phases are closed (a stale cache during active
-semantic changes would be worse than the current cost).
+hash/identity/revision — confirmed, not hypothesis. This is a performance
+concern, addressed only after correctness phases close (a stale cache
+during active semantic changes would be worse than the current cost).
 
 Both the real event-calendar dispatch (`BacteriaColony::_onDispatchEvent`)
 and the GUI viewer's "Step colony" button and "Start run" timer call the
-exact same `executeGroProgram()` method (confirmed, §12 below); the colony
+exact same `executeGroProgram()` method (confirmed, §14 below); the colony
 owns no separate internal clock contract beyond `ModelSimulation`'s own
 time, so there is exactly one "advance simulated time" path — the risk is
 two *triggers* for colony mutation, not two incompatible time domains.
 
-## 12. GUI/viewer contract
+## 14. GUI/viewer contract
 
 `BacteriaColonyViewerGuiExtensionPlugin.cpp`: "Step colony" and the
 "Start run" `QTimer` both call `_executeSelectedColonyStep()`, which calls
@@ -419,165 +552,194 @@ two *triggers* for colony mutation, not two incompatible time domains.
 event calendar calls via `_onDispatchEvent`. The code already contains an
 explicit, correct comment (`:698-699`) stating that manual viewer
 execution mutates colony state for inspection but does **not** advance
-`ModelSimulation::getSimulatedTime()`. This is confirmed self-consistent:
-there is one state-mutation entry point, triggered either by the event
-calendar (which also advances simulated time) or by the viewer (which does
-not). The risk flagged by the task mandate — a hidden second clock — is not
-present; the real risk is a user running the viewer's manual
-Step/Start-run controls *concurrently* with active event-calendar replay
-on the same `BacteriaColony` instance, which would interleave two
-uncoordinated triggers of the same mutation path. This must be verified
-with a focused test in Phase 8, not assumed.
+`ModelSimulation::getSimulatedTime()`. There is one state-mutation entry
+point, triggered either by the event calendar (which also advances
+simulated time) or by the viewer (which does not); the real risk is a user
+running the viewer's manual controls *concurrently* with active
+event-calendar replay on the same `BacteriaColony` instance. This must be
+verified with a focused test (corpus E, §9), not assumed.
 
-The viewer already implements colony/signal selection, heatmap rendering,
-per-bacterium rendering with orientation/fluorescence, trails, a legend,
-zoom, and polling via `QTimer` (no event-driven widget callback contract
-exists yet in the generic GUI-extension framework, confirmed from prior
-session evidence, not re-verified in this pass).
-
-## 13. Persistence requirements
+## 15. Persistence requirements
 
 Confirmed persisted fields: `GroProgram.SourceCode` (code-editor-hinted
-string property, per `test_simulator_runtime.cpp`); `BacteriaSignalGrid`
-(`width`, `height`, `initialSignal`, `diffusionRate`, `decayRate`,
-optional `initialValues` CSV); `BacteriaColony` (`gridWidth`, `gridHeight`,
-`initialPopulation`, `simulationStep`, `numSteps`, `groProgram` reference,
-optional `signalGrid`/`bioNetwork` references, `nextId`).
+string property); `BacteriaSignalGrid` (`width`, `height`,
+`initialSignal`, `diffusionRate`, `decayRate`, optional `initialValues`
+CSV); `BacteriaColony` (`gridWidth`, `gridHeight`, `initialPopulation`,
+`simulationStep`, `numSteps`, `groProgram` reference, optional
+`signalGrid`/`bioNetwork` references, `nextId`).
 
 Three real fixtures already exist (`models/Smart_GroColonyGrowth.gen`,
 `Smart_GroColonyLifecycle.gen`, `Smart_BacteriaColony_GRO.gen`); the third
-is the richest and already demonstrates the single-argument `emit_signal`
-call shape that must remain loadable (or be given an explicit, tested
-migration) if Phase 3 changes `emit_signal`'s arity/semantics.
+already demonstrates the single-argument `emit_signal` call shape that
+must remain loadable (or be given an explicit, tested migration) once
+multi-channel signals (§10) land.
 
 `WiP2026108/PE_Fix` (draft PR #545) is working on SimulLang/GenSerializer
-text round-tripping, including a GroProgram model round-trip test. Phase 11
-of this plan must rebase on that work once merged, rather than
-independently re-fixing the same persistence path.
+text round-tripping, including a GroProgram model round-trip test. The
+persistence phase of this plan must rebase on that work once merged,
+rather than independently re-fixing the same persistence path.
 
-## 14. Test/oracle matrix
+## 16. Test/oracle matrix
 
 Existing coverage: 46 focused `TEST()` cases in
-`test_runtime_pluginmanager.cpp` (full list recorded in the Phase 0
-inspection evidence) covering plugin registration, parser lexical
-boundaries, compiler IR shape, runtime command dispatch for every
+`test_runtime_pluginmanager.cpp` covering plugin registration, parser
+lexical boundaries, compiler IR shape, runtime command dispatch for every
 currently-implemented builtin, and colony-level growth/motion/division/
-signal/BioNetwork integration behavior.
+signal/BioNetwork integration behavior (full list recorded in the Phase 0
+evidence underlying this document).
 
 Confirmed **not** covered by any existing test (regression gaps to close
-before touching the corresponding production code):
-- `ecoli_growth_rate = 0` → volume must not grow (§9 defect);
-- `speed = 0` → position must not change (§10 defect);
-- two independent signal handles (`s0`/`s1`) must not alias each other
-  (§8/§6 defect);
-- `reaction()` (entirely unimplemented, §6);
-- `fun`/`needs`/`foreach`/`maptocells ... end` (entirely unimplemented,
-  §5);
-- the viewer's manual step/run controls running concurrently with
-  event-calendar dispatch on the same colony (§12).
+*before* touching the corresponding production code, mapped to corpus
+§9):
+- corpus A: `ecoli_growth_rate = 0` → volume must not grow;
+- corpus C: `speed = 0` → position must not change;
+- corpus C: `simulationStep = 0` → position must not change (newly
+  identified in this pass, §12);
+- corpus B: two independent signal handles must not alias each other;
+- corpus D: record-field read inside a boolean condition;
+- corpus E: viewer manual step/run controls running concurrently with
+  event-calendar dispatch on the same colony.
 
-## 15. Phased implementation plan
+`reaction()`, `fun`/`needs`-as-a-language-feature/`foreach`/
+`maptocells ... end` remain unimplemented by §2/§6/§7 decision and are
+**not** tracked as regression gaps — they are out of the selected subset.
+The `needs`-comma-splitting **parser bug** (distinct from the broader
+`needs`-as-scoping *feature*, which remains unimplemented by choice) is
+still a gap to close, since it currently mis-parses even the small subset
+of `needs` usage that matters for diagnostics.
 
-Following the mandate's Phase 0–12 structure. Each phase: diagnose →
-regression test(s) → minimal implementation → focused validation →
-regression validation (`tests-unit`/`tests-kernel-unit`/`tests-smoke` as
-applicable) → update this document → small, single-concern commit.
+## 17. Phased implementation plan (revised 2026-10-08)
 
-0. **Baseline and compatibility matrix** — this document (current phase,
-   documentation-only).
-1. **Frontend** (parser/AST/IR/compiler) — priority order informed by §7:
-   (a) explicit diagnostic for unsupported syntax instead of silent
-   `RawStatement`; (b) fix the `needs` comma-splitting bug; (c) resolve
-   whether record-field reads belong in expressions (unblocks 4 examples
-   at once); (d) rule `else` support; (e) `fun`/higher-order
-   functions/`foreach`/`range`/`cross`/`let`/lambdas/lists/indexing, in
-   that order of example-corpus leverage.
-2. **Runtime/builtins** — close `geometry()`, `stats()`,
-   `stop()`/`start()`, `clear_messages()`, `time()` (must stop hard-erroring),
-   per the categorization in §6; `fopen`/`fprint` remain deferred pending a
-   security decision (governance §15, stop gate 7).
-3. **Multiple signal channels + reaction-diffusion** — give `signal()` a
-   real handle/channel identity; reconcile with `BacteriaSignalGrid`'s
-   current single-field design without inventing one `ModelDataDefinition`
-   per channel by default; implement `reaction()`.
-4. **Physical coordinates and sampling** — remove the shift-and-round
-   seeding path; reconcile it with the centered convention used by
-   `set_signal`; consider multi-point sampling along heading.
-5. **Growth/division** — remove the `0.01` minimum clamp that forces
-   growth at `growthRate=0`; add the regression first.
-6. **Motion/mechanics** — remove the `speed<=0` positive-fallback; decide
-   minimal internal mechanics vs. external engine only if barriers/
-   chemostat effects are required and cannot be done internally
-   (stop gate 2 if an external engine looks necessary).
-7. **World-step pipeline** — make the per-step ordering explicit and
-   tested; add the reaction stage once §3 lands.
-8. **Viewer** — add the concurrent-trigger regression from §14; keep the
+Reordered per the maintainer's scope decision: deliver useful bacterial
+-modeling capabilities before pursuing any further language compatibility.
+Each phase: diagnose → regression test(s) → minimal implementation →
+focused validation → regression validation (`tests-unit`/
+`tests-kernel-unit`/`tests-smoke` as applicable) → update this document →
+small, single-concern commit.
+
+0. **Baseline, compatibility matrices, scope decisions** — done
+   (`dbab2286`, this revision).
+1. **Minimal frontend blockers** (small, bounded — not a parser rewrite):
+   (a) explicit diagnostic when a statement falls through to
+   `RawStatement` instead of silent no-op; (b) fix the `needs`
+   comma-splitting bug; (c) support record-field **read** inside
+   expressions/conditions (unblocks corpus D and the two primary §8
+   acceptance-inspiration examples). Nothing else from §6's "no" column.
+2. **Selected runtime/builtins**: `time()` must stop hard-erroring; close
+   any other defensive gaps identified while implementing phases 3–6.
+   Builtins marked "no" in §7 are left unimplemented by decision, not
+   revisited here.
+3. **Signal channels**: give `signal()` a real handle/channel identity;
+   make `get_signal`/`emit_signal`/`absorb_signal`/`set_signal`/
+   `set_signal_rect` respect it; support at least two independent channels
+   (corpus B). `reaction()` and `get_signal_matrix` signature repair are
+   out of scope per §7.
+4. **Reaction-diffusion review**: revisit the existing 4-neighbor/no-`dt`
+   field formulation only as needed to support multi-channel fields from
+   phase 3; document whatever formulation is kept or changed, with the
+   `.gen`-fixture impact note required by §10.
+5. **Physical coordinates**: remove the shift-and-round seeding path;
+   reconcile with the centered convention used by `set_signal`.
+6. **Growth/division**: remove the `0.01` minimum growth clamp (§11);
+   regression-first (corpus A).
+7. **Simple internal mechanics**: implement the §12 GenESyS-native
+   kinematic contract; remove the `speed<=0` and `stepScale` positive
+   -floor fallbacks; redefine `run`/`tumble` on top of it using the kernel
+   RNG; regression-first (corpus C).
+8. **Event-step integration**: make the per-colony-step ordering explicit
+   and tested against the mechanics/signals changes above.
+9. **Viewer**: add the concurrent-trigger regression (corpus E); keep the
    viewer strictly a read/observe + explicit-step-request surface.
-9. **End-to-end corpus** — re-run the §7 matrix with real fixtures once
-   §1–§8 land; reclassify every "untested"/"partial" entry with executed
-   evidence.
-10. **Performance** — only after correctness phases close; address the
-    reparse-every-call cost (§11) with a safe cache keyed by source
+10. **Selected end-to-end corpus**: author and pass the GenESyS-native
+    fixtures for corpus A–E (§9), inspired by but not copied from
+    `spatial_oscillations.gro`/`symbiosis.gro`.
+11. **Performance**: only after correctness phases close; address the
+    reparse-every-call cost (§13) with a safe cache keyed by source
     identity.
-11. **Persistence** — rebase on `WiP2026108/PE_Fix` once merged; validate
+12. **Persistence**: rebase on `WiP2026108/PE_Fix` once merged; validate
     the three existing `.gen` fixtures continue to load (or document/
-    migrate any intentional change from Phase 3/5/6).
-12. **Documentation/manual/completion gate** — reconcile this document,
+    migrate any intentional change from phases 3/4/5/6).
+13. **Documentation/manual/completion gate**: reconcile this document,
     `STATUS.md`, the AI changelog, and manual impact per governance §10.
 
-## 16. Known deviations (intentional, to document going forward)
+## 18. Known deviations (intentional, to document going forward)
 
 - `die(n)` accepts an amount argument; the original `die()` takes none.
 - `divide()` outside bacterium-scoped mode affects the whole aggregate
   population rather than a single cell — a GenESyS-specific aggregate-mode
-  semantic, not a bug, but must be documented as a deviation, not silently
-  conflated with the original's per-cell `divide()`.
+  semantic, not a bug.
 - `tick()`, `grow(n)`, `set_population(n)`, `dump_signal_field(r,c)` are
   GenESyS extensions with no Gro-original equivalent.
 - `rate(k)` uses `1 - exp(-k*dt)` (a proper Poisson-process per-step
   probability) instead of the original's `k*dt > rand()/RAND_MAX`
-  approximation — a strictly more correct formulation, kept as a
-  documented improvement rather than reverted to the original's
-  approximation.
+  approximation — kept as a documented improvement. Its RNG source should
+  still move to the kernel sampler per §12.
+- No Chipmunk-equivalent rigid-body physics, forces, torques, or
+  bacteria-bacteria collision — by maintainer decision (§2), not a gap.
 
-## 17. Explicitly unsupported behavior
+## 19. Explicitly unsupported / deferred behavior
 
 - `fopen`/`fprint`/`dump` to arbitrary filesystem paths: deferred pending a
-  security decision (no change proposed by this plan).
-- GUI-only builtins (`zoom`, `set_theme`, `snapshot`) in the headless
-  runtime: intentionally absent; Phase 2 should make this an explicit,
-  tested no-op/diagnostic rather than an undocumented absence.
-- Full academic Gro grammar (`fun`, `let/in/end`, general lambdas/lists/
-  records as first-class values, `foreach`/`cross`/`maptocells ... end`):
-  out of scope unless the example-corpus leverage identified in §7 changes
-  the maintainer's priority.
-- External 2D physics engine (Chipmunk or equivalent): not adopted without
-  an explicit maintainer decision (stop gate 2).
+  security decision (unrelated to this plan's scope narrowing).
+- GUI-only builtins (`zoom`, `set_theme`, `snapshot`): intentionally
+  absent from the headless runtime.
+- `reaction()`, `get_signal_matrix` argument-count repair, `geometry()`,
+  `stats()`, `stop()`/`start()`, `clear_messages()`, `print()`/`clear()`:
+  intentionally unsupported — no selected capability needs them (§7).
+- Full academic Gro grammar (`fun`, `let/in/end`, lambdas, general
+  lists/records as first-class values, `foreach`/`cross`, the
+  `maptocells ... end` keyword form): intentionally unsupported (§2
+  decision 8, §6).
+- External 2D physics engine (Chipmunk or equivalent), rigid-body
+  collision, barriers, chemostat physical effects: deferred/not required
+  by the selected subset (§2 decisions 4–7, §12).
 
-## 18. Open decisions / stop gates
+## 20. Open decisions / stop gates
 
-No stop gate has been triggered yet. Candidates to watch as phases
-progress:
-- Phase 3 may reveal that giving `BacteriaSignalGrid` multi-channel support
-  requires a persistence-format decision affecting the three existing
-  `.gen` fixtures — present impact/migration before changing the saved
-  format, do not change it silently (governance §15, mandate §18 item 5).
-- Phase 6 may reveal that barrier/chemostat physical effects cannot be
-  done with a minimal internal 2D mechanics approach — present the A/B/C
-  options from the mandate (§8/Phase 6) before adding any external physics
-  dependency (stop gate 2).
-- Phase 11 depends on `WiP2026108/PE_Fix` merging first; if it stalls,
-  escalate rather than duplicating its persistence fixes.
+Closed, not open: adoption of an external physics engine (§2 decisions
+4/5 — do not reopen).
 
-## 19. Completion criteria
+Genuinely open/to watch:
+- Signal multi-channel support (§10/phase 3) may require a
+  persistence-format decision affecting the three existing `.gen`
+  fixtures — present impact/migration before changing the saved format,
+  do not change it silently (governance §15).
+- The persistence phase depends on `WiP2026108/PE_Fix` merging first; if
+  it stalls, escalate rather than duplicating its persistence fixes.
+- If a future maintainer-selected fixture genuinely requires barriers or
+  chemostat physical effects beyond what §12's simple geometric policy can
+  express reasonably, present options (simple internal extension vs.
+  continued deferral) — but **not** an external physics engine, which
+  remains closed.
 
-This integration is `BACTERIA-COLONY-INTEGRATION-COMPLETE` only when all
-four independent levels hold with executed evidence, not static reading:
-**language** (corpus mapped, supported subset executes with documented
-semantics), **simulation** (signals/growth/division/movement/event-timing
-have contracts and passing tests), **GUI** (viewer faithfully reflects
-runtime state, no hidden second simulation model), **engineering** (build/
-regression/persistence/ownership/documentation/manual impact coherent).
-Until then, report state as `BACTERIA-COLONY-INTEGRATION-PARTIAL` with the
-exact remaining feature, blocker, evidence, required decision and next
-action — per phase, using this document's §15 numbering.
+## 21. Completion criteria (revised 2026-10-08)
+
+Per §2 decision 9, completion is **capability-based**, not a percentage of
+original-Gro compatibility. `BACTERIA-COLONY-INTEGRATION-COMPLETE` requires
+executed evidence (not static reading) for:
+
+- **Language subset**: the subset declared in §6 has defined syntax,
+  explicit diagnostics for anything outside it, and a consistent
+  parser/compiler/runtime, documented.
+- **Bacterial simulation**: population, growth (including the
+  zero-growth invariant), division with parent/daughter semantics, death
+  where selected, continuous positions, `run`/`tumble` under the §12
+  kinematic contract (including the zero-speed/zero-step invariants),
+  deterministic/reproducible mechanics using the kernel RNG.
+- **Signals**: independent signal channels, emit/absorb/read respecting
+  handles, diffusion, degradation, with numerical tests.
+- **Simulation integration**: explicit event-calendar semantics, no
+  duplicate/hidden time progression, correct reset between replications.
+- **GUI**: the viewer represents actual runtime state, creates no
+  alternate physics/clock, and renders signals/positions/division/death
+  consistently.
+- **Engineering**: persistence, tests, sanitizers where relevant,
+  documentation, regression, CI.
+
+Gro features explicitly marked out-of-subset (§19) do **not** block
+`BACTERIA-COLONY-INTEGRATION-COMPLETE`, provided the documentation is
+unambiguous about what was intentionally left out and why. Until every
+corpus A–E capability in §9 has executed, passing evidence, report state
+as `BACTERIA-COLONY-INTEGRATION-PARTIAL` with the exact remaining
+capability, blocker, evidence, required decision and next action, using
+this document's §17 phase numbering.
