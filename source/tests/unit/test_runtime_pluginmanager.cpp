@@ -1422,6 +1422,58 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyReportsUnsupportedGroConstruct
     EXPECT_NE(result.skippedRawStatements[0].find("oops"), std::string::npos);
 }
 
+TEST(RuntimePluginManagerClassTest, BacteriaColonyMaintainsTwoIndependentSignalChannelsWithoutAliasing) {
+    // Acceptance corpus B (signals): creation of two independent channels,
+    // emission into one, and diffusion, must never leak into the other
+    // channel's field. GenESyS-authored fixture, not copied from any
+    // original Gro example.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_TwoChannels");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        // kdiff=kdeg=0 on both channels: this fixture checks channel
+        // independence/aliasing, not the (separately tested) diffusion
+        // formula, so the emitted value must stay exactly as emitted.
+        "program bacterium() { "
+        "s0 := signal(0, 0); "
+        "s1 := signal(0, 0); "
+        "emit_signal(s1, 100); "
+        "}");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_TwoChannels");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialPopulation(1);
+    colony->setGridWidth(3);
+    colony->setGridHeight(3);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 1u);
+    const BacteriaColony::BacteriumState& bacterium = colony->getBacteriumState(0);
+    const unsigned int gridX = bacterium.gridX;
+    const unsigned int gridY = bacterium.gridY;
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+
+    // Channel 1 (s0, the legacy/default field) must stay untouched: nothing
+    // emits into it.
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 0.0);
+    // Channel 2 (s1) must reflect exactly what was emitted into it, at the
+    // bacterium's own cell: no aliasing with channel 1/s0.
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, gridX, gridY), 100.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "s0"), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "s1"), 2.0);
+}
+
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesBacteriumScopedProgramsWithPerBacteriumState) {
     Simulator simulator;
     PluginManager* manager = simulator.getPluginManager();
