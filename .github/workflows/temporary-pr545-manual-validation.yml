@@ -9,7 +9,7 @@ on:
       - .github/workflows/temporary-pr545-manual-validation.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   manual:
@@ -17,6 +17,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Install LaTeX dependencies
         run: |
@@ -29,7 +31,8 @@ jobs:
             texlive-pictures \
             texlive-science \
             biber \
-            poppler-utils
+            poppler-utils \
+            ripgrep
 
       - name: Validate figure specifications
         working-directory: docs/developers/ManualGenESyS_subrepo
@@ -49,6 +52,18 @@ jobs:
             exit 1
           fi
 
+      - name: Commit refreshed published manual
+        run: |
+          set -Eeuo pipefail
+          if git diff --quiet -- docs/ManualGenESyS.pdf; then
+            echo "Published manual PDF is already current."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/ManualGenESyS.pdf
+            git commit -m "docs: refresh GenESyS manual PDF"
+            git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+          fi
       - name: Collect evidence
         if: always()
         run: |
