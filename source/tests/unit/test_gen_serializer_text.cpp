@@ -3,7 +3,10 @@
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/persistence/GenSerializer.h"
+#include "plugins/data/BiochemicalSimulation/GroProgram.h"
 
+#include <chrono>
+#include <filesystem>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -21,6 +24,7 @@ std::string complexTextPayload() {
         "  // source comment that belongs to the Gro payload\n"
         "  path := \"C:\\\\genesys\\\\gro\";\n"
         "  equation := \"x=y\";\n"
+        "  marker := \"e\\\"still-payload\\\"\";\n"
         "};\n";
 }
 
@@ -135,4 +139,61 @@ TEST(GenSerializerTextPersistence, ComplexTextUsesEscapedLiteralAndSurvivesSecon
     std::ostringstream secondSerialization;
     ASSERT_TRUE(secondReader.dump(secondSerialization));
     EXPECT_EQ(loadSingleTextRecord(secondSerialization.str(), "ComplexGro2"), sourceCode);
+}
+
+
+TEST(GenSerializerTextPersistence, RealGroProgramModelSaveLoadRoundTripsExactly) {
+    const std::string sourceCode = complexTextPayload();
+    const auto uniqueId = std::chrono::steady_clock::now().time_since_epoch().count();
+    const std::filesystem::path filename =
+        std::filesystem::temp_directory_path()
+        / ("genesys-groprogram-roundtrip-" + std::to_string(uniqueId) + ".gen");
+
+    struct TemporaryFileCleanup {
+        std::filesystem::path path;
+        ~TemporaryFileCleanup() {
+            std::error_code error;
+            std::filesystem::remove(path, error);
+        }
+    } cleanup{filename};
+
+    Simulator savingSimulator;
+    PluginManager* savingManager = savingSimulator.getPluginManager();
+    ASSERT_NE(savingManager, nullptr);
+    savingManager->autoInsertPlugins();
+    Model* savingModel = savingSimulator.getModelManager()->newModel();
+    ASSERT_NE(savingModel, nullptr);
+
+    GroProgram* savingProgram =
+        savingManager->newInstance<GroProgram>(savingModel, "GroProgram_RoundTrip");
+    ASSERT_NE(savingProgram, nullptr);
+    savingProgram->setSourceCode(sourceCode);
+
+    ASSERT_TRUE(savingModel->save(filename.string()));
+
+    Simulator loadingSimulator;
+    PluginManager* loadingManager = loadingSimulator.getPluginManager();
+    ASSERT_NE(loadingManager, nullptr);
+    loadingManager->autoInsertPlugins();
+    Model* loadingModel = loadingSimulator.getModelManager()->newModel();
+    ASSERT_NE(loadingModel, nullptr);
+
+    ASSERT_TRUE(loadingModel->load(filename.string()));
+    auto* loadedProgram = dynamic_cast<GroProgram*>(
+        loadingModel->getDataManager()->getDataDefinition(
+            Util::TypeOf<GroProgram>(), "GroProgram_RoundTrip"));
+    ASSERT_NE(loadedProgram, nullptr);
+    EXPECT_EQ(loadedProgram->getSourceCode(), sourceCode);
+
+    ASSERT_TRUE(loadingModel->save(filename.string()));
+    Simulator secondLoadingSimulator;
+    secondLoadingSimulator.getPluginManager()->autoInsertPlugins();
+    Model* secondLoadingModel = secondLoadingSimulator.getModelManager()->newModel();
+    ASSERT_NE(secondLoadingModel, nullptr);
+    ASSERT_TRUE(secondLoadingModel->load(filename.string()));
+    auto* secondLoadedProgram = dynamic_cast<GroProgram*>(
+        secondLoadingModel->getDataManager()->getDataDefinition(
+            Util::TypeOf<GroProgram>(), "GroProgram_RoundTrip"));
+    ASSERT_NE(secondLoadedProgram, nullptr);
+    EXPECT_EQ(secondLoadedProgram->getSourceCode(), sourceCode);
 }
