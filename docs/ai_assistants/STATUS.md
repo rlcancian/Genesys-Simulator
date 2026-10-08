@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-10-04
+last_updated: 2026-10-08
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -19,7 +19,8 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Current remote `WorkInProgress` HEAD confirmed on 2026-10-04: `4d83e94082e2f7cd81e9f56956c18f0170442bd0` (`docs(modal): close backend gate after #540/#541 (#542)`).
+- Current remote `WorkInProgress` HEAD confirmed on 2026-10-08: `dce3484739056ae1e15ca694d8e1ed251d6a89a6` (`Merge PR #545: repair SimulLang persistence and GUI editing synchronization`).
+- PR #545 is integrated at `dce34847`: generic escaped SimulLang text persistence for complex fields and real `GroProgram` source; locale-safe numeric Property Editor commits; automatic semantic kernel/scene-to-`TextCodeEditor` synchronization; and independent graphical/kernel `Connection` ownership required for safe connection undo/redo. Final GitHub validation: `tests-unit` and `tests-kernel-unit` 1,846/1,846 executed tests passed with four historical disabled tests, `tests-smoke` 3/3, GUI GMDD diagnostics green, focused ASan+UBSan connection undo/redo green, and the User/Developer manual rebuilt and visually inspected.
 - Immediately preceding integrated Modal/Network-relevant merges on this line:
   - PR #533 (`85626d3a`) — expose official `tests-unit` / `tests-kernel-unit` / `tests-smoke` presets;
   - PR #534 (`dd7bd649`) — EFSM configurable conflict policy;
@@ -125,14 +126,14 @@ Recent CI evidence used CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. Those exact v
 
 ## 4. Exact core test baseline
 
-Current exact inventory on the backend implementation checkpoint `5bd10bb5` (executed 2026-09-20 locally):
+Current exact inventory on `WorkInProgress` merge `dce3484739056ae1e15ca694d8e1ed251d6a89a6` (executed 2026-10-08 on GitHub-hosted Ubuntu 24.04 runners):
 
-- registered: 1,834;
-- executed/passed: 1,830;
+- registered: 1,850;
+- executed/passed: 1,846;
 - failed: 0;
 - disabled: 4 historical duplicate Search/Remove blocks.
 
-The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 73/73 passed. PR #542 is documentation-only and does not alter that source/runtime baseline.
+The same 1,846/1,846 executed-test result was observed for both `tests-unit` and `tests-kernel-unit`; `tests-smoke` is 3/3 passed and the GUI GMDD diagnostics are green. PR #545 additionally has a focused ASan+UBSan connection undo/redo regression and a successful regenerated-manual validation.
 
 Equivalent active Search/Remove tests are mandatory, so the four disabled blocks remain source-cleanup debt rather than current behavioral coverage gaps.
 
