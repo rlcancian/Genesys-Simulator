@@ -119,6 +119,15 @@ TEST(GenSerializerTextPersistence, EmptyTextFieldRoundTripsExactly) {
     const std::string serialized = dumpSingleTextRecord("EmptyGro", "");
     EXPECT_EQ(loadSingleTextRecord(serialized, "EmptyGro"), "");
 }
+\nTEST(GenSerializerTextPersistence, BackslashOnlyTextUsesEscapedLiteralAndRoundTrips) {
+    const std::string sourceCode = R"(C:\\genesys\\gro\\program.gro)";
+    const std::string serialized = dumpSingleTextRecord("BackslashGro", sourceCode);
+
+    EXPECT_NE(serialized.find("sourceCode=e\\\""), std::string::npos);
+    EXPECT_NE(serialized.find(R"(C:\\\\genesys\\\\gro\\\\program.gro)"), std::string::npos);
+    EXPECT_EQ(loadSingleTextRecord(serialized, "BackslashGro"), sourceCode);
+}
+
 
 TEST(GenSerializerTextPersistence, ComplexTextUsesEscapedLiteralAndSurvivesSecondRoundTrip) {
     const std::string sourceCode = complexTextPayload();
