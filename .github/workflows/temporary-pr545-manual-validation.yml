@@ -30,6 +30,7 @@ jobs:
             texlive-fonts-recommended \
             texlive-pictures \
             texlive-science \
+            texlive-plain-generic \
             biber \
             poppler-utils \
             ripgrep
