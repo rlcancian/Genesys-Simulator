@@ -119,7 +119,8 @@ TEST(GenSerializerTextPersistence, EmptyTextFieldRoundTripsExactly) {
     const std::string serialized = dumpSingleTextRecord("EmptyGro", "");
     EXPECT_EQ(loadSingleTextRecord(serialized, "EmptyGro"), "");
 }
-\nTEST(GenSerializerTextPersistence, BackslashOnlyTextUsesEscapedLiteralAndRoundTrips) {
+
+TEST(GenSerializerTextPersistence, BackslashOnlyTextUsesEscapedLiteralAndRoundTrips) {
     const std::string sourceCode = R"(C:\\genesys\\gro\\program.gro)";
     const std::string serialized = dumpSingleTextRecord("BackslashGro", sourceCode);
 
@@ -190,7 +191,7 @@ TEST(GenSerializerTextPersistence, RealGroProgramModelSaveLoadRoundTripsExactly)
     ASSERT_TRUE(loadingModel->load(filename.string()));
     auto* loadedProgram = dynamic_cast<GroProgram*>(
         loadingModel->getDataManager()->getDataDefinition(
-            Util::TypeOf<GroProgram>(), "GroProgram_RoundTrip"));
+            "GroProgram", "GroProgram_RoundTrip"));
     ASSERT_NE(loadedProgram, nullptr);
     EXPECT_EQ(loadedProgram->getSourceCode(), sourceCode);
 
@@ -202,7 +203,7 @@ TEST(GenSerializerTextPersistence, RealGroProgramModelSaveLoadRoundTripsExactly)
     ASSERT_TRUE(secondLoadingModel->load(filename.string()));
     auto* secondLoadedProgram = dynamic_cast<GroProgram*>(
         secondLoadingModel->getDataManager()->getDataDefinition(
-            Util::TypeOf<GroProgram>(), "GroProgram_RoundTrip"));
+            "GroProgram", "GroProgram_RoundTrip"));
     ASSERT_NE(secondLoadedProgram, nullptr);
     EXPECT_EQ(secondLoadedProgram->getSourceCode(), sourceCode);
 }
