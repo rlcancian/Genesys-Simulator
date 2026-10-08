@@ -253,9 +253,9 @@ the subset decision:
 | `condition : { actions }` rule | supported (`IfStatement`, no `else`) | `tryCompileRuleStatement` | yes (already works) |
 | `:=` assignment | supported | `findTopLevelAssignment` | yes (already works) |
 | `if (cond) { } else { }` (C-style) | supported | `tryCompileIfStatement` | yes (already works) |
-| Unsupported syntax silently becomes `RawStatement` | **broken architecture gap** | `compileSimpleStatement` | **yes — explicit diagnostic required regardless of grammar scope** |
-| `needs a, b;` (comma form) | broken (mis-split) | `consumeSimpleStatement` | **yes — low-cost parser bug, not a new feature** |
-| Record field **read** inside an expression/condition (`p.mode = GO`) | unknown/likely missing | `compileSimpleStatement` only handles the assignment LHS case | **yes — unblocks the two strongest acceptance-corpus candidates (§8)** |
+| Unsupported syntax silently becomes `RawStatement` | **fixed 2026-10-08** (`a2bd10b6`) | `GroProgramRuntime` already collected `unsupportedCommands`/`skippedRawStatements` correctly; the gap was that `BacteriaColony::_onDispatchEvent` and the viewer discarded them when reporting success — both now surface non-empty counts | done |
+| `needs a, b;` (comma form) | **fixed 2026-10-08** (`daffe5bf`) | `GroProgramCompiler::tryConsumeNeedsStatement` now consumes the whole clause to its `;` instead of mis-splitting on the comma | done |
+| Record field **read** inside an expression/condition (`p.mode = GO`) | **already supported — confirmed by executed evidence, not a gap** | `NumericExpressionParser::parseIdentifier` already accepts dotted identifiers and `resolveIdentifierValue` resolves them against the same flat `state.variables` map the flattened assignment writes to; the pre-existing test `GroProgramRuntimeSupportsGroRuleSyntaxAndPersistentRecordFields` already exercises `p.mode = 0 & get_signal(ahl) > 0.01 : {...}` and passes | done — Phase 0's "unknown" classification for this item was incorrect |
 | `if EXPR then EXPR else EXPR end` (Gro expression form) | missing | no `then`/`end` handling | no — the existing C-style `if/else` statement already covers the needed conditional-branching capability |
 | Records `[ field := value, ... ]` as a declaration | partial (flattened to `x.field := value`) | `compileSimpleStatement` | yes (already partially works; pair with the read-access fix above) |
 | Lists `{ a, b, c }` as a value | missing | raw text only | no — no selected capability needs list-valued state |
@@ -322,18 +322,18 @@ independent of whether the literal file would parse today.
 | `foreach.gro` | unsupported | no | pure loop-seeding demo, not a modeling capability |
 | `maptocells.gro` | unsupported (`fun`/`let`/lambda/keyword form) | no | statistics-aggregation DSL not required |
 | `bandpass.gro` | unsupported (`fun`) | no | band-pass filter function not required |
-| `coupled_oscillator.gro` | partial/untested | partial | oscillator-with-internal-state concept aligns with corpus D; needs the record-read fix (§6) |
-| `dilution.gro` | unsupported (`needs` bug) | partial | rate-based production/dilution aligns loosely with corpus D; not selected verbatim |
-| `edge.gro` | partial/untested | partial | record-read + 2-arg `emit_signal` align with corpus B/D |
+| `coupled_oscillator.gro` | partial/untested (record-read blocker resolved 2026-10-08, §6) | partial | oscillator-with-internal-state concept aligns with corpus D |
+| `dilution.gro` | unsupported (`needs`-as-scoping still out of subset; comma-splitting bug fixed 2026-10-08) | partial | rate-based production/dilution aligns loosely with corpus D; not selected verbatim |
+| `edge.gro` | partial/untested (record-read blocker resolved 2026-10-08, §6) | partial | 2-arg `emit_signal` still aliases the single field until §10/phase 3 lands |
 | `game.gro` | unsupported (`stats`/`stop`) | no | interactive game demo, not a modeling capability |
 | `geometry.gro` | unsupported (`fopen`/`geometry`/`time`/lists) | no | file I/O and list state not required |
-| `gfp.gro` | unsupported (`needs` bug, comma form) | partial | GFP production/degradation rate pattern aligns with corpus D |
+| `gfp.gro` | unsupported (`needs`-as-scoping still out of subset; comma-splitting bug fixed 2026-10-08) | partial | GFP production/degradation rate pattern aligns with corpus D |
 | `inducer.gro` | unsupported (`clear_messages`) | partial | rate()-driven production pattern aligns with corpus D |
 | `signal_dump.gro` | unsupported (`reaction`, `<<`, `foreach`, `fopen`) | no | reaction-diffusion + file dump not required |
 | `skin.gro` | unsupported (`<<`, expression `if/then/else/end`, `start`) | no | pattern-formation state machine exceeds the subset |
-| `spatial_oscillations.gro` | partial/untested | **yes — primary acceptance-corpus inspiration** | record-based internal state, `just_divided`/`daughter`, `emit_signal`, `die()` — matches corpus D almost directly |
+| `spatial_oscillations.gro` | partial/untested (record-read blocker resolved 2026-10-08, §6) | **yes — primary acceptance-corpus inspiration** | record-based internal state, `just_divided`/`daughter`, `emit_signal`, `die()` — matches corpus D almost directly |
 | `spots.gro` | unsupported (list literal for `nutrient`) | partial | two-cell signal-exchange concept aligns with corpus B, but as two explicit `signal()` declarations, not a list |
-| `symbiosis.gro` | partial/untested | **yes — primary acceptance-corpus inspiration** | two signal channels, record-based state, leader/follower pattern — matches corpus B+D directly |
+| `symbiosis.gro` | partial/untested (record-read blocker resolved 2026-10-08, §6) | **yes — primary acceptance-corpus inspiration** | two signal channels, record-based state, leader/follower pattern — matches corpus B+D directly |
 | `wave.gro` | unsupported (`reaction`, `<<`, `foreach`, lists) | no | reaction-diffusion pattern formation not required |
 | `yeast_example.gro` | not-applicable | no | `yeast()` disabled upstream too; out of scope |
 
@@ -388,12 +388,16 @@ be called complete for that capability.
 
 - a selected Gro-subset program controls one bacterium;
 - internal record-like state (`p.field`) read and written, including
-  inside conditions (closes the §6 open question);
+  inside conditions;
 - reacts to local signal;
 - drives growth/movement from program logic.
 - Existing coverage: `BacteriaColonyExecutesSignalAwareBacteriumProgram`
-  covers the signal-reaction half; the record-field-read-in-condition path
-  has no passing test today because the capability is unconfirmed/missing.
+  covers the signal-reaction half; `GroProgramRuntimeSupportsGroRuleSyntaxAndPersistentRecordFields`
+  already confirms record-field read-in-condition at the runtime level
+  (**verified 2026-10-08, executed evidence, not just static reading**).
+  Remaining gap: no end-to-end `BacteriaColony`-level fixture yet combining
+  record-based state + signal reaction + growth/movement in one program,
+  authored specifically for this corpus (phase 10, §17).
 
 ### E. Viewer fidelity
 
@@ -596,9 +600,15 @@ Confirmed **not** covered by any existing test (regression gaps to close
 - corpus C: `simulationStep = 0` → position must not change (newly
   identified in this pass, §12);
 - corpus B: two independent signal handles must not alias each other;
-- corpus D: record-field read inside a boolean condition;
 - corpus E: viewer manual step/run controls running concurrently with
   event-calendar dispatch on the same colony.
+
+Closed 2026-10-08 (Phase 1, minimal frontend blockers): `needs`
+comma-splitting (`daffe5bf`); unsupported/raw constructs silently
+discarded by both real callers instead of being surfaced (`a2bd10b6`);
+record-field read inside a boolean condition was reclassified from "gap"
+to "already supported, now also locked by an explicit regression" after
+executed verification — it required no production change.
 
 `reaction()`, `fun`/`needs`-as-a-language-feature/`foreach`/
 `maptocells ... end` remain unimplemented by §2/§6/§7 decision and are
@@ -618,13 +628,18 @@ focused validation → regression validation (`tests-unit`/
 small, single-concern commit.
 
 0. **Baseline, compatibility matrices, scope decisions** — done
-   (`dbab2286`, this revision).
-1. **Minimal frontend blockers** (small, bounded — not a parser rewrite):
-   (a) explicit diagnostic when a statement falls through to
-   `RawStatement` instead of silent no-op; (b) fix the `needs`
-   comma-splitting bug; (c) support record-field **read** inside
-   expressions/conditions (unblocks corpus D and the two primary §8
-   acceptance-inspiration examples). Nothing else from §6's "no" column.
+   (`dbab2286`, `b7665852`).
+1. **Minimal frontend blockers** — done 2026-10-08: (a) explicit
+   diagnostic when a statement falls through to `RawStatement`/unsupported
+   `FunctionCall` instead of a silently-discarded success (`a2bd10b6`);
+   (b) fixed the `needs` comma-splitting bug (`daffe5bf`); (c) record-field
+   **read** inside expressions/conditions was found already supported by
+   executed evidence, requiring no change (unblocks corpus D and the two
+   primary §8 acceptance-inspiration examples). Validated with full
+   `tests-unit`/`tests-kernel-unit` (1832/1832 executed, 0 failed, 4
+   preexisting disabled) and `tests-smoke` (3/3); `gui-app` rebuilt clean
+   to validate the viewer-side change. Nothing else from §6's "no" column
+   was touched.
 2. **Selected runtime/builtins**: `time()` must stop hard-erroring; close
    any other defensive gaps identified while implementing phases 3–6.
    Builtins marked "no" in §7 are left unimplemented by decision, not
