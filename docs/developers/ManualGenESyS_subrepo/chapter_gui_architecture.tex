@@ -160,6 +160,16 @@ The extracted controllers then take over the heavier work through injected depen
 
 This is the main architectural fact to keep in mind when editing the GUI: the code is no longer a single nested slot file, but it is also not a pure signal-driven MVC stack. The current system is a controlled hybrid. Some behavior still routes through MainWindow wrappers, while the actual orchestration lives in small controllers and services.
 
+Graphical connection lifetime follows an explicit ownership split. A
+\texttt{GraphicalConnection} owns the stable endpoint metadata required by the
+scene and by undo/redo. When the graphical link is committed to the kernel,
+\texttt{ModelGraphicsScene::connectSource()} inserts an independent
+\texttt{Connection} copy into the source component's
+\texttt{ConnectionManager}; that manager owns and destroys the kernel copy.
+The graphical and kernel layers therefore do not share ownership of the same
+\texttt{Connection} object, so removing a kernel connection during undo does
+not invalidate the endpoint metadata required for a later redo.
+
 \begin{figure}[htbp]
 \centering
 % FIGURE-SPEC-BEGIN
