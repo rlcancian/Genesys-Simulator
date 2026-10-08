@@ -97,7 +97,7 @@ TEST(GenSerializerTextPersistence, ComplexTextFieldRoundTripsExactly) {
 
 TEST(GenSerializerTextPersistence, SimpleLegacyQuotedTextRemainsLoadable) {
     const std::string legacy =
-        "143 GroProgram \"LegacyGro\" sourceCode=\"C:\\\\new\\\\test program p() := { tick(); }\" \n";
+        R"(143 GroProgram "LegacyGro" sourceCode="C:\new\test program p() := { tick(); }" )" "\n";
 
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -108,7 +108,7 @@ TEST(GenSerializerTextPersistence, SimpleLegacyQuotedTextRemainsLoadable) {
     auto fields = std::unique_ptr<PersistenceRecord>(reader.newPersistenceRecord());
     ASSERT_TRUE(reader.get("LegacyGro", fields.get()));
     EXPECT_EQ(fields->loadField("sourceCode", std::string{}),
-              "C:\\new\\test program p() := { tick(); }");
+              R"(C:\new\test program p() := { tick(); })");
 }
 
 TEST(GenSerializerTextPersistence, EmptyTextFieldRoundTripsExactly) {
@@ -120,9 +120,9 @@ TEST(GenSerializerTextPersistence, ComplexTextUsesEscapedLiteralAndSurvivesSecon
     const std::string sourceCode = complexTextPayload();
     const std::string firstSerialization = dumpSingleTextRecord("ComplexGro2", sourceCode);
 
-    EXPECT_NE(firstSerialization.find("sourceCode=e\\\""), std::string::npos);
-    EXPECT_NE(firstSerialization.find("\\\\n"), std::string::npos);
-    EXPECT_NE(firstSerialization.find("\\\\\\\"dt\\\\\\\""), std::string::npos);
+    EXPECT_NE(firstSerialization.find("sourceCode=e\""), std::string::npos);
+    EXPECT_NE(firstSerialization.find("\\n"), std::string::npos);
+    EXPECT_NE(firstSerialization.find("\\\"dt\\\""), std::string::npos);
     EXPECT_EQ(loadSingleTextRecord(firstSerialization, "ComplexGro2"), sourceCode);
 
     Simulator secondSimulator;
