@@ -783,6 +783,68 @@ bool tryCompileRuleStatement(const std::string& text, std::size_t& position, Gro
 	return true;
 }
 
+bool tryConsumeNeedsStatement(const std::string& text, std::size_t& position, GroProgramIr::Command& command) {
+	// "needs a, b, c;" declares a comma-separated list of shared variable
+	// names. Real per-program scoping for `needs`/`sharing` is intentionally
+	// out of the current GenESyS Gro subset, but the clause must still be
+	// consumed as one statement: the generic statement splitter below treats
+	// every top-level ',' as a statement terminator (required for
+	// comma-separated rule-body actions), which otherwise mis-splits
+	// "needs q, t;" into bogus fragments "needs q" and "t".
+	const std::size_t start = position;
+	if (!startsWithKeyword(text, position, "needs")) {
+		return false;
+	}
+
+	std::size_t scan = skipWhitespaceAndComments(text, position + 5);
+	std::vector<char> delimiterStack;
+	bool inString = false;
+	char stringDelimiter = '\0';
+	std::size_t terminatorIndex = std::string::npos;
+
+	for (std::size_t i = scan; i < text.size(); ++i) {
+		const char current = text[i];
+
+		if (inString) {
+			if (current == '\\') {
+				++i;
+				continue;
+			}
+			if (current == stringDelimiter) {
+				inString = false;
+				stringDelimiter = '\0';
+			}
+			continue;
+		}
+
+		if (current == '"' || current == '\'') {
+			inString = true;
+			stringDelimiter = current;
+			continue;
+		}
+		if (current == '(' || current == '[' || current == '{') {
+			delimiterStack.push_back(current);
+			continue;
+		}
+		if (current == ')' || current == ']' || current == '}') {
+			if (!delimiterStack.empty()) {
+				delimiterStack.pop_back();
+			}
+			continue;
+		}
+		if (current == ';' && delimiterStack.empty()) {
+			terminatorIndex = i;
+			break;
+		}
+	}
+
+	const std::size_t clauseEnd = terminatorIndex == std::string::npos ? text.size() : terminatorIndex;
+	command.kind = GroProgramIr::Command::Kind::RawStatement;
+	command.sourceText = trim(text.substr(start, clauseEnd - start));
+	position = terminatorIndex == std::string::npos ? text.size() : terminatorIndex + 1;
+	return true;
+}
+
 std::vector<GroProgramIr::Command> compileStatements(const std::string& text) {
 	std::vector<GroProgramIr::Command> commands;
 	std::size_t position = 0;
@@ -806,6 +868,13 @@ std::vector<GroProgramIr::Command> compileStatements(const std::string& text) {
 			continue;
 		}
 		if (tryCompileRuleStatement(text, nextPosition, command)) {
+			position = nextPosition;
+			if (!command.sourceText.empty()) {
+				commands.push_back(command);
+			}
+			continue;
+		}
+		if (tryConsumeNeedsStatement(text, nextPosition, command)) {
 			position = nextPosition;
 			if (!command.sourceText.empty()) {
 				commands.push_back(command);

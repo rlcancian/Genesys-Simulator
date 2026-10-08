@@ -813,6 +813,25 @@ TEST(RuntimePluginManagerClassTest, GroProgramCompilerBuildsAssignmentsAndCondit
     EXPECT_EQ(ir.commands[1].elseCommands[0].functionName, "die");
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramCompilerParsesCommaSeparatedNeedsClauseAsOneStatement) {
+    // "needs a, b;" must be consumed as a single statement, matching the
+    // comma-separated member list from the original Gro grammar. It must not
+    // be split into unrelated fragments by the generic ';'/',' statement
+    // terminator used for comma-separated rule-body actions.
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse(
+        "program report() { needs q, t; selected : { grow(1); } }");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+
+    ASSERT_EQ(ir.commands.size(), 2u);
+    EXPECT_EQ(ir.commands[0].sourceText, "needs q, t");
+    EXPECT_TRUE(ir.commands[1].isIfStatement());
+    EXPECT_EQ(ir.commands[1].expressionText, "selected");
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramParserAndCompilerCaptureNamedProgramsAndGroRules) {
     GroProgramParser parser;
     GroProgramParser::Result parsed = parser.parse(
