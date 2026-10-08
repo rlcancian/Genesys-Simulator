@@ -55,9 +55,13 @@ void ModelLanguageSynchronizer::actualizeModelSimLanguage() const {
     auto* persistence = model->getPersistence();
     const bool previousSaveDefaults =
         persistence->getOption(Persistence_if::Options::SAVEDEFAULTS);
+    const bool previousPersistenceChanged = persistence->hasChanged();
     persistence->setOption(Persistence_if::Options::SAVEDEFAULTS, true);
     const bool saved = model->save(temporaryFilename.toStdString());
     persistence->setOption(Persistence_if::Options::SAVEDEFAULTS, previousSaveDefaults);
+    // Generating a transient view is not a user save. PersistenceDefaultImpl2::save()
+    // marks its state clean after a successful write, so restore the pre-refresh state.
+    persistence->setHasChanged(previousPersistenceChanged);
     if (!saved) {
         return;
     }
