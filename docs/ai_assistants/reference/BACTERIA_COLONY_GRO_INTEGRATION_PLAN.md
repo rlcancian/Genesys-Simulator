@@ -290,7 +290,7 @@ Status values: `equivalent`, `partial`, `different-semantics`, `missing`,
 | `divide()` | different-semantics (aggregate mode) | Doubles the whole population outside bacterium-scoped mode | yes in bacterium-scoped mode (already works); aggregate-mode semantics documented as a deviation (§19) |
 | `run(v)` / `tumble(v)` | different-semantics | Synthetic scalar formulas, no physics | **yes — redefine per §12, not reimplement physics** |
 | `geometry()` | missing | Not in dispatch table | no — bacterium-scoped context already exposes position/direction as plain variables |
-| `time()` | different-semantics (hard error) | Explicitly rejected with an error if used in an expression | **yes, defensively — must stop hard-failing even though not central to any fixture** |
+| `time()` | **fixed 2026-10-08** (`24cd00f9`) | Now returns `state.colonyTime` from the expression evaluator; previously aborted the whole statement/program if used in an expression | done |
 | `stats(...)` / `stop()` / `start()` / `print(...)` / `clear()` | missing | Not in dispatch table | no — GUI/control conveniences, not required |
 | `message(n, text)` | partial | Quadrant discarded | no further work required |
 | `clear_messages(n)` | missing | Not in dispatch table | no |
@@ -640,10 +640,13 @@ small, single-concern commit.
    preexisting disabled) and `tests-smoke` (3/3); `gui-app` rebuilt clean
    to validate the viewer-side change. Nothing else from §6's "no" column
    was touched.
-2. **Selected runtime/builtins**: `time()` must stop hard-erroring; close
-   any other defensive gaps identified while implementing phases 3–6.
-   Builtins marked "no" in §7 are left unimplemented by decision, not
-   revisited here.
+2. **Selected runtime/builtins** — done 2026-10-08: `time()` no longer
+   hard-errors (`24cd00f9`), validated with full `tests-unit`/
+   `tests-kernel-unit`/`tests-smoke` (1833/1833 executed, 0 failed, 4
+   preexisting disabled; 3/3 smoke). No other defensive gap was found in
+   this pass; any further one discovered while implementing phases 3–6
+   will be fixed there instead of reopening this phase. Builtins marked
+   "no" in §7 remain unimplemented by decision.
 3. **Signal channels**: give `signal()` a real handle/channel identity;
    make `get_signal`/`emit_signal`/`absorb_signal`/`set_signal`/
    `set_signal_rect` respect it; support at least two independent channels
