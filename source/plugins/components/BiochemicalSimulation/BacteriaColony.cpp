@@ -779,6 +779,17 @@ void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 		if (result.succeeded) {
 			traceSimulation(this, "Bacteria colony Gro program executed " + std::to_string(result.executedCommands) +
 								  " command(s)");
+			// GroProgramRuntime already collects unsupported/unrecognized Gro
+			// constructs into these lists, but nothing used to report them to
+			// the user: a construct outside the selected GenESyS Gro subset
+			// would silently do nothing instead of being visibly flagged.
+			if (!result.unsupportedCommands.empty() || !result.skippedRawStatements.empty()) {
+				traceSimulation(this, "Bacteria colony Gro program ignored " +
+									  std::to_string(result.unsupportedCommands.size()) +
+									  " unsupported command(s) and " +
+									  std::to_string(result.skippedRawStatements.size()) +
+									  " unrecognized statement(s); outside the selected Gro subset");
+			}
 		} else {
 			traceSimulation(this, "Bacteria colony Gro program execution failed: " + result.errorMessage);
 		}
