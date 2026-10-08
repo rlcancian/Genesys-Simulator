@@ -1305,6 +1305,47 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesRuntimeVariablesAcros
     EXPECT_EQ(colony->getPopulationSize(), 3u);
 }
 
+TEST(RuntimePluginManagerClassTest, BacteriaColonyReportsUnsupportedGroConstructsThroughExecutionResult) {
+    // Unsupported builtins (e.g. the original Gro "reaction()", out of the
+    // selected GenESyS subset by maintainer decision) and malformed/raw
+    // statements must never disappear silently: BacteriaColony must keep
+    // reporting them through the already-existing ExecutionResult
+    // diagnostics lists, per bacterium, all the way up from
+    // GroProgramRuntime through bacterium-scoped execution.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_UnsupportedConstructs");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        "reaction({}, {}, 1); "
+        "oops; "
+        "}");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_UnsupportedConstructs");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialPopulation(1);
+    colony->setGridWidth(3);
+    colony->setGridHeight(3);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    ASSERT_EQ(result.unsupportedCommands.size(), 1u);
+    EXPECT_NE(result.unsupportedCommands[0].find("reaction("), std::string::npos);
+    ASSERT_EQ(result.skippedRawStatements.size(), 1u);
+    EXPECT_NE(result.skippedRawStatements[0].find("oops"), std::string::npos);
+}
+
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesBacteriumScopedProgramsWithPerBacteriumState) {
     Simulator simulator;
     PluginManager* manager = simulator.getPluginManager();

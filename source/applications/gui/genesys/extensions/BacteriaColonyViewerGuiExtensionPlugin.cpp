@@ -758,6 +758,14 @@ private:
 				.arg(result.executedCommands)
 				.arg(static_cast<qulonglong>(result.signalMutations.size()))
 				.arg(static_cast<qulonglong>(result.populationMutations.size()));
+		// Unsupported/unrecognized Gro constructs must stay visible here too,
+		// not just in BacteriaColony's event-calendar trace: the viewer is the
+		// other real entry point that executes a colony's Gro program.
+		if (!result.unsupportedCommands.empty() || !result.skippedRawStatements.empty()) {
+			_lastExecutionMessage += tr(" [%1 unsupported, %2 unrecognized, outside the selected Gro subset]")
+				.arg(static_cast<qulonglong>(result.unsupportedCommands.size()))
+				.arg(static_cast<qulonglong>(result.skippedRawStatements.size()));
+		}
 	}
 
 	Model* _currentModel() const {
