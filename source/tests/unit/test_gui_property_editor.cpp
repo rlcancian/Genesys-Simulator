@@ -536,6 +536,9 @@ TEST(ModelLanguageSynchronizerRegression, ModelTabsKeepManualTextIsolated) {
         window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
     ASSERT_NE(graphicsTabs, nullptr);
 
+    const int firstIndex = graphicsTabs->currentIndex();
+    ASSERT_GE(firstIndex, 0);
+
     const QString firstText = QStringLiteral("manual text for model A");
     editor->setPlainText(firstText);
     drainGuiEvents();
@@ -547,7 +550,7 @@ TEST(ModelLanguageSynchronizerRegression, ModelTabsKeepManualTextIsolated) {
 
     const int secondIndex = graphicsTabs->currentIndex();
     ASSERT_GE(secondIndex, 0);
-    const int firstIndex = secondIndex == 0 ? 1 : 0;
+    ASSERT_NE(secondIndex, firstIndex);
 
     const QString secondText = QStringLiteral("manual text for model B");
     editor->setPlainText(secondText);
@@ -635,14 +638,17 @@ TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoRefreshT
 
     const QString destinationId =
         QStringLiteral("nextId=") + QString::number(destination->getId());
+    EXPECT_EQ(source->getConnectionManager()->size(), 1u);
     EXPECT_TRUE(editor->toPlainText().contains(destinationId));
 
     undoStack->undo();
     drainGuiEvents();
+    EXPECT_EQ(source->getConnectionManager()->size(), 0u);
     EXPECT_FALSE(editor->toPlainText().contains(destinationId));
 
     undoStack->redo();
     drainGuiEvents();
+    EXPECT_EQ(source->getConnectionManager()->size(), 1u);
     EXPECT_TRUE(editor->toPlainText().contains(destinationId));
 
     Create* deleted = manager->newInstance<Create>(model, "Create_DeleteUndoSync");
