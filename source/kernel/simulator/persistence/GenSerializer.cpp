@@ -13,6 +13,7 @@ namespace {
 
 bool requiresEscapedTextLiteral(std::string_view value) {
     return value.find('"') != std::string_view::npos
+        || value.find('\\') != std::string_view::npos
         || value.find('\n') != std::string_view::npos
         || value.find('\r') != std::string_view::npos
         || value.find('\t') != std::string_view::npos;
