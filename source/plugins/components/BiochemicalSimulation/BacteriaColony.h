@@ -279,6 +279,13 @@ private:
 	void _setAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y, double value);
 	void _addAdditionalSignalAt(unsigned int channel, unsigned int x, unsigned int y, double value);
 	void _applyAdditionalSignalChannelsStep();
+	void _resizeAdditionalSignalChannelsToGrid();
+	// Handle 0/1 always resolves to the legacy single field; handle N >= 2
+	// only resolves if that channel has already been declared (i.e. an
+	// EnsureSignalChannel mutation for it was already applied in this same
+	// mutation batch/program order). Rejects negative/non-integer/
+	// not-yet-declared handles instead of silently aliasing channel 0.
+	bool _tryResolveSignalChannelHandle(double handleValue, unsigned int& channel, std::string& errorMessage) const;
 	void _applySignalFieldStep();
 	void _applyBacteriumSignalMutations(const BacteriumState& bacterium,
 	                                    const std::vector<GroProgramRuntime::SignalMutation>& mutations);

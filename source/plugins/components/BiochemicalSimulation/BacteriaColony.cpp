@@ -757,6 +757,12 @@ void BacteriaColony::_initBetweenReplications() {
 		_rebuildInternalBacteriaFromGroSeeds();
 	}
 	_runtimeVariables["dt"] = getSimulationStep();
+	// Additional channels are pure runtime state (never persisted, see the
+	// AdditionalSignalChannel comment): clear them so values from a
+	// previous replication never leak into the next one. Declarations
+	// re-run deterministically from the Gro program itself and lazily
+	// recreate zero-filled fields via EnsureSignalChannel.
+	_additionalSignalChannels.clear();
 	std::string signalErrorMessage;
 	(void)_resetRuntimeSignalField(signalErrorMessage);
 }
@@ -830,12 +836,18 @@ void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 }
 
 bool BacteriaColony::_resetRuntimeSignalField(std::string& errorMessage) {
+	bool succeeded;
 	if (_signalGrid != nullptr) {
-		return _signalGrid->buildInitialField(_signalField, errorMessage);
+		succeeded = _signalGrid->buildInitialField(_signalField, errorMessage);
+	} else {
+		_signalField.assign(static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight()), 0.0);
+		succeeded = true;
 	}
-
-	_signalField.assign(static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight()), 0.0);
-	return true;
+	// Keeps every already-declared additional channel's field sized to the
+	// current grid, independent of the legacy field's own configuration
+	// source (BacteriaSignalGrid vs. plain dimensions).
+	_resizeAdditionalSignalChannelsToGrid();
+	return succeeded;
 }
 
 bool BacteriaColony::_collectBioNetworkSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const {
@@ -1215,6 +1227,31 @@ void BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double
 	}
 }
 
+void BacteriaColony::_resizeAdditionalSignalChannelsToGrid() {
+	const std::size_t requiredSize = static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight());
+	for (AdditionalSignalChannel& channel : _additionalSignalChannels) {
+		if (channel.field.size() != requiredSize) {
+			channel.field.assign(requiredSize, 0.0);
+		}
+	}
+}
+
+bool BacteriaColony::_tryResolveSignalChannelHandle(double handleValue, unsigned int& channel,
+                                                    std::string& errorMessage) const {
+	const double roundedHandle = std::llround(handleValue);
+	const bool isNearInteger = std::abs(handleValue - roundedHandle) < 1e-9;
+	const bool isKnownChannel = roundedHandle >= 0.0 &&
+	                             (roundedHandle <= 1.0 ||
+	                              (static_cast<std::size_t>(roundedHandle) - 2) < _additionalSignalChannels.size());
+	if (!isNearInteger || !isKnownChannel) {
+		errorMessage = "received an invalid signal channel handle (" + std::to_string(handleValue) +
+		              "); handles must be non-negative integers returned by a prior signal() declaration. ";
+		return false;
+	}
+	channel = roundedHandle > 1.0 ? static_cast<unsigned int>(roundedHandle) : 0u;
+	return true;
+}
+
 double BacteriaColony::_additionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const {
 	if (channel < 2 || getGridWidth() == 0 || getGridHeight() == 0 || x >= getGridWidth() || y >= getGridHeight()) {
 		return 0.0;
@@ -1461,6 +1498,9 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			_populationSize = 0;
 			_colonyTickCount = 0;
 			_groSeedsApplied = true;
+			// Same leak-free contract as between-replications reset: see
+			// _initBetweenReplications.
+			_additionalSignalChannels.clear();
 			std::string signalErrorMessage;
 			(void)_resetRuntimeSignalField(signalErrorMessage);
 			continue;
@@ -1570,9 +1610,11 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 				errorMessage = "BacteriaColony received an invalid set_signal mutation. ";
 				return false;
 			}
-			const unsigned int channel = mutation.numericArguments[0] > 1.0
-			                                  ? static_cast<unsigned int>(std::llround(mutation.numericArguments[0]))
-			                                  : 0u;
+			unsigned int channel = 0;
+			if (!_tryResolveSignalChannelHandle(mutation.numericArguments[0], channel, errorMessage)) {
+				errorMessage = "BacteriaColony set_signal: " + errorMessage;
+				return false;
+			}
 			const double xValue = mutation.numericArguments[1];
 			const double yValue = mutation.numericArguments[2];
 			const double signalValue = mutation.numericArguments[3];
@@ -1591,9 +1633,11 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 				errorMessage = "BacteriaColony received an invalid set_signal_rect mutation. ";
 				return false;
 			}
-			const unsigned int channel = mutation.numericArguments[0] > 1.0
-			                                  ? static_cast<unsigned int>(std::llround(mutation.numericArguments[0]))
-			                                  : 0u;
+			unsigned int channel = 0;
+			if (!_tryResolveSignalChannelHandle(mutation.numericArguments[0], channel, errorMessage)) {
+				errorMessage = "BacteriaColony set_signal_rect: " + errorMessage;
+				return false;
+			}
 			const double x1Value = mutation.numericArguments[1];
 			const double y1Value = mutation.numericArguments[2];
 			const double x2Value = mutation.numericArguments[3];
