@@ -744,6 +744,12 @@ private:
 			_setRunEnabled(false);
 			return;
 		}
+		ModelSimulation* simulation = colony->getParentModel()->getSimulation();
+		if (simulation != nullptr && (simulation->isRunning() || simulation->isPaused())) {
+			_lastExecutionMessage = tr("Execution unavailable while the model simulation is running or paused.");
+			_setRunEnabled(false);
+			return;
+		}
 
 		GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
 		if (!result.succeeded) {
