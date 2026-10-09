@@ -230,6 +230,7 @@ private:
 	unsigned int _colonyTickCount = 0;
 	bool _chemostatMode = false;
 	std::vector<BacteriumState> _bacteria;
+	std::vector<unsigned int> _bacteriaDividedThisStep;
 	std::map<std::string, double> _runtimeVariables;
 	std::vector<BarrierSegment> _barriers;
 	std::vector<double> _mappedCellValues;
