@@ -819,9 +819,70 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyForwardsEntityAfterRuntimeStep
 
     Counter* disposed = dynamic_cast<Counter*>(dispose->getInternalData("CountNumberIn"));
     ASSERT_NE(disposed, nullptr);
-    // NumSteps=1 means the entity executes one delayed colony step and is then
-    // forwarded on the following self-dispatch at the same model time.
+    // NumSteps=1 means two executions: at the initial event and one delayed
+    // self-dispatch; the entity is forwarded at that second event time.
     EXPECT_DOUBLE_EQ(disposed->getCountValue(), 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyCalendarUpdatesSignalOncePerEventAndResetsReplications) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_CalendarSignalOrder");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+	    "program main() { executions := executions + 1; } "
+	    "program bacterium() { speed := 0; ecoli_growth_rate := 0; } "
+	    "ecoli([x:=0,y:=0], program bacterium());");
+	BacteriaSignalGrid* grid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_CalendarSignalOrder");
+	ASSERT_NE(grid, nullptr);
+	grid->setWidth(1);
+	grid->setHeight(1);
+	grid->setInitialSignal(8.0);
+	grid->setDiffusionRate(0.0);
+	grid->setDecayRate(0.5);
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_CalendarSignalOrder");
+	ASSERT_NE(colony, nullptr);
+	colony->setGroProgram(program);
+	colony->setSignalGrid(grid);
+	colony->setInitialPopulation(1);
+	colony->setSimulationStep(0.25);
+	colony->setNumSteps(1);
+	colony->setColonyTimeUnit(Util::TimeUnit::second);
+	Create* create = manager->newInstance<Create>(model, "Create_CalendarSignalOrder");
+	ASSERT_NE(create, nullptr);
+	create->setFirstCreation(0.0);
+	create->setTimeBetweenCreationsExpression("1.0");
+	create->setMaxCreations(1);
+	Dispose* dispose = manager->newInstance<Dispose>(model, "Dispose_CalendarSignalOrder");
+	ASSERT_NE(dispose, nullptr);
+	create->connectTo(colony);
+	colony->connectTo(dispose);
+	model->getSimulation()->setReplicationLength(0.25);
+	model->getSimulation()->setNumberOfReplications(2);
+	std::string checkError;
+	EXPECT_TRUE(ModelDataDefinition::Check(program, checkError)) << "GroProgram: " << checkError;
+	checkError.clear();
+	EXPECT_TRUE(ModelDataDefinition::Check(grid, checkError)) << "SignalGrid: " << checkError;
+	checkError.clear();
+	EXPECT_TRUE(ModelDataDefinition::Check(colony, checkError)) << "BacteriaColony: " << checkError;
+	checkError.clear();
+	EXPECT_TRUE(ModelComponent::Check(create)) << "Create check failed";
+	EXPECT_TRUE(ModelComponent::Check(dispose)) << "Dispose check failed";
+	ASSERT_TRUE(model->check());
+	ModelDataDefinition::InitBetweenReplications(colony);
+	EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 8.0);
+	const auto manualResult = colony->executeGroProgram();
+	ASSERT_TRUE(manualResult.succeeded) << manualResult.errorMessage;
+	EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 4.0);
+	EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 0.0);
+	model->getSimulation()->start();
+
+	EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 2.0);
+	EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("executions"), 2.0);
+	EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 0.25);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesDieCommandToInternalState) {
@@ -3243,11 +3304,13 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesMainProgramBeforeSeede
     EXPECT_TRUE(colony->hasRuntimeVariable("warmup"));
     EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("warmup"), 1.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.seen_warmup"), 1.0);
+    EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 0.0);
 
     GroProgramRuntime::ExecutionResult second = colony->executeGroProgram();
     EXPECT_TRUE(second.succeeded) << second.errorMessage;
     EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("warmup"), 2.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.seen_warmup"), 2.0);
+    EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 0.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyMainCanResetAndRespawnSeeds) {
