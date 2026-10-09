@@ -62,6 +62,7 @@ public:
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
 		bool hasExplicitGridPosition = false;
+		bool positionInitialized = false;
 		bool justDivided = false;
 		bool daughter = false;
 		bool alive = true;
@@ -257,8 +258,8 @@ private:
 	// BacteriaSignalGrid's persisted value, instead of once per step.
 	bool _legacyChannelCoefficientMismatchWarned = false;
 	struct GroSeedDefinition {
-		unsigned int gridX = 0;
-		unsigned int gridY = 0;
+		double positionX = 0.0;
+		double positionY = 0.0;
 		std::string programName = "";
 		std::vector<double> programArguments;
 	};

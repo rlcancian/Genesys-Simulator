@@ -17,6 +17,7 @@
 #include <cctype>
 #include <cmath>
 #include <iomanip>
+#include <limits>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -169,6 +170,13 @@ unsigned int toCenteredGridIndex(double value, unsigned int size) {
 	const long long rawIndex = std::llround(centeredValue);
 	const long long maxIndex = static_cast<long long>(size - 1);
 	return static_cast<unsigned int>(std::clamp(rawIndex, 0ll, maxIndex));
+}
+
+double toCenteredGridCoordinate(unsigned int index, unsigned int size) {
+	if (size == 0 || index >= size) {
+		return 0.0;
+	}
+	return static_cast<double>(index) - 0.5 * static_cast<double>(size - 1);
 }
 
 std::vector<GroSeedPlacement> parseGroSeedPlacements(const std::string& sourceCode) {
@@ -1015,36 +1023,22 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 		return true;
 	}
 
-	unsigned int maxGridX = 0;
-	unsigned int maxGridY = 0;
-	double minPositionX = 0.0;
-	double minPositionY = 0.0;
-	double maxPositionX = 0.0;
-	double maxPositionY = 0.0;
-	bool hasAnySeedPosition = false;
+	double maximumAbsoluteX = 0.0;
+	double maximumAbsoluteY = 0.0;
 	for (const GroSeedPlacement& placement : parsedPlacements) {
-		if (!hasAnySeedPosition) {
-			minPositionX = maxPositionX = placement.positionX;
-			minPositionY = maxPositionY = placement.positionY;
-			hasAnySeedPosition = true;
-		} else {
-			minPositionX = std::min(minPositionX, placement.positionX);
-			minPositionY = std::min(minPositionY, placement.positionY);
-			maxPositionX = std::max(maxPositionX, placement.positionX);
-			maxPositionY = std::max(maxPositionY, placement.positionY);
-		}
+		maximumAbsoluteX = std::max(maximumAbsoluteX, std::abs(placement.positionX));
+		maximumAbsoluteY = std::max(maximumAbsoluteY, std::abs(placement.positionY));
 	}
-	const double shiftX = minPositionX < 0.0 ? -minPositionX : 0.0;
-	const double shiftY = minPositionY < 0.0 ? -minPositionY : 0.0;
 	std::ostringstream seedSignature;
+	seedSignature << std::setprecision(std::numeric_limits<double>::max_digits10);
 	for (const GroSeedPlacement& placement : parsedPlacements) {
 		GroSeedDefinition definition;
-		definition.gridX = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionX + shiftX)));
-		definition.gridY = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionY + shiftY)));
+		definition.positionX = placement.positionX;
+		definition.positionY = placement.positionY;
 		definition.programName = placement.programName;
 		definition.programArguments = placement.programArguments;
 		newSeedDefinitions.push_back(definition);
-		seedSignature << definition.gridX << "," << definition.gridY << "," << definition.programName << "(";
+		seedSignature << definition.positionX << "," << definition.positionY << "," << definition.programName << "(";
 		for (std::size_t index = 0; index < definition.programArguments.size(); ++index) {
 			if (index != 0) {
 				seedSignature << ",";
@@ -1052,8 +1046,6 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 			seedSignature << definition.programArguments[index];
 		}
 		seedSignature << ");";
-		maxGridX = std::max(maxGridX, definition.gridX);
-		maxGridY = std::max(maxGridY, definition.gridY);
 	}
 	const std::string newSeedSignature = seedSignature.str();
 	if (newSeedSignature != _groSeedSignature) {
@@ -1064,12 +1056,10 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 
 	if (!_usesSignalGridDimensions()) {
 		// Classic Gro seed placements define a discrete colony footprint even when no SignalGrid exists yet.
-		const unsigned int requiredWidth = static_cast<unsigned int>(
-				std::max(1.0, std::round(maxPositionX + shiftX + 1.0)));
-		const unsigned int requiredHeight = static_cast<unsigned int>(
-				std::max(1.0, std::round(maxPositionY + shiftY + 1.0)));
-		_gridWidth = std::max(std::max(_gridWidth, maxGridX + 1), requiredWidth);
-		_gridHeight = std::max(std::max(_gridHeight, maxGridY + 1), requiredHeight);
+		const unsigned int requiredWidth = static_cast<unsigned int>(std::max(1.0, std::ceil(2.0 * maximumAbsoluteX + 1.0)));
+		const unsigned int requiredHeight = static_cast<unsigned int>(std::max(1.0, std::ceil(2.0 * maximumAbsoluteY + 1.0)));
+		_gridWidth = std::max(_gridWidth, requiredWidth);
+		_gridHeight = std::max(_gridHeight, requiredHeight);
 		if (_signalField.size() != static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight)) {
 			_signalField.assign(static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight), 0.0);
 		}
@@ -1623,8 +1613,8 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			}
 			const GroSeedPlacement& placement = placements.front();
 			GroSeedDefinition seedDefinition;
-			seedDefinition.gridX = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionX)));
-			seedDefinition.gridY = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionY)));
+			seedDefinition.positionX = placement.positionX;
+			seedDefinition.positionY = placement.positionY;
 			seedDefinition.programName = placement.programName;
 			seedDefinition.programArguments = placement.programArguments;
 			_appendBacterium(seedDefinition);
@@ -2409,8 +2399,8 @@ void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int genera
 	bacterium.birthTime = getColonyTime();
 	bacterium.lastUpdateTime = getColonyTime();
 	bacterium.lastDivisionTime = 0.0;
-	bacterium.positionX = -1.0;
-	bacterium.positionY = -1.0;
+	bacterium.positionX = 0.0;
+	bacterium.positionY = 0.0;
 	bacterium.directionRadians = 0.0;
 	bacterium.volume = 1.0;
 	bacterium.size = 1.0;
@@ -2419,6 +2409,7 @@ void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int genera
 	bacterium.speed = 0.15;
 	bacterium.tickCount = 0;
 	bacterium.hasExplicitGridPosition = false;
+	bacterium.positionInitialized = false;
 	bacterium.justDivided = false;
 	bacterium.daughter = false;
 	bacterium.alive = true;
@@ -2435,11 +2426,10 @@ void BacteriaColony::_appendBacterium(const GroSeedDefinition& seedDefinition) {
 
 	BacteriumState& bacterium = _bacteria.back();
 	bacterium.programArguments = seedDefinition.programArguments;
-	bacterium.gridX = seedDefinition.gridX;
-	bacterium.gridY = seedDefinition.gridY;
+	bacterium.positionX = seedDefinition.positionX;
+	bacterium.positionY = seedDefinition.positionY;
 	bacterium.hasExplicitGridPosition = true;
-	bacterium.positionX = static_cast<double>(seedDefinition.gridX);
-	bacterium.positionY = static_cast<double>(seedDefinition.gridY);
+	_setBacteriumPosition(bacterium, bacterium.positionX, bacterium.positionY);
 	bacterium.size = std::max(0.9, bacterium.size);
 	bacterium.volume = std::max(1.0, bacterium.volume);
 	if (bacterium.programArguments.size() == 1) {
@@ -2528,10 +2518,11 @@ void BacteriaColony::_assignBacteriumGridPosition(BacteriumState& bacterium, std
 		bacterium.positionY = 0.0;
 		return;
 	}
-	if (!std::isfinite(bacterium.positionX) || !std::isfinite(bacterium.positionY) ||
-	    bacterium.positionX < 0.0 || bacterium.positionY < 0.0) {
-		bacterium.positionX = static_cast<double>(index % getGridWidth());
-		bacterium.positionY = static_cast<double>((index / getGridWidth()) % getGridHeight());
+	if (!bacterium.positionInitialized) {
+		const unsigned int cellX = static_cast<unsigned int>(index % getGridWidth());
+		const unsigned int cellY = static_cast<unsigned int>((index / getGridWidth()) % getGridHeight());
+		bacterium.positionX = toCenteredGridCoordinate(cellX, getGridWidth());
+		bacterium.positionY = toCenteredGridCoordinate(cellY, getGridHeight());
 	}
 	_setBacteriumPosition(bacterium, bacterium.positionX, bacterium.positionY);
 }
@@ -2540,8 +2531,8 @@ void BacteriaColony::_initializeBacteriumPhenotype(BacteriumState& bacterium, st
 	constexpr double kTwoPi = 6.28318530717958647692;
 	if (!bacterium.hasExplicitGridPosition) {
 		if (getGridWidth() > 0 && getGridHeight() > 0) {
-			bacterium.positionX = static_cast<double>(bacterium.gridX);
-			bacterium.positionY = static_cast<double>(bacterium.gridY);
+			bacterium.positionX = toCenteredGridCoordinate(bacterium.gridX, getGridWidth());
+			bacterium.positionY = toCenteredGridCoordinate(bacterium.gridY, getGridHeight());
 		} else {
 			bacterium.positionX = 0.0;
 			bacterium.positionY = 0.0;
@@ -2568,18 +2559,19 @@ void BacteriaColony::_setBacteriumPosition(BacteriumState& bacterium, double x, 
 	const double clampedY = _clampPositionY(y);
 	bacterium.positionX = clampedX;
 	bacterium.positionY = clampedY;
-	bacterium.gridX = static_cast<unsigned int>(std::llround(clampedX));
-	bacterium.gridY = static_cast<unsigned int>(std::llround(clampedY));
+	bacterium.positionInitialized = true;
+	bacterium.gridX = toCenteredGridIndex(clampedX, getGridWidth());
+	bacterium.gridY = toCenteredGridIndex(clampedY, getGridHeight());
 }
 
 double BacteriaColony::_clampPositionX(double value) const {
-	const double maxX = getGridWidth() > 0 ? static_cast<double>(getGridWidth() - 1) : 0.0;
-	return std::clamp(value, 0.0, maxX);
+	const double maximum = 0.5 * static_cast<double>(getGridWidth() > 0 ? getGridWidth() - 1 : 0);
+	return std::clamp(std::isfinite(value) ? value : 0.0, -maximum, maximum);
 }
 
 double BacteriaColony::_clampPositionY(double value) const {
-	const double maxY = getGridHeight() > 0 ? static_cast<double>(getGridHeight() - 1) : 0.0;
-	return std::clamp(value, 0.0, maxY);
+	const double maximum = 0.5 * static_cast<double>(getGridHeight() > 0 ? getGridHeight() - 1 : 0);
+	return std::clamp(std::isfinite(value) ? value : 0.0, -maximum, maximum);
 }
 
 void BacteriaColony::_syncBacteriumSpatialState(BacteriumState& bacterium, const GroProgramRuntimeState& runtimeState) const {
@@ -2657,16 +2649,18 @@ void BacteriaColony::_updateBacteriumSpatialMotion(BacteriumState& bacterium) co
 	double nextX = bacterium.positionX + std::cos(direction) * speed * stepScale;
 	double nextY = bacterium.positionY + std::sin(direction) * speed * stepScale;
 
-	const double maxX = getGridWidth() > 0 ? static_cast<double>(getGridWidth() - 1) : 0.0;
-	const double maxY = getGridHeight() > 0 ? static_cast<double>(getGridHeight() - 1) : 0.0;
+	const double maxX = 0.5 * static_cast<double>(getGridWidth() > 0 ? getGridWidth() - 1 : 0);
+	const double maxY = 0.5 * static_cast<double>(getGridHeight() > 0 ? getGridHeight() - 1 : 0);
+	const double minX = -maxX;
+	const double minY = -maxY;
 	bool reflected = false;
-	if (nextX < 0.0 || nextX > maxX) {
-		nextX = std::clamp(nextX, 0.0, maxX);
+	if (nextX < minX || nextX > maxX) {
+		nextX = std::clamp(nextX, minX, maxX);
 		direction = kPi - direction;
 		reflected = true;
 	}
-	if (nextY < 0.0 || nextY > maxY) {
-		nextY = std::clamp(nextY, 0.0, maxY);
+	if (nextY < minY || nextY > maxY) {
+		nextY = std::clamp(nextY, minY, maxY);
 		direction = -direction;
 		reflected = true;
 	}
