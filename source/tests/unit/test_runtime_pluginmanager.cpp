@@ -23,6 +23,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <map>
 #include <memory>
 #include <numeric>
@@ -303,6 +304,38 @@ TEST(RuntimePluginManagerClassTest, BacteriaSignalGridCanBeCreatedAndValidated) 
     EXPECT_DOUBLE_EQ(values[0], 1.0);
     EXPECT_DOUBLE_EQ(values[3], 2.0);
     EXPECT_DOUBLE_EQ(values[5], 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaSignalGridRejectsInvalidRelaxationCoefficients) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_InvalidRates");
+    ASSERT_NE(signalGrid, nullptr);
+
+    const auto expectInvalid = [&](double diffusion, double decay) {
+        signalGrid->setDiffusionRate(diffusion);
+        signalGrid->setDecayRate(decay);
+        std::string errorMessage;
+        EXPECT_FALSE(ModelDataDefinition::Check(signalGrid, errorMessage));
+        EXPECT_NE(errorMessage.find("finite value in the [0,1] interval"), std::string::npos) << errorMessage;
+    };
+
+    expectInvalid(-0.01, 0.1);
+    expectInvalid(1.01, 0.1);
+    expectInvalid(0.1, -0.01);
+    expectInvalid(0.1, 1.01);
+    expectInvalid(std::numeric_limits<double>::quiet_NaN(), 0.1);
+    expectInvalid(0.1, std::numeric_limits<double>::infinity());
+
+    signalGrid->setDiffusionRate(0.0);
+    signalGrid->setDecayRate(1.0);
+    std::string endpointError;
+    EXPECT_TRUE(ModelDataDefinition::Check(signalGrid, endpointError)) << endpointError;
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramCanCreateDefaultStarterAndKeepEmptySourceValid) {
@@ -1099,6 +1132,50 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeAssignsIndependentOrdinalSi
     ASSERT_TRUE(GroProgramRuntime::evaluateExpression("get_signal(s1)", state, s1Value, errorMessage)) << errorMessage;
     EXPECT_DOUBLE_EQ(s0Value, 2.0);
     EXPECT_DOUBLE_EQ(s1Value, 5.0);
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsInvalidSignalCoefficientsBeforeChannelMutation) {
+    struct InvalidDeclaration {
+        std::string expression;
+        std::map<std::string, double> context;
+    };
+    const std::vector<InvalidDeclaration> invalidDeclarations = {
+        {"signal(-0.01, 0.5)", {}},
+        {"signal(1.01, 0.5)", {}},
+        {"signal(0.5, -0.01)", {}},
+        {"signal(0.5, 1.01)", {}},
+        {"signal(nonfinite, 0.5)", {{"nonfinite", std::numeric_limits<double>::quiet_NaN()}}},
+        {"signal(0.5, nonfinite)", {{"nonfinite", std::numeric_limits<double>::infinity()}}}
+    };
+
+    GroProgramParser parser;
+    GroProgramCompiler compiler;
+    GroProgramRuntime runtime;
+    for (std::size_t index = 0; index < invalidDeclarations.size(); ++index) {
+        const GroProgramParser::Result parsed = parser.parse(
+            "program bacterium() { channel := " + invalidDeclarations[index].expression + "; }");
+        ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+        const GroProgramIr ir = compiler.compile(parsed.ast);
+        GroProgramRuntimeState state;
+        state.contextVariables = invalidDeclarations[index].context;
+
+        const GroProgramRuntime::ExecutionResult result = runtime.execute(ir, state);
+        EXPECT_FALSE(result.succeeded) << invalidDeclarations[index].expression;
+        EXPECT_NE(result.errorMessage.find("signal coefficients must be finite values in the [0,1] interval"),
+                  std::string::npos) << result.errorMessage;
+        EXPECT_TRUE(result.colonyMutations.empty()) << invalidDeclarations[index].expression;
+        EXPECT_EQ(state.signalDeclarationOrdinal, 0u);
+        EXPECT_EQ(state.variables.count("channel"), 0u);
+    }
+
+    const GroProgramParser::Result validParsed = parser.parse(
+        "program bacterium() { low := signal(0, 1); high := signal(1, 0); middle := signal(0.25, 0.75); }");
+    ASSERT_TRUE(validParsed.accepted) << validParsed.errorMessage;
+    GroProgramRuntimeState validState;
+    const GroProgramRuntime::ExecutionResult validResult = runtime.execute(compiler.compile(validParsed.ast), validState);
+    ASSERT_TRUE(validResult.succeeded) << validResult.errorMessage;
+    EXPECT_EQ(validResult.colonyMutations.size(), 3u);
+    EXPECT_EQ(validState.signalDeclarationOrdinal, 3u);
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand) {
