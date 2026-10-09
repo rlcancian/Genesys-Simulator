@@ -245,6 +245,32 @@ bool GenSerializer::load(std::istream& input) {
 			continue;
 		}
 
+		// Older hand-authored Gro model fixtures stored multiline sourceCode
+		// inside a raw quoted literal. Current serialization uses e"..." for
+		// text containing newlines; accept the legacy form when its closing
+		// quote is a standalone line, then normalize it before normal parsing.
+		constexpr std::string_view legacySourceCodePrefix = "sourceCode=\"";
+		const std::size_t legacySourceCodeStart = line.find(legacySourceCodePrefix);
+		if (legacySourceCodeStart != std::string::npos &&
+		    legacySourceCodeStart + legacySourceCodePrefix.size() == line.size()) {
+			std::string legacySourceCode = "\n";
+			std::string continuation;
+			bool foundClosingQuote = false;
+			while (std::getline(input, continuation)) {
+				if (Util::Trim(continuation) == "\"") {
+					foundClosingQuote = true;
+					break;
+				}
+				legacySourceCode += continuation;
+				legacySourceCode += '\n';
+			}
+			if (!foundClosingQuote) {
+				return false;
+			}
+			line = line.substr(0, legacySourceCodeStart + std::string_view("sourceCode=").size()) +
+			       encodeTextLiteral(legacySourceCode);
+		}
+
 		_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, line);
 
 		std::size_t position = 0;
