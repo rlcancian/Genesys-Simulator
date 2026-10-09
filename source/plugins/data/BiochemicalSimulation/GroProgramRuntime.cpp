@@ -1313,9 +1313,9 @@ GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr
 	state.signalDeclarationOrdinal = 0;
 	state.signalDeclarationScope = ir.programName.empty() ? "<global>" : ir.programName;
 
-	if (state.simulationStep <= 0.0) {
+	if (!std::isfinite(state.simulationStep) || state.simulationStep < 0.0) {
 		result.succeeded = false;
-		result.errorMessage = "GroProgramRuntime simulation step must be greater than zero. ";
+		result.errorMessage = "GroProgramRuntime simulation step must be finite and non-negative. ";
 		return result;
 	}
 

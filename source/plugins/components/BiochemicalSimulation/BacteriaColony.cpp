@@ -2482,7 +2482,15 @@ void BacteriaColony::_applyBacteriumGrowth(BacteriumState& bacterium) const {
 	double growthRate = 0.045;
 	const auto growthRateIt = bacterium.runtimeVariables.find("ecoli_growth_rate");
 	if (growthRateIt != bacterium.runtimeVariables.end()) {
+		// An explicit zero disables the automatic growth fallback. Do not let
+		// generation/signal adjustments or the minimum delta create volume.
+		if (!std::isfinite(growthRateIt->second) || growthRateIt->second <= 0.0) {
+			return;
+		}
 		growthRate = std::max(0.0, growthRateIt->second);
+	}
+	if (!std::isfinite(getSimulationStep()) || getSimulationStep() <= 0.0) {
+		return;
 	}
 	growthRate += 0.004 * static_cast<double>(bacterium.generation);
 	const double localSignal = _signalValueAt(bacterium.gridX, bacterium.gridY);
