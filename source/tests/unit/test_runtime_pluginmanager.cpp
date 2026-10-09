@@ -1300,8 +1300,9 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeSupportsRunAndTumbleCommand
 	ASSERT_EQ(result.motionMutations.size(), 2u);
 	EXPECT_EQ(result.motionMutations[0].type, GroProgramRuntime::MotionMutationType::Run);
 	EXPECT_EQ(result.motionMutations[1].type, GroProgramRuntime::MotionMutationType::Tumble);
-	EXPECT_GT(result.motionMutations[0].resultingSpeed, result.motionMutations[0].previousSpeed);
+	EXPECT_DOUBLE_EQ(result.motionMutations[0].resultingSpeed, 0.2);
 	EXPECT_NE(result.motionMutations[1].resultingDirection, result.motionMutations[1].previousDirection);
+	EXPECT_DOUBLE_EQ(result.motionMutations[1].resultingSpeed, result.motionMutations[1].previousSpeed);
 	EXPECT_NE(state.variables.at("speed"), 0.1);
 	EXPECT_NE(state.variables.at("direction"), 1.0);
 	EXPECT_DOUBLE_EQ(result.assignedVariables.at("speed"), state.variables.at("speed"));
@@ -3177,10 +3178,10 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyMainCanResetAndRespawnSeeds) {
 
     GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ResetAndRespawn");
     ASSERT_NE(program, nullptr);
-    program->setSourceCode(
-        "program main() := { reset(); ecoli([x:=2, y:=3], program leader()); }; "
-        "program leader() := { p := [ seen := 0 ]; true : { p.seen := p.seen + 1 } }; "
-        "ecoli([x:=0, y:=0], program leader());");
+	program->setSourceCode(
+	    "program main() := { reset(); ecoli([x:=2, y:=3], program leader()); }; "
+	    "program leader() := { speed := 0; ecoli_growth_rate := 0; p := [ seen := 0 ]; true : { p.seen := p.seen + 1 } }; "
+	    "ecoli([x:=0, y:=0], program leader());");
 
     BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ResetAndRespawn");
     ASSERT_NE(colony, nullptr);
@@ -3554,12 +3555,137 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesRunAndTumbleToBacterium
 	ASSERT_EQ(result.motionMutations.size(), 2u);
 	EXPECT_EQ(result.motionMutations[0].type, GroProgramRuntime::MotionMutationType::Run);
 	EXPECT_EQ(result.motionMutations[1].type, GroProgramRuntime::MotionMutationType::Tumble);
+	EXPECT_DOUBLE_EQ(result.motionMutations[0].resultingSpeed, 0.25);
+	EXPECT_DOUBLE_EQ(result.motionMutations[1].resultingSpeed, 0.25);
 	EXPECT_NE(colony->getBacteriumDirectionRadians(0), initialDirection);
 	EXPECT_NE(colony->getBacteriumState(0).speed, initialSpeed);
 	EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "speed"));
 	EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "direction"));
 	EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "speed"), colony->getBacteriumState(0).speed);
 	EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "direction"), colony->getBacteriumDirectionRadians(0));
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyUsesSpeedAndSimulationStepForExactKinematics) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ExactKinematics");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode("program bacterium() { speed := 2; direction := 0; ecoli_growth_rate := 0; }");
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ExactKinematics");
+	ASSERT_NE(colony, nullptr);
+	colony->setGroProgram(program);
+	colony->setGridWidth(12);
+	colony->setGridHeight(12);
+	colony->setSimulationStep(0.25);
+	ModelDataDefinition::InitBetweenReplications(colony);
+	const double startX = colony->getBacteriumPositionX(0);
+	const double startY = colony->getBacteriumPositionY(0);
+	const auto result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	EXPECT_NEAR(colony->getBacteriumPositionX(0), startX + 0.5, 1e-12);
+	EXPECT_NEAR(colony->getBacteriumPositionY(0), startY, 1e-12);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyReflectsMovementAtSpatialBoundary) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_BoundaryReflection");
+	program->setSourceCode(
+	    "program bacterium() { speed := 1; direction := 0; ecoli_growth_rate := 0; } "
+	    "ecoli([x:=2,y:=0], program bacterium());");
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_BoundaryReflection");
+	colony->setGroProgram(program);
+	colony->setInitialPopulation(0);
+	colony->setGridWidth(5);
+	colony->setGridHeight(5);
+	colony->setSimulationStep(1.0);
+	ModelDataDefinition::InitBetweenReplications(colony);
+	const auto result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	ASSERT_EQ(colony->getInternalBacteriaCount(), 1u);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumPositionX(0), 1.0);
+	EXPECT_NEAR(colony->getBacteriumDirectionRadians(0), 3.14159265358979323846, 1e-12);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyZeroSpeedAndZeroStepDoNotTranslateIsolatedBacterium) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ZeroMotion");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode("program bacterium() { speed := 0; direction := 0; }");
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ZeroMotion");
+	ASSERT_NE(colony, nullptr);
+	colony->setGroProgram(program);
+	colony->setGridWidth(12);
+	colony->setGridHeight(12);
+	ModelDataDefinition::InitBetweenReplications(colony);
+	const double originalX = colony->getBacteriumPositionX(0);
+	const double originalY = colony->getBacteriumPositionY(0);
+	const double initialVolume = colony->getBacteriumVolume(0);
+	ASSERT_TRUE(colony->executeGroProgram().succeeded);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumPositionX(0), originalX);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumPositionY(0), originalY);
+	EXPECT_GT(colony->getBacteriumVolume(0), initialVolume);
+	const double volumeBeforeZeroStep = colony->getBacteriumVolume(0);
+	colony->setSimulationStep(0.0);
+	ASSERT_TRUE(colony->executeGroProgram().succeeded);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumPositionX(0), originalX);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumPositionY(0), originalY);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(0), volumeBeforeZeroStep);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyUsesKernelRngForReproducibleTumbles) {
+	auto tumbleDirection = []() {
+		Simulator simulator;
+		PluginManager* manager = simulator.getPluginManager();
+		manager->autoInsertPlugins();
+		Model* model = simulator.getModelManager()->newModel();
+		GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_KernelRngTumble");
+		program->setSourceCode("program bacterium() { tumble(0.5); ecoli_growth_rate := 0; speed := 0; }");
+		BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_KernelRngTumble");
+		colony->setGroProgram(program);
+		colony->setGridWidth(12);
+		colony->setGridHeight(12);
+		ModelDataDefinition::InitBetweenReplications(colony);
+		const auto result = colony->executeGroProgram();
+		EXPECT_TRUE(result.succeeded) << result.errorMessage;
+		return colony->getBacteriumDirectionRadians(0);
+	};
+	EXPECT_DOUBLE_EQ(tumbleDirection(), tumbleDirection());
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesBoundedSeparationOnlyToOverlappingPairs) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	manager->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_Separation");
+	program->setSourceCode(
+	    "program bacterium() { speed := 0; direction := 0; ecoli_growth_rate := 0; } "
+	    "ecoli([x:=0,y:=0], program bacterium()); ecoli([x:=0.2,y:=0], program bacterium());");
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_Separation");
+	colony->setGroProgram(program);
+	colony->setGridWidth(12);
+	colony->setGridHeight(12);
+	colony->setInitialPopulation(0);
+	ModelDataDefinition::InitBetweenReplications(colony);
+	ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+	const double originalDistance = std::abs(colony->getBacteriumPositionX(1) - colony->getBacteriumPositionX(0));
+	ASSERT_TRUE(colony->executeGroProgram().succeeded);
+	const double separatedDistance = std::abs(colony->getBacteriumPositionX(1) - colony->getBacteriumPositionX(0));
+	EXPECT_GT(separatedDistance, originalDistance);
+	EXPECT_LE(separatedDistance - originalDistance, 0.2);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumPositionY(0), 0.0);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumPositionY(1), 0.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalContext) {
