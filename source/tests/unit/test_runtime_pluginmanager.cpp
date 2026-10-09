@@ -25,6 +25,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <vector>
 
 namespace {
@@ -564,6 +565,100 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyDiffusesExplicitSignalGridValu
     EXPECT_LT(colony->getSignalValueAt(1, 1), 10.0);
     EXPECT_GT(colony->getSignalValueAt(0, 1), 0.0);
     EXPECT_GT(colony->getSignalValueAt(1, 0), 0.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyCharacterizesLegacySignalRelaxationOnSmallGrids) {
+    // Characterization contract for the existing dimensionless per-step
+    // relaxation operator. Expected values below are hand-calculated from
+    // the graph degrees and are intentionally not claims of physical mass
+    // conservation.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_SignalStencilCharacterization");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode("program colony() { tick(); }");
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_StencilCharacterization");
+    ASSERT_NE(signalGrid, nullptr);
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_StencilCharacterization");
+    ASSERT_NE(colony, nullptr);
+    colony->setSignalGrid(signalGrid);
+    colony->setGroProgram(program);
+    colony->setInitialPopulation(0);
+
+    const auto run = [&](unsigned int width, unsigned int height, const std::vector<double>& initial,
+                         double diffusion, double decay, double dt) {
+        signalGrid->setWidth(width);
+        signalGrid->setHeight(height);
+        signalGrid->setDiffusionRate(diffusion);
+        signalGrid->setDecayRate(decay);
+        std::string serialized;
+        for (std::size_t i = 0; i < initial.size(); ++i) {
+            if (i != 0) serialized += ",";
+            serialized += std::to_string(initial[i]);
+        }
+        signalGrid->setInitialValues(serialized);
+        colony->setSimulationStep(dt);
+        ModelDataDefinition::InitBetweenReplications(colony);
+        GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+        EXPECT_TRUE(result.succeeded) << result.errorMessage;
+        std::vector<double> actual;
+        for (unsigned int y = 0; y < height; ++y) {
+            for (unsigned int x = 0; x < width; ++x) actual.push_back(colony->getSignalValueAt(x, y));
+        }
+        return actual;
+    };
+
+    // 1x1 has no neighbors: diffusion cannot act; decay is applied once.
+    EXPECT_NEAR(run(1, 1, {8.0}, 0.75, 0.25, 0.01).at(0), 6.0, 1e-12);
+
+    // Every node in 2x2 has degree two. A corner impulse of 10 with
+    // diffusion=0.5 splits to 5 at the source and 2.5 at each adjacent node.
+    const std::vector<double> corner2 = run(2, 2, {10, 0, 0, 0}, 0.5, 0.0, 0.1);
+    EXPECT_NEAR(corner2[0], 5.0, 1e-12);
+    EXPECT_NEAR(corner2[1], 2.5, 1e-12);
+    EXPECT_NEAR(corner2[2], 2.5, 1e-12);
+    EXPECT_NEAR(corner2[3], 0.0, 1e-12);
+    EXPECT_NEAR(corner2[0] + corner2[1] + corner2[2] + corner2[3], 10.0, 1e-12);
+
+    // Uniform values are unchanged by the neighbor relaxation and then
+    // multiplied by 1-decay, including at edges with smaller degree.
+    const std::vector<double> uniform3 = run(3, 3, std::vector<double>(9, 4.0), 0.7, 0.25, 0.1);
+    for (double value : uniform3) EXPECT_NEAR(value, 3.0, 1e-12);
+
+    // A center impulse has degree four; its orthogonal neighbors have degree
+    // three. Thus 10 -> 5 at center, and 10/3*0.5 at each adjacent node.
+    const std::vector<double> center3 = run(3, 3, {0,0,0, 0,10,0, 0,0,0}, 0.5, 0.0, 0.1);
+    EXPECT_NEAR(center3[4], 5.0, 1e-12);
+    EXPECT_NEAR(center3[1], 5.0 / 3.0, 1e-12);
+    EXPECT_NEAR(center3[3], 5.0 / 3.0, 1e-12);
+    EXPECT_NEAR(center3[5], 5.0 / 3.0, 1e-12);
+    EXPECT_NEAR(center3[7], 5.0 / 3.0, 1e-12);
+    const double centerMass = std::accumulate(center3.begin(), center3.end(), 0.0);
+    EXPECT_NEAR(centerMass, 35.0 / 3.0, 1e-12);
+    EXPECT_NE(centerMass, 10.0); // boundary degree variation breaks conservation.
+
+    // A corner impulse in 3x3 has degree two while its adjacent edge nodes
+    // have degree three: resulting total is 25/3, not the initial 10.
+    const std::vector<double> corner3 = run(3, 3, {10,0,0, 0,0,0, 0,0,0}, 0.5, 0.0, 0.1);
+    EXPECT_NEAR(corner3[0], 5.0, 1e-12);
+    EXPECT_NEAR(corner3[1], 5.0 / 3.0, 1e-12);
+    EXPECT_NEAR(corner3[3], 5.0 / 3.0, 1e-12);
+    EXPECT_NEAR(std::accumulate(corner3.begin(), corner3.end(), 0.0), 25.0 / 3.0, 1e-12);
+
+    // Zero diffusion and zero degradation is the identity. Full degradation
+    // zeroes the field. dt is supplied to the runtime but this operator does
+    // not use it: the same initial state returns bit-identical values.
+    const std::vector<double> identity = run(3, 3, {1,2,3,4,5,6,7,8,9}, 0.0, 0.0, 0.01);
+    EXPECT_EQ(identity, (std::vector<double>{1,2,3,4,5,6,7,8,9}));
+    const std::vector<double> fullDecay = run(3, 3, {1,2,3,4,5,6,7,8,9}, 0.0, 1.0, 0.01);
+    for (double value : fullDecay) EXPECT_DOUBLE_EQ(value, 0.0);
+    EXPECT_EQ(run(3, 3, {0,0,0,0,10,0,0,0,0}, 0.5, 0.0, 0.01),
+              run(3, 3, {0,0,0,0,10,0,0,0,0}, 0.5, 0.0, 2.0));
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) {
@@ -1925,6 +2020,13 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyMaintainsSignalChannelIndepend
         // regardless of how channel 2 (s1) evolves under its own
         // diffusion/decay.
         EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 0.0);
+        if (step == 0) {
+            // The emission is at the center of a 5x5 grid. Its four
+            // neighbors start at zero, so channel 2 computes
+            // (100 + 0.1*(0-100))*(1-0.05) = 85.5 exactly; the legacy
+            // channel remains zero under its distinct (0,0) coefficients.
+            EXPECT_NEAR(colony->getAdditionalSignalValueAt(2, gridX, gridY), 85.5, 1e-12);
+        }
     }
     // Channel 2 must have decayed from its initial emission (kdeg=0.05 > 0)
     // but still be nonzero after only 4 steps, and must never have leaked
