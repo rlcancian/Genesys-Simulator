@@ -572,7 +572,7 @@ Common execution contract for AUTO-SCI-001 through AUTO-SCI-013:
 ### AUTO-BACTERIA-001 — Complete the approved Gro/BacteriaColony first-version scope
 
 - Priority: `P1`
-- Status: `ready`
+- Status: `running`
 - Environment: `local` (Ubuntu/CMake/Ninja/Qt6 toolchain)
 - Branch: `WiP20261008/BacteriaColony` (existing authorized work branch)
 - Base: feature-branch HEAD `8cadfb651071c17acf7fd0f65fe47685b66e8829`
