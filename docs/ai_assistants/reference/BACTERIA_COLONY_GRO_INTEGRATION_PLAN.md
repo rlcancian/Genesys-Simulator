@@ -2,12 +2,30 @@
 document_type: reference
 authority: technical-plan
 owner: project-maintainer
-last_reviewed: 2026-10-08
+last_reviewed: 2026-10-09
 review_cadence: on-phase-completion
 status: active
 ---
 
 # Bacteria Colony / Gro Integration Plan
+
+## Current proposal: four-milestone first-version rebaseline
+
+**Proposal dated 2026-10-09 — pending explicit maintainer approval.** The
+forward execution plan is consolidated in §22 into M1–M4 and nine bounded
+iterations. The historical inventory, phase records, tests, decisions and
+evidence in §§1–21 are retained; their old phase numbers remain stable for
+citations and history. From this proposal onward, §22 is the current
+forward-looking plan and supersedes the sequencing in historical §17 only
+after approval.
+
+The first-version signal proposal is Alternative A from §10: retain the
+current dimensionless per-update relaxation and document it as phenomenological,
+without claiming physical, conservative diffusion. This is **not approved by
+this rebaseline prompt**. The maintainer must ratify that scientific claim and
+the finite `[0,1]` input domain before implementation of numeric validation.
+Alternatives B and C are postponed. Until that ratification and approval of
+this whole plan, do not start M2 or alter implementation behavior.
 
 ## 1. Objective and scope
 
@@ -711,14 +729,12 @@ The `needs`-comma-splitting **parser bug** (distinct from the broader
 `needs`-as-scoping *feature*, which remains unimplemented by choice) was
 closed in Phase 1 (`daffe5bf`, confirmed above); it is not an open gap.
 
-## 17. Phased implementation plan (revised 2026-10-08)
+## 17. Historical phased implementation record (revised 2026-10-08)
 
-Reordered per the maintainer's scope decision: deliver useful bacterial
--modeling capabilities before pursuing any further language compatibility.
-Each phase: diagnose → regression test(s) → minimal implementation →
-focused validation → regression validation (`tests-unit`/
-`tests-kernel-unit`/`tests-smoke` as applicable) → update this document →
-small, single-concern commit.
+This section preserves the prior numbered plan and its evidence without
+renumbering. It is the historical record of phases 0–13; the proposed
+forward execution sequence is §22 and becomes authoritative only after
+maintainer approval.
 
 0. **Baseline, compatibility matrices, scope decisions** — done
    (`dbab2286`, `b7665852`).
@@ -1002,7 +1018,7 @@ small, single-concern commit.
   collision, barriers, chemostat physical effects: deferred/not required
   by the selected subset (§2 decisions 4–7, §12).
 
-## 20. Open decisions / stop gates
+## 20. Historical decisions / stop gates
 
 Closed, not open: adoption of an external physics engine (§2 decisions
 4/5 — do not reopen).
@@ -1013,13 +1029,13 @@ Genuinely open/to watch:
   see the Phase 3 safeguard note in §17. Unconditional declarations within
   one program and global handles consumed by multiple programs remain
   supported.
-- Phase 4 diagnosis is recorded in §10 and §17 item 4. Production still uses
-  the characterized relaxation unchanged. The maintainer must decide whether
-  the selected scientific contract is (A) a dimensionless per-step heuristic,
-  (B) conservative grid diffusion with explicit no-flux boundaries, or (C) a
-  physically scaled reaction-diffusion model. Do not implement B/C or assign
-  physical units to existing coefficients before that decision. Phase 5
-  (Physical Coordinates) remains not started.
+- Phase 4 diagnosis is recorded in §10 and historical §17 item 4. Production
+  still uses the characterized relaxation unchanged. The current proposal in
+  §22 recommends A as a dimensionless per-step heuristic; maintainer
+  ratification is pending. B/C remain postponed. Do not assign physical units
+  to existing coefficients or implement a different equation without a new
+  decision. Historical Phase 5 (Physical Coordinates) remains not started;
+  its proposed work is mapped to M2 in §22.
 - **Resolved for Phase 3:** signal channel fields and coefficients are
   runtime state reconstructed from declarations; no `.gen` format change or
   migration was needed. The three existing fixtures remain unchanged; the
@@ -1034,7 +1050,11 @@ Genuinely open/to watch:
   continued deferral) — but **not** an external physics engine, which
   remains closed.
 
-## 21. Completion criteria (revised 2026-10-08)
+## 21. Historical completion criteria (revised 2026-10-08)
+
+The criteria below preserve the earlier A–E acceptance corpus. The concise
+first-version gate proposed for the new plan is in §22.4; it does not mark
+any capability complete without executed evidence.
 
 Per §2 decision 9, completion is **capability-based**, not a percentage of
 original-Gro compatibility. `BACTERIA-COLONY-INTEGRATION-COMPLETE` requires
@@ -1065,3 +1085,275 @@ corpus A–E capability in §9 has executed, passing evidence, report state
 as `BACTERIA-COLONY-INTEGRATION-PARTIAL` with the exact remaining
 capability, blocker, evidence, required decision and next action, using
 this document's §17 phase numbering.
+
+## 22. Proposed simplified plan: four milestones, nine iterations
+
+Status: **proposal awaiting maintainer approval**. No implementation task in
+this section is activated by writing it. The existing feature branch and
+Phase 3 acceptance remain the basis; M2 must not start before approval of
+this rebaseline. Historical phase citations in §§1–21 stay unchanged.
+
+### 22.1 Requirement classification
+
+The categories below describe current code and executed evidence at this
+plan's reference state. “Implemented” is reserved for the tested behavior
+listed here; source presence alone is not validation.
+
+| Classification | Requirements and evidence |
+|---|---|
+| **Already implemented and validated** | The selected Gro parser/compiler/runtime subset, persistent record-like variables and conditional syntax have focused runtime tests. Signal handles are independent; emit/absorb/read/set route by handle; invalid and conditional declarations are rejected; global handles can be shared through the supported global declaration pattern. Phase 3 precedence and once-per-replication mismatch trace behavior have focused tests. Evidence is listed in historical §17 and the actual tests in `source/tests/unit/test_runtime_pluginmanager.cpp`. Growth has visible-effect tests; bacterium-scoped division and death have focused tests, but the zero-growth/complete lifecycle contract is not thereby validated. `Smart_GroColonyGrowth.gen` and `Smart_GroColonyLifecycle.gen` have an executed fixture-load test. |
+| **Obrigatório para a primeira versão** | Numeric validation for signal parameters; ratification and precise documentation of Alternative A; continuous-coordinate seeding and consistent grid sampling; zero-growth and zero-displacement invariants; division/death/orientation/movement contract and reproducible `run`/`tumble`; one coherent update order across Gro, bacteria, fields and event calendar; GUI view of runtime state; minimum end-to-end evidence for corpus A–E, reusing existing tests; supported-model load/save validation; resolution of the known `Smart_BacteriaColony_GRO.gen` loading failure or a maintainer-approved support classification; full required regressions and documented scientific limits. |
+| **Adiado para versão posterior** | Alternatives B/C; physical coordinates/units beyond the continuous kinematic contract; mass-action `reaction()`; remaining academic Gro grammar/builtins; barrier collision geometry and chemostat physical effects; advanced bacteria collision; performance optimization unless a measurement finds a material delivery bottleneck. These are not extra first-version phases. |
+| **Descartado por decisão arquitetural existente** | Chipmunk2D or any external rigid-body/physics engine; true rigid-body forces, torques and collision; full compatibility with the original Gro implementation or all 23 original examples. Do not reopen these decisions absent new maintainer instruction. |
+
+Alternative A is **proposed, not ratified**. Its proposed coefficient domain is
+finite `kdiff,kdeg ∈ [0,1]`, matching the persisted grid's declared range
+contract; the current `BacteriaSignalGrid::_check()` does not reject NaN
+explicitly, and Gro declarations have no range/finiteness validation.
+The maintainer must approve both the dimensionless per-update interpretation
+and its domain before M1 changes those behaviors. Until then, B/C are
+postponed and the existing numerical equation remains unchanged. This
+proposal does not raise the scientific claim above a phenomenological,
+non-conservative relaxation.
+
+### 22.2 Status of the four milestones
+
+| Milestone | Real status at the reference HEAD | Closure condition |
+|---|---|---|
+| **M1 — Gro e sinais** | **Partial.** The selected frontend subset, handles, channel independence and Phase 3 coefficient precedence are implemented and tested. Phase 4's numerical characterization is documented and tested. Gro/grid parameter validation remains incomplete; Alternative A and its scientific wording await ratification. | Maintainer ratifies A and numeric domain; finite/range validation and error diagnostics pass regression; relaxation documentation clearly states units, boundary behavior and limitations. |
+| **M2 — Dinâmica bacteriana** | **Not started.** State has continuous position members, but Gro seeding shifts/rounds coordinates. The minimum growth clamp defeats zero growth; speed and elapsed-step floors defeat zero movement. Division, death and `run`/`tumble` code exists with focused partial tests; the accepted end-to-end contract and RNG reproducibility are not closed. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. Start only after approval of §22. |
+| **M3 — Integração e GUI** | **Partial foundation.** Gro execution, signal changes and colony stepping exist. Event calendar and viewer call the same execution method, but a manual viewer step does not advance model time; the state/time contract and interaction with calendar replay are not fully validated. The viewer exists, but corpus-E fidelity and combined A–E end-to-end coverage remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
+| **M4 — Validação e entrega** | **Partial.** Gro persistence round-trip infrastructure exists. Growth and lifecycle `.gen` fixtures have an executed load test. The plan records `Smart_BacteriaColony_GRO.gen` loader failure on both Phase 3 reference and implementation branch; this was not a passing compatibility result. Completion-level current CI and performance evidence are not established by the historical snapshots. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed or its support status is explicitly decided; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
+
+### 22.3 Crosswalk: historical phases 0–13 to M1–M4
+
+This crosswalk maps the fourteen old phase numbers without changing their
+meaning or citations. “Done” below means the historical record says done at
+its recorded commit; it is not an automatic `done_confirmed` claim under
+current governance.
+
+| Historical phase | Historical scope/status | New milestone |
+|---:|---|---|
+| 0 | Baseline, compatibility matrices and scope; completed as recorded. | M1 foundation; evidence also feeds M4. |
+| 1 | Minimal frontend blockers; completed and validated in the historical record. | M1. |
+| 2 | Selected runtime/builtins (`time()`); completed as recorded. | M1. |
+| 3 | Signal handles, independent channels, identity safeguards and precedence; completed and tested as recorded. | M1. |
+| 4 | Reaction-diffusion review; diagnosis/characterization recorded; no equation change. A ratification remains open. | M1. |
+| 5 | Continuous physical coordinates and grid mapping; not implemented. | M2. |
+| 6 | Growth/division, including zero-growth invariant; not implemented. | M2. |
+| 7 | Simple kinematics, `run`/`tumble`, kernel RNG and zero-motion invariants; not implemented. | M2. |
+| 8 | Event-step ordering; not closed. | M3. |
+| 9 | Viewer/runtime integration and trigger risk; not closed. | M3. |
+| 10 | Selected A–E end-to-end acceptance corpus; partially covered by reusable tests, not closed. | M3. |
+| 11 | Performance/cache; conditional on measured bottleneck, not a release prerequisite by itself. | M4, only if measurement justifies it. |
+| 12 | Persistence and the three example models; two load tests pass, third known loader issue remains. | M4. |
+| 13 | Documentation, manual impact and completion gate; continuous closeout work. | M4. |
+
+Historical test names, commit identifiers, RED/GREEN evidence, loader
+limitations and prior claims remain in §§1–21. The new milestones are not a
+replacement for that evidence archive.
+
+### 22.4 Proposed first-version acceptance criteria
+
+The first version may be called complete only when all seven criteria have
+executed evidence at the final branch head:
+
+1. Supported bacterial models can be created and run through the supported
+   Gro subset.
+2. Bacteria grow, divide, die and move under the simplified contract;
+   zero growth and zero speed/elapsed step produce zero corresponding
+   changes, and stochastic orientation is reproducible with GenESyS RNG.
+3. Gro controls bacteria and can emit, absorb and read multiple independent
+   signal channels with stable identity and declared coefficient validation.
+4. Runtime, event-calendar and GUI snapshots describe the same colony state;
+   viewer stepping has no hidden second clock or alternate physics.
+5. Each model designated supported saves and loads; the three current
+   examples are investigated without editing/re-saving a fixture to make a
+   test pass.
+6. Focused and required unit, kernel, smoke, GUI and CI regressions pass;
+   any disabled or unrelated failures are separately identified, not called
+   passed.
+7. The signal relaxation's mathematical contract, coefficient domain and
+   scientific limitations are explicit. Alternative A must be ratified
+   before claiming this criterion; B/C remain outside this first version.
+
+These criteria do not assert predictive biological validity. Any later
+scientific claim requires its own reference-backed validation package.
+
+### 22.5 Proposed nine-iteration execution sequence
+
+The iterations below are a proposal only. No iteration starts before plan
+approval; iteration 1 includes the explicit scientific ratification gate.
+Reuse existing tests, adding only the smallest missing oracle or
+end-to-end check. Every change remains bounded and is committed separately.
+
+#### Iteration 1 — Ratify the M1 signal contract
+
+- **Objective:** obtain maintainer approval for Alternative A, its
+  dimensionless per-update interpretation, the finite `[0,1]` parameter
+  domain and the exact diagnostic behavior for invalid values.
+- **Files/modules:** this plan; the scientific-decision record/backlog only
+  if the maintainer requests that canonical update. No production source.
+- **Tests:** rerun the existing Phase 4 small-grid characterization and
+  Phase 3 signal precedence/identity tests as decision evidence; do not alter
+  their expectations.
+- **Exit:** decision is recorded explicitly; otherwise remain at this gate.
+- **Dependencies:** none.
+- **Risks:** current Gro programs outside the tracked supported subset may
+  pass out-of-range values; do not infer compatibility from untracked
+  original examples.
+- **Stop:** no implementation of coefficient validation or scientific
+  interpretation change without approval.
+
+#### Iteration 2 — Validate signal numeric parameters and document M1
+
+- **Objective:** after Iteration 1 approval, reject non-finite/out-of-domain
+  values consistently for `BacteriaSignalGrid` and Gro `signal(kdiff,kdeg)`;
+  keep the equation and operator ordering unchanged.
+- **Files/modules:** `BacteriaSignalGrid.cpp`, signal declaration validation
+  in `GroProgramRuntime`/`BacteriaColony`, existing
+  `test_runtime_pluginmanager.cpp`, §10.
+- **Tests:** finite endpoints 0/1, intermediate values, negative and >1
+  values, NaN/infinity paths where representable; unchanged 1×1/2×2/3×3
+  numeric characterizations; channel precedence/identity regressions.
+- **Exit:** invalid inputs fail diagnostically before mutating channel
+  metadata; all current selected-program tests remain green.
+- **Dependencies:** approved Iteration 1 decision.
+- **Risks:** avoid partial validation where Grid accepts a value Gro rejects
+  or vice versa; no changes to `.gen` field names or format.
+- **Stop:** if any tracked model uses an out-of-domain value, establish
+  whether it is supported before rejecting it; do not silently clamp.
+
+#### Iteration 3 — Continuous coordinates and signal-grid mapping
+
+- **Objective:** preserve continuous Gro seed coordinates and define their
+  mapping to discrete signal cells consistently with signal set/sample
+  operations.
+- **Files/modules:** `BacteriaColony.cpp/.h` seed parsing, position
+  synchronization and grid-index helpers; focused colony tests.
+- **Tests:** non-integer and negative/centered seeds, edge mapping,
+  repeatable signal sampling, persistence of supported model coordinates.
+- **Exit:** position remains continuous through seed → execute → render;
+  field access is deterministic and in bounds.
+- **Dependencies:** M1 completion; plan approval.
+- **Risks:** old seed-shift/round behavior may change initial layouts.
+- **Stop:** if coordinate origin or out-of-domain seed policy is ambiguous,
+  request maintainer choice before changing visible model placement.
+
+#### Iteration 4 — Growth, division and death invariants
+
+- **Objective:** remove growth-floor behavior for zero growth, retain the
+  approved parent/daughter division behavior, and make death/update ordering
+  explicit without broad physiology changes.
+- **Files/modules:** `BacteriaColony` growth/population mutation code and
+  focused unit tests.
+- **Tests:** zero and positive growth, volume non-negativity, division
+  partition/flags, death removal, replication/reset and existing lifecycle
+  tests.
+- **Exit:** zero input growth yields zero volume increase; selected division
+  and death paths have asserted state outcomes and no lifecycle regression.
+- **Dependencies:** Iteration 3 coordinate contract where positions are
+  split or reseeded.
+- **Risks:** growth units and the existing heuristic may be under-specified;
+  do not add a biological growth law.
+- **Stop:** if preserving division behavior conflicts with an established
+  model fixture, stop for a scoped compatibility decision.
+
+#### Iteration 5 — Kinematic motion, orientation and reproducible RNG
+
+- **Objective:** implement the existing planned simple 2D kinematic
+  contract; make zero speed and zero elapsed step stationary; define
+  `run`/`tumble` with GenESyS sampler reproducibility.
+- **Files/modules:** `BacteriaColony` motion/`run`/`tumble` dispatch,
+  `GroProgramRuntime` if mutation plumbing is needed, focused tests.
+- **Tests:** zero speed, zero step, positive displacement against
+  `cos/sin`, boundary reflection, seeded repeatability/reset of RNG and
+  orientation range.
+- **Exit:** same seed/reset yields the same motion; no movement at either
+  zero invariant; the boundary rule remains explicit.
+- **Dependencies:** Iterations 3–4; approved kinematic contract in §12.
+- **Risks:** `simulationStep` and colony time-unit conversion may not be
+  identical in every dispatch path.
+- **Stop:** stop if a separate time-domain decision is needed; do not infer
+  physical speed units.
+
+#### Iteration 6 — Event-calendar and one-step state contract
+
+- **Objective:** demonstrate one coherent state transition per colony
+  update across Gro, bacteria, signal fields and event scheduling.
+- **Files/modules:** `BacteriaColony` dispatch/update path, viewer step
+  request boundary if needed, integration tests.
+- **Tests:** ordering of signal emission/read/relaxation; exactly-once field
+  update; replication reset; event-calendar time advances once; manual viewer
+  step reports unchanged model time.
+- **Exit:** tests establish which state is visible within a step and after
+  the event; no duplicate signal or clock advancement.
+- **Dependencies:** Iterations 2–5.
+- **Risks:** viewer manual execution and active event replay may contend for
+  the same instance.
+- **Stop:** if cross-thread execution is possible and synchronization
+  semantics are not specified, stop rather than add ad hoc locking.
+
+#### Iteration 7 — Viewer fidelity and minimum corpus A–E
+
+- **Objective:** close only missing end-to-end assertions, reusing existing
+  tests and ensuring Qt6 viewer snapshots mirror the colony runtime.
+- **Files/modules:** `BacteriaColonyViewerGuiExtensionPlugin.cpp`, existing
+  runtime/viewer tests, selected model fixtures only if authored from
+  scratch is necessary.
+- **Tests:** minimal end-to-end coverage for A growth/division/death, B
+  independent signals, C movement, D Gro-controlled bacterium and E viewer
+  state/time/selection; avoid duplicating focused unit oracles.
+- **Exit:** corpus A–E criteria each point to passing focused or end-to-end
+  evidence; viewer displays actual state and does not advance a second clock.
+- **Dependencies:** Iterations 3–6.
+- **Risks:** GUI adapter tests may establish rendering-state fidelity but
+  not full interactive usability; report that boundary.
+- **Stop:** do not build a second physics engine or event scheduler to ease
+  viewer testing.
+
+#### Iteration 8 — Persistence and the known model-loader failure
+
+- **Objective:** validate save/load of supported models and diagnose
+  `Smart_BacteriaColony_GRO.gen` on the current branch, fixing only a
+  demonstrated loader defect within the accepted format.
+- **Files/modules:** current serializer/model loader only if causally
+  implicated, BacteriaColony/Gro references, persistence tests; do not edit
+  or re-save fixture files to make tests pass.
+- **Tests:** round-trip Gro source, signal grid properties, colony
+  references and execution; all three tracked examples; byte-level
+  verification that fixtures remain unchanged.
+- **Exit:** supported fixtures load and execute after load; any fixture
+  excluded from support has an explicit maintainer-approved classification.
+- **Dependencies:** iterations that change persisted behavior, especially
+  3–7.
+- **Risks:** compatibility fix could widen into serializer migration.
+- **Stop:** if the issue requires a `.gen` format or semantic migration,
+  present options and stop before changing the serializer or fixture.
+
+#### Iteration 9 — Final regression, CI, manuals and conditional performance
+
+- **Objective:** establish final-head evidence and close delivery records.
+- **Files/modules:** tests/presets and workflows only for demonstrated gaps;
+  this plan, canonical status/backlog/changelog as applicable, affected
+  Developer/User manual only if the approved implementation changes their
+  contract.
+- **Tests:** focused A–E tests, `tests-unit`, `tests-kernel-unit`,
+  `tests-smoke`, `gui-app`, applicable CI and persistence checks; record
+  exact enabled/disabled/failing counts and branch/commit provenance.
+- **Exit:** every criterion in §22.4 has executed evidence, risks are
+  listed, and only then propose the first-version completion state.
+- **Dependencies:** M1–M3 and Iteration 8.
+- **Risks:** stale CTest inventory, pre-existing unrelated failures,
+  environment/CI divergence; distinguish local evidence from CI.
+- **Stop:** do not label complete with a failed/unrun required gate. Profile
+  the current reparse-per-call path; optimize only if a representative
+  benchmark proves it is material. If not, document it as a known cost and
+  defer it.
+
+**Documentation/manual impact for this proposal:** this change only
+reorganizes a pending technical plan and does not alter runtime, user
+instructions, supported model semantics or scientific claims. No User or
+Developer Manual update is proposed now. Reassess both manuals after the
+maintainer approves the plan and when an implementation changes a user or
+developer contract.
