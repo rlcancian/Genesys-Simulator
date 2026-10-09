@@ -1474,6 +1474,319 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyMaintainsTwoIndependentSignalC
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "s1"), 2.0);
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsInvalidSignalChannelHandles) {
+    // Phase 3 handle contract: a handle must be a non-negative integer
+    // actually returned by a prior "signal(...)" declaration. Negative,
+    // non-integer, and not-yet-declared handles must be diagnosed, never
+    // silently aliased to the legacy channel (channel 0).
+    GroProgramCompiler compiler;
+
+    auto compileAndRun = [&](const std::string& source, GroProgramRuntimeState& state) {
+        GroProgramParser parser;
+        GroProgramParser::Result parsed = parser.parse(source);
+        EXPECT_TRUE(parsed.accepted) << parsed.errorMessage;
+        GroProgramIr ir = compiler.compile(parsed.ast);
+        GroProgramRuntime runtime;
+        return runtime.execute(ir, state);
+    };
+
+    {
+        GroProgramRuntimeState state;
+        GroProgramRuntime::ExecutionResult result = compileAndRun(
+            "program bacterium() { s0 := signal(1, 0.1); x := get_signal(-1); }", state);
+        EXPECT_FALSE(result.succeeded);
+        EXPECT_NE(result.errorMessage.find("invalid signal channel handle"), std::string::npos) << result.errorMessage;
+    }
+    {
+        GroProgramRuntimeState state;
+        GroProgramRuntime::ExecutionResult result = compileAndRun(
+            "program bacterium() { s0 := signal(1, 0.1); emit_signal(-3, 5); }", state);
+        EXPECT_FALSE(result.succeeded);
+        EXPECT_NE(result.errorMessage.find("invalid signal channel handle"), std::string::npos) << result.errorMessage;
+    }
+    {
+        // s0 resolves to handle 1; 1.5 is not an integer handle.
+        GroProgramRuntimeState state;
+        GroProgramRuntime::ExecutionResult result = compileAndRun(
+            "program bacterium() { s0 := signal(1, 0.1); absorb_signal(1.5, 5); }", state);
+        EXPECT_FALSE(result.succeeded);
+        EXPECT_NE(result.errorMessage.find("invalid signal channel handle"), std::string::npos) << result.errorMessage;
+    }
+    {
+        // Only one channel has been declared (ordinal == 1); handle 5 was
+        // never returned by any "signal(...)" call in this program.
+        GroProgramRuntimeState state;
+        GroProgramRuntime::ExecutionResult result = compileAndRun(
+            "program bacterium() { s0 := signal(1, 0.1); emit_signal(5, 5); }", state);
+        EXPECT_FALSE(result.succeeded);
+        EXPECT_NE(result.errorMessage.find("invalid signal channel handle"), std::string::npos) << result.errorMessage;
+    }
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonySetSignalAndSetSignalRectRespectChannelHandle) {
+    // Acceptance corpus B: set_signal/set_signal_rect must address the
+    // channel named by their handle argument, independent of the legacy
+    // field, and must reject a handle that was never declared.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_SetSignalChannels");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program main() { "
+        "s0 := signal(0, 0); "
+        "s1 := signal(0, 0); "
+        "set_signal(s1, 0, 0, 7.5); "
+        "set_signal_rect(s1, 0, 0, 1, 1, 2.5); "
+        "}");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_SetSignalChannels");
+    ASSERT_NE(colony, nullptr);
+    colony->setInitialPopulation(0);
+    colony->setGridWidth(32);
+    colony->setGridHeight(32);
+    colony->setGroProgram(program);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+
+    // Legacy/channel-1 field must stay exactly zero: nothing ever targets it.
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(16, 16), 0.0);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(17, 17), 0.0);
+    // Channel 2 (s1) must reflect both the point and rect writes.
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, 16, 16), 2.5);
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, 17, 17), 2.5);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyRejectsSetSignalWithUndeclaredChannelHandle) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_SetSignalInvalidHandle");
+    ASSERT_NE(program, nullptr);
+    // No "signal(...)" declaration ever runs, so handle 5 was never issued.
+    program->setSourceCode("program main() { set_signal(5, 0, 0, 7.5); }");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_SetSignalInvalidHandle");
+    ASSERT_NE(colony, nullptr);
+    colony->setInitialPopulation(0);
+    colony->setGridWidth(8);
+    colony->setGridHeight(8);
+    colony->setGroProgram(program);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_FALSE(result.succeeded);
+    EXPECT_NE(result.errorMessage.find("invalid signal channel handle"), std::string::npos) << result.errorMessage;
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAbsorbsSignalIndependentlyPerChannel) {
+    // Acceptance corpus B: absorb_signal must decrement only the channel
+    // named by its handle; the legacy channel must stay untouched.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_AbsorbChannels");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        "s0 := signal(0, 0); "
+        "s1 := signal(0, 0); "
+        "steps = steps + 1; "
+        "if (bacterium_id == 1 && steps == 1) { "
+        "  emit_signal(s0, 10); "
+        "  emit_signal(s1, 10); "
+        "} "
+        "if (bacterium_id == 1 && steps == 2) { "
+        "  absorb_signal(s1, 4); "
+        "} "
+        "}");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_AbsorbChannels");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialPopulation(1);
+    colony->setGridWidth(3);
+    colony->setGridHeight(3);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const BacteriaColony::BacteriumState& bacterium = colony->getBacteriumState(0);
+    const unsigned int gridX = bacterium.gridX;
+    const unsigned int gridY = bacterium.gridY;
+
+    GroProgramRuntime::ExecutionResult firstStep = colony->executeGroProgram();
+    EXPECT_TRUE(firstStep.succeeded) << firstStep.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 10.0);
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, gridX, gridY), 10.0);
+
+    GroProgramRuntime::ExecutionResult secondStep = colony->executeGroProgram();
+    EXPECT_TRUE(secondStep.succeeded) << secondStep.errorMessage;
+    // Only channel 2 (s1) was absorbed from; channel 1 (s0, legacy) is
+    // untouched by the absorb_signal(s1, ...) call.
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 10.0);
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, gridX, gridY), 6.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyDoesNotLeakAdditionalSignalChannelsBetweenReplications) {
+    // Acceptance corpus B / contract item: additional channels are pure
+    // runtime state and must never leak a value from one replication into
+    // the next, even when the grid dimensions are unchanged so the
+    // underlying field vector would otherwise be reused as-is.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ReplicationLeak");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        "s0 := signal(0, 0); "
+        "s1 := signal(0, 0); "
+        "if (bacterium_id == 1 && tick_count == 0) { emit_signal(s1, 100); } "
+        "}");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ReplicationLeak");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialPopulation(1);
+    colony->setGridWidth(3);
+    colony->setGridHeight(3);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int firstGridX = colony->getBacteriumState(0).gridX;
+    const unsigned int firstGridY = colony->getBacteriumState(0).gridY;
+    GroProgramRuntime::ExecutionResult firstReplicationResult = colony->executeGroProgram();
+    EXPECT_TRUE(firstReplicationResult.succeeded) << firstReplicationResult.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, firstGridX, firstGridY), 100.0);
+
+    // Start a second replication: channel 2 must come back with no trace of
+    // the value emitted during the first replication, even before the Gro
+    // program runs again.
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int secondGridX = colony->getBacteriumState(0).gridX;
+    const unsigned int secondGridY = colony->getBacteriumState(0).gridY;
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, secondGridX, secondGridY), 0.0);
+
+    GroProgramRuntime::ExecutionResult secondReplicationFirstStep = colony->executeGroProgram();
+    EXPECT_TRUE(secondReplicationFirstStep.succeeded) << secondReplicationFirstStep.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, secondGridX, secondGridY), 100.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyResizesAdditionalSignalChannelsWithGridDimensionChanges) {
+    // Dimension-coherence contract: an additional channel declared before a
+    // grid resize must still be addressable (correctly sized, not stale)
+    // afterwards.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ChannelResize");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program main() { "
+        "s0 := signal(0, 0); "
+        "s1 := signal(0, 0); "
+        "set(\"signal_grid_width\", 5); "
+        "set(\"signal_grid_height\", 5); "
+        "set_signal(s1, 2, 2, 9.0); "
+        "}");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ChannelResize");
+    ASSERT_NE(colony, nullptr);
+    colony->setInitialPopulation(0);
+    colony->setGridWidth(2);
+    colony->setGridHeight(2);
+    colony->setGroProgram(program);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_EQ(colony->getGridWidth(), 5u);
+    EXPECT_EQ(colony->getGridHeight(), 5u);
+    // The point written after the resize, at a coordinate that did not
+    // exist in the original 2x2 grid, must land correctly in channel 2's
+    // (now correctly resized) field, not be silently dropped or
+    // misindexed against the old, smaller size.
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, 4, 4), 9.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyMaintainsSignalChannelIndependenceAcrossMultipleSteps) {
+    // Acceptance corpus B: independence must hold not just immediately
+    // after one mutation, but across several colony steps that each apply
+    // the per-channel diffusion/decay step.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_MultiStepChannels");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        "s0 := signal(0, 0); "
+        "s1 := signal(0.1, 0.05); "
+        "steps = steps + 1; "
+        "if (bacterium_id == 1 && steps == 1) { emit_signal(s1, 100); } "
+        "}");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_MultiStepChannels");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialPopulation(1);
+    colony->setGridWidth(5);
+    colony->setGridHeight(5);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int gridX = colony->getBacteriumState(0).gridX;
+    const unsigned int gridY = colony->getBacteriumState(0).gridY;
+
+    for (int step = 0; step < 4; ++step) {
+        GroProgramRuntime::ExecutionResult stepResult = colony->executeGroProgram();
+        EXPECT_TRUE(stepResult.succeeded) << stepResult.errorMessage;
+        // Channel 1 (s0, legacy) never receives any mutation and has zero
+        // diffusion/decay: it must stay exactly zero on every single step,
+        // regardless of how channel 2 (s1) evolves under its own
+        // diffusion/decay.
+        EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 0.0);
+    }
+    // Channel 2 must have decayed from its initial emission (kdeg=0.05 > 0)
+    // but still be nonzero after only 4 steps, and must never have leaked
+    // into channel 1 above.
+    const double channel2Value = colony->getAdditionalSignalValueAt(2, gridX, gridY);
+    EXPECT_GT(channel2Value, 0.0);
+    EXPECT_LT(channel2Value, 100.0);
+}
+
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesBacteriumScopedProgramsWithPerBacteriumState) {
     Simulator simulator;
     PluginManager* manager = simulator.getPluginManager();

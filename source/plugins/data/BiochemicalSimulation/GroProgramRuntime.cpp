@@ -103,6 +103,31 @@ double resolveIdentifierValue(const std::string& identifier, const GroProgramRun
 	return found != state.variables.end() ? found->second : 0.0;
 }
 
+// Handles 0 and 1 always address the colony's legacy single field (handle 0
+// is the pre-multi-channel raw-IR convention; handle 1 is the first
+// "signal(...)" declaration, which intentionally reuses that same field).
+// Handle N >= 2 only addresses a real, independently stored channel once the
+// Nth "signal(...)" declaration has actually executed in this pass
+// (state.signalDeclarationOrdinal). Anything else (negative, non-integer, or
+// not yet declared) is an invalid handle and must be diagnosed, never
+// silently aliased to the legacy channel.
+bool tryResolveSignalChannelHandle(double handleValue, const GroProgramRuntimeState& state,
+                                    unsigned int& channel, std::string& errorMessage) {
+	const double roundedHandle = std::llround(handleValue);
+	const bool isNearInteger = std::abs(handleValue - roundedHandle) < 1e-9;
+	const bool isKnownChannel = roundedHandle >= 0.0 &&
+	                             (roundedHandle <= 1.0 ||
+	                              roundedHandle <= static_cast<double>(state.signalDeclarationOrdinal));
+	if (!isNearInteger || !isKnownChannel) {
+		errorMessage = "GroProgramRuntime received an invalid signal channel handle (" +
+		              std::to_string(handleValue) +
+		              "); handles must be non-negative integers returned by a prior signal() declaration. ";
+		return false;
+	}
+	channel = roundedHandle > 1.0 ? static_cast<unsigned int>(roundedHandle) : 0u;
+	return true;
+}
+
 class NumericExpressionParser {
 public:
 	NumericExpressionParser(const std::string& expressionText, const GroProgramRuntimeState& state)
@@ -448,16 +473,23 @@ private:
 				errorMessage = "GroProgramRuntime get_signal expression accepts zero or one argument in the current subset. ";
 				return false;
 			}
-			// No argument, or handle 0 or 1, all keep reading the legacy
-			// "local_signal" context variable: handle 1 is always the
-			// *first* "signal(...)" declaration in a program, which reuses
-			// the colony's existing single default field rather than
-			// allocating new storage, so single-signal programs (and every
-			// pre-multi-channel fixture) see unchanged behavior. Handle
-			// N >= 2 reads the independent "local_signal_N" variable the
-			// owning component populates per additional channel, so
-			// distinct handles never alias.
-			const long long channel = arguments.empty() ? 0 : std::llround(arguments.front());
+			// No argument keeps reading the legacy "local_signal" context
+			// variable directly. An explicit handle is validated below:
+			// handle 0/1 still means that same legacy field (so
+			// single-signal programs and every pre-multi-channel fixture
+			// see unchanged behavior); handle N >= 2 reads the independent
+			// "local_signal_N" variable the owning component populates per
+			// additional channel, so distinct handles never alias. An
+			// invalid handle (negative, non-integer, or not yet declared)
+			// is a diagnosed error, never a silent fallback to channel 0.
+			if (arguments.empty()) {
+				value = resolveIdentifierValue("local_signal", _state);
+				return true;
+			}
+			unsigned int channel = 0;
+			if (!tryResolveSignalChannelHandle(arguments.front(), _state, channel, errorMessage)) {
+				return false;
+			}
 			value = resolveIdentifierValue(channel <= 1 ? "local_signal" : "local_signal_" + std::to_string(channel),
 			                               _state);
 			return true;
@@ -1104,7 +1136,10 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 				// Handle 1 (the first "signal(...)" declaration) still maps
 				// to channel 0, the legacy single field, so single-signal
 				// programs keep their exact existing behavior; only handle
-				// >= 2 is a genuinely new, independently stored channel.
+				// >= 2 is a genuinely new, independently stored channel. An
+				// invalid handle (negative, non-integer, or not yet
+				// declared) is diagnosed explicitly, never silently
+				// aliased to the legacy channel.
 				unsigned int channel = 0;
 				if (command.arguments.size() == 2) {
 					double channelValue = 0.0;
@@ -1112,7 +1147,10 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 						result.succeeded = false;
 						return false;
 					}
-					channel = channelValue > 1.0 ? static_cast<unsigned int>(std::llround(channelValue)) : 0u;
+					if (!tryResolveSignalChannelHandle(channelValue, state, channel, result.errorMessage)) {
+						result.succeeded = false;
+						return false;
+					}
 				}
 
 				GroProgramRuntime::SignalMutation mutation;
