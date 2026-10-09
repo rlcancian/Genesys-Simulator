@@ -1613,7 +1613,12 @@ void MainWindow::_rebuildViewDependentControllers() {
         propertyList,
         propertyEditorUI,
         propertyBox,
-        [this]() { _actualizeModelSimLanguage(); },
+        [this]() {
+            // A committed Property Editor change has already mutated the kernel model.
+            // Its generated SimulLang therefore supersedes any cached textual snapshot.
+            _actualizeModelTextHasChanged(false);
+            _actualizeModelSimLanguage();
+        },
         [this](bool force) { _actualizeModelComponents(force); },
         [this](bool force) { _actualizeModelDataDefinitions(force); },
         [this]() { _actualizeModelCppCode(); },

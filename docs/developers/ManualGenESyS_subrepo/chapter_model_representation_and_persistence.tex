@@ -218,14 +218,30 @@ Each serialized line is produced from a \texttt{PersistenceRecord}. That record
 behaves like a small associative table of fields and is the common container
 passed through the \texttt{\_saveInstance()} and \texttt{\_loadInstance()} hooks.
 The serializer linearizes the record by printing the numeric ID, the type name,
-the quoted object name, and the remaining attributes as key-value pairs.
-Textual values are quoted; numeric values are emitted without quotes.
+the object name, and the remaining attributes as key-value pairs. Numeric values
+are emitted without quotes. Text fields have two compatible literal forms.
+Simple text that needs no escaping retains the historical quoted form
+\texttt{"text"}. Text containing a double quote, backslash-sensitive control
+character, newline, carriage return, or tab is emitted as an escaped literal
+whose prefix is \texttt{e}, for example \texttt{sourceCode=e"..."}.
 
-The loader reverses that process with a conservative tokenization strategy. It
-first protects quoted strings with placeholders, splits the line, reconstructs
-key-value pairs, and then hands the resulting field table back to the plugin
-loader. The code is intentionally pragmatic rather than fancy: it is a
-compatible text format, not a general-purpose grammar tutorial.
+Inside an escaped literal, \texttt{GenSerializer} uses a symmetric, explicit
+encoding: a double quote is written as \texttt{\textbackslash{}"}, a backslash
+as \texttt{\textbackslash{}\textbackslash{}}, newline as
+\texttt{\textbackslash{}n}, carriage return as
+\texttt{\textbackslash{}r}, and tab as \texttt{\textbackslash{}t}. The
+literal therefore remains physically on one \texttt{.gen} line even when the
+logical field contains multiple lines. Occurrences of text that resembles the
+literal prefix or other source-language delimiters require no separate sentinel
+rule; embedded quotes are escaped and decoded as data.
+
+The loader parses quoted and escaped literals explicitly rather than relying on
+a regular expression that stops at the next double quote. Historical simple
+quoted strings remain loadable with their backslashes treated literally, while
+the \texttt{e"..."} form enables unambiguous round-trip of complex text. The
+decoded value is placed back into the same \texttt{PersistenceRecord} field
+seen by the plugin, so this rule is generic and is not specific to
+\texttt{GroProgram}.
 
 The most important ordering rule is that entries are iterated by ID, not by the
 order they happened to be inserted. That keeps the file stable enough to read

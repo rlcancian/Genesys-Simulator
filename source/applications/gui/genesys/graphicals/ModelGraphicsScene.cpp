@@ -1238,9 +1238,11 @@ bool ModelGraphicsScene::connectSource(GraphicalConnection* connection, Graphica
             if (port->portNum() == connection->getSource()->channel.portNumber && port->getConnections()->isEmpty()) {
                 // adiciona o componente grafico nessa porta
                 port->addGraphicalConnection(connection);
-                // adiciona a conexao no modelo do componente de origem
+                // Keep graphical endpoint metadata independent from the kernel-owned
+                // Connection object. ConnectionManager destroys its Connection on undo/remove,
+                // while GraphicalConnection must retain valid metadata for a later redo.
                 src->getComponent()->getConnectionManager()->
-                     insertAtPort(port->portNum(), connection->getDestination());
+                     insertAtPort(port->portNum(), new Connection(*connection->getDestination()));
                 break;
             }
         }

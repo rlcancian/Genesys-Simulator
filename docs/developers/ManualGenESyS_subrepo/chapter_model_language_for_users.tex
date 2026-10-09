@@ -203,13 +203,31 @@ paths involved in this cycle are already explicit in the repository:
 \item The serializer restores persisted model state.
 \end{itemize}
 
-For the user, the conservative rule is simple: after a direct text change,
-reload or re-sync the model before relying on the GUI again. After a GUI change,
-confirm that the text view has been refreshed before assuming the file on disk
-already reflects the new state.
+Semantic changes committed through the Property Editor or through structural
+graphical operations cause the textual view to be regenerated from the current
+kernel model. This programmatic refresh does not mark the text editor as if the
+user had typed into it. Serializer section comments (physical lines beginning
+with \texttt{\#}) are omitted from this GUI view so that it presents the model
+language rather than serializer headings.
 
-This chapter does not introduce a separate command line or a new syntax for
-manual editing. It documents the existing synchronized surface only.
+Complex text fields remain data, not comments. When such a field contains
+quotes, tabs, backslashes, or line breaks, the \texttt{.gen} serializer may
+show it as an escaped literal beginning with \texttt{e"}. In that form,
+\texttt{\textbackslash{}n}, \texttt{\textbackslash{}r},
+\texttt{\textbackslash{}t}, \texttt{\textbackslash{}"} and
+\texttt{\textbackslash{}\textbackslash{}} encode newline, carriage return,
+tab, quote, and backslash respectively. A \texttt{\#} that belongs to such a
+field is preserved because it is payload inside the literal, not a structural
+comment line.
+
+For the user, the conservative rule is simple: after a direct text change,
+apply or re-sync the model before relying on other GUI representations. After a
+semantic GUI change, the model-language view is expected to follow the current
+kernel state automatically; saving to disk remains a separate operation.
+
+This chapter does not introduce a separate command line. It documents the
+existing synchronized surface and the text-literal syntax required to represent
+complex persisted fields safely.
 
 \section{What this chapter does not cover}
 \label{sec:model-language-limits}
