@@ -106,6 +106,14 @@ public:
 	unsigned int getInitialPopulation() const;
 	/*! \brief Returns the current bacteria population summary. */
 	unsigned int getPopulationSize() const;
+	/*! \brief Enables optional automatic volume-threshold division. */
+	void setAutomaticDivisionEnabled(bool enabled);
+	/*! \brief Returns whether automatic division is enabled. */
+	bool getAutomaticDivisionEnabled() const;
+	/*! \brief Sets the volume threshold that triggers automatic division. */
+	void setDivisionThresholdVolume(double threshold);
+	/*! \brief Returns the automatic-division volume threshold. */
+	double getDivisionThresholdVolume() const;
 	/*! \brief Sets the optional BioNetwork reused as the colony biochemical state. */
 	void setBioNetwork(BioNetwork* bioNetwork);
 	/*! \brief Returns the optional BioNetwork reused as the colony biochemical state. */
@@ -201,6 +209,8 @@ private:
 		const unsigned int initialPopulation = 1;
 		const unsigned int gridWidth = 1;
 		const unsigned int gridHeight = 1;
+		const bool automaticDivisionEnabled = false;
+		const double divisionThresholdVolume = 2.0;
 	} DEFAULT;
 
 	GroProgram* _groProgram = nullptr;
@@ -214,6 +224,8 @@ private:
 	unsigned int _populationSize = DEFAULT.initialPopulation;
 	unsigned int _gridWidth = DEFAULT.gridWidth;
 	unsigned int _gridHeight = DEFAULT.gridHeight;
+	bool _automaticDivisionEnabled = DEFAULT.automaticDivisionEnabled;
+	double _divisionThresholdVolume = DEFAULT.divisionThresholdVolume;
 	unsigned int _nextBacteriumId = 1;
 	unsigned int _colonyTickCount = 0;
 	bool _chemostatMode = false;
@@ -313,8 +325,11 @@ private:
 	                                    const std::vector<GroProgramRuntime::SignalMutation>& mutations);
 	void _rebuildInternalBacteria(unsigned int populationSize);
 	void _resizeInternalBacteria(unsigned int populationSize);
-	void _applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
-	                                      unsigned int finalPopulationSize);
+	bool _applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
+	                                      unsigned int finalPopulationSize,
+	                                      std::string& errorMessage);
+	bool _divideBacterium(unsigned int bacteriumId);
+	void _applyAutomaticDivisions(const std::vector<unsigned int>& eligibleBacteriumIds);
 	bool _applyColonyMutations(const std::vector<GroProgramRuntime::ColonyMutation>& mutations,
 	                           GroProgramRuntime::ExecutionResult& result,
 	                           bool allowStructureMutations,
@@ -327,7 +342,6 @@ private:
 	GroProgramRuntimeState _createBacteriumRuntimeState(const BacteriumState& bacterium,
 	                                                    std::size_t bacteriumIndex) const;
 	void _applyBacteriumScopedPopulationMutations(unsigned int bacteriumId,
-	                                              unsigned int parentGeneration,
 	                                              const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
 	                                              GroProgramRuntime::ExecutionResult& result);
 	void _appendBacterium(unsigned int parentId = 0, unsigned int generation = 0,

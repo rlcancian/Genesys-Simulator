@@ -273,6 +273,16 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 			std::bind(&BacteriaColony::setGridHeight, this, std::placeholders::_1),
 			Util::TypeOf<BacteriaColony>(), getName(), "GridHeight",
 			"Discrete grid height reserved for colony spatial state");
+	SimulationControlBool* propAutomaticDivisionEnabled = new SimulationControlBool(
+			std::bind(&BacteriaColony::getAutomaticDivisionEnabled, this),
+			std::bind(&BacteriaColony::setAutomaticDivisionEnabled, this, std::placeholders::_1),
+			Util::TypeOf<BacteriaColony>(), getName(), "AutomaticDivisionEnabled",
+			"Enable optional division when bacterium volume reaches DivisionThresholdVolume");
+	SimulationControlDouble* propDivisionThresholdVolume = new SimulationControlDouble(
+			std::bind(&BacteriaColony::getDivisionThresholdVolume, this),
+			std::bind(&BacteriaColony::setDivisionThresholdVolume, this, std::placeholders::_1),
+			Util::TypeOf<BacteriaColony>(), getName(), "DivisionThresholdVolume",
+			"Bacterium volume required for optional automatic division");
 
 	_parentModel->getControls()->insert(propGroProgram);
 	_parentModel->getControls()->insert(propBioNetwork);
@@ -283,6 +293,8 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 	_parentModel->getControls()->insert(propInitialPopulation);
 	_parentModel->getControls()->insert(propGridWidth);
 	_parentModel->getControls()->insert(propGridHeight);
+	_parentModel->getControls()->insert(propAutomaticDivisionEnabled);
+	_parentModel->getControls()->insert(propDivisionThresholdVolume);
 
 	_addSimulationControl(propGroProgram);
 	_addSimulationControl(propBioNetwork);
@@ -293,6 +305,8 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 	_addSimulationControl(propInitialPopulation);
 	_addSimulationControl(propGridWidth);
 	_addSimulationControl(propGridHeight);
+	_addSimulationControl(propAutomaticDivisionEnabled);
+	_addSimulationControl(propDivisionThresholdVolume);
 }
 
 std::string BacteriaColony::show() {
@@ -310,7 +324,9 @@ std::string BacteriaColony::show() {
 	       ",chemostatMode=" + std::string(_chemostatMode ? "true" : "false") +
 	       ",barriers=" + std::to_string(_barriers.size()) +
 	       ",gridWidth=" + std::to_string(getGridWidth()) +
-	       ",gridHeight=" + std::to_string(getGridHeight());
+	       ",gridHeight=" + std::to_string(getGridHeight()) +
+	       ",automaticDivisionEnabled=" + std::string(_automaticDivisionEnabled ? "true" : "false") +
+	       ",divisionThresholdVolume=" + Util::StrTruncIfInt(std::to_string(_divisionThresholdVolume));
 }
 
 PluginInformation* BacteriaColony::GetPluginInformation() {
@@ -395,6 +411,22 @@ unsigned int BacteriaColony::getInitialPopulation() const {
 
 unsigned int BacteriaColony::getPopulationSize() const {
 	return _populationSize;
+}
+
+void BacteriaColony::setAutomaticDivisionEnabled(bool enabled) {
+	_automaticDivisionEnabled = enabled;
+}
+
+bool BacteriaColony::getAutomaticDivisionEnabled() const {
+	return _automaticDivisionEnabled;
+}
+
+void BacteriaColony::setDivisionThresholdVolume(double threshold) {
+	_divisionThresholdVolume = threshold;
+}
+
+double BacteriaColony::getDivisionThresholdVolume() const {
+	return _divisionThresholdVolume;
 }
 
 void BacteriaColony::setBioNetwork(BioNetwork* bioNetwork) {
@@ -655,7 +687,21 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 		_runtimeVariables = runtimeState.variables;
 		_runtimeVariables["dt"] = getSimulationStep();
 		_colonyTickCount = runtimeState.tickCount;
-		_applyRuntimePopulationMutations(result.populationMutations, runtimeState.populationSize);
+		for (BacteriumState& bacterium : _bacteria) {
+			bacterium.justDivided = false;
+			bacterium.daughter = false;
+		}
+		if (!_applyRuntimePopulationMutations(result.populationMutations, runtimeState.populationSize,
+		                                      result.errorMessage)) {
+			result.succeeded = false;
+			return result;
+		}
+		std::vector<unsigned int> eligibleBacteriumIds;
+		eligibleBacteriumIds.reserve(_bacteria.size());
+		for (const BacteriumState& bacterium : _bacteria) {
+			eligibleBacteriumIds.push_back(bacterium.id);
+		}
+		_applyAutomaticDivisions(eligibleBacteriumIds);
 		_applySignalFieldStep();
 		_refreshBacteriaUpdateTime();
 	}
@@ -689,6 +735,8 @@ bool BacteriaColony::_loadInstance(PersistenceRecord* fields) {
 		_initialPopulation = fields->loadField("initialPopulation", DEFAULT.initialPopulation);
 		_gridWidth = fields->loadField("gridWidth", DEFAULT.gridWidth);
 		_gridHeight = fields->loadField("gridHeight", DEFAULT.gridHeight);
+		_automaticDivisionEnabled = fields->loadField("automaticDivisionEnabled", DEFAULT.automaticDivisionEnabled ? 1u : 0u) != 0u;
+		_divisionThresholdVolume = fields->loadField("divisionThresholdVolume", DEFAULT.divisionThresholdVolume);
 		_synchronizeGridDimensionsFromSignalGrid();
 		std::string runtimeConfigErrorMessage;
 		(void)_refreshRuntimeConfigurationFromGroProgram(runtimeConfigErrorMessage);
@@ -718,6 +766,10 @@ void BacteriaColony::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 	fields->saveField("initialPopulation", _initialPopulation, DEFAULT.initialPopulation, saveDefaultValues);
 	fields->saveField("gridWidth", _gridWidth, DEFAULT.gridWidth, saveDefaultValues);
 	fields->saveField("gridHeight", _gridHeight, DEFAULT.gridHeight, saveDefaultValues);
+	fields->saveField("automaticDivisionEnabled", _automaticDivisionEnabled ? 1u : 0u,
+	                  DEFAULT.automaticDivisionEnabled ? 1u : 0u, saveDefaultValues);
+	fields->saveField("divisionThresholdVolume", _divisionThresholdVolume,
+	                  DEFAULT.divisionThresholdVolume, saveDefaultValues);
 }
 
 bool BacteriaColony::_check(std::string& errorMessage) {
@@ -737,6 +789,10 @@ bool BacteriaColony::_check(std::string& errorMessage) {
 	}
 	if (_numSteps == 0) {
 		errorMessage += "BacteriaColony number of steps must be greater than zero. ";
+		resultAll = false;
+	}
+	if (!std::isfinite(_divisionThresholdVolume) || _divisionThresholdVolume <= 0.0) {
+		errorMessage += "BacteriaColony division threshold volume must be finite and greater than zero. ";
 		resultAll = false;
 	}
 
@@ -1525,8 +1581,19 @@ void BacteriaColony::_resizeInternalBacteria(unsigned int populationSize) {
 	_rebuildBacteriaGridPositions();
 }
 
-void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
-                                                       unsigned int finalPopulationSize) {
+bool BacteriaColony::_applyRuntimePopulationMutations(
+		const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
+		unsigned int finalPopulationSize,
+		std::string& errorMessage) {
+	const std::size_t divideMutationCount = static_cast<std::size_t>(std::count_if(
+			mutations.begin(), mutations.end(), [](const GroProgramRuntime::PopulationMutation& mutation) {
+				return mutation.type == GroProgramRuntime::PopulationMutationType::Divide;
+			}));
+	if (divideMutationCount > 1) {
+		errorMessage = "BacteriaColony permits at most one divide() command per colony step. ";
+		return false;
+	}
+
 	for (const GroProgramRuntime::PopulationMutation& mutation : mutations) {
 		if (mutation.type == GroProgramRuntime::PopulationMutationType::Grow) {
 			for (unsigned int i = 0; i < mutation.value; ++i) {
@@ -1539,10 +1606,10 @@ void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgr
 			const std::size_t parentCount = _bacteria.size();
 			for (std::size_t index = 0; index < parentCount; ++index) {
 				const unsigned int parentId = _bacteria[index].id;
-				const unsigned int childGeneration = _bacteria[index].generation + 1;
-				++_bacteria[index].divisionCount;
-				_bacteria[index].lastDivisionTime = getColonyTime();
-				_appendBacterium(parentId, childGeneration);
+				if (!_divideBacterium(parentId)) {
+					errorMessage = "BacteriaColony cannot divide one bacterium more than once per colony step. ";
+					return false;
+				}
 			}
 			continue;
 		}
@@ -1564,6 +1631,82 @@ void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgr
 	_populationSize = static_cast<unsigned int>(_bacteria.size());
 	_refreshBacteriaUpdateTime();
 	_rebuildBacteriaGridPositions();
+	return true;
+}
+
+bool BacteriaColony::_divideBacterium(unsigned int bacteriumId) {
+	const std::size_t parentIndex = _findBacteriumIndexById(bacteriumId);
+	if (parentIndex >= _bacteria.size() || !_bacteria[parentIndex].alive || _bacteria[parentIndex].justDivided) {
+		return false;
+	}
+
+	const BacteriumState parent = _bacteria[parentIndex];
+	const double motherVolume = std::max(0.0, parent.volume) * 0.5;
+	const double daughterVolume = std::max(0.0, parent.volume) - motherVolume;
+	const double separation = 0.25 * std::max(0.0, parent.size);
+	const double motherX = parent.positionX - separation * std::cos(parent.directionRadians);
+	const double motherY = parent.positionY - separation * std::sin(parent.directionRadians);
+	const double daughterX = parent.positionX + separation * std::cos(parent.directionRadians);
+	const double daughterY = parent.positionY + separation * std::sin(parent.directionRadians);
+
+	BacteriumState& mother = _bacteria[parentIndex];
+	mother.volume = motherVolume;
+	mother.size = std::sqrt(motherVolume);
+	mother.positionX = motherX;
+	mother.positionY = motherY;
+	mother.divisionCount += 1;
+	mother.lastDivisionTime = getColonyTime();
+	mother.justDivided = true;
+	mother.daughter = false;
+	mother.runtimeVariables["volume"] = mother.volume;
+	mother.runtimeVariables["size"] = mother.size;
+	mother.runtimeVariables["x"] = mother.positionX;
+	mother.runtimeVariables["y"] = mother.positionY;
+	mother.runtimeVariables["direction"] = mother.directionRadians;
+	mother.runtimeVariables["just_divided"] = 1.0;
+	mother.runtimeVariables["daughter"] = 0.0;
+	_setBacteriumPosition(mother, mother.positionX, mother.positionY);
+
+	_appendBacterium(parent.id, parent.generation + 1, parent.programName);
+	BacteriumState& daughter = _bacteria.back();
+	daughter.programArguments = parent.programArguments;
+	daughter.runtimeVariables = parent.runtimeVariables;
+	daughter.volume = daughterVolume;
+	daughter.size = std::sqrt(daughterVolume);
+	daughter.positionX = daughterX;
+	daughter.positionY = daughterY;
+	daughter.directionRadians = parent.directionRadians;
+	daughter.gfp = parent.gfp * 0.85;
+	daughter.rfp = parent.rfp * 0.85;
+	daughter.yfp = parent.yfp * 0.85;
+	daughter.cfp = parent.cfp * 0.85;
+	daughter.speed = parent.speed;
+	daughter.tickCount = 0;
+	daughter.justDivided = true;
+	daughter.daughter = true;
+	daughter.runtimeVariables["volume"] = daughter.volume;
+	daughter.runtimeVariables["size"] = daughter.size;
+	daughter.runtimeVariables["x"] = daughter.positionX;
+	daughter.runtimeVariables["y"] = daughter.positionY;
+	daughter.runtimeVariables["direction"] = daughter.directionRadians;
+	daughter.runtimeVariables["speed"] = daughter.speed;
+	daughter.runtimeVariables["just_divided"] = 1.0;
+	daughter.runtimeVariables["daughter"] = 1.0;
+	_setBacteriumPosition(daughter, daughter.positionX, daughter.positionY);
+	return true;
+}
+
+void BacteriaColony::_applyAutomaticDivisions(const std::vector<unsigned int>& eligibleBacteriumIds) {
+	if (!_automaticDivisionEnabled || !std::isfinite(_divisionThresholdVolume) || _divisionThresholdVolume <= 0.0) {
+		return;
+	}
+	for (unsigned int bacteriumId : eligibleBacteriumIds) {
+		const std::size_t index = _findBacteriumIndexById(bacteriumId);
+		if (index < _bacteria.size() && _bacteria[index].alive && !_bacteria[index].justDivided &&
+		    _bacteria[index].volume >= _divisionThresholdVolume) {
+			_divideBacterium(bacteriumId);
+		}
+	}
 }
 
 bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::ColonyMutation>& mutations,
@@ -1782,6 +1925,11 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 
 bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
                                                     GroProgramRuntime::ExecutionResult& result) {
+	for (BacteriumState& bacterium : _bacteria) {
+		bacterium.justDivided = false;
+		bacterium.daughter = false;
+	}
+
 	std::string unsupportedCommand;
 	for (const auto& programEntry : ir.namedPrograms) {
 		if (programEntry.first == "main") {
@@ -1912,8 +2060,15 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		_runtimeVariables = mainState.variables;
 		_runtimeVariables["dt"] = getSimulationStep();
 		_colonyTickCount = mainState.tickCount;
-		mainState.populationSize = _populationSize;
-		_applyRuntimePopulationMutations(mainResult.populationMutations, mainState.populationSize);
+		for (BacteriumState& bacterium : _bacteria) {
+			bacterium.justDivided = false;
+			bacterium.daughter = false;
+		}
+		if (!_applyRuntimePopulationMutations(mainResult.populationMutations, mainState.populationSize,
+		                                      result.errorMessage)) {
+			result.succeeded = false;
+			return false;
+		}
 		result.executedCommands += mainResult.executedCommands;
 		result.assignedVariables.insert(mainResult.assignedVariables.begin(), mainResult.assignedVariables.end());
 		result.unsupportedCommands.insert(result.unsupportedCommands.end(),
@@ -1932,7 +2087,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 	std::vector<unsigned int> bacteriumIds;
 	bacteriumIds.reserve(_bacteria.size());
 	for (const BacteriumState& bacterium : _bacteria) {
-		if (bacterium.alive) {
+		if (bacterium.alive && (!bacterium.justDivided || !bacterium.daughter)) {
 			bacteriumIds.push_back(bacterium.id);
 		}
 	}
@@ -1991,8 +2146,6 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		bacterium.tickCount = runtimeState.tickCount;
 		_syncBacteriumSpatialState(bacterium, runtimeState);
 		_applyBacteriumGrowth(bacterium);
-		bacterium.justDivided = false;
-		bacterium.daughter = false;
 		result.executedCommands += bacteriumResult.executedCommands;
 
 		for (const auto& entry : bacteriumResult.assignedVariables) {
@@ -2027,8 +2180,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			return false;
 		}
 		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
-		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
-		                                         bacteriumResult.populationMutations, result);
+		_applyBacteriumScopedPopulationMutations(bacteriumId, bacteriumResult.populationMutations, result);
 		if (!result.succeeded) {
 			return false;
 		}
@@ -2037,6 +2189,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		_rebuildBacteriaGridPositions();
 	}
 
+	_applyAutomaticDivisions(bacteriumIds);
 	_populationSize = static_cast<unsigned int>(_bacteria.size());
 	_refreshBacteriaUpdateTime();
 	_applySignalFieldStep();
@@ -2049,6 +2202,11 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 
 bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
                                                        GroProgramRuntime::ExecutionResult& result) {
+	for (BacteriumState& bacterium : _bacteria) {
+		bacterium.justDivided = false;
+		bacterium.daughter = false;
+	}
+
 	std::string unsupportedCommand;
 	if (_containsBacteriumScopedOnlyUnsupportedCommand(ir.commands, unsupportedCommand)) {
 		result.succeeded = false;
@@ -2113,8 +2271,6 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 		bacterium.tickCount = runtimeState.tickCount;
 		_syncBacteriumSpatialState(bacterium, runtimeState);
 		_applyBacteriumGrowth(bacterium);
-		bacterium.justDivided = false;
-		bacterium.daughter = false;
 		result.executedCommands += bacteriumResult.executedCommands;
 
 		for (const auto& entry : bacteriumResult.assignedVariables) {
@@ -2145,8 +2301,7 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 			return false;
 		}
 		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
-		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
-		                                         bacteriumResult.populationMutations, result);
+	_applyBacteriumScopedPopulationMutations(bacteriumId, bacteriumResult.populationMutations, result);
 		if (!result.succeeded) {
 			return false;
 		}
@@ -2155,6 +2310,7 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 		_rebuildBacteriaGridPositions();
 	}
 
+	_applyAutomaticDivisions(bacteriumIds);
 	_populationSize = static_cast<unsigned int>(_bacteria.size());
 	_refreshBacteriaUpdateTime();
 	_applySignalFieldStep();
@@ -2281,9 +2437,18 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 
 void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 		unsigned int bacteriumId,
-		unsigned int parentGeneration,
 		const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
 		GroProgramRuntime::ExecutionResult& result) {
+	const std::size_t divideMutationCount = static_cast<std::size_t>(std::count_if(
+			mutations.begin(), mutations.end(), [](const GroProgramRuntime::PopulationMutation& mutation) {
+				return mutation.type == GroProgramRuntime::PopulationMutationType::Divide;
+			}));
+	if (divideMutationCount > 1) {
+		result.succeeded = false;
+		result.errorMessage = "BacteriaColony permits at most one divide() command per bacterium per colony step. ";
+		return;
+	}
+
 	for (const GroProgramRuntime::PopulationMutation& mutation : mutations) {
 		if (mutation.type == GroProgramRuntime::PopulationMutationType::Grow) {
 			const std::size_t parentIndex = _findBacteriumIndexById(bacteriumId);
@@ -2301,7 +2466,7 @@ void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 			_bacteria[parentIndex].size = std::max(0.75, std::sqrt(std::max(0.1, _bacteria[parentIndex].volume)));
 			const std::string childProgramName = _bacteria[parentIndex].programName;
 			for (unsigned int i = 0; i < mutation.value; ++i) {
-				_appendBacterium(bacteriumId, parentGeneration + 1, childProgramName);
+				_appendBacterium(bacteriumId, parent.generation + 1, childProgramName);
 				BacteriumState& child = _bacteria.back();
 				child.programArguments = parent.programArguments;
 				child.positionX = parent.positionX + 0.35 * std::cos(parent.directionRadians + 0.35 * static_cast<double>(i + 1));
@@ -2335,32 +2500,12 @@ void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 			}
 
 			// A bacterium-scoped divide reproduces only the current bacterium,
-			// unlike aggregate divide(), which doubles the whole population.
-			const BacteriumState parent = _bacteria[parentIndex];
-			++_bacteria[parentIndex].divisionCount;
-			_bacteria[parentIndex].lastDivisionTime = getColonyTime();
-			const std::string childProgramName = _bacteria[parentIndex].programName;
-			_appendBacterium(bacteriumId, parentGeneration + 1, childProgramName);
-			BacteriumState& child = _bacteria.back();
-			child.programArguments = parent.programArguments;
-			child.positionX = parent.positionX + 0.45 * std::cos(parent.directionRadians + 0.45);
-			child.positionY = parent.positionY + 0.45 * std::sin(parent.directionRadians + 0.45);
-			_setBacteriumPosition(child, child.positionX, child.positionY);
-			child.directionRadians = parent.directionRadians + 0.3;
-			child.volume = std::max(0.65, parent.volume * 0.5);
-			child.size = std::max(0.55, std::sqrt(std::max(0.1, child.volume)));
-			child.gfp = parent.gfp * 0.85;
-			child.rfp = parent.rfp * 0.85;
-			child.yfp = parent.yfp * 0.85;
-			child.cfp = parent.cfp * 0.85;
-			child.speed = parent.speed;
-			child.tickCount = 0;
-			child.justDivided = true;
-			child.daughter = true;
-			_bacteria[parentIndex].volume = std::max(0.65, parent.volume * 0.5);
-			_bacteria[parentIndex].size = std::max(0.55, std::sqrt(std::max(0.1, _bacteria[parentIndex].volume)));
-			_bacteria[parentIndex].justDivided = true;
-			_bacteria[parentIndex].daughter = false;
+			// unlike aggregate divide(), which divides every current bacterium.
+			if (!_divideBacterium(bacteriumId)) {
+				result.succeeded = false;
+				result.errorMessage = "BacteriaColony cannot divide one bacterium more than once per colony step. ";
+				return;
+			}
 			result.populationMutations.push_back(mutation);
 			continue;
 		}
