@@ -25,11 +25,9 @@ struct GroProgramRuntimeState {
 	std::map<std::string, double> contextVariables;
 	std::map<std::string, double> variables;
 	// Counts "VAR := signal(kdiff, kdeg);" assignments executed so far in
-	// this pass, in source order. The Nth such assignment always yields the
-	// same channel handle N across every bacterium and every colony step,
-	// because every bacterium executes the identical program text in the
-	// same order: no name tracking or persisted registry is needed for
-	// idempotent, alias-free channel identity.
+	// this pass, in source order. The Nth assignment yields handle N within
+	// one program. BacteriaColony separately rejects that ordinal being
+	// declared by a different program scope in the same replication.
 	unsigned int signalDeclarationOrdinal = 0;
 	// Highest signal channel handle already established in an EARLIER pass
 	// (e.g. a global "signal(...)" declaration executed by the colony-wide
@@ -42,6 +40,9 @@ struct GroProgramRuntimeState {
 	// own persistent channel bookkeeping; it defaults to 0 (no prior
 	// history) for callers that run self-contained IR with no such colony.
 	unsigned int knownSignalChannelCount = 0;
+	// Stable source scope for signal() declarations. All passes of one named
+	// program share this identity; global prelude declarations use "<global>".
+	std::string signalDeclarationScope;
 };
 
 /*!
@@ -119,6 +120,7 @@ public:
 			std::vector<std::string> arguments;
 			std::vector<double> numericArguments;
 			std::string expressionText;
+			std::string signalDeclarationScope;
 			std::size_t previewRows = 0;
 			std::size_t previewColumns = 0;
 		};
@@ -146,6 +148,8 @@ public:
 public:
 	/*! \brief Executes supported commands and reports unsupported commands. */
 	ExecutionResult execute(const GroProgramIr& ir, GroProgramRuntimeState& state) const;
+	/*! Reject structurally conditional signal declarations across all IR scopes. */
+	static bool validateSignalDeclarationPlacement(const GroProgramIr& ir, std::string& errorMessage);
 	/*! \brief Evaluates one scalar Gro expression against one runtime state. */
 	static bool evaluateExpression(const std::string& expressionText,
 	                               const GroProgramRuntimeState& state,

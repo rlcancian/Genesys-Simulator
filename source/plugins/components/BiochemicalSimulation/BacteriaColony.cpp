@@ -590,6 +590,10 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	}
 
 	GroProgramIr ir = GroProgramCompiler().compile(parseResult.ast);
+	if (!GroProgramRuntime::validateSignalDeclarationPlacement(ir, result.errorMessage)) {
+		result.succeeded = false;
+		return result;
+	}
 	if (ir.isProgramBlock() && ir.programName == "bacterium") {
 		_executeBacteriumScopedGroProgram(ir, result);
 		return result;
@@ -770,6 +774,7 @@ void BacteriaColony::_initBetweenReplications() {
 	_legacyChannelDiffusionRate = 0.0;
 	_legacyChannelDecayRate = 0.0;
 	_legacyChannelCoefficientsDeclared = false;
+	_legacyChannelDeclarationScope.clear();
 	_legacyChannelCoefficientMismatchWarned = false;
 	std::string signalErrorMessage;
 	(void)_resetRuntimeSignalField(signalErrorMessage);
@@ -1219,9 +1224,17 @@ unsigned int BacteriaColony::_computeLocalBacteriaCount(unsigned int x, unsigned
 }
 
 bool BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate,
+                                                   const std::string& declarationScope,
                                                    std::string& errorMessage) {
+	const std::string currentScope = declarationScope.empty() ? "<global>" : declarationScope;
 	if (channel < 2) {
 		if (channel == 1) {
+			if (_legacyChannelCoefficientsDeclared && _legacyChannelDeclarationScope != currentScope) {
+				errorMessage = "Signal channel 1 is independently declared in program \"" + currentScope +
+				               "\" after program \"" + _legacyChannelDeclarationScope +
+				               "\"; declare the shared channel once in the global program scope and consume its handle. ";
+				return false;
+			}
 			if (_legacyChannelCoefficientsDeclared &&
 			    (std::fabs(_legacyChannelDiffusionRate - diffusionRate) > 1e-9 ||
 			     std::fabs(_legacyChannelDecayRate - decayRate) > 1e-9)) {
@@ -1230,6 +1243,7 @@ bool BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double
 				return false;
 			}
 			_legacyChannelCoefficientsDeclared = true;
+			_legacyChannelDeclarationScope = currentScope;
 			// Problem B (Phase 3, authorized precedence): always record the
 			// declared coefficients, regardless of whether a
 			// BacteriaSignalGrid is attached; _applySignalFieldStep()
@@ -1260,6 +1274,12 @@ bool BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double
 		_additionalSignalChannels.resize(index + 1);
 	}
 	AdditionalSignalChannel& additionalChannel = _additionalSignalChannels[index];
+	if (additionalChannel.coefficientsDeclared && additionalChannel.declarationScope != currentScope) {
+		errorMessage = "Signal channel " + std::to_string(channel) + " is independently declared in program \"" +
+		               currentScope + "\" after program \"" + additionalChannel.declarationScope +
+		               "\"; declare the shared channel once in the global program scope and consume its handle. ";
+		return false;
+	}
 	if (additionalChannel.coefficientsDeclared &&
 	    (std::fabs(additionalChannel.diffusionRate - diffusionRate) > 1e-9 ||
 	     std::fabs(additionalChannel.decayRate - decayRate) > 1e-9)) {
@@ -1268,6 +1288,7 @@ bool BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double
 		return false;
 	}
 	additionalChannel.coefficientsDeclared = true;
+	additionalChannel.declarationScope = currentScope;
 	additionalChannel.diffusionRate = diffusionRate;
 	additionalChannel.decayRate = decayRate;
 	const std::size_t requiredSize = static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight());
@@ -1577,6 +1598,7 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			_legacyChannelDiffusionRate = 0.0;
 			_legacyChannelDecayRate = 0.0;
 			_legacyChannelCoefficientsDeclared = false;
+			_legacyChannelDeclarationScope.clear();
 			_legacyChannelCoefficientMismatchWarned = false;
 			std::string signalErrorMessage;
 			(void)_resetRuntimeSignalField(signalErrorMessage);
@@ -1756,6 +1778,7 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			}
 			const unsigned int channel = static_cast<unsigned int>(std::llround(mutation.numericArguments[0]));
 			if (!_ensureAdditionalSignalChannel(channel, mutation.numericArguments[1], mutation.numericArguments[2],
+			                                    mutation.signalDeclarationScope,
 			                                    errorMessage)) {
 				return false;
 			}
