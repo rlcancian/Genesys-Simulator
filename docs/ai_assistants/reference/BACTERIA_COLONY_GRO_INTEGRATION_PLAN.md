@@ -659,11 +659,12 @@ small, single-concern commit.
    "no" in §7 remain unimplemented by decision.
 3. **Signal channels** — done 2026-10-08 (`58783cba`, `5c1df906`, plus the
    handle-validation/leak/resize closeout in this pass): `signal(kdiff,
-   kdeg)` assigns each declaration a stable ordinal handle (1st, 2nd, ... in
+   kdeg)` assigns each declaration an ordinal handle (1st, 2nd, ... in
    program order; `GroProgramRuntimeState::signalDeclarationOrdinal`,
-   reset every execution pass and re-derived deterministically since every
-   bacterium runs the identical program text in the same order — no name
-   registry needed). Handle 0 (no explicit handle, pre-multi-channel raw-IR
+   reset every execution pass). `BacteriaColony` also records the declaring
+   source scope for each ordinal during a replication so independent named
+   programs cannot silently reuse the same handle; this is per-channel
+   runtime metadata, not a symbol registry. Handle 0 (no explicit handle, pre-multi-channel raw-IR
    convention) and handle 1 (the first `signal(...)` declaration) both
    resolve to the colony's pre-existing single field (`_signalField`/
    `"local_signal"`), so every pre-multi-channel program, fixture and test
@@ -784,15 +785,20 @@ small, single-concern commit.
      the per-pass ordinal. Reset-between-replications handle stability
      (`BacteriaColonyKeepsGlobalSignalHandleStableAcrossReplications`) was
      already correct before this fix; the test locks the contract.
-   - **Signal declaration safeguards (2026-10-09):** ordinal handles are
-     stable only for unconditional declarations in the supported program
-     scope. `signal(...)` inside an `if` branch is rejected with a runtime
-     diagnostic. Programs may share a channel ordinal when their declared
-     coefficients agree; conflicting coefficients for the same ordinal
-     during one replication fail explicitly. When multiple named programs
-     use a shared channel, declare it once in the global program scope and
-     consume the shared handle from those programs. No symbol registry or
-     Gro syntax was added.
+   - **Signal declaration safeguards (2026-10-09):** only unconditional
+     declarations are supported. A structural IR walk rejects `signal(...)`
+     anywhere inside `thenCommands` or `elseCommands`, at any nesting depth,
+     before evaluating conditions; this includes branches that are currently
+     false. Repeated execution of one `program bacterium()` or one named
+     program shares that program's ordinal handles across its bacteria. A
+     different named program cannot independently declare an already-owned
+     ordinal, even with identical coefficients; differing coefficients for
+     an ordinal in one scope also remain an error. The diagnostic directs
+     authors to declare shared channels once in global scope and consume the
+     resulting handles in named programs. Inspection found no tracked `.gen`
+     fixture using `signal()` and the existing global-sharing / single-program
+     tests remain valid. The guard stores only each channel's declaration
+     scope; no symbol registry or Gro syntax was added.
    - Validated after the correction round: `tests-unit`/`tests-kernel-unit`
      1861/1863 executed, 0 failed, 4 preexisting disabled, same 2
      preexisting unrelated `PropertyEditorDoubleCommit` locale failures;
@@ -814,10 +820,28 @@ small, single-concern commit.
    check or a regression introduced here. None of the three fixture files was
    edited, and the serializer and `.gen` format were not changed.
 
-   The signal identity safeguard is covered by RED/GREEN tests for conditional
-   declaration rejection and conflicting channel coefficients across named
-   programs. Matching shared declarations remain supported. Phase 4 remains
-   **not started**; the existing relaxation equation was not reformulated.
+   **Final identity review (2026-10-09):** RED reproduction at `fb4e7635`
+   used two separately named programs, each declaring `signal(0,0)` and
+   emitting 5 and 7 at separate seeded coordinates. Execution succeeded;
+   both values appeared in the legacy handle-1 field and handle 2 stayed zero,
+   proving silent aliasing despite independent declarations. The same tests
+   confirmed that two bacteria running one `program bacterium()` declaration
+   share its channel and that two named programs consuming global handles
+   remain independent. The equal-rate reproducer is now a rejection test with
+   an actionable global-scope diagnostic; the different-rate case is also
+   rejected. A conditional declaration in `if(false)` was accepted before the
+   IR walk and is now rejected alongside the true-branch case.
+
+   Final local validation on this revision: focused signal/runtime tests
+   passed 8/8; full `tests-unit` and `tests-kernel-unit` each passed 1,877
+   runnable tests with 0 failures and 4 disabled; `tests-smoke` passed 3/3;
+   the `gui-app` build succeeded. `scripts/validate-ai-docs.py` and
+   `git diff --check` passed. These are local results; no CI run was triggered
+   or inferred. No `.gen` fixture or serializer was changed. The previous
+   baseline investigation of `Smart_BacteriaColony_GRO.gen` remains separate:
+   its loader returned null both at `5cb05b3` and at the prior Phase 3 build;
+   this task does not address that issue. The existing relaxation equation
+   remains unchanged and Phase 4 is **not started**.
 4. **Reaction-diffusion review**: revisit the existing 4-neighbor/no-`dt`
    field formulation only as needed to support multi-channel fields from
    phase 3; document whatever formulation is kept or changed, with the
@@ -885,10 +909,11 @@ Closed, not open: adoption of an external physics engine (§2 decisions
 4/5 — do not reopen).
 
 Genuinely open/to watch:
-- Conditional `signal(...)` declarations and conflicting coefficients for
-  one channel ordinal are rejected by the selected subset; see the Phase 3
-  safeguard note in §17. Unconditional programs and matching shared channel
-  declarations remain supported.
+- Conditional `signal(...)` declarations and independent declarations of one
+  ordinal by different named programs are rejected by the selected subset;
+  see the Phase 3 safeguard note in §17. Unconditional declarations within
+  one program and global handles consumed by multiple programs remain
+  supported.
 - Phase 4 (reaction-diffusion formulation review) remains **not started**.
   The current discrete relaxation equation, its boundary behavior, and
   any use of `dt` remain outside this Phase 3 decision.
