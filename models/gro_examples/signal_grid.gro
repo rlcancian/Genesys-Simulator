@@ -1,0 +1,78 @@
+////////////////////////////////////////////////////////////////////////////
+//
+//   gro
+//
+//   Copyright (c) 2011-2012 Eric Klavins, University of Washington
+//   For more information, email klavins@uw.edu
+//
+//   This program is free software; you can redistribute it and/or
+//   modify it under the terms of the GNU General Public License
+//   as published by the Free Software Foundation; either version 2
+//   of the License, or (at your option) any later version.
+//
+//   This program is distributed in the hope that it will be useful,
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//   GNU General Public License for more details.
+//
+//   You should have received a copy of the GNU General Public License
+//   along with this program; if not, write to the Free Software
+//   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+//
+//
+
+include gro
+
+b := 20; // number of pixels in a superpixel
+
+// set up the signal grid
+set ( "signal_grid_width", 16*b );
+set ( "signal_grid_height", 16*b );
+set ( "signal_element_size", b );
+
+// declare a signal
+s := signal ( 0, 0 );
+
+// define a cool bitmap
+bitmap := {
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0 },
+ { 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0 },
+ { 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0 },
+ { 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+};
+
+// write the bitmap to world as a signal
+foreach p in cross (range 16) (range 16) do
+  set_signal ( s, p[0]*b-8*b, p[1]*b-8*b, 20*bitmap[p[1]][p[0]] )
+end;
+
+// define a program that tell cells to eat the signal
+
+k1 := 0.0015;
+k2 := 0.0003;
+
+program p() := {
+
+  x := 0;
+
+  true : {
+    x := get_signal ( s ),
+    set ( "ecoli_growth_rate", k1*x ),
+    absorb_signal ( s, k2*x )
+  }
+
+};
+
+ecoli ( [ theta := 0.78 ], program p() );

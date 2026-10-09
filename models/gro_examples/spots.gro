@@ -1,0 +1,100 @@
+////////////////////////////////////////////////////////////////////////////
+//
+//   gro
+//
+//   Copyright (c) 2011-2012 Eric Klavins, University of Washington
+//   For more information, email klavins@uw.edu
+//
+//   This program is free software; you can redistribute it and/or
+//   modify it under the terms of the GNU General Public License
+//   as published by the Free Software Foundation; either version 2
+//   of the License, or (at your option) any later version.
+//
+//   This program is distributed in the hope that it will be useful,
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//   GNU General Public License for more details.
+//
+//   You should have received a copy of the GNU General Public License
+//   along with this program; if not, write to the Free Software
+//   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+//
+//
+
+include gro
+
+set ("dt",0.05);
+//set ("ecoli_growth_rate",0.00);
+
+rS := signal (0.3,1); //1.5,0.05
+gS := signal (3,0.5);//1.5,0.05
+
+program g1() := {
+
+rfp := 0;
+gfp := 0;
+cfp := 0;
+
+rate(0.05*rfp) : {rfp := rfp-1};
+
+p :=[state := 0, thRS := 1, thGS := 0.5]; // 1 1 
+
+(p.state = 0) & rate(0.01) & (get_signal(gS) < p.thGS) : { // 0.001
+	p.state := 1;
+}; 
+
+(p.state = 1) : { 
+	emit_signal (rS,70); //10
+	emit_signal (gS,100);
+	set ("ecoli_growth_rate",0.001);
+	gfp := 100;
+};
+
+(p.state = 0) & ( get_signal (rS) > p.thRS ) : {	
+	p.state := 3;
+};
+ 
+ (p.state = 3) : {
+ 	rfp := rfp + 1;
+ 	p.state := if ( get_signal (rS) < p.thRS) then 0 else 3 end;
+ };
+		
+};
+
+
+
+program report() := {
+	needs rfp;
+	selected : {
+		message(1,tostring(id) <> " rfp: " <> tostring(rfp) <> " rS:" <> tostring(get_signal(rS)) <> " gS:" <> tostring(get_signal(gS)))
+	};
+
+};
+
+program movie ( T, path ) := {
+
+  t := 0;
+  n := 0;
+
+  true : { t := t + dt};
+
+  t > T : { 
+    snapshot ( path <> "cheetahstat3_" <> tostring(n) <> ".tif" );
+    n := n + 1;
+    t := 0;
+  };
+
+};
+
+program p() := g1() + report() sharing gfp,cfp,rfp;
+program pp() := p() + movie(5,"./") sharing gfp,cfp,rfp;
+
+
+ecoli([x := 0,y:=0], program p());
+
+//program p() := g1() + report() sharing rfp;
+//foreach q in range 900 do
+//	ecoli ([x := rand(400)-200, y := rand(400)-200], program p())
+//end;
+start();
+	

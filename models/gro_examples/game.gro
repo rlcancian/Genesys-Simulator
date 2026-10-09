@@ -1,0 +1,54 @@
+////////////////////////////////////////////////////////////////////////////
+// 
+//   gro 
+// 
+//   Copyright (c) 2011-2012 Eric Klavins, University of Washington
+//   For more information, email klavins@uw.edu
+// 
+//   This program is free software; you can redistribute it and/or
+//   modify it under the terms of the GNU General Public License
+//   as published by the Free Software Foundation; either version 2
+//   of the License, or (at your option) any later version.
+// 
+//   This program is distributed in the hope that it will be useful,
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//   GNU General Public License for more details.
+// 
+//   You should have received a copy of the GNU General Public License
+//   along with this program; if not, write to the Free Software
+//   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+// 
+// 
+
+include gro
+
+set ( "dt", 0.1 );
+
+message ( 2, "Select cells to kill them." );
+message ( 2, "Keep the population alive but under 100 cells." );
+message ( 2, "Use Reload and Start/Stop to restart the game." );
+
+program p() := {
+
+  selected : { die() }
+
+};
+
+
+
+program main() := {
+
+ecoli ( [ x := 0, y := 0 ], program p() );
+
+  stats ( "pop_size" ) > 100 : {
+    message ( 0, "Unable to contain outbreak. You lose!" ),
+    stop()
+  }
+
+  stats ( "pop_size" ) = 0 : {
+    message ( 0, "Your cells all died! You lose!" ),
+    stop()
+  }
+
+};

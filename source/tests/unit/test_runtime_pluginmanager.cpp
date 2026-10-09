@@ -2926,13 +2926,96 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesGroSeedsBeforeFirstGuiD
     ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
     EXPECT_EQ(colony->getBacteriumState(0).programName, "leader");
     EXPECT_EQ(colony->getBacteriumState(1).programName, "follower");
-    EXPECT_EQ(colony->getBacteriumState(1).gridY, 10u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(1).positionY, 10.0);
+    EXPECT_EQ(colony->getBacteriumState(1).gridY, 20u);
 
     GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
     EXPECT_TRUE(result.succeeded) << result.errorMessage;
     EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.t"), 0.1);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.mode"), 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesContinuousCenteredGroSeedCoordinates) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ContinuousSeedCoordinates");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program main() { set_signal(0, -1.5, 1, 5); } "
+        "program bacterium() { observed := get_signal(); } "
+        "ecoli([x:=0.25, y:=-0.75], program bacterium()); "
+        "ecoli([x:=-1.5, y:=1.0], program bacterium());");
+
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_ContinuousSeeds");
+    ASSERT_NE(signalGrid, nullptr);
+    signalGrid->setWidth(5);
+    signalGrid->setHeight(5);
+    signalGrid->setDiffusionRate(0.0);
+    signalGrid->setDecayRate(0.0);
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ContinuousSeeds");
+    ASSERT_NE(colony, nullptr);
+    colony->setSignalGrid(signalGrid);
+    colony->setGroProgram(program);
+    colony->setInitialPopulation(0);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    const auto& first = colony->getBacteriumState(0);
+    const auto& second = colony->getBacteriumState(1);
+    EXPECT_DOUBLE_EQ(first.positionX, 0.25);
+    EXPECT_DOUBLE_EQ(first.positionY, -0.75);
+    EXPECT_EQ(first.gridX, 2u);
+    EXPECT_EQ(first.gridY, 1u);
+    EXPECT_DOUBLE_EQ(second.positionX, -1.5);
+    EXPECT_DOUBLE_EQ(second.positionY, 1.0);
+    EXPECT_EQ(second.gridX, 1u);
+    EXPECT_EQ(second.gridY, 3u);
+
+    const GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    ASSERT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(1, 3), 5.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "observed"), 5.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyFitsCenteredGroSeedsWhenGridDimensionsAreAutomatic) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_AutomaticCenteredSeeds");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() {} "
+        "ecoli([x:=-2.25,y:=-1.5], program bacterium()); "
+        "ecoli([x:=2.25,y:=1.5], program bacterium());");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_AutomaticCenteredSeeds");
+    ASSERT_NE(colony, nullptr);
+    colony->setInitialPopulation(0);
+    colony->setGroProgram(program);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    EXPECT_EQ(colony->getGridWidth(), 6u);
+    EXPECT_EQ(colony->getGridHeight(), 4u);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).positionX, -2.25);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).positionY, -1.5);
+    EXPECT_EQ(colony->getBacteriumState(0).gridX, 0u);
+    EXPECT_EQ(colony->getBacteriumState(0).gridY, 0u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(1).positionX, 2.25);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(1).positionY, 1.5);
+    EXPECT_EQ(colony->getBacteriumState(1).gridX, 5u);
+    EXPECT_EQ(colony->getBacteriumState(1).gridY, 3u);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesMainProgramBeforeSeededBacteriaPrograms) {

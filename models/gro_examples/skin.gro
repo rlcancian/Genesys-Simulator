@@ -1,0 +1,67 @@
+////////////////////////////////////////////////////////////////////////////
+// 
+//   gro 
+// 
+//   Copyright (c) 2011-2012 Eric Klavins, University of Washington
+//   For more information, email klavins@uw.edu
+// 
+//   This program is free software; you can redistribute it and/or
+//   modify it under the terms of the GNU General Public License
+//   as published by the Free Software Foundation; either version 2
+//   of the License, or (at your option) any later version.
+// 
+//   This program is distributed in the hope that it will be useful,
+//   but WITHOUT ANY WARRANTY; without even the implied warranty of
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//   GNU General Public License for more details.
+// 
+//   You should have received a copy of the GNU General Public License
+//   along with this program; if not, write to the Free Software
+//   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+// 
+// 
+
+include gro
+
+set ( "dt", 0.2 );
+
+UNDEC := 0;
+LEADER := 1;
+FOLLOWER := 2;
+
+s := signal ( 1, 0.25 );
+
+program p() := {
+
+  p := [ m := UNDEC, t := 0 ];
+  gfp := 0;
+  rfp := 0;
+
+  // break symmetry
+  p.m = UNDEC & just_divided & !daughter : { p.m := LEADER }
+  p.m = UNDEC & daughter : { p.m := FOLLOWER }
+
+  // the leader emits a mater control signal
+  p.m = LEADER : {
+    set ( "ecoli_growth_rate", 0 ),
+    emit_signal ( s, 100 ),
+    gfp := 100
+  }
+
+  p.m = FOLLOWER : { // this just makes cells a pretty color
+    rfp := 50*volume / ( 1 + get_signal(s) )
+  }
+
+  // followers die if they are too far away from the leader
+  // the time check is to make sure the first daughter doesn't
+  // die before the leader can send out the signal
+  p.m = FOLLOWER & get_signal ( s ) < 0.01 & p.t > 50 : {
+    die()
+  }
+
+  true : { p.t := p.t + dt }
+
+};
+
+ecoli ( [], program p() );
+  
