@@ -1129,7 +1129,7 @@ above a phenomenological, non-conservative relaxation.
 |---|---|---|
 | **M1 — Gro e sinais** | **Cycle 1 complete.** The selected frontend subset, handles, channel independence, Phase 3 coefficient precedence and Phase 4 characterization remain covered. Gro declarations and attached-grid settings now reject non-finite/out-of-range coefficients; the approved phenomenological contract is recorded. | Keep existing signal regressions green while later cycles integrate colony and viewer behavior. |
 | **M2 — Dinâmica bacteriana** | **In progress (Cycles 2–5 complete).** Gro seed coordinates remain continuous and centered; zero-growth/zero-step growth invariants, optional persisted threshold division, centralized volume-conserving division, `speed*dt` movement, kernel-sampler `tumble`, boundary reflection, and bounded geometric separation are implemented and covered by focused runtime tests. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. |
-| **M3 — Integração e GUI** | **Partial foundation.** Gro execution, signal changes and colony stepping exist. Event calendar and viewer call the same execution method, but a manual viewer step does not advance model time; the state/time contract and interaction with calendar replay are not fully validated. The viewer exists, but corpus-E fidelity and combined A–E end-to-end coverage remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
+| **M3 — Integração e GUI** | **In progress (Cycles 6–7 complete).** The calendar and manual viewer use the same colony state; calendar calls step each signal once, manual execution leaves model time unchanged, and viewer manual steps are guarded while the simulation is running or paused. A Qt6 channel selector now drives the heatmap for the legacy or an additional channel, and a small Gro emitter/receiver scenario proves two independent signals. Combined corpus A–E acceptance and interactive GUI evidence remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
 | **M4 — Validação e entrega** | **Partial.** Gro persistence round-trip infrastructure exists. Growth and lifecycle `.gen` fixtures have an executed load test. The plan records `Smart_BacteriaColony_GRO.gen` loader failure on both Phase 3 reference and implementation branch; this was not a passing compatibility result. Completion-level current CI and performance evidence are not established by the historical snapshots. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed or its support status is explicitly decided; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
 
 ### 22.3 Crosswalk: historical phases 0–13 to M1–M4
@@ -1418,6 +1418,27 @@ will be recorded with Cycle 7/9 validation.
   viewer uses the same runtime state.
 - **Dependencies/risks:** Cycles 2–6. Do not create another renderer, clock
   or physics model.
+
+**Cycle 7 result (2026-10-09): COMPLETE.** The Qt6 viewer now has a separate
+signal selector that lists the legacy field and each currently available
+additional channel by stable handle. It rebuilds the list when a selected
+colony declares channels or resets; an unavailable selection falls back to
+Signal 1. The heatmap and its range, selected-bacterium local signal, and
+neighbor signal summary all use the selected field. Bacteria remain rendered
+over the map; the existing legacy matrix preview is labeled as such. A small
+GenESyS-authored runtime scenario declares two global channels, executes two
+emitters and a receiver in one cell, confirms both reads see the emitted
+value before relaxation, then checks distinct final fields (8 and 4) after
+the second channel's 0.5 decay. The test also checks visible channel count;
+the existing reset regression verifies the count returns to the legacy
+channel after replication reset.
+
+Local validation: `cmake --build --preset gui-app -j4` passed after the Qt6
+selector changes; the focused scenario and reset tests passed; all
+`RuntimePluginManagerClassTest` tests passed, 103/103. This confirms
+compilation and runtime-field selection plumbing, not an interactive GUI
+acceptance test or a screenshot. No original Gro example or existing `.gen`
+fixture was changed.
 
 #### Cycle 8 — Persistence and complete demonstration
 
