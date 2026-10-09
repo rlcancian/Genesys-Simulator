@@ -354,6 +354,27 @@ result as a validated public yeast whole-cell model.
 \label{fig:pathway-stress-example}
 \end{figure}
 
+\subsection{Gro-inspired bacteria colony signal channels}
+
+The experimental \texttt{BacteriaColony} runtime assigns ordinal handles to
+unconditional \texttt{signal(kdiff,kdeg)} declarations. The first channel uses
+the legacy colony signal field. When no \texttt{BacteriaSignalGrid} is
+attached, that field uses the first declaration's diffusion and decay
+coefficients. When a grid is attached, its persisted coefficients remain
+authoritative; a differing first-channel declaration produces an
+informational trace diagnostic once per replication. Further channels use
+their own declared coefficients and independent runtime fields.
+
+Declarations inside conditional branches are rejected because their execution
+would make ordinal handles unstable. Programs sharing a channel ordinal must
+declare matching coefficients; a conflict fails with a diagnostic. For named
+programs that share channels, place the declarations in the global program
+scope and use the shared handles in each program. These fields and coefficients
+are runtime state and do not alter the \texttt{.gen} format. This describes
+software behavior only; it is not evidence of biological or numerical
+validation. Phase 4's review of the existing relaxation equation remains
+separate and has not started.
+
 \section{Evidence and validation}
 
 The current whole-cell and biochemical code is not only descriptive; it is also
