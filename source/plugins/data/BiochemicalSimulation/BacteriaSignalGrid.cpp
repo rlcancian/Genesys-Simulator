@@ -9,6 +9,7 @@
 #include "../../../kernel/simulator/model/Model.h"
 
 #include <cctype>
+#include <cmath>
 #include <sstream>
 #include <stdexcept>
 
@@ -245,12 +246,12 @@ bool BacteriaSignalGrid::_check(std::string& errorMessage) {
 		errorMessage += "BacteriaSignalGrid dimensions must be greater than zero. ";
 		resultAll = false;
 	}
-	if (_diffusionRate < 0.0 || _diffusionRate > 1.0) {
-		errorMessage += "BacteriaSignalGrid diffusion rate must stay in the [0,1] interval. ";
+	if (!std::isfinite(_diffusionRate) || _diffusionRate < 0.0 || _diffusionRate > 1.0) {
+		errorMessage += "BacteriaSignalGrid diffusion rate must be a finite value in the [0,1] interval. ";
 		resultAll = false;
 	}
-	if (_decayRate < 0.0 || _decayRate > 1.0) {
-		errorMessage += "BacteriaSignalGrid decay rate must stay in the [0,1] interval. ";
+	if (!std::isfinite(_decayRate) || _decayRate < 0.0 || _decayRate > 1.0) {
+		errorMessage += "BacteriaSignalGrid decay rate must be a finite value in the [0,1] interval. ";
 		resultAll = false;
 	}
 
