@@ -428,6 +428,89 @@ Boundary cells are updated with a smaller neighbor count (not frozen, not
 reflected, not periodic). This describes the legacy field that handle 0/1
 still use unchanged.
 
+**Phase 4 numerical characterization (2026-10-09):** on the current
+implementation branch, for a rectangular `W × H` array `u^n[x,y]`, define
+`N(x,y)` as the in-bounds orthogonal (left/right/up/down) neighbors and
+`m(x,y)=|N(x,y)|`. With per-step Gro/grid coefficients `α=diffusionRate`
+and `β=decayRate`, the exact simultaneous update is
+```
+r[x,y] = u^n[x,y] + α * (sum(u^n[q] for q in N(x,y))/m(x,y) - u^n[x,y])  if m(x,y)>0
+       = u^n[x,y]                                                               if m(x,y)=0
+u^(n+1)[x,y] = max(0, r[x,y] * (1-β))
+```
+Every right-hand-side value comes from the pre-step field; the new field is
+committed after all cells are visited. A 1×1 grid therefore has no diffusion
+term, only degradation. There is no explicit boundary condition object: the
+finite grid truncates the neighborhood and divides by the local degree. This
+is a degree-normalized graph averaging operator, not a regular-grid
+finite-difference Laplacian or a symmetric face-flux update.
+
+The colony processes Gro emissions/absorptions/sets during the bacterium
+loop, then applies each field's diffusion/degradation operator once after
+that loop. Legacy handle 0/1 uses the attached `BacteriaSignalGrid` rates if
+present, otherwise the first declared `signal(kdiff,kdeg)` rates (zero/zero
+if no declaration ran); each additional channel is updated once using its
+own declaration rates. Emission thus participates in the same step's field
+update. The signal operator does not read `simulationStep`, the model time
+unit, or a cell-size parameter. Accordingly, `α` and `β` are dimensionless
+fractions per colony update in the implementation; the identifiers “rate”
+do not establish physical units. `simulationStep` remains relevant to other
+colony behaviors and Gro's `dt`, but changing it alone leaves this field
+update unchanged.
+
+The current edge averaging is not mass-conservative under the ordinary
+unweighted sum. For a 3×3 center impulse of 10 with `α=0.5`, `β=0`, the
+center becomes 5 and each orthogonal neighbor becomes 5/3; total concentration
+becomes 35/3. For a corner impulse of 10 on 3×3 the total becomes 25/3.
+On 2×2, every cell has degree 2, so the same corner impulse redistributes
+to `[5, 2.5; 2.5, 0]` and the sum remains 10. These different outcomes are
+explained by the variable degree, not source/sink terms. On a connected
+non-isolated grid with `β=0`, the degree-weighted sum `Σ m(x,y)u[x,y]` is
+invariant under this random-walk relaxation; the ordinary concentration sum
+is not. With `α,β ∈ [0,1]`
+and nonnegative finite input, the local relaxation is a convex combination
+followed by multiplication by a factor in `[0,1]`; it preserves
+nonnegativity and does not amplify the maximum norm. This is a bounded
+per-step heuristic under that coefficient range, not evidence of
+consistency/convergence to a physical PDE. The `BacteriaSignalGrid` check
+rejects finite out-of-range values using comparisons, but does not explicitly
+reject non-finite values; the Gro declaration path also has no interval or
+finiteness guard. For out-of-range Gro values, the convexity/positivity
+argument no longer applies; the final `max(0,...)` clips negatives and can
+alter mass or produce nonphysical growth. NaN/infinity therefore remain an
+input-validation risk, not an accepted scientific behavior.
+
+**Scientific alternatives and decision gate (Phase 4; no equation changed):**
+
+| Alternative | Equation and interpretation | Numerical properties and cost | API, Gro, persistence impact |
+|---|---|---|---|
+| A — keep relaxation | The exact graph update above; `α` and `β` are empirical dimensionless fractions per update. | O(WH) work and O(WH) scratch storage per field; bounded and positive for finite `0≤α,β≤1`. Not ordinary mass-conserving diffusion on irregular-degree boundaries; independent of `dt` and cell size. | Smallest change: document units/interval, validate coefficients and test its graph semantics. Existing Gro values and `.gen` structure stay compatible; changing `simulationStep` does not change field evolution. It must be described as a phenomenological relaxation, not a calibrated physical reaction-diffusion PDE. |
+| B — conservative grid diffusion | For uniform spacing `h`, explicit no-flux finite volumes give `u_p^(n+1)=u_p^n + (D Δt/h²) Σ_{q~p}(u_q^n-u_p^n) - λ Δt u_p^n`; missing exterior faces carry zero flux. | Shared face fluxes cancel in the sum, so diffusion conserves total amount for equal cell volumes when reaction is absent. O(WH) per explicit step. A sufficient positivity bound is `4DΔt/h² + λΔt ≤ 1`; a conservative spectral-stability bound is `8DΔt/h² + λΔt ≤ 2`. Smaller `h` or larger `Δt` can require substeps. | Requires cell spacing and actual elapsed time in the signal API/configuration; existing `signal(kdiff,kdeg)` values need a migration/interpretation decision. Grid data could remain structurally serializable, but existing numeric behavior changes. Explicitly choose boundary behavior (zero flux is proposed here). |
+| C — physical reaction-diffusion | Specify `∂u/∂t = D∇²u - λu + S` with calibrated `D` (length²/time), `λ` (1/time), source units, domain spacing, and boundary conditions; discretize in space and integrate in time. | Explicit integration has a timestep stability/positivity limit related to `DΔt/h²` and `λΔt`; adaptive substeps or an implicit positive solver can relax the stability restriction, with more computation and solver/error-control complexity. | Requires defined physical units, cell spacing, time-unit conversion and coefficient meaning. Existing Gro and persisted grid values cannot retain their old per-step semantics without an explicit migration/version policy. `.gen` format need not change mechanically, but semantic compatibility cannot be claimed merely because fields still load. |
+
+Alternative A is the only one justified by the current API and persisted
+values: no source establishes length/time units or a calibrated diffusion
+constant. Recommendation for this closure review: keep the current equation
+only as a documented dimensionless per-step relaxation, and require
+maintainer approval before selecting B or C or assigning physical meaning
+to the current coefficients. If the scientific acceptance criterion
+requires unweighted mass conservation or physical time/space scaling, A does
+not meet it and that criterion must be settled before an equation change.
+This distinction follows standard explicit heat-equation stability
+analysis and finite-volume flux conservation (see [MIT notes on 2D explicit
+heat finite differences](https://dspace.mit.edu/bitstream/handle/1721.1/35256/22-00JSpring-2002/NR/rdonlyres/Nuclear-Engineering/22-00JIntroduction-to-Modeling-and-SimulationSpring2002/55114EA2-9B81-4FD8-90D5-5F64F21D23D0/0/lecture_16.pdf)
+and the [TU Delft finite-volume introduction](https://mude.citg.tudelft.nl/book/2024/fvm/fvm.html)).
+
+Characterization tests added at `source/tests/unit/test_runtime_pluginmanager.cpp`
+cover 1×1, 2×2 and 3×3 grids; uniform, center-impulse and corner-impulse
+fields; zero diffusion/degradation; complete degradation; intermediate
+coefficients; different `simulationStep` values; and distinct numeric
+evolution for two independently configured channels. These tests lock down
+legacy behavior, including the non-conservative edge counterexamples; they
+are not scientific validation of a continuum model. They passed locally on
+2026-10-09. The full preset results and exact build environment are recorded
+under §17 item 4 after completion of the regression run.
+
 **Multi-channel addressing: done 2026-10-08 (§17 phase 3).** `signal(
 kdiff,kdeg)` creates/resolves a real, independently addressable channel
 and returns a stable handle; `get_signal`/`emit_signal`/`absorb_signal`/
@@ -841,11 +924,27 @@ small, single-concern commit.
    baseline investigation of `Smart_BacteriaColony_GRO.gen` remains separate:
    its loader returned null both at `5cb05b3` and at the prior Phase 3 build;
    this task does not address that issue. The existing relaxation equation
-   remains unchanged and Phase 4 is **not started**.
-4. **Reaction-diffusion review**: revisit the existing 4-neighbor/no-`dt`
-   field formulation only as needed to support multi-channel fields from
-   phase 3; document whatever formulation is kept or changed, with the
-   `.gen`-fixture impact note required by §10.
+   remains unchanged; Phase 4 is now in numerical diagnosis with no production
+   equation change.
+4. **Reaction-diffusion numerical review** — diagnosis recorded 2026-10-09
+   in §10; no production equation change. The current operator is a
+   degree-normalized, dimensionless per-step graph relaxation; it is not
+   ordinary mass-conserving grid diffusion and has no `dt`/cell-spacing
+   consistency. Added independent small-grid characterization at 1×1,
+   2×2 and 3×3, including boundary mass counterexamples, uniform and impulse
+   fields, coefficient endpoints, multiple channels, and varying `dt`.
+   Local `tests-unit`: 1,878 passed/0 failed, 4 disabled;
+   `tests-kernel-unit`: 1,878 passed/0 failed, 4 disabled;
+   `tests-smoke`: 3/3 passed; `gui-app` build succeeded (no work required).
+   CMake 3.28.3/Ninja 1.11.1, GNU C++ 13.3.0, C++23 with extensions off.
+   No CI result is claimed. Alternatives A/B/C and the unresolved scientific
+   choice are in §10. The recommendation is to retain A only as an explicitly
+   phenomenological per-step operator unless conservation or physical units
+   are required; selecting B/C or assigning physical meaning to coefficients
+   requires maintainer decision before production changes. Existing tests
+   characterize current behavior (so no implementation RED/GREEN cycle was
+   applicable). No `.gen`, serializer, or model file was changed. Phase 5
+   remains not started.
 5. **Physical coordinates**: remove the shift-and-round seeding path;
    reconcile with the centered convention used by `set_signal`.
 6. **Growth/division**: remove the `0.01` minimum growth clamp (§11);
@@ -914,9 +1013,13 @@ Genuinely open/to watch:
   see the Phase 3 safeguard note in §17. Unconditional declarations within
   one program and global handles consumed by multiple programs remain
   supported.
-- Phase 4 (reaction-diffusion formulation review) remains **not started**.
-  The current discrete relaxation equation, its boundary behavior, and
-  any use of `dt` remain outside this Phase 3 decision.
+- Phase 4 diagnosis is recorded in §10 and §17 item 4. Production still uses
+  the characterized relaxation unchanged. The maintainer must decide whether
+  the selected scientific contract is (A) a dimensionless per-step heuristic,
+  (B) conservative grid diffusion with explicit no-flux boundaries, or (C) a
+  physically scaled reaction-diffusion model. Do not implement B/C or assign
+  physical units to existing coefficients before that decision. Phase 5
+  (Physical Coordinates) remains not started.
 - **Resolved for Phase 3:** signal channel fields and coefficients are
   runtime state reconstructed from declarations; no `.gen` format change or
   migration was needed. The three existing fixtures remain unchanged; the
