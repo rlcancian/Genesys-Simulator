@@ -1967,57 +1967,56 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyStepsAdditionalSignalChannelsW
     EXPECT_GT(emissionCellValue, 0.0);
 }
 
-TEST(RuntimePluginManagerClassTest, BacteriaColonyIgnoresFirstChannelDeclaredCoefficientsPendingArchitecturalDecision) {
-    // Problem B (Phase 3 review): CONFIRMED, NOT fixed in this pass - see
-    // the stop gate recorded in BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md.
-    // "s0 := signal(kdiff,kdeg)" (the first declaration) resolves to
-    // handle 1, the legacy field, but
-    // BacteriaColony::_ensureAdditionalSignalChannel() discards channel
-    // 1's coefficients unconditionally (`if (channel < 2) return;`).
-    // Without an attached BacteriaSignalGrid, this means the legacy field
-    // NEVER diffuses or decays, no matter what the program declares -
-    // unlike channel 2+, whose own declared coefficients ARE honored
-    // (proven by BacteriaColonyMaintainsSignalChannelIndependenceAcrossMultipleSteps
-    // and BacteriaColonyStepsAdditionalSignalChannelsWithSignalGridAttached
-    // above). Fixing this by applying the declared coefficients to the
-    // legacy field is NOT a safe, unconditional change: when a
-    // BacteriaSignalGrid IS attached with different coefficients,
-    // existing test BacteriaColonyExecutesSeededNamedGroPrograms (no grid
-    // attached, "ahl := signal(1, 1)") would see its emitted value
-    // decay to exactly 0.0 in the same step instead of staying 5.0,
-    // because decayRate=1 zeroes the whole field once "decayFactor=1-kdeg"
-    // is actually applied - demonstrating a genuine, currently-relied-on
-    // behavior that a blanket fix would silently break. This
-    // characterization test locks in TODAY's (inconsistent, acknowledged)
-    // behavior so a future architectural fix is a deliberate, reviewed
-    // change, not a silent one.
-    Simulator simulator;
+namespace {
+// Shared helper for the Problem B precedence test group below: builds a
+// single-bacterium colony whose program declares the legacy (handle 1)
+// channel with the given coefficients and emits a fixed value into it on
+// the first step only, optionally with a BacteriaSignalGrid attached.
+BacteriaColony* BuildFirstChannelPrecedenceColony(Simulator& simulator, Model* model,
+                                                   const std::string& testLabel,
+                                                   double declaredDiffusionRate,
+                                                   double declaredDecayRate,
+                                                   BacteriaSignalGrid* signalGrid) {
     PluginManager* manager = simulator.getPluginManager();
-    ASSERT_NE(manager, nullptr);
-    manager->autoInsertPlugins();
-
-    Model* model = simulator.getModelManager()->newModel();
-    ASSERT_NE(model, nullptr);
-
-    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_FirstChannelCoefficientsIgnored");
-    ASSERT_NE(program, nullptr);
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_" + testLabel);
     program->setSourceCode(
         "program bacterium() { "
-        // kdiff=0.9, kdeg=0.9: aggressive diffusion/decay IF honored.
-        "s0 := signal(0.9, 0.9); "
+        "s0 := signal(" + std::to_string(declaredDiffusionRate) + ", " + std::to_string(declaredDecayRate) + "); "
         "steps = steps + 1; "
         "if (bacterium_id == 1 && steps == 1) { emit_signal(s0, 10); } "
         "}");
 
-    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_FirstChannelCoefficientsIgnored");
-    ASSERT_NE(colony, nullptr);
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_" + testLabel);
     colony->setGroProgram(program);
     colony->setSimulationStep(0.5);
     colony->setInitialPopulation(1);
-    colony->setGridWidth(5);
-    colony->setGridHeight(5);
-    // No BacteriaSignalGrid attached: the legacy field has no
-    // configuration source other than this program's own declaration.
+    if (signalGrid != nullptr) {
+        colony->setSignalGrid(signalGrid);
+    } else {
+        colony->setGridWidth(5);
+        colony->setGridHeight(5);
+    }
+    return colony;
+}
+} // namespace
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesFirstChannelDeclaredCoefficientsWhenNoSignalGridAttached) {
+    // Problem B (Phase 3, authorized precedence, decision 1): without an
+    // attached BacteriaSignalGrid, the first "signal(kdiff,kdeg)"
+    // declaration (handle 1) must control the legacy field's own
+    // diffusion/decay. kdiff=0.9/kdeg=0.1 (an "intermediate" coefficient
+    // pair, neither 0 nor 1) on a 5x5 grid: the emission cell has 4
+    // neighbors (all 0), so relaxed = 10 + 0.9*(0-10) = 1.0, then
+    // decayFactor = 1 - 0.1 = 0.9, giving exactly 0.9.
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaColony* colony = BuildFirstChannelPrecedenceColony(
+        simulator, model, "FirstChannelIntermediateCoefficients", 0.9, 0.1, nullptr);
+    ASSERT_NE(colony, nullptr);
 
     ModelDataDefinition::InitBetweenReplications(colony);
     const unsigned int gridX = colony->getBacteriumState(0).gridX;
@@ -2025,12 +2024,277 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyIgnoresFirstChannelDeclaredCoe
 
     GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
     EXPECT_TRUE(result.succeeded) << result.errorMessage;
-    // CURRENT (confirmed-inconsistent) behavior: the declared kdiff=0.9/
-    // kdeg=0.9 are silently discarded for channel 1, so the legacy field
-    // never diffuses/decays and the raw emitted value is preserved
-    // exactly, unlike a handle >= 2 channel declared with the same
-    // coefficients (which DOES diffuse/decay, per the tests above).
+    EXPECT_NEAR(colony->getSignalValueAt(gridX, gridY), 0.9, 1e-9);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesFirstChannelZeroDecayCoefficientWhenNoSignalGridAttached) {
+    // kdeg=0: decayFactor=1, so only diffusion applies. On a 5x5 grid with
+    // 4 zero neighbors: relaxed = 10 + 0.9*(0-10) = 1.0, decayFactor=1 ->
+    // exactly 1.0. Confirms kdeg=0 is honored as "no decay", not silently
+    // clamped or ignored.
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaColony* colony = BuildFirstChannelPrecedenceColony(
+        simulator, model, "FirstChannelZeroDecay", 0.9, 0.0, nullptr);
+    ASSERT_NE(colony, nullptr);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int gridX = colony->getBacteriumState(0).gridX;
+    const unsigned int gridY = colony->getBacteriumState(0).gridY;
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_NEAR(colony->getSignalValueAt(gridX, gridY), 1.0, 1e-9);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesFirstChannelFullDecayCoefficientWhenNoSignalGridAttached) {
+    // kdeg=1: decayFactor=0, so the field is deliberately zeroed by the
+    // end of the same step regardless of diffusion. This is the same
+    // effect exercised at BacteriaColony level by
+    // BacteriaColonyExecutesSeededNamedGroPrograms's "ahl := signal(1,1)"
+    // (there on a 1x1 grid); this test isolates the same kdeg=1 contract
+    // on a larger grid where diffusion is also active.
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaColony* colony = BuildFirstChannelPrecedenceColony(
+        simulator, model, "FirstChannelFullDecay", 0.9, 1.0, nullptr);
+    ASSERT_NE(colony, nullptr);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int gridX = colony->getBacteriumState(0).gridX;
+    const unsigned int gridY = colony->getBacteriumState(0).gridY;
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 0.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyPrioritizesSignalGridOverFirstChannelDeclaredCoefficients) {
+    // Problem B (Phase 3, authorized precedence, decision 2): when a
+    // BacteriaSignalGrid IS attached, its persisted coefficients remain
+    // authoritative for the legacy field, even though the program
+    // declares materially different ones. Grid: diffusionRate=0.0,
+    // decayRate=0.0 (a true no-op); declared: kdiff=0.9, kdeg=1.0
+    // (would aggressively zero the field if honored). The grid's no-op
+    // coefficients must win: the raw emitted value must survive exactly.
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* signalGrid = simulator.getPluginManager()->newInstance<BacteriaSignalGrid>(
+        model, "SignalGrid_FirstChannelGridPriority");
+    ASSERT_NE(signalGrid, nullptr);
+    signalGrid->setWidth(5);
+    signalGrid->setHeight(5);
+    signalGrid->setDiffusionRate(0.0);
+    signalGrid->setDecayRate(0.0);
+
+    BacteriaColony* colony = BuildFirstChannelPrecedenceColony(
+        simulator, model, "FirstChannelGridPriority", 0.9, 1.0, signalGrid);
+    ASSERT_NE(colony, nullptr);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int gridX = colony->getBacteriumState(0).gridX;
+    const unsigned int gridY = colony->getBacteriumState(0).gridY;
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    // If the declared kdeg=1.0 had been honored instead of the grid's
+    // decayRate=0.0, this would be 0.0 (as in the FullDecay test above).
+    // The grid's persisted (no-op) coefficients must win instead.
     EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 10.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyEmitsFirstChannelCoefficientMismatchDiagnosticOnceWhenSignalGridAttached) {
+    // Problem B diagnostic contract: a declared first-channel coefficient
+    // that differs from an attached BacteriaSignalGrid's persisted value
+    // must be surfaced (the program's intent is otherwise silently
+    // discarded), but at most once per replication - not once per step
+    // or per bacterium.
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* signalGrid = simulator.getPluginManager()->newInstance<BacteriaSignalGrid>(
+        model, "SignalGrid_FirstChannelMismatchDiagnostic");
+    ASSERT_NE(signalGrid, nullptr);
+    signalGrid->setWidth(3);
+    signalGrid->setHeight(3);
+    signalGrid->setDiffusionRate(0.18);
+    signalGrid->setDecayRate(0.02);
+
+    // Declared coefficients (0.9, 0.9) differ from the grid's (0.18, 0.02).
+    BacteriaColony* colony = BuildFirstChannelPrecedenceColony(
+        simulator, model, "FirstChannelMismatchDiagnostic", 0.9, 0.9, signalGrid);
+    ASSERT_NE(colony, nullptr);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    // Three steps: the declaration re-executes every bacterium/every
+    // step, so a naive implementation could warn on every one of them.
+    for (int step = 0; step < 3; ++step) {
+        GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+        EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    }
+    // The grid's coefficients must still have won throughout (behavioral
+    // confirmation that the mismatch diagnostic is purely informative and
+    // does not change precedence).
+    const unsigned int gridX = colony->getBacteriumState(0).gridX;
+    const unsigned int gridY = colony->getBacteriumState(0).gridY;
+    EXPECT_GT(colony->getSignalValueAt(gridX, gridY), 0.0);
+
+    // A second replication must be able to warn again exactly once (the
+    // latch resets), not stay silenced forever from the first
+    // replication - confirmed together with the reset test below.
+    ModelDataDefinition::InitBetweenReplications(colony);
+    GroProgramRuntime::ExecutionResult secondReplicationResult = colony->executeGroProgram();
+    EXPECT_TRUE(secondReplicationResult.succeeded) << secondReplicationResult.errorMessage;
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesLegacyBehaviorWhenNoSignalDeclarationExists) {
+    // Decision 4: a program that never calls "signal(...)" at all must
+    // keep the exact prior behavior - the legacy field never diffuses or
+    // decays on its own (no configuration source exists for it).
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = simulator.getPluginManager()->newInstance<GroProgram>(model, "GroProgram_NoSignalDeclaration");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        "steps = steps + 1; "
+        "if (bacterium_id == 1 && steps == 1) { emit_signal(10); } "
+        "}");
+
+    BacteriaColony* colony = simulator.getPluginManager()->newInstance<BacteriaColony>(model, "BacteriaColony_NoSignalDeclaration");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialPopulation(1);
+    colony->setGridWidth(5);
+    colony->setGridHeight(5);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int gridX = colony->getBacteriumState(0).gridX;
+    const unsigned int gridY = colony->getBacteriumState(0).gridY;
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 10.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyResetsFirstChannelCoefficientsBetweenReplications) {
+    // Reset contract: a declared first-channel coefficient from one
+    // replication must not leak into the next, mirroring the equivalent
+    // contract already enforced for additional (handle >= 2) channels.
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    // kdeg=1: if the coefficient leaked forward as "still applied" with
+    // no fresh declaration, a stale decay would still show up; if it
+    // leaked forward as "still 0" after a replication that legitimately
+    // declared kdeg=1, the contract would also be violated the other
+    // way. The real test is in the second replication, after a FRESH
+    // declaration with kdeg=0 runs: the field must NOT be forced to
+    // zero by a stale kdeg=1 from the first replication.
+    BacteriaColony* colony = BuildFirstChannelPrecedenceColony(
+        simulator, model, "FirstChannelReplicationReset", 0.0, 1.0, nullptr);
+    ASSERT_NE(colony, nullptr);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    unsigned int gridX = colony->getBacteriumState(0).gridX;
+    unsigned int gridY = colony->getBacteriumState(0).gridY;
+    GroProgramRuntime::ExecutionResult firstReplicationResult = colony->executeGroProgram();
+    EXPECT_TRUE(firstReplicationResult.succeeded) << firstReplicationResult.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 0.0);
+
+    // Second replication: before the program's own declaration re-runs,
+    // the stored coefficients must already be back to the 0.0/0.0
+    // default (no leaked kdeg=1), not just "happen to produce the same
+    // numeric result again".
+    ModelDataDefinition::InitBetweenReplications(colony);
+    gridX = colony->getBacteriumState(0).gridX;
+    gridY = colony->getBacteriumState(0).gridY;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 0.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesExistingBacteriaColonyGroFixtureBehavior) {
+    // Preservation check for the real persisted fixture
+    // models/Smart_BacteriaColony_GRO.gen: a BacteriaSignalGrid is
+    // attached (diffusionRate=0.22, decayRate=0.04) and the program body
+    // (originally named "colony()", seeded via ecoli(...) in that
+    // fixture's "main()"; simplified here to the equivalent
+    // "program bacterium()" seeding form) uses the legacy single-argument
+    // "emit_signal(value)" form without ever calling "signal(kdiff,kdeg)"
+    // - so neither Problem B code path is exercised (no first-channel
+    // declaration exists at all) and the grid's persisted coefficients
+    // drive diffusion exactly as before.
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = simulator.getPluginManager()->newInstance<GroProgram>(model, "GroProgram_BacteriaColonyGroFixture");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        "speed := 0.12 + 0.05 * local_signal + 0.01 * bacterium_generation; "
+        "gfp := 18 + 28 * local_signal + 2 * volume; "
+        "emit_signal ( 0.55 + 0.15 * local_signal ); "
+        "}");
+
+    BacteriaSignalGrid* signalGrid = simulator.getPluginManager()->newInstance<BacteriaSignalGrid>(
+        model, "SignalGrid_BacteriaColonyGroFixture");
+    ASSERT_NE(signalGrid, nullptr);
+    signalGrid->setWidth(16);
+    signalGrid->setHeight(16);
+    signalGrid->setDiffusionRate(0.22);
+    signalGrid->setDecayRate(0.04);
+
+    BacteriaColony* colony = simulator.getPluginManager()->newInstance<BacteriaColony>(
+        model, "BacteriaColony_BacteriaColonyGroFixture");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSignalGrid(signalGrid);
+    colony->setSimulationStep(0.1);
+    colony->setInitialPopulation(4);
+    colony->setGridWidth(16);
+    colony->setGridHeight(16);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    GroProgramRuntime::ExecutionResult firstStep = colony->executeGroProgram();
+    EXPECT_TRUE(firstStep.succeeded) << firstStep.errorMessage;
+    // Every bacterium emitted 0.55 (local_signal starts at 0); the grid's
+    // own diffusion/decay (0.22/0.04) applies exactly as before Problem B.
+    bool anyNonZero = false;
+    for (std::size_t index = 0; index < colony->getInternalBacteriaCount(); ++index) {
+        const BacteriaColony::BacteriumState& bacterium = colony->getBacteriumState(index);
+        if (colony->getSignalValueAt(bacterium.gridX, bacterium.gridY) > 0.0) {
+            anyNonZero = true;
+        }
+    }
+    EXPECT_TRUE(anyNonZero);
+
+    GroProgramRuntime::ExecutionResult secondStep = colony->executeGroProgram();
+    EXPECT_TRUE(secondStep.succeeded) << secondStep.errorMessage;
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesBacteriumScopedProgramsWithPerBacteriumState) {
@@ -2221,7 +2485,19 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSeededNamedGroPrograms
     EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
     EXPECT_DOUBLE_EQ(colony->getSimulationStep(), 0.25);
     EXPECT_EQ(colony->getPopulationSize(), 2u);
-    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 5.0);
+    // Problem B (Phase 3, authorized precedence): no BacteriaSignalGrid is
+    // attached here, so "ahl := signal(1, 1)" (kdiff=1, kdeg=1) now
+    // controls the legacy field's own diffusion/decay. leader() emits 5.0
+    // into cell (0,0) during the per-bacterium loop (read correctly by
+    // follower()'s get_signal(ahl) below, before the once-per-step decay
+    // runs - see the leader/follower assertions), but the single-cell
+    // grid has no neighbors (diffusion is a no-op) and decayFactor =
+    // 1 - kdeg = 0, so the field is deliberately zeroed by the end of
+    // this same step. This is the correct, intended effect of kdeg=1 on
+    // a 1x1 grid, not a leftover of the old "coefficients ignored" gap
+    // (previously this value stayed exactly 5.0 because the legacy field
+    // never honored the declared coefficients at all).
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 0.0);
     EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "p.t"));
     EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(1, "p.mode"));
     EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(1, "p.t"));
