@@ -107,17 +107,23 @@ double resolveIdentifierValue(const std::string& identifier, const GroProgramRun
 // is the pre-multi-channel raw-IR convention; handle 1 is the first
 // "signal(...)" declaration, which intentionally reuses that same field).
 // Handle N >= 2 only addresses a real, independently stored channel once the
-// Nth "signal(...)" declaration has actually executed in this pass
-// (state.signalDeclarationOrdinal). Anything else (negative, non-integer, or
-// not yet declared) is an invalid handle and must be diagnosed, never
-// silently aliased to the legacy channel.
+// Nth "signal(...)" declaration has actually executed. That declaration may
+// have run either earlier in THIS pass (state.signalDeclarationOrdinal) or
+// in an earlier pass, e.g. a global declaration executed once by the
+// colony-wide prelude and only *consumed* by a named program that never
+// redeclares it itself (state.knownSignalChannelCount, set by the caller
+// from its own persistent bookkeeping; see Problem C, Phase 3 review).
+// Anything else (negative, non-integer, or not known by either source) is
+// an invalid handle and must be diagnosed, never silently aliased to the
+// legacy channel.
 bool tryResolveSignalChannelHandle(double handleValue, const GroProgramRuntimeState& state,
                                     unsigned int& channel, std::string& errorMessage) {
 	const double roundedHandle = std::llround(handleValue);
 	const bool isNearInteger = std::abs(handleValue - roundedHandle) < 1e-9;
+	const unsigned int maxKnownChannel = std::max(state.signalDeclarationOrdinal, state.knownSignalChannelCount);
 	const bool isKnownChannel = roundedHandle >= 0.0 &&
 	                             (roundedHandle <= 1.0 ||
-	                              roundedHandle <= static_cast<double>(state.signalDeclarationOrdinal));
+	                              roundedHandle <= static_cast<double>(maxKnownChannel));
 	if (!isNearInteger || !isKnownChannel) {
 		errorMessage = "GroProgramRuntime received an invalid signal channel handle (" +
 		              std::to_string(handleValue) +
@@ -1204,6 +1210,16 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 
 GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr& ir, GroProgramRuntimeState& state) const {
 	ExecutionResult result;
+
+	// Problem C (Phase 3 review): every current caller happens to pass a
+	// freshly constructed state (ordinal == 0) per execution pass, but
+	// that was an implicit caller contract, not something execute() itself
+	// guaranteed. A caller reusing the same state object across repeated
+	// executions of the same IR would otherwise see the handle for an
+	// unchanged declaration drift upward on every call. Resetting here
+	// makes "one call == one fresh declaration-ordinal pass" an explicit,
+	// self-enforced contract; it is a no-op for every existing caller.
+	state.signalDeclarationOrdinal = 0;
 
 	if (state.simulationStep <= 0.0) {
 		result.succeeded = false;
