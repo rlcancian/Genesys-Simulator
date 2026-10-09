@@ -238,6 +238,20 @@ private:
 	// where signals are created by the running program, not by the
 	// modeler.
 	std::vector<AdditionalSignalChannel> _additionalSignalChannels;
+	// Coefficients declared by the first "signal(kdiff,kdeg)" statement
+	// (handle 1). Honored by _applySignalFieldStep() only when no
+	// BacteriaSignalGrid is attached; when one is attached, its persisted
+	// diffusionRate/decayRate remain authoritative for the legacy field
+	// and these are stored but not used. Default 0.0/0.0 preserves the
+	// prior "no diffusion/decay" behavior when no such declaration ever
+	// runs. Pure runtime state, not persisted, same lifecycle as
+	// _additionalSignalChannels.
+	double _legacyChannelDiffusionRate = 0.0;
+	double _legacyChannelDecayRate = 0.0;
+	// One-shot latch: emits at most one diagnostic per replication when a
+	// declared first-channel coefficient differs from an attached
+	// BacteriaSignalGrid's persisted value, instead of once per step.
+	bool _legacyChannelCoefficientMismatchWarned = false;
 	struct GroSeedDefinition {
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
@@ -286,6 +300,7 @@ private:
 	// mutation batch/program order). Rejects negative/non-integer/
 	// not-yet-declared handles instead of silently aliasing channel 0.
 	bool _tryResolveSignalChannelHandle(double handleValue, unsigned int& channel, std::string& errorMessage) const;
+	void _relaxLegacySignalField(double diffusionRate, double decayRate);
 	void _applySignalFieldStep();
 	void _applyBacteriumSignalMutations(const BacteriumState& bacterium,
 	                                    const std::vector<GroProgramRuntime::SignalMutation>& mutations);
