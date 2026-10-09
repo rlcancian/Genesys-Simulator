@@ -356,7 +356,9 @@ private:
 	void _assignBacteriumGridPosition(BacteriumState& bacterium, std::size_t index) const;
 	void _initializeBacteriumPhenotype(BacteriumState& bacterium, std::size_t index) const;
 	void _syncBacteriumSpatialState(BacteriumState& bacterium, const GroProgramRuntimeState& runtimeState) const;
+	void _applyKernelRandomTumbles(GroProgramRuntimeState& runtimeState, GroProgramRuntime::ExecutionResult& result) const;
 	void _updateBacteriumSpatialMotion(BacteriumState& bacterium) const;
+	void _separateBacteriaBodies();
 	void _setBacteriumPosition(BacteriumState& bacterium, double x, double y) const;
 	double _clampPositionX(double value) const;
 	double _clampPositionY(double value) const;

@@ -1192,8 +1192,7 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 				mutation.previousSpeed = currentSpeed;
 
 				if (command.functionName == "run") {
-					const double speedBoost = std::clamp(amount, 0.0, 2.0);
-					const double resultingSpeed = std::clamp(currentSpeed + speedBoost, 0.0, 4.0);
+					const double resultingSpeed = amount;
 					assignMotionOrientation(state, result, normalizeAngle(currentDirection), resultingSpeed);
 					mutation.resultingDirection = normalizeAngle(currentDirection);
 					mutation.resultingSpeed = resultingSpeed;
@@ -1202,7 +1201,7 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 					const double sample = deterministicUnitInterval(state, ++stochasticSampleIndex);
 					const double signedTurn = sample < 0.5 ? -tumbleAngle : tumbleAngle;
 					const double resultingDirection = normalizeAngle(currentDirection + signedTurn);
-					const double resultingSpeed = std::clamp(currentSpeed * 0.6, 0.0, 4.0);
+					const double resultingSpeed = currentSpeed;
 					assignMotionOrientation(state, result, resultingDirection, resultingSpeed);
 					mutation.resultingDirection = resultingDirection;
 					mutation.resultingSpeed = resultingSpeed;
