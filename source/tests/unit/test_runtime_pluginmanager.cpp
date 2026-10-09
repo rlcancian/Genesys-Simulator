@@ -1523,6 +1523,125 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsInvalidSignalChannel
     }
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeKeepsSignalHandleStableAcrossRepeatedExecuteCallsOnReusedState) {
+    // Problem C (Phase 3 review): GroProgramRuntimeState::signalDeclarationOrdinal
+    // is only correct if every caller happens to construct a fresh state per
+    // execution pass. GroProgramRuntime::execute() itself did not enforce
+    // this, so a caller reusing the same state object across repeated
+    // executions of the same IR would see the handle for the same
+    // declaration drift upward on every call (1, then 2, then 3, ...)
+    // instead of staying stable.
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse("program bacterium() { s0 := signal(1, 0.1); }");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+
+    GroProgramRuntimeState state;
+    GroProgramRuntime runtime;
+
+    GroProgramRuntime::ExecutionResult firstRun = runtime.execute(ir, state);
+    EXPECT_TRUE(firstRun.succeeded) << firstRun.errorMessage;
+    EXPECT_DOUBLE_EQ(state.variables.at("s0"), 1.0);
+
+    // Re-executing the exact same IR against the SAME (not freshly
+    // constructed) state must assign "s0" the same handle again, not 2.0.
+    GroProgramRuntime::ExecutionResult secondRun = runtime.execute(ir, state);
+    EXPECT_TRUE(secondRun.succeeded) << secondRun.errorMessage;
+    EXPECT_DOUBLE_EQ(state.variables.at("s0"), 1.0);
+
+    GroProgramRuntime::ExecutionResult thirdRun = runtime.execute(ir, state);
+    EXPECT_TRUE(thirdRun.succeeded) << thirdRun.errorMessage;
+    EXPECT_DOUBLE_EQ(state.variables.at("s0"), 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyPropagatesGlobalSignalHandlesToMultipleNamedPrograms) {
+    // Problem C (Phase 3 review): exercises the full "global declarations
+    // -> prelude -> named bacterium program -> get_signal(handle)" path
+    // with TWO global channels consumed by TWO different named programs,
+    // confirming each program resolves the same stable handle for its own
+    // channel and that the two channels remain independent.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_GlobalHandlesTwoPrograms");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "ahl := signal(0, 0); "
+        "beta := signal(0, 0); "
+        "program leader() := { true : { emit_signal(ahl, 5) } }; "
+        "program follower() := { true : { emit_signal(beta, 7) } }; "
+        "ecoli([x:=0, y:=0], program leader()); "
+        "ecoli([x:=1, y:=0], program follower());");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_GlobalHandlesTwoPrograms");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setGridWidth(4);
+    colony->setGridHeight(4);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    const unsigned int leaderX = colony->getBacteriumState(0).gridX;
+    const unsigned int leaderY = colony->getBacteriumState(0).gridY;
+    const unsigned int followerX = colony->getBacteriumState(1).gridX;
+    const unsigned int followerY = colony->getBacteriumState(1).gridY;
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+
+    // leader() emitted into "ahl" (handle 1, legacy field) only; follower()
+    // emitted into "beta" (handle 2, additional channel) only. Each must
+    // land exactly where it was emitted and nowhere else.
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(leaderX, leaderY), 5.0);
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, leaderX, leaderY), 0.0);
+    EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, followerX, followerY), 7.0);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(followerX, followerY), 0.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyKeepsGlobalSignalHandleStableAcrossReplications) {
+    // Problem C (Phase 3 review): a global "signal(...)" declaration must
+    // resolve to the same handle in every replication, not drift because
+    // of leftover ordinal/variable state from a previous replication.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_GlobalHandleReplicationStable");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "ahl := signal(0, 0); "
+        "program leader() := { true : { emit_signal(ahl, 5) } }; "
+        "ecoli([x:=0, y:=0], program leader());");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_GlobalHandleReplicationStable");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setGridWidth(2);
+    colony->setGridHeight(2);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    GroProgramRuntime::ExecutionResult firstReplicationResult = colony->executeGroProgram();
+    EXPECT_TRUE(firstReplicationResult.succeeded) << firstReplicationResult.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "ahl"), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 5.0);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    GroProgramRuntime::ExecutionResult secondReplicationResult = colony->executeGroProgram();
+    EXPECT_TRUE(secondReplicationResult.succeeded) << secondReplicationResult.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "ahl"), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 5.0);
+}
+
 TEST(RuntimePluginManagerClassTest, BacteriaColonySetSignalAndSetSignalRectRespectChannelHandle) {
     // Acceptance corpus B: set_signal/set_signal_rect must address the
     // channel named by their handle argument, independent of the legacy
@@ -1785,6 +1904,133 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyMaintainsSignalChannelIndepend
     const double channel2Value = colony->getAdditionalSignalValueAt(2, gridX, gridY);
     EXPECT_GT(channel2Value, 0.0);
     EXPECT_LT(channel2Value, 100.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyStepsAdditionalSignalChannelsWithSignalGridAttached) {
+    // Problem A (Phase 3 review): _applySignalFieldStep() only called
+    // _applyAdditionalSignalChannelsStep() in the branch taken when no
+    // BacteriaSignalGrid is attached (_signalGrid == nullptr). Every
+    // colony with a real BacteriaSignalGrid attached silently stopped
+    // stepping its additional channels entirely. The legacy field's own
+    // diffusion/decay is set to exactly zero here so the pre-fix code also
+    // hits its second early return (before ever reaching the additional
+    // channel step), reproducing both symptoms with one fixture.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ChannelsWithSignalGrid");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        "s0 := signal(0, 0); "
+        "s1 := signal(0.5, 0); "
+        "steps = steps + 1; "
+        "if (bacterium_id == 1 && steps == 1) { emit_signal(s1, 10); } "
+        "}");
+
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_ChannelsAttached");
+    ASSERT_NE(signalGrid, nullptr);
+    signalGrid->setWidth(3);
+    signalGrid->setHeight(3);
+    signalGrid->setInitialSignal(0.0);
+    signalGrid->setDiffusionRate(0.0);
+    signalGrid->setDecayRate(0.0);
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ChannelsWithSignalGrid");
+    ASSERT_NE(colony, nullptr);
+    colony->setSignalGrid(signalGrid);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialPopulation(1);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int gridX = colony->getBacteriumState(0).gridX;
+    const unsigned int gridY = colony->getBacteriumState(0).gridY;
+
+    // The per-bacterium emission and the once-per-colony-step channel
+    // diffusion both happen within this same executeGroProgram() call
+    // (population loop, then the single post-loop signal-field step), so
+    // channel 2's own diffusion (kdiff=0.5) must already have spread the
+    // just-emitted value by the time this call returns. Before the fix,
+    // _signalGrid being attached meant the additional-channel step never
+    // ran at all, so the emission cell stayed frozen at exactly the raw
+    // emitted value (10.0) instead of diffusing.
+    GroProgramRuntime::ExecutionResult firstStep = colony->executeGroProgram();
+    EXPECT_TRUE(firstStep.succeeded) << firstStep.errorMessage;
+    const double emissionCellValue = colony->getAdditionalSignalValueAt(2, gridX, gridY);
+    EXPECT_LT(emissionCellValue, 10.0);
+    EXPECT_GT(emissionCellValue, 0.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyIgnoresFirstChannelDeclaredCoefficientsPendingArchitecturalDecision) {
+    // Problem B (Phase 3 review): CONFIRMED, NOT fixed in this pass - see
+    // the stop gate recorded in BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md.
+    // "s0 := signal(kdiff,kdeg)" (the first declaration) resolves to
+    // handle 1, the legacy field, but
+    // BacteriaColony::_ensureAdditionalSignalChannel() discards channel
+    // 1's coefficients unconditionally (`if (channel < 2) return;`).
+    // Without an attached BacteriaSignalGrid, this means the legacy field
+    // NEVER diffuses or decays, no matter what the program declares -
+    // unlike channel 2+, whose own declared coefficients ARE honored
+    // (proven by BacteriaColonyMaintainsSignalChannelIndependenceAcrossMultipleSteps
+    // and BacteriaColonyStepsAdditionalSignalChannelsWithSignalGridAttached
+    // above). Fixing this by applying the declared coefficients to the
+    // legacy field is NOT a safe, unconditional change: when a
+    // BacteriaSignalGrid IS attached with different coefficients,
+    // existing test BacteriaColonyExecutesSeededNamedGroPrograms (no grid
+    // attached, "ahl := signal(1, 1)") would see its emitted value
+    // decay to exactly 0.0 in the same step instead of staying 5.0,
+    // because decayRate=1 zeroes the whole field once "decayFactor=1-kdeg"
+    // is actually applied - demonstrating a genuine, currently-relied-on
+    // behavior that a blanket fix would silently break. This
+    // characterization test locks in TODAY's (inconsistent, acknowledged)
+    // behavior so a future architectural fix is a deliberate, reviewed
+    // change, not a silent one.
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_FirstChannelCoefficientsIgnored");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        // kdiff=0.9, kdeg=0.9: aggressive diffusion/decay IF honored.
+        "s0 := signal(0.9, 0.9); "
+        "steps = steps + 1; "
+        "if (bacterium_id == 1 && steps == 1) { emit_signal(s0, 10); } "
+        "}");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_FirstChannelCoefficientsIgnored");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialPopulation(1);
+    colony->setGridWidth(5);
+    colony->setGridHeight(5);
+    // No BacteriaSignalGrid attached: the legacy field has no
+    // configuration source other than this program's own declaration.
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    const unsigned int gridX = colony->getBacteriumState(0).gridX;
+    const unsigned int gridY = colony->getBacteriumState(0).gridY;
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    // CURRENT (confirmed-inconsistent) behavior: the declared kdiff=0.9/
+    // kdeg=0.9 are silently discarded for channel 1, so the legacy field
+    // never diffuses/decays and the raw emitted value is preserved
+    // exactly, unlike a handle >= 2 channel declared with the same
+    // coefficients (which DOES diffuse/decay, per the tests above).
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 10.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesBacteriumScopedProgramsWithPerBacteriumState) {
