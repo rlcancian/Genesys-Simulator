@@ -1251,6 +1251,24 @@ position and the corresponding centered sampling result.
   new biological growth law; stop if existing supported fixtures encode a
   conflicting growth contract.
 
+**Cycle 3 result (2026-10-09): COMPLETE.** An explicitly configured
+`ecoli_growth_rate <= 0` now disables automatic volume growth, including
+generation/signal additions and the old minimum-volume increment. A finite
+simulation step of zero is accepted by `GroProgramRuntime` for direct runtime
+execution; the automatic growth path returns without changing volume, size or
+speed. The `BacteriaColony` model check still requires a positive step for
+scheduled simulation, so this does not make zero-step models calendar-valid.
+Implicit/default and explicitly positive growth retain the prior formula and
+existing visible-growth tests pass.
+
+RED/GREEN evidence: new regressions first observed a `0.01` volume increment
+at explicit zero growth and runtime rejection at `dt=0`; after correction,
+both zero-invariant tests and the existing positive-growth test passed. All
+90 `RuntimePluginManagerClassTest` CTest cases passed locally. Commits:
+`57cdc53a` (runtime) and `0e20d035` (tests). The relaxation field remains a
+per-execution operator, independent of this growth guard. No persistence
+format or `.gen` fixture changed.
+
 #### Cycle 4 — Hybrid division
 
 - **Objective/files:** add persisted automatic-division enable/threshold
