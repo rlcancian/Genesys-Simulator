@@ -1717,6 +1717,39 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyMaintainsTwoIndependentSignalC
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "s1"), 2.0);
 }
 
+TEST(RuntimePluginManagerClassTest, BacteriaColonyTwoSignalCommunicationScenarioKeepsFieldsIndependent) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_TwoSignalScenario");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+	    "signal_a := signal(0, 0); signal_b := signal(0, 0.5); "
+	    "program emitter_a() { emit_signal(signal_a, 8); } "
+	    "program emitter_b() { emit_signal(signal_b, 8); } "
+	    "program receiver() { read_a := get_signal(signal_a); read_b := get_signal(signal_b); } "
+	    "ecoli([x:=0,y:=0], program emitter_a()); "
+	    "ecoli([x:=0,y:=0], program emitter_b()); "
+	    "ecoli([x:=0,y:=0], program receiver());");
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_TwoSignalScenario");
+	ASSERT_NE(colony, nullptr);
+	colony->setGroProgram(program);
+	colony->setGridWidth(3);
+	colony->setGridHeight(1);
+	ModelDataDefinition::InitBetweenReplications(colony);
+	ASSERT_EQ(colony->getInternalBacteriaCount(), 3u);
+	const auto result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	EXPECT_EQ(colony->getSignalChannelCount(), 2u);
+	const auto& receiver = colony->getBacteriumState(2);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(2, "read_a"), 8.0);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(2, "read_b"), 8.0);
+	EXPECT_DOUBLE_EQ(colony->getSignalValueAt(receiver.gridX, receiver.gridY), 8.0);
+	EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, receiver.gridX, receiver.gridY), 4.0);
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsInvalidSignalChannelHandles) {
     // Phase 3 handle contract: a handle must be a non-negative integer
     // actually returned by a prior "signal(...)" declaration. Negative,
@@ -2061,18 +2094,21 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyDoesNotLeakAdditionalSignalCha
     const unsigned int firstGridY = colony->getBacteriumState(0).gridY;
     GroProgramRuntime::ExecutionResult firstReplicationResult = colony->executeGroProgram();
     EXPECT_TRUE(firstReplicationResult.succeeded) << firstReplicationResult.errorMessage;
+    EXPECT_EQ(colony->getSignalChannelCount(), 2u);
     EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, firstGridX, firstGridY), 100.0);
 
     // Start a second replication: channel 2 must come back with no trace of
     // the value emitted during the first replication, even before the Gro
     // program runs again.
     ModelDataDefinition::InitBetweenReplications(colony);
+    EXPECT_EQ(colony->getSignalChannelCount(), 1u);
     const unsigned int secondGridX = colony->getBacteriumState(0).gridX;
     const unsigned int secondGridY = colony->getBacteriumState(0).gridY;
     EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, secondGridX, secondGridY), 0.0);
 
     GroProgramRuntime::ExecutionResult secondReplicationFirstStep = colony->executeGroProgram();
     EXPECT_TRUE(secondReplicationFirstStep.succeeded) << secondReplicationFirstStep.errorMessage;
+    EXPECT_EQ(colony->getSignalChannelCount(), 2u);
     EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, secondGridX, secondGridY), 100.0);
 }
 
