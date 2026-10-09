@@ -1130,7 +1130,7 @@ above a phenomenological, non-conservative relaxation.
 | **M1 — Gro e sinais** | **Cycle 1 complete.** The selected frontend subset, handles, channel independence, Phase 3 coefficient precedence and Phase 4 characterization remain covered. Gro declarations and attached-grid settings now reject non-finite/out-of-range coefficients; the approved phenomenological contract is recorded. | Keep existing signal regressions green while later cycles integrate colony and viewer behavior. |
 | **M2 — Dinâmica bacteriana** | **In progress (Cycles 2–5 complete).** Gro seed coordinates remain continuous and centered; zero-growth/zero-step growth invariants, optional persisted threshold division, centralized volume-conserving division, `speed*dt` movement, kernel-sampler `tumble`, boundary reflection, and bounded geometric separation are implemented and covered by focused runtime tests. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. |
 | **M3 — Integração e GUI** | **In progress (Cycles 6–7 complete).** The calendar and manual viewer use the same colony state; calendar calls step each signal once, manual execution leaves model time unchanged, and viewer manual steps are guarded while the simulation is running or paused. A Qt6 channel selector now drives the heatmap for the legacy or an additional channel, and a small Gro emitter/receiver scenario proves two independent signals. Combined corpus A–E acceptance and interactive GUI evidence remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
-| **M4 — Validação e entrega** | **Partial.** Gro persistence round-trip infrastructure exists. Growth and lifecycle `.gen` fixtures have an executed load test. The plan records `Smart_BacteriaColony_GRO.gen` loader failure on both Phase 3 reference and implementation branch; this was not a passing compatibility result. Completion-level current CI and performance evidence are not established by the historical snapshots. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed or its support status is explicitly decided; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
+| **M4 — Validação e entrega** | **Partial (Cycle 8 complete).** Growth, lifecycle and Smart `.gen` fixtures all load; Smart also executes after load with four bacteria and signal emission. The loader now accepts the legacy raw multiline Gro source without changing serialized output or re-saving fixtures. New dynamic save/load scenario retains the Gro program, grid, optional-division properties and independent fields. Final-head regressions, GUI/CI and performance evidence remain open. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
 
 ### 22.3 Crosswalk: historical phases 0–13 to M1–M4
 
@@ -1153,7 +1153,7 @@ current governance.
 | 9 | Viewer/runtime integration and trigger risk; not closed. | M3. |
 | 10 | Selected A–E end-to-end acceptance corpus; partially covered by reusable tests, not closed. | M3. |
 | 11 | Performance/cache; conditional on measured bottleneck, not a release prerequisite by itself. | M4, only if measurement justifies it. |
-| 12 | Persistence and the three example models; two load tests pass, third known loader issue remains. | M4. |
+| 12 | Persistence and the three example models; Cycle 8 loads all three and executes the Smart example after a narrow legacy-source loader fix. | M4. |
 | 13 | Documentation, manual impact and completion gate; continuous closeout work. | M4. |
 
 Historical test names, commit identifiers, RED/GREEN evidence, loader
@@ -1610,6 +1610,38 @@ the active work. Reuse existing tests and keep changes reviewable.
 - **Risks:** compatibility fix could widen into serializer migration.
 - **Stop:** if the issue requires a `.gen` format or semantic migration,
   present options and stop before changing the serializer or fixture.
+
+**Cycle 8 result (2026-10-09): complete locally.** The loader failure was
+caused by `Smart_BacteriaColony_GRO.gen` storing `sourceCode` as a raw quoted
+multiline field whose closing quote occupies its own line. The record reader
+is line-based and previously rejected that representation before the Gro
+source could be decoded. A test reproducing this exact legacy representation
+failed before the fix and passes afterward. `GenSerializer::load` now narrowly
+collects this field through the standalone closing quote and normalizes it to
+the already-supported escaped text representation in memory. The writer and
+`.gen` format are unchanged; the historical fixture was not edited. Its
+SHA-256 remained
+`ff84b5a3afa4530b77d788a320827dc020093c5e8993a5588c79b1d829a3547a`.
+
+The fixture regression loads Growth, Lifecycle and Smart models; it executes
+the Smart Gro program after load and verifies four bacteria and a positive
+signal maximum. A new two-channel Gro scenario is constructed in a test,
+serialized through the normal model API, loaded again, and executed. It checks
+the persisted Gro/grid/automatic-division configuration and distinct final
+field maxima (8 for the legacy grid and 4 for the additional channel after
+decay). The focused three-test set passed locally. This is persistence and
+runtime evidence, not a separately installed example `.gen` or interactive
+GUI demonstration. No CI evidence is claimed.
+
+#### Cycle 8 commits and files
+
+- `ab8c30da` — loader compatibility for raw multiline legacy Gro source.
+- `4334e8ba` — RED/GREEN serializer test, three-model load/Smart execution
+  regression, and saved/reloaded two-channel runtime scenario.
+- Production: `source/kernel/simulator/persistence/GenSerializer.cpp`.
+- Tests: `source/tests/unit/test_gen_serializer_text.cpp` and
+  `source/tests/unit/test_runtime_pluginmanager.cpp`.
+- Existing `.gen` fixtures and `models/gro_examples/` remain unchanged.
 
 #### Iteration 9 — Final regression, CI, manuals and conditional performance
 
