@@ -1128,7 +1128,7 @@ above a phenomenological, non-conservative relaxation.
 | Milestone | Real status at the reference HEAD | Closure condition |
 |---|---|---|
 | **M1 — Gro e sinais** | **Cycle 1 complete.** The selected frontend subset, handles, channel independence, Phase 3 coefficient precedence and Phase 4 characterization remain covered. Gro declarations and attached-grid settings now reject non-finite/out-of-range coefficients; the approved phenomenological contract is recorded. | Keep existing signal regressions green while later cycles integrate colony and viewer behavior. |
-| **M2 — Dinâmica bacteriana** | **In progress (Cycle 2 complete).** Gro seed coordinates remain continuous and centered; cell mapping is now consistent for seed placement, `set_signal`, sampling and boundaries. Growth floors, zero-motion floors, division contract and RNG reproducibility remain open. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. |
+| **M2 — Dinâmica bacteriana** | **In progress (Cycles 2–4 complete).** Gro seed coordinates remain continuous and centered; zero explicit growth and zero-step automatic growth are suppressed; optional persisted threshold division and centralized volume-conserving Gro division are implemented. Zero-motion invariants, complete movement/orientation/RNG behavior and spatial occupancy remain open. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. |
 | **M3 — Integração e GUI** | **Partial foundation.** Gro execution, signal changes and colony stepping exist. Event calendar and viewer call the same execution method, but a manual viewer step does not advance model time; the state/time contract and interaction with calendar replay are not fully validated. The viewer exists, but corpus-E fidelity and combined A–E end-to-end coverage remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
 | **M4 — Validação e entrega** | **Partial.** Gro persistence round-trip infrastructure exists. Growth and lifecycle `.gen` fixtures have an executed load test. The plan records `Smart_BacteriaColony_GRO.gen` loader failure on both Phase 3 reference and implementation branch; this was not a passing compatibility result. Completion-level current CI and performance evidence are not established by the historical snapshots. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed or its support status is explicitly decided; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
 
@@ -1280,6 +1280,53 @@ format or `.gen` fixture changed.
   `grow(n)` semantics.
 - **Dependencies/risks:** Cycles 2–3. Stop if correct persistence requires an
   incompatible `.gen` migration.
+
+**Cycle 4 result (2026-10-09): COMPLETE.** `BacteriaColony` now exposes and
+persists `AutomaticDivisionEnabled` (default `false`) and
+`DivisionThresholdVolume` (default `2.0`, twice the default initial volume).
+Gro and threshold-triggered division use one routine. It halves the finite,
+nonnegative parent volume without volume floors, derives both visual sizes
+from volume, places the pair close along their shared orientation, and copies
+the program, arguments and bacterium-local variables to the daughter. The
+fluorescent markers retain the pre-existing 0.85 daughter scale and the
+daughter tick count resets. The existing `grow(n)` branch
+still creates its existing population additions and does not call the
+division routine.
+
+One division per bacterium per step is enforced and repeated Gro division
+commands receive a diagnostic. A step snapshot prevents a new daughter from
+running its program in its birth step, while `just_divided`/`daughter` remain
+visible on its first subsequent program execution. Automatic and Gro division
+cannot both split the same parent in one step. The aggregate `main()` path
+also retains the population target produced by Gro rather than overwriting it
+with the old pre-command count.
+
+RED/GREEN evidence: the automatic-threshold regression first remained at one
+bacterium when division was enabled; after implementation, the focused
+division suite passed. Tests cover the default-off property, threshold
+activation, persisted property round-trip, Gro plus automatic same-step
+deduplication, duplicate Gro-command diagnostics, new-daughter step
+exclusion, aggregate and bacterium-scoped volume conservation, genealogy and
+the existing division-marker/signal behavior. All 96
+`RuntimePluginManagerClassTest` CTest cases passed locally. Commits:
+`cc6b4417` (implementation), `ee896800` (tests) and `086bbfe8` (division
+marker lifecycle correction). No serializer or `.gen` fixture was modified;
+the new fields are additive and absent values load from class defaults.
+
+**Checkpoint A (2026-10-09):** Cycles 1–4 complete. Runtime coefficient
+validation, centered continuous seed mapping, zero-growth invariants, and
+optional hybrid division are implemented. The feature-branch code/test head
+is `086bbfe8`; this checkpoint's plan update follows as a documentation-only
+commit. Focused local regression: 96/96 `RuntimePluginManagerClassTest`
+passed, including signal precedence and channel identity, the two supported
+Growth/Lifecycle `.gen` fixture loads, and the added division cases. The
+previous cycle commits are `44db7a96`, `efda4eba`, `4d6bdce4`, `ef949faf`,
+`149ae1a8`, `0d3f8e57`, `57cdc53a`, `0e20d035`, `b0617be1`, `cc6b4417`,
+`ee896800` and `086bbfe8` (plus task/backlog and earlier synchronized
+history). The GUI and the full CMake test presets are not part of this
+checkpoint's evidence; they remain scheduled for later cycles. The known
+`Smart_BacteriaColony_GRO.gen` loader failure remains unresolved and is not
+claimed compatible. Continue automatically with Cycle 5.
 
 #### Cycle 5 — Motion and spatial occupancy
 
