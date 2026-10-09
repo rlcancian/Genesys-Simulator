@@ -727,6 +727,83 @@ small, single-concern commit.
    changes) and `tests-smoke` (3/3); `gui-app` rebuilt clean. Deferred to
    Phase 4 by design: the diffusion/decay formulation itself, `dt` usage,
    boundary handling, and any numerical/stability review.
+
+   **Correction round 2026-10-08 (independent review, `338032de` ->
+   `8868903d`):** an independent review of the above closeout found three
+   further issues, confirmed and resolved as follows (commits `1b0dbf7a`
+   fix, `8868903d` tests):
+   - **Problem A (fixed):** `_applySignalFieldStep()` only called
+     `_applyAdditionalSignalChannelsStep()` in the branch taken when no
+     `BacteriaSignalGrid` is attached. Any colony with a real
+     `BacteriaSignalGrid` attached silently stopped stepping its
+     additional (handle >= 2) channels entirely (the same early return
+     also fired whenever the legacy field's own coefficients happened to
+     be zero). Fixed by calling `_applyAdditionalSignalChannelsStep()`
+     unconditionally, exactly once, before any legacy-field branching.
+     Regression: `BacteriaColonyStepsAdditionalSignalChannelsWithSignalGridAttached`
+     (confirmed RED before the fix: the emitted value stayed frozen
+     instead of diffusing).
+   - **Problem B (confirmed, NOT fixed — stop gate, human decision
+     required):** the first `signal(kdiff,kdeg)` declaration (handle 1,
+     the legacy field) has its coefficients unconditionally discarded by
+     `_ensureAdditionalSignalChannel()` (`if (channel < 2) return;`).
+     Without an attached `BacteriaSignalGrid`, this means the legacy
+     field never diffuses/decays regardless of what the program declares.
+     Two candidate fixes were evaluated:
+     (1) apply the declared coefficients to the legacy field whenever no
+     `BacteriaSignalGrid` is attached, leaving grid-attached colonies
+     unchanged; (2) apply them unconditionally, overriding any attached
+     grid's persisted coefficients. **Both were rejected as unsafe to
+     apply silently**: candidate (1) alone is demonstrated to break the
+     existing, currently-passing `BacteriaColonyExecutesSeededNamedGroPrograms`
+     test — it declares `ahl := signal(1, 1)` with no `BacteriaSignalGrid`
+     attached and asserts `getSignalValueAt(0, 0) == 5.0` immediately
+     after emitting `5.0` into it; applying `kdiff=1, kdeg=1` to a 1x1
+     grid (no neighbors, so diffusion is a no-op, but `decayFactor =
+     1 - kdeg = 0`) would decay that same value to exactly `0.0` in the
+     same step, silently changing a currently-relied-on result. Candidate
+     (2) would additionally override every `BacteriaSignalGrid`-attached
+     fixture's persisted coefficients with whatever the Gro program
+     happens to declare — a human product/architecture decision about
+     precedence between persisted `BacteriaSignalGrid` configuration and
+     program-declared `signal()` coefficients, not a correctness-only
+     fix. **No production change was made.** A characterization test,
+     `BacteriaColonyIgnoresFirstChannelDeclaredCoefficientsPendingArchitecturalDecision`,
+     locks in today's behavior (declared coefficients ignored for handle
+     1) so a future fix is a deliberate, reviewed change. See §20 for the
+     explicit stop-gate entry and the two candidate semantics to decide
+     between.
+   - **Problem C (fixed):** handle stability relied entirely on every
+     caller happening to construct a fresh `GroProgramRuntimeState` per
+     execution pass; `GroProgramRuntime::execute()` itself never reset
+     `signalDeclarationOrdinal`, so a caller reusing the same state object
+     across repeated executions of the same IR would see a declaration's
+     handle drift upward on every call (confirmed RED via
+     `GroProgramRuntimeKeepsSignalHandleStableAcrossRepeatedExecuteCallsOnReusedState`:
+     handle went 1 -> 2 -> 3 across three calls before the fix).
+     `execute()` now resets the ordinal explicitly at entry — a no-op for
+     every current caller, all of which already pass fresh state.
+     Investigating the "global declarations -> prelude -> named bacterium
+     program -> `get_signal(handle)`" path separately surfaced a real
+     interaction bug with the Problem-3-closeout handle validation: a
+     named program that only *consumes* a handle declared once by the
+     colony-wide prelude (without itself containing a `signal(...)` call)
+     has `signalDeclarationOrdinal == 0` in its own fresh per-bacterium
+     pass, so validation rejected an otherwise-valid handle as
+     "not yet declared" (confirmed RED via
+     `BacteriaColonyPropagatesGlobalSignalHandlesToMultipleNamedPrograms`).
+     Fixed by adding `GroProgramRuntimeState::knownSignalChannelCount`,
+     set by `BacteriaColony` at every state-construction site from its
+     own persistent `_additionalSignalChannels.size()` — not a new
+     name-based registry, just the same count `BacteriaColony` already
+     tracked, now also visible to validation as a lower bound alongside
+     the per-pass ordinal. Reset-between-replications handle stability
+     (`BacteriaColonyKeepsGlobalSignalHandleStableAcrossReplications`) was
+     already correct before this fix; the test locks the contract.
+   - Validated after the correction round: `tests-unit`/`tests-kernel-unit`
+     1861/1863 executed, 0 failed, 4 preexisting disabled, same 2
+     preexisting unrelated `PropertyEditorDoubleCommit` locale failures;
+     `tests-smoke` 3/3; `gui-app` rebuilt clean.
 4. **Reaction-diffusion review**: revisit the existing 4-neighbor/no-`dt`
    field formulation only as needed to support multi-channel fields from
    phase 3; document whatever formulation is kept or changed, with the
@@ -794,6 +871,27 @@ Closed, not open: adoption of an external physics engine (§2 decisions
 4/5 — do not reopen).
 
 Genuinely open/to watch:
+- **NEW 2026-10-08 (Phase 3 correction round, Problem B — `PHASE-3-BLOCKED-ARCHITECTURAL-DECISION` for this item only):**
+  the first `signal(kdiff,kdeg)` declaration's coefficients are
+  unconditionally discarded for the legacy (handle 1) field
+  (`BacteriaColony::_ensureAdditionalSignalChannel`, `if (channel < 2)
+  return;`). Candidate semantics, with concrete evidence for each:
+  (1) honor the declared coefficients only when no `BacteriaSignalGrid`
+  is attached — demonstrated to break the currently-passing
+  `BacteriaColonyExecutesSeededNamedGroPrograms` test (`ahl := signal(1,
+  1)`, no grid, asserts the emitted value stays `5.0` undiffused; `kdeg=1`
+  would decay it to `0.0` in the same step);
+  (2) honor the declared coefficients unconditionally, overriding any
+  attached `BacteriaSignalGrid`'s persisted `diffusionRate`/`decayRate` —
+  changes the authoritative configuration source for every
+  `BacteriaSignalGrid`-backed fixture that also declares `signal()` for
+  its first channel, a product/architecture decision about persisted vs.
+  program-declared configuration precedence, not a pure correctness fix.
+  A characterization test
+  (`BacteriaColonyIgnoresFirstChannelDeclaredCoefficientsPendingArchitecturalDecision`)
+  locks in today's (acknowledged-inconsistent) behavior. Present both
+  candidates, their exact tradeoffs above, and a recommendation to the
+  maintainer before implementing either.
 - Signal multi-channel support (§10/phase 3) may require a
   persistence-format decision affecting the three existing `.gen`
   fixtures — present impact/migration before changing the saved format,
