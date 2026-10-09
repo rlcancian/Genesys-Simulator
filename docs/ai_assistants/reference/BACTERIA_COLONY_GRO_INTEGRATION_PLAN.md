@@ -223,12 +223,13 @@ changes at the time of inspection):
 Registration: `groprogram.so`, `bacteriasignalgrid.so`, `bacteriacolony.so`
 statically registered in `PluginConnectorDummyImpl1.cpp`.
 
-Dependency note: `WiP2026108/PE_Fix` (PR #545, draft, open at inspection
-time) already touches `GenSerializer.cpp`, `ObjectPropertyBrowser.cpp` and
-`ModelLanguageSynchronizer.cpp`, including a test explicitly named "cover
-real GroProgram model round trip". This work treats PE_Fix as an external
-dependency for the persistence phase and does not duplicate its scope
-while it remains in draft.
+Dependency note: `WiP2026108/PE_Fix` (PR #545) touched `GenSerializer.cpp`,
+`ObjectPropertyBrowser.cpp` and `ModelLanguageSynchronizer.cpp`, including a
+test explicitly named "cover real GroProgram model round trip". **PR #545
+was merged into `WorkInProgress` (merge `dce34847`) and integrated into
+this branch on 2026-10-08** (merge `c7816bf2`); it is no longer an open
+dependency. The persistence phase (§17 item 12) should rebase on the
+current serializer as shipped, not re-fix the same path.
 
 ## 6. Language subset strategy
 
@@ -279,10 +280,10 @@ Status values: `equivalent`, `partial`, `different-semantics`, `missing`,
 
 | Gro builtin | GenESyS status | Current GenESyS behavior (confirmed in code) | Needed for selected subset? |
 |---|---|---|---|
-| `signal(kdiff,kdeg)` | different-semantics | Returns `arguments.front()` verbatim; creates no channel, no handle (`GroProgramRuntime.cpp:455-462`) | **yes — core of capability B (§9)** |
-| `get_signal(n)` | different-semantics | Ignores `n`; always returns `local_signal` (`:446-453`) | **yes** |
-| `emit_signal`/`absorb_signal` | different-semantics | Only the last argument (value) is used; handle silently dropped (`:1000-1020`) | **yes** |
-| `set_signal`/`set_signal_rect` | partial | Preserves `n` structurally, but the single-field colony ignores it | yes, once multi-channel lands |
+| `signal(kdiff,kdeg)` | **fixed 2026-10-08** (`58783cba`/`5c1df906`, §17 phase 3) | `VAR := signal(kdiff,kdeg)` assigns a real, stable ordinal channel handle; handle 1 keeps the legacy field, handle N>=2 gets its own independent field | **yes — core of capability B (§9)**, done |
+| `get_signal(n)` | **fixed 2026-10-08** (phase 3) | Resolves `n` to its own channel (legacy for 0/1, independent field for N>=2); an invalid `n` is a diagnosed error, not a silent fallback | **yes**, done |
+| `emit_signal`/`absorb_signal` | **fixed 2026-10-08** (phase 3) | The leading handle argument (2-arg form) is validated and routed to its own channel; invalid handles are diagnosed | **yes**, done |
+| `set_signal`/`set_signal_rect` | **fixed 2026-10-08** (phase 3) | The leading `n` argument is validated and routed to its own channel at the colony-mutation level | done |
 | `reaction(reactants,products,rate)` | missing | Zero occurrences | **no — not required by any selected fixture (§9)**; retained as documented reference only |
 | `get_signal_matrix(n)` | different-semantics | Requires zero arguments today (signature mismatch) | no — not required by the selected subset; defer |
 | `ecoli([...], program p())` | partial | Structurally equivalent; see §12 for the coordinate gap | yes (already mostly works) |
@@ -369,8 +370,12 @@ be called complete for that capability.
 - emission, absorption, read, all respecting the handle;
 - diffusion; degradation.
 - Existing coverage: single-field diffusion/decay and command dispatch are
-  tested; **no test exists for two independent channels** because the
-  feature does not exist yet.
+  tested; **done 2026-10-08 (§17 phase 3)** — two (or more) independent
+  channels, non-aliasing emission/absorption/read/`set_signal`/
+  `set_signal_rect`, invalid-handle rejection, no cross-replication leak,
+  and dimension-resize coherence are now covered by the tests listed in
+  §17 phase 3. Diffusion/degradation per additional channel reuses the
+  existing formula (§10); a numerical/formulation review remains Phase 4.
 
 ### C. Spatial interaction
 
@@ -420,19 +425,22 @@ relaxed = current + diffusionRate * (neighborAverage - current)
 updated = max(0, relaxed * (1 - decayRate))
 ```
 Boundary cells are updated with a smaller neighbor count (not frozen, not
-reflected, not periodic). No multi-channel addressing exists: `signal()`
-does not create anything, and `get_signal`/`emit_signal`/`absorb_signal`
-ignore any handle argument.
+reflected, not periodic). This describes the legacy field that handle 0/1
+still use unchanged.
 
-Target contract (capability B, §9): `signal(kdiff,kdeg)` must create or
-reference a real, independently addressable channel and return a stable
-handle; `get_signal`/`emit_signal`/`absorb_signal`/`set_signal`/
-`set_signal_rect` must operate on the channel named by that handle. The
-GenESyS discretization does not have to copy the original 8-neighbor/`dt`
--scaled stencil verbatim (the current 4-neighbor/no-`dt` formulation may be
-kept or revised), but any change to the existing field formulation is a
-behavior change for the three existing `.gen` fixtures and must be treated
-as such (documented impact + migration note), not a silent fix.
+**Multi-channel addressing: done 2026-10-08 (§17 phase 3).** `signal(
+kdiff,kdeg)` creates/resolves a real, independently addressable channel
+and returns a stable handle; `get_signal`/`emit_signal`/`absorb_signal`/
+`set_signal`/`set_signal_rect` operate on the channel named by that handle,
+with explicit, tested rejection of invalid handles (see §17 phase 3 for the
+full contract). Each additional channel (handle >= 2) runs the exact same
+4-neighbor/no-`dt` relaxation formula above, applied independently per
+channel with that channel's own `diffusionRate`/`decayRate` — the
+discretization itself was **not** revised by phase 3 (that is Phase 4's
+scope, §17 item 4); only the structure needed for each channel to own its
+own configuration and field was added. No change was made to the existing
+field formulation, so no `.gen`-fixture migration note is required by this
+phase (§15/§20).
 `reaction()` is explicitly **not** part of the selected subset (§7) and is
 retained here only as reference.
 
@@ -578,10 +586,12 @@ already demonstrates the single-argument `emit_signal` call shape that
 must remain loadable (or be given an explicit, tested migration) once
 multi-channel signals (§10) land.
 
-`WiP2026108/PE_Fix` (draft PR #545) is working on SimulLang/GenSerializer
-text round-tripping, including a GroProgram model round-trip test. The
-persistence phase of this plan must rebase on that work once merged,
-rather than independently re-fixing the same persistence path.
+`WiP2026108/PE_Fix` (PR #545) implemented SimulLang/GenSerializer text
+round-tripping, including a GroProgram model round-trip test, and was
+merged into `WorkInProgress` (merge `dce34847`), integrated into this
+branch on 2026-10-08 (merge `c7816bf2`). The persistence phase of this
+plan must rebase on the current serializer as shipped, not re-fix the
+same persistence path.
 
 ## 16. Test/oracle matrix
 
@@ -599,7 +609,8 @@ Confirmed **not** covered by any existing test (regression gaps to close
 - corpus C: `speed = 0` → position must not change;
 - corpus C: `simulationStep = 0` → position must not change (newly
   identified in this pass, §12);
-- corpus B: two independent signal handles must not alias each other;
+- corpus B: two independent signal handles must not alias each other —
+  **closed 2026-10-08, §17 phase 3**;
 - corpus E: viewer manual step/run controls running concurrently with
   event-calendar dispatch on the same colony.
 
@@ -614,9 +625,8 @@ executed verification — it required no production change.
 `maptocells ... end` remain unimplemented by §2/§6/§7 decision and are
 **not** tracked as regression gaps — they are out of the selected subset.
 The `needs`-comma-splitting **parser bug** (distinct from the broader
-`needs`-as-scoping *feature*, which remains unimplemented by choice) is
-still a gap to close, since it currently mis-parses even the small subset
-of `needs` usage that matters for diagnostics.
+`needs`-as-scoping *feature*, which remains unimplemented by choice) was
+closed in Phase 1 (`daffe5bf`, confirmed above); it is not an open gap.
 
 ## 17. Phased implementation plan (revised 2026-10-08)
 
@@ -647,11 +657,76 @@ small, single-concern commit.
    this pass; any further one discovered while implementing phases 3–6
    will be fixed there instead of reopening this phase. Builtins marked
    "no" in §7 remain unimplemented by decision.
-3. **Signal channels**: give `signal()` a real handle/channel identity;
-   make `get_signal`/`emit_signal`/`absorb_signal`/`set_signal`/
-   `set_signal_rect` respect it; support at least two independent channels
-   (corpus B). `reaction()` and `get_signal_matrix` signature repair are
-   out of scope per §7.
+3. **Signal channels** — done 2026-10-08 (`58783cba`, `5c1df906`, plus the
+   handle-validation/leak/resize closeout in this pass): `signal(kdiff,
+   kdeg)` assigns each declaration a stable ordinal handle (1st, 2nd, ... in
+   program order; `GroProgramRuntimeState::signalDeclarationOrdinal`,
+   reset every execution pass and re-derived deterministically since every
+   bacterium runs the identical program text in the same order — no name
+   registry needed). Handle 0 (no explicit handle, pre-multi-channel raw-IR
+   convention) and handle 1 (the first `signal(...)` declaration) both
+   resolve to the colony's pre-existing single field (`_signalField`/
+   `"local_signal"`), so every pre-multi-channel program, fixture and test
+   keeps its exact prior behavior unchanged. Handle N >= 2 addresses a
+   genuinely independent `BacteriaColony::AdditionalSignalChannel` (own
+   diffusion rate, decay rate and `std::vector<double>` field, sized to the
+   current grid), lazily allocated by an `EnsureSignalChannel` colony
+   mutation the first time its declaration executes.
+   `get_signal`/`emit_signal`/`absorb_signal`/`set_signal`/`set_signal_rect`
+   all resolve their handle argument through the same
+   `tryResolveSignalChannelHandle` contract (mirrored in
+   `GroProgramRuntime.cpp` for the Gro-expression/command layer and
+   `BacteriaColony::_tryResolveSignalChannelHandle` for the two
+   colony-mutation-level commands): a handle must be within `1e-9` of an
+   integer, non-negative, and either `<= 1` (legacy) or `<=` the number of
+   channels actually declared so far in the current execution pass —
+   negative, non-integer, and not-yet-declared handles are explicit
+   `result.succeeded = false` / mutation-rejection errors ("received an
+   invalid signal channel handle (...)"), never a silent fallback to the
+   legacy channel. `BacteriaColony::_initBetweenReplications()` and the
+   `reset()` builtin's colony mutation now clear
+   `_additionalSignalChannels` explicitly (fixing a confirmed leak: the
+   lazy-allocate-if-size-mismatched path in `_ensureAdditionalSignalChannel`
+   does not zero a channel whose field is already correctly sized, so a
+   value emitted in one replication was otherwise still readable at the
+   start of the next). `_resetRuntimeSignalField()` now also resizes every
+   already-declared additional channel's field to the current grid
+   dimensions (fixing a confirmed dimension-incoherence bug where a channel
+   declared before a `signal_grid_width`/`signal_grid_height` mutation kept
+   its stale, pre-resize field length). `reaction()` and `get_signal_matrix`
+   signature repair remain out of scope per §7; the diffusion/decay formula
+   itself (per-channel 4-neighbor relaxation, no `dt`) is unchanged from
+   §10 and is Phase 4's concern, not this phase's.
+   Regression evidence: `GroProgramRuntimeAssignsIndependentOrdinalSignalChannelHandles`,
+   `BacteriaColonyMaintainsTwoIndependentSignalChannelsWithoutAliasing`
+   (both from the prior pass) plus, added in this pass,
+   `GroProgramRuntimeRejectsInvalidSignalChannelHandles`,
+   `BacteriaColonySetSignalAndSetSignalRectRespectChannelHandle`,
+   `BacteriaColonyRejectsSetSignalWithUndeclaredChannelHandle`,
+   `BacteriaColonyAbsorbsSignalIndependentlyPerChannel`,
+   `BacteriaColonyDoesNotLeakAdditionalSignalChannelsBetweenReplications`,
+   `BacteriaColonyResizesAdditionalSignalChannelsWithGridDimensionChanges`,
+   `BacteriaColonyMaintainsSignalChannelIndependenceAcrossMultipleSteps`
+   (`source/tests/unit/test_runtime_pluginmanager.cpp`). The four new
+   production-facing tests were confirmed RED against the pre-fix code
+   (invalid handles silently accepted and aliased to the legacy channel;
+   `set_signal` with an undeclared handle silently accepted; channel 2
+   read back a leaked value across a simulated replication boundary;
+   a channel declared before a grid resize silently dropped a write at a
+   coordinate outside its stale size) before the fix, and GREEN after.
+   No `.gen` persistence format change was needed or made: additional
+   channels are pure runtime state (`_additionalSignalChannels` is not a
+   persisted field of `BacteriaColony` or `BacteriaSignalGrid`), reconstructed
+   every replication by re-running the program's own `signal(...)`
+   declarations; the three existing fixtures (§15) are unaffected and were
+   not re-validated by this pass beyond the pre-existing single-channel
+   regression coverage. Validated with full `tests-unit`/`tests-kernel-unit`
+   (1856/1858 executed, 0 failed, 4 preexisting disabled, plus the 2
+   preexisting unrelated `PropertyEditorDoubleCommit` locale failures from
+   PR #545 confirmed present on bare `WorkInProgress` before this branch's
+   changes) and `tests-smoke` (3/3); `gui-app` rebuilt clean. Deferred to
+   Phase 4 by design: the diffusion/decay formulation itself, `dt` usage,
+   boundary handling, and any numerical/stability review.
 4. **Reaction-diffusion review**: revisit the existing 4-neighbor/no-`dt`
    field formulation only as needed to support multi-channel fields from
    phase 3; document whatever formulation is kept or changed, with the
@@ -674,8 +749,9 @@ small, single-concern commit.
 11. **Performance**: only after correctness phases close; address the
     reparse-every-call cost (§13) with a safe cache keyed by source
     identity.
-12. **Persistence**: rebase on `WiP2026108/PE_Fix` once merged; validate
-    the three existing `.gen` fixtures continue to load (or document/
+12. **Persistence**: rebase on the serializer shipped by `WiP2026108/PE_Fix`
+    (PR #545, merged); validate the three existing `.gen` fixtures continue
+    to load (or document/
     migrate any intentional change from phases 3/4/5/6).
 13. **Documentation/manual/completion gate**: reconcile this document,
     `STATUS.md`, the AI changelog, and manual impact per governance §10.
@@ -722,8 +798,9 @@ Genuinely open/to watch:
   persistence-format decision affecting the three existing `.gen`
   fixtures — present impact/migration before changing the saved format,
   do not change it silently (governance §15).
-- The persistence phase depends on `WiP2026108/PE_Fix` merging first; if
-  it stalls, escalate rather than duplicating its persistence fixes.
+- `WiP2026108/PE_Fix` (PR #545) merged 2026-10-08; the persistence phase
+  (§17 item 12) now rebases on the current serializer as shipped — this
+  item is resolved, not open.
 - If a future maintainer-selected fixture genuinely requires barriers or
   chemostat physical effects beyond what §12's simple geometric policy can
   express reasonably, present options (simple internal extension vs.
