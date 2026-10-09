@@ -529,6 +529,10 @@ double BacteriaColony::getSignalValueAt(unsigned int x, unsigned int y) const {
 	return _signalValueAt(x, y);
 }
 
+unsigned int BacteriaColony::getSignalChannelCount() const {
+	return 1u + static_cast<unsigned int>(_additionalSignalChannels.size());
+}
+
 double BacteriaColony::getAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const {
 	if (x >= getGridWidth() || y >= getGridHeight()) {
 		throw std::out_of_range("BacteriaColony signal coordinate is out of range");

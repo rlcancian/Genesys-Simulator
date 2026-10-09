@@ -152,6 +152,8 @@ public:
 	bool hasRuntimeVariable(const std::string& variableName) const;
 	/*! \brief Returns the runtime signal value stored at one grid coordinate. */
 	double getSignalValueAt(unsigned int x, unsigned int y) const;
+	/*! \brief Returns the number of currently available signal channels, including the legacy first channel. */
+	unsigned int getSignalChannelCount() const;
 	/*! \brief Returns the runtime value for one additional (handle >= 2) signal channel at one grid coordinate. */
 	double getAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const;
 	/*! \brief Returns the current runtime signal field as a row-major matrix. */
