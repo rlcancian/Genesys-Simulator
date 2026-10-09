@@ -9,23 +9,20 @@ status: active
 
 # Bacteria Colony / Gro Integration Plan
 
-## Current proposal: four-milestone first-version rebaseline
+## Approved first-version rebaseline: four milestones, nine cycles
 
-**Proposal dated 2026-10-09 — pending explicit maintainer approval.** The
-forward execution plan is consolidated in §22 into M1–M4 and nine bounded
-iterations. The historical inventory, phase records, tests, decisions and
-evidence in §§1–21 are retained; their old phase numbers remain stable for
-citations and history. From this proposal onward, §22 is the current
-forward-looking plan and supersedes the sequencing in historical §17 only
-after approval.
+**Approved by explicit maintainer instruction dated 2026-10-09.** This
+rebaseline replaces the pending proposal formerly in §22 and authorizes the
+nine-cycle execution scope recorded there and in `AUTO-BACTERIA-001`.
+Historical inventories, decisions, tests, commits and evidence in §§1–21
+remain available with their original phase numbers; they are historical
+evidence, not additional requirements for a larger version.
 
-The first-version signal proposal is Alternative A from §10: retain the
-current dimensionless per-update relaxation and document it as phenomenological,
-without claiming physical, conservative diffusion. This is **not approved by
-this rebaseline prompt**. The maintainer must ratify that scientific claim and
-the finite `[0,1]` input domain before implementation of numeric validation.
-Alternatives B and C are postponed. Until that ratification and approval of
-this whole plan, do not start M2 or alter implementation behavior.
+The maintainer ratified Alternative A from §10 for this first version: retain
+the current dimensionless per-update relaxation as a phenomenological
+concentration-propagation operator, constrain finite `kdiff` and `kdeg` to
+`[0,1]`, and make no physical-PDE or conservation claim. Alternatives B and C
+are postponed. The equation and operation order remain unchanged.
 
 ## 1. Objective and scope
 
@@ -508,12 +505,12 @@ input-validation risk, not an accepted scientific behavior.
 
 Alternative A is the only one justified by the current API and persisted
 values: no source establishes length/time units or a calibrated diffusion
-constant. Recommendation for this closure review: keep the current equation
-only as a documented dimensionless per-step relaxation, and require
-maintainer approval before selecting B or C or assigning physical meaning
-to the current coefficients. If the scientific acceptance criterion
-requires unweighted mass conservation or physical time/space scaling, A does
-not meet it and that criterion must be settled before an equation change.
+constant. The maintainer approved A for the first-version scope on
+2026-10-09: keep the current equation as a documented dimensionless per-step
+relaxation and reject non-finite or out-of-domain coefficients. This does not
+establish unweighted mass conservation or physical time/space scaling; if
+either becomes an acceptance criterion, a new scientific decision is required
+before an equation change.
 This distinction follows standard explicit heat-equation stability
 analysis and finite-volume flux conservation (see [MIT notes on 2D explicit
 heat finite differences](https://dspace.mit.edu/bitstream/handle/1721.1/35256/22-00JSpring-2002/NR/rdonlyres/Nuclear-Engineering/22-00JIntroduction-to-Modeling-and-SimulationSpring2002/55114EA2-9B81-4FD8-90D5-5F64F21D23D0/0/lecture_16.pdf)
@@ -953,14 +950,29 @@ maintainer approval.
    `tests-kernel-unit`: 1,878 passed/0 failed, 4 disabled;
    `tests-smoke`: 3/3 passed; `gui-app` build succeeded (no work required).
    CMake 3.28.3/Ninja 1.11.1, GNU C++ 13.3.0, C++23 with extensions off.
-   No CI result is claimed. Alternatives A/B/C and the unresolved scientific
-   choice are in §10. The recommendation is to retain A only as an explicitly
-   phenomenological per-step operator unless conservation or physical units
-   are required; selecting B/C or assigning physical meaning to coefficients
-   requires maintainer decision before production changes. Existing tests
+   No CI result is claimed. Alternatives A/B/C and the maintainer's approval
+   of A for the first-version scope are in §10. A remains an explicitly
+   phenomenological per-step operator; selecting B/C or assigning physical
+   meaning to coefficients requires a new maintainer decision before
+   production changes. Existing tests
    characterize current behavior (so no implementation RED/GREEN cycle was
    applicable). No `.gen`, serializer, or model file was changed. Phase 5
    remains not started.
+   **Cycle 1 signal-parameter closeout (2026-10-09):** the approved
+   Alternative A domain is now enforced. RED tests demonstrated that the
+   grid accepted NaN through ordinary comparisons, Gro accepted finite
+   out-of-range coefficients, and Gro could leave ordinal/EnsureSignalChannel
+   mutations for an invalid declaration. `BacteriaSignalGrid::_check()` now
+   rejects non-finite and out-of-range diffusion/decay values; Gro declaration
+   execution reports a finite `[0,1]` diagnostic before changing its ordinal,
+   assigned variable, or channel mutation list. Tests include endpoints,
+   intermediate values, negative/>1 values, NaN/infinity and explicit
+   no-mutation assertions. GREEN: both new tests pass and all 86
+   `RuntimePluginManagerClassTest` cases pass locally after the change. The
+   focused `tests-unit` preset was configured with CMake 3.28.3, Ninja 1.11.1,
+   GCC 13.3.0, Qt 6.4.2 available and C++23 extensions disabled. No full
+   preset regression or CI result is claimed at this cycle checkpoint. The
+   relaxation equation, `.gen` fields and serializer are unchanged.
 5. **Physical coordinates**: remove the shift-and-round seeding path;
    reconcile with the centered convention used by `set_signal`.
 6. **Growth/division**: remove the `0.01` minimum growth clamp (§11);
@@ -1086,12 +1098,11 @@ as `BACTERIA-COLONY-INTEGRATION-PARTIAL` with the exact remaining
 capability, blocker, evidence, required decision and next action, using
 this document's §17 phase numbering.
 
-## 22. Proposed simplified plan: four milestones, nine iterations
+## 22. Approved simplified plan: four milestones, nine cycles
 
-Status: **proposal awaiting maintainer approval**. No implementation task in
-this section is activated by writing it. The existing feature branch and
-Phase 3 acceptance remain the basis; M2 must not start before approval of
-this rebaseline. Historical phase citations in §§1–21 stay unchanged.
+Status: **approved and active** by explicit maintainer instruction dated
+2026-10-09. `AUTO-BACTERIA-001` is running on the existing feature branch.
+Historical phase citations in §§1–21 stay unchanged.
 
 ### 22.1 Requirement classification
 
@@ -1102,25 +1113,21 @@ listed here; source presence alone is not validation.
 | Classification | Requirements and evidence |
 |---|---|
 | **Already implemented and validated** | The selected Gro parser/compiler/runtime subset, persistent record-like variables and conditional syntax have focused runtime tests. Signal handles are independent; emit/absorb/read/set route by handle; invalid and conditional declarations are rejected; global handles can be shared through the supported global declaration pattern. Phase 3 precedence and once-per-replication mismatch trace behavior have focused tests. Evidence is listed in historical §17 and the actual tests in `source/tests/unit/test_runtime_pluginmanager.cpp`. Growth has visible-effect tests; bacterium-scoped division and death have focused tests, but the zero-growth/complete lifecycle contract is not thereby validated. `Smart_GroColonyGrowth.gen` and `Smart_GroColonyLifecycle.gen` have an executed fixture-load test. |
-| **Obrigatório para a primeira versão** | Numeric validation for signal parameters; ratification and precise documentation of Alternative A; continuous-coordinate seeding and consistent grid sampling; zero-growth and zero-displacement invariants; division/death/orientation/movement contract and reproducible `run`/`tumble`; one coherent update order across Gro, bacteria, fields and event calendar; GUI view of runtime state; minimum end-to-end evidence for corpus A–E, reusing existing tests; supported-model load/save validation; resolution of the known `Smart_BacteriaColony_GRO.gen` loading failure or a maintainer-approved support classification; full required regressions and documented scientific limits. |
+| **Obrigatório para a primeira versão** | Finite `[0,1]` signal-coefficient validation and documentation of approved Alternative A; continuous-coordinate seeding and consistent grid sampling; zero-growth and zero-displacement invariants; division/death/orientation/movement contract and reproducible `run`/`tumble`; one coherent update order across Gro, bacteria, fields and event calendar; GUI view of runtime state; minimum end-to-end evidence for corpus A–E, reusing existing tests; supported-model load/save validation; causal resolution or explicit supported-model classification for the known `Smart_BacteriaColony_GRO.gen` loading failure; full required regressions and documented scientific limits. |
 | **Adiado para versão posterior** | Alternatives B/C; physical coordinates/units beyond the continuous kinematic contract; mass-action `reaction()`; remaining academic Gro grammar/builtins; barrier collision geometry and chemostat physical effects; advanced bacteria collision; performance optimization unless a measurement finds a material delivery bottleneck. These are not extra first-version phases. |
 | **Descartado por decisão arquitetural existente** | Chipmunk2D or any external rigid-body/physics engine; true rigid-body forces, torques and collision; full compatibility with the original Gro implementation or all 23 original examples. Do not reopen these decisions absent new maintainer instruction. |
 
-Alternative A is **proposed, not ratified**. Its proposed coefficient domain is
-finite `kdiff,kdeg ∈ [0,1]`, matching the persisted grid's declared range
-contract; the current `BacteriaSignalGrid::_check()` does not reject NaN
-explicitly, and Gro declarations have no range/finiteness validation.
-The maintainer must approve both the dimensionless per-update interpretation
-and its domain before M1 changes those behaviors. Until then, B/C are
-postponed and the existing numerical equation remains unchanged. This
-proposal does not raise the scientific claim above a phenomenological,
-non-conservative relaxation.
+Alternative A and its finite `kdiff,kdeg ∈ [0,1]` domain are approved for
+this first version. Cycle 1 validates both Gro declarations and attached
+grid configuration; the equation and operation order remain unchanged.
+Alternatives B/C are postponed, and this approval does not raise the claim
+above a phenomenological, non-conservative relaxation.
 
 ### 22.2 Status of the four milestones
 
 | Milestone | Real status at the reference HEAD | Closure condition |
 |---|---|---|
-| **M1 — Gro e sinais** | **Partial.** The selected frontend subset, handles, channel independence and Phase 3 coefficient precedence are implemented and tested. Phase 4's numerical characterization is documented and tested. Gro/grid parameter validation remains incomplete; Alternative A and its scientific wording await ratification. | Maintainer ratifies A and numeric domain; finite/range validation and error diagnostics pass regression; relaxation documentation clearly states units, boundary behavior and limitations. |
+| **M1 — Gro e sinais** | **In progress.** The selected frontend subset, handles, channel independence and Phase 3 coefficient precedence are implemented and tested. Phase 4 characterization is recorded. Cycle 1 now rejects invalid coefficients; documentation and remaining milestone evidence are being closed. | Finite/range validation and error diagnostics pass regression; relaxation documentation states its dimensionless per-step behavior, boundary semantics and scientific limitations. |
 | **M2 — Dinâmica bacteriana** | **Not started.** State has continuous position members, but Gro seeding shifts/rounds coordinates. The minimum growth clamp defeats zero growth; speed and elapsed-step floors defeat zero movement. Division, death and `run`/`tumble` code exists with focused partial tests; the accepted end-to-end contract and RNG reproducibility are not closed. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. Start only after approval of §22. |
 | **M3 — Integração e GUI** | **Partial foundation.** Gro execution, signal changes and colony stepping exist. Event calendar and viewer call the same execution method, but a manual viewer step does not advance model time; the state/time contract and interaction with calendar replay are not fully validated. The viewer exists, but corpus-E fidelity and combined A–E end-to-end coverage remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
 | **M4 — Validação e entrega** | **Partial.** Gro persistence round-trip infrastructure exists. Growth and lifecycle `.gen` fixtures have an executed load test. The plan records `Smart_BacteriaColony_GRO.gen` loader failure on both Phase 3 reference and implementation branch; this was not a passing compatibility result. Completion-level current CI and performance evidence are not established by the historical snapshots. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed or its support status is explicitly decided; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
@@ -1138,7 +1145,7 @@ current governance.
 | 1 | Minimal frontend blockers; completed and validated in the historical record. | M1. |
 | 2 | Selected runtime/builtins (`time()`); completed as recorded. | M1. |
 | 3 | Signal handles, independent channels, identity safeguards and precedence; completed and tested as recorded. | M1. |
-| 4 | Reaction-diffusion review; diagnosis/characterization recorded; no equation change. A ratification remains open. | M1. |
+| 4 | Reaction-diffusion review; diagnosis/characterization recorded; no equation change. Alternative A approved for first-version scope. | M1. |
 | 5 | Continuous physical coordinates and grid mapping; not implemented. | M2. |
 | 6 | Growth/division, including zero-growth invariant; not implemented. | M2. |
 | 7 | Simple kinematics, `run`/`tumble`, kernel RNG and zero-motion invariants; not implemented. | M2. |
@@ -1153,7 +1160,7 @@ Historical test names, commit identifiers, RED/GREEN evidence, loader
 limitations and prior claims remain in §§1–21. The new milestones are not a
 replacement for that evidence archive.
 
-### 22.4 Proposed first-version acceptance criteria
+### 22.4 Approved first-version acceptance criteria
 
 The first version may be called complete only when all seven criteria have
 executed evidence at the final branch head:
@@ -1174,18 +1181,128 @@ executed evidence at the final branch head:
    any disabled or unrelated failures are separately identified, not called
    passed.
 7. The signal relaxation's mathematical contract, coefficient domain and
-   scientific limitations are explicit. Alternative A must be ratified
-   before claiming this criterion; B/C remain outside this first version.
+   scientific limitations are explicit. Alternative A is approved for this
+   first version; B/C remain outside its scope.
 
 These criteria do not assert predictive biological validity. Any later
 scientific claim requires its own reference-backed validation package.
 
-### 22.5 Proposed nine-iteration execution sequence
+### 22.5 Approved nine-cycle execution sequence
 
-The iterations below are a proposal only. No iteration starts before plan
-approval; iteration 1 includes the explicit scientific ratification gate.
-Reuse existing tests, adding only the smallest missing oracle or
-end-to-end check. Every change remains bounded and is committed separately.
+The following sequence is the active plan approved on 2026-10-09. Historical
+proposal text that follows it is retained as provenance only and is
+superseded where its cycle grouping or stop gates differ. Each cycle has a
+bounded commit/evidence checkpoint; completion of a cycle is not a reason to
+stop the mission.
+
+#### Cycle 1 — Close signals
+
+- **Objective/files:** validate finite `kdiff`/`kdeg` in `[0,1]` for Gro and
+  `BacteriaSignalGrid`; preserve the approved grid precedence, independent
+  channels and equation; document A as phenomenological. Touch signal grid,
+  Gro runtime, focused tests and this plan.
+- **Tests/exit:** endpoints, intermediates, negative/>1, NaN/Inf, no partial
+  channel mutation, Phase 3 precedence/identity and small-grid
+  characterizations pass; invalid values have explicit diagnostics.
+- **Dependencies/risks:** none. Do not alter operator mathematics, `.gen`
+  fields or serializer. Stop only if a supported tracked model depends on an
+  invalid coefficient.
+
+#### Cycle 2 — Coordinates and geometry
+
+- **Objective/files:** preserve continuous Gro seed coordinates, define one
+  coordinate origin and deterministic cell mapping, and keep rendered
+  geometry derived from coherent center/length/width/orientation state.
+- **Tests/exit:** fractional, negative, boundary and signal-sampling cases
+  prove continuous position survives seed → step → render and all grid
+  access remains in bounds.
+- **Dependencies/risks:** Cycle 1. Existing seed layouts may shift; stop if
+  origin/boundary policy cannot be inferred from the approved centered-grid
+  convention.
+
+#### Cycle 3 — Growth invariants
+
+- **Objective/files:** remove artificial growth floors in `BacteriaColony`
+  and keep volume and visual length coherent.
+- **Tests/exit:** explicit zero growth and zero elapsed step produce zero
+  volume delta; positive configured growth remains visible; existing reset
+  and lifecycle tests pass.
+- **Dependencies/risks:** Cycle 2 for geometric sizing. Do not introduce a
+  new biological growth law; stop if existing supported fixtures encode a
+  conflicting growth contract.
+
+#### Cycle 4 — Hybrid division
+
+- **Objective/files:** add persisted automatic-division enable/threshold
+  properties (disabled by default), retain Gro `divide()`, and route both
+  through one division routine.
+- **Tests/exit:** automatic/manual/simultaneous triggers, same-step
+  de-duplication, no reprocessing daughters, volume conservation, inherited
+  state/program/genealogy, and boundary placement pass without altering
+  `grow(n)` semantics.
+- **Dependencies/risks:** Cycles 2–3. Stop if correct persistence requires an
+  incompatible `.gen` migration.
+
+#### Cycle 5 — Motion and spatial occupancy
+
+- **Objective/files:** implement `x += speed*cos(direction)*dt`,
+  `y += speed*sin(direction)*dt`; define `run`/`tumble` using kernel RNG;
+  add cheap deterministic limited position correction for oriented bodies.
+- **Tests/exit:** zero speed/step invariants, positive kinematics, seeded
+  reproducibility, boundary reflection and multiple-body partial-overlap
+  handling pass; one isolated stationary bacterium receives no correction.
+- **Dependencies/risks:** Cycles 2–4. No forces, torques, external engine or
+  exact rigid-body guarantee. Stop if the real kernel RNG contract cannot
+  provide deterministic reset behavior.
+
+#### Cycle 6 — Event-calendar integration
+
+- **Objective/files:** establish exactly-once ordering for Gro, bacteria,
+  every signal field and event dispatch using the existing colony state.
+- **Tests/exit:** signal emission/read/relaxation order, one field update per
+  step, replication reset, event time advancement and manual viewer-step
+  behavior are asserted.
+- **Dependencies/risks:** Cycles 1–5. If concurrent cross-thread mutation is
+  possible without a defined synchronization contract, stop that dependent
+  path rather than adding ad hoc locking.
+
+#### Cycle 7 — Viewer and communication demonstration
+
+- **Objective/files:** add channel selection and one-at-a-time heatmap to the
+  existing Qt6 viewer; keep bacteria overlaid and channel lists correct
+  across declaration/reset; author a small native two-signal scenario.
+- **Tests/exit:** GUI build and applicable adapter/interaction checks prove
+  selected-field fidelity plus emit/read/degrade independence while the
+  viewer uses the same runtime state.
+- **Dependencies/risks:** Cycles 2–6. Do not create another renderer, clock
+  or physics model.
+
+#### Cycle 8 — Persistence and complete demonstration
+
+- **Objective/files:** validate supported model save/load and complete
+  scenario; investigate `Smart_BacteriaColony_GRO.gen` causally without
+  re-saving or modifying historical fixtures.
+- **Tests/exit:** Growth, Lifecycle and Smart fixture outcomes are recorded;
+  format stays compatible; new persisted division properties round-trip; the
+  demo reloads and executes.
+- **Dependencies/risks:** Cycles 2–7. If the Smart load issue needs format or
+  semantic migration, document exact cause/options and stop that fix only.
+
+#### Cycle 9 — Regression and delivery
+
+- **Objective/files:** close acceptance criteria, affected manuals, plan,
+  backlog and dated evidence; measure performance only if needed.
+- **Tests/exit:** focused tests, `tests-unit`, `tests-kernel-unit`,
+  `tests-smoke`, `gui-app`, persistence and applicable CI are reported with
+  exact local/CI provenance and unrelated failures separated.
+- **Dependencies/risks:** Cycles 1–8. Do not label complete with a required
+  failed or unrun gate; no speculative optimization.
+
+### 22.6 Superseded proposal sequence (historical)
+
+The following nine-iteration proposal predates the maintainer's 2026-10-09
+approval. It remains as historical provenance only; Cycle 1–9 above control
+the active work. Reuse existing tests and keep changes reviewable.
 
 #### Iteration 1 — Ratify the M1 signal contract
 
