@@ -2,7 +2,7 @@
 document_type: history-index
 authority: informative
 owner: project-maintainer
-last_updated: 2026-09-20
+last_updated: 2026-10-08
 status: active
 tracks: 511
 ---
@@ -17,6 +17,7 @@ This is a concise index of material AI-assisted development and governance chang
 
 | Date | Scope | Environment | PR/issue | Merge/checkpoint | Validation/evidence | Remaining boundary |
 |---|---|---|---|---|---|---|
+| 2026-10-08 | Repair SimulLang persistence, localized Property Editor doubles, semantic text synchronization, and connection undo/redo ownership | GitHub | PR #545 | `dce34847` | unit 1846/1846 + 4 disabled; kernel 1846/1846; smoke 3/3; focused ASan+UBSan green; manual LaTeX/figure-spec build green and PDF regenerated | older binaries are not claimed to read the new `e\"...\"` escaped text representation; focused sanitizer is not repository-wide leak proof |
 | 2026-09-20 | Modal EFSM/Markov transition + DefaultNode List ownership | local | PR #540 | `a913a07a` | ASan/LSan focused EFSM 11/11 + Markov 10/10 exit 0 (excl. ModelFile Buffer noise); CI green | legacy wrappers still present until #541 |
 | 2026-09-20 | Remove ModalModelFSM/PetriNet/node-list/PetriTransition; migrate smart apps | local | PR #541 | `5bd10bb5` | focused 73/73; unit 1830+4 disabled; smoke 3/3; CI green | GUI deferred (`HUM-MODAL-002`) |
 | 2026-09-20 | Modal backend-gate closure docs (STATUS/backlogs/evidence) | local | docs PR (this) | HEAD `5bd10bb5` | evidence `2026-09-20_modal_backend_gate_closure.md`; AUTO-MODAL-002 `done_confirmed` | global Modal `done_confirmed` blocked on GUI |
