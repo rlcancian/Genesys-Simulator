@@ -607,6 +607,7 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	runtimeState.tickCount = _colonyTickCount;
 	runtimeState.variables = _runtimeVariables;
 	runtimeState.variables["dt"] = runtimeState.simulationStep;
+	runtimeState.knownSignalChannelCount = 1 + static_cast<unsigned int>(_additionalSignalChannels.size());
 	_appendBioNetworkContextVariables(runtimeState, bioContextErrorMessage);
 	if (!bioContextErrorMessage.empty()) {
 		result.succeeded = false;
@@ -1344,8 +1345,14 @@ void BacteriaColony::_applyAdditionalSignalChannelsStep() {
 }
 
 void BacteriaColony::_applySignalFieldStep() {
+	// Additional (handle >= 2) channels are independent of the legacy
+	// field's own configuration source and coefficients, so they must
+	// step exactly once per colony step regardless of whether a
+	// BacteriaSignalGrid is attached or what the legacy field's own
+	// diffusion/decay happen to be.
+	_applyAdditionalSignalChannelsStep();
+
 	if (_signalGrid == nullptr || _signalField.empty()) {
-		_applyAdditionalSignalChannelsStep();
 		return;
 	}
 
@@ -1714,6 +1721,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		preludeState.populationSize = _populationSize;
 		preludeState.variables = _runtimeVariables;
 		preludeState.variables["dt"] = preludeState.simulationStep;
+		preludeState.knownSignalChannelCount = 1 + static_cast<unsigned int>(_additionalSignalChannels.size());
 		_appendBioNetworkContextVariables(preludeState, result.errorMessage);
 		if (!result.errorMessage.empty()) {
 			result.succeeded = false;
@@ -1783,6 +1791,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		mainState.tickCount = _colonyTickCount;
 		mainState.variables = _runtimeVariables;
 		mainState.variables["dt"] = mainState.simulationStep;
+		mainState.knownSignalChannelCount = 1 + static_cast<unsigned int>(_additionalSignalChannels.size());
 		_appendBioNetworkContextVariables(mainState, result.errorMessage);
 		if (!result.errorMessage.empty()) {
 			result.succeeded = false;
@@ -2153,6 +2162,13 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	// bacterium. Shared globals from `main()` stay authoritative across ticks, so
 	// persisted bacterium-local variables only overlay names that are not global.
 	runtimeState.variables = _runtimeVariables;
+	// Problem C (Phase 3 review): a named program may reference a handle
+	// established by an earlier global declaration (prelude) without ever
+	// redeclaring "signal(...)" itself, so this fresh per-bacterium pass's
+	// own signalDeclarationOrdinal (0) is not enough for handle
+	// validation; knownSignalChannelCount carries the colony's persistent
+	// channel count forward.
+	runtimeState.knownSignalChannelCount = 1 + static_cast<unsigned int>(_additionalSignalChannels.size());
 	for (const auto& entry : bacterium.runtimeVariables) {
 		if (_runtimeVariables.find(entry.first) == _runtimeVariables.end()) {
 			runtimeState.variables[entry.first] = entry.second;

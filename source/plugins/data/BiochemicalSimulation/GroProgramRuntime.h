@@ -31,6 +31,17 @@ struct GroProgramRuntimeState {
 	// same order: no name tracking or persisted registry is needed for
 	// idempotent, alias-free channel identity.
 	unsigned int signalDeclarationOrdinal = 0;
+	// Highest signal channel handle already established in an EARLIER pass
+	// (e.g. a global "signal(...)" declaration executed by the colony-wide
+	// prelude before this bacterium-scoped pass began). A named program
+	// that only *consumes* a global handle (get_signal/emit_signal/
+	// absorb_signal) without itself containing a "signal(...)" declaration
+	// has signalDeclarationOrdinal == 0 in its own fresh pass, so handle
+	// validation must also accept anything already known from history.
+	// The caller (BacteriaColony) is responsible for setting this from its
+	// own persistent channel bookkeeping; it defaults to 0 (no prior
+	// history) for callers that run self-contained IR with no such colony.
+	unsigned int knownSignalChannelCount = 0;
 };
 
 /*!
