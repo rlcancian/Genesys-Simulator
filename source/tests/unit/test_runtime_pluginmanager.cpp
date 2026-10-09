@@ -20,6 +20,7 @@
 #include "plugins/data/BiochemicalSimulation/GroProgramRuntime.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -774,8 +775,8 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(8).birthTime, 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(8).lastDivisionTime, 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumAge(8), 0.0);
-    EXPECT_EQ(colony->getBacteriumState(8).gridX, 0u);
-    EXPECT_EQ(colony->getBacteriumState(8).gridY, 0u);
+    EXPECT_LT(colony->getBacteriumState(8).gridX, colony->getGridWidth());
+    EXPECT_LT(colony->getBacteriumState(8).gridY, colony->getGridHeight());
     EXPECT_TRUE(result.unsupportedCommands.empty());
     EXPECT_TRUE(result.skippedRawStatements.empty());
 }
@@ -2657,7 +2658,8 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonySupportsBacteriumScopedDivide)
 
     GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_PerBacteriumDivide");
     ASSERT_NE(program, nullptr);
-    program->setSourceCode("program bacterium() { if (bacterium_id == 1) { divide(); } }");
+    program->setSourceCode(
+        "program bacterium() { if (bacterium_id == 1) { ecoli_growth_rate := 0; volume := 0.2; divide(); } }");
 
     BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_PerBacteriumDivide");
     ASSERT_NE(colony, nullptr);
@@ -2674,8 +2676,204 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonySupportsBacteriumScopedDivide)
     EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 1u);
     EXPECT_EQ(colony->getBacteriumState(2).parentId, 1u);
     EXPECT_EQ(colony->getBacteriumState(2).generation, 1u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(0) + colony->getBacteriumVolume(2), 0.2);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(0), 0.1);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(2), 0.1);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumSize(0), std::sqrt(0.1));
+    EXPECT_DOUBLE_EQ(colony->getBacteriumSize(2), std::sqrt(0.1));
+    EXPECT_DOUBLE_EQ(colony->getBacteriumDirectionRadians(0), colony->getBacteriumDirectionRadians(2));
     ASSERT_EQ(result.populationMutations.size(), 1u);
     EXPECT_EQ(result.populationMutations[0].type, GroProgramRuntime::PopulationMutationType::Divide);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAutomaticDivisionIsOptionalAndConservesVolume) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_AutomaticDivision");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+			"set(\"ecoli_growth_rate\", 0); "
+			"program grower() { volume := 2.5; } "
+			"ecoli([x:=0,y:=0], program grower());");
+
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_AutomaticDivision");
+	ASSERT_NE(colony, nullptr);
+	EXPECT_FALSE(colony->getAutomaticDivisionEnabled());
+	EXPECT_DOUBLE_EQ(colony->getDivisionThresholdVolume(), 2.0);
+	colony->setGroProgram(program);
+
+	GroProgramRuntime::ExecutionResult disabledResult = colony->executeGroProgram();
+	ASSERT_TRUE(disabledResult.succeeded) << disabledResult.errorMessage;
+	EXPECT_EQ(colony->getInternalBacteriaCount(), 1u);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(0), 2.5);
+
+	colony->setAutomaticDivisionEnabled(true);
+	colony->setDivisionThresholdVolume(2.0);
+	GroProgramRuntime::ExecutionResult enabledResult = colony->executeGroProgram();
+	ASSERT_TRUE(enabledResult.succeeded) << enabledResult.errorMessage;
+	ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+	EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 1u);
+	EXPECT_EQ(colony->getBacteriumState(1).parentId, colony->getBacteriumState(0).id);
+	EXPECT_TRUE(colony->getBacteriumState(0).justDivided);
+	EXPECT_TRUE(colony->getBacteriumState(1).justDivided);
+	EXPECT_TRUE(colony->getBacteriumState(1).daughter);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(0) + colony->getBacteriumVolume(1), 2.5);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumDirectionRadians(0), colony->getBacteriumDirectionRadians(1));
+	EXPECT_LT(std::hypot(colony->getBacteriumPositionX(1) - colony->getBacteriumPositionX(0),
+	                      colony->getBacteriumPositionY(1) - colony->getBacteriumPositionY(0)), 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyGroDividePreventsSecondAutomaticDivisionInSameStep) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ManualAndAutomaticDivision");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+			"set(\"ecoli_growth_rate\", 0); "
+			"program grower() { volume := 3; divide(); } "
+			"ecoli([x:=0,y:=0], program grower());");
+
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ManualAndAutomaticDivision");
+	ASSERT_NE(colony, nullptr);
+	colony->setAutomaticDivisionEnabled(true);
+	colony->setDivisionThresholdVolume(2.0);
+	colony->setGroProgram(program);
+
+	const GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(0) + colony->getBacteriumVolume(1), 3.0);
+	EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 1u);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyDiagnosesRepeatedGroDivisionInOneStep) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_RepeatedDivision");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+			"set(\"ecoli_growth_rate\", 0); "
+			"program grower() { volume := 3; divide(); divide(); } "
+			"ecoli([x:=0,y:=0], program grower());");
+
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_RepeatedDivision");
+	ASSERT_NE(colony, nullptr);
+	colony->setGroProgram(program);
+
+	const GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+	EXPECT_FALSE(result.succeeded);
+	EXPECT_NE(result.errorMessage.find("at most one divide()"), std::string::npos);
+	EXPECT_EQ(colony->getInternalBacteriaCount(), 1u);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyPersistsAutomaticDivisionConfiguration) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_PersistedDivision");
+	ASSERT_NE(colony, nullptr);
+	colony->setAutomaticDivisionEnabled(true);
+	colony->setDivisionThresholdVolume(3.25);
+
+	const auto uniqueSuffix = std::chrono::steady_clock::now().time_since_epoch().count();
+	const std::filesystem::path path = std::filesystem::temp_directory_path() /
+	                                   ("genesys_bacteria_division_" + std::to_string(uniqueSuffix) + ".gen");
+	ASSERT_TRUE(simulator.getModelManager()->saveModel(path.string()));
+	Model* loadedModel = simulator.getModelManager()->loadModel(path.string());
+	ASSERT_NE(loadedModel, nullptr);
+	BacteriaColony* loadedColony = dynamic_cast<BacteriaColony*>(
+			loadedModel->getComponentManager()->find("BacteriaColony_PersistedDivision"));
+	ASSERT_NE(loadedColony, nullptr);
+	EXPECT_TRUE(loadedColony->getAutomaticDivisionEnabled());
+	EXPECT_DOUBLE_EQ(loadedColony->getDivisionThresholdVolume(), 3.25);
+	std::filesystem::remove(path);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAggregateDivideConservesCombinedVolume) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_AggregateDivideVolume");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode("program colony() { divide(); }");
+
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_AggregateDivideVolume");
+	ASSERT_NE(colony, nullptr);
+	colony->setInitialPopulation(3);
+	colony->setGroProgram(program);
+	ModelDataDefinition::InitBetweenReplications(colony);
+	double initialVolume = 0.0;
+	for (std::size_t index = 0; index < colony->getInternalBacteriaCount(); ++index) {
+		initialVolume += colony->getBacteriumVolume(index);
+	}
+
+	const GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	ASSERT_EQ(colony->getInternalBacteriaCount(), 6u);
+	double finalVolume = 0.0;
+	for (std::size_t index = 0; index < colony->getInternalBacteriaCount(); ++index) {
+		finalVolume += colony->getBacteriumVolume(index);
+	}
+	EXPECT_DOUBLE_EQ(finalVolume, initialVolume);
+	for (std::size_t index = 3; index < 6; ++index) {
+		EXPECT_EQ(colony->getBacteriumState(index).generation, 1u);
+		EXPECT_TRUE(colony->getBacteriumState(index).daughter);
+		EXPECT_TRUE(colony->getBacteriumState(index).justDivided);
+	}
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyDoesNotExecuteNewMainDivisionDaughterInSameStep) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_MainDivisionSnapshot");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+			"set(\"ecoli_growth_rate\", 0); "
+			"program main() := { divide(); }; "
+			"program grower() { visits := visits + 1; } "
+			"ecoli([x:=0,y:=0], program grower());");
+
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_MainDivisionSnapshot");
+	ASSERT_NE(colony, nullptr);
+	colony->setAutomaticDivisionEnabled(true);
+	colony->setDivisionThresholdVolume(0.4);
+	colony->setGroProgram(program);
+
+	const GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "visits"), 1.0);
+	EXPECT_FALSE(colony->hasBacteriumRuntimeVariable(1, "visits"));
+	EXPECT_TRUE(colony->getBacteriumState(0).justDivided);
+	EXPECT_TRUE(colony->getBacteriumState(1).justDivided);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSignalAwareBacteriumProgram) {
