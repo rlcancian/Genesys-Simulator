@@ -1106,8 +1106,8 @@ Historical phase citations in §§1–21 stay unchanged.
 
 ### 22.1 Requirement classification
 
-The categories below describe current code and executed evidence at this
-plan's reference state. “Implemented” is reserved for the tested behavior
+The categories below describe current code and executed evidence at the
+feature-branch head recorded in the active cycle reports. “Implemented” is reserved for the tested behavior
 listed here; source presence alone is not validation.
 
 | Classification | Requirements and evidence |
@@ -1127,8 +1127,8 @@ above a phenomenological, non-conservative relaxation.
 
 | Milestone | Real status at the reference HEAD | Closure condition |
 |---|---|---|
-| **M1 — Gro e sinais** | **In progress.** The selected frontend subset, handles, channel independence and Phase 3 coefficient precedence are implemented and tested. Phase 4 characterization is recorded. Cycle 1 now rejects invalid coefficients; documentation and remaining milestone evidence are being closed. | Finite/range validation and error diagnostics pass regression; relaxation documentation states its dimensionless per-step behavior, boundary semantics and scientific limitations. |
-| **M2 — Dinâmica bacteriana** | **Not started.** State has continuous position members, but Gro seeding shifts/rounds coordinates. The minimum growth clamp defeats zero growth; speed and elapsed-step floors defeat zero movement. Division, death and `run`/`tumble` code exists with focused partial tests; the accepted end-to-end contract and RNG reproducibility are not closed. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. Start only after approval of §22. |
+| **M1 — Gro e sinais** | **Cycle 1 complete.** The selected frontend subset, handles, channel independence, Phase 3 coefficient precedence and Phase 4 characterization remain covered. Gro declarations and attached-grid settings now reject non-finite/out-of-range coefficients; the approved phenomenological contract is recorded. | Keep existing signal regressions green while later cycles integrate colony and viewer behavior. |
+| **M2 — Dinâmica bacteriana** | **In progress (Cycle 2 complete).** Gro seed coordinates remain continuous and centered; cell mapping is now consistent for seed placement, `set_signal`, sampling and boundaries. Growth floors, zero-motion floors, division contract and RNG reproducibility remain open. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. |
 | **M3 — Integração e GUI** | **Partial foundation.** Gro execution, signal changes and colony stepping exist. Event calendar and viewer call the same execution method, but a manual viewer step does not advance model time; the state/time contract and interaction with calendar replay are not fully validated. The viewer exists, but corpus-E fidelity and combined A–E end-to-end coverage remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
 | **M4 — Validação e entrega** | **Partial.** Gro persistence round-trip infrastructure exists. Growth and lifecycle `.gen` fixtures have an executed load test. The plan records `Smart_BacteriaColony_GRO.gen` loader failure on both Phase 3 reference and implementation branch; this was not a passing compatibility result. Completion-level current CI and performance evidence are not established by the historical snapshots. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed or its support status is explicitly decided; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
 
@@ -1146,7 +1146,7 @@ current governance.
 | 2 | Selected runtime/builtins (`time()`); completed as recorded. | M1. |
 | 3 | Signal handles, independent channels, identity safeguards and precedence; completed and tested as recorded. | M1. |
 | 4 | Reaction-diffusion review; diagnosis/characterization recorded; no equation change. Alternative A approved for first-version scope. | M1. |
-| 5 | Continuous physical coordinates and grid mapping; not implemented. | M2. |
+| 5 | Continuous physical coordinates and grid mapping; centered continuous seed coordinates and deterministic grid sampling are implemented and tested in Cycle 2. Physical units remain out of scope. | M2. |
 | 6 | Growth/division, including zero-growth invariant; not implemented. | M2. |
 | 7 | Simple kinematics, `run`/`tumble`, kernel RNG and zero-motion invariants; not implemented. | M2. |
 | 8 | Event-step ordering; not closed. | M3. |
@@ -1219,6 +1219,26 @@ stop the mission.
 - **Dependencies/risks:** Cycle 1. Existing seed layouts may shift; stop if
   origin/boundary policy cannot be inferred from the approved centered-grid
   convention.
+
+**Cycle 2 result (2026-10-09): COMPLETE.** Gro seed `x,y` are retained as
+continuous doubles. The grid origin is centered: coordinate `x` maps to
+`round(x + (width - 1)/2)` and is clamped to the grid; the inverse cell-center
+mapping is `index - (width - 1)/2`. Automatically sized grids cover both
+positive and negative seed coordinates without shifting the stored positions.
+`set_signal`, bacterium sampling, seed placement and boundary reflection use
+the same convention. Fractional/negative seeds, explicit-grid sampling,
+automatic dimensions, and reset/respawn behavior are covered. This is a
+coordinate convention, not a claim of physical units or calibrated cell size.
+
+RED/GREEN evidence: the new coordinate/sampling tests failed against the
+previous shifted/rounded implementation; after the change, the focused
+coordinate, seed-initialization, named-program and signal-aware tests passed,
+and all 88 `RuntimePluginManagerClassTest` CTest cases passed locally.
+Commits: `ef949faf` (runtime) and `149ae1a8` (test expectation updates);
+the coordinate regression tests were introduced in `0f64fa8e`. No `.gen`
+fixture, serializer, or persisted format changed. Test expectations that
+previously treated seed `y` as a raw grid index now assert its continuous
+position and the corresponding centered sampling result.
 
 #### Cycle 3 — Growth invariants
 
@@ -1468,9 +1488,9 @@ the active work. Reuse existing tests and keep changes reviewable.
   benchmark proves it is material. If not, document it as a known cost and
   defer it.
 
-**Documentation/manual impact for this proposal:** this change only
-reorganizes a pending technical plan and does not alter runtime, user
-instructions, supported model semantics or scientific claims. No User or
-Developer Manual update is proposed now. Reassess both manuals after the
-maintainer approves the plan and when an implementation changes a user or
-developer contract.
+**Historical documentation/manual impact assessment:** this statement
+applied only to the earlier plan-reorganization proposal. It does not apply
+to the approved runtime work. Cycle 2 establishes a centered continuous
+coordinate convention; Cycle 9 must assess the User and Developer Manuals
+against the implemented controls and document any user-visible behavior
+that needs to be made explicit.
