@@ -1391,6 +1391,23 @@ These are local results, not CI evidence.
   possible without a defined synchronization contract, stop that dependent
   path rather than adding ad hoc locking.
 
+**Cycle 6 result (2026-10-09): COMPLETE.** No separate clock or duplicate
+field update was needed. The focused calendar regression now runs a
+`BacteriaColony` through `Create` and `Dispose` for two replications: two
+events at model times 0 and 0.25 each execute the named `main`/`bacterium`
+program and relax the attached one-cell field once (8 -> 4 -> 2); the next
+replication starts again from the persisted initial value. Runtime execution
+count, final event time 0.25, and reset field value are asserted. A direct
+manual `executeGroProgram()` assertion verifies one field relaxation and
+unchanged model time; the Qt viewer already reports this same contract.
+
+The viewer now refuses its manual Step/Run action while the model simulation
+is running or paused, and stops its timer with an explanatory status. The
+normal GUI simulation entry point runs synchronously on the UI thread, so
+there is no supported simultaneous thread path to serialize here; an
+off-thread embedding still has no new locking contract. The GUI target build
+will be recorded with Cycle 7/9 validation.
+
 #### Cycle 7 — Viewer and communication demonstration
 
 - **Objective/files:** add channel selection and one-at-a-time heatmap to the
