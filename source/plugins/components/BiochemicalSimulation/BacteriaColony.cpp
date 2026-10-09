@@ -2124,6 +2124,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		}
 
 		GroProgramRuntime::ExecutionResult bacteriumResult = runtime.execute(bacteriumIr, runtimeState);
+		_applyKernelRandomTumbles(runtimeState, bacteriumResult);
 		if (!bacteriumResult.succeeded) {
 			result = bacteriumResult;
 			result.errorMessage = "BacteriaColony seeded-program execution failed for bacterium id " +
@@ -2202,6 +2203,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 	for (BacteriumState& bacterium : _bacteria) {
 		_updateBacteriumSpatialMotion(bacterium);
 	}
+	_separateBacteriaBodies();
 	_rebuildBacteriaGridPositions();
 	return true;
 }
@@ -2250,6 +2252,7 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 			return false;
 		}
 		GroProgramRuntime::ExecutionResult bacteriumResult = runtime.execute(ir, runtimeState);
+		_applyKernelRandomTumbles(runtimeState, bacteriumResult);
 		if (!bacteriumResult.succeeded) {
 			result = bacteriumResult;
 			result.errorMessage = "BacteriaColony bacterium-scoped execution failed for bacterium id " +
@@ -2323,6 +2326,7 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 	for (BacteriumState& bacterium : _bacteria) {
 		_updateBacteriumSpatialMotion(bacterium);
 	}
+	_separateBacteriaBodies();
 	_rebuildBacteriaGridPositions();
 	return true;
 }
@@ -2651,7 +2655,6 @@ void BacteriaColony::_applyBacteriumGrowth(BacteriumState& bacterium) const {
 	const double deltaVolume = std::clamp(growthRate * stepScale, 0.01, 0.35);
 	bacterium.volume = std::max(0.1, bacterium.volume + deltaVolume);
 	bacterium.size = std::max(0.65, std::sqrt(std::max(0.1, bacterium.volume)));
-	bacterium.speed = std::max(0.03, bacterium.speed + 0.015 * deltaVolume);
 
 	bacterium.runtimeVariables["ecoli_growth_rate"] = growthRate;
 	bacterium.runtimeVariables["volume"] = bacterium.volume;
@@ -2705,7 +2708,7 @@ void BacteriaColony::_initializeBacteriumPhenotype(BacteriumState& bacterium, st
 	bacterium.rfp = std::max(0.0, bacterium.rfp);
 	bacterium.yfp = std::max(0.0, bacterium.yfp);
 	bacterium.cfp = std::max(0.0, bacterium.cfp);
-	bacterium.speed = std::max(0.05, bacterium.speed + 0.01 * generationFactor);
+	bacterium.speed = std::max(0.0, bacterium.speed + 0.01 * generationFactor);
 	if (!bacterium.hasExplicitGridPosition) {
 		const double baseDirection = 0.85 * static_cast<double>(index + 1) + 0.41 * generationFactor + 0.19 * static_cast<double>(bacterium.id);
 		bacterium.directionRadians = std::fmod(baseDirection, kTwoPi);
@@ -2790,6 +2793,46 @@ void BacteriaColony::_syncBacteriumSpatialState(BacteriumState& bacterium, const
 	_setBacteriumPosition(bacterium, bacterium.positionX, bacterium.positionY);
 }
 
+void BacteriaColony::_applyKernelRandomTumbles(GroProgramRuntimeState& runtimeState,
+                                               GroProgramRuntime::ExecutionResult& result) const {
+	if (!result.succeeded || _parentModel == nullptr) {
+		return;
+	}
+	constexpr double kTwoPi = 6.28318530717958647692;
+	double sampledDirection = 0.0;
+	bool hasSampledDirection = false;
+	for (GroProgramRuntime::MotionMutation& mutation : result.motionMutations) {
+		if (mutation.type != GroProgramRuntime::MotionMutationType::Tumble) {
+			continue;
+		}
+		bool success = false;
+		std::string errorMessage;
+		const double sample = _parentModel->parseExpression("unif(0,1)", success, errorMessage);
+		if (!success || !std::isfinite(sample)) {
+			result.succeeded = false;
+			result.errorMessage = "BacteriaColony could not sample the kernel RNG for tumble: " + errorMessage;
+			return;
+		}
+		const double previousDirection = hasSampledDirection ? sampledDirection : mutation.previousDirection;
+		mutation.previousDirection = previousDirection;
+		const double turn = std::clamp(mutation.value, 0.0, kTwoPi);
+		const double signedTurn = sample < 0.5 ? -turn : turn;
+		double direction = std::fmod(previousDirection + signedTurn, kTwoPi);
+		if (direction < 0.0) {
+			direction += kTwoPi;
+		}
+		sampledDirection = direction;
+		hasSampledDirection = true;
+		mutation.resultingDirection = direction;
+		runtimeState.variables["direction"] = direction;
+		runtimeState.variables["theta"] = direction;
+		runtimeState.contextVariables["bacterium_direction"] = direction;
+		runtimeState.contextVariables["bacterium_theta"] = direction;
+		result.assignedVariables["direction"] = direction;
+		result.assignedVariables["theta"] = direction;
+	}
+}
+
 void BacteriaColony::_updateBacteriumSpatialMotion(BacteriumState& bacterium) const {
 	constexpr double kPi = 3.14159265358979323846;
 	if (!bacterium.alive) {
@@ -2800,25 +2843,28 @@ void BacteriaColony::_updateBacteriumSpatialMotion(BacteriumState& bacterium) co
 	if (!std::isfinite(direction)) {
 		direction = 0.0;
 	}
-	double speed = bacterium.speed;
-	if (!std::isfinite(speed) || speed <= 0.0) {
-		speed = 0.08 + 0.01 * static_cast<double>(bacterium.generation);
-	}
-	const double stepScale = std::max(0.35, getSimulationStep() * 2.5);
-	double nextX = bacterium.positionX + std::cos(direction) * speed * stepScale;
-	double nextY = bacterium.positionY + std::sin(direction) * speed * stepScale;
+	const double speed = std::isfinite(bacterium.speed) ? std::max(0.0, bacterium.speed) : 0.0;
+	const double dt = std::isfinite(getSimulationStep()) ? std::max(0.0, getSimulationStep()) : 0.0;
+	double nextX = bacterium.positionX + std::cos(direction) * speed * dt;
+	double nextY = bacterium.positionY + std::sin(direction) * speed * dt;
 
 	const double maxX = 0.5 * static_cast<double>(getGridWidth() > 0 ? getGridWidth() - 1 : 0);
 	const double maxY = 0.5 * static_cast<double>(getGridHeight() > 0 ? getGridHeight() - 1 : 0);
 	const double minX = -maxX;
 	const double minY = -maxY;
 	bool reflected = false;
-	if (nextX < minX || nextX > maxX) {
+	if (maxX <= 0.0) {
+		nextX = 0.0;
+	} else if (nextX < minX || nextX > maxX) {
+		nextX = nextX < minX ? minX + (minX - nextX) : maxX - (nextX - maxX);
 		nextX = std::clamp(nextX, minX, maxX);
 		direction = kPi - direction;
 		reflected = true;
 	}
-	if (nextY < minY || nextY > maxY) {
+	if (maxY <= 0.0) {
+		nextY = 0.0;
+	} else if (nextY < minY || nextY > maxY) {
+		nextY = nextY < minY ? minY + (minY - nextY) : maxY - (nextY - maxY);
 		nextY = std::clamp(nextY, minY, maxY);
 		direction = -direction;
 		reflected = true;
@@ -2827,6 +2873,49 @@ void BacteriaColony::_updateBacteriumSpatialMotion(BacteriumState& bacterium) co
 		bacterium.directionRadians = direction;
 	}
 	_setBacteriumPosition(bacterium, nextX, nextY);
+}
+
+void BacteriaColony::_separateBacteriaBodies() {
+	// One bounded, deterministic pair pass reduces excessive overlap. It is
+	// geometric correction only: isolated bacteria are never moved here.
+	for (std::size_t i = 0; i < _bacteria.size(); ++i) {
+		BacteriumState& first = _bacteria[i];
+		if (!first.alive) {
+			continue;
+		}
+		for (std::size_t j = i + 1; j < _bacteria.size(); ++j) {
+			BacteriumState& second = _bacteria[j];
+			if (!second.alive) {
+				continue;
+			}
+			double dx = second.positionX - first.positionX;
+			double dy = second.positionY - first.positionY;
+			double distance = std::hypot(dx, dy);
+			if (distance < 1e-9) {
+				dx = first.id < second.id ? 1.0 : -1.0;
+				dy = 0.0;
+				distance = 1.0;
+			}
+			const double nx = dx / distance;
+			const double ny = dy / distance;
+			auto support = [nx, ny](const BacteriumState& cell) {
+				const double halfLength = 0.5 * std::max(0.0, cell.size);
+				const double halfWidth = 0.15 * halfLength;
+				const double ux = std::cos(cell.directionRadians);
+				const double uy = std::sin(cell.directionRadians);
+				const double along = std::abs(nx * ux + ny * uy);
+				const double across = std::abs(-nx * uy + ny * ux);
+				return halfLength * along + halfWidth * across;
+			};
+			const double overlap = support(first) + support(second) - distance;
+			if (overlap <= 0.0) {
+				continue;
+			}
+			const double correction = std::min(0.1, 0.1 * overlap);
+			_setBacteriumPosition(first, first.positionX - nx * correction, first.positionY - ny * correction);
+			_setBacteriumPosition(second, second.positionX + nx * correction, second.positionY + ny * correction);
+		}
+	}
 }
 
 void BacteriaColony::_bindProgramArguments(GroProgramRuntimeState& runtimeState,
