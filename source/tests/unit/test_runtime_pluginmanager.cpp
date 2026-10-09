@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/TraceManager.h"
 #include "../../kernel/simulator/essentialPlugins/Counter.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/SystemDependencyResolver.h"
@@ -20,12 +21,19 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <memory>
 #include <vector>
 
 namespace {
+
+std::vector<std::string> g_capturedTraceMessages;
+
+void CaptureTraceSimulationEvent(TraceSimulationEvent event) {
+    g_capturedTraceMessages.push_back(event.getText());
+}
 
 PluginInformation* BuildPluginWithMissingSystemDependency() {
     auto* info = new PluginInformation(
@@ -1523,6 +1531,20 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsInvalidSignalChannel
     }
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsConditionalSignalDeclarations) {
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse(
+        "program bacterium() { if (true) { s0 := signal(0.2, 0.1); } }");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+    GroProgramCompiler compiler;
+    GroProgramRuntime runtime;
+    GroProgramRuntimeState state;
+    GroProgramRuntime::ExecutionResult result = runtime.execute(compiler.compile(parsed.ast), state);
+    EXPECT_FALSE(result.succeeded);
+    EXPECT_NE(result.errorMessage.find("not supported inside conditional branches"), std::string::npos)
+        << result.errorMessage;
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeKeepsSignalHandleStableAcrossRepeatedExecuteCallsOnReusedState) {
     // Problem C (Phase 3 review): GroProgramRuntimeState::signalDeclarationOrdinal
     // is only correct if every caller happens to construct a fresh state per
@@ -2139,6 +2161,11 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyEmitsFirstChannelCoefficientMi
     BacteriaColony* colony = BuildFirstChannelPrecedenceColony(
         simulator, model, "FirstChannelMismatchDiagnostic", 0.9, 0.9, signalGrid);
     ASSERT_NE(colony, nullptr);
+    ASSERT_NE(model->getTracer(), nullptr);
+    model->getTracer()->setTraceLevel(TraceManager::Level::L9_mostDetailed);
+    model->getTracer()->addTraceSimulationExceptionRuleModelData(colony);
+    model->getTracer()->addTraceSimulationHandler(&CaptureTraceSimulationEvent);
+    g_capturedTraceMessages.clear();
 
     ModelDataDefinition::InitBetweenReplications(colony);
     // Three steps: the declaration re-executes every bacterium/every
@@ -2147,6 +2174,12 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyEmitsFirstChannelCoefficientMi
         GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
         EXPECT_TRUE(result.succeeded) << result.errorMessage;
     }
+    auto mismatchDiagnosticCount = [] {
+        return std::count_if(g_capturedTraceMessages.begin(), g_capturedTraceMessages.end(), [](const std::string& text) {
+            return text.find("first signal(") != std::string::npos;
+        });
+    };
+    EXPECT_EQ(mismatchDiagnosticCount(), 1);
     // The grid's coefficients must still have won throughout (behavioral
     // confirmation that the mismatch diagnostic is purely informative and
     // does not change precedence).
@@ -2160,6 +2193,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyEmitsFirstChannelCoefficientMi
     ModelDataDefinition::InitBetweenReplications(colony);
     GroProgramRuntime::ExecutionResult secondReplicationResult = colony->executeGroProgram();
     EXPECT_TRUE(secondReplicationResult.succeeded) << secondReplicationResult.errorMessage;
+    EXPECT_EQ(mismatchDiagnosticCount(), 2);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesLegacyBehaviorWhenNoSignalDeclarationExists) {
@@ -2226,13 +2260,51 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyResetsFirstChannelCoefficients
     EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 0.0);
 
     // Second replication: before the program's own declaration re-runs,
-    // the stored coefficients must already be back to the 0.0/0.0
-    // default (no leaked kdeg=1), not just "happen to produce the same
-    // numeric result again".
+    // the stored coefficients and declaration latch must be reset. Change
+    // the program to kdeg=0; if stale kdeg=1 survived, its new emission
+    // would still be zeroed instead of remaining at 10.
+    GroProgram* program = colony->getGroProgram();
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { "
+        "s0 := signal(0, 0); "
+        "steps = steps + 1; "
+        "if (bacterium_id == 1 && steps == 1) { emit_signal(s0, 10); } "
+        "}");
     ModelDataDefinition::InitBetweenReplications(colony);
     gridX = colony->getBacteriumState(0).gridX;
     gridY = colony->getBacteriumState(0).gridY;
-    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 0.0);
+    GroProgramRuntime::ExecutionResult secondReplicationResult = colony->executeGroProgram();
+    EXPECT_TRUE(secondReplicationResult.succeeded) << secondReplicationResult.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(gridX, gridY), 10.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyResetBuiltinClearsFirstChannelCoefficientMetadata) {
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = simulator.getPluginManager()->newInstance<GroProgram>(model, "GroProgram_ResetSignalMetadata");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program main() := { s0 := signal(0, 1); set_signal(s0, 0, 0, 10); };");
+    BacteriaColony* colony = simulator.getPluginManager()->newInstance<BacteriaColony>(model, "BacteriaColony_ResetSignalMetadata");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+
+    GroProgramRuntime::ExecutionResult firstResult = colony->executeGroProgram();
+    EXPECT_TRUE(firstResult.succeeded) << firstResult.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 0.0);
+
+    // reset() clears the previous channel configuration; the new declaration
+    // must be accepted and its zero-decay setting must preserve the value.
+    program->setSourceCode(
+        "program main() := { reset(); s0 := signal(0, 0); set_signal(s0, 0, 0, 10); };");
+    GroProgramRuntime::ExecutionResult secondResult = colony->executeGroProgram();
+    EXPECT_TRUE(secondResult.succeeded) << secondResult.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 10.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesExistingBacteriaColonyGroFixtureBehavior) {
@@ -2295,6 +2367,36 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesExistingBacteriaColon
 
     GroProgramRuntime::ExecutionResult secondStep = colony->executeGroProgram();
     EXPECT_TRUE(secondStep.succeeded) << secondStep.errorMessage;
+}
+
+TEST(RuntimePluginManagerClassTest, ExistingGrowthAndLifecycleBacteriaColonyGenFixturesStillLoad) {
+    const std::vector<std::pair<std::string, std::string>> fixtures = {
+        {"Smart_GroColonyGrowth.gen", "BacteriaColony_Growth"},
+        {"Smart_GroColonyLifecycle.gen", "BacteriaColony_Lifecycle"},
+    };
+    std::filesystem::path repositoryRoot = std::filesystem::current_path();
+    while (!repositoryRoot.empty() &&
+           !std::filesystem::exists(repositoryRoot / "models" / fixtures.front().first)) {
+        const std::filesystem::path parent = repositoryRoot.parent_path();
+        if (parent == repositoryRoot) {
+            repositoryRoot.clear();
+            break;
+        }
+        repositoryRoot = parent;
+    }
+    ASSERT_FALSE(repositoryRoot.empty()) << "Could not locate the repository models directory from the test cwd";
+
+    for (const auto& [fixtureName, colonyName] : fixtures) {
+        Simulator simulator;
+        ASSERT_NE(simulator.getPluginManager(), nullptr);
+        simulator.getPluginManager()->autoInsertPlugins();
+        const std::filesystem::path fixturePath = repositoryRoot / "models" / fixtureName;
+        Model* model = simulator.getModelManager()->loadModel(fixturePath.string());
+        ASSERT_NE(model, nullptr) << "Failed to load " << fixturePath;
+        ModelComponent* component = model->getComponentManager()->find(colonyName);
+        EXPECT_NE(dynamic_cast<BacteriaColony*>(component), nullptr)
+            << "Missing persisted colony " << colonyName << " in " << fixturePath;
+    }
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesBacteriumScopedProgramsWithPerBacteriumState) {
@@ -2504,6 +2606,31 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSeededNamedGroPrograms
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.t"), 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.mode"), 1.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.t"), 0.25);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyRejectsConflictingSignalCoefficientsAcrossNamedPrograms) {
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = simulator.getPluginManager()->newInstance<GroProgram>(model, "GroProgram_ConflictingChannels");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program first() := { s := signal(0.2, 0.1); true : { emit_signal(s, 1) } }; "
+        "program second() := { s := signal(0.8, 0.1); true : { emit_signal(s, 1) } }; "
+        "ecoli([x:=0, y:=0], program first()); "
+        "ecoli([x:=1, y:=0], program second());");
+    BacteriaColony* colony = simulator.getPluginManager()->newInstance<BacteriaColony>(model, "BacteriaColony_ConflictingChannels");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_FALSE(result.succeeded);
+    EXPECT_NE(result.errorMessage.find("Conflicting signal(...) coefficients for channel 1"), std::string::npos)
+        << result.errorMessage;
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesGroSeedsBeforeFirstGuiDrivenStep) {

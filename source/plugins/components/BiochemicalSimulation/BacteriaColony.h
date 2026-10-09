@@ -225,6 +225,7 @@ private:
 	struct AdditionalSignalChannel {
 		double diffusionRate = 0.0;
 		double decayRate = 0.0;
+		bool coefficientsDeclared = false;
 		std::vector<double> field;
 	};
 	// Channel 0/1 (no "signal()" handle, or the first declaration) always
@@ -248,6 +249,7 @@ private:
 	// _additionalSignalChannels.
 	double _legacyChannelDiffusionRate = 0.0;
 	double _legacyChannelDecayRate = 0.0;
+	bool _legacyChannelCoefficientsDeclared = false;
 	// One-shot latch: emits at most one diagnostic per replication when a
 	// declared first-channel coefficient differs from an attached
 	// BacteriaSignalGrid's persisted value, instead of once per step.
@@ -288,7 +290,8 @@ private:
 	                                 std::size_t maxColumns = 0) const;
 	double _computeNeighborSignalSum(unsigned int x, unsigned int y) const;
 	unsigned int _computeLocalBacteriaCount(unsigned int x, unsigned int y) const;
-	void _ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate);
+	bool _ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate,
+	                                    std::string& errorMessage);
 	double _additionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const;
 	void _setAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y, double value);
 	void _addAdditionalSignalAt(unsigned int channel, unsigned int x, unsigned int y, double value);
