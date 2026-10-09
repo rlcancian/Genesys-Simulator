@@ -3266,6 +3266,65 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesVisibleGrowthToBacteria
     EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "size"), 1.0);
 }
 
+TEST(RuntimePluginManagerClassTest, BacteriaColonyKeepsExplicitZeroGrowthRateAtZero) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ZeroGrowthRate");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+			"set(\"ecoli_growth_rate\", 0); "
+			"program grower() := { skip(); }; "
+			"ecoli([x:=0, y:=0], program grower());");
+
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ZeroGrowthRate");
+	ASSERT_NE(colony, nullptr);
+	colony->setGroProgram(program);
+	const double initialVolume = colony->getBacteriumVolume(0);
+	const double initialSize = colony->getBacteriumSize(0);
+	const double initialSpeed = colony->getBacteriumState(0).speed;
+
+	const GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(0), initialVolume);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumSize(0), initialSize);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).speed, initialSpeed);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyDoesNotGrowAtZeroSimulationStep) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ZeroSimulationStep");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+			"set(\"ecoli_growth_rate\", 0.6); "
+			"program grower() := { skip(); }; "
+			"ecoli([x:=0, y:=0], program grower());");
+
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ZeroSimulationStep");
+	ASSERT_NE(colony, nullptr);
+	colony->setSimulationStep(0.0);
+	colony->setGroProgram(program);
+	const double initialVolume = colony->getBacteriumVolume(0);
+	const double initialSize = colony->getBacteriumSize(0);
+	const double initialSpeed = colony->getBacteriumState(0).speed;
+
+	const GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	EXPECT_DOUBLE_EQ(colony->getBacteriumVolume(0), initialVolume);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumSize(0), initialSize);
+	EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).speed, initialSpeed);
+}
+
 TEST(RuntimePluginManagerClassTest, BacteriaColonyProducesVisibleMotionSignalsAndFluorescence) {
 	Simulator simulator;
 	PluginManager* manager = simulator.getPluginManager();
