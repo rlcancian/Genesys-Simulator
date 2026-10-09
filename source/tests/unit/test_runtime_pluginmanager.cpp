@@ -1750,6 +1750,70 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyTwoSignalCommunicationScenario
 	EXPECT_DOUBLE_EQ(colony->getAdditionalSignalValueAt(2, receiver.gridX, receiver.gridY), 4.0);
 }
 
+TEST(RuntimePluginManagerClassTest, BacteriaColonyTwoSignalDemoLoadsRunsAndPersists) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_TwoSignalDemo");
+	ASSERT_NE(program, nullptr);
+	program->setSourceCode(
+			"program main() { if (seeded == 0) { reset(), set(\"dt\", 0.1), "
+			"set(\"ecoli_growth_rate\", 0.08), seeded := 1, "
+			"ecoli([x:=2,y:=2], program colony()), "
+			"ecoli([x:=5,y:=2], program colony()), "
+			"ecoli([x:=3,y:=5], program colony()); } } "
+			"program colony() { signal_a := signal(0, 0); signal_b := signal(0, 0.5); "
+			"speed := 0.2; direction := 0; emit_signal(signal_a, 8); "
+			"emit_signal(signal_b, 8); sensed_a := get_signal(signal_a); "
+			"sensed_b := get_signal(signal_b); }");
+	BacteriaSignalGrid* grid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_TwoSignalDemo");
+	ASSERT_NE(grid, nullptr);
+	grid->setWidth(8);
+	grid->setHeight(8);
+	grid->setDiffusionRate(0.0);
+	grid->setDecayRate(0.0);
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_TwoSignalDemo");
+	ASSERT_NE(colony, nullptr);
+	colony->setGroProgram(program);
+	colony->setSignalGrid(grid);
+	colony->setGridWidth(8);
+	colony->setGridHeight(8);
+	colony->setInitialPopulation(3);
+	colony->setAutomaticDivisionEnabled(true);
+	colony->setDivisionThresholdVolume(2.0);
+	const auto roundTripPath = std::filesystem::temp_directory_path() / "BacteriaColony_TwoSignalDemo_roundtrip.gen";
+	ASSERT_TRUE(simulator.getModelManager()->saveModel(roundTripPath.string()));
+	Model* loadedModel = simulator.getModelManager()->loadModel(roundTripPath.string());
+	ASSERT_NE(loadedModel, nullptr) << roundTripPath;
+	auto* loadedColony = dynamic_cast<BacteriaColony*>(
+			loadedModel->getComponentManager()->find("BacteriaColony_TwoSignalDemo"));
+	ASSERT_NE(loadedColony, nullptr);
+	ASSERT_TRUE(loadedColony->getAutomaticDivisionEnabled());
+	EXPECT_DOUBLE_EQ(loadedColony->getDivisionThresholdVolume(), 2.0);
+	ASSERT_NE(loadedColony->getGroProgram(), nullptr);
+	ASSERT_NE(loadedColony->getSignalGrid(), nullptr);
+
+	ModelDataDefinition::InitBetweenReplications(loadedColony);
+	const auto result = loadedColony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	EXPECT_EQ(loadedColony->getInternalBacteriaCount(), 3u);
+	EXPECT_EQ(loadedColony->getSignalChannelCount(), 2u);
+	double legacyMaximum = 0.0;
+	double additionalMaximum = 0.0;
+	for (unsigned int y = 0; y < loadedColony->getGridHeight(); ++y) {
+		for (unsigned int x = 0; x < loadedColony->getGridWidth(); ++x) {
+			legacyMaximum = std::max(legacyMaximum, loadedColony->getSignalValueAt(x, y));
+			additionalMaximum = std::max(additionalMaximum,
+					loadedColony->getAdditionalSignalValueAt(2, x, y));
+		}
+	}
+	EXPECT_DOUBLE_EQ(legacyMaximum, 8.0);
+	EXPECT_DOUBLE_EQ(additionalMaximum, 4.0);
+	std::filesystem::remove(roundTripPath);
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsInvalidSignalChannelHandles) {
     // Phase 3 handle contract: a handle must be a non-negative integer
     // actually returned by a prior "signal(...)" declaration. Negative,
@@ -2657,6 +2721,7 @@ TEST(RuntimePluginManagerClassTest, ExistingGrowthAndLifecycleBacteriaColonyGenF
     const std::vector<std::pair<std::string, std::string>> fixtures = {
         {"Smart_GroColonyGrowth.gen", "BacteriaColony_Growth"},
         {"Smart_GroColonyLifecycle.gen", "BacteriaColony_Lifecycle"},
+        {"Smart_BacteriaColony_GRO.gen", "BacteriaColony_BacteriaColony_GRO"},
     };
     std::filesystem::path repositoryRoot = std::filesystem::current_path();
     while (!repositoryRoot.empty() &&
@@ -2678,8 +2743,24 @@ TEST(RuntimePluginManagerClassTest, ExistingGrowthAndLifecycleBacteriaColonyGenF
         Model* model = simulator.getModelManager()->loadModel(fixturePath.string());
         ASSERT_NE(model, nullptr) << "Failed to load " << fixturePath;
         ModelComponent* component = model->getComponentManager()->find(colonyName);
-        EXPECT_NE(dynamic_cast<BacteriaColony*>(component), nullptr)
+        auto* colony = dynamic_cast<BacteriaColony*>(component);
+        ASSERT_NE(colony, nullptr)
             << "Missing persisted colony " << colonyName << " in " << fixturePath;
+        if (fixtureName == "Smart_BacteriaColony_GRO.gen") {
+            ASSERT_NE(colony->getGroProgram(), nullptr);
+            ASSERT_NE(colony->getSignalGrid(), nullptr);
+            ModelDataDefinition::InitBetweenReplications(colony);
+            const GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+            ASSERT_TRUE(result.succeeded) << result.errorMessage;
+            EXPECT_EQ(colony->getInternalBacteriaCount(), 4u);
+            double maximumSignal = 0.0;
+            for (unsigned int y = 0; y < colony->getGridHeight(); ++y) {
+                for (unsigned int x = 0; x < colony->getGridWidth(); ++x) {
+                    maximumSignal = std::max(maximumSignal, colony->getSignalValueAt(x, y));
+                }
+            }
+            EXPECT_GT(maximumSignal, 0.0);
+        }
     }
 }
 
