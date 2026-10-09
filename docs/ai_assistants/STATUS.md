@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-10-04
+last_updated: 2026-10-08
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -19,7 +19,8 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Current remote `WorkInProgress` HEAD confirmed on 2026-10-04: `4d83e94082e2f7cd81e9f56956c18f0170442bd0` (`docs(modal): close backend gate after #540/#541 (#542)`).
+- Current remote `WorkInProgress` HEAD confirmed on 2026-10-08: `dce3484739056ae1e15ca694d8e1ed251d6a89a6` (`Merge PR #545: repair SimulLang persistence and GUI editing synchronization`).
+- PR #545 is integrated. It corrects complex `.gen` text persistence (including exact `GroProgram::sourceCode` round-trip), localized double commits in the Qt Property Editor, automatic semantic SimulLang/TextCodeEditor synchronization, and graphical/kernel connection ownership required by undo/redo. Final evidence: `tests-unit` 1846/1846 executed passed plus 4 historical disabled tests (run `37861026075`), `tests-kernel-unit` 1846/1846 and `tests-smoke` 3/3 (run `37861026002`), focused ASan+UBSan connection undo/redo green (run `37860210595`, job `113593863912`), and manual LaTeX/figure-spec validation with regenerated `docs/ManualGenESyS.pdf` green (run `37860534212`, artifact `11585458197`).
 - Immediately preceding integrated Modal/Network-relevant merges on this line:
   - PR #533 (`85626d3a`) — expose official `tests-unit` / `tests-kernel-unit` / `tests-smoke` presets;
   - PR #534 (`dd7bd649`) — EFSM configurable conflict policy;
