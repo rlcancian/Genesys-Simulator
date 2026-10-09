@@ -1128,7 +1128,7 @@ above a phenomenological, non-conservative relaxation.
 | Milestone | Real status at the reference HEAD | Closure condition |
 |---|---|---|
 | **M1 — Gro e sinais** | **Cycle 1 complete.** The selected frontend subset, handles, channel independence, Phase 3 coefficient precedence and Phase 4 characterization remain covered. Gro declarations and attached-grid settings now reject non-finite/out-of-range coefficients; the approved phenomenological contract is recorded. | Keep existing signal regressions green while later cycles integrate colony and viewer behavior. |
-| **M2 — Dinâmica bacteriana** | **In progress (Cycles 2–4 complete).** Gro seed coordinates remain continuous and centered; zero explicit growth and zero-step automatic growth are suppressed; optional persisted threshold division and centralized volume-conserving Gro division are implemented. Zero-motion invariants, complete movement/orientation/RNG behavior and spatial occupancy remain open. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. |
+| **M2 — Dinâmica bacteriana** | **In progress (Cycles 2–5 complete).** Gro seed coordinates remain continuous and centered; zero-growth/zero-step growth invariants, optional persisted threshold division, centralized volume-conserving division, `speed*dt` movement, kernel-sampler `tumble`, boundary reflection, and bounded geometric separation are implemented and covered by focused runtime tests. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. |
 | **M3 — Integração e GUI** | **Partial foundation.** Gro execution, signal changes and colony stepping exist. Event calendar and viewer call the same execution method, but a manual viewer step does not advance model time; the state/time contract and interaction with calendar replay are not fully validated. The viewer exists, but corpus-E fidelity and combined A–E end-to-end coverage remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
 | **M4 — Validação e entrega** | **Partial.** Gro persistence round-trip infrastructure exists. Growth and lifecycle `.gen` fixtures have an executed load test. The plan records `Smart_BacteriaColony_GRO.gen` loader failure on both Phase 3 reference and implementation branch; this was not a passing compatibility result. Completion-level current CI and performance evidence are not established by the historical snapshots. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed or its support status is explicitly decided; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
 
@@ -1146,9 +1146,9 @@ current governance.
 | 2 | Selected runtime/builtins (`time()`); completed as recorded. | M1. |
 | 3 | Signal handles, independent channels, identity safeguards and precedence; completed and tested as recorded. | M1. |
 | 4 | Reaction-diffusion review; diagnosis/characterization recorded; no equation change. Alternative A approved for first-version scope. | M1. |
-| 5 | Continuous physical coordinates and grid mapping; centered continuous seed coordinates and deterministic grid sampling are implemented and tested in Cycle 2. Physical units remain out of scope. | M2. |
-| 6 | Growth/division, including zero-growth invariant; not implemented. | M2. |
-| 7 | Simple kinematics, `run`/`tumble`, kernel RNG and zero-motion invariants; not implemented. | M2. |
+| 5 | Continuous coordinate/grid-mapping request; implementation and validation completed in Cycle 2. Physical units remain out of scope. | M2. |
+| 6 | Growth/division was open in the historical phase record; zero-growth, zero-step and optional hybrid volume-conserving division completed in Cycles 3–4. | M2. |
+| 7 | Kinematics, `run`/`tumble`, kernel RNG and zero-motion behavior were open in the historical phase record; the simplified contract is implemented and tested in Cycle 5. | M2. |
 | 8 | Event-step ordering; not closed. | M3. |
 | 9 | Viewer/runtime integration and trigger risk; not closed. | M3. |
 | 10 | Selected A–E end-to-end acceptance corpus; partially covered by reusable tests, not closed. | M3. |
@@ -1339,6 +1339,46 @@ claimed compatible. Continue automatically with Cycle 5.
 - **Dependencies/risks:** Cycles 2–4. No forces, torques, external engine or
   exact rigid-body guarantee. Stop if the real kernel RNG contract cannot
   provide deterministic reset behavior.
+
+**Cycle 5 result (2026-10-09): COMPLETE.** `BacteriaColony` now applies
+continuous kinematics as `x += speed*cos(direction)*dt` and
+`y += speed*sin(direction)*dt`; non-finite/negative speed and non-finite or
+negative dt are treated as zero. The previous minimum speed and minimum step
+motion fallbacks were removed. A single boundary crossing reflects the
+remaining displacement and changes orientation; the position is then kept
+inside the centered grid. This is a bounded kinematic rule, not a wall-force
+model.
+
+`tumble(angle)` obtains its sign from the model's existing `unif(0,1)` parser
+sampler through `Model::parseExpression`; successive tumbles compose from
+the sampled orientation. The standalone `GroProgramRuntime` remains usable
+and deterministic when executed without a `Model`; a `BacteriaColony` uses
+the kernel sampler for actual motion. `run(v)` sets speed to `v` while
+preserving heading, and `tumble(v)` preserves speed. Growth changes size and
+volume but no longer introduces movement speed. The colony applies a deterministic single
+pair pass using the support radii of oriented rectangular bodies. Each pair
+correction is capped at 0.1 coordinate units and removes only a fraction of
+the estimated overlap; it does not model forces or guarantee non-overlap.
+There is no correction for an isolated cell. The O(n²) pass is not yet
+benchmarked at representative large populations; assess this at Cycle 9
+before considering a spatial index.
+
+Evidence: `cmake --build --preset tests-unit -j4` passed; focused motion
+cases passed, including exact positive `speed*dt`, zero speed, zero step,
+boundary reflection, repeated-model RNG reproducibility and bounded
+correction, alongside existing `run`/`tumble` and visible-motion tests. The
+runtime tests now assert the §12 contract directly: `run(v)` sets speed to
+`v`; a tumble changes direction and preserves speed. The prior runtime test
+only checked that run increased speed and therefore did not distinguish the
+approved semantics. The complete local
+`RuntimePluginManagerClassTest` CTest group passed 101/101. Its first run
+exposed an old exact-position expectation in
+`BacteriaColonyMainCanResetAndRespawnSeeds`; the fixture was made explicit
+about zero speed and zero growth so it continues to test reset/respawn rather
+than relying on the removed implicit movement fallback. No production
+expectation was weakened. The suite also passed after that semantic fixture
+adjustment. Production and test commits are `3b3a61aa` and `4228cee2`.
+These are local results, not CI evidence.
 
 #### Cycle 6 — Event-calendar integration
 
