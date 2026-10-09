@@ -1532,17 +1532,23 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsInvalidSignalChannel
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeRejectsConditionalSignalDeclarations) {
-    GroProgramParser parser;
-    GroProgramParser::Result parsed = parser.parse(
-        "program bacterium() { if (true) { s0 := signal(0.2, 0.1); } }");
-    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
-    GroProgramCompiler compiler;
-    GroProgramRuntime runtime;
-    GroProgramRuntimeState state;
-    GroProgramRuntime::ExecutionResult result = runtime.execute(compiler.compile(parsed.ast), state);
-    EXPECT_FALSE(result.succeeded);
-    EXPECT_NE(result.errorMessage.find("not supported inside conditional branches"), std::string::npos)
-        << result.errorMessage;
+    const std::vector<std::string> sources = {
+        "program bacterium() { if (true) { s0 := signal(0.2, 0.1); } }",
+        "program bacterium() { if (false) { s0 := signal(0.2, 0.1); } }",
+        "program bacterium() { if (true) { x := 0; } else { s0 := signal(0.2, 0.1); } }",
+        "program bacterium() { if (false) { if (true) { s0 := signal(0.2, 0.1); } } }"};
+    for (const std::string& source : sources) {
+        GroProgramParser parser;
+        GroProgramParser::Result parsed = parser.parse(source);
+        ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+        GroProgramCompiler compiler;
+        GroProgramRuntime runtime;
+        GroProgramRuntimeState state;
+        GroProgramRuntime::ExecutionResult result = runtime.execute(compiler.compile(parsed.ast), state);
+        EXPECT_FALSE(result.succeeded) << "source=" << source;
+        EXPECT_NE(result.errorMessage.find("not supported inside conditional branches"), std::string::npos)
+            << "source=" << source << ": " << result.errorMessage;
+    }
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeKeepsSignalHandleStableAcrossRepeatedExecuteCallsOnReusedState) {
@@ -2608,7 +2614,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSeededNamedGroPrograms
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.t"), 0.25);
 }
 
-TEST(RuntimePluginManagerClassTest, BacteriaColonyRejectsConflictingSignalCoefficientsAcrossNamedPrograms) {
+TEST(RuntimePluginManagerClassTest, BacteriaColonyRejectsDifferentCoefficientSignalDeclarationsAcrossNamedPrograms) {
     Simulator simulator;
     ASSERT_NE(simulator.getPluginManager(), nullptr);
     simulator.getPluginManager()->autoInsertPlugins();
@@ -2629,8 +2635,91 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyRejectsConflictingSignalCoeffi
 
     GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
     EXPECT_FALSE(result.succeeded);
-    EXPECT_NE(result.errorMessage.find("Conflicting signal(...) coefficients for channel 1"), std::string::npos)
-        << result.errorMessage;
+    EXPECT_NE(result.errorMessage.find("independently declared"), std::string::npos) << result.errorMessage;
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyRejectsIndependentEqualCoefficientSignalDeclarationsAcrossNamedPrograms) {
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = simulator.getPluginManager()->newInstance<GroProgram>(model, "GroProgram_IndependentChannels");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program first() := { first_signal := signal(0, 0); true : { emit_signal(first_signal, 5) } }; "
+        "program second() := { second_signal := signal(0, 0); true : { emit_signal(second_signal, 7) } }; "
+        "ecoli([x:=0, y:=0], program first()); "
+        "ecoli([x:=1, y:=0], program second());");
+    BacteriaColony* colony = simulator.getPluginManager()->newInstance<BacteriaColony>(model, "BacteriaColony_IndependentChannels");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setGridWidth(4);
+    colony->setGridHeight(2);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_FALSE(result.succeeded) << "independent declarations must not silently alias channel 1";
+    EXPECT_NE(result.errorMessage.find("independently declared"), std::string::npos) << result.errorMessage;
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonySharesOneDeclaredSignalAcrossBacteriaOfSameNamedProgram) {
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager(), nullptr);
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = simulator.getPluginManager()->newInstance<GroProgram>(model, "GroProgram_SharedNamedChannel");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program shared() := { s := signal(0, 0); true : { emit_signal(s, bacterium_id) } }; "
+        "ecoli([x:=0, y:=0], program shared()); "
+        "ecoli([x:=1, y:=0], program shared());");
+    BacteriaColony* colony = simulator.getPluginManager()->newInstance<BacteriaColony>(model, "BacteriaColony_SharedNamedChannel");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    ASSERT_TRUE(result.succeeded) << result.errorMessage;
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    const auto& first = colony->getBacteriumState(0);
+    const auto& second = colony->getBacteriumState(1);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(first.gridX, first.gridY), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(second.gridX, second.gridY), 2.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonySharesBacteriumProgramSignalAcrossBacteria) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_BacteriumScopeSharedChannel");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program bacterium() { s := signal(0, 0); emit_signal(s, bacterium_id); }");
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_BacteriumScopeSharedChannel");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setInitialPopulation(2);
+    colony->setGridWidth(4);
+    colony->setGridHeight(2);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    ASSERT_TRUE(result.succeeded) << result.errorMessage;
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "s"), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "s"), 1.0);
+    const auto& first = colony->getBacteriumState(0);
+    const auto& second = colony->getBacteriumState(1);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(first.gridX, first.gridY), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(second.gridX, second.gridY), 2.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesGroSeedsBeforeFirstGuiDrivenStep) {
