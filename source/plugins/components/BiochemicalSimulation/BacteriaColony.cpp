@@ -764,6 +764,12 @@ void BacteriaColony::_initBetweenReplications() {
 	// re-run deterministically from the Gro program itself and lazily
 	// recreate zero-filled fields via EnsureSignalChannel.
 	_additionalSignalChannels.clear();
+	// Problem B (Phase 3, authorized precedence): same leak-free contract
+	// as _additionalSignalChannels — a declared first-channel coefficient
+	// from one replication must not leak into the next.
+	_legacyChannelDiffusionRate = 0.0;
+	_legacyChannelDecayRate = 0.0;
+	_legacyChannelCoefficientMismatchWarned = false;
 	std::string signalErrorMessage;
 	(void)_resetRuntimeSignalField(signalErrorMessage);
 }
@@ -1213,6 +1219,30 @@ unsigned int BacteriaColony::_computeLocalBacteriaCount(unsigned int x, unsigned
 
 void BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate) {
 	if (channel < 2) {
+		if (channel == 1) {
+			// Problem B (Phase 3, authorized precedence): always record the
+			// declared coefficients, regardless of whether a
+			// BacteriaSignalGrid is attached; _applySignalFieldStep()
+			// decides which source to use. Keeping "store" and "use"
+			// independent means toggling signalGrid attachment at runtime
+			// cannot leave a stale mismatch between what was recorded and
+			// what is actually used.
+			_legacyChannelDiffusionRate = diffusionRate;
+			_legacyChannelDecayRate = decayRate;
+			if (_signalGrid != nullptr && !_legacyChannelCoefficientMismatchWarned) {
+				const bool diffusionMatches = std::abs(diffusionRate - _signalGrid->getDiffusionRate()) < 1e-9;
+				const bool decayMatches = std::abs(decayRate - _signalGrid->getDecayRate()) < 1e-9;
+				if (!diffusionMatches || !decayMatches) {
+					_legacyChannelCoefficientMismatchWarned = true;
+					traceSimulation(this,
+					    "Bacteria colony: first signal(" + std::to_string(diffusionRate) + ", " +
+					    std::to_string(decayRate) + ") declaration differs from the attached "
+					    "BacteriaSignalGrid's diffusionRate=" + std::to_string(_signalGrid->getDiffusionRate()) +
+					    "/decayRate=" + std::to_string(_signalGrid->getDecayRate()) +
+					    "; the BacteriaSignalGrid configuration remains authoritative for this channel.");
+				}
+			}
+		}
 		return; // Channel 0/1 is the existing legacy field; nothing to allocate.
 	}
 	const std::size_t index = static_cast<std::size_t>(channel) - 2;
@@ -1344,20 +1374,8 @@ void BacteriaColony::_applyAdditionalSignalChannelsStep() {
 	}
 }
 
-void BacteriaColony::_applySignalFieldStep() {
-	// Additional (handle >= 2) channels are independent of the legacy
-	// field's own configuration source and coefficients, so they must
-	// step exactly once per colony step regardless of whether a
-	// BacteriaSignalGrid is attached or what the legacy field's own
-	// diffusion/decay happen to be.
-	_applyAdditionalSignalChannelsStep();
-
-	if (_signalGrid == nullptr || _signalField.empty()) {
-		return;
-	}
-
-	const double diffusionRate = _signalGrid->getDiffusionRate();
-	const double decayFactor = 1.0 - _signalGrid->getDecayRate();
+void BacteriaColony::_relaxLegacySignalField(double diffusionRate, double decayRate) {
+	const double decayFactor = 1.0 - decayRate;
 	if (diffusionRate == 0.0 && decayFactor == 1.0) {
 		return;
 	}
@@ -1396,6 +1414,35 @@ void BacteriaColony::_applySignalFieldStep() {
 		}
 	}
 	_signalField = std::move(updatedField);
+}
+
+void BacteriaColony::_applySignalFieldStep() {
+	// Additional (handle >= 2) channels are independent of the legacy
+	// field's own configuration source and coefficients, so they must
+	// step exactly once per colony step regardless of whether a
+	// BacteriaSignalGrid is attached or what the legacy field's own
+	// diffusion/decay happen to be.
+	_applyAdditionalSignalChannelsStep();
+
+	if (_signalField.empty()) {
+		return;
+	}
+
+	if (_signalGrid != nullptr) {
+		// Problem B (Phase 3, authorized precedence): an attached
+		// BacteriaSignalGrid's persisted configuration remains
+		// authoritative for the legacy field, unconditionally; a declared
+		// first-channel signal(...) never overrides it.
+		_relaxLegacySignalField(_signalGrid->getDiffusionRate(), _signalGrid->getDecayRate());
+		return;
+	}
+
+	// Problem B (Phase 3, authorized precedence): no persisted
+	// BacteriaSignalGrid is attached, so honor whatever the program's
+	// first signal(kdiff,kdeg) declaration specified. Defaults to 0/0 (no
+	// diffusion/decay, matching prior behavior exactly) when no such
+	// declaration ever ran.
+	_relaxLegacySignalField(_legacyChannelDiffusionRate, _legacyChannelDecayRate);
 }
 
 void BacteriaColony::_applyBacteriumSignalMutations(const BacteriumState& bacterium,
@@ -1508,7 +1555,10 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			// Same leak-free contract as between-replications reset: see
 			// _initBetweenReplications.
 			_additionalSignalChannels.clear();
-			std::string signalErrorMessage;
+			_legacyChannelDiffusionRate = 0.0;
+			_legacyChannelDecayRate = 0.0;
+			_legacyChannelCoefficientMismatchWarned = false;
+					std::string signalErrorMessage;
 			(void)_resetRuntimeSignalField(signalErrorMessage);
 			continue;
 		}
