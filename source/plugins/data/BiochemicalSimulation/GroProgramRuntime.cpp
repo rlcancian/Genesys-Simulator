@@ -684,7 +684,8 @@ GroProgramRuntime::PopulationMutation makePopulationMutation(GroProgramRuntime::
 // fallback: this subset only covers the declaration form every real Gro
 // program in the original corpus actually uses.
 bool tryHandleSignalDeclarationAssignment(const GroProgramIr::Command& command, GroProgramRuntimeState& state,
-                                          GroProgramRuntime::ExecutionResult& result) {
+                                          GroProgramRuntime::ExecutionResult& result,
+                                          bool withinConditionalBranch) {
 	const std::string& text = command.expressionText;
 	std::size_t position = 0;
 	while (position < text.size() && std::isspace(static_cast<unsigned char>(text[position]))) {
@@ -725,6 +726,22 @@ bool tryHandleSignalDeclarationAssignment(const GroProgramIr::Command& command, 
 		return false;
 	}
 
+	// Handle-identity safeguard: signalDeclarationOrdinal-based numbering
+	// is only stable if this declaration runs unconditionally, in the
+	// same source order, on every pass. A declaration inside an if/rule
+	// branch would only increment the ordinal on passes where that branch
+	// is taken, letting the same source text resolve to a different
+	// handle across steps. Reject explicitly instead of allowing that
+	// silent instability; the selected subset requires signal(...)
+	// declarations at the unconditional top level of a program.
+	if (withinConditionalBranch) {
+		result.succeeded = false;
+		result.errorMessage = "GroProgramRuntime \"signal(...)\" declarations are not supported inside "
+		                      "conditional branches in the selected subset; declare channels unconditionally "
+		                      "at the top level of the program. ";
+		return true;
+	}
+
 	const unsigned int channel = ++state.signalDeclarationOrdinal;
 	state.variables[command.assignmentTarget] = static_cast<double>(channel);
 	result.assignedVariables[command.assignmentTarget] = static_cast<double>(channel);
@@ -739,14 +756,18 @@ bool tryHandleSignalDeclarationAssignment(const GroProgramIr::Command& command, 
 }
 
 bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProgramRuntimeState& state,
-	                 GroProgramRuntime::ExecutionResult& result, std::uint64_t& stochasticSampleIndex) {
+	                 GroProgramRuntime::ExecutionResult& result, std::uint64_t& stochasticSampleIndex,
+	                 bool withinConditionalBranch) {
 	for (const GroProgramIr::Command& command : commands) {
 		if (command.isAssignment()) {
 			if (command.assignmentOnlyIfUnset &&
 			    state.variables.find(command.assignmentTarget) != state.variables.end()) {
 				continue;
 			}
-			if (tryHandleSignalDeclarationAssignment(command, state, result)) {
+			if (tryHandleSignalDeclarationAssignment(command, state, result, withinConditionalBranch)) {
+				if (!result.succeeded) {
+					return false;
+				}
 				continue;
 			}
 			double assignedValue = 0.0;
@@ -772,7 +793,7 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			++result.executedCommands;
 			const std::vector<GroProgramIr::Command>& selectedBranch =
 					conditionValue != 0.0 ? command.thenCommands : command.elseCommands;
-			if (!executeCommands(selectedBranch, state, result, stochasticSampleIndex)) {
+			if (!executeCommands(selectedBranch, state, result, stochasticSampleIndex, true)) {
 				return false;
 			}
 			continue;
@@ -1228,7 +1249,7 @@ GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr
 	}
 
 	std::uint64_t stochasticSampleIndex = 0;
-	executeCommands(ir.commands, state, result, stochasticSampleIndex);
+	executeCommands(ir.commands, state, result, stochasticSampleIndex, false);
 	return result;
 }
 

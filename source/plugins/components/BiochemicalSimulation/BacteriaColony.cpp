@@ -769,6 +769,7 @@ void BacteriaColony::_initBetweenReplications() {
 	// from one replication must not leak into the next.
 	_legacyChannelDiffusionRate = 0.0;
 	_legacyChannelDecayRate = 0.0;
+	_legacyChannelCoefficientsDeclared = false;
 	_legacyChannelCoefficientMismatchWarned = false;
 	std::string signalErrorMessage;
 	(void)_resetRuntimeSignalField(signalErrorMessage);
@@ -1217,9 +1218,18 @@ unsigned int BacteriaColony::_computeLocalBacteriaCount(unsigned int x, unsigned
 	return count;
 }
 
-void BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate) {
+bool BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate,
+                                                   std::string& errorMessage) {
 	if (channel < 2) {
 		if (channel == 1) {
+			if (_legacyChannelCoefficientsDeclared &&
+			    (std::fabs(_legacyChannelDiffusionRate - diffusionRate) > 1e-9 ||
+			     std::fabs(_legacyChannelDecayRate - decayRate) > 1e-9)) {
+				errorMessage = "Conflicting signal(...) coefficients for channel 1 during one replication; "
+				               "declare shared channels once in the global program scope. ";
+				return false;
+			}
+			_legacyChannelCoefficientsDeclared = true;
 			// Problem B (Phase 3, authorized precedence): always record the
 			// declared coefficients, regardless of whether a
 			// BacteriaSignalGrid is attached; _applySignalFieldStep()
@@ -1243,19 +1253,28 @@ void BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double
 				}
 			}
 		}
-		return; // Channel 0/1 is the existing legacy field; nothing to allocate.
+		return true; // Channel 0/1 is the existing legacy field; nothing to allocate.
 	}
 	const std::size_t index = static_cast<std::size_t>(channel) - 2;
 	if (index >= _additionalSignalChannels.size()) {
 		_additionalSignalChannels.resize(index + 1);
 	}
 	AdditionalSignalChannel& additionalChannel = _additionalSignalChannels[index];
+	if (additionalChannel.coefficientsDeclared &&
+	    (std::fabs(additionalChannel.diffusionRate - diffusionRate) > 1e-9 ||
+	     std::fabs(additionalChannel.decayRate - decayRate) > 1e-9)) {
+		errorMessage = "Conflicting signal(...) coefficients for channel " + std::to_string(channel) +
+		               " during one replication; declare shared channels once in the global program scope. ";
+		return false;
+	}
+	additionalChannel.coefficientsDeclared = true;
 	additionalChannel.diffusionRate = diffusionRate;
 	additionalChannel.decayRate = decayRate;
 	const std::size_t requiredSize = static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight());
 	if (additionalChannel.field.size() != requiredSize) {
 		additionalChannel.field.assign(requiredSize, 0.0);
 	}
+	return true;
 }
 
 void BacteriaColony::_resizeAdditionalSignalChannelsToGrid() {
@@ -1557,8 +1576,9 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			_additionalSignalChannels.clear();
 			_legacyChannelDiffusionRate = 0.0;
 			_legacyChannelDecayRate = 0.0;
+			_legacyChannelCoefficientsDeclared = false;
 			_legacyChannelCoefficientMismatchWarned = false;
-					std::string signalErrorMessage;
+			std::string signalErrorMessage;
 			(void)_resetRuntimeSignalField(signalErrorMessage);
 			continue;
 		}
@@ -1735,7 +1755,10 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 				return false;
 			}
 			const unsigned int channel = static_cast<unsigned int>(std::llround(mutation.numericArguments[0]));
-			_ensureAdditionalSignalChannel(channel, mutation.numericArguments[1], mutation.numericArguments[2]);
+			if (!_ensureAdditionalSignalChannel(channel, mutation.numericArguments[1], mutation.numericArguments[2],
+			                                    errorMessage)) {
+				return false;
+			}
 			continue;
 		}
 	}
