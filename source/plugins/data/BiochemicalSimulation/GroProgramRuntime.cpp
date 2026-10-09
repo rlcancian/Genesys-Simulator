@@ -8,9 +8,9 @@
 #include "plugins/data/BiochemicalSimulation/GroProgramRuntime.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <cstdint>
-#include <cmath>
 #include <limits>
 #include <stdexcept>
 
@@ -777,10 +777,18 @@ bool tryHandleSignalDeclarationAssignment(const GroProgramIr::Command& command, 
 
 	double diffusionRate = 0.0;
 	double decayRate = 0.0;
-	std::string ignoredError;
-	if (!evaluateExpression(argumentsText.substr(0, commaPosition), state, diffusionRate, ignoredError) ||
-	    !evaluateExpression(argumentsText.substr(commaPosition + 1), state, decayRate, ignoredError)) {
-		return false;
+	std::string expressionError;
+	if (!evaluateExpression(argumentsText.substr(0, commaPosition), state, diffusionRate, expressionError) ||
+	    !evaluateExpression(argumentsText.substr(commaPosition + 1), state, decayRate, expressionError) ||
+	    !std::isfinite(diffusionRate) || !std::isfinite(decayRate) || diffusionRate < 0.0 || diffusionRate > 1.0 ||
+	    decayRate < 0.0 || decayRate > 1.0) {
+		result.succeeded = false;
+		result.errorMessage = "GroProgramRuntime signal coefficients must be finite values in the [0,1] interval";
+		if (!expressionError.empty()) {
+			result.errorMessage += ": " + expressionError;
+		}
+		result.errorMessage += ". ";
+		return true;
 	}
 
 	// Handle-identity safeguard: signalDeclarationOrdinal-based numbering
