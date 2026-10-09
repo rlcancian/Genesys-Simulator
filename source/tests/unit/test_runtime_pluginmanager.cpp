@@ -1833,13 +1833,13 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyKeepsGlobalSignalHandleStableA
     GroProgramRuntime::ExecutionResult firstReplicationResult = colony->executeGroProgram();
     EXPECT_TRUE(firstReplicationResult.succeeded) << firstReplicationResult.errorMessage;
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "ahl"), 1.0);
-    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 5.0);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(1, 1), 5.0);
 
     ModelDataDefinition::InitBetweenReplications(colony);
     GroProgramRuntime::ExecutionResult secondReplicationResult = colony->executeGroProgram();
     EXPECT_TRUE(secondReplicationResult.succeeded) << secondReplicationResult.errorMessage;
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "ahl"), 1.0);
-    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 5.0);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(1, 1), 5.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonySetSignalAndSetSignalRectRespectChannelHandle) {
@@ -2992,8 +2992,8 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyMainCanResetAndRespawnSeeds) {
     EXPECT_TRUE(result.succeeded) << result.errorMessage;
     EXPECT_EQ(colony->getInternalBacteriaCount(), 1u);
     EXPECT_EQ(colony->getPopulationSize(), 1u);
-    EXPECT_EQ(colony->getBacteriumState(0).gridX, 2u);
-    EXPECT_EQ(colony->getBacteriumState(0).gridY, 3u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).positionX, 2.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).positionY, 3.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.seen"), 1.0);
 }
 
