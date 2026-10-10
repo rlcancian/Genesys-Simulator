@@ -123,6 +123,25 @@ Once the template is loaded, the user must confirm a few simple but important po
 \item the user can visually navigate the loaded content.
 \end{itemize}
 
+\subsection{Exploring the Gro bacteria-colony example}
+\label{subsec:gro_bacteria_colony_example}
+
+The \texttt{models/BacteriaColony\_TwoSignalDemo.gen} example opens as a
+Gro-controlled colony demonstration. Run the model to let the colony program
+seed individual bacteria and update their state. To inspect the spatial
+colony view, open \textit{Tools > Extensions > Biological > Visualize Bacteria
+Colony...}. The viewer overlays bacteria on the signal heat map and reports
+population and grid information. Use its \textit{Signal} selector to switch
+between the legacy field and any additional channels declared by the program.
+This example declares two channels; the selector follows channels created or
+removed at replication reset.
+
+The example demonstrates the implemented Gro subset and a per-step
+phenomenological signal-relaxation rule. Its visual behaviour is useful for
+learning and inspection; it is not a quantitatively validated biological
+prediction. Save or reopen the model through the normal model commands to
+preserve its program and signal-grid configuration.
+
 This confirmation is useful because it distinguishes two very different states of the application:
 \begin{itemize}
 \item the GUI is empty or without an active model;

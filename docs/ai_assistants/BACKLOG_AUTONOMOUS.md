@@ -572,7 +572,7 @@ Common execution contract for AUTO-SCI-001 through AUTO-SCI-013:
 ### AUTO-BACTERIA-001 — Complete the approved Gro/BacteriaColony first-version scope
 
 - Priority: `P1`
-- Status: `running`
+- Status: `blocked-review`
 - Environment: `local` (Ubuntu/CMake/Ninja/Qt6 toolchain)
 - Branch: `WiP20261008/BacteriaColony` (existing authorized work branch)
 - Base: feature-branch HEAD `8cadfb651071c17acf7fd0f65fe47685b66e8829`
@@ -582,6 +582,7 @@ Common execution contract for AUTO-SCI-001 through AUTO-SCI-013:
 - Non-goals: full original-Gro compatibility; new Gro grammar; external physics dependency; conservative/PDE signal solver; incompatible persistence migration; changes to `WorkInProgress` or stable branches; PR or merge.
 - Acceptance: all nine cycles have explicit results; supported bacteria can run the selected Gro subset, grow/divide/die/move with zero invariants and reproducible RNG, use independent validated signals, display runtime state in the existing viewer, and pass supported persistence checks; required local presets/tests/builds are recorded at final HEAD; historical/unrelated failures and limitations are reported separately.
 - Stop: escalate only for a material architectural/scientific/security/persistence decision not approved here, incompatible branch work, a regression that cannot be safely fixed within scope, or required validation unavailable. Preserve pre-existing `models/gro_examples/` and `source/tests/unit/generated/` contents and never stage them.
+- Review handoff: all nine cycles have local implementation records; final local `tests-unit`, `tests-kernel-unit`, `tests-smoke`, `gui-app`, persistence checks and manual build are recorded in `reference/BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md` §22.7. The main GUI window was visually inspected through XWayland capture, but the two-signal demo view/selector was not interacted with; no hosted CI run is present. Await independent review and do not mark `done_confirmed` until the remaining evidence boundary is accepted.
 
 ## 6. Paused technical tasks
 
