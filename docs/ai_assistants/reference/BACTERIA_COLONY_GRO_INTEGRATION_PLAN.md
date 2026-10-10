@@ -1714,8 +1714,9 @@ that needs to be made explicit.
 - User and Developer manual chapters were updated. `./make.sh` completed and
   refreshed `docs/ManualGenESyS.pdf`; the changed User and Developer pages
   were visually inspected. The build emitted `xdvipdfmx` annotation
-  out-of-page warnings; the PDF compiled and no undefined references were
-  reported. Generated `.ptc` and LaTeX working files were not included.
+  out-of-page warnings and ICC-profile 4.4 unsupported/not-embedded warnings;
+  the PDF compiled and no undefined references were reported. Generated
+  `.ptc` and LaTeX working files were not included.
 - `gh run list --branch WiP20261008/BacteriaColony` returned no runs. All
   test/build evidence in this section is local; no hosted CI result is
   claimed.
