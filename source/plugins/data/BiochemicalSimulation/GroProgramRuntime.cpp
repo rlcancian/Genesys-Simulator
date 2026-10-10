@@ -1198,7 +1198,20 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 					mutation.resultingSpeed = resultingSpeed;
 				} else {
 					const double tumbleAngle = std::clamp(amount, 0.0, 6.28318530717958647692);
-					const double sample = deterministicUnitInterval(state, ++stochasticSampleIndex);
+					const std::uint64_t sampleIndex = ++stochasticSampleIndex;
+					double sample = 0.0;
+					if (state.sampleUnitInterval) {
+						if (!state.sampleUnitInterval(sample, result.errorMessage) || !std::isfinite(sample) ||
+						    sample < 0.0 || sample > 1.0) {
+							result.succeeded = false;
+							if (result.errorMessage.empty()) {
+								result.errorMessage = "GroProgramRuntime tumble RNG returned a value outside [0,1]. ";
+							}
+							return false;
+						}
+					} else {
+						sample = deterministicUnitInterval(state, sampleIndex);
+					}
 					const double signedTurn = sample < 0.5 ? -tumbleAngle : tumbleAngle;
 					const double resultingDirection = normalizeAngle(currentDirection + signedTurn);
 					const double resultingSpeed = currentSpeed;

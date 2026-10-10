@@ -10,6 +10,7 @@
 
 #include "plugins/data/BiochemicalSimulation/GroProgramIr.h"
 
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -24,6 +25,10 @@ struct GroProgramRuntimeState {
 	unsigned int tickCount = 0;
 	std::map<std::string, double> contextVariables;
 	std::map<std::string, double> variables;
+	// Optional host-provided RNG bridge used to preserve command-order
+	// semantics for stochastic commands such as tumble(). Standalone runtime
+	// callers retain the deterministic fallback when no host sampler exists.
+	std::function<bool(double&, std::string&)> sampleUnitInterval;
 	// Counts "VAR := signal(kdiff, kdeg);" assignments executed so far in
 	// this pass, in source order. The Nth assignment yields handle N within
 	// one program. BacteriaColony separately rejects that ordinal being

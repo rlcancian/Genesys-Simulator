@@ -2128,7 +2128,6 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		}
 
 		GroProgramRuntime::ExecutionResult bacteriumResult = runtime.execute(bacteriumIr, runtimeState);
-		_applyKernelRandomTumbles(runtimeState, bacteriumResult);
 		if (!bacteriumResult.succeeded) {
 			result = bacteriumResult;
 			result.errorMessage = "BacteriaColony seeded-program execution failed for bacterium id " +
@@ -2256,7 +2255,6 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 			return false;
 		}
 		GroProgramRuntime::ExecutionResult bacteriumResult = runtime.execute(ir, runtimeState);
-		_applyKernelRandomTumbles(runtimeState, bacteriumResult);
 		if (!bacteriumResult.succeeded) {
 			result = bacteriumResult;
 			result.errorMessage = "BacteriaColony bacterium-scoped execution failed for bacterium id " +
@@ -2446,6 +2444,19 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.variables["just_divided"] = bacterium.justDivided ? 1.0 : 0.0;
 	runtimeState.variables["daughter"] = bacterium.daughter ? 1.0 : 0.0;
 	runtimeState.variables["dt"] = runtimeState.simulationStep;
+	runtimeState.sampleUnitInterval = [this](double& sample, std::string& errorMessage) {
+		if (_parentModel == nullptr) {
+			errorMessage = "BacteriaColony has no model for the kernel RNG. ";
+			return false;
+		}
+		bool success = false;
+		sample = _parentModel->parseExpression("unif(0,1)", success, errorMessage);
+		if (!success) {
+			errorMessage = "BacteriaColony could not sample the kernel RNG for tumble: " + errorMessage;
+			return false;
+		}
+		return true;
+	};
 	return runtimeState;
 }
 
@@ -2795,46 +2806,6 @@ void BacteriaColony::_syncBacteriumSpatialState(BacteriumState& bacterium, const
 	}
 	bacterium.size = std::max(bacterium.size, std::sqrt(std::max(0.1, bacterium.volume)));
 	_setBacteriumPosition(bacterium, bacterium.positionX, bacterium.positionY);
-}
-
-void BacteriaColony::_applyKernelRandomTumbles(GroProgramRuntimeState& runtimeState,
-                                               GroProgramRuntime::ExecutionResult& result) const {
-	if (!result.succeeded || _parentModel == nullptr) {
-		return;
-	}
-	constexpr double kTwoPi = 6.28318530717958647692;
-	double sampledDirection = 0.0;
-	bool hasSampledDirection = false;
-	for (GroProgramRuntime::MotionMutation& mutation : result.motionMutations) {
-		if (mutation.type != GroProgramRuntime::MotionMutationType::Tumble) {
-			continue;
-		}
-		bool success = false;
-		std::string errorMessage;
-		const double sample = _parentModel->parseExpression("unif(0,1)", success, errorMessage);
-		if (!success || !std::isfinite(sample)) {
-			result.succeeded = false;
-			result.errorMessage = "BacteriaColony could not sample the kernel RNG for tumble: " + errorMessage;
-			return;
-		}
-		const double previousDirection = hasSampledDirection ? sampledDirection : mutation.previousDirection;
-		mutation.previousDirection = previousDirection;
-		const double turn = std::clamp(mutation.value, 0.0, kTwoPi);
-		const double signedTurn = sample < 0.5 ? -turn : turn;
-		double direction = std::fmod(previousDirection + signedTurn, kTwoPi);
-		if (direction < 0.0) {
-			direction += kTwoPi;
-		}
-		sampledDirection = direction;
-		hasSampledDirection = true;
-		mutation.resultingDirection = direction;
-		runtimeState.variables["direction"] = direction;
-		runtimeState.variables["theta"] = direction;
-		runtimeState.contextVariables["bacterium_direction"] = direction;
-		runtimeState.contextVariables["bacterium_theta"] = direction;
-		result.assignedVariables["direction"] = direction;
-		result.assignedVariables["theta"] = direction;
-	}
 }
 
 void BacteriaColony::_updateBacteriumSpatialMotion(BacteriumState& bacterium) const {
