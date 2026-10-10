@@ -1128,9 +1128,9 @@ above a phenomenological, non-conservative relaxation.
 | Milestone | Real status at the reference HEAD | Closure condition |
 |---|---|---|
 | **M1 — Gro e sinais** | **Cycle 1 complete.** The selected frontend subset, handles, channel independence, Phase 3 coefficient precedence and Phase 4 characterization remain covered. Gro declarations and attached-grid settings now reject non-finite/out-of-range coefficients; the approved phenomenological contract is recorded. | Keep existing signal regressions green while later cycles integrate colony and viewer behavior. |
-| **M2 — Dinâmica bacteriana** | **In progress (Cycles 2–5 complete).** Gro seed coordinates remain continuous and centered; zero-growth/zero-step growth invariants, optional persisted threshold division, centralized volume-conserving division, `speed*dt` movement, kernel-sampler `tumble`, boundary reflection, and bounded geometric separation are implemented and covered by focused runtime tests. | Coordinates, growth, division, death, motion, orientation, zero invariants, boundary rule and reproducible RNG have focused and integrated tests. |
-| **M3 — Integração e GUI** | **In progress (Cycles 6–7 complete).** The calendar and manual viewer use the same colony state; calendar calls step each signal once, manual execution leaves model time unchanged, and viewer manual steps are guarded while the simulation is running or paused. A Qt6 channel selector now drives the heatmap for the legacy or an additional channel, and a small Gro emitter/receiver scenario proves two independent signals. Combined corpus A–E acceptance and interactive GUI evidence remain open. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; only the smallest missing end-to-end tests are added. |
-| **M4 — Validação e entrega** | **Partial (Cycle 8 complete).** Growth, lifecycle and Smart `.gen` fixtures all load; Smart also executes after load with four bacteria and signal emission. The loader now accepts the legacy raw multiline Gro source without changing serialized output or re-saving fixtures. New dynamic save/load scenario retains the Gro program, grid, optional-division properties and independent fields. Final-head regressions, GUI/CI and performance evidence remain open. | Supported fixtures round-trip without editing them to mask failures; known loader issue is fixed; required final-head regressions/GUI/CI and documentation criteria pass. Performance work occurs only after measured evidence. |
+| **M2 — Dinâmica bacteriana** | **Complete (Cycles 2–5).** Gro seed coordinates remain continuous and centered; zero-growth/zero-step growth invariants, optional persisted threshold division, centralized volume-conserving division, `speed*dt` movement, kernel-sampler `tumble`, boundary reflection, and bounded geometric separation are implemented and covered by focused runtime tests. | Completed locally at this point; later regression gates remain in M4. |
+| **M3 — Integração e GUI** | **Partial (Cycles 6–7 implemented).** The calendar and manual viewer use the same colony state; calendar calls step each signal once, manual execution leaves model time unchanged, and viewer manual steps are guarded while the simulation is running or paused. A Qt6 channel selector drives the heatmap for the legacy or an additional channel; the saved two-channel model checks, round-trips, runs through the event calendar, and independently exercises both fields. The GUI build and main window render pass; the demo view and interactive channel selection remain unverified. | Integrated tests demonstrate one coherent runtime/event/viewer state contract and visible diagnostics; interactive channel selection remains a review limitation. |
+| **M4 — Validação e entrega** | **Partial (Cycles 8–9 local gates complete).** All three historical `.gen` fixtures load; Smart executes after load with four bacteria and signal emission. A narrow reader fix accepts its legacy raw multiline Gro source without changing writer output or fixtures. Save/load and calendar tests verify the two-channel demonstration. Full local CTest presets, GUI build and manual build pass. No GitHub CI run is available for the feature branch, and the demo view/selector was not interacted with in the GUI. | Supported fixtures round-trip without editing them to mask failures; required local regressions/GUI build and documentation pass; obtain independent review and any requested hosted CI/interactive verification before `done_confirmed`. Performance work occurs only after measured evidence. |
 
 ### 22.3 Crosswalk: historical phases 0–13 to M1–M4
 
@@ -1625,22 +1625,30 @@ SHA-256 remained
 
 The fixture regression loads Growth, Lifecycle and Smart models; it executes
 the Smart Gro program after load and verifies four bacteria and a positive
-signal maximum. A new two-channel Gro scenario is constructed in a test,
-serialized through the normal model API, loaded again, and executed. It checks
-the persisted Gro/grid/automatic-division configuration and distinct final
-field maxima (8 for the legacy grid and 4 for the additional channel after
-decay). The focused three-test set passed locally. This is persistence and
-runtime evidence, not a separately installed example `.gen` or interactive
-GUI demonstration. No CI evidence is claimed.
+signal maximum. A new original model,
+`models/BacteriaColony_TwoSignalDemo.gen`, declares two channels, seeds three
+bacteria with one shared named program, moves/grows them, emits and reads both
+signals, and enables optional division. The test loads that fixture, saves it
+through the normal serializer, loads it in a fresh plugin-initialized
+simulator, checks the model, and runs it through the event calendar before
+resetting and executing one manual step. It checks persisted
+Gro/grid/automatic-division configuration and distinct final field maxima (8
+for the legacy grid and 4 for the additional channel after decay). The focused
+three-test set and full CTest presets passed locally. This is persistence and
+runtime evidence; interactive GUI rendering is not claimed. No CI evidence is
+claimed.
 
 #### Cycle 8 commits and files
 
 - `ab8c30da` — loader compatibility for raw multiline legacy Gro source.
 - `4334e8ba` — RED/GREEN serializer test, three-model load/Smart execution
   regression, and saved/reloaded two-channel runtime scenario.
+- `bcf58e80` — add the serializer-generated, saved two-channel demo model.
+- `bacbf170` — check and run that model through the event calendar.
 - Production: `source/kernel/simulator/persistence/GenSerializer.cpp`.
 - Tests: `source/tests/unit/test_gen_serializer_text.cpp` and
   `source/tests/unit/test_runtime_pluginmanager.cpp`.
+- Original saved demo: `models/BacteriaColony_TwoSignalDemo.gen`.
 - Existing `.gen` fixtures and `models/gro_examples/` remain unchanged.
 
 #### Iteration 9 — Final regression, CI, manuals and conditional performance
@@ -1669,3 +1677,51 @@ to the approved runtime work. Cycle 2 establishes a centered continuous
 coordinate convention; Cycle 9 must assess the User and Developer Manuals
 against the implemented controls and document any user-visible behavior
 that needs to be made explicit.
+
+### 22.7 Cycle 9 local validation and closeout (2026-10-09)
+
+- `ctest --preset tests-unit --output-on-failure`: exit 0; 1903 registered
+  CTest cases, 1899 passed and zero failed. Four disabled Google Test cases are reported
+  as not run: `SearchQueueFindsEntityInRangeSavesRankAndRoutesToFoundPort`,
+  `SearchQueueNotFoundRoutesToPortZeroAndSavesZeroRank`,
+  `RemoveEqualStartAndEndRankRemovesExactlyOneAndRoutesCorrectly`, and
+  `RemoveRangeRemovesOnlyEntitiesInsideConfiguredInterval`.
+- `ctest --preset tests-kernel-unit --output-on-failure`: exit 0; 1903
+  registered CTest cases, 1899 passed and zero failed; the same four disabled
+  cases were not run. The preset also built and ran its 52-test kernel-unit
+  executable successfully.
+- `ctest --preset tests-smoke --output-on-failure`: 3/3 passed.
+- `cmake --build --preset gui-app -j4`: passed. The GUI process started,
+  opened a visible 1032x625 XWayland window, and its main window was captured
+  and visually inspected with `xwd`. GNOME's screenshot D-Bus method had
+  returned `AccessDenied`; the XWayland fallback worked. The two-signal demo
+  was not opened inside the GUI, and its selector/rendering interaction is
+  not claimed as verified.
+- Final complete `tests-unit` and `tests-kernel-unit` CTest runs started at
+  code/test HEAD `bacbf170`; subsequent Cycle 9 commits changed documentation
+  and the generated manual PDF only.
+- The three `PropertyEditorDoubleCommit` tests passed 3/3 in the full unit
+  preset and a focused rerun. Their historical failure was not reproduced at
+  this HEAD.
+- One-off local timing probe in the debug `tests-unit` build used a 20x10
+  colony, a fixed Gro colony program, 25 steady executions per population,
+  and populations seeded by the supported Gro `ecoli` operation. Average
+  measured step times were 10.095 ms (50 bacteria), 16.425 ms (100), and
+  30.735 ms (200). These machine/build-specific values include source parse
+  and compilation on each step and are not a benchmark guarantee. This
+  measured range did not justify speculative spatial indexing or caching;
+  no performance code changed.
+- User and Developer manual chapters were updated. `./make.sh` completed and
+  refreshed `docs/ManualGenESyS.pdf`; the changed User and Developer pages
+  were visually inspected. The build emitted `xdvipdfmx` annotation
+  out-of-page warnings; the PDF compiled and no undefined references were
+  reported. Generated `.ptc` and LaTeX working files were not included.
+- `gh run list --branch WiP20261008/BacteriaColony` returned no runs. All
+  test/build evidence in this section is local; no hosted CI result is
+  claimed.
+
+All nine planned cycles have implementation/validation records. M3 and M4
+remain partial for independent review because live Qt selection/rendering was
+not visually verified and hosted CI evidence is absent. Keep
+`AUTO-BACTERIA-001` in `blocked-review`; do not mark it `done_confirmed` until
+review and any requested GUI/CI evidence are accepted.
