@@ -1726,3 +1726,121 @@ remain partial for independent review because live Qt selection/rendering was
 not visually verified and hosted CI evidence is absent. Keep
 `AUTO-BACTERIA-001` in `blocked-review`; do not mark it `done_confirmed` until
 review and any requested GUI/CI evidence are accepted.
+
+### 22.8 Independent review cleanup and candidate (2026-10-09)
+
+#### Clean candidate and contaminated-commit disposition
+
+- The reviewed feature branch `WiP20261008/BacteriaColony` remains unchanged at
+  `a4277d094320b3a89485b9eba460af9304718aed` for audit. A separate candidate,
+  `WiP20261009/BacteriaColony-clean-candidate`, was constructed from the then
+  current `origin/WorkInProgress` at `50a340d460876c657d8a3be66554bb29cfe8519a`.
+  Feature commits were replayed selectively; contaminated commit `0f64fa8e07`
+  and its merge wrapper are not ancestors of the candidate.
+- The excluded `models/gro_examples/` files are the 19 third-party source
+  examples `bandpass.gro`, `chemotaxis.gro`, `coupled_oscillator.gro`,
+  `dilution.gro`, `edge.gro`, `foreach.gro`, `game.gro`, `gfp.gro`,
+  `growth.gro`, `inducer.gro`, `maptocells.gro`, `morphogenesis.gro`,
+  `signal_demo.gro`, `signal_grid.gro`, `skin.gro`,
+  `spatial_oscillations.gro`, `spots.gro`, `symbiosis.gro`, and `wave.gro`.
+  Their headers identify Eric Klavins/University of Washington and include
+  licensing/redistribution notices. They were not copied into the candidate;
+  the original feature branch retains them unchanged. No conclusion that they
+  may be redistributed is made here.
+- `source/tests/unit/generated/test_kernel_simulator_method_inventory.generated.cpp`
+  (4,907 lines in the contaminated commit) was also excluded from candidate
+  history. A CMake build later generated a same-named 178,031-byte untracked
+  working-tree artifact; it remains unstaged and uncommitted. Its generated
+  `SUCCEED()` inventory cases are not treated as behavioral coverage.
+- `source/tests/unit/test_runtime_pluginmanager.cpp` in `0f64fa8e07` also
+  contained legitimate continuous/centered-coordinate checks, including a
+  corrected expected grid Y value and two coordinate tests. Those test-only
+  hunks were reapplied in `ff5aa935`; no other content from that commit was
+  carried over. Original example files and generated outputs remain available
+  on the preserved audit branch.
+
+#### Tumble command-order defect
+
+- Reproduction test `BacteriaColonyTumbleUpdatesDirectionBeforeFollowingGroCommand`
+  was RED before the fix: 18 of 32 seeded bacteria assigned a value read after
+  `tumble()` that disagreed with their final RNG-sampled direction.
+- `GroProgramRuntime` now samples through a callback supplied by
+  `BacteriaColony` at the point where the `tumble()` command executes. It uses
+  the existing model `unif(0,1)` sampler, so later Gro commands see the sampled
+  orientation and command order is preserved. Standalone runtimes retain their
+  deterministic fallback. No second RNG or deferred overwrite was added.
+- The focused RED/GREEN test, kernel-RNG reproducibility, and existing `run` /
+  `tumble` tests passed after the correction. Commits:
+  `43803a08` (fix) and `c134fc14` (regression test).
+
+#### Two-signal demonstration and geometry review
+
+- The first executable review found that the fixture's Create → BacteriaColony
+  → Dispose components were unconnected, so starting the model produced no
+  bacteria or signals. The persisted links were added, the automatic division
+  threshold was set to 1.2 for the configured positive growth, and seed
+  coordinates were moved into the 8×8 centered domain (`[-3.5,3.5]`). The
+  three seeds are now `(-2,-2)`, `(2,-2)`, `(0,2)`. The fixture format is
+  unchanged.
+- `BacteriaColonyTwoSignalDemoLoadsRunsAndPersists` now checks the loaded
+  model's execution, increased population with parent-linked descendants,
+  movement from seed coordinates, increased cell size, positive values in both
+  independent channels, emission/readback, and greater legacy-field maximum
+  than the decaying additional channel. RED was the disconnected-model
+  behavior; the focused test passed after linking and parameter corrections.
+- Geometric extents were reviewed against centered field bounds and viewer
+  rendering. The viewer derives drawn length from `sqrt(size)` while pairwise
+  separation uses `size` as its longitudinal extent, so these scales are not
+  numerically identical. Partial overlap is approved and this review did not
+  establish a new isolated-cell or boundary defect warranting a production
+  geometry change; no geometry engine or collision semantics were changed.
+
+#### Live GUI and validation boundary
+
+- Local GUI build `gui-app` completed. The real Qt6 application was launched
+  with `QT_QPA_PLATFORM=xcb` because the default Wayland backend was not
+  addressable by the available X11 automation. The two-signal `.gen` model
+  opened successfully in the application and its Create → BacteriaColony →
+  Dispose chain was visible. The Bacteria Colony Viewer opened from
+  Tools → Extensions → Biological and showed the correct colony, 8×8 grid,
+  and three initial bacteria.
+- The selector showed Signal 1 and Signal 2 after the program initialized the
+  additional channel. Selecting Signal 2 changed the displayed heatmap and
+  numeric range from Signal 1. During viewer execution, descendants and
+  movement were visible. Repeated manual execution grew the population rapidly;
+  the `Stop run` response was not reliable in this high-population session, so
+  reset/selection recovery and viewer-vs-active-calendar competition are not
+  declared verified. Source guards manual execution while the model is running
+  or paused; that guard was reviewed but not interactively exercised.
+- `tests-unit`: 1,900 executed tests passed; four disabled tests did not run.
+  This CTest build included the generated method-inventory cases described
+  above, which are not behavioral proof. `PropertyEditorDoubleCommit` passed
+  3/3 in this run. `tests-kernel-unit`: 1,900 executed passed; four disabled
+  tests did not run. `tests-smoke`: build passed and 3/3 tests passed. GUI
+  build passed. Results are local; no CI evidence is claimed.
+- `tests-unit` and `tests-kernel-unit` each registered 1,904 CTest cases,
+  reported 1,900 passed and the same four disabled tests not run. Each preset
+  generated 980 `KernelSimulatorMethodInventory` cases from the untracked
+  method-inventory source described above; the other 920 executed cases
+  include the project behavioral/unit coverage. Do not commit the generated
+  source or treat those `SUCCEED()` inventory checks as behavioral proof.
+- A focused CTest selection covering BacteriaColony, Gro, tumble, viewer, and
+  persistence-related names passed 169/169 tests after the full presets.
+- The live GUI check confirmed the correct selected colony, initial three
+  bacteria, Channel 1, then Channel 2 after initialization, with distinct
+  rendered field values/patterns. Viewer `Step colony` ran the Gro program,
+  and the viewer's manual run showed movement and newly divided bacteria.
+  The automatically expanding population made the Stop run interaction
+  unreliable at high population; repeated manual execution was terminated by
+  closing the viewer and exiting the review process. No model file was saved
+  from that session. Reset behavior and manual controls during an active
+  calendar simulation remain unverified.
+- Existing Growth, Lifecycle, Smart-load, and persisted two-signal fixture
+  coverage passed in the completed unit and kernel-unit presets; the demo
+  round-trip test saves and reopens the model. No serializer or `BacteriaSignalGrid`
+  format code was changed by this review. No existing `.gen` model was
+  rewritten to suppress a failure.
+- Keep `AUTO-BACTERIA-001` in `blocked-review`. The branch cleanup and tumble
+  fix are reviewable, but the unreliable stop control plus unverified reset/
+  active-calendar interaction prevent claiming every requested live GUI gate.
+  All checks in this section are local evidence; no hosted CI result exists.
