@@ -3959,6 +3959,37 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyUsesKernelRngForReproducibleTu
 	EXPECT_DOUBLE_EQ(tumbleDirection(), tumbleDirection());
 }
 
+TEST(RuntimePluginManagerClassTest, BacteriaColonyTumbleUpdatesDirectionBeforeFollowingGroCommand) {
+	Simulator simulator;
+	PluginManager* manager = simulator.getPluginManager();
+	ASSERT_NE(manager, nullptr);
+	manager->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_TumbleCommandOrder");
+	ASSERT_NE(program, nullptr);
+	std::string source = "program bacterium() { tumble(0.7); observed := direction; speed := 0; ecoli_growth_rate := 0; } ";
+	for (int i = 0; i < 32; ++i) {
+		source += "ecoli([x:=" + std::to_string(i % 8) + ",y:=" + std::to_string(i / 8) + "], program bacterium()); ";
+	}
+	program->setSourceCode(source);
+	BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_TumbleCommandOrder");
+	ASSERT_NE(colony, nullptr);
+	colony->setGroProgram(program);
+	colony->setGridWidth(12);
+	colony->setGridHeight(12);
+	colony->setInitialPopulation(0);
+	ModelDataDefinition::InitBetweenReplications(colony);
+	ASSERT_EQ(colony->getInternalBacteriaCount(), 32u);
+
+	const auto result = colony->executeGroProgram();
+	ASSERT_TRUE(result.succeeded) << result.errorMessage;
+	for (std::size_t i = 0; i < colony->getInternalBacteriaCount(); ++i) {
+		EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(i, "observed"),
+		                 colony->getBacteriumDirectionRadians(i)) << "bacterium index " << i;
+	}
+}
+
 TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesBoundedSeparationOnlyToOverlappingPairs) {
 	Simulator simulator;
 	PluginManager* manager = simulator.getPluginManager();
