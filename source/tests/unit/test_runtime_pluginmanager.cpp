@@ -1790,7 +1790,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyTwoSignalDemoLoadsRunsAndPersi
 	ASSERT_NE(loadedColony->getGroProgram(), nullptr);
 	ASSERT_NE(loadedColony->getSignalGrid(), nullptr);
 	ASSERT_TRUE(loadedModel->check());
-	const std::vector<std::pair<double, double>> seededPositions{{2.0, 2.0}, {5.0, 2.0}, {3.0, 5.0}};
+	const std::vector<std::pair<double, double>> seededPositions{{-2.0, -2.0}, {2.0, -2.0}, {0.0, 2.0}};
 	loadedModel->getSimulation()->start();
 	EXPECT_GT(loadedColony->getInternalBacteriaCount(), seededPositions.size());
 	EXPECT_EQ(loadedColony->getSignalChannelCount(), 2u);
