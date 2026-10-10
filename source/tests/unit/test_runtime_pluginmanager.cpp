@@ -1775,7 +1775,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyTwoSignalDemoLoadsRunsAndPersi
 	ASSERT_NE(colony->getGroProgram(), nullptr);
 	ASSERT_NE(colony->getSignalGrid(), nullptr);
 	ASSERT_TRUE(colony->getAutomaticDivisionEnabled());
-	EXPECT_DOUBLE_EQ(colony->getDivisionThresholdVolume(), 2.0);
+	EXPECT_DOUBLE_EQ(colony->getDivisionThresholdVolume(), 1.2);
 	const auto roundTripPath = std::filesystem::temp_directory_path() / "BacteriaColony_TwoSignalDemo_roundtrip.gen";
 	ASSERT_TRUE(simulator.getModelManager()->saveModel(roundTripPath.string()));
 	Simulator reopener;
@@ -1786,13 +1786,47 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyTwoSignalDemoLoadsRunsAndPersi
 			loadedModel->getComponentManager()->find("BacteriaColony_TwoSignalDemo"));
 	ASSERT_NE(loadedColony, nullptr);
 	ASSERT_TRUE(loadedColony->getAutomaticDivisionEnabled());
-	EXPECT_DOUBLE_EQ(loadedColony->getDivisionThresholdVolume(), 2.0);
+	EXPECT_DOUBLE_EQ(loadedColony->getDivisionThresholdVolume(), 1.2);
 	ASSERT_NE(loadedColony->getGroProgram(), nullptr);
 	ASSERT_NE(loadedColony->getSignalGrid(), nullptr);
 	ASSERT_TRUE(loadedModel->check());
+	const std::vector<std::pair<double, double>> seededPositions{{2.0, 2.0}, {5.0, 2.0}, {3.0, 5.0}};
 	loadedModel->getSimulation()->start();
-	EXPECT_EQ(loadedColony->getInternalBacteriaCount(), 3u);
+	EXPECT_GT(loadedColony->getInternalBacteriaCount(), seededPositions.size());
 	EXPECT_EQ(loadedColony->getSignalChannelCount(), 2u);
+	bool movementObserved = false;
+	bool growthObserved = false;
+	bool divisionObserved = false;
+	bool signalReadObserved = false;
+	for (std::size_t index = 0; index < loadedColony->getInternalBacteriaCount(); ++index) {
+		const auto& bacterium = loadedColony->getBacteriumState(index);
+		growthObserved = growthObserved || bacterium.volume > 1.0;
+		divisionObserved = divisionObserved || bacterium.parentId != 0;
+		if (bacterium.id >= 1 && bacterium.id <= seededPositions.size()) {
+			const auto [seedX, seedY] = seededPositions[bacterium.id - 1];
+			movementObserved = movementObserved || std::hypot(bacterium.positionX - seedX,
+			                                                     bacterium.positionY - seedY) > 1e-6;
+		}
+		signalReadObserved = signalReadObserved ||
+		                     loadedColony->getBacteriumRuntimeVariableValue(index, "sensed_a") > 0.0 ||
+		                     loadedColony->getBacteriumRuntimeVariableValue(index, "sensed_b") > 0.0;
+	}
+	EXPECT_TRUE(movementObserved) << "at least one seeded bacterium must move during the calendar run";
+	EXPECT_TRUE(growthObserved) << "at least one bacterium must grow during the calendar run";
+	EXPECT_TRUE(divisionObserved) << "at least one automatic daughter must be created during the calendar run";
+	EXPECT_TRUE(signalReadObserved) << "bacteria must read emitted signal during the calendar run";
+	double calendarLegacyMaximum = 0.0;
+	double calendarAdditionalMaximum = 0.0;
+	for (unsigned int y = 0; y < loadedColony->getGridHeight(); ++y) {
+		for (unsigned int x = 0; x < loadedColony->getGridWidth(); ++x) {
+			calendarLegacyMaximum = std::max(calendarLegacyMaximum, loadedColony->getSignalValueAt(x, y));
+			calendarAdditionalMaximum = std::max(calendarAdditionalMaximum,
+					loadedColony->getAdditionalSignalValueAt(2, x, y));
+		}
+	}
+	EXPECT_GT(calendarLegacyMaximum, 0.0);
+	EXPECT_GT(calendarAdditionalMaximum, 0.0);
+	EXPECT_GT(calendarLegacyMaximum, calendarAdditionalMaximum);
 
 	ModelDataDefinition::InitBetweenReplications(loadedColony);
 	const auto result = loadedColony->executeGroProgram();
