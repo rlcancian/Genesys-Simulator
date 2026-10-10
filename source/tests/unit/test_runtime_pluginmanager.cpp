@@ -1758,7 +1758,12 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyTwoSignalDemoLoadsRunsAndPersi
 	std::filesystem::path repositoryRoot = std::filesystem::current_path();
 	while (!repositoryRoot.empty() &&
 	       !std::filesystem::exists(repositoryRoot / "models" / "BacteriaColony_TwoSignalDemo.gen")) {
-		repositoryRoot = repositoryRoot.parent_path();
+		const std::filesystem::path parent = repositoryRoot.parent_path();
+		if (parent == repositoryRoot) {
+			repositoryRoot.clear();
+			break;
+		}
+		repositoryRoot = parent;
 	}
 	ASSERT_FALSE(repositoryRoot.empty());
 	const auto demoPath = repositoryRoot / "models" / "BacteriaColony_TwoSignalDemo.gen";
@@ -1784,6 +1789,10 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyTwoSignalDemoLoadsRunsAndPersi
 	EXPECT_DOUBLE_EQ(loadedColony->getDivisionThresholdVolume(), 2.0);
 	ASSERT_NE(loadedColony->getGroProgram(), nullptr);
 	ASSERT_NE(loadedColony->getSignalGrid(), nullptr);
+	ASSERT_TRUE(loadedModel->check());
+	loadedModel->getSimulation()->start();
+	EXPECT_EQ(loadedColony->getInternalBacteriaCount(), 3u);
+	EXPECT_EQ(loadedColony->getSignalChannelCount(), 2u);
 
 	ModelDataDefinition::InitBetweenReplications(loadedColony);
 	const auto result = loadedColony->executeGroProgram();
