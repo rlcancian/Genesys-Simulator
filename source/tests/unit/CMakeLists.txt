@@ -84,6 +84,10 @@ genesys_add_unit_test(genesys_test_runtime_pluginmanager
     genesys_kernel_simulator_runtime
 )
 
+genesys_add_unit_test(genesys_test_bacteria_colony_viewer_coordinates
+    test_bacteria_colony_viewer_coordinates.cpp
+)
+
 genesys_add_unit_test(genesys_test_ai_plugins
     test_ai_plugins.cpp
     genesys_ai_provider
@@ -396,6 +400,7 @@ gtest_discover_tests(genesys_test_kernel_simulator_method_inventory
 set_property(TARGET genesys_test_kernel_simulator_method_inventory PROPERTY FOLDER tests/unit)
 
 add_dependencies(genesys_kernel_unit_tests genesys_test_kernel_simulator_method_inventory)
+add_dependencies(genesys_kernel_unit_tests genesys_test_bacteria_colony_viewer_coordinates)
 
 add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_util>

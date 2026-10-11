@@ -8,6 +8,7 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "../../../../plugins/components/BiochemicalSimulation/BacteriaColony.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
+#include "BacteriaColonyViewerCoordinates.h"
 
 #include <QComboBox>
 #include <QDialog>
@@ -285,9 +286,10 @@ protected:
 		drawCornerCross(gridFrame.bottomLeft(), 1.0, -1.0);
 		drawCornerCross(gridFrame.bottomRight(), -1.0, -1.0);
 
-		const auto pointForWorldCoordinate = [&gridFrame, cellWidth, cellHeight](double x, double y) {
-			return QPointF(gridFrame.left() + (x + 0.5) * cellWidth,
-			               gridFrame.top() + (y + 0.5) * cellHeight);
+		const auto pointForWorldCoordinate = [&gridFrame, cellWidth, cellHeight, gridWidth, gridHeight](double x, double y) {
+			return QPointF(
+				gridFrame.left() + BacteriaColonyViewerCoordinates::centeredCoordinateToCellOffset(x, gridWidth) * cellWidth,
+				gridFrame.top() + BacteriaColonyViewerCoordinates::centeredCoordinateToCellOffset(y, gridHeight) * cellHeight);
 		};
 		if (_snapshot.chemostatEnabled) {
 			QPen chemostatPen(QColor(59, 130, 246, 140));
@@ -339,9 +341,11 @@ protected:
 			}
 		}
 
-		const auto positionToPoint = [&gridFrame, cellWidth, cellHeight](double x, double y) {
-			const double px = gridFrame.left() + (x + 0.5) * cellWidth;
-			const double py = gridFrame.top() + (y + 0.5) * cellHeight;
+		const auto positionToPoint = [&gridFrame, cellWidth, cellHeight, gridWidth, gridHeight](double x, double y) {
+			const double px = gridFrame.left() +
+			                  BacteriaColonyViewerCoordinates::centeredCoordinateToCellOffset(x, gridWidth) * cellWidth;
+			const double py = gridFrame.top() +
+			                  BacteriaColonyViewerCoordinates::centeredCoordinateToCellOffset(y, gridHeight) * cellHeight;
 			return QPointF(px, py);
 		};
 		constexpr double kPi = 3.14159265358979323846;
