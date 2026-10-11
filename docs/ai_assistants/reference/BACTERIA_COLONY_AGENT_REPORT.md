@@ -146,3 +146,153 @@ Quatro testes históricos Search/Remove estavam desabilitados. Os 980 casos `Ker
 - **Nenhum PR/merge foi criado.**
 
 `BC-HANDOFF-001-REPORT-PUBLISHED`
+
+## 9. Execução do BC-HANDOFF-002 — polling horário e gates de revisão
+
+**Data:** 2026-10-11. **Status:** `PARTIAL_NEEDS_REVIEW`; a rodada foi executada e
+o marcador final registra o resultado parcial. O trabalho continua na candidata
+limpa, sem repetir BC-HANDOFF-001.
+
+### 9.1 Checkout e governança
+
+- Branch: `WiP20261009/BacteriaColony-clean-candidate`.
+- HEAD da candidata no início: `bafa57b80d158253e283037a0df9e642b1f54a96`, após
+  fast-forward do commit documental publicado em `origin`.
+- HEAD inicial e remoto coincidiam. A branch original
+  `WiP20261008/BacteriaColony` permaneceu em `dcc8bb89910e3b0f8d8c15f29f89dcb36846f230`.
+- A referência local `WorkInProgress` estava desatualizada; foram lidas as regras
+  canônicas atuais em `origin/WorkInProgress` (`50a340d460876c657d8a3be66554bb29cfe8519a`),
+  incluindo `/README.md`, governança, arquitetura, status, backlog e runbooks.
+  Nenhuma regra autorizou PR, merge ou promoção.
+- O arquivo local preexistente não rastreado
+  `source/tests/unit/generated/test_kernel_simulator_method_inventory.generated.cpp`
+  foi preservado. A validação ocorreu em worktree destacado limpo
+  `/tmp/Genesys-bc002-validation`, sem mover ou regravar a cópia original.
+
+### 9.2 Cron local instalado
+
+- **Instalação:** concluída no crontab do usuário, sem `sudo` ou cron privilegiado.
+- **Frequência e relógio:** `20 * * * *`, no relógio local
+  `America/Sao_Paulo` (UTC−03:00). `cron.service` estava `active` e o relógio
+  sincronizado (`NTPSynchronized=yes`).
+- **Entrada identificada:**
+  `# GENESYS-BC-HANDOFF-002`
+  `20 * * * * /home/rafaelcancian/.local/bin/genesys-bacteria-colony-handoff-poll --cron`
+- As duas entradas preexistentes do Back In Time foram preservadas. A instalação
+  é idempotente: remove apenas a entrada correspondente ao marcador e adiciona
+  uma única cópia, sem substituir o restante do crontab.
+- Wrapper local (fora do Git):
+  `/home/rafaelcancian/.local/bin/genesys-bacteria-colony-handoff-poll`, modo
+  `0700`; estado e log sob
+  `/home/rafaelcancian/.local/state/genesys-bacteria-colony-handoff-poll`, diretório
+  `0700` e arquivos privados `0600`. Não há dependência de `build/`.
+- Dependências efetivamente disponíveis: `crontab`, daemon `cron`, `flock`,
+  `timeout`, Git, `sha256sum` e Codex CLI. CLI verificada: `codex-cli 0.162.1`;
+  `codex login status` retornou sucesso. O teste isolado não interativo respondeu
+  `CODEX_NONINTERACTIVE_OK` com `codex exec --approve-for-me --ephemeral --cd …`.
+- Foram rejeitadas duas combinações de flags que o parser real não aceita
+  (`--no-alt-screen` em `exec` e `--sandbox` junto de `--approve-for-me`); o
+  wrapper final usa apenas a forma validada. `--approve-for-me` aplica revisão
+  automática dentro do sandbox `workspace-write`; não foi usado bypass nem
+  permissão elevada.
+- O wrapper obtém lock não bloqueante por `flock -n` antes de qualquer polling;
+  outra instância sai com sucesso e registra `lock_busy`, sem iniciar Codex. Um
+  teste concorrente real produziu esse evento. O tempo máximo do Codex é 50 min,
+  seguido de TERM e tolerância de 30 s para encerramento do processo próprio.
+- O log registra apenas timestamp, ID, evento e detalhes curtos; não contém
+  prompt completo, saída do modelo, credenciais ou dumps. Ao ultrapassar 256 KiB,
+  gira quatro backups limitados. Diretório `0700`, log/lock `0600`.
+- O polling lê HANDOFF e REPORT do mesmo HEAD obtido por fetch. Em ausência de
+  ID novo, encerra antes de autenticar/invocar Codex, sem alteração no checkout.
+  O teste `--simulate-trigger` encontrou `BC-HANDOFF-002` com `001` concluído;
+  este teste não invoca o modelo. O parser foi ajustado para não confundir o ID
+  ativo com a menção histórica ao handoff encerrado.
+- Para impedir que o cron inicie esta execução antes de seu marcador remoto, foi
+  criado um arquivo local temporário `state/hold`; a primeira invocação cron
+  agendada durante a publicação deverá registrar `held`. Ele será removido após
+  confirmar o marcador remoto; então a chamada manual do wrapper verificará o
+  caminho idempotente `no_new_handoff` sem executar Codex. O resultado da
+  invocação agendada e dessa chamada será acrescentado por adendo após ocorrerem.
+- **Desativação segura:** executar `crontab -e`, remover somente as duas linhas
+  contendo `GENESYS-BC-HANDOFF-002` e seu comando `genesys-bacteria-colony-handoff-poll --cron`,
+  salvando o crontab. Confirmar que as duas entradas Back In Time continuam
+  presentes. O wrapper, estado e logs ficam locais para auditoria; removê-los é
+  opcional e requer decisão separada do mantenedor.
+
+### 9.3 Regressões em worktree limpa
+
+Foi configurado o preset `tests-unit` e compilados 558 alvos no GCC 13.3.0,
+CMake 3.28.3, Ninja 1.11.1, C++23 e Qt 6.4.2. O build gerou um inventário de 980
+testes stubs `SUCCEED()` na worktree temporária. O primeiro uso de `-LE autogen`
+não os excluiu porque `gtest_discover_tests` os registrou somente com label
+`unit`; esse resultado não foi usado para a contagem comportamental. A execução
+válida excluiu pelo nome real `KernelSimulatorMethodInventory`:
+
+- `ctest --preset tests-unit --output-on-failure -E '^KernelSimulatorMethodInventory\.'`:
+  **922 passaram**, quatro históricos Search/Remove desabilitados, zero falhas;
+  926 testes comportamentais descobertos.
+- `cmake --build build/tests-unit --target genesys_kernel_unit_tests_run --parallel 8`:
+  alvo kernel concluiu com exit 0; executou seus binários listados pelo CMake,
+  inclusive a geração artificial de 980 stubs, contados separadamente acima.
+- Preset `tests-smoke`, configurado na mesma worktree/build isolada para reutilizar
+  objetos compatíveis: build do alvo smoke e
+  `ctest --test-dir build/tests-unit -L smoke --output-on-failure`: **3/3 passaram**.
+- Preset `gui-app`, também configurado nessa build isolada após os testes:
+  `genesys_gui` compilou e linkou (**PASS**). O build apresentou um aviso de
+  depreciação Qt em `qteditorfactory.cpp`; não houve erro.
+- No CTest comportamental, `BacteriaColonyTwoSignalDemoLoadsRunsAndPersists`,
+  os testes de dois canais, `tumble`, divisão, movimento e os três
+  `PropertyEditorDoubleCommit` passaram. Nenhum arquivo `.gen` foi regravado.
+- Não houve execução de CI hospedada nem sanitizers nesta rodada.
+
+### 9.4 Viewer Qt6 e modelo de dois sinais
+
+O `genesys-gui` construído da worktree limpa foi aberto em XCB. Pelo diálogo
+`Model > Open`, foi carregado `models/BacteriaColony_TwoSignalDemo.gen`; a aba
+mostrou `Bacteria Colony Two Signal Demo`. O viewer foi aberto por
+`Tools > Extensions > Biological > Visualize Bacteria Colony...`. Isso prova
+interação real com a aplicação Qt6, além do build.
+
+No viewer:
+
+- A colônia correta foi selecionada; a grade exibiu bactérias com corpo orientado
+  e o selector listou `Signal 1` e `Signal 2` após a primeira execução.
+- Um `Step colony` manual mostrou 32 comandos e seis mutações de sinal, sem
+  avançar o relógio do modelo, conforme indicado pelo viewer.
+- Iniciar a simulação pelo calendário levou o modelo ao término da replicação;
+  ao reabrir o viewer para o modelo, o estado mostrado era `time=1`, população 6
+  e seis bactérias, partindo de três. A saída observada mostra divisão ocorrida,
+  mobilidade/posições atualizadas e campos não nulos. O teste do demo confirma
+  crescimento e volume; esta captura, por si só, não mede crescimento físico.
+- Com o mesmo estado da colônia, `Signal 1` mostrou faixa `[0, 88]` e `Signal 2`
+  `[0, 7.996]`. Capturas da região da grade tiveram diferença absoluta de 3.870
+  pixels, demonstrando heatmaps diferentes. Os PNGs estão no ledger de evidência
+  e seus SHA-256 são registrados abaixo.
+- A execução principal retornou à janela do modelo enquanto a simulação rodava;
+  o viewer não estava visível na árvore de janelas após o término e foi aberto
+  novamente, quando refletiu o estado final. Não atribuo causa a esse
+  comportamento.
+- **Ainda não demonstrado nesta rodada:** reset de replicação com seleção
+  preservada/invalidada; acionamento de `Step colony` exatamente enquanto o
+  calendário estava em estado running/paused. A inspeção de
+  `_executeSelectedColonyStep()` confirmou guarda para `isRunning()` e
+  `isPaused()`, que interrompe o timer e impede execução manual nesses estados,
+  mas isso é evidência de código, não prova interativa do estado concorrente.
+  Assim, o gate de viewer é `PARCIAL`, sem alegar cobertura visual completa.
+
+### 9.5 Evidência, publicação e limites
+
+- Captura Signal 1:
+  `history/evidence/2026/10/bacteria-colony-viewer-signal-1-2026-10-11.png`,
+  SHA-256 `f09190b028108d1b5b2f8c97e42e87705113a48e7d51822f8ab7e45b5aff5d84`.
+- Captura Signal 2:
+  `history/evidence/2026/10/bacteria-colony-viewer-signal-2-2026-10-11.png`,
+  SHA-256 `147244a5a58f14957523a91b7718641db8dc105c9e85b95ce89f65173a3e8e6c`.
+- Ambiente local: Linux x86_64, X11/XCB em sessão Wayland, Qt 6.4.2; screenshot
+  capturado por janela X11 do viewer. Os PNGs são evidência desta sessão e não
+  alegação de CI.
+- A base atual ainda é `origin/WorkInProgress`
+  `50a340d460876c657d8a3be66554bb29cfe8519a`; não foram encontrados commits
+  posteriores nesta atualização. A candidata continua sem PR ou merge.
+- Estado final, commits, resultado do primeiro disparo real do cron e chamada
+  idempotente sem hold serão registrados no adendo final, depois do disparo.
