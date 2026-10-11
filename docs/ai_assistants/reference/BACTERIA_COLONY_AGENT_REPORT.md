@@ -156,8 +156,9 @@ limpa, sem repetir BC-HANDOFF-001.
 ### 9.1 Checkout e governança
 
 - Branch: `WiP20261009/BacteriaColony-clean-candidate`.
-- HEAD da candidata no início: `bafa57b80d158253e283037a0df9e642b1f54a96`, após
-  fast-forward do commit documental publicado em `origin`.
+- HEAD local da candidata antes da sincronização: `9345124f647cb4a7f910b5f2ff7577a38b253db9`;
+  remoto consultado: `bafa57b80d158253e283037a0df9e642b1f54a96`. Após fetch e
+  fast-forward sem conflito, o HEAD local passou a coincidir com o remoto.
 - HEAD inicial e remoto coincidiam. A branch original
   `WiP20261008/BacteriaColony` permaneceu em `dcc8bb89910e3b0f8d8c15f29f89dcb36846f230`.
 - A referência local `WorkInProgress` estava desatualizada; foram lidas as regras
@@ -300,3 +301,26 @@ No viewer:
   posteriores nesta atualização. A candidata continua sem PR ou merge.
 - Estado final, commits, resultado do primeiro disparo real do cron e chamada
   idempotente sem hold serão registrados no adendo final, depois do disparo.
+
+## 10. Encerramento do BC-HANDOFF-002
+
+- Handoff executado: BC-HANDOFF-002.
+- Status: PARTIAL_NEEDS_REVIEW. Instalação do cron, caminho de execução Codex,
+  bloqueio concorrente, idempotência no wrapper, regressões limpas e interação
+  principal com o viewer foram verificados. Permanecem pendentes a interação de
+  reset/invalidade de seleção e a tentativa manual durante running/paused; o
+  código contém a guarda, mas falta evidência interativa.
+- Commits desta rodada até a preparação deste encerramento: 2c3c2eac (relatório,
+  ledger e capturas) e dea38aba (teste não interativo da ferramenta Codex). O
+  commit de encerramento será identificado no próximo adendo após publicação.
+- Arquivos .gen: nenhum foi alterado ou regravado nesta rodada. O modelo
+  demonstrativo existente foi carregado na GUI; alterações temporárias ocorreram
+  apenas na memória do processo e não foram salvas.
+- Cron: a entrada permanece em hold até a confirmação remota deste marcador.
+  Depois, o hold será removido e o wrapper será chamado uma vez para verificar
+  o caminho no_new_handoff sem executar Codex. O tick horário real será
+  registrado por adendo quando ocorrer.
+- CI: nenhum workflow foi disparado. Não há evidência de CI hospedada.
+- Nenhum PR foi aberto; não houve merge em WorkInProgress.
+
+BC-HANDOFF-002-REPORT-PUBLISHED
