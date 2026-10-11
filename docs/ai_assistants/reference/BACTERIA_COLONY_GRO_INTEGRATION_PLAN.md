@@ -1844,3 +1844,40 @@ review and any requested GUI/CI evidence are accepted.
   fix are reviewable, but the unreliable stop control plus unverified reset/
   active-calendar interaction prevent claiming every requested live GUI gate.
   All checks in this section are local evidence; no hosted CI result exists.
+
+### 22.9 Handoff BC-HANDOFF-001 follow-up (2026-10-11)
+
+- The handoff was published at feature HEAD `dcc8bb89910e3b0f8d8c15f29f89dcb36846f230`.
+  Execution continued on the clean candidate based on `origin/WorkInProgress`
+  `50a340d460876c657d8a3be66554bb29cfe8519a`; the contaminated commit remains
+  absent from its ancestry. The full execution record is in
+  `BACTERIA_COLONY_AGENT_REPORT.md`.
+- A new geometry characterization exposed a concrete mismatch for the demo's
+  centered 8×8 domain: the viewer's former `coordinate + 0.5` mapping placed
+  coordinates `-3.5`, `0`, and `3.5` at offsets `-3`, `0.5`, and `4`, instead
+  of in-grid offsets `0.5`, `4`, and `7.5`. A pure coordinate helper is now
+  shared by bacterium and barrier rendering. Its 8×8 boundary/origin and 3×3
+  origin tests were RED before correcting the mapping and GREEN afterward.
+  This changes only view-coordinate mapping, not stored coordinates, signal
+  sampling, simulation geometry, or `.gen` persistence.
+- On this follow-up run, the Qt6 application built and launched, and the model
+  open dialog was exercised. Full interaction in the BacteriaColony viewer
+  was not verified: X11 root capture returned `BadMatch`, AT-SPI's Python
+  module was unavailable, and the menu automation did not identify/activate
+  the viewer action. Therefore channel switching, reset recovery, and manual
+  versus active-calendar contention remain unverified in this execution.
+  Section 22.8 retains its prior session evidence; the current limitation does
+  not overwrite that history. There is an unresolved documentation mismatch:
+  HANDOFF §2.4 says only window opening had been confirmed, while §22.8 records
+  channel switching and live movement. Independent review should reconcile
+  those records using the original session artifacts if available.
+- Final reruns on the code HEAD passed `tests-unit` (1,902 passed, 4 disabled),
+  `tests-kernel-unit` (1,902 passed, 4 disabled), and `tests-smoke` (3/3); the
+  Qt6 `gui-app` configure/build passed. Counts include 980 locally generated
+  method-inventory cases from a pre-existing untracked file. That file remains
+  untracked, unchanged, and unstaged; those `SUCCEED()` cases are not behavioral
+  evidence. The three `PropertyEditorDoubleCommit` tests passed in both full
+  unit presets. All results are local; no hosted CI run is claimed.
+- `AUTO-BACTERIA-001` remains `blocked-review`. The coordinate correction is
+  committed separately; no model fixture or serializer was changed in this
+  follow-up.

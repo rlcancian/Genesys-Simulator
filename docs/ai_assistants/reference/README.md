@@ -110,6 +110,24 @@ Use for:
 - the phased plan, known deviations, explicitly unsupported behavior and
   open decisions for this integration.
 
+### [`BACTERIA_COLONY_AGENT_HANDOFF.md`](BACTERIA_COLONY_AGENT_HANDOFF.md)
+
+Use for:
+
+- the current, versioned ChatGPT-to-Codex instructions and decisions for the
+  BacteriaColony integration;
+- the communication protocol used to continue work without copying prompts
+  or reports between conversations.
+
+### [`BACTERIA_COLONY_AGENT_REPORT.md`](BACTERIA_COLONY_AGENT_REPORT.md)
+
+Use for:
+
+- the Codex-authored current execution report, branch/HEAD, commits, tests,
+  blockers and review request;
+- the link to immutable dated validation evidence, where applicable.
+  This is a mutable task handoff, not a replacement for canonical STATUS.
+
 ### [`GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md`](GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md)
 
 Use for:
