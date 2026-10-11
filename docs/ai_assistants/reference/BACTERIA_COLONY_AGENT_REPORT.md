@@ -217,8 +217,11 @@ limpa, sem repetir BC-HANDOFF-001.
   `5212cc37a9600f6a5995fe1eea2beeaa6c81f012` o marcador deste relatório, o hold
   foi removido. Às 14:05:05 -03, uma chamada manual de `--cron` registrou
   `no_new_handoff id=BC-HANDOFF-002 detail=completed=BC-HANDOFF-002` e saiu 0,
-  sem invocar Codex nem modificar o checkout. O disparo agendado de 14:20 -03
-  ainda está pendente e será registrado depois que ocorrer.
+  sem invocar Codex nem modificar o checkout. O disparo real do crontab ocorreu
+  em 14:20:02 -03 e registrou o mesmo evento
+  `no_new_handoff id=BC-HANDOFF-002 detail=completed=BC-HANDOFF-002`, também sem
+  invocar Codex nem modificar o checkout. Este registro confirma a execução
+  pelo daemon cron no horário instalado.
 - **Desativação segura:** executar `crontab -e`, remover somente as duas linhas
   contendo `GENESYS-BC-HANDOFF-002` e seu comando `genesys-bacteria-colony-handoff-poll --cron`,
   salvando o crontab. Confirmar que as duas entradas Back In Time continuam
@@ -300,8 +303,8 @@ No viewer:
 - A base atual ainda é `origin/WorkInProgress`
   `50a340d460876c657d8a3be66554bb29cfe8519a`; não foram encontrados commits
   posteriores nesta atualização. A candidata continua sem PR ou merge.
-- O primeiro disparo agendado real ainda está pendente; seu evento será
-  acrescentado ao relatório e ao ledger após 14:20 -03.
+- O primeiro disparo agendado real ocorreu em 14:20:02 -03 e está confirmado no
+  log local; nenhum processo Codex foi iniciado.
 
 ## 10. Encerramento do BC-HANDOFF-002
 
@@ -312,15 +315,15 @@ No viewer:
   reset/invalidade de seleção e a tentativa manual durante running/paused; o
   código contém a guarda, mas falta evidência interativa.
 - Commits desta rodada até a preparação deste encerramento: 2c3c2eac (relatório,
-  ledger e capturas), dea38aba (teste não interativo da ferramenta Codex) e
-  5212cc37 (marcador de encerramento). O commit final será identificado no
-  próximo adendo após o disparo agendado.
+  ledger e capturas), dea38aba (teste não interativo da ferramenta Codex),
+  5212cc37 (marcador de encerramento) e ee76aec7 (poll manual idempotente). O
+  commit final registrará o disparo horário real.
 - Arquivos .gen: nenhum foi alterado ou regravado nesta rodada. O modelo
   demonstrativo existente foi carregado na GUI; alterações temporárias ocorreram
   apenas na memória do processo e não foram salvas.
 - Cron: o hold foi removido após a confirmação remota deste marcador. A chamada
-  manual idempotente foi aprovada; o primeiro tick real está aguardando 14:20
-  -03 e será confirmado por adendo.
+  manual idempotente e o primeiro tick real do daemon foram aprovados; o log
+  local confirma execução em 14:20:02 -03.
 - CI: nenhum workflow foi disparado. Não há evidência de CI hospedada.
 - Nenhum PR foi aberto; não houve merge em WorkInProgress.
 
