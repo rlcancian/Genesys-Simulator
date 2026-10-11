@@ -195,6 +195,10 @@ limpa, sem repetir BC-HANDOFF-001.
   wrapper final usa apenas a forma validada. `--approve-for-me` aplica revisão
   automática dentro do sandbox `workspace-write`; não foi usado bypass nem
   permissão elevada.
+- Além do smoke de resposta, uma execução descartável adicional executou `pwd`
+  e `git status --short --branch` com a aprovação automática/sandbox, retornando
+  `CODEX_WORKSPACE_TOOL_PASS` (exit 0), sem mutar arquivos. A saída detalhada foi
+  mantida apenas em `/tmp/bc002-codex-tool-check.log` e não foi versionada.
 - O wrapper obtém lock não bloqueante por `flock -n` antes de qualquer polling;
   outra instância sai com sucesso e registra `lock_busy`, sem iniciar Codex. Um
   teste concorrente real produziu esse evento. O tempo máximo do Codex é 50 min,
