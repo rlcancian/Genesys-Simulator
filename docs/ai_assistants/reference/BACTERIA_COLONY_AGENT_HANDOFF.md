@@ -10,9 +10,9 @@ Antes de qualquer análise ou alteração, leia obrigatoriamente /docs/ai_assist
 
 # GenESyS — Canal de comunicação ChatGPT ↔ Codex para BacteriaColony
 
-**Protocolo:** `BC-HANDOFF-001` (2026-10-11).
+**Protocolo ativo:** `BC-HANDOFF-002` (2026-10-11); `BC-HANDOFF-001` encerrado e documentado no REPORT.
 **Repositório:** `rlcancian/Genesys-Simulator`.
-**Branch em que este handoff foi publicado:** `WiP20261008/BacteriaColony`.
+**Branch operacional atual:** `WiP20261009/BacteriaColony-clean-candidate` (a antiga `WiP20261008/BacteriaColony` permanece como auditoria).
 **HEAD de implementação revisado:** `a4277d094320b3a89485b9eba460af9304718aed` (o HEAD da branch avança ao publicar documentação).
 **Plano aprovado:** [BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md](BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md).
 **Relatório corrente do Codex:** [BACTERIA_COLONY_AGENT_REPORT.md](BACTERIA_COLONY_AGENT_REPORT.md).
@@ -105,3 +105,53 @@ A resposta final local deve ser curta:
 `BC-HANDOFF-001 | STATUS | branch | HEAD | docs/ai_assistants/reference/BACTERIA_COLONY_AGENT_REPORT.md`
 
 A partir daí, o usuário pede à instância ChatGPT uma revisão do relatório remoto e esta publica `BC-HANDOFF-002`, se necessário.
+
+---
+
+## 6. BC-HANDOFF-002 — Ciclo horário ChatGPT ↔ Codex (AUTORIZADO, 2026-10-11)
+
+**Status da instrução:** `READY`. **Branch operacional atual:** `WiP20261009/BacteriaColony-clean-candidate`. **HEAD anterior ao handoff:** `9345124f647cb4a7f910b5f2ff7577a38b253db9`.
+
+**Autorização explícita do mantenedor:** instalar e ativar um cron no computador local, executado **uma vez por hora**, que consulte este HANDOFF e acione o Codex local apenas quando houver novo ID de instruções. O ChatGPT terá uma tarefa agendada separada, também horária, para ler REPORT e publicar novo HANDOFF quando houver progresso novo. Esta autorização limita-se a BacteriaColony e não libera merge, PR, push em outras branches, promoção, deleção, instalação privilegiada ou decisões arquiteturais não autorizadas.
+
+### 6.1 Primeira obrigação: estabelecer o cron local durável
+
+1. Confirme o repositório, branch, HEAD, worktree(s), Git/gh, autenticação Git, comando real e versão do `codex` disponível no computador. Inspecione `codex exec --help` e os comandos de login/status suportados pela versão instalada. **Não invente flags CLI.**
+2. Crie, fora do repositório (por exemplo, em `~/.local/bin/` e `~/.local/state/`, se adequados ao ambiente real), um wrapper idempotente e auditável para o cron. Não versionar segredos nem dependências de uma pasta `build/`. Descubra o caminho absoluto do checkout/worktree da branch candidata, não presuma `~/Genesys-Simulator`.
+3. Preserve as entradas existentes do crontab. Instale **uma única entrada identificada por marcador inequívoco**, sem duplicação, para executar o wrapper em `20 * * * *` no relógio local. Não substitua entradas alheias. Não use `sudo` nem instale cron do sistema: use o crontab do usuário; se indisponível, registre bloqueio e não afirme que o cron está funcionando.
+4. Proteja a execução por lock de processo (por exemplo `flock -n` com arquivo sob estado local), evitando duas execuções de Codex simultâneas. Use logs locais rotativos/limitados e identificados por horário, sem tokens, segredos, dumps extensos ou dados privados.
+5. A cada disparo, o wrapper deve fazer *polling leve*: confirmar branch, fazer `git fetch`, consultar HEAD remoto dos dois documentos e comparar o **ID de instrução ativa** com o **último ID concluído no REPORT**. **Se não houver instrução nova, encerrar com sucesso imediatamente, sem invocar o modelo, modificar arquivos ou fazer commit/push.**
+6. Havendo novo handoff, sincronizar com segurança os commits documentais da branch (`git pull --ff-only` somente quando possível), preservar arquivos sujos/não rastreados e acionar **uma única execução não interativa** do Codex com instrução curta para ler o HANDOFF, executar o ID novo, atualizar REPORT, registrar evidências pertinentes, commit e push. Não usar modos de bypass de sandbox/aprovação ou permissões elevadas. Caso a CLI/credenciais/política não permitam execução não supervisionada, registrar impedimento no REPORT e notificar o mantenedor; não fingir sucesso.
+7. Não usar um relógio/cron para atualizar os componentes do simulador. O agendamento é exclusivamente do *agente de desenvolvimento* e não altera a simulação nem eventos GenESyS.
+8. Defina uma política local explícita para encerramento de jobs abandonados e logs e verifique com um teste de execução manual e um disparo simulado (sem codificação repetida). Não mate testes ou agentes em funcionamento apenas porque chegou a próxima hora; uma chamada concorrente deve pular por lock.
+9. **Término e idempotência:** marque o ID como concluído somente após efetiva publicação do REPORT no remoto. Em caso de erro de Git, indisponibilidade, ou perda de acesso ao modelo, registrar erro local e tentar novamente na próxima hora de forma segura, sem produzir commits duplicados nem reiniciar modificações já aplicadas.
+10. A instalação do cron deve sobreviver ao encerramento da sessão atual do Codex e deve ser removível por procedimento documentado. Registre linha `crontab`, wrapper, comandos verificados, teste, comportamento no cron real, forma de parar e possíveis dependências no REPORT, **sem registrar segredos**.
+
+### 6.2 Trabalho de engenharia autorizado no ciclo BC-HANDOFF-002
+
+Além da configuração do cron, concentre-se nos gates ainda pendentes **do relatório BC-HANDOFF-001**, presente no arquivo REPORT desta candidata:
+
+- Verificar o viewer Qt6 realmente com `models/BacteriaColony_TwoSignalDemo.gen` carregado. Demonstrar seleção Signal 1/Signal 2 e diferença do heatmap, visualização das bactérias, crescimento/divisão, reset e bloqueio de passo manual em simulação ativa; anexar evidência técnica reprodutível. Consulte o ponto de extensão/ação Qt real para abrir o viewer: não instalar `pyatspi` às cegas.
+- Se a interação física de GUI não for automatizável, criar teste de integração GUI apropriado (Qt Test ou harness existente, se houver), isolando o menor contrato verificável. Registrar a parte que permanece sem prova visual; não afirmar que um teste unitário equivale ao uso real.
+- Executar testes de regressão relevantes em *build limpo e isolado* (ou purgado somente na pasta de build gerada, sem tocar arquivos do mantenedor), para que o inventário local não rastreado `source/tests/unit/generated/test_kernel_simulator_method_inventory.generated.cpp` não contamine o inventário CTest. Verificar na configuração real a inclusão de `*.generated.cpp`: não presumir que basta uma pasta build separada; preservar o inventário local e, se necessário, isolar os fontes por worktree limpo próprio. Separar número de testes comportamentais do inventário artificial.
+- Conferir base atual `WorkInProgress` e eventuais novos commits que afetem integração. Não fazer merge. Não disparar workflows CI pagos/desnecessários automaticamente; registrar a ausência de CI hospedada como pendência de PR.
+- Não rever o desenvolvimento dos nove ciclos nem abrir outras frentes; corrigir apenas defeitos reproduzidos dentro do escopo aprovado.
+
+### 6.3 Protocolo do laço horário e prevenção de ping-pong
+
+O ChatGPT verifica remotamente a branch horariamente, em torno do minuto 05, e só publica `BC-HANDOFF-003` **se** o relatório publicado contiver `BC-HANDOFF-002-REPORT-PUBLISHED` (ou outro marcador explícito de finalização equivalente para o mesmo ID), indicando um resultado material que foi de fato revisado. Se não houver novidade, não altera HANDOFF, não cria commits e não notifica o usuário. Se há bloqueio humano, registra parecer e não repete a mesma instrução automaticamente.
+
+Codex deve ter **um único escritor do REPORT** e não alterar o HANDOFF. ChatGPT é o único escritor do HANDOFF, não altera REPORT. Quando o ChatGPT gerar uma nova versão, atualizará cabeçalho do protocolo e ID de missão, preservando os trechos históricos.
+
+Não execute `BC-HANDOFF-001` novamente: está fechado e registrado no REPORT. Execute `BC-HANDOFF-002` **uma única vez**, materialize o cron e siga as verificações correspondentes; nas horas futuras, o cron somente reage a IDs novos.
+
+### 6.4 Relatório exigido
+
+Publique no `BACTERIA_COLONY_AGENT_REPORT.md`:
+
+- `Handoff executado: BC-HANDOFF-002`, status claro e **marcador final `BC-HANDOFF-002-REPORT-PUBLISHED`** quando a rodada estiver encerrada (mesmo que parcialmente, com os bloqueios declarados);
+- instalação do cron (sim/não), horário real, comando validado, lock/idempotência, logs, testes, procedimento de desativação;
+- arquivos/commits/HEAD, ambiente, resultados de GUI e testes, logs/evidência rastreáveis;
+- pendências e riscos, sem afirmações de execução que não ocorreu.
+
+Ao concluir a rodada, faça commit e push na candidata. **Não abra PR nem faça merge**. O crontab é local: publicar o HANDOFF no GitHub **não instala o cron**; somente sua execução local fará isso.
