@@ -328,3 +328,56 @@ No viewer:
 - Nenhum PR foi aberto; não houve merge em WorkInProgress.
 
 BC-HANDOFF-002-REPORT-PUBLISHED
+
+## 11. Execução do BC-HANDOFF-003 — parecer dos gates remanescentes
+
+**Data:** 2026-10-12. **Branch:** `WiP20261009/BacteriaColony-clean-candidate`.
+**Handoff executado uma única vez:** `BC-HANDOFF-003`. Esta seção foi escrita
+sem alterar o HANDOFF, o cron, permissões, código-fonte ou qualquer arquivo
+não rastreado do mantenedor.
+
+### 11.1 Estado do checkout e base
+
+- HEAD local no início da rodada: `4243b9a1888249cc77dfca56492ec6245bc24ada`.
+- A referência local da candidata e a referência remota disponível no início
+  da rodada apontavam para esse mesmo HEAD. A consulta `git ls-remote` inicial
+  confirmou `4243b9a1` para `WiP20261009/BacteriaColony-clean-candidate` e
+  `50a340d4` para `WorkInProgress`.
+- `git fetch origin` foi tentado conforme o protocolo, mas o worktree vinculado
+  não conseguiu gravar `FETCH_HEAD` no diretório Git compartilhado, que está em
+  filesystem somente leitura. Uma consulta posterior também encontrou falha de
+  resolução DNS para `github.com`; isso impede uma nova prova de rede nesta
+  sessão, sem alterar o checkout.
+- O HEAD `4243b9a1` difere do HEAD validado no BC-002 (`478b9784`) somente pelo
+  HANDOFF. Não houve patch funcional novo para exigir nova regressão.
+- `git merge-base --is-ancestor 0f64fa8e07 HEAD` retornou exit 1. A listagem
+  `git ls-tree -r --name-only HEAD -- models/gro_examples source/tests/unit/generated`
+  não retornou caminhos. O arquivo local não rastreado
+  `source/tests/unit/generated/` foi preservado e não foi staged.
+
+### 11.2 Gates exigidos pelo HANDOFF
+
+| Gate | Status | Evidência verificável e limite |
+|---|---|---|
+| `GUI_RESET` | `NOT_RUN` | A rodada anterior abriu o demo e selecionou `Signal 2`, mas não demonstrou reset com seleção preservada/inválida. Nesta sessão não há `DISPLAY`, `WAYLAND_DISPLAY` ou executável `genesys_gui` no checkout; não foi alegado teste interativo. O código atual reajusta canal inválido para 1 e limpa seleção de bactéria ausente (`BacteriaColonyViewerGuiExtensionPlugin.cpp:875-889, 1019-1021`), mas isso não é PASS de interação. A menor ação pendente é uma sessão Qt6 real com o demo aberto, `Signal 2` selecionado, reset e nova replicação observados. |
+| `GUI_RUNNING_PAUSED_MANUAL_GUARD` | `PARTIAL` | A rodada anterior observou passo manual fora do calendário e confirmou que o modelo não avança o relógio. Nesta sessão não foi possível reproduzir a ação durante `running`/`paused`. A guarda atual rejeita o passo nesses estados e registra a mensagem de bloqueio (`BacteriaColonyViewerGuiExtensionPlugin.cpp:760-772`); inspeção de código não foi convertida em PASS interativo. |
+| `VIEWER_LIFECYCLE` | `PARTIAL` | A abertura real do viewer e as duas seleções de canal estão registradas no BC-002, mas a permanência da janela durante o calendário não foi demonstrada. A contribuição cria, mostra, eleva e ativa o diálogo (`BacteriaColonyViewerGuiExtensionPlugin.cpp:1226-1253`). Não foi reproduzido defeito nem feita correção; a confirmação final requer repetir a execução observando a janela durante e após o calendário. |
+| `REGRESSIONS` | `PASS` | Reutilização permitida pelo HANDOFF: não houve mudança funcional desde `478b9784`. Nesse HEAD exato foram registrados `922` testes comportamentais passando no `tests-unit`, `922` no `tests-kernel-unit`, quatro testes históricos desabilitados fora da contagem, `3/3` no smoke e build/link do `genesys_gui` aprovados; o inventário `KernelSimulatorMethodInventory` artificial foi excluído da contagem comportamental. O demo, tumble, divisão, movimento, persistência e três `PropertyEditorDoubleCommit` passaram conforme §9.3. |
+| `CLEAN_BRANCH` | `PASS` | A candidata continua baseada em `origin/WorkInProgress` `50a340d4`, não tem `0f64fa8e07` como ancestral e não contém `models/gro_examples/` nem o inventário gerado rastreado. A referência remota conhecida no início coincidiu com o HEAD local. Não houve PR nem merge. |
+| `HOSTED_CI` | `NOT_RUN` | Nenhum workflow hospedado foi disparado ou encontrado como evidência desta rodada. Continua sendo gate de revisão posterior de PR. |
+
+### 11.3 Parecer e limites
+
+O parecer é `PARTIAL_NEEDS_REVIEW`: a regressão e a limpeza histórica estão
+verificadas, mas os gates de reset e de passo manual durante
+`running`/`paused` permanecem sem prova interativa completa, e não há CI
+hospedada. O ambiente desta sessão torna indisponível a menor ação manual
+pendente; não há justificativa para insistir em novas tentativas sem uma sessão
+gráfica autorizada. Nenhum arquivo de imagem novo foi criado, e as capturas do
+BC-002 permanecem a evidência histórica identificada em §9.5.
+
+O commit desta atualização contém somente este REPORT. Não foi aberto PR, não
+foi feito merge, não houve push para outra branch e não foram usadas
+permissões elevadas ou bypass de sandbox.
+
+BC-HANDOFF-003-REPORT-PUBLISHED
