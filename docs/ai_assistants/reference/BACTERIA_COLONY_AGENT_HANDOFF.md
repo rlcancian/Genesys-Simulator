@@ -10,7 +10,7 @@ Antes de qualquer análise ou alteração, leia obrigatoriamente /docs/ai_assist
 
 # GenESyS — Canal de comunicação ChatGPT ↔ Codex para BacteriaColony
 
-**Protocolo ativo:** `BC-HANDOFF-002` (2026-10-11); `BC-HANDOFF-001` encerrado e documentado no REPORT.
+**Protocolo ativo:** `BC-HANDOFF-003` (2026-10-11); `BC-HANDOFF-001` e `BC-HANDOFF-002` encerrados e documentados no REPORT.
 **Repositório:** `rlcancian/Genesys-Simulator`.
 **Branch operacional atual:** `WiP20261009/BacteriaColony-clean-candidate` (a antiga `WiP20261008/BacteriaColony` permanece como auditoria).
 **HEAD de implementação revisado:** `a4277d094320b3a89485b9eba460af9304718aed` (o HEAD da branch avança ao publicar documentação).
@@ -155,3 +155,40 @@ Publique no `BACTERIA_COLONY_AGENT_REPORT.md`:
 - pendências e riscos, sem afirmações de execução que não ocorreu.
 
 Ao concluir a rodada, faça commit e push na candidata. **Não abra PR nem faça merge**. O crontab é local: publicar o HANDOFF no GitHub **não instala o cron**; somente sua execução local fará isso.
+
+
+---
+
+## 7. BC-HANDOFF-003 — Fechar validação interativa de GUI e entregar parecer técnico (2026-10-11)
+
+**Status da instrução:** `READY`. **Handoff anterior:** `BC-HANDOFF-002`, concluído com marcador `BC-HANDOFF-002-REPORT-PUBLISHED` no REPORT desta branch. **Branch exclusiva de desenvolvimento:** `WiP20261009/BacteriaColony-clean-candidate`. **HEAD revisado:** `478b9784c0cce5a9a8c9ff6eb9eb588f1142e284`.
+
+### 7.1 Contexto e prioridade
+
+A rodada anterior confirmou instalação do cron local (primeiro disparo real em 2026-10-11, 14:20 -03), execução Codex não interativa, proteção `flock`, build Qt6, testes comportamentais 922/922 executados com quatro desabilitados fora da contagem de sucesso, e interação real do viewer com demo carregado, duas seleções e heatmaps diferentes. Foi observada população final de 6 a partir de 3. Há capturas e hashes no REPORT.
+
+**Não repita os ciclos anteriores.** Completar exclusivamente os gates remanescentes e preparar uma recomendação de revisão independente. Os testes `SUCCEED()` gerados no build não constituem cobertura comportamental. Mantenha o arquivo inventário local do mantenedor intocado.
+
+### 7.2 Trabalho autorizado (uma rodada curta e auditável)
+
+1. **Verifique o reset/seleção do viewer:** com `models/BacteriaColony_TwoSignalDemo.gen` aberto, experimente reset/início de nova replicação após selecionar `Signal 2`, verifique se canais reconstituídos são apresentados corretamente, se seleção antiga inválida é reajustada e se não ocorre leitura fora dos limites. Diferencie o teste interativo do teste de estado Qt sem renderização, quando necessário.
+2. **Verifique o bloqueio de passo manual durante simulação running/paused:** reproduza preferencialmente em Qt6 real; se o modelo demonstrativo terminar rápido demais, use configuração de desenvolvimento/teste controlada em um modelo temporário ou um harness Qt Test existente, sem ampliar o contrato persistido. Registre tentativa, estado da simulação observado, bloqueio de execução manual e ausência de avanço duplicado. Não declare PASS apenas por existir uma guarda `isRunning()/isPaused()` no código.
+3. **Confirme o estado da interface do viewer após terminar o calendário:** na rodada anterior o diálogo não permaneceu visível na árvore de janelas durante a execução; investigue se é comportamento esperado do plugin, fechamento programático, pai Qt ou limitação da automação. Só corrija se conseguir reproduzir defeito dentro do escopo. Evite remodelar a arquitetura Qt ou ciclo de vida do simulador.
+4. **Confira regressões proporcionais aos arquivos efetivamente alterados.** Se não houver patch funcional, reutilize apenas evidências do HEAD exato validado na rodada 002, complementando os gates novos; se houver patch, execute testes focados e os presets obrigatórios conforme GOVERNANCE. Faça inventário CTest sem contar `KernelSimulatorMethodInventory` artificial como teste comportamental.
+5. **Cheque se há mudanças concorrentes em `origin/WorkInProgress`** e se a candidata continua isenta dos blobs extrínsecos. Não abra PR nem faça merge. CI hospedada continua uma condição de futura revisão de PR, não justifica ficar gerando commits de heartbeat.
+
+### 7.3 Critérios de aceitação e parada
+
+O relatório deve apresentar, com fatos e evidências, status de cada gate: `GUI_RESET`, `GUI_RUNNING_PAUSED_MANUAL_GUARD`, `VIEWER_LIFECYCLE`, `REGRESSIONS`, `CLEAN_BRANCH`, `HOSTED_CI`.
+
+Marque cada gate `PASS`, `FAIL`, `PARTIAL`, ou `NOT_RUN` e justifique o alcance; verificação de GUI somente por inspeção de código não basta para `PASS` de interação.
+
+Se a GUI continuar não automatizável mesmo após tentativa razoável, documente o impedimento, a menor ação manual necessária e pare; não insista em repetidas rodadas sem nova evidência.
+
+**Não altere o arquivo HANDOFF**, que pertence ao ChatGPT. Atualize o REPORT com `BC-HANDOFF-003`, incluindo commits, HEAD, comandos/testes, eventuais imagens e o marcador terminal **`BC-HANDOFF-003-REPORT-PUBLISHED`**. Publique na branch candidata. Não abra PR, não faça merge e não altere cron, cadence ou permissões sem necessidade técnica demonstrada.
+
+### 7.4 Prevenção de loops horários
+
+O cron local deve agir somente quando o ID ativo do HANDOFF for maior que o último ID publicado no REPORT. A mesma instrução não deve ser executada duas vezes. Se já executada e publicada, registre somente `no_new_handoff` no log local, sem invocar o modelo ou publicar commits.
+
+Quando `BC-HANDOFF-003` for concluído, ChatGPT revisará o resultado na próxima verificação horária. Se todos os gates da feature estiverem satisfatórios, a próxima resposta deverá recomendar preparação de PR e CI para aprovação humana, não iniciar trabalho novo artificialmente.
