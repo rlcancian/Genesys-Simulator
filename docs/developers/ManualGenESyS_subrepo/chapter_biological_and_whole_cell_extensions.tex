@@ -354,6 +354,35 @@ result as a validated public yeast whole-cell model.
 \label{fig:pathway-stress-example}
 \end{figure}
 
+\subsection{Gro-inspired bacteria colony signal channels}
+
+The current demonstration subset of the \texttt{BacteriaColony} runtime assigns ordinal handles to
+unconditional \texttt{signal(kdiff,kdeg)} declarations. The first channel uses
+the legacy colony signal field. When no \texttt{BacteriaSignalGrid} is
+attached, that field uses the first declaration's diffusion and decay
+coefficients. When a grid is attached, its persisted coefficients remain
+authoritative; a differing first-channel declaration produces an
+informational trace diagnostic once per replication. Further channels use
+their own declared coefficients and independent runtime fields.
+
+Declarations inside conditional branches are rejected during structural IR
+validation, including declarations in a branch whose condition is false.
+Every channel ordinal is associated with its declaring program scope during a
+replication. Bacteria executing the same \texttt{program bacterium()} or the
+same named program share that program's channels. Distinct named programs may
+not independently declare the same ordinal, even when their coefficients
+match; a conflict is reported with guidance to declare the channel once in
+global scope and consume its handle in each program. Global declarations
+remain shareable across named programs. These fields, coefficients, and scope
+metadata are runtime state and do not alter the \texttt{.gen} format. The
+relaxation coefficients are dimensionless per-step values in $[0,1]$. The
+existing neighbour-relaxation operator is a phenomenological visual
+propagation rule, not a conservative discretization of a physical
+reaction-diffusion equation. These runtime guarantees do not claim biological
+prediction or quantitative scientific validation. The numerical review keeps
+the current operator for the demonstration scope and records its limitations
+separately from implementation correctness.
+
 \section{Evidence and validation}
 
 The current whole-cell and biochemical code is not only descriptive; it is also

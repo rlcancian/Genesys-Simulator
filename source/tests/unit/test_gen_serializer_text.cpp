@@ -115,6 +115,25 @@ TEST(GenSerializerTextPersistence, SimpleLegacyQuotedTextRemainsLoadable) {
               R"(C:\new\test program p() := { tick(); })");
 }
 
+TEST(GenSerializerTextPersistence, LegacyMultilineQuotedGroSourceRemainsLoadable) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    GenSerializer reader(model);
+    const std::string sourceCode =
+        "\ninclude gro\n"
+        "program main() := {\n"
+        "  set ( \"dt\", 0.1 );\n"
+        "};\n";
+    const std::string legacyRecord =
+        "143 GroProgram \"LegacyMultilineGro\" sourceCode=\"" + sourceCode + "\" \n";
+    std::istringstream input(legacyRecord);
+    ASSERT_TRUE(reader.load(input));
+
+    auto fields = std::unique_ptr<PersistenceRecord>(reader.newPersistenceRecord());
+    ASSERT_TRUE(reader.get("LegacyMultilineGro", fields.get()));
+    EXPECT_EQ(fields->loadField("sourceCode", std::string{}), sourceCode);
+}
+
 TEST(GenSerializerTextPersistence, EmptyTextFieldRoundTripsExactly) {
     const std::string serialized = dumpSingleTextRecord("EmptyGro", "");
     EXPECT_EQ(loadSingleTextRecord(serialized, "EmptyGro"), "");

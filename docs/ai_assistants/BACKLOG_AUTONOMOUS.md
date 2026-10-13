@@ -569,6 +569,21 @@ Common execution contract for AUTO-SCI-001 through AUTO-SCI-013:
 - Non-goals: infer predictive validity from build/test green.
 - Stop: any unknown/failed mandatory scientific gate remains open, never silently waived.
 
+### AUTO-BACTERIA-001 — Complete the approved Gro/BacteriaColony first-version scope
+
+- Priority: `P1`
+- Status: `closed` (maintainer-authorized bounded end of development on 2026-10-13; not `done_confirmed`)
+- Environment: `local` (Ubuntu/CMake/Ninja/Qt6 toolchain)
+- Branch: `WiP20261009/BacteriaColony-clean-candidate` (review candidate; original branch retained for audit)
+- Base: current `origin/WorkInProgress` HEAD `50a340d460876c657d8a3be66554bb29cfe8519a`
+- Authorization: explicit maintainer mission dated 2026-10-09. This task replaces the pending four-milestone proposal in §22 of `reference/BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md` for this scope only.
+- Scope: execute the nine approved cycles in that mission: (1) finite `[0,1]` signal-coefficient validation and phenomenological-operator documentation; (2) continuous coordinates and consistent grid mapping; (3) zero-growth and zero-step invariants; (4) optional persisted automatic division plus Gro division through one routine; (5) simple deterministic positional correction, kinematic movement and kernel-RNG-backed `run`/`tumble`; (6) exactly-once signal/event-step behavior; (7) Qt6 channel selection/heatmap and minimum communication demonstration; (8) supported-model persistence checks and causal investigation of `Smart_BacteriaColony_GRO.gen`; (9) final regressions, GUI build, manual impact and evidence closeout.
+- Approved decisions: retain the current dimensionless per-update signal relaxation as phenomenological, constrain finite coefficients to `[0,1]`, defer conservative/physical alternatives, use simple 2D kinematics and optional automatic division disabled by default, and preserve the existing Gro subset, `.gen` format and no-external-physics-engine boundary.
+- Non-goals: full original-Gro compatibility; new Gro grammar; external physics dependency; conservative/PDE signal solver; incompatible persistence migration; changes to `WorkInProgress` or stable branches; PR or merge.
+- Acceptance: all nine cycles have explicit results; supported bacteria can run the selected Gro subset, grow/divide/die/move with zero invariants and reproducible RNG, use independent validated signals, display runtime state in the existing viewer, and pass supported persistence checks; required local presets/tests/builds are recorded at final HEAD; historical/unrelated failures and limitations are reported separately.
+- Stop: escalate only for a material architectural/scientific/security/persistence decision not approved here, incompatible branch work, a regression that cannot be safely fixed within scope, or required validation unavailable. Preserve pre-existing `models/gro_examples/` and `source/tests/unit/generated/` contents and never stage them.
+- Review handoff: original feature branch is preserved at `dcc8bb89910e3b0f8d8c15f29f89dcb36846f230`. The clean candidate is based on `origin/WorkInProgress` `50a340d460876c657d8a3be66554bb29cfe8519a` and deliberately excludes commit `0f64fa8e07`; only the legitimate coordinate tests from that commit were reapplied. Handoff `BC-HANDOFF-001` execution, current Qt interaction limitation, coordinate correction, and final local preset results are recorded in `reference/BACTERIA_COLONY_AGENT_REPORT.md` and plan §22.9. No hosted CI run is claimed. Maintainer instructed integration into `WorkInProgress` and closure of development for now on 2026-10-13. The scope is frozen as a demonstrative first version, with known GUI interaction gaps (`GUI_RESET` not executed, running/paused manual-step interaction partial, viewer lifecycle partial) and hosted CI not yet established at the time of this note. These gaps remain recorded as limitations; task `closed` means no active development, **not** that every criterion was validated (`done_confirmed`). Integration is through a guarded PR with mandatory CI checks; no additional autonomous cycles are authorized.
+
 ## 6. Paused technical tasks
 
 These tasks remain paused until the maintainer explicitly activates one. Completion of the documentation migration does not resume them automatically.

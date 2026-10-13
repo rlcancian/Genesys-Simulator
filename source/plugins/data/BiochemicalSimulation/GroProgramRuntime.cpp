@@ -8,9 +8,9 @@
 #include "plugins/data/BiochemicalSimulation/GroProgramRuntime.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <cstdint>
-#include <cmath>
 #include <limits>
 #include <stdexcept>
 
@@ -101,6 +101,37 @@ double resolveIdentifierValue(const std::string& identifier, const GroProgramRun
 
 	const auto found = state.variables.find(identifier);
 	return found != state.variables.end() ? found->second : 0.0;
+}
+
+// Handles 0 and 1 always address the colony's legacy single field (handle 0
+// is the pre-multi-channel raw-IR convention; handle 1 is the first
+// "signal(...)" declaration, which intentionally reuses that same field).
+// Handle N >= 2 only addresses a real, independently stored channel once the
+// Nth "signal(...)" declaration has actually executed. That declaration may
+// have run either earlier in THIS pass (state.signalDeclarationOrdinal) or
+// in an earlier pass, e.g. a global declaration executed once by the
+// colony-wide prelude and only *consumed* by a named program that never
+// redeclares it itself (state.knownSignalChannelCount, set by the caller
+// from its own persistent bookkeeping; see Problem C, Phase 3 review).
+// Anything else (negative, non-integer, or not known by either source) is
+// an invalid handle and must be diagnosed, never silently aliased to the
+// legacy channel.
+bool tryResolveSignalChannelHandle(double handleValue, const GroProgramRuntimeState& state,
+                                    unsigned int& channel, std::string& errorMessage) {
+	const double roundedHandle = std::llround(handleValue);
+	const bool isNearInteger = std::abs(handleValue - roundedHandle) < 1e-9;
+	const unsigned int maxKnownChannel = std::max(state.signalDeclarationOrdinal, state.knownSignalChannelCount);
+	const bool isKnownChannel = roundedHandle >= 0.0 &&
+	                             (roundedHandle <= 1.0 ||
+	                              roundedHandle <= static_cast<double>(maxKnownChannel));
+	if (!isNearInteger || !isKnownChannel) {
+		errorMessage = "GroProgramRuntime received an invalid signal channel handle (" +
+		              std::to_string(handleValue) +
+		              "); handles must be non-negative integers returned by a prior signal() declaration. ";
+		return false;
+	}
+	channel = roundedHandle > 1.0 ? static_cast<unsigned int>(roundedHandle) : 0u;
+	return true;
 }
 
 class NumericExpressionParser {
@@ -448,7 +479,25 @@ private:
 				errorMessage = "GroProgramRuntime get_signal expression accepts zero or one argument in the current subset. ";
 				return false;
 			}
-			value = resolveIdentifierValue("local_signal", _state);
+			// No argument keeps reading the legacy "local_signal" context
+			// variable directly. An explicit handle is validated below:
+			// handle 0/1 still means that same legacy field (so
+			// single-signal programs and every pre-multi-channel fixture
+			// see unchanged behavior); handle N >= 2 reads the independent
+			// "local_signal_N" variable the owning component populates per
+			// additional channel, so distinct handles never alias. An
+			// invalid handle (negative, non-integer, or not yet declared)
+			// is a diagnosed error, never a silent fallback to channel 0.
+			if (arguments.empty()) {
+				value = resolveIdentifierValue("local_signal", _state);
+				return true;
+			}
+			unsigned int channel = 0;
+			if (!tryResolveSignalChannelHandle(arguments.front(), _state, channel, errorMessage)) {
+				return false;
+			}
+			value = resolveIdentifierValue(channel <= 1 ? "local_signal" : "local_signal_" + std::to_string(channel),
+			                               _state);
 			return true;
 		}
 
@@ -470,6 +519,19 @@ private:
 			const double probability = 1.0 - std::exp(-rate * std::max(0.0, _state.simulationStep));
 			const double sample = deterministicUnitInterval(_state, ++_stochasticSampleIndex);
 			value = sample < std::clamp(probability, 0.0, 1.0) ? 1.0 : 0.0;
+			return true;
+		}
+
+		if (functionName == "time") {
+			// Not required by the selected GenESyS Gro subset, but an
+			// unsupported expression function must not abort the whole
+			// statement/program; return the colony time defensively,
+			// matching the original Gro "time()" intent.
+			if (!arguments.empty()) {
+				errorMessage = "GroProgramRuntime time expression does not accept arguments. ";
+				return false;
+			}
+			value = _state.colonyTime;
 			return true;
 		}
 
@@ -612,12 +674,166 @@ GroProgramRuntime::PopulationMutation makePopulationMutation(GroProgramRuntime::
 	return mutation;
 }
 
+bool isSignalDeclarationAssignment(const GroProgramIr::Command& command) {
+	if (!command.isAssignment()) {
+		return false;
+	}
+	const std::string& text = command.expressionText;
+	std::size_t begin = 0;
+	while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) {
+		++begin;
+	}
+	static const std::string keyword = "signal";
+	if (text.compare(begin, keyword.size(), keyword) != 0) {
+		return false;
+	}
+	const std::size_t afterKeyword = begin + keyword.size();
+	if (afterKeyword < text.size()) {
+		const unsigned char next = static_cast<unsigned char>(text[afterKeyword]);
+		if (std::isalnum(next) || text[afterKeyword] == '_') {
+			return false;
+		}
+	}
+	std::size_t openParen = afterKeyword;
+	while (openParen < text.size() && std::isspace(static_cast<unsigned char>(text[openParen]))) {
+		++openParen;
+	}
+	std::size_t end = text.size();
+	while (end > openParen && std::isspace(static_cast<unsigned char>(text[end - 1]))) {
+		--end;
+	}
+	return openParen < end && text[openParen] == '(' && text[end - 1] == ')' &&
+	       text.find(',', openParen + 1) < end;
+}
+
+bool containsSignalDeclaration(const std::vector<GroProgramIr::Command>& commands) {
+	for (const GroProgramIr::Command& command : commands) {
+		if (isSignalDeclarationAssignment(command) ||
+		    (command.isIfStatement() &&
+		     (containsSignalDeclaration(command.thenCommands) || containsSignalDeclaration(command.elseCommands)))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool containsConditionalSignalDeclaration(const std::vector<GroProgramIr::Command>& commands) {
+	for (const GroProgramIr::Command& command : commands) {
+		if (!command.isIfStatement()) {
+			continue;
+		}
+		if (containsSignalDeclaration(command.thenCommands) || containsSignalDeclaration(command.elseCommands) ||
+		    containsConditionalSignalDeclaration(command.thenCommands) ||
+		    containsConditionalSignalDeclaration(command.elseCommands)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Recognizes "VAR := signal(kdiff, kdeg);" and assigns VAR the ordinal
+// channel handle for that declaration (see GroProgramRuntimeState's
+// signalDeclarationOrdinal comment), reporting an EnsureSignalChannel
+// colony mutation so the owning component can lazily allocate the
+// channel's field. Any other shape of "signal(...)" usage (nested in a
+// larger expression, used without being assigned, etc.) is intentionally
+// left to the generic expression evaluator's legacy single-argument
+// fallback: this subset only covers the declaration form every real Gro
+// program in the original corpus actually uses.
+bool tryHandleSignalDeclarationAssignment(const GroProgramIr::Command& command, GroProgramRuntimeState& state,
+                                          GroProgramRuntime::ExecutionResult& result,
+                                          bool withinConditionalBranch) {
+	const std::string& text = command.expressionText;
+	std::size_t position = 0;
+	while (position < text.size() && std::isspace(static_cast<unsigned char>(text[position]))) {
+		++position;
+	}
+
+	static const std::string keyword = "signal";
+	if (text.compare(position, keyword.size(), keyword) != 0) {
+		return false;
+	}
+	const std::size_t afterKeyword = position + keyword.size();
+	if (afterKeyword < text.size()) {
+		const unsigned char next = static_cast<unsigned char>(text[afterKeyword]);
+		if (std::isalnum(next) || text[afterKeyword] == '_') {
+			return false; // e.g. "signal_grid_width", not the "signal" builtin.
+		}
+	}
+
+	position = afterKeyword;
+	while (position < text.size() && std::isspace(static_cast<unsigned char>(text[position]))) {
+		++position;
+	}
+	if (position >= text.size() || text[position] != '(' || text.back() != ')') {
+		return false;
+	}
+
+	const std::string argumentsText = text.substr(position + 1, text.size() - position - 2);
+	const std::size_t commaPosition = argumentsText.find(',');
+	if (commaPosition == std::string::npos) {
+		return false;
+	}
+
+	double diffusionRate = 0.0;
+	double decayRate = 0.0;
+	std::string expressionError;
+	if (!evaluateExpression(argumentsText.substr(0, commaPosition), state, diffusionRate, expressionError) ||
+	    !evaluateExpression(argumentsText.substr(commaPosition + 1), state, decayRate, expressionError) ||
+	    !std::isfinite(diffusionRate) || !std::isfinite(decayRate) || diffusionRate < 0.0 || diffusionRate > 1.0 ||
+	    decayRate < 0.0 || decayRate > 1.0) {
+		result.succeeded = false;
+		result.errorMessage = "GroProgramRuntime signal coefficients must be finite values in the [0,1] interval";
+		if (!expressionError.empty()) {
+			result.errorMessage += ": " + expressionError;
+		}
+		result.errorMessage += ". ";
+		return true;
+	}
+
+	// Handle-identity safeguard: signalDeclarationOrdinal-based numbering
+	// is only stable if this declaration runs unconditionally, in the
+	// same source order, on every pass. A declaration inside an if/rule
+	// branch would only increment the ordinal on passes where that branch
+	// is taken, letting the same source text resolve to a different
+	// handle across steps. Reject explicitly instead of allowing that
+	// silent instability; the selected subset requires signal(...)
+	// declarations at the unconditional top level of a program.
+	if (withinConditionalBranch) {
+		result.succeeded = false;
+		result.errorMessage = "GroProgramRuntime \"signal(...)\" declarations are not supported inside "
+		                      "conditional branches in the selected subset; declare channels unconditionally "
+		                      "at the top level of the program. ";
+		return true;
+	}
+
+	const unsigned int channel = ++state.signalDeclarationOrdinal;
+	state.variables[command.assignmentTarget] = static_cast<double>(channel);
+	result.assignedVariables[command.assignmentTarget] = static_cast<double>(channel);
+
+	GroProgramRuntime::ColonyMutation mutation;
+	mutation.type = GroProgramRuntime::ColonyMutation::Type::EnsureSignalChannel;
+	mutation.numericArguments = {static_cast<double>(channel), diffusionRate, decayRate};
+	mutation.signalDeclarationScope = state.signalDeclarationScope;
+	result.colonyMutations.push_back(mutation);
+
+	++result.executedCommands;
+	return true;
+}
+
 bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProgramRuntimeState& state,
-	                 GroProgramRuntime::ExecutionResult& result, std::uint64_t& stochasticSampleIndex) {
+	                 GroProgramRuntime::ExecutionResult& result, std::uint64_t& stochasticSampleIndex,
+	                 bool withinConditionalBranch) {
 	for (const GroProgramIr::Command& command : commands) {
 		if (command.isAssignment()) {
 			if (command.assignmentOnlyIfUnset &&
 			    state.variables.find(command.assignmentTarget) != state.variables.end()) {
+				continue;
+			}
+			if (tryHandleSignalDeclarationAssignment(command, state, result, withinConditionalBranch)) {
+				if (!result.succeeded) {
+					return false;
+				}
 				continue;
 			}
 			double assignedValue = 0.0;
@@ -643,7 +859,7 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			++result.executedCommands;
 			const std::vector<GroProgramIr::Command>& selectedBranch =
 					conditionValue != 0.0 ? command.thenCommands : command.elseCommands;
-			if (!executeCommands(selectedBranch, state, result, stochasticSampleIndex)) {
+			if (!executeCommands(selectedBranch, state, result, stochasticSampleIndex, true)) {
 				return false;
 			}
 			continue;
@@ -976,17 +1192,29 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 				mutation.previousSpeed = currentSpeed;
 
 				if (command.functionName == "run") {
-					const double speedBoost = std::clamp(amount, 0.0, 2.0);
-					const double resultingSpeed = std::clamp(currentSpeed + speedBoost, 0.0, 4.0);
+					const double resultingSpeed = amount;
 					assignMotionOrientation(state, result, normalizeAngle(currentDirection), resultingSpeed);
 					mutation.resultingDirection = normalizeAngle(currentDirection);
 					mutation.resultingSpeed = resultingSpeed;
 				} else {
 					const double tumbleAngle = std::clamp(amount, 0.0, 6.28318530717958647692);
-					const double sample = deterministicUnitInterval(state, ++stochasticSampleIndex);
+					const std::uint64_t sampleIndex = ++stochasticSampleIndex;
+					double sample = 0.0;
+					if (state.sampleUnitInterval) {
+						if (!state.sampleUnitInterval(sample, result.errorMessage) || !std::isfinite(sample) ||
+						    sample < 0.0 || sample > 1.0) {
+							result.succeeded = false;
+							if (result.errorMessage.empty()) {
+								result.errorMessage = "GroProgramRuntime tumble RNG returned a value outside [0,1]. ";
+							}
+							return false;
+						}
+					} else {
+						sample = deterministicUnitInterval(state, sampleIndex);
+					}
 					const double signedTurn = sample < 0.5 ? -tumbleAngle : tumbleAngle;
 					const double resultingDirection = normalizeAngle(currentDirection + signedTurn);
-					const double resultingSpeed = std::clamp(currentSpeed * 0.6, 0.0, 4.0);
+					const double resultingSpeed = currentSpeed;
 					assignMotionOrientation(state, result, resultingDirection, resultingSpeed);
 					mutation.resultingDirection = resultingDirection;
 					mutation.resultingSpeed = resultingSpeed;
@@ -1009,11 +1237,33 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 					return false;
 				}
 
+				// A leading handle argument addresses an additional channel.
+				// Handle 1 (the first "signal(...)" declaration) still maps
+				// to channel 0, the legacy single field, so single-signal
+				// programs keep their exact existing behavior; only handle
+				// >= 2 is a genuinely new, independently stored channel. An
+				// invalid handle (negative, non-integer, or not yet
+				// declared) is diagnosed explicitly, never silently
+				// aliased to the legacy channel.
+				unsigned int channel = 0;
+				if (command.arguments.size() == 2) {
+					double channelValue = 0.0;
+					if (!evaluateExpression(command.arguments.front(), state, channelValue, result.errorMessage)) {
+						result.succeeded = false;
+						return false;
+					}
+					if (!tryResolveSignalChannelHandle(channelValue, state, channel, result.errorMessage)) {
+						result.succeeded = false;
+						return false;
+					}
+				}
+
 				GroProgramRuntime::SignalMutation mutation;
 				mutation.type = command.functionName == "emit_signal" ? GroProgramRuntime::SignalMutationType::Emit :
 				                (command.functionName == "consume_signal" || command.functionName == "absorb_signal") ? GroProgramRuntime::SignalMutationType::Consume :
 				                                                          GroProgramRuntime::SignalMutationType::Set;
 				mutation.value = signalValue;
+				mutation.channel = channel;
 			result.signalMutations.push_back(mutation);
 			++result.executedCommands;
 			continue;
@@ -1059,16 +1309,47 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 
 GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr& ir, GroProgramRuntimeState& state) const {
 	ExecutionResult result;
-
-	if (state.simulationStep <= 0.0) {
+	if (!validateSignalDeclarationPlacement(ir, result.errorMessage)) {
 		result.succeeded = false;
-		result.errorMessage = "GroProgramRuntime simulation step must be greater than zero. ";
+		return result;
+	}
+
+	// Problem C (Phase 3 review): every current caller happens to pass a
+	// freshly constructed state (ordinal == 0) per execution pass, but
+	// that was an implicit caller contract, not something execute() itself
+	// guaranteed. A caller reusing the same state object across repeated
+	// executions of the same IR would otherwise see the handle for an
+	// unchanged declaration drift upward on every call. Resetting here
+	// makes "one call == one fresh declaration-ordinal pass" an explicit,
+	// self-enforced contract; it is a no-op for every existing caller.
+	state.signalDeclarationOrdinal = 0;
+	state.signalDeclarationScope = ir.programName.empty() ? "<global>" : ir.programName;
+
+	if (!std::isfinite(state.simulationStep) || state.simulationStep < 0.0) {
+		result.succeeded = false;
+		result.errorMessage = "GroProgramRuntime simulation step must be finite and non-negative. ";
 		return result;
 	}
 
 	std::uint64_t stochasticSampleIndex = 0;
-	executeCommands(ir.commands, state, result, stochasticSampleIndex);
+	executeCommands(ir.commands, state, result, stochasticSampleIndex, false);
 	return result;
+}
+
+bool GroProgramRuntime::validateSignalDeclarationPlacement(const GroProgramIr& ir, std::string& errorMessage) {
+	bool hasConditionalDeclaration = containsConditionalSignalDeclaration(ir.commands);
+	for (const auto& programEntry : ir.namedPrograms) {
+		hasConditionalDeclaration = hasConditionalDeclaration ||
+		                           containsConditionalSignalDeclaration(programEntry.second.commands);
+	}
+	if (hasConditionalDeclaration) {
+		errorMessage = "GroProgramRuntime \"signal(...)\" declarations are not supported inside "
+		               "conditional branches in the selected subset; declare channels unconditionally "
+		               "at the top level of the program. ";
+		return false;
+	}
+	errorMessage.clear();
+	return true;
 }
 
 bool GroProgramRuntime::evaluateExpression(const std::string& expressionText,

@@ -17,6 +17,7 @@
 #include <cctype>
 #include <cmath>
 #include <iomanip>
+#include <limits>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -171,6 +172,13 @@ unsigned int toCenteredGridIndex(double value, unsigned int size) {
 	return static_cast<unsigned int>(std::clamp(rawIndex, 0ll, maxIndex));
 }
 
+double toCenteredGridCoordinate(unsigned int index, unsigned int size) {
+	if (size == 0 || index >= size) {
+		return 0.0;
+	}
+	return static_cast<double>(index) - 0.5 * static_cast<double>(size - 1);
+}
+
 std::vector<GroSeedPlacement> parseGroSeedPlacements(const std::string& sourceCode) {
 	const std::regex ecoliPattern(
 			R"(ecoli\s*\(\s*\[([^\]]*)\]\s*,\s*program\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*\))");
@@ -265,6 +273,16 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 			std::bind(&BacteriaColony::setGridHeight, this, std::placeholders::_1),
 			Util::TypeOf<BacteriaColony>(), getName(), "GridHeight",
 			"Discrete grid height reserved for colony spatial state");
+	SimulationControlBool* propAutomaticDivisionEnabled = new SimulationControlBool(
+			std::bind(&BacteriaColony::getAutomaticDivisionEnabled, this),
+			std::bind(&BacteriaColony::setAutomaticDivisionEnabled, this, std::placeholders::_1),
+			Util::TypeOf<BacteriaColony>(), getName(), "AutomaticDivisionEnabled",
+			"Enable optional division when bacterium volume reaches DivisionThresholdVolume");
+	SimulationControlDouble* propDivisionThresholdVolume = new SimulationControlDouble(
+			std::bind(&BacteriaColony::getDivisionThresholdVolume, this),
+			std::bind(&BacteriaColony::setDivisionThresholdVolume, this, std::placeholders::_1),
+			Util::TypeOf<BacteriaColony>(), getName(), "DivisionThresholdVolume",
+			"Bacterium volume required for optional automatic division");
 
 	_parentModel->getControls()->insert(propGroProgram);
 	_parentModel->getControls()->insert(propBioNetwork);
@@ -275,6 +293,8 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 	_parentModel->getControls()->insert(propInitialPopulation);
 	_parentModel->getControls()->insert(propGridWidth);
 	_parentModel->getControls()->insert(propGridHeight);
+	_parentModel->getControls()->insert(propAutomaticDivisionEnabled);
+	_parentModel->getControls()->insert(propDivisionThresholdVolume);
 
 	_addSimulationControl(propGroProgram);
 	_addSimulationControl(propBioNetwork);
@@ -285,6 +305,8 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 	_addSimulationControl(propInitialPopulation);
 	_addSimulationControl(propGridWidth);
 	_addSimulationControl(propGridHeight);
+	_addSimulationControl(propAutomaticDivisionEnabled);
+	_addSimulationControl(propDivisionThresholdVolume);
 }
 
 std::string BacteriaColony::show() {
@@ -302,7 +324,9 @@ std::string BacteriaColony::show() {
 	       ",chemostatMode=" + std::string(_chemostatMode ? "true" : "false") +
 	       ",barriers=" + std::to_string(_barriers.size()) +
 	       ",gridWidth=" + std::to_string(getGridWidth()) +
-	       ",gridHeight=" + std::to_string(getGridHeight());
+	       ",gridHeight=" + std::to_string(getGridHeight()) +
+	       ",automaticDivisionEnabled=" + std::string(_automaticDivisionEnabled ? "true" : "false") +
+	       ",divisionThresholdVolume=" + Util::StrTruncIfInt(std::to_string(_divisionThresholdVolume));
 }
 
 PluginInformation* BacteriaColony::GetPluginInformation() {
@@ -387,6 +411,22 @@ unsigned int BacteriaColony::getInitialPopulation() const {
 
 unsigned int BacteriaColony::getPopulationSize() const {
 	return _populationSize;
+}
+
+void BacteriaColony::setAutomaticDivisionEnabled(bool enabled) {
+	_automaticDivisionEnabled = enabled;
+}
+
+bool BacteriaColony::getAutomaticDivisionEnabled() const {
+	return _automaticDivisionEnabled;
+}
+
+void BacteriaColony::setDivisionThresholdVolume(double threshold) {
+	_divisionThresholdVolume = threshold;
+}
+
+double BacteriaColony::getDivisionThresholdVolume() const {
+	return _divisionThresholdVolume;
 }
 
 void BacteriaColony::setBioNetwork(BioNetwork* bioNetwork) {
@@ -489,6 +529,17 @@ double BacteriaColony::getSignalValueAt(unsigned int x, unsigned int y) const {
 	return _signalValueAt(x, y);
 }
 
+unsigned int BacteriaColony::getSignalChannelCount() const {
+	return 1u + static_cast<unsigned int>(_additionalSignalChannels.size());
+}
+
+double BacteriaColony::getAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const {
+	if (x >= getGridWidth() || y >= getGridHeight()) {
+		throw std::out_of_range("BacteriaColony signal coordinate is out of range");
+	}
+	return _additionalSignalValueAt(channel, x, y);
+}
+
 std::vector<std::vector<double>> BacteriaColony::getSignalMatrix() const {
 	return _buildSignalMatrix();
 }
@@ -583,6 +634,11 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	}
 
 	GroProgramIr ir = GroProgramCompiler().compile(parseResult.ast);
+	if (!GroProgramRuntime::validateSignalDeclarationPlacement(ir, result.errorMessage)) {
+		result.succeeded = false;
+		return result;
+	}
+	_bacteriaDividedThisStep.clear();
 	if (ir.isProgramBlock() && ir.programName == "bacterium") {
 		_executeBacteriumScopedGroProgram(ir, result);
 		return result;
@@ -600,6 +656,7 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	runtimeState.tickCount = _colonyTickCount;
 	runtimeState.variables = _runtimeVariables;
 	runtimeState.variables["dt"] = runtimeState.simulationStep;
+	runtimeState.knownSignalChannelCount = 1 + static_cast<unsigned int>(_additionalSignalChannels.size());
 	_appendBioNetworkContextVariables(runtimeState, bioContextErrorMessage);
 	if (!bioContextErrorMessage.empty()) {
 		result.succeeded = false;
@@ -635,7 +692,21 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 		_runtimeVariables = runtimeState.variables;
 		_runtimeVariables["dt"] = getSimulationStep();
 		_colonyTickCount = runtimeState.tickCount;
-		_applyRuntimePopulationMutations(result.populationMutations, runtimeState.populationSize);
+		for (BacteriumState& bacterium : _bacteria) {
+			bacterium.justDivided = false;
+			bacterium.daughter = false;
+		}
+		if (!_applyRuntimePopulationMutations(result.populationMutations, runtimeState.populationSize,
+		                                      result.errorMessage)) {
+			result.succeeded = false;
+			return result;
+		}
+		std::vector<unsigned int> eligibleBacteriumIds;
+		eligibleBacteriumIds.reserve(_bacteria.size());
+		for (const BacteriumState& bacterium : _bacteria) {
+			eligibleBacteriumIds.push_back(bacterium.id);
+		}
+		_applyAutomaticDivisions(eligibleBacteriumIds);
 		_applySignalFieldStep();
 		_refreshBacteriaUpdateTime();
 	}
@@ -669,6 +740,8 @@ bool BacteriaColony::_loadInstance(PersistenceRecord* fields) {
 		_initialPopulation = fields->loadField("initialPopulation", DEFAULT.initialPopulation);
 		_gridWidth = fields->loadField("gridWidth", DEFAULT.gridWidth);
 		_gridHeight = fields->loadField("gridHeight", DEFAULT.gridHeight);
+		_automaticDivisionEnabled = fields->loadField("automaticDivisionEnabled", DEFAULT.automaticDivisionEnabled ? 1u : 0u) != 0u;
+		_divisionThresholdVolume = fields->loadField("divisionThresholdVolume", DEFAULT.divisionThresholdVolume);
 		_synchronizeGridDimensionsFromSignalGrid();
 		std::string runtimeConfigErrorMessage;
 		(void)_refreshRuntimeConfigurationFromGroProgram(runtimeConfigErrorMessage);
@@ -698,6 +771,10 @@ void BacteriaColony::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 	fields->saveField("initialPopulation", _initialPopulation, DEFAULT.initialPopulation, saveDefaultValues);
 	fields->saveField("gridWidth", _gridWidth, DEFAULT.gridWidth, saveDefaultValues);
 	fields->saveField("gridHeight", _gridHeight, DEFAULT.gridHeight, saveDefaultValues);
+	fields->saveField("automaticDivisionEnabled", _automaticDivisionEnabled ? 1u : 0u,
+	                  DEFAULT.automaticDivisionEnabled ? 1u : 0u, saveDefaultValues);
+	fields->saveField("divisionThresholdVolume", _divisionThresholdVolume,
+	                  DEFAULT.divisionThresholdVolume, saveDefaultValues);
 }
 
 bool BacteriaColony::_check(std::string& errorMessage) {
@@ -717,6 +794,10 @@ bool BacteriaColony::_check(std::string& errorMessage) {
 	}
 	if (_numSteps == 0) {
 		errorMessage += "BacteriaColony number of steps must be greater than zero. ";
+		resultAll = false;
+	}
+	if (!std::isfinite(_divisionThresholdVolume) || _divisionThresholdVolume <= 0.0) {
+		errorMessage += "BacteriaColony division threshold volume must be finite and greater than zero. ";
 		resultAll = false;
 	}
 
@@ -739,6 +820,7 @@ bool BacteriaColony::_check(std::string& errorMessage) {
 
 void BacteriaColony::_initBetweenReplications() {
 	_runtimeVariables.clear();
+	_bacteriaDividedThisStep.clear();
 	_groSeedsApplied = false;
 	_currentStep = 0;
 	_colonyTickCount = 0;
@@ -750,6 +832,20 @@ void BacteriaColony::_initBetweenReplications() {
 		_rebuildInternalBacteriaFromGroSeeds();
 	}
 	_runtimeVariables["dt"] = getSimulationStep();
+	// Additional channels are pure runtime state (never persisted, see the
+	// AdditionalSignalChannel comment): clear them so values from a
+	// previous replication never leak into the next one. Declarations
+	// re-run deterministically from the Gro program itself and lazily
+	// recreate zero-filled fields via EnsureSignalChannel.
+	_additionalSignalChannels.clear();
+	// Problem B (Phase 3, authorized precedence): same leak-free contract
+	// as _additionalSignalChannels — a declared first-channel coefficient
+	// from one replication must not leak into the next.
+	_legacyChannelDiffusionRate = 0.0;
+	_legacyChannelDecayRate = 0.0;
+	_legacyChannelCoefficientsDeclared = false;
+	_legacyChannelDeclarationScope.clear();
+	_legacyChannelCoefficientMismatchWarned = false;
 	std::string signalErrorMessage;
 	(void)_resetRuntimeSignalField(signalErrorMessage);
 }
@@ -779,6 +875,17 @@ void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 		if (result.succeeded) {
 			traceSimulation(this, "Bacteria colony Gro program executed " + std::to_string(result.executedCommands) +
 								  " command(s)");
+			// GroProgramRuntime already collects unsupported/unrecognized Gro
+			// constructs into these lists, but nothing used to report them to
+			// the user: a construct outside the selected GenESyS Gro subset
+			// would silently do nothing instead of being visibly flagged.
+			if (!result.unsupportedCommands.empty() || !result.skippedRawStatements.empty()) {
+				traceSimulation(this, "Bacteria colony Gro program ignored " +
+									  std::to_string(result.unsupportedCommands.size()) +
+									  " unsupported command(s) and " +
+									  std::to_string(result.skippedRawStatements.size()) +
+									  " unrecognized statement(s); outside the selected Gro subset");
+			}
 		} else {
 			traceSimulation(this, "Bacteria colony Gro program execution failed: " + result.errorMessage);
 		}
@@ -812,12 +919,18 @@ void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 }
 
 bool BacteriaColony::_resetRuntimeSignalField(std::string& errorMessage) {
+	bool succeeded;
 	if (_signalGrid != nullptr) {
-		return _signalGrid->buildInitialField(_signalField, errorMessage);
+		succeeded = _signalGrid->buildInitialField(_signalField, errorMessage);
+	} else {
+		_signalField.assign(static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight()), 0.0);
+		succeeded = true;
 	}
-
-	_signalField.assign(static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight()), 0.0);
-	return true;
+	// Keeps every already-declared additional channel's field sized to the
+	// current grid, independent of the legacy field's own configuration
+	// source (BacteriaSignalGrid vs. plain dimensions).
+	_resizeAdditionalSignalChannelsToGrid();
+	return succeeded;
 }
 
 bool BacteriaColony::_collectBioNetworkSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const {
@@ -972,36 +1085,22 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 		return true;
 	}
 
-	unsigned int maxGridX = 0;
-	unsigned int maxGridY = 0;
-	double minPositionX = 0.0;
-	double minPositionY = 0.0;
-	double maxPositionX = 0.0;
-	double maxPositionY = 0.0;
-	bool hasAnySeedPosition = false;
+	double maximumAbsoluteX = 0.0;
+	double maximumAbsoluteY = 0.0;
 	for (const GroSeedPlacement& placement : parsedPlacements) {
-		if (!hasAnySeedPosition) {
-			minPositionX = maxPositionX = placement.positionX;
-			minPositionY = maxPositionY = placement.positionY;
-			hasAnySeedPosition = true;
-		} else {
-			minPositionX = std::min(minPositionX, placement.positionX);
-			minPositionY = std::min(minPositionY, placement.positionY);
-			maxPositionX = std::max(maxPositionX, placement.positionX);
-			maxPositionY = std::max(maxPositionY, placement.positionY);
-		}
+		maximumAbsoluteX = std::max(maximumAbsoluteX, std::abs(placement.positionX));
+		maximumAbsoluteY = std::max(maximumAbsoluteY, std::abs(placement.positionY));
 	}
-	const double shiftX = minPositionX < 0.0 ? -minPositionX : 0.0;
-	const double shiftY = minPositionY < 0.0 ? -minPositionY : 0.0;
 	std::ostringstream seedSignature;
+	seedSignature << std::setprecision(std::numeric_limits<double>::max_digits10);
 	for (const GroSeedPlacement& placement : parsedPlacements) {
 		GroSeedDefinition definition;
-		definition.gridX = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionX + shiftX)));
-		definition.gridY = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionY + shiftY)));
+		definition.positionX = placement.positionX;
+		definition.positionY = placement.positionY;
 		definition.programName = placement.programName;
 		definition.programArguments = placement.programArguments;
 		newSeedDefinitions.push_back(definition);
-		seedSignature << definition.gridX << "," << definition.gridY << "," << definition.programName << "(";
+		seedSignature << definition.positionX << "," << definition.positionY << "," << definition.programName << "(";
 		for (std::size_t index = 0; index < definition.programArguments.size(); ++index) {
 			if (index != 0) {
 				seedSignature << ",";
@@ -1009,8 +1108,6 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 			seedSignature << definition.programArguments[index];
 		}
 		seedSignature << ");";
-		maxGridX = std::max(maxGridX, definition.gridX);
-		maxGridY = std::max(maxGridY, definition.gridY);
 	}
 	const std::string newSeedSignature = seedSignature.str();
 	if (newSeedSignature != _groSeedSignature) {
@@ -1021,12 +1118,10 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 
 	if (!_usesSignalGridDimensions()) {
 		// Classic Gro seed placements define a discrete colony footprint even when no SignalGrid exists yet.
-		const unsigned int requiredWidth = static_cast<unsigned int>(
-				std::max(1.0, std::round(maxPositionX + shiftX + 1.0)));
-		const unsigned int requiredHeight = static_cast<unsigned int>(
-				std::max(1.0, std::round(maxPositionY + shiftY + 1.0)));
-		_gridWidth = std::max(std::max(_gridWidth, maxGridX + 1), requiredWidth);
-		_gridHeight = std::max(std::max(_gridHeight, maxGridY + 1), requiredHeight);
+		const unsigned int requiredWidth = static_cast<unsigned int>(std::max(1.0, std::ceil(2.0 * maximumAbsoluteX + 1.0)));
+		const unsigned int requiredHeight = static_cast<unsigned int>(std::max(1.0, std::ceil(2.0 * maximumAbsoluteY + 1.0)));
+		_gridWidth = std::max(_gridWidth, requiredWidth);
+		_gridHeight = std::max(_gridHeight, requiredHeight);
 		if (_signalField.size() != static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight)) {
 			_signalField.assign(static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight), 0.0);
 		}
@@ -1180,13 +1275,199 @@ unsigned int BacteriaColony::_computeLocalBacteriaCount(unsigned int x, unsigned
 	return count;
 }
 
-void BacteriaColony::_applySignalFieldStep() {
-	if (_signalGrid == nullptr || _signalField.empty()) {
+bool BacteriaColony::_ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate,
+                                                   const std::string& declarationScope,
+                                                   std::string& errorMessage) {
+	const std::string currentScope = declarationScope.empty() ? "<global>" : declarationScope;
+	if (channel < 2) {
+		if (channel == 1) {
+			if (_legacyChannelCoefficientsDeclared && _legacyChannelDeclarationScope != currentScope) {
+				errorMessage = "Signal channel 1 is independently declared in program \"" + currentScope +
+				               "\" after program \"" + _legacyChannelDeclarationScope +
+				               "\"; declare the shared channel once in the global program scope and consume its handle. ";
+				return false;
+			}
+			if (_legacyChannelCoefficientsDeclared &&
+			    (std::fabs(_legacyChannelDiffusionRate - diffusionRate) > 1e-9 ||
+			     std::fabs(_legacyChannelDecayRate - decayRate) > 1e-9)) {
+				errorMessage = "Conflicting signal(...) coefficients for channel 1 during one replication; "
+				               "declare shared channels once in the global program scope. ";
+				return false;
+			}
+			_legacyChannelCoefficientsDeclared = true;
+			_legacyChannelDeclarationScope = currentScope;
+			// Problem B (Phase 3, authorized precedence): always record the
+			// declared coefficients, regardless of whether a
+			// BacteriaSignalGrid is attached; _applySignalFieldStep()
+			// decides which source to use. Keeping "store" and "use"
+			// independent means toggling signalGrid attachment at runtime
+			// cannot leave a stale mismatch between what was recorded and
+			// what is actually used.
+			_legacyChannelDiffusionRate = diffusionRate;
+			_legacyChannelDecayRate = decayRate;
+			if (_signalGrid != nullptr && !_legacyChannelCoefficientMismatchWarned) {
+				const bool diffusionMatches = std::abs(diffusionRate - _signalGrid->getDiffusionRate()) < 1e-9;
+				const bool decayMatches = std::abs(decayRate - _signalGrid->getDecayRate()) < 1e-9;
+				if (!diffusionMatches || !decayMatches) {
+					_legacyChannelCoefficientMismatchWarned = true;
+					traceSimulation(this,
+					    "Bacteria colony: first signal(" + std::to_string(diffusionRate) + ", " +
+					    std::to_string(decayRate) + ") declaration differs from the attached "
+					    "BacteriaSignalGrid's diffusionRate=" + std::to_string(_signalGrid->getDiffusionRate()) +
+					    "/decayRate=" + std::to_string(_signalGrid->getDecayRate()) +
+					    "; the BacteriaSignalGrid configuration remains authoritative for this channel.");
+				}
+			}
+		}
+		return true; // Channel 0/1 is the existing legacy field; nothing to allocate.
+	}
+	const std::size_t index = static_cast<std::size_t>(channel) - 2;
+	if (index >= _additionalSignalChannels.size()) {
+		_additionalSignalChannels.resize(index + 1);
+	}
+	AdditionalSignalChannel& additionalChannel = _additionalSignalChannels[index];
+	if (additionalChannel.coefficientsDeclared && additionalChannel.declarationScope != currentScope) {
+		errorMessage = "Signal channel " + std::to_string(channel) + " is independently declared in program \"" +
+		               currentScope + "\" after program \"" + additionalChannel.declarationScope +
+		               "\"; declare the shared channel once in the global program scope and consume its handle. ";
+		return false;
+	}
+	if (additionalChannel.coefficientsDeclared &&
+	    (std::fabs(additionalChannel.diffusionRate - diffusionRate) > 1e-9 ||
+	     std::fabs(additionalChannel.decayRate - decayRate) > 1e-9)) {
+		errorMessage = "Conflicting signal(...) coefficients for channel " + std::to_string(channel) +
+		               " during one replication; declare shared channels once in the global program scope. ";
+		return false;
+	}
+	additionalChannel.coefficientsDeclared = true;
+	additionalChannel.declarationScope = currentScope;
+	additionalChannel.diffusionRate = diffusionRate;
+	additionalChannel.decayRate = decayRate;
+	const std::size_t requiredSize = static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight());
+	if (additionalChannel.field.size() != requiredSize) {
+		additionalChannel.field.assign(requiredSize, 0.0);
+	}
+	return true;
+}
+
+void BacteriaColony::_resizeAdditionalSignalChannelsToGrid() {
+	const std::size_t requiredSize = static_cast<std::size_t>(getGridWidth()) * static_cast<std::size_t>(getGridHeight());
+	for (AdditionalSignalChannel& channel : _additionalSignalChannels) {
+		if (channel.field.size() != requiredSize) {
+			channel.field.assign(requiredSize, 0.0);
+		}
+	}
+}
+
+bool BacteriaColony::_tryResolveSignalChannelHandle(double handleValue, unsigned int& channel,
+                                                    std::string& errorMessage) const {
+	const double roundedHandle = std::llround(handleValue);
+	const bool isNearInteger = std::abs(handleValue - roundedHandle) < 1e-9;
+	const bool isKnownChannel = roundedHandle >= 0.0 &&
+	                             (roundedHandle <= 1.0 ||
+	                              (static_cast<std::size_t>(roundedHandle) - 2) < _additionalSignalChannels.size());
+	if (!isNearInteger || !isKnownChannel) {
+		errorMessage = "received an invalid signal channel handle (" + std::to_string(handleValue) +
+		              "); handles must be non-negative integers returned by a prior signal() declaration. ";
+		return false;
+	}
+	channel = roundedHandle > 1.0 ? static_cast<unsigned int>(roundedHandle) : 0u;
+	return true;
+}
+
+double BacteriaColony::_additionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const {
+	if (channel < 2 || getGridWidth() == 0 || getGridHeight() == 0 || x >= getGridWidth() || y >= getGridHeight()) {
+		return 0.0;
+	}
+	const std::size_t index = static_cast<std::size_t>(channel) - 2;
+	if (index >= _additionalSignalChannels.size()) {
+		return 0.0;
+	}
+	const std::vector<double>& field = _additionalSignalChannels[index].field;
+	const std::size_t fieldIndex = _signalIndex(x, y);
+	return fieldIndex < field.size() ? field[fieldIndex] : 0.0;
+}
+
+void BacteriaColony::_setAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y, double value) {
+	if (channel < 2 || x >= getGridWidth() || y >= getGridHeight()) {
 		return;
 	}
+	const std::size_t index = static_cast<std::size_t>(channel) - 2;
+	if (index >= _additionalSignalChannels.size()) {
+		return;
+	}
+	std::vector<double>& field = _additionalSignalChannels[index].field;
+	const std::size_t fieldIndex = _signalIndex(x, y);
+	if (fieldIndex < field.size()) {
+		field[fieldIndex] = value;
+	}
+}
 
-	const double diffusionRate = _signalGrid->getDiffusionRate();
-	const double decayFactor = 1.0 - _signalGrid->getDecayRate();
+void BacteriaColony::_addAdditionalSignalAt(unsigned int channel, unsigned int x, unsigned int y, double value) {
+	if (channel < 2 || x >= getGridWidth() || y >= getGridHeight()) {
+		return;
+	}
+	const std::size_t index = static_cast<std::size_t>(channel) - 2;
+	if (index >= _additionalSignalChannels.size()) {
+		return;
+	}
+	std::vector<double>& field = _additionalSignalChannels[index].field;
+	const std::size_t fieldIndex = _signalIndex(x, y);
+	if (fieldIndex < field.size()) {
+		field[fieldIndex] += value;
+	}
+}
+
+void BacteriaColony::_applyAdditionalSignalChannelsStep() {
+	const unsigned int width = getGridWidth();
+	const unsigned int height = getGridHeight();
+	for (std::size_t channelIndex = 0; channelIndex < _additionalSignalChannels.size(); ++channelIndex) {
+		AdditionalSignalChannel& channel = _additionalSignalChannels[channelIndex];
+		if (channel.field.empty()) {
+			continue;
+		}
+		const double diffusionRate = channel.diffusionRate;
+		const double decayFactor = 1.0 - channel.decayRate;
+		if (diffusionRate == 0.0 && decayFactor == 1.0) {
+			continue;
+		}
+		const unsigned int channelNumber = static_cast<unsigned int>(channelIndex) + 2;
+		std::vector<double> updatedField = channel.field;
+		for (unsigned int y = 0; y < height; ++y) {
+			for (unsigned int x = 0; x < width; ++x) {
+				const double currentValue = _additionalSignalValueAt(channelNumber, x, y);
+				double neighborSum = 0.0;
+				unsigned int neighborCount = 0;
+				if (x > 0) {
+					neighborSum += _additionalSignalValueAt(channelNumber, x - 1, y);
+					++neighborCount;
+				}
+				if (x + 1 < width) {
+					neighborSum += _additionalSignalValueAt(channelNumber, x + 1, y);
+					++neighborCount;
+				}
+				if (y > 0) {
+					neighborSum += _additionalSignalValueAt(channelNumber, x, y - 1);
+					++neighborCount;
+				}
+				if (y + 1 < height) {
+					neighborSum += _additionalSignalValueAt(channelNumber, x, y + 1);
+					++neighborCount;
+				}
+				double relaxedValue = currentValue;
+				if (neighborCount > 0) {
+					const double neighborAverage = neighborSum / static_cast<double>(neighborCount);
+					relaxedValue += diffusionRate * (neighborAverage - currentValue);
+				}
+				updatedField[_signalIndex(x, y)] = std::max(0.0, relaxedValue * decayFactor);
+			}
+		}
+		channel.field = std::move(updatedField);
+	}
+}
+
+void BacteriaColony::_relaxLegacySignalField(double diffusionRate, double decayRate) {
+	const double decayFactor = 1.0 - decayRate;
 	if (diffusionRate == 0.0 && decayFactor == 1.0) {
 		return;
 	}
@@ -1227,9 +1508,50 @@ void BacteriaColony::_applySignalFieldStep() {
 	_signalField = std::move(updatedField);
 }
 
+void BacteriaColony::_applySignalFieldStep() {
+	// Additional (handle >= 2) channels are independent of the legacy
+	// field's own configuration source and coefficients, so they must
+	// step exactly once per colony step regardless of whether a
+	// BacteriaSignalGrid is attached or what the legacy field's own
+	// diffusion/decay happen to be.
+	_applyAdditionalSignalChannelsStep();
+
+	if (_signalField.empty()) {
+		return;
+	}
+
+	if (_signalGrid != nullptr) {
+		// Problem B (Phase 3, authorized precedence): an attached
+		// BacteriaSignalGrid's persisted configuration remains
+		// authoritative for the legacy field, unconditionally; a declared
+		// first-channel signal(...) never overrides it.
+		_relaxLegacySignalField(_signalGrid->getDiffusionRate(), _signalGrid->getDecayRate());
+		return;
+	}
+
+	// Problem B (Phase 3, authorized precedence): no persisted
+	// BacteriaSignalGrid is attached, so honor whatever the program's
+	// first signal(kdiff,kdeg) declaration specified. Defaults to 0/0 (no
+	// diffusion/decay, matching prior behavior exactly) when no such
+	// declaration ever ran.
+	_relaxLegacySignalField(_legacyChannelDiffusionRate, _legacyChannelDecayRate);
+}
+
 void BacteriaColony::_applyBacteriumSignalMutations(const BacteriumState& bacterium,
                                                     const std::vector<GroProgramRuntime::SignalMutation>& mutations) {
 	for (const GroProgramRuntime::SignalMutation& mutation : mutations) {
+		if (mutation.channel >= 2) {
+			if (mutation.type == GroProgramRuntime::SignalMutationType::Emit) {
+				_addAdditionalSignalAt(mutation.channel, bacterium.gridX, bacterium.gridY, mutation.value);
+			} else if (mutation.type == GroProgramRuntime::SignalMutationType::Consume) {
+				const double currentValue = _additionalSignalValueAt(mutation.channel, bacterium.gridX, bacterium.gridY);
+				_setAdditionalSignalValueAt(mutation.channel, bacterium.gridX, bacterium.gridY,
+				                           std::max(0.0, currentValue - mutation.value));
+			} else if (mutation.type == GroProgramRuntime::SignalMutationType::Set) {
+				_setAdditionalSignalValueAt(mutation.channel, bacterium.gridX, bacterium.gridY, mutation.value);
+			}
+			continue;
+		}
 		if (mutation.type == GroProgramRuntime::SignalMutationType::Emit) {
 			_addSignalAt(bacterium.gridX, bacterium.gridY, mutation.value);
 			continue;
@@ -1265,8 +1587,19 @@ void BacteriaColony::_resizeInternalBacteria(unsigned int populationSize) {
 	_rebuildBacteriaGridPositions();
 }
 
-void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
-                                                       unsigned int finalPopulationSize) {
+bool BacteriaColony::_applyRuntimePopulationMutations(
+		const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
+		unsigned int finalPopulationSize,
+		std::string& errorMessage) {
+	const std::size_t divideMutationCount = static_cast<std::size_t>(std::count_if(
+			mutations.begin(), mutations.end(), [](const GroProgramRuntime::PopulationMutation& mutation) {
+				return mutation.type == GroProgramRuntime::PopulationMutationType::Divide;
+			}));
+	if (divideMutationCount > 1) {
+		errorMessage = "BacteriaColony permits at most one divide() command per colony step. ";
+		return false;
+	}
+
 	for (const GroProgramRuntime::PopulationMutation& mutation : mutations) {
 		if (mutation.type == GroProgramRuntime::PopulationMutationType::Grow) {
 			for (unsigned int i = 0; i < mutation.value; ++i) {
@@ -1279,10 +1612,10 @@ void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgr
 			const std::size_t parentCount = _bacteria.size();
 			for (std::size_t index = 0; index < parentCount; ++index) {
 				const unsigned int parentId = _bacteria[index].id;
-				const unsigned int childGeneration = _bacteria[index].generation + 1;
-				++_bacteria[index].divisionCount;
-				_bacteria[index].lastDivisionTime = getColonyTime();
-				_appendBacterium(parentId, childGeneration);
+				if (!_divideBacterium(parentId)) {
+					errorMessage = "BacteriaColony cannot divide one bacterium more than once per colony step. ";
+					return false;
+				}
 			}
 			continue;
 		}
@@ -1304,6 +1637,86 @@ void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgr
 	_populationSize = static_cast<unsigned int>(_bacteria.size());
 	_refreshBacteriaUpdateTime();
 	_rebuildBacteriaGridPositions();
+	return true;
+}
+
+bool BacteriaColony::_divideBacterium(unsigned int bacteriumId) {
+	const std::size_t parentIndex = _findBacteriumIndexById(bacteriumId);
+	if (parentIndex >= _bacteria.size() || !_bacteria[parentIndex].alive ||
+	    std::find(_bacteriaDividedThisStep.begin(), _bacteriaDividedThisStep.end(), bacteriumId) !=
+	            _bacteriaDividedThisStep.end()) {
+		return false;
+	}
+
+	const BacteriumState parent = _bacteria[parentIndex];
+	const double motherVolume = std::max(0.0, parent.volume) * 0.5;
+	const double daughterVolume = std::max(0.0, parent.volume) - motherVolume;
+	const double separation = 0.25 * std::max(0.0, parent.size);
+	const double motherX = parent.positionX - separation * std::cos(parent.directionRadians);
+	const double motherY = parent.positionY - separation * std::sin(parent.directionRadians);
+	const double daughterX = parent.positionX + separation * std::cos(parent.directionRadians);
+	const double daughterY = parent.positionY + separation * std::sin(parent.directionRadians);
+
+	BacteriumState& mother = _bacteria[parentIndex];
+	mother.volume = motherVolume;
+	mother.size = std::sqrt(motherVolume);
+	mother.positionX = motherX;
+	mother.positionY = motherY;
+	mother.divisionCount += 1;
+	mother.lastDivisionTime = getColonyTime();
+	mother.justDivided = true;
+	mother.daughter = false;
+	mother.runtimeVariables["volume"] = mother.volume;
+	mother.runtimeVariables["size"] = mother.size;
+	mother.runtimeVariables["x"] = mother.positionX;
+	mother.runtimeVariables["y"] = mother.positionY;
+	mother.runtimeVariables["direction"] = mother.directionRadians;
+	mother.runtimeVariables["just_divided"] = 1.0;
+	mother.runtimeVariables["daughter"] = 0.0;
+	_setBacteriumPosition(mother, mother.positionX, mother.positionY);
+
+	_appendBacterium(parent.id, parent.generation + 1, parent.programName);
+	BacteriumState& daughter = _bacteria.back();
+	daughter.programArguments = parent.programArguments;
+	daughter.runtimeVariables = parent.runtimeVariables;
+	daughter.volume = daughterVolume;
+	daughter.size = std::sqrt(daughterVolume);
+	daughter.positionX = daughterX;
+	daughter.positionY = daughterY;
+	daughter.directionRadians = parent.directionRadians;
+	daughter.gfp = parent.gfp * 0.85;
+	daughter.rfp = parent.rfp * 0.85;
+	daughter.yfp = parent.yfp * 0.85;
+	daughter.cfp = parent.cfp * 0.85;
+	daughter.speed = parent.speed;
+	daughter.tickCount = 0;
+	daughter.justDivided = true;
+	daughter.daughter = true;
+	daughter.runtimeVariables["volume"] = daughter.volume;
+	daughter.runtimeVariables["size"] = daughter.size;
+	daughter.runtimeVariables["x"] = daughter.positionX;
+	daughter.runtimeVariables["y"] = daughter.positionY;
+	daughter.runtimeVariables["direction"] = daughter.directionRadians;
+	daughter.runtimeVariables["speed"] = daughter.speed;
+	daughter.runtimeVariables["just_divided"] = 1.0;
+	daughter.runtimeVariables["daughter"] = 1.0;
+	_setBacteriumPosition(daughter, daughter.positionX, daughter.positionY);
+	_bacteriaDividedThisStep.push_back(bacteriumId);
+	_bacteriaDividedThisStep.push_back(daughter.id);
+	return true;
+}
+
+void BacteriaColony::_applyAutomaticDivisions(const std::vector<unsigned int>& eligibleBacteriumIds) {
+	if (!_automaticDivisionEnabled || !std::isfinite(_divisionThresholdVolume) || _divisionThresholdVolume <= 0.0) {
+		return;
+	}
+	for (unsigned int bacteriumId : eligibleBacteriumIds) {
+		const std::size_t index = _findBacteriumIndexById(bacteriumId);
+		if (index < _bacteria.size() && _bacteria[index].alive && !_bacteria[index].justDivided &&
+		    _bacteria[index].volume >= _divisionThresholdVolume) {
+			_divideBacterium(bacteriumId);
+		}
+	}
 }
 
 bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::ColonyMutation>& mutations,
@@ -1313,6 +1726,7 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 	(void)result;
 	for (const GroProgramRuntime::ColonyMutation& mutation : mutations) {
 		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::Reset) {
+			_bacteriaDividedThisStep.clear();
 			if (!allowStructureMutations) {
 				errorMessage = "BacteriaColony bacterium-scoped programs cannot reset the colony. ";
 				return false;
@@ -1322,6 +1736,14 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			_populationSize = 0;
 			_colonyTickCount = 0;
 			_groSeedsApplied = true;
+			// Same leak-free contract as between-replications reset: see
+			// _initBetweenReplications.
+			_additionalSignalChannels.clear();
+			_legacyChannelDiffusionRate = 0.0;
+			_legacyChannelDecayRate = 0.0;
+			_legacyChannelCoefficientsDeclared = false;
+			_legacyChannelDeclarationScope.clear();
+			_legacyChannelCoefficientMismatchWarned = false;
 			std::string signalErrorMessage;
 			(void)_resetRuntimeSignalField(signalErrorMessage);
 			continue;
@@ -1345,8 +1767,8 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			}
 			const GroSeedPlacement& placement = placements.front();
 			GroSeedDefinition seedDefinition;
-			seedDefinition.gridX = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionX)));
-			seedDefinition.gridY = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionY)));
+			seedDefinition.positionX = placement.positionX;
+			seedDefinition.positionY = placement.positionY;
 			seedDefinition.programName = placement.programName;
 			seedDefinition.programArguments = placement.programArguments;
 			_appendBacterium(seedDefinition);
@@ -1431,18 +1853,32 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 				errorMessage = "BacteriaColony received an invalid set_signal mutation. ";
 				return false;
 			}
+			unsigned int channel = 0;
+			if (!_tryResolveSignalChannelHandle(mutation.numericArguments[0], channel, errorMessage)) {
+				errorMessage = "BacteriaColony set_signal: " + errorMessage;
+				return false;
+			}
 			const double xValue = mutation.numericArguments[1];
 			const double yValue = mutation.numericArguments[2];
 			const double signalValue = mutation.numericArguments[3];
 			const unsigned int x = toCenteredGridIndex(xValue, getGridWidth());
 			const unsigned int y = toCenteredGridIndex(yValue, getGridHeight());
-			_setSignalValueAt(x, y, signalValue);
+			if (channel >= 2) {
+				_setAdditionalSignalValueAt(channel, x, y, signalValue);
+			} else {
+				_setSignalValueAt(x, y, signalValue);
+			}
 			continue;
 		}
 
 		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SetSignalRect) {
 			if (mutation.numericArguments.size() != 6) {
 				errorMessage = "BacteriaColony received an invalid set_signal_rect mutation. ";
+				return false;
+			}
+			unsigned int channel = 0;
+			if (!_tryResolveSignalChannelHandle(mutation.numericArguments[0], channel, errorMessage)) {
+				errorMessage = "BacteriaColony set_signal_rect: " + errorMessage;
 				return false;
 			}
 			const double x1Value = mutation.numericArguments[1];
@@ -1462,7 +1898,12 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 			const long long upperY = static_cast<long long>(getGridHeight() > 0 ? getGridHeight() - 1 : 0);
 			for (long long x = std::max(0ll, minX); x <= std::min(upperX, maxX); ++x) {
 				for (long long y = std::max(0ll, minY); y <= std::min(upperY, maxY); ++y) {
-					_setSignalValueAt(static_cast<unsigned int>(x), static_cast<unsigned int>(y), signalValue);
+					if (channel >= 2) {
+						_setAdditionalSignalValueAt(channel, static_cast<unsigned int>(x), static_cast<unsigned int>(y),
+						                           signalValue);
+					} else {
+						_setSignalValueAt(static_cast<unsigned int>(x), static_cast<unsigned int>(y), signalValue);
+					}
 				}
 			}
 			continue;
@@ -1471,6 +1912,20 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::GetSignalMatrix ||
 		    mutation.type == GroProgramRuntime::ColonyMutation::Type::DumpSignalField) {
 			_captureSignalFieldSnapshot(result, mutation.previewRows, mutation.previewColumns);
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::EnsureSignalChannel) {
+			if (mutation.numericArguments.size() != 3) {
+				errorMessage = "BacteriaColony received an invalid signal channel declaration. ";
+				return false;
+			}
+			const unsigned int channel = static_cast<unsigned int>(std::llround(mutation.numericArguments[0]));
+			if (!_ensureAdditionalSignalChannel(channel, mutation.numericArguments[1], mutation.numericArguments[2],
+			                                    mutation.signalDeclarationScope,
+			                                    errorMessage)) {
+				return false;
+			}
 			continue;
 		}
 	}
@@ -1506,6 +1961,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		preludeState.populationSize = _populationSize;
 		preludeState.variables = _runtimeVariables;
 		preludeState.variables["dt"] = preludeState.simulationStep;
+		preludeState.knownSignalChannelCount = 1 + static_cast<unsigned int>(_additionalSignalChannels.size());
 		_appendBioNetworkContextVariables(preludeState, result.errorMessage);
 		if (!result.errorMessage.empty()) {
 			result.succeeded = false;
@@ -1575,6 +2031,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		mainState.tickCount = _colonyTickCount;
 		mainState.variables = _runtimeVariables;
 		mainState.variables["dt"] = mainState.simulationStep;
+		mainState.knownSignalChannelCount = 1 + static_cast<unsigned int>(_additionalSignalChannels.size());
 		_appendBioNetworkContextVariables(mainState, result.errorMessage);
 		if (!result.errorMessage.empty()) {
 			result.succeeded = false;
@@ -1609,8 +2066,11 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		_runtimeVariables = mainState.variables;
 		_runtimeVariables["dt"] = getSimulationStep();
 		_colonyTickCount = mainState.tickCount;
-		mainState.populationSize = _populationSize;
-		_applyRuntimePopulationMutations(mainResult.populationMutations, mainState.populationSize);
+		if (!_applyRuntimePopulationMutations(mainResult.populationMutations, mainState.populationSize,
+		                                      result.errorMessage)) {
+			result.succeeded = false;
+			return false;
+		}
 		result.executedCommands += mainResult.executedCommands;
 		result.assignedVariables.insert(mainResult.assignedVariables.begin(), mainResult.assignedVariables.end());
 		result.unsupportedCommands.insert(result.unsupportedCommands.end(),
@@ -1629,7 +2089,10 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 	std::vector<unsigned int> bacteriumIds;
 	bacteriumIds.reserve(_bacteria.size());
 	for (const BacteriumState& bacterium : _bacteria) {
-		if (bacterium.alive) {
+		const bool daughterCreatedThisStep = bacterium.daughter &&
+		        std::find(_bacteriaDividedThisStep.begin(), _bacteriaDividedThisStep.end(), bacterium.id) !=
+		                _bacteriaDividedThisStep.end();
+		if (bacterium.alive && !daughterCreatedThisStep) {
 			bacteriumIds.push_back(bacterium.id);
 		}
 	}
@@ -1688,8 +2151,11 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		bacterium.tickCount = runtimeState.tickCount;
 		_syncBacteriumSpatialState(bacterium, runtimeState);
 		_applyBacteriumGrowth(bacterium);
-		bacterium.justDivided = false;
-		bacterium.daughter = false;
+		if (std::find(_bacteriaDividedThisStep.begin(), _bacteriaDividedThisStep.end(), bacteriumId) ==
+		    _bacteriaDividedThisStep.end()) {
+			bacterium.justDivided = false;
+			bacterium.daughter = false;
+		}
 		result.executedCommands += bacteriumResult.executedCommands;
 
 		for (const auto& entry : bacteriumResult.assignedVariables) {
@@ -1711,7 +2177,11 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			result.colonyMutations.push_back(mutation);
 		}
 
-		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
+		// Colony mutations (e.g. EnsureSignalChannel) must be applied before
+		// the signal mutations that may target a channel they declare,
+		// otherwise a same-step "s1 := signal(...); emit_signal(s1, v);"
+		// sequence would try to write into a channel that does not exist
+		// yet.
 		if (!bacteriumResult.colonyMutations.empty() &&
 		    !_applyColonyMutations(bacteriumResult.colonyMutations, result, false, result.errorMessage)) {
 			result.succeeded = false;
@@ -1719,8 +2189,8 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
 			return false;
 		}
-		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
-		                                         bacteriumResult.populationMutations, result);
+		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
+		_applyBacteriumScopedPopulationMutations(bacteriumId, bacteriumResult.populationMutations, result);
 		if (!result.succeeded) {
 			return false;
 		}
@@ -1729,12 +2199,14 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		_rebuildBacteriaGridPositions();
 	}
 
+	_applyAutomaticDivisions(bacteriumIds);
 	_populationSize = static_cast<unsigned int>(_bacteria.size());
 	_refreshBacteriaUpdateTime();
 	_applySignalFieldStep();
 	for (BacteriumState& bacterium : _bacteria) {
 		_updateBacteriumSpatialMotion(bacterium);
 	}
+	_separateBacteriaBodies();
 	_rebuildBacteriaGridPositions();
 	return true;
 }
@@ -1805,8 +2277,11 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 		bacterium.tickCount = runtimeState.tickCount;
 		_syncBacteriumSpatialState(bacterium, runtimeState);
 		_applyBacteriumGrowth(bacterium);
-		bacterium.justDivided = false;
-		bacterium.daughter = false;
+		if (std::find(_bacteriaDividedThisStep.begin(), _bacteriaDividedThisStep.end(), bacteriumId) ==
+		    _bacteriaDividedThisStep.end()) {
+			bacterium.justDivided = false;
+			bacterium.daughter = false;
+		}
 		result.executedCommands += bacteriumResult.executedCommands;
 
 		for (const auto& entry : bacteriumResult.assignedVariables) {
@@ -1825,9 +2300,19 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 			result.motionMutations.push_back(mutation);
 		}
 
+		// Colony mutations (e.g. EnsureSignalChannel for a newly declared
+		// "signal(...)" channel) must be applied before the signal
+		// mutations that may target the channel they declare in the same
+		// step.
+		if (!bacteriumResult.colonyMutations.empty() &&
+		    !_applyColonyMutations(bacteriumResult.colonyMutations, result, false, result.errorMessage)) {
+			result.succeeded = false;
+			result.errorMessage = "BacteriaColony bacterium-scoped execution failed for bacterium id " +
+			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
+			return false;
+		}
 		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
-		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
-		                                         bacteriumResult.populationMutations, result);
+	_applyBacteriumScopedPopulationMutations(bacteriumId, bacteriumResult.populationMutations, result);
 		if (!result.succeeded) {
 			return false;
 		}
@@ -1836,12 +2321,14 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 		_rebuildBacteriaGridPositions();
 	}
 
+	_applyAutomaticDivisions(bacteriumIds);
 	_populationSize = static_cast<unsigned int>(_bacteria.size());
 	_refreshBacteriaUpdateTime();
 	_applySignalFieldStep();
 	for (BacteriumState& bacterium : _bacteria) {
 		_updateBacteriumSpatialMotion(bacterium);
 	}
+	_separateBacteriaBodies();
 	_rebuildBacteriaGridPositions();
 	return true;
 }
@@ -1917,6 +2404,11 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.contextVariables["just_divided"] = bacterium.justDivided ? 1.0 : 0.0;
 	runtimeState.contextVariables["daughter"] = bacterium.daughter ? 1.0 : 0.0;
 	runtimeState.contextVariables["local_signal"] = _signalValueAt(bacterium.gridX, bacterium.gridY);
+	for (std::size_t channelIndex = 0; channelIndex < _additionalSignalChannels.size(); ++channelIndex) {
+		const unsigned int channelNumber = static_cast<unsigned int>(channelIndex) + 2;
+		runtimeState.contextVariables["local_signal_" + std::to_string(channelNumber)] =
+		        _additionalSignalValueAt(channelNumber, bacterium.gridX, bacterium.gridY);
+	}
 	runtimeState.contextVariables["neighbor_signal_sum"] = _computeNeighborSignalSum(bacterium.gridX, bacterium.gridY);
 	runtimeState.contextVariables["local_bacteria_count"] = static_cast<double>(
 			_computeLocalBacteriaCount(bacterium.gridX, bacterium.gridY));
@@ -1924,6 +2416,13 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	// bacterium. Shared globals from `main()` stay authoritative across ticks, so
 	// persisted bacterium-local variables only overlay names that are not global.
 	runtimeState.variables = _runtimeVariables;
+	// Problem C (Phase 3 review): a named program may reference a handle
+	// established by an earlier global declaration (prelude) without ever
+	// redeclaring "signal(...)" itself, so this fresh per-bacterium pass's
+	// own signalDeclarationOrdinal (0) is not enough for handle
+	// validation; knownSignalChannelCount carries the colony's persistent
+	// channel count forward.
+	runtimeState.knownSignalChannelCount = 1 + static_cast<unsigned int>(_additionalSignalChannels.size());
 	for (const auto& entry : bacterium.runtimeVariables) {
 		if (_runtimeVariables.find(entry.first) == _runtimeVariables.end()) {
 			runtimeState.variables[entry.first] = entry.second;
@@ -1945,14 +2444,36 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.variables["just_divided"] = bacterium.justDivided ? 1.0 : 0.0;
 	runtimeState.variables["daughter"] = bacterium.daughter ? 1.0 : 0.0;
 	runtimeState.variables["dt"] = runtimeState.simulationStep;
+	runtimeState.sampleUnitInterval = [this](double& sample, std::string& errorMessage) {
+		if (_parentModel == nullptr) {
+			errorMessage = "BacteriaColony has no model for the kernel RNG. ";
+			return false;
+		}
+		bool success = false;
+		sample = _parentModel->parseExpression("unif(0,1)", success, errorMessage);
+		if (!success) {
+			errorMessage = "BacteriaColony could not sample the kernel RNG for tumble: " + errorMessage;
+			return false;
+		}
+		return true;
+	};
 	return runtimeState;
 }
 
 void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 		unsigned int bacteriumId,
-		unsigned int parentGeneration,
 		const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
 		GroProgramRuntime::ExecutionResult& result) {
+	const std::size_t divideMutationCount = static_cast<std::size_t>(std::count_if(
+			mutations.begin(), mutations.end(), [](const GroProgramRuntime::PopulationMutation& mutation) {
+				return mutation.type == GroProgramRuntime::PopulationMutationType::Divide;
+			}));
+	if (divideMutationCount > 1) {
+		result.succeeded = false;
+		result.errorMessage = "BacteriaColony permits at most one divide() command per bacterium per colony step. ";
+		return;
+	}
+
 	for (const GroProgramRuntime::PopulationMutation& mutation : mutations) {
 		if (mutation.type == GroProgramRuntime::PopulationMutationType::Grow) {
 			const std::size_t parentIndex = _findBacteriumIndexById(bacteriumId);
@@ -1970,7 +2491,7 @@ void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 			_bacteria[parentIndex].size = std::max(0.75, std::sqrt(std::max(0.1, _bacteria[parentIndex].volume)));
 			const std::string childProgramName = _bacteria[parentIndex].programName;
 			for (unsigned int i = 0; i < mutation.value; ++i) {
-				_appendBacterium(bacteriumId, parentGeneration + 1, childProgramName);
+				_appendBacterium(bacteriumId, parent.generation + 1, childProgramName);
 				BacteriumState& child = _bacteria.back();
 				child.programArguments = parent.programArguments;
 				child.positionX = parent.positionX + 0.35 * std::cos(parent.directionRadians + 0.35 * static_cast<double>(i + 1));
@@ -2004,32 +2525,12 @@ void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 			}
 
 			// A bacterium-scoped divide reproduces only the current bacterium,
-			// unlike aggregate divide(), which doubles the whole population.
-			const BacteriumState parent = _bacteria[parentIndex];
-			++_bacteria[parentIndex].divisionCount;
-			_bacteria[parentIndex].lastDivisionTime = getColonyTime();
-			const std::string childProgramName = _bacteria[parentIndex].programName;
-			_appendBacterium(bacteriumId, parentGeneration + 1, childProgramName);
-			BacteriumState& child = _bacteria.back();
-			child.programArguments = parent.programArguments;
-			child.positionX = parent.positionX + 0.45 * std::cos(parent.directionRadians + 0.45);
-			child.positionY = parent.positionY + 0.45 * std::sin(parent.directionRadians + 0.45);
-			_setBacteriumPosition(child, child.positionX, child.positionY);
-			child.directionRadians = parent.directionRadians + 0.3;
-			child.volume = std::max(0.65, parent.volume * 0.5);
-			child.size = std::max(0.55, std::sqrt(std::max(0.1, child.volume)));
-			child.gfp = parent.gfp * 0.85;
-			child.rfp = parent.rfp * 0.85;
-			child.yfp = parent.yfp * 0.85;
-			child.cfp = parent.cfp * 0.85;
-			child.speed = parent.speed;
-			child.tickCount = 0;
-			child.justDivided = true;
-			child.daughter = true;
-			_bacteria[parentIndex].volume = std::max(0.65, parent.volume * 0.5);
-			_bacteria[parentIndex].size = std::max(0.55, std::sqrt(std::max(0.1, _bacteria[parentIndex].volume)));
-			_bacteria[parentIndex].justDivided = true;
-			_bacteria[parentIndex].daughter = false;
+			// unlike aggregate divide(), which divides every current bacterium.
+			if (!_divideBacterium(bacteriumId)) {
+				result.succeeded = false;
+				result.errorMessage = "BacteriaColony cannot divide one bacterium more than once per colony step. ";
+				return;
+			}
 			result.populationMutations.push_back(mutation);
 			continue;
 		}
@@ -2068,8 +2569,8 @@ void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int genera
 	bacterium.birthTime = getColonyTime();
 	bacterium.lastUpdateTime = getColonyTime();
 	bacterium.lastDivisionTime = 0.0;
-	bacterium.positionX = -1.0;
-	bacterium.positionY = -1.0;
+	bacterium.positionX = 0.0;
+	bacterium.positionY = 0.0;
 	bacterium.directionRadians = 0.0;
 	bacterium.volume = 1.0;
 	bacterium.size = 1.0;
@@ -2078,6 +2579,7 @@ void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int genera
 	bacterium.speed = 0.15;
 	bacterium.tickCount = 0;
 	bacterium.hasExplicitGridPosition = false;
+	bacterium.positionInitialized = false;
 	bacterium.justDivided = false;
 	bacterium.daughter = false;
 	bacterium.alive = true;
@@ -2094,11 +2596,10 @@ void BacteriaColony::_appendBacterium(const GroSeedDefinition& seedDefinition) {
 
 	BacteriumState& bacterium = _bacteria.back();
 	bacterium.programArguments = seedDefinition.programArguments;
-	bacterium.gridX = seedDefinition.gridX;
-	bacterium.gridY = seedDefinition.gridY;
+	bacterium.positionX = seedDefinition.positionX;
+	bacterium.positionY = seedDefinition.positionY;
 	bacterium.hasExplicitGridPosition = true;
-	bacterium.positionX = static_cast<double>(seedDefinition.gridX);
-	bacterium.positionY = static_cast<double>(seedDefinition.gridY);
+	_setBacteriumPosition(bacterium, bacterium.positionX, bacterium.positionY);
 	bacterium.size = std::max(0.9, bacterium.size);
 	bacterium.volume = std::max(1.0, bacterium.volume);
 	if (bacterium.programArguments.size() == 1) {
@@ -2151,7 +2652,15 @@ void BacteriaColony::_applyBacteriumGrowth(BacteriumState& bacterium) const {
 	double growthRate = 0.045;
 	const auto growthRateIt = bacterium.runtimeVariables.find("ecoli_growth_rate");
 	if (growthRateIt != bacterium.runtimeVariables.end()) {
+		// An explicit zero disables the automatic growth fallback. Do not let
+		// generation/signal adjustments or the minimum delta create volume.
+		if (!std::isfinite(growthRateIt->second) || growthRateIt->second <= 0.0) {
+			return;
+		}
 		growthRate = std::max(0.0, growthRateIt->second);
+	}
+	if (!std::isfinite(getSimulationStep()) || getSimulationStep() <= 0.0) {
+		return;
 	}
 	growthRate += 0.004 * static_cast<double>(bacterium.generation);
 	const double localSignal = _signalValueAt(bacterium.gridX, bacterium.gridY);
@@ -2161,7 +2670,6 @@ void BacteriaColony::_applyBacteriumGrowth(BacteriumState& bacterium) const {
 	const double deltaVolume = std::clamp(growthRate * stepScale, 0.01, 0.35);
 	bacterium.volume = std::max(0.1, bacterium.volume + deltaVolume);
 	bacterium.size = std::max(0.65, std::sqrt(std::max(0.1, bacterium.volume)));
-	bacterium.speed = std::max(0.03, bacterium.speed + 0.015 * deltaVolume);
 
 	bacterium.runtimeVariables["ecoli_growth_rate"] = growthRate;
 	bacterium.runtimeVariables["volume"] = bacterium.volume;
@@ -2187,10 +2695,11 @@ void BacteriaColony::_assignBacteriumGridPosition(BacteriumState& bacterium, std
 		bacterium.positionY = 0.0;
 		return;
 	}
-	if (!std::isfinite(bacterium.positionX) || !std::isfinite(bacterium.positionY) ||
-	    bacterium.positionX < 0.0 || bacterium.positionY < 0.0) {
-		bacterium.positionX = static_cast<double>(index % getGridWidth());
-		bacterium.positionY = static_cast<double>((index / getGridWidth()) % getGridHeight());
+	if (!bacterium.positionInitialized) {
+		const unsigned int cellX = static_cast<unsigned int>(index % getGridWidth());
+		const unsigned int cellY = static_cast<unsigned int>((index / getGridWidth()) % getGridHeight());
+		bacterium.positionX = toCenteredGridCoordinate(cellX, getGridWidth());
+		bacterium.positionY = toCenteredGridCoordinate(cellY, getGridHeight());
 	}
 	_setBacteriumPosition(bacterium, bacterium.positionX, bacterium.positionY);
 }
@@ -2199,8 +2708,8 @@ void BacteriaColony::_initializeBacteriumPhenotype(BacteriumState& bacterium, st
 	constexpr double kTwoPi = 6.28318530717958647692;
 	if (!bacterium.hasExplicitGridPosition) {
 		if (getGridWidth() > 0 && getGridHeight() > 0) {
-			bacterium.positionX = static_cast<double>(bacterium.gridX);
-			bacterium.positionY = static_cast<double>(bacterium.gridY);
+			bacterium.positionX = toCenteredGridCoordinate(bacterium.gridX, getGridWidth());
+			bacterium.positionY = toCenteredGridCoordinate(bacterium.gridY, getGridHeight());
 		} else {
 			bacterium.positionX = 0.0;
 			bacterium.positionY = 0.0;
@@ -2214,7 +2723,7 @@ void BacteriaColony::_initializeBacteriumPhenotype(BacteriumState& bacterium, st
 	bacterium.rfp = std::max(0.0, bacterium.rfp);
 	bacterium.yfp = std::max(0.0, bacterium.yfp);
 	bacterium.cfp = std::max(0.0, bacterium.cfp);
-	bacterium.speed = std::max(0.05, bacterium.speed + 0.01 * generationFactor);
+	bacterium.speed = std::max(0.0, bacterium.speed + 0.01 * generationFactor);
 	if (!bacterium.hasExplicitGridPosition) {
 		const double baseDirection = 0.85 * static_cast<double>(index + 1) + 0.41 * generationFactor + 0.19 * static_cast<double>(bacterium.id);
 		bacterium.directionRadians = std::fmod(baseDirection, kTwoPi);
@@ -2227,18 +2736,19 @@ void BacteriaColony::_setBacteriumPosition(BacteriumState& bacterium, double x, 
 	const double clampedY = _clampPositionY(y);
 	bacterium.positionX = clampedX;
 	bacterium.positionY = clampedY;
-	bacterium.gridX = static_cast<unsigned int>(std::llround(clampedX));
-	bacterium.gridY = static_cast<unsigned int>(std::llround(clampedY));
+	bacterium.positionInitialized = true;
+	bacterium.gridX = toCenteredGridIndex(clampedX, getGridWidth());
+	bacterium.gridY = toCenteredGridIndex(clampedY, getGridHeight());
 }
 
 double BacteriaColony::_clampPositionX(double value) const {
-	const double maxX = getGridWidth() > 0 ? static_cast<double>(getGridWidth() - 1) : 0.0;
-	return std::clamp(value, 0.0, maxX);
+	const double maximum = 0.5 * static_cast<double>(getGridWidth() > 0 ? getGridWidth() - 1 : 0);
+	return std::clamp(std::isfinite(value) ? value : 0.0, -maximum, maximum);
 }
 
 double BacteriaColony::_clampPositionY(double value) const {
-	const double maxY = getGridHeight() > 0 ? static_cast<double>(getGridHeight() - 1) : 0.0;
-	return std::clamp(value, 0.0, maxY);
+	const double maximum = 0.5 * static_cast<double>(getGridHeight() > 0 ? getGridHeight() - 1 : 0);
+	return std::clamp(std::isfinite(value) ? value : 0.0, -maximum, maximum);
 }
 
 void BacteriaColony::_syncBacteriumSpatialState(BacteriumState& bacterium, const GroProgramRuntimeState& runtimeState) const {
@@ -2308,24 +2818,29 @@ void BacteriaColony::_updateBacteriumSpatialMotion(BacteriumState& bacterium) co
 	if (!std::isfinite(direction)) {
 		direction = 0.0;
 	}
-	double speed = bacterium.speed;
-	if (!std::isfinite(speed) || speed <= 0.0) {
-		speed = 0.08 + 0.01 * static_cast<double>(bacterium.generation);
-	}
-	const double stepScale = std::max(0.35, getSimulationStep() * 2.5);
-	double nextX = bacterium.positionX + std::cos(direction) * speed * stepScale;
-	double nextY = bacterium.positionY + std::sin(direction) * speed * stepScale;
+	const double speed = std::isfinite(bacterium.speed) ? std::max(0.0, bacterium.speed) : 0.0;
+	const double dt = std::isfinite(getSimulationStep()) ? std::max(0.0, getSimulationStep()) : 0.0;
+	double nextX = bacterium.positionX + std::cos(direction) * speed * dt;
+	double nextY = bacterium.positionY + std::sin(direction) * speed * dt;
 
-	const double maxX = getGridWidth() > 0 ? static_cast<double>(getGridWidth() - 1) : 0.0;
-	const double maxY = getGridHeight() > 0 ? static_cast<double>(getGridHeight() - 1) : 0.0;
+	const double maxX = 0.5 * static_cast<double>(getGridWidth() > 0 ? getGridWidth() - 1 : 0);
+	const double maxY = 0.5 * static_cast<double>(getGridHeight() > 0 ? getGridHeight() - 1 : 0);
+	const double minX = -maxX;
+	const double minY = -maxY;
 	bool reflected = false;
-	if (nextX < 0.0 || nextX > maxX) {
-		nextX = std::clamp(nextX, 0.0, maxX);
+	if (maxX <= 0.0) {
+		nextX = 0.0;
+	} else if (nextX < minX || nextX > maxX) {
+		nextX = nextX < minX ? minX + (minX - nextX) : maxX - (nextX - maxX);
+		nextX = std::clamp(nextX, minX, maxX);
 		direction = kPi - direction;
 		reflected = true;
 	}
-	if (nextY < 0.0 || nextY > maxY) {
-		nextY = std::clamp(nextY, 0.0, maxY);
+	if (maxY <= 0.0) {
+		nextY = 0.0;
+	} else if (nextY < minY || nextY > maxY) {
+		nextY = nextY < minY ? minY + (minY - nextY) : maxY - (nextY - maxY);
+		nextY = std::clamp(nextY, minY, maxY);
 		direction = -direction;
 		reflected = true;
 	}
@@ -2333,6 +2848,49 @@ void BacteriaColony::_updateBacteriumSpatialMotion(BacteriumState& bacterium) co
 		bacterium.directionRadians = direction;
 	}
 	_setBacteriumPosition(bacterium, nextX, nextY);
+}
+
+void BacteriaColony::_separateBacteriaBodies() {
+	// One bounded, deterministic pair pass reduces excessive overlap. It is
+	// geometric correction only: isolated bacteria are never moved here.
+	for (std::size_t i = 0; i < _bacteria.size(); ++i) {
+		BacteriumState& first = _bacteria[i];
+		if (!first.alive) {
+			continue;
+		}
+		for (std::size_t j = i + 1; j < _bacteria.size(); ++j) {
+			BacteriumState& second = _bacteria[j];
+			if (!second.alive) {
+				continue;
+			}
+			double dx = second.positionX - first.positionX;
+			double dy = second.positionY - first.positionY;
+			double distance = std::hypot(dx, dy);
+			if (distance < 1e-9) {
+				dx = first.id < second.id ? 1.0 : -1.0;
+				dy = 0.0;
+				distance = 1.0;
+			}
+			const double nx = dx / distance;
+			const double ny = dy / distance;
+			auto support = [nx, ny](const BacteriumState& cell) {
+				const double halfLength = 0.5 * std::max(0.0, cell.size);
+				const double halfWidth = 0.15 * halfLength;
+				const double ux = std::cos(cell.directionRadians);
+				const double uy = std::sin(cell.directionRadians);
+				const double along = std::abs(nx * ux + ny * uy);
+				const double across = std::abs(-nx * uy + ny * ux);
+				return halfLength * along + halfWidth * across;
+			};
+			const double overlap = support(first) + support(second) - distance;
+			if (overlap <= 0.0) {
+				continue;
+			}
+			const double correction = std::min(0.1, 0.1 * overlap);
+			_setBacteriumPosition(first, first.positionX - nx * correction, first.positionY - ny * correction);
+			_setBacteriumPosition(second, second.positionX + nx * correction, second.positionY + ny * correction);
+		}
+	}
 }
 
 void BacteriaColony::_bindProgramArguments(GroProgramRuntimeState& runtimeState,
