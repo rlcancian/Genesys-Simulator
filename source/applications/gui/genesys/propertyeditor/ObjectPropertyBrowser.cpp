@@ -164,18 +164,15 @@ protected:
             if (QLineEdit* spinLineEdit = spinBox->findChild<QLineEdit*>()) {
                 spinLineEdit->installEventFilter(this);
             }
-            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [this, callback = _commitCallback, property, spinBox]() {
+            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, this, [this, callback = _commitCallback, property, spinBox]() {
                 const auto stateIt = _editorStates.find(spinBox);
                 if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
                     stateIt.value().suppressCommit = false;
                     return;
                 }
-                // QAbstractSpinBox may emit editingFinished before the concrete spin box
-                // publishes its final valueChanged signal. Run this commit callback on the
-                // next event-loop turn so the QVariant comes from the parsed numeric value,
-                // not from the previous value or from locale-formatted line-edit text.
+                spinBox->interpretText();
                 callback(property, spinBox->property("value"));
-            }, Qt::QueuedConnection);
+            });
             return editor;
         }
 
@@ -458,8 +455,6 @@ void ObjectPropertyBrowser::_clearAll() {
     _enumNames.clear();
     _objectListActions.clear();
     _modelObjectActions.clear();
-    _pendingCommittedProperties.clear();
-    _pendingCommittedValues.clear();
 }
 
 void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
@@ -497,8 +492,7 @@ bool ObjectPropertyBrowser::isCommitPipelineBusy() const {
         || _isNotifyingModelChange
         || _pendingRebuild
         || _isDeferredRebuildScheduled
-        || _isDeferredModelChangedScheduled
-        || !_pendingCommittedProperties.isEmpty();
+        || _isDeferredModelChangedScheduled;
 }
 
 void ObjectPropertyBrowser::setActiveObject(
@@ -2851,30 +2845,18 @@ void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property, const
     }
 
     const QVariant pendingValue = committedValue.isValid() ? committedValue : _variantManager->value(property);
-    _pendingCommittedProperties.insert(property);
-    _pendingCommittedValues.insert(property, pendingValue);
     qInfo() << "[PropertyEditor] editor commit received for" << property->propertyName();
-    QMetaObject::invokeMethod(this, [this, property]() {
-        if (!_pendingCommittedProperties.contains(property)) {
-            return;
-        }
-        if (!_hasValidActiveBindingContext(property)) {
-            qWarning() << "[PropertyEditor] queued commit aborted due to invalid binding context";
-            _pendingCommittedProperties.remove(property);
-            _pendingCommittedValues.remove(property);
-            return;
-        }
-        const QVariant committedValue = _pendingCommittedValues.value(property, _variantManager->value(property));
-        qInfo() << "[PropertyEditor] queued commit apply for" << property->propertyName();
-        _pendingCommittedProperties.remove(property);
-        _pendingCommittedValues.remove(property);
-        auto bindingIt = _bindings.find(property);
-        if (bindingIt != _bindings.end() && bindingIt.value().kind == BindingKind::GraphicsVariant) {
-            _applyGraphicsVariantChange(property, committedValue, true);
-            return;
-        }
-        _applyVariantChange(property, committedValue, true);
-    }, Qt::QueuedConnection);
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] editor commit ignored because active binding context became invalid";
+        return;
+    }
+
+    auto bindingIt = _bindings.find(property);
+    if (bindingIt != _bindings.end() && bindingIt.value().kind == BindingKind::GraphicsVariant) {
+        _applyGraphicsVariantChange(property, pendingValue, true);
+        return;
+    }
+    _applyVariantChange(property, pendingValue, true);
 }
 
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
@@ -2900,42 +2882,23 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
 
     const Binding& binding = it.value();
     const bool requiresCommit = _requiresCommitConfirmation(binding);
-    const bool committed = _pendingCommittedProperties.contains(property);
 
     if (binding.kind == BindingKind::GraphicsVariant) {
-        if (requiresCommit && !committed) {
+        if (requiresCommit) {
             qInfo() << "[PropertyEditor] graphics valueChanged treated as transient for" << property->propertyName();
             return;
         }
-        if (committed) {
-            const QVariant pendingValue = _pendingCommittedValues.value(property);
-            if (pendingValue.isValid() && pendingValue != value) {
-                return;
-            }
-            _pendingCommittedProperties.remove(property);
-            _pendingCommittedValues.remove(property);
-        }
-        _applyGraphicsVariantChange(property, value, committed || !requiresCommit);
+        _applyGraphicsVariantChange(property, value, true);
         qInfo() << "[PropertyEditor] valueChanged exit";
         return;
     }
 
-    if (requiresCommit && !committed) {
+    if (requiresCommit) {
         qInfo() << "[PropertyEditor] valueChanged treated as transient for" << property->propertyName();
         return;
     }
 
-    if (committed) {
-        const QVariant pendingValue = _pendingCommittedValues.value(property);
-        if (pendingValue.isValid() && pendingValue != value) {
-            qInfo() << "[PropertyEditor] valueChanged waiting for committed value for" << property->propertyName();
-            return;
-        }
-        _pendingCommittedProperties.remove(property);
-        _pendingCommittedValues.remove(property);
-    }
-
-    _applyVariantChange(property, value, committed || !requiresCommit);
+    _applyVariantChange(property, value, true);
     qInfo() << "[PropertyEditor] valueChanged exit";
 }
 
