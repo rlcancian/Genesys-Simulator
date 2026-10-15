@@ -3,6 +3,8 @@
 #include "mainwindow.h"
 #include "actions/AddUndoCommand.h"
 #include "actions/DeleteUndoCommand.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
+#include "graphicals/ModelGraphicsView.h"
 #include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
@@ -25,6 +27,7 @@
 #include <QDoubleSpinBox>
 #include <QEventLoop>
 #include <QFile>
+#include <QFocusEvent>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QLocale>
@@ -79,7 +82,7 @@ public:
         : ModelDataDefinition(model, "GenericDoubleDataDefinition", "GenericDouble_PropertyEditor") {
         auto* doubleControl = new SimulationControlDouble(
             [this]() { return _value; },
-            [this](double value) { _value = value; },
+            [this](double value) { _value = value; ++_valueSetCount; },
             getClassname(),
             getName(),
             "Value",
@@ -105,9 +108,14 @@ public:
         return _enabled;
     }
 
+    int valueSetCount() const {
+        return _valueSetCount;
+    }
+
 private:
     double _value = 0.0;
     bool _enabled = false;
+    int _valueSetCount = 0;
 };
 
 } // namespace
@@ -197,8 +205,36 @@ TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedV
 
     EXPECT_NEAR(object->value(), 1.25, 1e-12);
     EXPECT_EQ(modelChangedCount, countBefore + 1);
+    EXPECT_EQ(object->valueSetCount(), 1);
     drainGuiEvents();
     EXPECT_NEAR(object->value(), 1.25, 1e-12);
+}
+
+TEST(PropertyEditorDoubleCommit, BacteriaSignalGridSetterAndSimulationControlPreserveDouble) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_KernelContract");
+    ASSERT_NE(grid, nullptr);
+
+    grid->setDiffusionRate(0.37);
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.37);
+
+    SimulationControl* diffusionControl = nullptr;
+    for (SimulationControl* control : *grid->getSimulationControls()->list()) {
+        if (control != nullptr && control->getName() == "DiffusionRate") {
+            diffusionControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(diffusionControl, nullptr);
+    diffusionControl->setValue("0.18");
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.18);
 }
 
 TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleControlsOnce) {
@@ -269,6 +305,189 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleCont
                 1.0, 1e-12);
     EXPECT_NEAR(commitGridDouble("DecayRate", "0,25", [&]() { return grid->getDecayRate(); }),
                 0.25, 1e-12);
+}
+
+TEST(PropertyEditorDoubleCommit, BacteriaSignalGridDiffusionRateCommitsOnFocusOut) {
+    ScopedDefaultLocale locale(QLocale::c());
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_FocusOut");
+    ASSERT_NE(grid, nullptr);
+    grid->setDiffusionRate(0.0);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    int modelChangedCount = 0;
+    bindEditableKernelObject(browser, grid, &modelChangedCount);
+
+    QDoubleSpinBox* diffusionEditor = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(diffusionEditor, nullptr);
+    EXPECT_EQ(diffusionEditor->property("value").metaType().id(), QMetaType::Double);
+    int valueChangedCount = 0;
+    int editingFinishedCount = 0;
+    QObject::connect(diffusionEditor, &QDoubleSpinBox::valueChanged,
+                     [&valueChangedCount](double) { ++valueChangedCount; });
+    QObject::connect(diffusionEditor, &QAbstractSpinBox::editingFinished,
+                     [&editingFinishedCount]() { ++editingFinishedCount; });
+    const int modelChangedBefore = modelChangedCount;
+    QLineEdit* diffusionLineEdit = diffusionEditor->findChild<QLineEdit*>();
+    ASSERT_NE(diffusionLineEdit, nullptr);
+    diffusionLineEdit->setFocus();
+    diffusionLineEdit->selectAll();
+    diffusionLineEdit->setText(QStringLiteral("0.37"));
+
+    QFocusEvent focusOut(QEvent::FocusOut);
+    QApplication::sendEvent(diffusionLineEdit, &focusOut);
+    browser.clear();
+    drainGuiEvents();
+
+    EXPECT_GE(valueChangedCount, 1);
+    EXPECT_GE(editingFinishedCount, 1);
+    EXPECT_EQ(modelChangedCount, modelChangedBefore + 1);
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.37);
+}
+
+TEST(PropertyEditorDoubleCommit, BacteriaSignalGridSpinButtonsAndEscapeUseKernelValue) {
+    ScopedDefaultLocale locale(QLocale::c());
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_SpinButtons");
+    ASSERT_NE(grid, nullptr);
+    grid->setDiffusionRate(0.0);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, grid);
+
+    QDoubleSpinBox* spinBox = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(spinBox, nullptr);
+    spinBox->stepUp();
+    QLineEdit* lineEdit = spinBox->findChild<QLineEdit*>();
+    ASSERT_NE(lineEdit, nullptr);
+    QKeyEvent press(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &press);
+    QKeyEvent release(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &release);
+    drainGuiEvents();
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 1.0);
+
+    spinBox = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(spinBox, nullptr);
+    spinBox->stepDown();
+    lineEdit = spinBox->findChild<QLineEdit*>();
+    ASSERT_NE(lineEdit, nullptr);
+    QApplication::sendEvent(lineEdit, &press);
+    QApplication::sendEvent(lineEdit, &release);
+    drainGuiEvents();
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.0);
+
+    spinBox = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(spinBox, nullptr);
+    spinBox->setValue(0.18);
+    lineEdit = spinBox->findChild<QLineEdit*>();
+    ASSERT_NE(lineEdit, nullptr);
+    QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &escape);
+    drainGuiEvents();
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.0);
+}
+
+TEST(PropertyEditorDoubleCommit, GraphicalDataDefinitionDiffusionRateCommitsOnFocusOut) {
+    ScopedDefaultLocale locale(QLocale::c());
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_GraphicalFocusOut");
+    ASSERT_NE(grid, nullptr);
+    grid->setDiffusionRate(0.0);
+    Plugin* plugin = manager->find(Util::TypeOf<BacteriaSignalGrid>());
+    ASSERT_NE(plugin, nullptr);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    auto* graphicalGrid = new GraphicalModelDataDefinition(
+        plugin, grid, QPointF(100.0, 100.0), QColor(Qt::blue));
+    graphicalGrid->setEditableInPropertyEditor(true);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    QSet<QString> editableObjects;
+    editableObjects.insert(QString::fromStdString(grid->getName()));
+    browser.setActiveObject(graphicalGrid, grid, {}, editableObjects, nullptr, nullptr, nullptr, nullptr);
+    drainGuiEvents();
+
+    QDoubleSpinBox* diffusionEditor = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(diffusionEditor, nullptr);
+    QLineEdit* diffusionLineEdit = diffusionEditor->findChild<QLineEdit*>();
+    ASSERT_NE(diffusionLineEdit, nullptr);
+    diffusionLineEdit->setFocus();
+    diffusionLineEdit->selectAll();
+    diffusionLineEdit->setText(QStringLiteral("0.37"));
+
+    QtBrowserItem* decayRate = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("DecayRate"));
+    ASSERT_NE(decayRate, nullptr);
+    browser.setCurrentItem(decayRate);
+    browser.editItem(decayRate);
+    drainGuiEvents();
+
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.37);
+}
+
+TEST(PropertyEditorDoubleCommit, CommitIsNotDroppedWhenBindingIsCleared) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_QueuedCommit");
+    ASSERT_NE(grid, nullptr);
+    grid->setDiffusionRate(0.0);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, grid);
+
+    QtBrowserItem* item = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("DiffusionRate"));
+    ASSERT_NE(item, nullptr);
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &browser,
+        "onVariantEditorCommitted",
+        Qt::DirectConnection,
+        Q_ARG(QtProperty*, item->property()),
+        Q_ARG(QVariant, QVariant(0.37))));
+
+    browser.clearCurrentlyConnectedObject();
+    drainGuiEvents();
+
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.37);
 }
 
 TEST(PropertyEditorDoubleCommit, IntegerStringAndBoolEditorsRemainFunctional) {
