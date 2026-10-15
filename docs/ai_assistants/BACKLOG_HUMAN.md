@@ -112,6 +112,29 @@ A decision recorded here is not implemented automatically unless a corresponding
 - Recommendation: define an ordered platform-aware configuration search with explicit static fallback and diagnostics, avoiding repository-relative assumptions in installed builds.
 - Decision unlocks: focused shell/application deployment tests and packaging integration.
 
+### HUM-ARCH-003 — Explicit AOP-lite aspect pipeline
+
+- Priority: `P2`
+- Status: `decision-recorded`
+- Decision: future cross-cutting concerns in GenESyS should begin with an
+  explicit C++23 `AspectPipeline` around selected service boundaries, rather
+  than immediate AspectC++ weaving or Clang source transformation.
+- Scope: provide reusable hooks for logging, timing/metrics, audit context and
+  carefully bounded cache use cases while preserving kernel, parser, plugin,
+  GUI, persistence and scientific semantics.
+- Non-goals: no automatic weaving, compiler fork, plugin ABI change, broad
+  logging replacement or cache of scientific state without a proven
+  invalidation contract.
+- Plan: [`reference/AOP_LITE_ASPECT_PIPELINE_PLAN.md`](reference/AOP_LITE_ASPECT_PIPELINE_PLAN.md).
+- Decision source: maintainer instruction recorded on 2026-10-15 in the
+  current development conversation.
+- Implementation status: not started; a bounded executable task must be added
+  to `BACKLOG_AUTONOMOUS.md` before implementation.
+- Decision unlocks: contract design and a focused first implementation task for
+  the explicit pipeline.
+- Must not be combined with: AspectC++ adoption, Clang rewriting, dynamic
+  plugin migration, persistence redesign or scientific algorithm changes.
+
 ## 4. Security and deployment decisions
 
 ### HUM-SEC-001 — Worker bind-address contract
