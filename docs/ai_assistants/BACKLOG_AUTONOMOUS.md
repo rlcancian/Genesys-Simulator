@@ -136,7 +136,7 @@ This is the only approved source for work an AI agent may execute without a new 
 ### AUTO-PKG-002 — Portable Linux user-space installer
 
 - Priority: `P1`
-- Status: `ready`
+- Status: `running`
 - Environment: `local`
 - Authorization: `HUM-PKG-002`, explicit maintainer instruction dated
   2026-10-15; authorization is limited to this local implementation and
