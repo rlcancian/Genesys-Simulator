@@ -26,10 +26,10 @@ versioned.
 
 ## Final artifact
 
-- Archive: `/home/rafaelcancian/Repositories/Genesys-Simulator/packaging/installer/dist/genesys-2026.10.15.2351-linux-x86_64-portable.tar.gz`
-- Size: 71946540 bytes
-- SHA-256: `7034b9caf4d394c3833e4f33558f4b85d85d58d862d575165db4aa7291fb007e`
-- Build commit embedded in the archive: `14016456ab5b2d800f964f4493018e23bbd6cf68`
+- Archive: `/home/rafaelcancian/Repositories/Genesys-Simulator/packaging/installer/dist/genesys-2026.10.15.2352-linux-x86_64-portable.tar.gz`
+- Size: 71946710 bytes
+- SHA-256: `8a4f70937779098ceb6b219b82b885d6eb90b97e2062f157ccf692a992699df7`
+- Build commit embedded in the archive: `8a46d056e881b94d8371dbdf6f5f9b57209e0551`
 
 The package is ready for controlled review and laboratory staging, not for a
 claim of universal Linux compatibility or release publication.
