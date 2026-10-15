@@ -133,6 +133,64 @@ This is the only approved source for work an AI agent may execute without a new 
   - updated `packaging/linux/README.md` and the Developer/User manual chapters (`chapter_packaging_and_ci.tex`, `chapter_user_installation.tex`) to document the current five-package split and the Launcher/system-fallback/per-user-runtime contract; regenerated `docs/ManualGenESyS.pdf`.
 - Non-goals honored: no GitHub Release, PPA/APT repository, package signing, runtime signing key, or promotion beyond `WorkInProgress`.
 
+### AUTO-PKG-002 — Portable Linux user-space installer
+
+- Priority: `P1`
+- Status: `ready`
+- Environment: `local`
+- Authorization: `HUM-PKG-002`, explicit maintainer instruction dated
+  2026-10-15; authorization is limited to this local implementation and
+  validation task.
+- Branch: `WiP20261015/portable-installer`
+- Base: current `WorkInProgress` HEAD `19a0100519c7b7bfad809095da13f85bfc976627`.
+- Dependencies: current Launcher/Dispatcher and Debian packaging contracts;
+  no unresolved dependency blocks the approved local scope.
+- Scope:
+  - implement `packaging/installer/` as the reproducible build, staging,
+    installation, uninstallation and test interface;
+  - build the mandatory Launcher, Dispatcher, main GUI, Shell and Worker,
+    plus additional independently implemented Linux GUIs when they compile
+    and can be packaged without weakening the mandatory scope;
+  - package required resources, Qt platform plugins and redistributable
+    libraries after real ELF/dependency inspection;
+  - generate versioned provenance metadata and a single offline `.tar.gz` plus
+    SHA-256 checksum under the ignored `packaging/installer/dist/` directory;
+  - validate user-space installation, relocation, path-with-spaces,
+    reinstall, local upgrade/rollback fixtures, execution, uninstall and
+    security failure cases in isolated temporary homes;
+  - document supported baseline, limitations, MCP status, Worker behavior,
+    remote-update policy, dependency inventory and UFSC laboratory procedure.
+- Non-goals:
+  - no Debian package replacement or modification of its public contract;
+  - no AppImage, Flatpak, container or destination-side compilation;
+  - no runtime signing key generation, remote update enablement or release
+    publication;
+  - no dynamic-plugin migration, `autoloadplugins.txt` architecture decision,
+    Worker security redesign, MCP server implementation, scientific algorithm
+    changes or broad Launcher rewrite;
+  - no merge, stable-branch promotion, hosted release or external
+    distribution.
+- Acceptance criteria:
+  - build scripts produce the complete mandatory application set or stop with
+    an explicit evidence-backed exclusion and fail the completeness gate;
+  - the archive is offline, relocatable, integrity-checkable and contains no
+    build-tree absolute paths or secrets;
+  - install and uninstall run as a non-root user, are idempotent, preserve
+    user models/results, reject unsafe/corrupt/non-owned inputs and retain a
+    functional prior installation on failure;
+  - installed applications are tested from arbitrary working directories with
+    inherited `LD_LIBRARY_PATH`/`QT_PLUGIN_PATH` cleared, and GUI platform
+    plugin loading is evidenced rather than inferred from exit status;
+  - T01–T16 from the approved mission are individually classified with
+    commands, environment, logs and evidence; UNKNOWN is not converted to
+    PASS;
+  - affected user/developer documentation and governed evidence are
+    reconciled; no `done_confirmed` claim is made before review/integration.
+- Stop/escalation conditions: missing mandatory application, unresolved ELF
+  or Qt redistribution/licensing issue, unsafe installer behavior, required
+  security or architecture decision outside `HUM-PKG-002`, inability to
+  validate a mandatory gate, or regression outside this bounded scope.
+
 ### AUTO-ARENA-001 — Close Arena compatibility audit for Advanced Transfer and parser-variable scope
 
 - Priority: `P1`

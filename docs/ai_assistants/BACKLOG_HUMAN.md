@@ -225,6 +225,39 @@ A decision recorded here is not implemented automatically unless a corresponding
   decision must not be made by an AI agent, and no CI workflow should
   generate or embed a production private key.
 
+### HUM-PKG-002 — Portable Linux user-space installer authorization
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-10-15
+- Decision authority: GenESyS maintainer, by direct instruction in the active
+  implementation session.
+- Decision: authorize a bounded local implementation and validation task for a
+  Linux x86_64 Ubuntu 24.04-baseline portable distribution, delivered as one
+  offline `.tar.gz` that installs into a normal user's home directory without
+  root, `sudo`, system package installation, compilers, CMake, Ninja, Qt6 SDK,
+  or network access on the destination computer.
+- Approved boundaries:
+  - reuse the current Launcher/Dispatcher and XDG runtime contracts where
+    possible;
+  - keep remote updates disabled and signature verification fail-closed;
+  - preserve Debian packaging and static plugins;
+  - include the Worker only as a non-service application and do not redesign
+    its bind, authentication or TLS contracts;
+  - preserve the MCP compatibility diagnostic without claiming a functional
+    MCP server;
+  - permit a portable-distribution snapshot version derived from an explicit
+    numeric override or a deterministic local commit-based identifier, without
+    changing global project version policy;
+  - do not publish releases, promote stable branches, or alter unrelated
+    scientific, persistence, security or product behavior.
+- Decision unlocks: creation of `AUTO-PKG-002`, local installer/build/staging
+  scripts, minimal packaging/runtime adaptations, offline lifecycle tests,
+  dependency inspection and local artifact generation.
+- Related open decisions remain unaffected: `HUM-SEC-004`,
+  `HUM-ARCH-002`, `HUM-PROD-001` and `HUM-REL-001` are not resolved or
+  reinterpreted by this authorization.
+
 ### HUM-DOC-001 — Manual figure automation stack
 
 - Priority: `P2`
