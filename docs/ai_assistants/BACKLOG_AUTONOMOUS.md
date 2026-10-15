@@ -136,7 +136,7 @@ This is the only approved source for work an AI agent may execute without a new 
 ### AUTO-PKG-002 — Portable Linux user-space installer
 
 - Priority: `P1`
-- Status: `running`
+- Status: `blocked-review`
 - Environment: `local`
 - Authorization: `HUM-PKG-002`, explicit maintainer instruction dated
   2026-10-15; authorization is limited to this local implementation and
@@ -190,6 +190,12 @@ This is the only approved source for work an AI agent may execute without a new 
   or Qt redistribution/licensing issue, unsafe installer behavior, required
   security or architecture decision outside `HUM-PKG-002`, inability to
   validate a mandatory gate, or regression outside this bounded scope.
+- Local handoff: implementation, package generation and local evidence are
+  recorded in `packaging/installer/README.md` and
+  `packaging/installer/VALIDATION.md`; review is required before any
+  integration or `done_confirmed` state. The physical UFSC laboratory check,
+  complete Debian build validation and the pre-existing BacteriaColony test
+  failure remain explicitly unresolved.
 
 ### AUTO-ARENA-001 — Close Arena compatibility audit for Advanced Transfer and parser-variable scope
 

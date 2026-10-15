@@ -426,6 +426,16 @@ TEST(LauncherXdgPaths, HonorsAbsoluteXdgOverrides) {
     EXPECT_EQ(paths.appsRoot(), QStringLiteral("/data/genesys/apps"));
 }
 
+TEST(LauncherXdgPaths, PortableRootOverridesSystemLocations) {
+    QProcessEnvironment environment;
+    environment.insert(QStringLiteral("HOME"), QStringLiteral("/home/test"));
+    environment.insert(QStringLiteral("GENESYS_PORTABLE_ROOT"), QStringLiteral("/opt/genesys portable"));
+    const RuntimePaths paths(environment);
+    EXPECT_EQ(paths.systemRuntimeRoot(), QStringLiteral("/opt/genesys portable/libexec/genesys/system"));
+    EXPECT_EQ(paths.systemConfigPath(), QStringLiteral("/opt/genesys portable/etc/genesys/update.conf"));
+    EXPECT_EQ(paths.updateKeyringPath(), QStringLiteral("/opt/genesys portable/share/genesys/keys/update.gpg"));
+}
+
 TEST(LauncherXdgPaths, DisablesUserRuntimeWhenHomeIsAbsent) {
     QProcessEnvironment environment;
     const RuntimePaths paths(environment, QStringLiteral("/system"), QStringLiteral("/etc/test"), QStringLiteral("/keyring"));
