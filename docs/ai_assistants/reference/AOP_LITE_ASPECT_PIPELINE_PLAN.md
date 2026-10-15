@@ -19,6 +19,10 @@ implementation begins.
 The selected direction is an explicit AOP-lite design for cross-cutting
 concerns in C++23, rather than an immediate source weaver or compiler fork.
 
+The human-facing tutorial is included in the Developer Manual chapter
+`chapter_applications_tools_tests_evolution.tex`, under the section
+“Future cross-cutting concerns with an explicit AOP-lite pipeline”.
+
 ## 2. Objective
 
 Provide reusable interception points for concerns such as:

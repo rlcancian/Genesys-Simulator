@@ -125,6 +125,119 @@ Tools should not always be the first reading priority. In general, it makes more
 
 After that, reading the tools tends to be much more productive, because the developer can better see their role in the project ecosystem.
 
+\section{Future cross-cutting concerns with an explicit AOP-lite pipeline}
+\label{sec:cap10_aop_lite_pipeline}
+
+This section describes a planned extension, not an API available in the
+current GenESyS build. The corresponding architectural decision and phased
+plan are recorded in the reference file
+\texttt{AOP\_LITE\_ASPECT\_PIPELINE\_PLAN.md} under
+\texttt{docs/ai\_assistants/reference/}.
+
+The proposed approach is deliberately smaller than a compiler-based
+aspect-oriented system. Instead of weaving advice into every method, a
+developer explicitly places a pipeline around stable service boundaries. This
+is appropriate for concerns such as logging, timing, metrics and carefully
+bounded caching, while preserving the existing kernel and plugin contracts.
+
+\subsection{How the pipeline works}
+
+An invocation has five conceptual stages:
+
+\begin{enumerate}
+ \item create an \texttt{AspectContext} with the operation name, model or
+       object identity, correlation information and source location;
+ \item run the registered \textit{before} hooks;
+ \item execute the original operation;
+ \item run the \textit{after} hooks when it succeeds;
+ \item run error hooks and propagate the original failure when it does not.
+\end{enumerate}
+
+The pipeline is therefore an explicit chain around a callable:
+
+\begin{verbatim}
+context = AspectContext("ModelManager::loadModel", modelId)
+return pipeline.invoke(context, [&] {
+    return loadModelImpl(filename)
+})
+\end{verbatim}
+
+The names in this example are illustrative. The first implementation must
+define the actual contract, result/error semantics, ordering, reentrancy and
+thread-safety rules before application code is migrated.
+
+\subsection{Applying a logging aspect}
+
+A logging aspect receives the context before execution and records the result
+after execution. It should log operation name, duration, identifiers and
+outcome, but never passwords, provider tokens, model secrets or arbitrary
+payloads. A typical application boundary would look like this:
+
+\begin{verbatim}
+return pipeline.invoke(context, [&] {
+    return pluginManager->loadPlugin(pluginName);
+})
+\end{verbatim}
+
+The same aspect can then be reused for model loading, persistence and selected
+Worker operations without duplicating logging code in each service.
+
+\subsection{Applying a timing aspect}
+
+A timing aspect starts a monotonic clock in its \textit{before} hook and
+publishes the elapsed time in its \textit{after} or error hook. It should not
+change the operation result or catch an exception merely to hide it. The
+first useful metrics are usually:
+
+\begin{itemize}
+ \item number of calls;
+ \item successful and failed calls;
+ \item total and maximum duration;
+ \item optionally, a bounded histogram of durations.
+\end{itemize}
+
+Timing can first be applied to one kernel boundary and one application
+boundary. This keeps the performance cost and diagnostic output measurable.
+
+\subsection{Combining aspects}
+
+Aspects are registered in a documented order. For example:
+
+\begin{verbatim}
+logging -> timing -> original operation
+\end{verbatim}
+
+or, for an around-style implementation:
+
+\begin{verbatim}
+logging.before
+timing.before
+original operation
+timing.after
+logging.after
+\end{verbatim}
+
+The order must be deterministic. An aspect must not silently mutate another
+aspect's context or change scientific model state. Cache behavior requires a
+separate explicit policy for keys, invalidation, ownership and stale values;
+it must not be added merely because the pipeline can technically wrap a
+method.
+
+\subsection{How difficult is the first implementation?}
+
+The first logging-and-timing slice is expected to be relatively small if it
+remains explicit: one context type, one synchronous pipeline, two aspects and
+focused tests. A reasonable planning estimate is a few developer-days for a
+prototype and tests, followed by additional time for integration, review and
+instrumenting important boundaries. This is an estimate, not executed project
+evidence.
+
+The work becomes substantially more complex if the project requires automatic
+interception of arbitrary methods, cross-thread context propagation, a public
+plugin ABI, transparent Qt instrumentation or caching of scientific state.
+Those cases are stop gates for the initial AOP-lite plan and require a new
+architectural decision.
+
 \section{The Importance of Tests}
 \label{sec:cap10_importancia_dos_testes}
 
