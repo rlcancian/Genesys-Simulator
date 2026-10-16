@@ -50,7 +50,7 @@ public:
 	bool CheckProbe(std::string& errorMessage) { return _check(errorMessage); }
 	void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) { _saveInstance(fields, saveDefaultValues); }
 	bool LoadInstanceProbe(PersistenceRecord* fields) { return _loadInstance(fields); }
-	// Triggers the kernel's between-replications hook, which (with AutoSchedule)
+	// Triggers the kernel's between-replications hook, which (with stepsToSynchronize > 0)
 	// posts the first InternalEvent onto the model's future-event queue.
 	void InitBetweenReplicationsProbe() { _initBetweenReplications(); }
 };
@@ -306,7 +306,7 @@ TEST(DiffusionFieldPluginTest, StepsToSynchronizeAdvancesWithEventClock) {
 	field.setStopTime(0.15);
 	field.setStepSize(0.05);
 
-	// Between-replications init posts the first InternalEvent at t = start + step.
+	// Between-replications init posts the first InternalEvent at t = origin + step.
 	field.InitBetweenReplicationsProbe();
 	ASSERT_FALSE(model->getFutureEvents()->empty());
 	EXPECT_NEAR(model->getFutureEvents()->front()->getTime(), 0.05, 1e-9);
@@ -323,4 +323,64 @@ TEST(DiffusionFieldPluginTest, StepsToSynchronizeAdvancesWithEventClock) {
 
 	EXPECT_GE(field.getCurrentTime(), 0.15);
 	EXPECT_EQ(field.getLastStatus(), "Completed");
+}
+
+TEST(DiffusionFieldPluginTest, SynchronizesAfterThreeStepsAndAtFinalPartialBatch) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DiffusionFieldProbe field(model, "DiffusionThreeStepSync");
+    field.setDimensions(1u);
+    field.setPointsPerDimension(11u);
+    field.setStepsToSynchronize(3u);
+    field.setStepSize(0.05);
+    field.setStopTime(0.25);
+
+    field.InitBetweenReplicationsProbe();
+    ASSERT_TRUE(field.isAwaitingSynchronization());
+    EXPECT_NEAR(field.getCurrentTime(), 0.15, 1e-9);
+    ASSERT_FALSE(model->getFutureEvents()->empty());
+    EXPECT_NEAR(model->getFutureEvents()->front()->getTime(), 0.15, 1e-9);
+
+    Event* first = model->getFutureEvents()->front();
+    model->getFutureEvents()->pop_front();
+    static_cast<InternalEvent*>(first)->dispatchEvent();
+    delete first;
+
+    ASSERT_TRUE(field.isAwaitingSynchronization());
+    EXPECT_NEAR(field.getCurrentTime(), 0.25, 1e-9);
+    ASSERT_FALSE(model->getFutureEvents()->empty());
+    EXPECT_NEAR(model->getFutureEvents()->front()->getTime(), 0.25, 1e-9);
+
+    Event* finalEvent = model->getFutureEvents()->front();
+    model->getFutureEvents()->pop_front();
+    static_cast<InternalEvent*>(finalEvent)->dispatchEvent();
+    delete finalEvent;
+
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+    EXPECT_FALSE(field.isAwaitingSynchronization());
+    EXPECT_EQ(field.getLastStatus(), "Completed");
+}
+
+TEST(DiffusionFieldPluginTest, ZeroStepsToSynchronizeRunsWithoutCalendarEvents) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DiffusionFieldProbe field(model, "DiffusionNoSync");
+    field.setDimensions(1u);
+    field.setPointsPerDimension(11u);
+    field.setStepsToSynchronize(0u);
+    field.setStepSize(0.05);
+    field.setStopTime(0.12);
+
+    field.InitBetweenReplicationsProbe();
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+
+    std::string errorMessage;
+    ASSERT_TRUE(field.simulate(errorMessage)) << errorMessage;
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+    EXPECT_NEAR(field.getCurrentTime(), 0.12, 1e-9);
+    EXPECT_EQ(field.getLastStatus(), "Completed");
 }
