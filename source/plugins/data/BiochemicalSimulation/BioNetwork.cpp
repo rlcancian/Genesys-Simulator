@@ -192,48 +192,13 @@ ModelDataDefinition* BioNetwork::NewInstance(Model* model, std::string name) {
 	return new BioNetwork(model, name);
 }
 
-BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<BioNetwork>(), name) {
-	auto* propStartTime = new SimulationControlDouble(
-			std::bind(&BioNetwork::getStartTime, this), std::bind(&BioNetwork::setStartTime, this, std::placeholders::_1),
-			Util::TypeOf<BioNetwork>(), getName(), "StartTime", "");
-	auto* propStopTime = new SimulationControlDouble(
-			std::bind(&BioNetwork::getStopTime, this), std::bind(&BioNetwork::setStopTime, this, std::placeholders::_1),
-			Util::TypeOf<BioNetwork>(), getName(), "StopTime", "");
-	auto* propStepSize = new SimulationControlDouble(
-			std::bind(&BioNetwork::getStepSize, this), std::bind(&BioNetwork::setStepSize, this, std::placeholders::_1),
-			Util::TypeOf<BioNetwork>(), getName(), "StepSize", "");
-	auto* propCurrentTime = new SimulationControlDouble(
-			std::bind(&BioNetwork::getCurrentTime, this), std::bind(&BioNetwork::setCurrentTime, this, std::placeholders::_1),
-			Util::TypeOf<BioNetwork>(), getName(), "CurrentTime", "");
-	auto* propAutoSchedule = new SimulationControlGeneric<bool>(
-			std::bind(&BioNetwork::getAutoSchedule, this), std::bind(&BioNetwork::setAutoSchedule, this, std::placeholders::_1),
-			Util::TypeOf<BioNetwork>(), getName(), "AutoSchedule", "");
-	auto* propLastStatus = new SimulationControlGeneric<std::string>(
-			std::bind(&BioNetwork::getLastStatus, this), std::bind(&BioNetwork::setLastStatus, this, std::placeholders::_1),
-			Util::TypeOf<BioNetwork>(), getName(), "LastStatus", "");
-	auto* propLastErrorMessage = new SimulationControlGeneric<std::string>(
-			std::bind(&BioNetwork::getLastErrorMessage, this), std::bind(&BioNetwork::setLastErrorMessage, this, std::placeholders::_1),
-			Util::TypeOf<BioNetwork>(), getName(), "LastErrorMessage", "");
+BioNetwork::BioNetwork(Model* model, std::string name) : ContinuousModelDataDefinition(model, Util::TypeOf<BioNetwork>(), name, 1.0, 0.1, 0u) {
 	auto* propLastResponsePayload = new SimulationControlGeneric<std::string>(
 			std::bind(&BioNetwork::getLastResponsePayload, this), std::bind(&BioNetwork::setLastResponsePayload, this, std::placeholders::_1),
 			Util::TypeOf<BioNetwork>(), getName(), "LastResponsePayload", "");
 
-	_parentModel->getControls()->insert(propStartTime);
-	_parentModel->getControls()->insert(propStopTime);
-	_parentModel->getControls()->insert(propStepSize);
-	_parentModel->getControls()->insert(propCurrentTime);
-	_parentModel->getControls()->insert(propAutoSchedule);
-	_parentModel->getControls()->insert(propLastStatus);
-	_parentModel->getControls()->insert(propLastErrorMessage);
 	_parentModel->getControls()->insert(propLastResponsePayload);
 
-	_addSimulationControl(propStartTime);
-	_addSimulationControl(propStopTime);
-	_addSimulationControl(propStepSize);
-	_addSimulationControl(propCurrentTime);
-	_addSimulationControl(propAutoSchedule);
-	_addSimulationControl(propLastStatus);
-	_addSimulationControl(propLastErrorMessage);
 	_addSimulationControl(propLastResponsePayload);
 }
 
@@ -256,11 +221,10 @@ ModelDataDefinition* BioNetwork::LoadInstance(Model* model, PersistenceRecord *f
 
 std::string BioNetwork::show() {
 	return ModelDataDefinition::show() +
-			",startTime=" + Util::StrTruncIfInt(std::to_string(_startTime)) +
 			",stopTime=" + Util::StrTruncIfInt(std::to_string(_stopTime)) +
 			",stepSize=" + Util::StrTruncIfInt(std::to_string(_stepSize)) +
 			",currentTime=" + Util::StrTruncIfInt(std::to_string(_currentTime)) +
-			",autoSchedule=" + std::to_string(_autoSchedule ? 1 : 0) +
+			",stepsToSynchronize=" + std::to_string(getStepsToSynchronize()) +
 			",species=" + std::to_string(_speciesNames.size()) +
 			",reactions=" + std::to_string(_reactionNames.size()) +
 			",lastStatus=\"" + _lastStatus + "\"" +
@@ -268,15 +232,10 @@ std::string BioNetwork::show() {
 }
 
 bool BioNetwork::_loadInstance(PersistenceRecord *fields) {
-	bool res = ModelDataDefinition::_loadInstance(fields);
+	bool res = ContinuousModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		_startTime = fields->loadField("startTime", DEFAULT.startTime);
-		_stopTime = fields->loadField("stopTime", DEFAULT.stopTime);
-		_stepSize = fields->loadField("stepSize", DEFAULT.stepSize);
-		_currentTime = fields->loadField("currentTime", _startTime);
-		_autoSchedule = fields->loadField("autoSchedule", DEFAULT.autoSchedule ? 1u : 0u) != 0u;
-		_lastStatus = fields->loadField("lastStatus", DEFAULT.lastStatus);
-		_lastErrorMessage = fields->loadField("lastErrorMessage", DEFAULT.lastErrorMessage);
+		setStepsToSynchronize(fields->loadField("stepsToSynchronize",
+			fields->loadField("autoSchedule", 0u) != 0u ? 1u : 0u));
 		_lastResponsePayload = fields->loadField("lastResponsePayload", DEFAULT.lastResponsePayload);
 		_speciesNames.clear();
 		const unsigned int speciesCount = fields->loadField("species", 0u);
@@ -293,14 +252,7 @@ bool BioNetwork::_loadInstance(PersistenceRecord *fields) {
 }
 
 void BioNetwork::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
-	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("startTime", _startTime, DEFAULT.startTime, saveDefaultValues);
-	fields->saveField("stopTime", _stopTime, DEFAULT.stopTime, saveDefaultValues);
-	fields->saveField("stepSize", _stepSize, DEFAULT.stepSize, saveDefaultValues);
-	fields->saveField("currentTime", _currentTime, DEFAULT.currentTime, saveDefaultValues);
-	fields->saveField("autoSchedule", _autoSchedule ? 1u : 0u, DEFAULT.autoSchedule ? 1u : 0u, saveDefaultValues);
-	fields->saveField("lastStatus", _lastStatus, DEFAULT.lastStatus, saveDefaultValues);
-	fields->saveField("lastErrorMessage", _lastErrorMessage, DEFAULT.lastErrorMessage, saveDefaultValues);
+	ContinuousModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("lastResponsePayload", _lastResponsePayload, DEFAULT.lastResponsePayload, saveDefaultValues);
 	fields->saveField("species", static_cast<unsigned int>(_speciesNames.size()), 0u, saveDefaultValues);
 	for (unsigned int i = 0; i < _speciesNames.size(); ++i) {
@@ -368,17 +320,9 @@ void BioNetwork::_createEditableDataDefinitions() {
 }
 
 bool BioNetwork::_check(std::string& errorMessage) {
-	bool resultAll = true;
+	bool resultAll = ContinuousModelDataDefinition::_check(errorMessage);
 	if (getName().empty()) {
 		errorMessage += "BioNetwork must define a non-empty name. ";
-		resultAll = false;
-	}
-	if (_stepSize <= 0.0) {
-		errorMessage += "BioNetwork \"" + getName() + "\" must define stepSize > 0. ";
-		resultAll = false;
-	}
-	if (_stopTime < _startTime) {
-		errorMessage += "BioNetwork \"" + getName() + "\" must define stopTime >= startTime. ";
 		resultAll = false;
 	}
 
@@ -389,59 +333,13 @@ bool BioNetwork::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioNetwork::_initBetweenReplications() {
-	_currentTime = _startTime;
-	_lastStatus = "Idle";
-	_lastErrorMessage.clear();
-	_lastResponsePayload.clear();
-	_lastSimulationResult.clear();
-	if (_autoSchedule) {
-		scheduleNextInternalEvent();
-	}
+void BioNetwork::initializeContinuousState() {
+    _lastResponsePayload.clear();
+    _lastSimulationResult.clear();
 }
 
-bool BioNetwork::simulate(std::string& errorMessage) {
-	return simulate(_startTime, _stopTime, _stepSize, errorMessage);
-}
-
-bool BioNetwork::simulate(double startTime, double stopTime, double stepSize, std::string& errorMessage) {
-	_startTime = startTime;
-	_stopTime = stopTime;
-	_stepSize = stepSize;
-	_currentTime = _startTime;
-	_lastStatus = "Running";
-	_lastErrorMessage.clear();
-	_lastResponsePayload.clear();
-	_lastSimulationResult.clear();
-
-	if (!_check(errorMessage)) {
-		_lastStatus = "Failed";
-		_lastErrorMessage = errorMessage;
-		return false;
-	}
-
-	while (_currentTime < _stopTime) {
-		if (!advanceOneStep(errorMessage)) {
-			return false;
-		}
-	}
-	_lastStatus = "Completed";
-	return true;
-}
-
-bool BioNetwork::advanceOneStep(std::string& errorMessage) {
-	errorMessage.clear();
-	if (_stepSize <= 0.0) {
-		_lastStatus = "Failed";
-		_lastErrorMessage = "BioNetwork \"" + getName() + "\" must define stepSize > 0.";
-		errorMessage = _lastErrorMessage;
-		return false;
-	}
-	if (_currentTime >= _stopTime) {
-		_lastStatus = "Completed";
-		return true;
-	}
-
+bool BioNetwork::evolveState(double currentTime, double dt, std::string& errorMessage) {
+    errorMessage.clear();
 	std::vector<BioSpecies*> species;
 	std::vector<BioReaction*> reactions;
 	if (!collectSpecies(species, errorMessage) || !collectReactions(reactions, errorMessage)) {
@@ -461,15 +359,14 @@ bool BioNetwork::advanceOneStep(std::string& errorMessage) {
 		return false;
 	}
 
-	const double dt = std::min(_stepSize, _stopTime - _currentTime);
-	std::vector<double> y0(species.size(), 0.0);
+		std::vector<double> y0(species.size(), 0.0);
 	std::vector<double> y1(species.size(), 0.0);
 	for (unsigned int i = 0; i < species.size(); ++i) {
 		y0[i] = species[i]->getAmount();
 	}
 
 	RungeKutta4OdeSolver solver;
-	if (!solver.advance(system, _currentTime, dt, y0.data(), y1.data())) {
+	if (!solver.advance(system, currentTime, dt, y0.data(), y1.data())) {
 		_lastStatus = "Failed";
 		_lastErrorMessage = "BioNetwork \"" + getName() + "\" failed to advance the ODE system.";
 		errorMessage = _lastErrorMessage;
@@ -481,11 +378,9 @@ bool BioNetwork::advanceOneStep(std::string& errorMessage) {
 			species[i]->setAmount(std::max(0.0, y1[i]));
 		}
 	}
-	_currentTime += dt;
-	_lastStatus = _currentTime >= _stopTime ? "Completed" : "Running";
 	appendSimulationResultSample(species);
 	updatePayload(species);
-	return true;
+    return true;
 }
 
 bool BioNetwork::collectSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const {
@@ -677,79 +572,6 @@ void BioNetwork::appendSimulationResultSample(const std::vector<BioSpecies*>& sp
 		amounts.push_back({bioSpecies->getName(), bioSpecies->getAmount()});
 	}
 	_lastSimulationResult.appendSample(_currentTime, amounts);
-}
-
-void BioNetwork::handleInternalEvent(void*) {
-	std::string errorMessage;
-	if (advanceOneStep(errorMessage) && _autoSchedule && _currentTime < _stopTime) {
-		scheduleNextInternalEvent();
-	}
-}
-
-void BioNetwork::scheduleNextInternalEvent() {
-	if (_stepSize <= 0.0 || _currentTime >= _stopTime) {
-		return;
-	}
-	const double eventTime = std::min(_currentTime + _stepSize, _stopTime);
-	auto* event = new InternalEvent(eventTime, "BioNetworkStep");
-	event->setEventHandler(this, &BioNetwork::handleInternalEvent, nullptr);
-	_parentModel->getFutureEvents()->insert(event);
-}
-
-void BioNetwork::setStartTime(double startTime) {
-	_startTime = startTime;
-}
-
-double BioNetwork::getStartTime() const {
-	return _startTime;
-}
-
-void BioNetwork::setStopTime(double stopTime) {
-	_stopTime = stopTime;
-}
-
-double BioNetwork::getStopTime() const {
-	return _stopTime;
-}
-
-void BioNetwork::setStepSize(double stepSize) {
-	_stepSize = stepSize;
-}
-
-double BioNetwork::getStepSize() const {
-	return _stepSize;
-}
-
-void BioNetwork::setCurrentTime(double currentTime) {
-	_currentTime = currentTime;
-}
-
-double BioNetwork::getCurrentTime() const {
-	return _currentTime;
-}
-
-void BioNetwork::setAutoSchedule(bool autoSchedule) {
-	_autoSchedule = autoSchedule;
-}
-
-bool BioNetwork::getAutoSchedule() const {
-	return _autoSchedule;
-}
-
-void BioNetwork::setLastStatus(std::string lastStatus) {
-	_lastStatus = lastStatus;
-}
-
-std::string BioNetwork::getLastStatus() const {
-	return _lastStatus;
-}
-
-void BioNetwork::setLastErrorMessage(std::string lastErrorMessage) {
-	_lastErrorMessage = lastErrorMessage;
-}
-
-std::string BioNetwork::getLastErrorMessage() const {
-	return _lastErrorMessage;
 }
 
 void BioNetwork::setLastResponsePayload(std::string lastResponsePayload) {
