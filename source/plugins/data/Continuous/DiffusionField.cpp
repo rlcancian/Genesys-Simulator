@@ -379,4 +379,3 @@ bool DiffusionField::_check(std::string& errorMessage) {
 	// adaptive solver handles it by taking smaller sub-steps.
 	return resultAll;
 }
-
