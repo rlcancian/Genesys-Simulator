@@ -215,6 +215,13 @@ part of this plan's fixtures and must not be treated as a GenESyS-authored
 corpus; its provenance/disposition is a separate question for the
 maintainer, not resolved here.
 
+GenESyS-authored teaching and regression fixtures belong under
+`models/genesys_gro_examples/`. They must be written from scratch, use only
+the supported GenESyS-native subset, and must not copy or mechanically modify
+files from the original Gro repository. Their validation demonstrates parser
+and compiler coverage for GenESyS; it does not establish compatibility with
+the original Gro implementation.
+
 ## 5. Current GenESyS implementation inventory
 
 Confirmed by full-file inspection (2026-10-08, read-only, no production

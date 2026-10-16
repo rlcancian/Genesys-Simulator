@@ -1,0 +1,17 @@
+// GenESyS-authored fixture: a state variable responding to a signal.
+include gro;
+set("dt", 0.1);
+
+response_signal := signal(0.1, 0.0);
+
+program main() := {
+  reset(),
+  ecoli([x:=0, y:=0], program responder())
+};
+
+program responder() := {
+  level := 0,
+  emit_signal(response_signal, 3.0),
+  sensed := get_signal(response_signal),
+  sensed > 0.0 : { level := level + 1 }
+};
