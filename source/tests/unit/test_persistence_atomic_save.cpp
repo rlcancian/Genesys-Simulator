@@ -14,6 +14,27 @@
 #include "kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
+TEST(PersistenceIntegrityTest, MissingConnectionTargetMakesLoadFail) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+
+	const std::string filename = "/tmp/genesys_persistence_missing_target_"
+		+ std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+
+	std::ofstream file(filename);
+	ASSERT_TRUE(file.is_open());
+	file << "# Genesys Simulation Model\n"
+		 << "0 Simulator \"GenESyS\" versionNumber=260705\n"
+		 << "0 ModelInfo \"Broken connection\" version=\"1.0\"\n"
+		 << "0 ModelSimulation \"\"\n"
+		 << "140 Delay \"Broken\" delayExpression=\"1\" nexts=1 nextId=999999\n";
+	file.close();
+
+	EXPECT_EQ(simulator.getModelManager()->loadModel(filename), nullptr);
+	::unlink(filename.c_str());
+}
+
 TEST(PersistenceAtomicSaveTest, SuccessfulSaveLeavesNoTemporaryFileBehind) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();

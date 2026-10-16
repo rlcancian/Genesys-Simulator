@@ -112,12 +112,18 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	{
 		std::ofstream file{tempFilename};
 		ok = file.is_open() && serializer->dump(file);
+		if (ok) {
+			file.flush();
+			ok = file.good();
+		}
 		file.close();
+		ok = ok && file.good();
 	}
 	if (ok) {
 		ok = std::rename(tempFilename.c_str(), filename.c_str()) == 0;
 		if (!ok) {
 			_model->getTracer()->traceError("Error saving file \"" + filename + "\": could not replace destination with \"" + tempFilename + "\"");
+			std::remove(tempFilename.c_str());
 		}
 	} else {
 		_model->getTracer()->traceError("Error saving file \"" + filename + "\": could not write temporary file \"" + tempFilename + "\"");
