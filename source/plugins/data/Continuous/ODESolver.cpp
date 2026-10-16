@@ -92,7 +92,7 @@ std::string ODESolver::show() {
 	return ModelDataDefinition::show() +
 			",timeVariableName=\"" + _timeVariableName + "\"" +
 			",stateVariables=[" + stateVars + "]" +
-			",step=" + std::to_string(_step) +
+			",step=" + std::to_string(getStep()) +
 			",precision=" + std::to_string(_precision) +
 			",maxSteps=" + std::to_string(_maxSteps) +
 			",currentTime=" + std::to_string(_currentTime);
