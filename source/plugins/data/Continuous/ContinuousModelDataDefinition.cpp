@@ -43,10 +43,7 @@ void ContinuousModelDataDefinition::_registerTemporalControls() {
         std::bind(&ContinuousModelDataDefinition::getStepsToSynchronize, this),
         std::bind(&ContinuousModelDataDefinition::setStepsToSynchronize, this, std::placeholders::_1),
         type, name, "StepsToSynchronize", ""));
-    registerControl(new SimulationControlDouble(
-        std::bind(&ContinuousModelDataDefinition::getCurrentTime, this),
-        std::bind(&ContinuousModelDataDefinition::setCurrentTime, this, std::placeholders::_1),
-        type, name, "CurrentTime", ""));
+    // CurrentTime is runtime state, not an editable simulation parameter.
     registerControl(new SimulationControlString(
         std::bind(&ContinuousModelDataDefinition::getLastStatus, this),
         std::bind(&ContinuousModelDataDefinition::setLastStatus, this, std::placeholders::_1),
