@@ -1,2 +1,8 @@
 # Locally generated portable distribution artifacts.
 dist/
+*.tar.gz
+*.tar.gz.sha256
+.staging.*
+staging-*/
+*.log
+*.report

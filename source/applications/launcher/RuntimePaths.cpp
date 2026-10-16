@@ -33,14 +33,24 @@ RuntimePaths::RuntimePaths(const QProcessEnvironment& environment,
         dataRoot_ = resolveXdgRoot(environment, QStringLiteral("XDG_DATA_HOME"), home, QStringLiteral(".local/share"));
     }
 
+    const QString portableRoot = environment.value(QStringLiteral("GENESYS_PORTABLE_ROOT")).trimmed();
+    const bool hasPortableRoot = !portableRoot.isEmpty() && QFileInfo(portableRoot).isAbsolute();
+    const QString portablePrefix = hasPortableRoot ? QDir::cleanPath(portableRoot) : QString{};
+
     systemRuntimeRoot_ = systemRuntimeRoot.isEmpty()
-        ? QString::fromUtf8(GENESYS_SYSTEM_RUNTIME_ROOT_DEFAULT)
+        ? (hasPortableRoot
+            ? QDir(portablePrefix).filePath(QStringLiteral("libexec/genesys/system"))
+            : QString::fromUtf8(GENESYS_SYSTEM_RUNTIME_ROOT_DEFAULT))
         : QDir::cleanPath(systemRuntimeRoot);
     systemConfigPath_ = systemConfigPath.isEmpty()
-        ? QString::fromUtf8(GENESYS_SYSTEM_CONFIG_PATH_DEFAULT)
+        ? (hasPortableRoot
+            ? QDir(portablePrefix).filePath(QStringLiteral("etc/genesys/update.conf"))
+            : QString::fromUtf8(GENESYS_SYSTEM_CONFIG_PATH_DEFAULT))
         : QDir::cleanPath(systemConfigPath);
     updateKeyringPath_ = updateKeyringPath.isEmpty()
-        ? QString::fromUtf8(GENESYS_UPDATE_KEYRING_PATH_DEFAULT)
+        ? (hasPortableRoot
+            ? QDir(portablePrefix).filePath(QStringLiteral("share/genesys/keys/update.gpg"))
+            : QString::fromUtf8(GENESYS_UPDATE_KEYRING_PATH_DEFAULT))
         : QDir::cleanPath(updateKeyringPath);
 }
 
