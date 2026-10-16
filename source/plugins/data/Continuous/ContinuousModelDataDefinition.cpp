@@ -205,7 +205,6 @@ void ContinuousModelDataDefinition::_initBetweenReplications() {
     _currentTime = 0.0;
     _lastStatus = "Idle";
     _lastErrorMessage.clear();
-    initializeContinuousState();
     if (_stepsToSynchronize > 0) {
         _beginAtCurrentKernelTime();
         std::string errorMessage;
@@ -215,6 +214,8 @@ void ContinuousModelDataDefinition::_initBetweenReplications() {
             _lastErrorMessage = errorMessage;
             traceError(errorMessage);
         }
+    } else {
+        initializeContinuousState();
     }
 }
 
