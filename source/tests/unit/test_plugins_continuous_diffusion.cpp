@@ -22,6 +22,7 @@
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Event.h"
 #include "plugins/data/Continuous/DiffusionField.h"
+#include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/components/Continuous/DiffusionSimulate.h"
 
 namespace {
@@ -53,6 +54,16 @@ public:
 	// Triggers the kernel's between-replications hook, which (with stepsToSynchronize > 0)
 	// posts the first InternalEvent onto the model's future-event queue.
 	void InitBetweenReplicationsProbe() { _initBetweenReplications(); }
+	void startAtNonzeroGlobalTime(void*) {
+		setStepsToSynchronize(2u);
+		_startSucceeded = simulate(_startErrorMessage);
+	}
+	bool startSucceeded() const { return _startSucceeded; }
+	const std::string& startErrorMessage() const { return _startErrorMessage; }
+
+private:
+	bool _startSucceeded = false;
+	std::string _startErrorMessage;
 };
 
 // Probe exposing DiffusionSimulate's protected check/dispatch hooks so a test can
@@ -62,6 +73,18 @@ public:
 	DiffusionSimulateProbe(Model* model, const std::string& name = "") : DiffusionSimulate(model, name) {}
 	bool CheckProbe(std::string& errorMessage) { return _check(errorMessage); }
 	void DispatchEventProbe(Entity* entity) { _onDispatchEvent(entity, 0u); }
+};
+
+struct StartDiffusionAtCalendarTime {
+	DiffusionField* field;
+	Model* model;
+
+	void schedule(SimulationEvent*) {
+		auto* event = new InternalEvent(100.0, "StartDiffusionAt100");
+		event->setEventHandler(static_cast<DiffusionFieldProbe*>(field),
+			&DiffusionFieldProbe::startAtNonzeroGlobalTime, nullptr);
+		model->getFutureEvents()->insert(event);
+	}
 };
 
 // Decay rate of a sine mode on a uniform N-D grid (from the discrete Laplacian):
@@ -82,6 +105,24 @@ TEST(DiffusionFieldPluginTest, DefaultsToRungeKutta4) {
 	DiffusionFieldProbe field(model, "DiffusionDefaultSolver");
 	EXPECT_EQ(field.getOdeSolver(), "RungeKutta4");
 	EXPECT_EQ(field.getDimensions(), 2u);
+}
+
+TEST(ODESolverPluginTest, DefaultsToOneStepCalendarSynchronization) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	ODESolver solver(model, "ReactiveOdeSolver");
+	EXPECT_EQ(solver.getStepsToSynchronize(), 1u);
+}
+
+TEST(ODESolverPluginTest, RejectsPersistedNonzeroLegacyStartTime) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	FakeModelPersistenceRuntime runtime;
+	PersistenceRecord fields(runtime);
+	fields.saveField("startTime", 2.0, 0.0, true);
+	EXPECT_EQ(ODESolver::LoadInstance(model, &fields), nullptr);
 }
 
 TEST(DiffusionFieldPluginTest, MatchesAnalyticalEigenmodeDecay) {
@@ -156,8 +197,8 @@ TEST(DiffusionFieldPluginTest, NeumannConservesMass) {
 	ASSERT_TRUE(field.simulate(0.0, 0.1, 0.05, err)) << err;
 	const double massStart = field.getTotalMass();
 
-	// Continue the simulation and verify mass conservation.
-	ASSERT_TRUE(field.simulate(0.1, 0.5, 0.05, err)) << err;
+	// Restart from the supported zero time origin and verify mass conservation.
+	ASSERT_TRUE(field.simulate(0.0, 0.5, 0.05, err)) << err;
 
 	EXPECT_NEAR(field.getTotalMass(), massStart, 1e-6);
 	EXPECT_LT(field.getMaxValue(), 1.0); // Gaussian spreads, peak drops
@@ -310,6 +351,7 @@ TEST(DiffusionFieldPluginTest, StepsToSynchronizeAdvancesWithEventClock) {
 	field.InitBetweenReplicationsProbe();
 	ASSERT_FALSE(model->getFutureEvents()->empty());
 	EXPECT_NEAR(model->getFutureEvents()->front()->getTime(), 0.05, 1e-9);
+	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 0.0);
 
 	// Drain the queue like the kernel would: each event advances the field one step
 	// and reschedules the next, so the continuous solve tracks the event clock.
@@ -339,7 +381,7 @@ TEST(DiffusionFieldPluginTest, SynchronizesAfterThreeStepsAndAtFinalPartialBatch
 
     field.InitBetweenReplicationsProbe();
     ASSERT_TRUE(field.isAwaitingSynchronization());
-    EXPECT_NEAR(field.getCurrentTime(), 0.15, 1e-9);
+    EXPECT_DOUBLE_EQ(field.getCurrentTime(), 0.0);
     ASSERT_FALSE(model->getFutureEvents()->empty());
     EXPECT_NEAR(model->getFutureEvents()->front()->getTime(), 0.15, 1e-9);
 
@@ -349,7 +391,7 @@ TEST(DiffusionFieldPluginTest, SynchronizesAfterThreeStepsAndAtFinalPartialBatch
     delete first;
 
     ASSERT_TRUE(field.isAwaitingSynchronization());
-    EXPECT_NEAR(field.getCurrentTime(), 0.25, 1e-9);
+    EXPECT_NEAR(field.getCurrentTime(), 0.15, 1e-9);
     ASSERT_FALSE(model->getFutureEvents()->empty());
     EXPECT_NEAR(model->getFutureEvents()->front()->getTime(), 0.25, 1e-9);
 
@@ -360,8 +402,116 @@ TEST(DiffusionFieldPluginTest, SynchronizesAfterThreeStepsAndAtFinalPartialBatch
 
     EXPECT_TRUE(model->getFutureEvents()->empty());
     EXPECT_FALSE(field.isAwaitingSynchronization());
+    EXPECT_NEAR(field.getCurrentTime(), 0.25, 1e-9);
     EXPECT_EQ(field.getLastStatus(), "Completed");
 }
+
+TEST(DiffusionFieldPluginTest, SynchronizationIntervalsMatchStepCountsAndFinalPartialSteps) {
+	struct Case {
+		double stopTime;
+		double stepSize;
+		unsigned int stepsToSynchronize;
+		std::vector<double> expectedTimes;
+	};
+	const std::vector<Case> cases = {
+		{10.0, 1.0, 1u, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
+		{10.0, 1.0, 2u, {2, 4, 6, 8, 10}},
+		{10.0, 1.0, 3u, {3, 6, 9, 10}},
+		{10.0, 1.0, 5u, {5, 10}},
+		{10.0, 1.0, 20u, {10}},
+		{1.0, 0.1, 3u, {0.3, 0.6, 0.9, 1.0}},
+		{2.5, 1.0, 2u, {2, 2.5}}
+	};
+
+	for (const Case& testCase : cases) {
+		Simulator simulator;
+		Model* model = simulator.getModelManager()->newModel();
+		ASSERT_NE(model, nullptr);
+		DiffusionFieldProbe field(model, "SynchronizationMatrix");
+		field.setDimensions(1u);
+		field.setPointsPerDimension(3u);
+		field.setStepsToSynchronize(testCase.stepsToSynchronize);
+		field.setStepSize(testCase.stepSize);
+		field.setStopTime(testCase.stopTime);
+		field.InitBetweenReplicationsProbe();
+		EXPECT_DOUBLE_EQ(field.getCurrentTime(), 0.0);
+
+		for (double expectedTime : testCase.expectedTimes) {
+			ASSERT_FALSE(model->getFutureEvents()->empty());
+			Event* event = model->getFutureEvents()->front();
+			model->getFutureEvents()->pop_front();
+			EXPECT_NEAR(event->getTime(), expectedTime, 1e-12);
+			static_cast<InternalEvent*>(event)->dispatchEvent();
+			delete event;
+			EXPECT_NEAR(field.getCurrentTime(), expectedTime, 1e-12);
+		}
+		EXPECT_TRUE(model->getFutureEvents()->empty());
+		EXPECT_EQ(field.getLastStatus(), "Completed");
+	}
+}
+
+TEST(DiffusionFieldPluginTest, SynchronizationUsesGlobalOriginCapturedAtStart) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	DiffusionFieldProbe field(model, "NonzeroGlobalOrigin");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStepSize(0.1);
+	field.setStopTime(0.25);
+	field.setStepsToSynchronize(0u);
+
+	StartDiffusionAtCalendarTime starter{&field, model};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&starter, &StartDiffusionAtCalendarTime::schedule);
+	model->getSimulation()->setReplicationLength(101.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+
+	model->getSimulation()->start();
+
+	EXPECT_TRUE(field.startSucceeded()) << field.startErrorMessage();
+	EXPECT_EQ(field.getLastStatus(), "Completed");
+	EXPECT_NEAR(field.getCurrentTime(), 0.25, 1e-12);
+	EXPECT_NEAR(model->getSimulation()->getSimulatedTime(), 100.25, 1e-12);
+	EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
+TEST(DiffusionFieldPluginTest, ZeroStopTimeCompletesWithoutSchedulingAndInvalidStepFails) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	DiffusionFieldProbe field(model, "ZeroStopTime");
+	field.setStopTime(0.0);
+	field.setStepsToSynchronize(1u);
+	field.InitBetweenReplicationsProbe();
+	EXPECT_TRUE(model->getFutureEvents()->empty());
+	EXPECT_EQ(field.getLastStatus(), "Completed");
+
+	field.setStepSize(0.0);
+	std::string errorMessage;
+	EXPECT_FALSE(field.simulate(errorMessage));
+	EXPECT_NE(errorMessage.find("StepSize"), std::string::npos);
+}
+
+TEST(DiffusionFieldPluginTest, DestroyingFieldCancelsItsPendingSynchronizationEvent) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* field = new DiffusionFieldProbe(model, "DestroyedWithPendingEvent");
+	field->setDimensions(1u);
+	field->setPointsPerDimension(3u);
+	field->setStepsToSynchronize(1u);
+	field->setStepSize(0.1);
+	field->setStopTime(1.0);
+	field->InitBetweenReplicationsProbe();
+	ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+
+	delete field;
+	EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
 
 TEST(DiffusionFieldPluginTest, ZeroStepsToSynchronizeRunsWithoutCalendarEvents) {
     Simulator simulator;

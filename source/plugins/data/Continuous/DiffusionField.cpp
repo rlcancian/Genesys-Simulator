@@ -84,8 +84,15 @@ PluginInformation* DiffusionField::GetPluginInformation() {
 ModelDataDefinition* DiffusionField::LoadInstance(Model* model, PersistenceRecord* fields) {
 	DiffusionField* newElement = new DiffusionField(model);
 	try {
-		newElement->_loadInstance(fields);
+		const bool loaded = newElement->_loadInstance(fields);
+		if (!loaded && fields->size() != 0) {
+			delete newElement;
+			return nullptr;
+		}
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load DiffusionField instance: " + std::string(e.what()));
+		delete newElement;
+		return nullptr;
 	}
 	return newElement;
 }

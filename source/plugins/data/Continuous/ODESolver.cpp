@@ -39,9 +39,15 @@ ODESolver::ODESolver(Model* model, std::string name) : ContinuousModelDataDefini
 ModelDataDefinition* ODESolver::LoadInstance(Model* model, PersistenceRecord *fields) {
 	ODESolver* newElement = new ODESolver(model);
 	try {
-		newElement->_loadInstance(fields);
+		const bool loaded = newElement->_loadInstance(fields);
+		if (!loaded && fields->size() != 0) {
+			delete newElement;
+			return nullptr;
+		}
 	} catch (const std::exception& e) {
-		// Handle exception
+		newElement->traceError("Failed to load ODESolver instance: " + std::string(e.what()));
+		delete newElement;
+		return nullptr;
 	}
 	return newElement;
 }

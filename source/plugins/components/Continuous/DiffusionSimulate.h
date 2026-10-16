@@ -23,8 +23,9 @@
  * entity runs the field either with its own configured time window or with
  * component-provided start/stop/step values, then forwards the entity. This is the
  * discrete->continuous bridge: a discrete-event component drives the continuous PDE
- * subsystem. For event-clock-synchronized advance, enable AutoSchedule on the
- * DiffusionField instead, so it steps once per kernel InternalEvent.
+ * subsystem. A DiffusionField configured with StepsToSynchronize greater than
+ * zero advances at explicit kernel-clock synchronization events; zero runs the
+ * requested interval without posting synchronization events.
  */
 class DiffusionSimulate : public ModelComponent {
 public:

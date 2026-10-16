@@ -8981,7 +8981,7 @@ TEST(SimulatorRuntimeTest, BioNetworkMvpReversibleEnzymeExampleProducesAnalysisA
     EXPECT_GT(sensitivity.entries[1].maxAbsoluteSensitivity, 0.0);
 }
 
-TEST(SimulatorRuntimeTest, BioNetworkAutoScheduleAdvancesWithKernelInternalEvents) {
+TEST(SimulatorRuntimeTest, BioNetworkStepSynchronizationAdvancesWithKernelInternalEvents) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
@@ -9022,11 +9022,11 @@ TEST(SimulatorRuntimeTest, BioNetworkAutoScheduleAdvancesWithKernelInternalEvent
     network.setStartTime(0.0);
     network.setStopTime(1.0);
     network.setStepSize(0.25);
-    network.setAutoSchedule(true);
+    network.setStepsToSynchronize(1u);
     owner->AttachEditableDataDefinitionProbe("BioNetwork", &network);
 
     ModelSimulation* simulation = model->getSimulation();
-    simulation->setNumberOfReplications(1);
+    simulation->setNumberOfReplications(2);
     simulation->setReplicationLength(1.0, Util::TimeUnit::second);
     simulation->setShowReportsAfterReplication(false);
     simulation->setShowReportsAfterSimulation(false);

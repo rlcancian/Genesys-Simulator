@@ -63,11 +63,6 @@ public:
 	double getInitialParameter() const;
 	void setOdeSolver(std::string odeSolver);
 	std::string getOdeSolver() const;
-	void setLastStatus(std::string lastStatus);
-	std::string getLastStatus() const;
-	void setLastErrorMessage(std::string lastErrorMessage);
-	std::string getLastErrorMessage() const;
-
 	// --- diagnostics (read-only outputs) ---
 	double getTotalMass() const;
 	double getMaxValue() const;

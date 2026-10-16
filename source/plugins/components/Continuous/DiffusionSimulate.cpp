@@ -84,7 +84,7 @@ PluginInformation* DiffusionSimulate::GetPluginInformation() {
 	info->setDescriptionHelp("Triggers a DiffusionField continuous N-dimensional diffusion solve when an "
 	                         "entity arrives. The component can run the field with its own configured "
 	                         "start/stop/step or reuse the field time window, and then forwards the entity. "
-	                         "For event-clock-synchronized advance, enable AutoSchedule on the DiffusionField.");
+	                         "StepsToSynchronize controls explicit synchronization with the kernel clock.");
 	return info;
 }
 

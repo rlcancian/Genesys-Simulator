@@ -212,9 +212,15 @@ PluginInformation* BioNetwork::GetPluginInformation() {
 ModelDataDefinition* BioNetwork::LoadInstance(Model* model, PersistenceRecord *fields) {
 	BioNetwork* newElement = new BioNetwork(model);
 	try {
-		newElement->_loadInstance(fields);
+		const bool loaded = newElement->_loadInstance(fields);
+		if (!loaded && fields->size() != 0) {
+			delete newElement;
+			return nullptr;
+		}
 	} catch (const std::exception& e) {
 		newElement->traceError("Failed to load BioNetwork instance: " + std::string(e.what()));
+		delete newElement;
+		return nullptr;
 	}
 	return newElement;
 }

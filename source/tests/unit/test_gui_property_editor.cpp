@@ -276,8 +276,7 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleCont
         return getter();
     };
 
-    EXPECT_NEAR(commitNetworkDouble("StartTime", "0,18", [&]() { return network->getStartTime(); }),
-                0.18, 1e-12);
+    EXPECT_EQ(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("StartTime")), nullptr);
     EXPECT_NEAR(commitNetworkDouble("StopTime", "1,25", [&]() { return network->getStopTime(); }),
                 1.25, 1e-12);
     EXPECT_NEAR(commitNetworkDouble("StepSize", "0,1", [&]() { return network->getStepSize(); }),

@@ -24,6 +24,20 @@ ContinuousModelDataDefinition::ContinuousModelDataDefinition(
     _registerTemporalControls();
 }
 
+ContinuousModelDataDefinition::~ContinuousModelDataDefinition() {
+    if (_parentModel == nullptr || _parentModel->getFutureEvents() == nullptr) return;
+    auto* events = _parentModel->getFutureEvents()->list();
+    for (auto event = events->begin(); event != events->end();) {
+        auto* internalEvent = dynamic_cast<InternalEvent*>(*event);
+        if (internalEvent != nullptr && internalEvent->object() == this) {
+            event = events->erase(event);
+            delete internalEvent;
+        } else {
+            ++event;
+        }
+    }
+}
+
 void ContinuousModelDataDefinition::_registerTemporalControls() {
     auto registerControl = [this](SimulationControl* control) {
         _parentModel->getControls()->insert(control);
@@ -90,11 +104,19 @@ bool ContinuousModelDataDefinition::_check(std::string& errorMessage) {
 }
 
 bool ContinuousModelDataDefinition::_loadInstance(PersistenceRecord* fields) {
+    const double legacyStartTime = fields->loadField("startTime", 0.0);
+    if (legacyStartTime != 0.0) {
+        _lastErrorMessage = "Cannot load continuous model \"" + fields->loadField("name", getName()) +
+            "\" with unsupported non-zero legacy StartTime=" + std::to_string(legacyStartTime) + ".";
+        traceError(_lastErrorMessage);
+        return false;
+    }
     if (!ModelDataDefinition::_loadInstance(fields)) return false;
     _stopTime = fields->loadField("stopTime", _defaultStopTime);
     _stepSize = fields->loadField("stepSize", _defaultStepSize);
     _stepsToSynchronize = fields->loadField("stepsToSynchronize", _defaultStepsToSynchronize);
     _currentTime = 0.0;
+    _originInitialized = false;
     _lastStatus = "Idle";
     _lastErrorMessage.clear();
     return true;
@@ -109,6 +131,7 @@ void ContinuousModelDataDefinition::_saveInstance(PersistenceRecord* fields, boo
 
 void ContinuousModelDataDefinition::_beginAtCurrentKernelTime() {
     _originTime = _parentModel->getSimulation()->getSimulatedTime();
+    _originInitialized = true;
     _currentTime = 0.0;
     _stepsSinceSynchronization = 0;
     _awaitingSynchronization = false;
@@ -119,8 +142,12 @@ void ContinuousModelDataDefinition::_beginAtCurrentKernelTime() {
 }
 
 bool ContinuousModelDataDefinition::_advanceStep(double targetTime, std::string& errorMessage) {
-    const double dt = std::min(_stepSize, targetTime - _currentTime);
-    const double next = _currentTime + dt;
+    const double remainingTime = targetTime - _currentTime;
+    const double scale = std::max({1.0, std::abs(targetTime), std::abs(_currentTime), std::abs(_stepSize)});
+    const bool finalStep = remainingTime <= _stepSize +
+        4.0 * std::numeric_limits<double>::epsilon() * scale;
+    const double dt = finalStep ? remainingTime : _stepSize;
+    const double next = finalStep ? targetTime : _currentTime + dt;
     if (!(dt > 0.0) || !std::isfinite(next) || next <= _currentTime) {
         errorMessage = "Continuous time cannot advance with this StepSize.";
         _lastErrorMessage = errorMessage;
@@ -149,7 +176,28 @@ void ContinuousModelDataDefinition::_completeRun() {
 }
 
 bool ContinuousModelDataDefinition::_scheduleSynchronization(std::string& errorMessage) {
-    const double eventTime = _originTime + _currentTime;
+    const unsigned int remainingSteps = _currentTime < _stopTime &&
+        _stepsToSynchronize > _stepsSinceSynchronization
+        ? _stepsToSynchronize - _stepsSinceSynchronization
+        : 0u;
+    unsigned int stepsUntilSynchronization = remainingSteps;
+    _pendingSynchronizationTime = _currentTime;
+    if (stepsUntilSynchronization > 0u) {
+        const double stepsUntilStop = std::ceil((_stopTime - _currentTime) / _stepSize);
+        if (stepsUntilStop <= 0.0) {
+            stepsUntilSynchronization = 0u;
+            _pendingSynchronizationTime = _stopTime;
+        } else {
+            if (std::isfinite(stepsUntilStop)) {
+                stepsUntilSynchronization = std::min(
+                    stepsUntilSynchronization, static_cast<unsigned int>(std::min(
+                        stepsUntilStop, static_cast<double>(std::numeric_limits<unsigned int>::max()))));
+            }
+            _pendingSynchronizationTime = std::min(
+                _stopTime, std::fma(_stepSize, static_cast<double>(stepsUntilSynchronization), _currentTime));
+        }
+    }
+    const double eventTime = _originTime + _pendingSynchronizationTime;
     if (!std::isfinite(eventTime) || eventTime < _parentModel->getSimulation()->getSimulatedTime()) {
         errorMessage = "Continuous synchronization time is invalid or in the past.";
         _lastErrorMessage = errorMessage;
@@ -161,7 +209,6 @@ bool ContinuousModelDataDefinition::_scheduleSynchronization(std::string& errorM
     event->setEventHandler(this, &ContinuousModelDataDefinition::_onSynchronization, nullptr);
     _parentModel->getFutureEvents()->insert(event);
     _awaitingSynchronization = true;
-    _stepsSinceSynchronization = 0;
     return true;
 }
 
@@ -170,12 +217,11 @@ bool ContinuousModelDataDefinition::_continueEvolution(std::string& errorMessage
         errorMessage = "Continuous evolution is awaiting a scheduled synchronization.";
         return false;
     }
+    if (_running && _currentTime < _stopTime && _stepsToSynchronize > 0u) {
+        return _scheduleSynchronization(errorMessage);
+    }
     while (_running && _currentTime < _stopTime) {
         if (!_advanceStep(_stopTime, errorMessage)) return false;
-        if (_stepsToSynchronize > 0 &&
-            (_stepsSinceSynchronization >= _stepsToSynchronize || _currentTime >= _stopTime)) {
-            return _scheduleSynchronization(errorMessage);
-        }
     }
     if (_running) _completeRun();
     return true;
@@ -184,6 +230,14 @@ bool ContinuousModelDataDefinition::_continueEvolution(std::string& errorMessage
 void ContinuousModelDataDefinition::_onSynchronization(void*) {
     if (!_awaitingSynchronization || !_running) return;
     _awaitingSynchronization = false;
+    while (_currentTime < _pendingSynchronizationTime) {
+        std::string errorMessage;
+        if (!_advanceStep(_pendingSynchronizationTime, errorMessage)) {
+            traceError("Continuous model synchronization failed: " + errorMessage);
+            return;
+        }
+    }
+    _stepsSinceSynchronization = 0u;
     if (_currentTime >= _stopTime) {
         _completeRun();
         return;
@@ -200,6 +254,8 @@ void ContinuousModelDataDefinition::_initBetweenReplications() {
     _awaitingSynchronization = false;
     _stepsSinceSynchronization = 0;
     _currentTime = 0.0;
+    _originTime = _parentModel->getSimulation()->getSimulatedTime();
+    _originInitialized = true;
     _lastStatus = "Idle";
     _lastErrorMessage.clear();
     if (_stepsToSynchronize > 0) {
@@ -258,6 +314,7 @@ bool ContinuousModelDataDefinition::advanceOneStep(std::string& errorMessage) {
     if (!_advanceStep(_stopTime, errorMessage)) return false;
     if (_stepsToSynchronize > 0 &&
         (_stepsSinceSynchronization >= _stepsToSynchronize || _currentTime >= _stopTime)) {
+        _pendingSynchronizationTime = _currentTime;
         return _scheduleSynchronization(errorMessage);
     }
     if (_currentTime >= _stopTime) _completeRun();
@@ -265,11 +322,24 @@ bool ContinuousModelDataDefinition::advanceOneStep(std::string& errorMessage) {
 }
 
 bool ContinuousModelDataDefinition::advanceTo(double targetTime, std::string& errorMessage) {
-    if (_awaitingSynchronization) {
-        errorMessage = "Continuous model is awaiting synchronization.";
+    if (!std::isfinite(targetTime)) {
+        errorMessage = "Invalid continuous integration target.";
         return false;
     }
-    if (!_check(errorMessage) || !std::isfinite(targetTime) || targetTime < _currentTime) {
+    if (!_originInitialized) {
+        _originTime = _parentModel->getSimulation()->getSimulatedTime();
+        _originInitialized = true;
+    }
+    const double localTargetTime = targetTime - _originTime;
+    if (!std::isfinite(localTargetTime) || localTargetTime < 0.0) {
+        errorMessage = "Continuous integration target precedes its global time origin.";
+        return false;
+    }
+    if (_awaitingSynchronization && localTargetTime > _pendingSynchronizationTime) {
+        errorMessage = "Continuous integration target exceeds the pending synchronization time.";
+        return false;
+    }
+    if (!_check(errorMessage) || localTargetTime < _currentTime) {
         if (errorMessage.empty()) errorMessage = "Invalid continuous integration target.";
         return false;
     }
@@ -278,9 +348,13 @@ bool ContinuousModelDataDefinition::advanceTo(double targetTime, std::string& er
         _running = true;
         _lastStatus = "Running";
     }
-    while (_currentTime < targetTime) {
-        if (!_advanceStep(targetTime, errorMessage)) return false;
+    const double boundedLocalTargetTime = std::min(localTargetTime, _stopTime);
+    while (_currentTime < boundedLocalTargetTime) {
+        if (!_advanceStep(boundedLocalTargetTime, errorMessage)) return false;
     }
-    _running = false;
+    if (!_awaitingSynchronization) {
+        if (_currentTime >= _stopTime) _completeRun();
+        else _running = false;
+    }
     return true;
 }
