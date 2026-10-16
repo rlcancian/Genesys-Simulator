@@ -562,7 +562,7 @@ void BioNetwork::configureSimulationResult(const std::vector<BioSpecies*>& speci
 	for (const BioSpecies* bioSpecies : species) {
 		speciesNames.push_back(bioSpecies->getName());
 	}
-	_lastSimulationResult.configure(getName(), _startTime, _stopTime, _stepSize, speciesNames);
+	_lastSimulationResult.configure(getName(), 0.0, _stopTime, _stepSize, speciesNames);
 }
 
 void BioNetwork::appendSimulationResultSample(const std::vector<BioSpecies*>& species) {
