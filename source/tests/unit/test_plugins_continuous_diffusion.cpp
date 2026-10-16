@@ -286,9 +286,9 @@ TEST(DiffusionFieldPluginTest, DiffusionSimulateRejectsMissingField) {
 	EXPECT_FALSE(component.getLastSucceeded());
 }
 
-// --- Event-clock synchronization (AutoSchedule) ---
+// --- Event-clock synchronization (StepsToSynchronize) ---
 
-TEST(DiffusionFieldPluginTest, AutoScheduleAdvancesWithEventClock) {
+TEST(DiffusionFieldPluginTest, StepsToSynchronizeAdvancesWithEventClock) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -301,7 +301,7 @@ TEST(DiffusionFieldPluginTest, AutoScheduleAdvancesWithEventClock) {
 	field.setInitialCondition("SineMode");
 	field.setInitialParameter(1.0);
 	field.setOdeSolver("RungeKutta4");
-	field.setAutoSchedule(true);
+	field.setStepsToSynchronize(1u);
 	field.setStartTime(0.0);
 	field.setStopTime(0.15);
 	field.setStepSize(0.05);
