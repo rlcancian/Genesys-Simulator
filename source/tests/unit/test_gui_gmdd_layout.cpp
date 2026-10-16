@@ -1072,6 +1072,12 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
     scene->insertOldPositionItem(textItem, textItem->pos());
     scene->insertComponentGroup(group, QList<GraphicalModelComponent*>({graphicalSeize}));
 
+    auto* emptyGroup = new QGraphicsItemGroup();
+    emptyGroup->setHandlesChildEvents(false);
+    scene->addItem(emptyGroup);
+    scene->getGraphicalGroups()->append(emptyGroup);
+    scene->insertOldPositionItem(emptyGroup, emptyGroup->pos());
+
     QPlainTextEdit modelTextEditor;
     modelTextEditor.setPlainText(QString::fromStdString(model->showLanguage()));
     QTextEdit console;
@@ -1269,6 +1275,15 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
         }
     }
     EXPECT_TRUE(foundGroupWithLoadedComponentAndText);
+
+    bool foundEmptyGroup = false;
+    for (QGraphicsItemGroup* graphicalGroup : *scene->getGraphicalGroups()) {
+        if (graphicalGroup != nullptr && graphicalGroup->childItems().isEmpty()) {
+            foundEmptyGroup = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundEmptyGroup);
 }
 
 int main(int argc, char** argv) {

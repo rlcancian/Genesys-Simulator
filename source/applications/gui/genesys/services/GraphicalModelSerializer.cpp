@@ -631,7 +631,11 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             if (geometries != nullptr) {
                 for (QGraphicsItem* item : *geometries) {
                     if (item == nullptr) {
-                        continue;
+                        _simulator->getModelManager()->current()->getTracer()->traceError(
+                            "Unable to save graphical model: null drawing item encountered");
+                        saveFile.close();
+                        QFile::remove(tempFilename);
+                        return false;
                     }
                     const int persistedId = nextAutonomousItemId--;
                     persistedItemIds.insert(item, persistedId);
@@ -698,6 +702,12 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                         line += encodePersistedText(textItem->font().toString());
                         line += QString(" \t textwidth=%1").arg(textItem->textWidth(), 0, 'f', 4);
                         out << commentedLine(line) << Qt::endl;
+                    } else {
+                        _simulator->getModelManager()->current()->getTracer()->traceError(
+                            "Unable to save graphical model: unsupported drawing item type");
+                        saveFile.close();
+                        QFile::remove(tempFilename);
+                        return false;
                     }
                 }
             }
@@ -886,10 +896,13 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     for (QGraphicsItem* child : group->childItems()) {
                         if (persistedItemIds.contains(child)) {
                             members << QString::number(persistedItemIds.value(child));
+                        } else {
+                            _simulator->getModelManager()->current()->getTracer()->traceError(
+                                "Unable to save graphical model: group contains an item that cannot be persisted");
+                            saveFile.close();
+                            QFile::remove(tempFilename);
+                            return false;
                         }
-                    }
-                    if (members.isEmpty()) {
-                        continue;
                     }
                     const int groupId = nextAutonomousItemId--;
                     persistedItemIds.insert(group, groupId);
@@ -900,11 +913,25 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             out << sectionFooterLine();
         }
 
+        if (out.status() != QTextStream::Status::Ok || !saveFile.flush()) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "Unable to save graphical model: failed while flushing GUI overlay");
+            saveFile.close();
+            QFile::remove(tempFilename);
+            return false;
+        }
         saveFile.close();
+        if (saveFile.error() != QFile::NoError) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "Unable to save graphical model: " + saveFile.errorString().toStdString());
+            QFile::remove(tempFilename);
+            return false;
+        }
 
         if (std::rename(tempFilename.toStdString().c_str(), filename.toStdString().c_str()) != 0) {
             QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"),
                                  QObject::tr("Could not replace destination file with the newly saved content."));
+            QFile::remove(tempFilename);
             return false;
         }
         return true;
@@ -2172,10 +2199,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     }
                 }
 
-                if (!pending.memberIds.isEmpty()) {
-                    if (!groupIdOk) {
-                        pending.groupId = 0;
-                    }
+                if (groupIdOk) {
                     pendingGroups.append(pending);
                 }
             }
@@ -2199,7 +2223,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                             groupComponents.append(component);
                         }
                     }
-                    if (!allResolved || groupItems.isEmpty()) {
+                    if (!allResolved) {
                         ++i;
                         continue;
                     }

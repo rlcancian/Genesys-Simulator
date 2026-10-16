@@ -74,6 +74,7 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 	unsigned int loadedComponents = 0;
 	unsigned int loadedCoreEntries = 0;
 	unsigned int expectedPayloadEntries = 0;
+	bool requiredConnectionFailure = false;
 	std::vector<std::unique_ptr<PersistenceRecord>> componentFields;
 	std::vector<DeferredLoadItem> deferredDataDefinitions;
 	std::vector<DeferredLoadItem> deferredComponents;
@@ -132,6 +133,16 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 			}
 
 			if (item.plugin->getPluginInfo()->isComponent()) {
+				ModelComponent* existingComponent = _model->getComponentManager()->find(item.name);
+				if (existingComponent != nullptr
+					&& existingComponent->getClassname() == item.type
+					&& existingComponent->getLevel() != 0) {
+					_model->getTracer()->trace(
+						"Skipping legacy serialized internal component (already created by its owner): "
+						+ itemLabel(item),
+						TraceManager::Level::L7_internal);
+					return 0;
+				}
 				deferredComponents.push_back(std::move(item));
 			} else {
 				deferredDataDefinitions.push_back(std::move(item));
@@ -165,6 +176,19 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 			bool progressed = false;
 			for (auto& item : pending) {
 				try {
+					if (item.plugin->getPluginInfo()->isComponent()) {
+						ModelComponent* existingComponent = _model->getComponentManager()->find(item.name);
+						if (existingComponent != nullptr
+							&& existingComponent->getClassname() == item.type
+							&& existingComponent->getLevel() != 0) {
+							_model->getTracer()->trace(
+								"Skipping legacy serialized internal component (already created by its owner): "
+								+ itemLabel(item),
+								TraceManager::Level::L7_internal);
+							progressed = true;
+							continue;
+						}
+					}
 					const bool ok = item.plugin->loadAndInsertNew(_model, item.fields.get());
 					if (ok) {
 						setHasChanged(true);
@@ -219,6 +243,7 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 				_model->getTracer()->traceError(
 						"Error connecting component id=" + std::to_string(id) + ": component not registered");
 				++recoverableErrors;
+				requiredConnectionFailure = true;
 				continue;
 			}
 
@@ -235,6 +260,7 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 							"Error connecting component id=" + std::to_string(id)
 							+ ": target id=" + std::to_string(nextId) + " not registered");
 					++recoverableErrors;
+					requiredConnectionFailure = true;
 					continue;
 				}
 
@@ -261,6 +287,12 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 	}
 
 	const bool loadedAnyPayload = (loadedDataDefinitions + loadedComponents) > 0;
+	if (requiredConnectionFailure) {
+		_model->getTracer()->traceError(
+			"Model load failed: one or more required component connections could not be restored");
+		Util::DecIndent();
+		return false;
+	}
 	if (expectedPayloadEntries > 0 && !loadedAnyPayload) {
 		_model->getTracer()->traceError(
 				"Model load failed: no payload item could be loaded ("
