@@ -19,6 +19,7 @@
 #include <list>
 #include <fstream>
 #include <filesystem>
+#include <memory>
 #include <unordered_set>
 //#include <stdio.h>
 
@@ -264,6 +265,18 @@ bool Model::save(std::string filename) {
 }
 
 bool Model::load(std::string filename) {
+	// Validate into an isolated model before touching an already open model. This
+	// keeps a malformed or semantically incomplete file from destroying the
+	// caller's current state. The actual load remains in this instance so its
+	// identity and ownership relationships stay unchanged on success.
+	Model validationModel(_parentSimulator, _level);
+	if (!validationModel._modelPersistence->load(filename)) {
+		this->getTracer()->trace(TraceManager::Level::L2_results,
+			"Model load rejected before replacing current state");
+		return false;
+	}
+	validationModel.clear();
+
     this->clear();
     bool res = this->_modelPersistence->load(filename);
     if (res)

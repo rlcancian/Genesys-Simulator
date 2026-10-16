@@ -35,6 +35,29 @@ TEST(PersistenceIntegrityTest, MissingConnectionTargetMakesLoadFail) {
 	::unlink(filename.c_str());
 }
 
+TEST(PersistenceIntegrityTest, InvalidLoadPreservesExistingModel) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	Resource* resource = new Resource(model, "MustSurviveFailedLoad");
+	ASSERT_NE(resource, nullptr);
+
+	const std::string filename = "/tmp/genesys_persistence_invalid_"
+		+ std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	std::ofstream file(filename);
+	ASSERT_TRUE(file.is_open());
+	file << "# Genesys Simulation Model\n"
+		 << "140 UnknownPersistenceType \"Broken\"\n";
+	file.close();
+
+	EXPECT_FALSE(model->load(filename));
+	ASSERT_NE(model->getDataManager(), nullptr);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "MustSurviveFailedLoad"), resource);
+	::unlink(filename.c_str());
+}
+
 TEST(PersistenceAtomicSaveTest, SuccessfulSaveLeavesNoTemporaryFileBehind) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();
