@@ -205,7 +205,7 @@ bool Wait::_check(std::string& errorMessage) {
 }
 
 void Wait::_initBetweenReplications() {
-
+	// @TODO: clear queue and others?
 }
 
 // private
