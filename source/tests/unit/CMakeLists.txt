@@ -76,6 +76,15 @@ genesys_add_unit_test(genesys_test_gen_serializer_text
     genesys_plugins_components_minimal
 )
 
+genesys_add_unit_test(genesys_test_genesys_gro_fixtures
+    test_genesys_gro_fixtures.cpp
+    genesys_plugins_components_minimal
+)
+target_compile_definitions(genesys_test_genesys_gro_fixtures
+    PRIVATE
+        GENESYS_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+
 genesys_add_unit_test(genesys_test_runtime_pluginmanager
     test_runtime_pluginmanager.cpp
     genesys_kernel_simulator_runtime
@@ -326,6 +335,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_modelmanager
         genesys_test_support_persistence
         genesys_test_gen_serializer_text
+        genesys_test_genesys_gro_fixtures
         genesys_test_runtime_pluginmanager
         genesys_test_support_oneventmanager
         genesys_test_support_parsermanager

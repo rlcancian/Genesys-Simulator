@@ -1,0 +1,19 @@
+// GenESyS-authored fixture: two independent signal channels.
+include gro;
+set("dt", 0.1);
+
+signal_a := signal(0.2, 0.05);
+signal_b := signal(0.0, 0.1);
+
+program main() := {
+  reset(),
+  ecoli([x:=-1, y:=0], program colony()),
+  ecoli([x:=1, y:=0], program colony())
+};
+
+program colony() := {
+  emit_signal(signal_a, 1.0),
+  emit_signal(signal_b, 2.0),
+  sensed_a := get_signal(signal_a),
+  sensed_b := get_signal(signal_b)
+};
