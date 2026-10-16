@@ -328,7 +328,7 @@ std::string buildBioNetworkReport(Model* model, BioNetwork* network, std::string
 	out << "stopTime: " << formatDouble(network->getStopTime()) << "\n";
 	out << "stepSize: " << formatDouble(network->getStepSize()) << "\n";
 	out << "currentTime: " << formatDouble(network->getCurrentTime()) << "\n";
-	out << "autoSchedule: " << boolText(network->getAutoSchedule()) << "\n";
+	out << "stepsToSynchronize: " << network->getStepsToSynchronize() << "\n";
 	out << "lastErrorMessage: " << network->getLastErrorMessage() << "\n";
 
 	out << "\nSpecies membership\n";
@@ -564,7 +564,7 @@ std::string buildBioNetworkReportJson(Model* model, BioNetwork* network, const s
 	out << ",\"stopTime\":" << formatDouble(network->getStopTime());
 	out << ",\"stepSize\":" << formatDouble(network->getStepSize());
 	out << ",\"currentTime\":" << formatDouble(network->getCurrentTime());
-	out << ",\"autoSchedule\":" << boolText(network->getAutoSchedule());
+	out << ",\"stepsToSynchronize\":" << network->getStepsToSynchronize();
 	out << ",\"speciesCount\":" << std::to_string(network->getSpeciesNames().size());
 	out << ",\"reactionCount\":" << std::to_string(network->getReactionNames().size());
 	out << ",\"speciesNames\":" << jsonArray(network->getSpeciesNames());

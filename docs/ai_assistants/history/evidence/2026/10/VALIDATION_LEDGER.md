@@ -3,7 +3,7 @@ document_type: evidence-ledger
 authority: informative
 owner: project-maintainer
 period: 2026-10
-last_updated: 2026-10-11
+last_updated: 2026-10-16
 status: active
 tracks: 511
 ---
@@ -34,3 +34,11 @@ and the historical integration plan §22.9. Build/CTest results are local only.
   staged. Its `SUCCEED()` cases do not establish behavioral correctness.
 - The GUI build proves compilation and linking, not viewer interaction.
 - No hosted CI run, scientific calibration, or release readiness is claimed.
+
+## 4. PR #550 continuous-model local audit
+
+| Date | Scope | Branch / head | Commands / result | Bounded conclusion | Limitation |
+|---|---|---|---|---|---|
+| 2026-10-16 | PR #550 continuous temporal base, ODESolver, DiffusionField, BioNetwork, event lifetime and plugin loaders | `WiP20261016/ContinuousModels`; implementation `6cb42d1c`; based on `origin/WorkInProgress` `6df79436ff9d72e302e9d2b047fc5a8f6e1f297b` | `tests-unit`: 1,918 passed / 4 disabled; `tests-kernel-unit`: 1,917 passed / 4 disabled, plus focused T0=100 integration; `tests-smoke`: 3/3; focused ASan/UBSan 3/3 with LeakSanitizer disabled; developer manual rebuilt; User Manual Doxygen-LaTeX PDF failed on existing Unicode `Δ` | Deferred evolution until calendar dispatch fixed time-run-ahead; matrix tests cover sync counts 0/1/2/3/5/20, final partial steps, nonzero global origin, event destruction and BioNetwork replication reset | Nonzero `DiffusionSimulate` component override, LeakSanitizer, User Manual PDF, final-head hosted CI and exhaustive legacy model compatibility remain unverified; PR remains draft |
+
+Detailed diagnosis, commands, environment, test counts, sanitizer scope, manual impact, and remaining decisions are recorded in [`2026-10-16_PR550_ContinuousModels_local_handoff.md`](2026-10-16_PR550_ContinuousModels_local_handoff.md).

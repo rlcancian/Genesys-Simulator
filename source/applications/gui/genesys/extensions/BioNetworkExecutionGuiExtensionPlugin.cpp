@@ -264,7 +264,7 @@ QString buildAnalysisReport(Model* model, const BioNetwork* network, bool simula
 	out << "stopTime: " << (network != nullptr ? formatDouble(network->getStopTime()) : std::string("0")) << "\n";
 	out << "stepSize: " << (network != nullptr ? formatDouble(network->getStepSize()) : std::string("0")) << "\n";
 	out << "currentTime: " << (network != nullptr ? formatDouble(network->getCurrentTime()) : std::string("0")) << "\n";
-	out << "autoSchedule: " << (network != nullptr ? boolText(network->getAutoSchedule()) : "false") << "\n";
+	out << "stepsToSynchronize: " << (network != nullptr ? std::to_string(network->getStepsToSynchronize()) : "0") << "\n";
 	out << "simulatedThisPass: " << boolText(simulatedThisPass) << "\n";
 
 	out << "\nSpecies\n";

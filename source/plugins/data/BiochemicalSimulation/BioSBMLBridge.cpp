@@ -754,7 +754,11 @@ bool BioSBMLBridge::importFromString(Model* model,
 	if (!tryParseDouble(attributeValue(modelAttributes, "stepsize"), &stepSize)) {
 		// No-op, fall back to existing value.
 	}
-	network->setStartTime(startTime);
+	// Continuous models always start at local time zero. Preserve import
+    // diagnostics instead of allowing a nonzero legacy offset to throw.
+    if (startTime != 0.0 && result != nullptr) {
+        result->warnings.push_back("Ignored nonzero SBML continuous start time: local StartTime is fixed at zero.");
+    }
 	network->setStopTime(stopTime);
 	network->setStepSize(stepSize > 0.0 ? stepSize : network->getStepSize());
 

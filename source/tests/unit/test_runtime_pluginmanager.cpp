@@ -529,7 +529,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyKeepsBioNetworkTimeIndependent
 
     BioNetwork* network = manager->newInstance<BioNetwork>(model, "BioNetwork_ColonyAuthority");
     ASSERT_NE(network, nullptr);
-    network->setStartTime(2.0);
+    network->setStartTime(0.0);
     network->setStopTime(5.0);
     network->setStepSize(0.25);
     network->setCurrentTime(2.0);
@@ -554,7 +554,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyKeepsBioNetworkTimeIndependent
     colony->setGridHeight(6);
 
     EXPECT_DOUBLE_EQ(network->getStepSize(), 0.25);
-    EXPECT_DOUBLE_EQ(network->getStartTime(), 2.0);
+    EXPECT_DOUBLE_EQ(network->getStartTime(), 0.0);
     EXPECT_DOUBLE_EQ(network->getCurrentTime(), 2.0);
     EXPECT_DOUBLE_EQ(network->getStopTime(), 5.0);
     EXPECT_EQ(signalGrid->getWidth(), 4u);

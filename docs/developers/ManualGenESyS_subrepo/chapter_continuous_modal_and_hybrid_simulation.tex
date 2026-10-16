@@ -161,9 +161,13 @@ the factory.
 The component counterpart is \texttt{DiffusionSimulate}. It acts as a
 discrete-to-continuous bridge: when an entity arrives, it can trigger a
 diffusion solve using either the field's own configured window or the
-component's override window. The field itself also supports event-driven
-advancement via internal events when \texttt{AutoSchedule} is enabled, so the
-continuous solve can stay synchronized with the kernel clock.
+component's override window. A continuous data definition starts at local time
+zero; its synchronization origin is the kernel clock when evolution begins.
+The \texttt{StepsToSynchronize} control determines how many local solver steps
+run between internal calendar events: zero runs the requested interval without
+calendar synchronization, while a positive value synchronizes after that many
+steps. The final event is synchronized at \texttt{StopTime}, including a partial
+last step when necessary.
 
 \begin{figure}[htbp]
 \centering

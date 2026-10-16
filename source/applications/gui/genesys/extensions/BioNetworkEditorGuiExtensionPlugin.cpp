@@ -147,13 +147,6 @@ public:
 				return;
 			}
 
-			bool startOk = false;
-			const double startTime = QInputDialog::getDouble(
-				parentWidget, QObject::tr("BioNetwork Editor"), QObject::tr("Start time:"),
-				network->getStartTime(), -1e12, 1e12, 6, &startOk);
-			if (!startOk) {
-				return;
-			}
 			bool stopOk = false;
 			const double stopTime = QInputDialog::getDouble(
 				parentWidget, QObject::tr("BioNetwork Editor"), QObject::tr("Stop time:"),
@@ -177,7 +170,6 @@ public:
 			for (const std::string& name : parseNameList(reactionsInput)) {
 				network->addReaction(name);
 			}
-			network->setStartTime(startTime);
 			network->setStopTime(stopTime);
 			network->setStepSize(stepSize);
 			network->setHasChanged(true);
