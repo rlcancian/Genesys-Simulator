@@ -226,9 +226,9 @@
 \contentsline {subsection}{\numberline {24.2.1}What the diffusion tests prove}{205}{subsection.24.2.1}%
 \contentsline {section}{\numberline {24.3}Modal models and hybrid execution}{205}{section.24.3}%
 \contentsline {subsection}{\numberline {24.3.1}Petri nets}{205}{subsection.24.3.1}%
-\contentsline {section}{\numberline {24.4}Cellular automata}{208}{section.24.4}%
-\contentsline {section}{\numberline {24.5}Hybrid coupling and validation boundary}{209}{section.24.5}%
-\contentsline {subsection}{\numberline {24.5.1}Current validation boundary}{209}{subsection.24.5.1}%
+\contentsline {section}{\numberline {24.4}Cellular automata}{207}{section.24.4}%
+\contentsline {section}{\numberline {24.5}Hybrid coupling and validation boundary}{208}{section.24.5}%
+\contentsline {subsection}{\numberline {24.5.1}Current validation boundary}{210}{subsection.24.5.1}%
 \contentsline {chapter}{\numberline {25}Application Architecture}{211}{chapter.25}%
 \contentsline {section}{\numberline {25.1}Current executable families}{212}{section.25.1}%
 \contentsline {section}{\numberline {25.2}Composition roots}{213}{section.25.2}%
@@ -360,19 +360,20 @@
 \contentsline {subsection}{\numberline {36.3.2}How to select good first examples}{303}{subsection.36.3.2}%
 \contentsline {section}{\numberline {36.4}Opening a sample model in the GUI}{303}{section.36.4}%
 \contentsline {subsection}{\numberline {36.4.1}What to confirm immediately after opening}{304}{subsection.36.4.1}%
-\contentsline {subsection}{\numberline {36.4.2}When the model appears ``too big''}{304}{subsection.36.4.2}%
+\contentsline {subsection}{\numberline {36.4.2}Exploring the Gro bacteria-colony example}{304}{subsection.36.4.2}%
+\contentsline {subsection}{\numberline {36.4.3}When the model appears ``too big''}{304}{subsection.36.4.3}%
 \contentsline {section}{\numberline {36.5}How to read a model in the graphics area}{304}{section.36.5}%
-\contentsline {subsection}{\numberline {36.5.1}Identifying the main flow}{304}{subsection.36.5.1}%
+\contentsline {subsection}{\numberline {36.5.1}Identifying the main flow}{305}{subsection.36.5.1}%
 \contentsline {subsection}{\numberline {36.5.2}Distinguishing main flow from auxiliary elements}{305}{subsection.36.5.2}%
 \contentsline {section}{\numberline {36.6}Running the model for the first time}{305}{section.36.6}%
 \contentsline {subsection}{\numberline {36.6.1}What to watch out for while running}{305}{subsection.36.6.1}%
-\contentsline {subsection}{\numberline {36.6.2}First validation of behavior}{305}{subsection.36.6.2}%
+\contentsline {subsection}{\numberline {36.6.2}First validation of behavior}{306}{subsection.36.6.2}%
 \contentsline {section}{\numberline {36.7}Modifying an example model in a controlled way}{306}{section.36.7}%
 \contentsline {subsection}{\numberline {36.7.1}Why small changes are better}{306}{subsection.36.7.1}%
 \contentsline {section}{\numberline {36.8}Best practices for exploring example models}{306}{section.36.8}%
-\contentsline {subsection}{\numberline {36.8.1}Start with smaller cases}{306}{subsection.36.8.1}%
-\contentsline {subsection}{\numberline {36.8.2}Save separate copies}{306}{subsection.36.8.2}%
-\contentsline {subsection}{\numberline {36.8.3}Use execution as a reading tool}{306}{subsection.36.8.3}%
+\contentsline {subsection}{\numberline {36.8.1}Start with smaller cases}{307}{subsection.36.8.1}%
+\contentsline {subsection}{\numberline {36.8.2}Save separate copies}{307}{subsection.36.8.2}%
+\contentsline {subsection}{\numberline {36.8.3}Use execution as a reading tool}{307}{subsection.36.8.3}%
 \contentsline {subsection}{\numberline {36.8.4}Return to structure after running}{307}{subsection.36.8.4}%
 \contentsline {section}{\numberline {36.9}Final Considerations}{307}{section.36.9}%
 \contentsline {chapter}{\numberline {37}GUI, Simulang, model execution and observation}{309}{chapter.37}%
@@ -493,15 +494,21 @@
 \contentsline {subsection}{\numberline {42.3.2}The bridge between examples in \texttt {C++} and saved models}{347}{subsection.42.3.2}%
 \contentsline {section}{\numberline {42.4}Tools as a Support Layer}{347}{section.42.4}%
 \contentsline {subsection}{\numberline {42.4.1}When to study \texttt {tools}}{348}{subsection.42.4.1}%
-\contentsline {section}{\numberline {42.5}The Importance of Tests}{348}{section.42.5}%
-\contentsline {subsection}{\numberline {42.5.1}Why Tests Are Part of the Architecture, Not Just the Routine}{348}{subsection.42.5.1}%
-\contentsline {subsection}{\numberline {42.5.2}How the Developer Should Use the Tests}{348}{subsection.42.5.2}%
-\contentsline {section}{\numberline {42.6}Build, Applications, and Behavior Selection}{349}{section.42.6}%
-\contentsline {section}{\numberline {42.7}Project Evolution and Contribution Paths}{349}{section.42.7}%
-\contentsline {subsection}{\numberline {42.7.1}How to Choose an Entry Point for Contribution}{349}{subsection.42.7.1}%
-\contentsline {subsection}{\numberline {42.7.2}The Role of Examples and Tests in Evolution}{349}{subsection.42.7.2}%
-\contentsline {section}{\numberline {42.8}An Integrated Final View of GenESyS}{350}{section.42.8}%
-\contentsline {section}{\numberline {42.9}Final Considerations}{350}{section.42.9}%
+\contentsline {section}{\numberline {42.5}Future cross-cutting concerns with an explicit AOP-lite pipeline}{348}{section.42.5}%
+\contentsline {subsection}{\numberline {42.5.1}How the pipeline works}{348}{subsection.42.5.1}%
+\contentsline {subsection}{\numberline {42.5.2}Applying a logging aspect}{348}{subsection.42.5.2}%
+\contentsline {subsection}{\numberline {42.5.3}Applying a timing aspect}{349}{subsection.42.5.3}%
+\contentsline {subsection}{\numberline {42.5.4}Combining aspects}{349}{subsection.42.5.4}%
+\contentsline {subsection}{\numberline {42.5.5}How difficult is the first implementation?}{349}{subsection.42.5.5}%
+\contentsline {section}{\numberline {42.6}The Importance of Tests}{349}{section.42.6}%
+\contentsline {subsection}{\numberline {42.6.1}Why Tests Are Part of the Architecture, Not Just the Routine}{350}{subsection.42.6.1}%
+\contentsline {subsection}{\numberline {42.6.2}How the Developer Should Use the Tests}{350}{subsection.42.6.2}%
+\contentsline {section}{\numberline {42.7}Build, Applications, and Behavior Selection}{350}{section.42.7}%
+\contentsline {section}{\numberline {42.8}Project Evolution and Contribution Paths}{351}{section.42.8}%
+\contentsline {subsection}{\numberline {42.8.1}How to Choose an Entry Point for Contribution}{351}{subsection.42.8.1}%
+\contentsline {subsection}{\numberline {42.8.2}The Role of Examples and Tests in Evolution}{351}{subsection.42.8.2}%
+\contentsline {section}{\numberline {42.9}An Integrated Final View of GenESyS}{351}{section.42.9}%
+\contentsline {section}{\numberline {42.10}Final Considerations}{352}{section.42.10}%
 \contentsline {chapter}{\numberline {A}Command Reference}{353}{appendix.A}%
 \contentsline {chapter}{\numberline {B}CMake Options and Presets}{355}{appendix.B}%
 \contentsline {chapter}{\numberline {C}Application and Target Matrix}{357}{appendix.C}%
