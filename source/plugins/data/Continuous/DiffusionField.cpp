@@ -24,7 +24,7 @@ ModelDataDefinition* DiffusionField::NewInstance(Model* model, std::string name)
 }
 
 DiffusionField::DiffusionField(Model* model, std::string name)
-		: ModelDataDefinition(model, Util::TypeOf<DiffusionField>(), name) {
+		: ContinuousModelDataDefinition(model, Util::TypeOf<DiffusionField>(), name, 0.1, 0.01, 0u) {
 	auto* propDimensions = new SimulationControlUInt(
 			std::bind(&DiffusionField::getDimensions, this), std::bind(&DiffusionField::setDimensions, this, std::placeholders::_1),
 			Util::TypeOf<DiffusionField>(), getName(), "Dimensions", "");
@@ -46,30 +46,10 @@ DiffusionField::DiffusionField(Model* model, std::string name)
 	auto* propInitialParam = new SimulationControlDouble(
 			std::bind(&DiffusionField::getInitialParameter, this), std::bind(&DiffusionField::setInitialParameter, this, std::placeholders::_1),
 			Util::TypeOf<DiffusionField>(), getName(), "InitialParameter", "");
-	auto* propStartTime = new SimulationControlDouble(
-			std::bind(&DiffusionField::getStartTime, this), std::bind(&DiffusionField::setStartTime, this, std::placeholders::_1),
-			Util::TypeOf<DiffusionField>(), getName(), "StartTime", "");
-	auto* propStopTime = new SimulationControlDouble(
-			std::bind(&DiffusionField::getStopTime, this), std::bind(&DiffusionField::setStopTime, this, std::placeholders::_1),
-			Util::TypeOf<DiffusionField>(), getName(), "StopTime", "");
-	auto* propStepSize = new SimulationControlDouble(
-			std::bind(&DiffusionField::getStepSize, this), std::bind(&DiffusionField::setStepSize, this, std::placeholders::_1),
-			Util::TypeOf<DiffusionField>(), getName(), "StepSize", "");
-	auto* propCurrentTime = new SimulationControlDouble(
-			std::bind(&DiffusionField::getCurrentTime, this), std::bind(&DiffusionField::setCurrentTime, this, std::placeholders::_1),
-			Util::TypeOf<DiffusionField>(), getName(), "CurrentTime", "");
-	auto* propAutoSchedule = new SimulationControlGeneric<bool>(
-			std::bind(&DiffusionField::getAutoSchedule, this), std::bind(&DiffusionField::setAutoSchedule, this, std::placeholders::_1),
-			Util::TypeOf<DiffusionField>(), getName(), "AutoSchedule", "");
 	auto* propOdeSolver = new SimulationControlString(
 			std::bind(&DiffusionField::getOdeSolver, this), std::bind(&DiffusionField::setOdeSolver, this, std::placeholders::_1),
 			Util::TypeOf<DiffusionField>(), getName(), "OdeSolver", "");
-	auto* propLastStatus = new SimulationControlString(
-			std::bind(&DiffusionField::getLastStatus, this), std::bind(&DiffusionField::setLastStatus, this, std::placeholders::_1),
-			Util::TypeOf<DiffusionField>(), getName(), "LastStatus", "");
-	auto* propLastErrorMessage = new SimulationControlString(
-			std::bind(&DiffusionField::getLastErrorMessage, this), std::bind(&DiffusionField::setLastErrorMessage, this, std::placeholders::_1),
-			Util::TypeOf<DiffusionField>(), getName(), "LastErrorMessage", "");
+
 
 	_parentModel->getControls()->insert(propDimensions);
 	_parentModel->getControls()->insert(propPoints);
@@ -78,14 +58,9 @@ DiffusionField::DiffusionField(Model* model, std::string name)
 	_parentModel->getControls()->insert(propBoundary);
 	_parentModel->getControls()->insert(propInitial);
 	_parentModel->getControls()->insert(propInitialParam);
-	_parentModel->getControls()->insert(propStartTime);
-	_parentModel->getControls()->insert(propStopTime);
-	_parentModel->getControls()->insert(propStepSize);
-	_parentModel->getControls()->insert(propCurrentTime);
-	_parentModel->getControls()->insert(propAutoSchedule);
+
 	_parentModel->getControls()->insert(propOdeSolver);
-	_parentModel->getControls()->insert(propLastStatus);
-	_parentModel->getControls()->insert(propLastErrorMessage);
+
 
 	_addSimulationControl(propDimensions);
 	_addSimulationControl(propPoints);
@@ -94,14 +69,9 @@ DiffusionField::DiffusionField(Model* model, std::string name)
 	_addSimulationControl(propBoundary);
 	_addSimulationControl(propInitial);
 	_addSimulationControl(propInitialParam);
-	_addSimulationControl(propStartTime);
-	_addSimulationControl(propStopTime);
-	_addSimulationControl(propStepSize);
-	_addSimulationControl(propCurrentTime);
-	_addSimulationControl(propAutoSchedule);
+
 	_addSimulationControl(propOdeSolver);
-	_addSimulationControl(propLastStatus);
-	_addSimulationControl(propLastErrorMessage);
+
 }
 
 PluginInformation* DiffusionField::GetPluginInformation() {
@@ -136,25 +106,10 @@ void DiffusionField::setInitialCondition(std::string initialCondition) { _initia
 std::string DiffusionField::getInitialCondition() const { return _initialCondition; }
 void DiffusionField::setInitialParameter(double initialParameter) { _initialParameter = initialParameter; _field.clear(); }
 double DiffusionField::getInitialParameter() const { return _initialParameter; }
-void DiffusionField::setStartTime(double startTime) { _startTime = startTime; }
-double DiffusionField::getStartTime() const { return _startTime; }
-void DiffusionField::setStopTime(double stopTime) { _stopTime = stopTime; }
-double DiffusionField::getStopTime() const { return _stopTime; }
-void DiffusionField::setStepSize(double stepSize) { _stepSize = stepSize; }
-double DiffusionField::getStepSize() const { return _stepSize; }
-void DiffusionField::setCurrentTime(double currentTime) { _currentTime = currentTime; }
-double DiffusionField::getCurrentTime() const { return _currentTime; }
-void DiffusionField::setAutoSchedule(bool autoSchedule) { _autoSchedule = autoSchedule; }
-bool DiffusionField::getAutoSchedule() const { return _autoSchedule; }
 void DiffusionField::setOdeSolver(std::string odeSolver) {
 	_odeSolver = odeSolver.empty() ? OdeSolverFactory::defaultKey() : odeSolver;
 }
 std::string DiffusionField::getOdeSolver() const { return _odeSolver; }
-void DiffusionField::setLastStatus(std::string lastStatus) { _lastStatus = lastStatus; }
-std::string DiffusionField::getLastStatus() const { return _lastStatus; }
-void DiffusionField::setLastErrorMessage(std::string lastErrorMessage) { _lastErrorMessage = lastErrorMessage; }
-std::string DiffusionField::getLastErrorMessage() const { return _lastErrorMessage; }
-
 // --- diagnostics ---
 
 double DiffusionField::getTotalMass() const { return _lastTotalMass; }
@@ -272,91 +227,44 @@ void DiffusionField::refreshDiagnostics(const DiffusionMethodOfLinesSystem& syst
 	_lastL2Norm = system.l2Norm(_field.data());
 }
 
-// --- execution ---
+// --- model-specific evolution ---
 
-bool DiffusionField::simulate(std::string& errorMessage) {
-	return simulate(_startTime, _stopTime, _stepSize, errorMessage);
+void DiffusionField::initializeContinuousState() {
+    _field.clear();
+    _lastTotalMass = _lastMaxValue = _lastL2Norm = 0.0;
 }
 
-bool DiffusionField::simulate(double startTime, double stopTime, double stepSize, std::string& errorMessage) {
-	_startTime = startTime;
-	_stopTime = stopTime;
-	_stepSize = stepSize;
-	_currentTime = _startTime;
-	_field.clear();
-	_lastStatus = "Running";
-	_lastErrorMessage.clear();
-
-	if (!_check(errorMessage)) {
-		_lastStatus = "Failed";
-		_lastErrorMessage = errorMessage;
-		return false;
-	}
-	while (_currentTime < _stopTime) {
-		if (!advanceOneStep(errorMessage)) {
-			return false;
-		}
-	}
-	// Zero-length window (start == stop): no step ran, but a "Completed" run
-	// should still expose the initial field and its diagnostics.
-	if (_field.empty()) {
-		DiffusionMethodOfLinesSystem system;
-		if (!buildSystem(&system, errorMessage)) {
-			_lastStatus = "Failed";
-			_lastErrorMessage = errorMessage;
-			return false;
-		}
-		buildInitialField(system, _field);
-		refreshDiagnostics(system);
-	}
-	_lastStatus = "Completed";
-	return true;
+bool DiffusionField::evolveState(double currentTime, double dt, std::string& errorMessage) {
+    DiffusionMethodOfLinesSystem system;
+    if (!buildSystem(&system, errorMessage)) return false;
+    if (_field.empty()) {
+        buildInitialField(system, _field);
+        refreshDiagnostics(system);
+    }
+    std::vector<double> next(_field.size(), 0.0);
+    std::unique_ptr<OdeSolver_if> solver = OdeSolverFactory::create(_odeSolver);
+    if (!solver || !solver->advance(system, currentTime, dt, _field.data(), next.data())) {
+        errorMessage = "DiffusionField \"" + getName() + "\" failed to advance with solver \"" + _odeSolver + "\".";
+        return false;
+    }
+    _field.swap(next);
+    refreshDiagnostics(system);
+    return true;
 }
 
-bool DiffusionField::advanceOneStep(std::string& errorMessage) {
-	errorMessage.clear();
-	if (_stepSize <= 0.0) {
-		_lastStatus = "Failed";
-		_lastErrorMessage = "DiffusionField \"" + getName() + "\" must define StepSize > 0.";
-		errorMessage = _lastErrorMessage;
-		return false;
-	}
-	if (_currentTime >= _stopTime) {
-		_lastStatus = "Completed";
-		return true;
-	}
-
-	DiffusionMethodOfLinesSystem system;
-	if (!buildSystem(&system, errorMessage)) {
-		_lastStatus = "Failed";
-		_lastErrorMessage = errorMessage;
-		return false;
-	}
-
-	// Set up the field on the first step of a run.
-	if (_field.empty()) {
-		buildInitialField(system, _field);
-		_currentTime = _startTime;
-		refreshDiagnostics(system);
-	}
-
-	const double dt = std::min(_stepSize, _stopTime - _currentTime);
-	std::vector<double> next(_field.size(), 0.0);
-
-	// Get the chosen solver from the factory; we only use it through OdeSolver_if.
-	std::unique_ptr<OdeSolver_if> solver = OdeSolverFactory::create(_odeSolver);
-	if (!solver || !solver->advance(system, _currentTime, dt, _field.data(), next.data())) {
-		_lastStatus = "Failed";
-		_lastErrorMessage = "DiffusionField \"" + getName() + "\" failed to advance the ODE system with solver \"" + _odeSolver + "\".";
-		errorMessage = _lastErrorMessage;
-		return false;
-	}
-
-	_field.swap(next);
-	_currentTime += dt;
-	refreshDiagnostics(system);
-	_lastStatus = _currentTime >= _stopTime ? "Completed" : "Running";
-	return true;
+void DiffusionField::onContinuousRunCompleted() {
+    // A zero-duration run still exposes the initial field and its diagnostics.
+    if (_field.empty()) {
+        DiffusionMethodOfLinesSystem system;
+        std::string errorMessage;
+        if (buildSystem(&system, errorMessage)) {
+            buildInitialField(system, _field);
+            refreshDiagnostics(system);
+        } else {
+            _lastStatus = "Failed";
+            _lastErrorMessage = errorMessage;
+        }
+    }
 }
 
 // --- ModelDataDefinition overrides ---
@@ -370,16 +278,15 @@ std::string DiffusionField::show() {
 			",boundaryCondition=\"" + _boundaryCondition + "\"" +
 			",initialCondition=\"" + _initialCondition + "\"" +
 			",initialParameter=" + Util::StrTruncIfInt(std::to_string(_initialParameter)) +
-			",startTime=" + Util::StrTruncIfInt(std::to_string(_startTime)) +
 			",stopTime=" + Util::StrTruncIfInt(std::to_string(_stopTime)) +
 			",stepSize=" + Util::StrTruncIfInt(std::to_string(_stepSize)) +
-			",autoSchedule=" + std::to_string(_autoSchedule ? 1 : 0) +
+			",stepsToSynchronize=" + std::to_string(getStepsToSynchronize()) +
 			",odeSolver=\"" + _odeSolver + "\"" +
 			",lastStatus=\"" + _lastStatus + "\"";
 }
 
 bool DiffusionField::_loadInstance(PersistenceRecord* fields) {
-	bool res = ModelDataDefinition::_loadInstance(fields);
+	bool res = ContinuousModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		_dimensions = fields->loadField("dimensions", DEFAULT.dimensions);
 		_pointsPerDimension = fields->loadField("pointsPerDimension", DEFAULT.pointsPerDimension);
@@ -388,24 +295,19 @@ bool DiffusionField::_loadInstance(PersistenceRecord* fields) {
 		_boundaryCondition = fields->loadField("boundaryCondition", DEFAULT.boundaryCondition);
 		_initialCondition = fields->loadField("initialCondition", DEFAULT.initialCondition);
 		_initialParameter = fields->loadField("initialParameter", DEFAULT.initialParameter);
-		_startTime = fields->loadField("startTime", DEFAULT.startTime);
-		_stopTime = fields->loadField("stopTime", DEFAULT.stopTime);
-		_stepSize = fields->loadField("stepSize", DEFAULT.stepSize);
-		_currentTime = fields->loadField("currentTime", _startTime);
-		_autoSchedule = fields->loadField("autoSchedule", DEFAULT.autoSchedule ? 1u : 0u) != 0u;
+		setStepsToSynchronize(fields->loadField("stepsToSynchronize",
+			fields->loadField("autoSchedule", 0u) != 0u ? 1u : 0u));
 		_odeSolver = fields->loadField("odeSolver", DEFAULT.odeSolver);
 		if (_odeSolver.empty()) {
 			_odeSolver = OdeSolverFactory::defaultKey();
 		}
-		_lastStatus = fields->loadField("lastStatus", DEFAULT.lastStatus);
-		_lastErrorMessage = fields->loadField("lastErrorMessage", DEFAULT.lastErrorMessage);
 		_field.clear();
 	}
 	return res;
 }
 
 void DiffusionField::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
-	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	ContinuousModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("dimensions", _dimensions, DEFAULT.dimensions, saveDefaultValues);
 	fields->saveField("pointsPerDimension", _pointsPerDimension, DEFAULT.pointsPerDimension, saveDefaultValues);
 	fields->saveField("domainLength", _domainLength, DEFAULT.domainLength, saveDefaultValues);
@@ -413,18 +315,11 @@ void DiffusionField::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 	fields->saveField("boundaryCondition", _boundaryCondition, DEFAULT.boundaryCondition, saveDefaultValues);
 	fields->saveField("initialCondition", _initialCondition, DEFAULT.initialCondition, saveDefaultValues);
 	fields->saveField("initialParameter", _initialParameter, DEFAULT.initialParameter, saveDefaultValues);
-	fields->saveField("startTime", _startTime, DEFAULT.startTime, saveDefaultValues);
-	fields->saveField("stopTime", _stopTime, DEFAULT.stopTime, saveDefaultValues);
-	fields->saveField("stepSize", _stepSize, DEFAULT.stepSize, saveDefaultValues);
-	fields->saveField("currentTime", _currentTime, DEFAULT.currentTime, saveDefaultValues);
-	fields->saveField("autoSchedule", _autoSchedule ? 1u : 0u, DEFAULT.autoSchedule ? 1u : 0u, saveDefaultValues);
 	fields->saveField("odeSolver", _odeSolver, DEFAULT.odeSolver, saveDefaultValues);
-	fields->saveField("lastStatus", _lastStatus, DEFAULT.lastStatus, saveDefaultValues);
-	fields->saveField("lastErrorMessage", _lastErrorMessage, DEFAULT.lastErrorMessage, saveDefaultValues);
 }
 
 bool DiffusionField::_check(std::string& errorMessage) {
-	bool resultAll = true;
+	bool resultAll = ContinuousModelDataDefinition::_check(errorMessage);
 	if (getName().empty()) {
 		errorMessage += "DiffusionField must define a non-empty name. ";
 		resultAll = false;
@@ -460,14 +355,6 @@ bool DiffusionField::_check(std::string& errorMessage) {
 		errorMessage += "DiffusionField \"" + getName() + "\" must define DiffusionCoefficient >= 0. ";
 		resultAll = false;
 	}
-	if (_stepSize <= 0.0) {
-		errorMessage += "DiffusionField \"" + getName() + "\" must define StepSize > 0. ";
-		resultAll = false;
-	}
-	if (_stopTime < _startTime) {
-		errorMessage += "DiffusionField \"" + getName() + "\" must define StopTime >= StartTime. ";
-		resultAll = false;
-	}
 	if (_boundaryCondition != "Dirichlet" && _boundaryCondition != "Neumann") {
 		errorMessage += "DiffusionField \"" + getName() + "\" has unknown BoundaryCondition \"" + _boundaryCondition + "\" (use Dirichlet or Neumann). ";
 		resultAll = false;
@@ -486,34 +373,3 @@ bool DiffusionField::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void DiffusionField::_initBetweenReplications() {
-	_currentTime = _startTime;
-	_field.clear();
-	_lastTotalMass = _lastMaxValue = _lastL2Norm = 0.0;
-	_lastStatus = "Idle";
-	_lastErrorMessage.clear();
-	if (_autoSchedule) {
-		scheduleNextInternalEvent();
-	}
-}
-
-// Event-driven advance. Each InternalEvent fired by the kernel advances the field
-// one step and, while the run hasn't reached StopTime, schedules the next event.
-// This couples the continuous solve to the kernel's discrete event clock (mirrors
-// BioNetwork's auto-schedule).
-void DiffusionField::handleInternalEvent(void*) {
-	std::string errorMessage;
-	if (advanceOneStep(errorMessage) && _autoSchedule && _currentTime < _stopTime) {
-		scheduleNextInternalEvent();
-	}
-}
-
-void DiffusionField::scheduleNextInternalEvent() {
-	if (_stepSize <= 0.0 || _currentTime >= _stopTime) {
-		return;
-	}
-	const double eventTime = std::min(_currentTime + _stepSize, _stopTime);
-	auto* event = new InternalEvent(eventTime, "DiffusionFieldStep");
-	event->setEventHandler(this, &DiffusionField::handleInternalEvent, nullptr);
-	_parentModel->getFutureEvents()->insert(event);
-}
