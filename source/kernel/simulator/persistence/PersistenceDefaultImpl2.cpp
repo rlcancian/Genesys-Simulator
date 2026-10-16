@@ -222,8 +222,10 @@ bool PersistenceDefaultImpl2::load(std::string filename) {
 			Util::identification id = fields->loadField("id", -1);
 			ModelComponent *component = cm->find(id);
 			if (component == nullptr) {
-				_model->getTracer()->traceError("found unregistered component ID " + std::to_string(id));
-				continue;
+				_model->getTracer()->traceError("Unable to restore connection source: component id="
+					+ std::to_string(id) + " is not registered");
+				ok = false;
+				break;
 			}
 			// then set up its connections
 			unsigned short nextSize = fields->loadField("nexts", 1);
@@ -234,8 +236,11 @@ bool PersistenceDefaultImpl2::load(std::string filename) {
 				// id -> component
 				ModelComponent* nextComponent = cm->find(nextId);
 				if (nextComponent == nullptr) {
-					_model->getTracer()->traceError("found unregistered target ID " + std::to_string(nextId));
-					continue;
+					_model->getTracer()->traceError("Unable to restore connection: source component id="
+						+ std::to_string(id) + ", target component id=" + std::to_string(nextId)
+						+ " is not registered");
+					ok = false;
+					break;
 				}
 				// target port
 				unsigned short nextPort = fields->loadField("nextinputPortNumber" + Util::StrIndex(i), 0);
