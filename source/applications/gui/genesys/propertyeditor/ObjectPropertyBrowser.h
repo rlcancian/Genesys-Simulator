@@ -247,8 +247,6 @@ private:
     QMap<QtProperty*, QStringList> _enumNames;
     QMap<QtProperty*, std::vector<ObjectListAction>> _objectListActions;
     QMap<QtProperty*, std::vector<ModelObjectAction>> _modelObjectActions;
-    QSet<QtProperty*> _pendingCommittedProperties;
-    QMap<QtProperty*, QVariant> _pendingCommittedValues;
     ModelChangedCallback _modelChangedCallback;
 
 private:
