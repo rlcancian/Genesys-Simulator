@@ -59,6 +59,7 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
 	void initializeContinuousState() override;
+	void onContinuousStepCompleted() override;
 	bool evolveState(double currentTime, double dt, std::string& errorMessage) override;
 
 
