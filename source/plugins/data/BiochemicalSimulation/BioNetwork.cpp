@@ -359,7 +359,7 @@ bool BioNetwork::evolveState(double currentTime, double dt, std::string& errorMe
 		return false;
 	}
 
-		std::vector<double> y0(species.size(), 0.0);
+	std::vector<double> y0(species.size(), 0.0);
 	std::vector<double> y1(species.size(), 0.0);
 	for (unsigned int i = 0; i < species.size(); ++i) {
 		y0[i] = species[i]->getAmount();
@@ -378,9 +378,16 @@ bool BioNetwork::evolveState(double currentTime, double dt, std::string& errorMe
 			species[i]->setAmount(std::max(0.0, y1[i]));
 		}
 	}
-	appendSimulationResultSample(species);
-	updatePayload(species);
-    return true;
+	return true;
+}
+
+void BioNetwork::onContinuousStepCompleted() {
+    std::vector<BioSpecies*> species;
+    std::string errorMessage;
+    if (collectSpecies(species, errorMessage)) {
+        appendSimulationResultSample(species);
+        updatePayload(species);
+    }
 }
 
 bool BioNetwork::collectSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const {
