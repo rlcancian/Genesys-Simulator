@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-09-19
+last_updated: 2026-10-29
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -59,7 +59,9 @@ A decision recorded here is not implemented automatically unless a corresponding
   - provide model-file/API construction first and defer GUI editing;
   - temporarily expose only read-only network visualization until editing contracts are stable.
 - Recommendation retained: implement the GUI only after backend contracts and the compatibility/persistence audit are stable; do not overload the existing process `Connection` canvas with graph/CPN arcs.
-- Implementation status: backend prerequisite closed (`AUTO-MODAL-002` / #541); GUI phase remains deferred until explicitly activated.
+- Implementation status: backend prerequisite closed (`AUTO-MODAL-002` / #541). **GUI phase explicitly activated by the maintainer on 2026-10-29**; G0 inventory/planning is underway in `WiP20261029/modalmodel-architecture`. No GUI implementation or tested record codec is claimed yet.
+- **DEC-MODAL-GUI-20261029 (approved):** reuse the hierarchical submodel *navigation experience* for a specialized Network diagram, but **not** process-submodel topology or execution. `ModalModelDefault` remains a process `ModelComponent` adapter; the attached `DefaultNetwork` remains a potentially shared `ModelDataDefinition`. Network states/nodes/places/transitions/edges/arcs retain mathematical types; none need become process `ModelComponent` or `Connection` objects merely for graphical display. A read-only EFSM viewer is the first GUI slice.
+- Approved implementation and handoff plan: [`reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md). The existing G0–G6 GUI reference remains the conceptual architecture; `AUTO-MODAL-003` owns G0 preparation/codec and `AUTO-MODAL-004` is the dependent G1 viewer.
 - Decision unlocks:
   - GUI creation/editing of network-owned nodes, places, transitions, arcs and graph edges;
   - synchronized `ModalModelDefault` input/output bindings;
