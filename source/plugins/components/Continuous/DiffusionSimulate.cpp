@@ -9,6 +9,7 @@
 #include "plugins/components/Continuous/DiffusionSimulate.h"
 
 #include <functional>
+#include <cmath>
 
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
@@ -25,7 +26,7 @@ ModelDataDefinition* DiffusionSimulate::NewInstance(Model* model, std::string na
 }
 
 DiffusionSimulate::DiffusionSimulate(Model* model, std::string name)
-	: ModelComponent(model, Util::TypeOf<DiffusionSimulate>(), name) {
+	: ContinuousModelComponent(model, Util::TypeOf<DiffusionSimulate>(), name) {
 	auto* propDiffusionField = new SimulationControlGenericClass<DiffusionField*, Model*, DiffusionField>(
 			_parentModel,
 			std::bind(&DiffusionSimulate::getDiffusionField, this),
@@ -72,6 +73,8 @@ DiffusionSimulate::DiffusionSimulate(Model* model, std::string name)
 	_addSimulationControl(propLastSucceeded);
 	_addSimulationControl(propLastMessage);
 }
+
+DiffusionSimulate::~DiffusionSimulate() = default;
 
 PluginInformation* DiffusionSimulate::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<DiffusionSimulate>(), &DiffusionSimulate::LoadInstance, &DiffusionSimulate::NewInstance);
@@ -143,11 +146,15 @@ bool DiffusionSimulate::_check(std::string& errorMessage) {
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<DiffusionField>(), _diffusionField, "DiffusionField", errorMessage);
 	if (!_useFieldTimeWindow) {
-		if (_stepSize <= 0.0) {
+		if (_startTime != 0.0) {
+			errorMessage += "DiffusionSimulate \"" + getName() + "\" requires StartTime=0 for a continuous local time window. ";
+			resultAll = false;
+		}
+		if (!std::isfinite(_stepSize) || _stepSize <= 0.0) {
 			errorMessage += "DiffusionSimulate \"" + getName() + "\" must define stepSize > 0 when UseFieldTimeWindow=false. ";
 			resultAll = false;
 		}
-		if (_stopTime < _startTime) {
+		if (!std::isfinite(_stopTime) || _stopTime < 0.0 || _stopTime < _startTime) {
 			errorMessage += "DiffusionSimulate \"" + getName() + "\" must define stopTime >= startTime when UseFieldTimeWindow=false. ";
 			resultAll = false;
 		}
@@ -163,43 +170,31 @@ void DiffusionSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortN
 		_lastSucceeded = false;
 		_lastMessage = "DiffusionSimulate requires a referenced DiffusionField.";
 		traceSimulation(this, TraceManager::Level::L1_errorFatal, _lastMessage);
-		_forwardEntity(entity);
+		if (entity != nullptr) _parentModel->removeEntity(entity);
 		return;
 	}
-
+	ContinuousModelDataDefinition::ExecutionRequest request;
+	request.useDefinitionTimeWindow = _useFieldTimeWindow;
+	request.startTime = _startTime;
+	request.stopTime = _stopTime;
+	request.stepSize = _stepSize;
 	std::string errorMessage;
-	bool success = false;
-	if (_useFieldTimeWindow) {
-		success = _diffusionField->simulate(errorMessage);
-	} else {
-		success = _diffusionField->simulate(_startTime, _stopTime, _stepSize, errorMessage);
-	}
-
-	_lastSucceeded = success;
-	if (success) {
-		message = "DiffusionSimulate executed DiffusionField \"" + _diffusionField->getName() +
-		          "\" with status \"" + _diffusionField->getLastStatus() + "\".";
-		traceSimulation(this, TraceManager::Level::L2_results, message);
-		_lastMessage = message;
-	} else {
+	if (!_requestContinuousExecution(_diffusionField, request, entity, errorMessage)) {
+		_lastSucceeded = false;
 		_lastMessage = errorMessage;
 		traceSimulation(this, TraceManager::Level::L1_errorFatal,
 		                "DiffusionSimulate failed for DiffusionField \"" + _diffusionField->getName() + "\": " + errorMessage);
+		if (entity != nullptr) _parentModel->removeEntity(entity);
 	}
-	_forwardEntity(entity);
 }
 
-void DiffusionSimulate::_forwardEntity(Entity* entity) {
-	if (entity == nullptr) {
-		return;
-	}
-	Connection* frontConnection = this->getConnectionManager()->getFrontConnection();
-	if (frontConnection == nullptr || frontConnection->component == nullptr) {
-		traceSimulation(this, "DiffusionSimulate dispatch skipped: invalid front connection");
-		_parentModel->removeEntity(entity);
-		return;
-	}
-	_parentModel->sendEntityToComponent(entity, frontConnection);
+void DiffusionSimulate::_onContinuousExecutionResult(const ContinuousModelDataDefinition::ExecutionResult& result) {
+	_lastSucceeded = result.succeeded();
+	_lastMessage = result.succeeded()
+		? "DiffusionField \"" + (_diffusionField != nullptr ? _diffusionField->getName() : std::string()) + "\" completed."
+		: result.message;
+	if (!result.succeeded())
+		traceSimulation(this, TraceManager::Level::L1_errorFatal, "DiffusionSimulate execution failed: " + result.message);
 }
 
 void DiffusionSimulate::setDiffusionField(DiffusionField* diffusionField) {

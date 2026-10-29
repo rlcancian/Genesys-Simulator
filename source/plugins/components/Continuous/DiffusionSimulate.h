@@ -10,8 +10,7 @@
 #define DIFFUSIONSIMULATE_H
 
 #include <string>
-
-#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "plugins/components/Continuous/ContinuousModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/data/Continuous/DiffusionField.h"
 
@@ -27,10 +26,10 @@
  * zero advances at explicit kernel-clock synchronization events; zero runs the
  * requested interval without posting synchronization events.
  */
-class DiffusionSimulate : public ModelComponent {
+class DiffusionSimulate : public ContinuousModelComponent {
 public:
 	DiffusionSimulate(Model* model, std::string name = "");
-	virtual ~DiffusionSimulate() override = default;
+	virtual ~DiffusionSimulate() override;
 
 public:
 	static PluginInformation* GetPluginInformation();
@@ -65,7 +64,7 @@ protected:
 	virtual void _createEditableDataDefinitions() override;
 
 private:
-	void _forwardEntity(Entity* entity);
+	void _onContinuousExecutionResult(const ContinuousModelDataDefinition::ExecutionResult& result) override;
 
 private:
 	const struct DEFAULT_VALUES {

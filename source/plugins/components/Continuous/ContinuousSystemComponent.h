@@ -11,7 +11,7 @@
 
 #include <string>
 
-#include "kernel/simulator/model/ModelComponent.h"
+#include "plugins/components/Continuous/ContinuousModelComponent.h"
 #include "plugins/data/Continuous/ODESolver.h"
 
 /*!
@@ -23,7 +23,7 @@
  * read the updated values.  The entity is forwarded through output port 0
  * after integration completes.
  */
-class ContinuousSystemComponent : public ModelComponent {
+class ContinuousSystemComponent : public ContinuousModelComponent {
 public: // constructors
 	ContinuousSystemComponent(Model* model, std::string name = "");
 	virtual ~ContinuousSystemComponent() override = default;
@@ -48,6 +48,7 @@ public: // getters & setters
 
 protected: // virtual — must be overridden
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	void _onContinuousExecutionResult(const ContinuousModelDataDefinition::ExecutionResult& result) override;
 	virtual bool _loadInstance(PersistenceRecord* fields) override;
 	virtual void _saveInstance(PersistenceRecord* fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;

@@ -70,7 +70,7 @@ PluginInformation* ContinuousSystemComponent::GetPluginInformation() {
 // ---------------------------------------------------------------------------
 
 ContinuousSystemComponent::ContinuousSystemComponent(Model* model, std::string name)
-	: ModelComponent(model, Util::TypeOf<ContinuousSystemComponent>(), name) {
+	: ContinuousModelComponent(model, Util::TypeOf<ContinuousSystemComponent>(), name) {
 }
 
 // ---------------------------------------------------------------------------
@@ -113,9 +113,9 @@ void ContinuousSystemComponent::_onDispatchEvent(Entity* entity, unsigned int in
 	(void)inputPortNumber;
 
 	if (_odeSolver == nullptr) {
-		traceSimulation(this, TraceManager::Level::L1_errorFatal,
-		                "ContinuousSystemComponent \"" + getName() + "\": ODESolver not set.");
-		_parentModel->sendEntityToComponent(entity, getConnectionManager()->getFrontConnection());
+		const std::string error = "ContinuousSystemComponent \"" + getName() + "\": ODESolver not set.";
+		traceSimulation(this, TraceManager::Level::L1_errorFatal, error);
+		_completeEntityImmediately(entity, {ContinuousModelDataDefinition::ExecutionState::Failed, error});
 		return;
 	}
 
@@ -147,7 +147,8 @@ void ContinuousSystemComponent::_onDispatchEvent(Entity* entity, unsigned int in
 
 	// advance the continuous ODE from wherever it last stopped up to the current event time,
 	// bridging the gap between the previous discrete event and this one
-	_odeSolver->integrate(simTime);
+	std::string errorMessage;
+	const bool success = _odeSolver->integrate(simTime, errorMessage);
 
 	double currentTimeAfter = _odeSolver->getCurrentTime();
 	std::vector<double> solverStateAfter = _odeSolver->getStateValues();
@@ -163,7 +164,18 @@ void ContinuousSystemComponent::_onDispatchEvent(Entity* entity, unsigned int in
 	                "[ContinuousSystem] após integrate: _currentTime=" + std::to_string(currentTimeAfter) +
 	                ", " + solverStateTextAfter);
 
-	_parentModel->sendEntityToComponent(entity, getConnectionManager()->getFrontConnection());
+	_completeEntityImmediately(entity, {
+		success ? ContinuousModelDataDefinition::ExecutionState::Completed
+		        : ContinuousModelDataDefinition::ExecutionState::Failed,
+		errorMessage});
+}
+
+void ContinuousSystemComponent::_onContinuousExecutionResult(
+		const ContinuousModelDataDefinition::ExecutionResult& result) {
+	if (!result.succeeded()) {
+		traceSimulation(this, TraceManager::Level::L1_errorFatal,
+		                "ContinuousSystemComponent execution failed: " + result.message);
+	}
 }
 
 // ---------------------------------------------------------------------------

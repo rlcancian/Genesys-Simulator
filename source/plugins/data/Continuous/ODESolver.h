@@ -50,6 +50,7 @@ public: // gets & sets
 	std::string getOutputFile() const;
 public: // new methods
 	void integrate(double targetTime);
+	bool integrate(double targetTime, std::string& errorMessage);
 	void resetState();
 	double getStateValue(unsigned int index) const;
 	void setStateValue(unsigned int index, double value);

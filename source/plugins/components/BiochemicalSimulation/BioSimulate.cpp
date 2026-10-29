@@ -8,6 +8,7 @@
 #include "plugins/components/BiochemicalSimulation/BioSimulate.h"
 
 #include <functional>
+#include <cmath>
 
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
@@ -24,7 +25,7 @@ ModelDataDefinition* BioSimulate::NewInstance(Model* model, std::string name) {
 }
 
 BioSimulate::BioSimulate(Model* model, std::string name)
-	: ModelComponent(model, Util::TypeOf<BioSimulate>(), name) {
+	: ContinuousModelComponent(model, Util::TypeOf<BioSimulate>(), name) {
 	auto* propBioNetwork = new SimulationControlGenericClass<BioNetwork*, Model*, BioNetwork>(
 			_parentModel,
 			std::bind(&BioSimulate::getBioNetwork, this),
@@ -71,6 +72,8 @@ BioSimulate::BioSimulate(Model* model, std::string name)
 	_addSimulationControl(propLastSucceeded);
 	_addSimulationControl(propLastMessage);
 }
+
+BioSimulate::~BioSimulate() = default;
 
 PluginInformation* BioSimulate::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioSimulate>(), &BioSimulate::LoadInstance, &BioSimulate::NewInstance);
@@ -141,11 +144,15 @@ bool BioSimulate::_check(std::string& errorMessage) {
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BioNetwork>(), _bioNetwork, "BioNetwork", errorMessage);
 	if (!_useNetworkTimeWindow) {
-		if (_stepSize <= 0.0) {
+		if (_startTime != 0.0) {
+			errorMessage += "BioSimulate \"" + getName() + "\" requires StartTime=0 for a continuous local time window. ";
+			resultAll = false;
+		}
+		if (!std::isfinite(_stepSize) || _stepSize <= 0.0) {
 			errorMessage += "BioSimulate \"" + getName() + "\" must define stepSize > 0 when UseNetworkTimeWindow=false. ";
 			resultAll = false;
 		}
-		if (_stopTime < _startTime) {
+		if (!std::isfinite(_stopTime) || _stopTime < 0.0 || _stopTime < _startTime) {
 			errorMessage += "BioSimulate \"" + getName() + "\" must define stopTime >= startTime when UseNetworkTimeWindow=false. ";
 			resultAll = false;
 		}
@@ -158,48 +165,38 @@ bool BioSimulate::_check(std::string& errorMessage) {
 void BioSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
 
-	std::string message;
 	if (_bioNetwork == nullptr) {
 		_lastSucceeded = false;
 		_lastMessage = "BioSimulate requires a referenced BioNetwork.";
 		traceSimulation(this, TraceManager::Level::L1_errorFatal, _lastMessage);
-		_forwardEntity(entity);
+		_completeEntityImmediately(entity, {ContinuousModelDataDefinition::ExecutionState::Failed, _lastMessage});
 		return;
 	}
 
+	ContinuousModelDataDefinition::ExecutionRequest request;
+	request.useDefinitionTimeWindow = _useNetworkTimeWindow;
+	request.startTime = _startTime;
+	request.stopTime = _stopTime;
+	request.stepSize = _stepSize;
 	std::string errorMessage;
-	bool success = false;
-	if (_useNetworkTimeWindow) {
-		success = _bioNetwork->simulate(errorMessage);
-	} else {
-		success = _bioNetwork->simulate(_startTime, _stopTime, _stepSize, errorMessage);
-	}
-
-	_lastSucceeded = success;
-	if (success) {
-		message = "BioSimulate executed BioNetwork \"" + _bioNetwork->getName() +
-		          "\" with status \"" + _bioNetwork->getLastStatus() + "\".";
-		traceSimulation(this, TraceManager::Level::L2_results, message);
-		_lastMessage = message;
-	} else {
+	if (!_requestContinuousExecution(_bioNetwork, request, entity, errorMessage)) {
+		_lastSucceeded = false;
 		_lastMessage = errorMessage;
 		traceSimulation(this, TraceManager::Level::L1_errorFatal,
 		                "BioSimulate failed for BioNetwork \"" + _bioNetwork->getName() + "\": " + errorMessage);
+		if (entity != nullptr) _parentModel->removeEntity(entity);
 	}
-	_forwardEntity(entity);
 }
 
-void BioSimulate::_forwardEntity(Entity* entity) {
-	if (entity == nullptr) {
-		return;
+void BioSimulate::_onContinuousExecutionResult(const ContinuousModelDataDefinition::ExecutionResult& result) {
+	_lastSucceeded = result.succeeded();
+	_lastMessage = result.succeeded()
+		? "BioNetwork \"" + (_bioNetwork != nullptr ? _bioNetwork->getName() : std::string()) + "\" completed."
+		: result.message;
+	if (!result.succeeded()) {
+		traceSimulation(this, TraceManager::Level::L1_errorFatal,
+		                "BioSimulate continuous execution failed: " + result.message);
 	}
-	Connection* frontConnection = this->getConnectionManager()->getFrontConnection();
-	if (frontConnection == nullptr || frontConnection->component == nullptr) {
-		traceSimulation(this, "BioSimulate dispatch skipped: invalid front connection");
-		_parentModel->removeEntity(entity);
-		return;
-	}
-	_parentModel->sendEntityToComponent(entity, frontConnection);
 }
 
 void BioSimulate::setBioNetwork(BioNetwork* bioNetwork) {

@@ -3,12 +3,41 @@
 
 #include "kernel/simulator/model/ModelDataDefinition.h"
 
+#include <cstdint>
+#include <functional>
+#include <map>
 #include <string>
 
 // Base for time-stepped model data definitions. Local time starts at zero;
 // absolute calendar times are anchored to the global clock at run start.
 class ContinuousModelDataDefinition : public ModelDataDefinition {
 public:
+    enum class ExecutionState {
+        Idle,
+        Running,
+        WaitingForSynchronization,
+        Completed,
+        Failed,
+        Cancelled
+    };
+
+    struct ExecutionResult {
+        ExecutionState state;
+        std::string message;
+
+        bool succeeded() const { return state == ExecutionState::Completed; }
+    };
+
+    struct ExecutionRequest {
+        bool useDefinitionTimeWindow = true;
+        double startTime = 0.0;
+        double stopTime = 0.0;
+        double stepSize = 0.0;
+    };
+
+    using CompletionId = std::uint64_t;
+    using CompletionHandler = std::function<void(const ExecutionResult&)>;
+
     ContinuousModelDataDefinition(Model* model, std::string concreteType,
                                   std::string name, double stopTime,
                                   double stepSize, unsigned int stepsToSynchronize);
@@ -28,6 +57,12 @@ public:
     std::string getLastStatus() const;
     void setLastErrorMessage(std::string error);
     std::string getLastErrorMessage() const;
+    ExecutionState getExecutionState() const;
+    CompletionId addCompletionHandler(CompletionHandler handler);
+    void removeCompletionHandler(CompletionId id);
+    bool requestSimulation(CompletionId id, const ExecutionRequest& request,
+                           std::string& errorMessage);
+    void cancelExecution(std::string reason);
 
     // Compatibility only: no start-time property/state exists in this class.
     // Nonzero starts are rejected rather than silently changing the time origin.
@@ -70,9 +105,15 @@ private:
     bool _advanceStep(double targetTime, std::string& errorMessage);
     bool _continueEvolution(std::string& errorMessage);
     bool _scheduleSynchronization(std::string& errorMessage);
+    bool _isExecutionActive() const;
     void _onSynchronization(void*);
     void _beginAtCurrentKernelTime();
     void _completeRun();
+    void _failRun(const std::string& errorMessage);
+    void _notifyCompletion(const ExecutionResult& result);
+    void _notifyCompletion(CompletionId id, const ExecutionResult& result);
+    void _setExecutionState(ExecutionState state, std::string message = {});
+    void _removePendingSynchronizationEvents();
     void _registerTemporalControls();
 
     double _originTime = 0.0;
@@ -80,8 +121,16 @@ private:
     unsigned int _stepsToSynchronize;
     unsigned int _stepsSinceSynchronization = 0;
     double _pendingSynchronizationTime = 0.0;
-    bool _awaitingSynchronization = false;
-    bool _running = false;
+    ExecutionState _executionState = ExecutionState::Idle;
+    double _activeStopTime = 0.0;
+    double _activeStepSize = 0.0;
+    double _definitionStopTimeAtActiveStart = 0.0;
+    double _definitionStepSizeAtActiveStart = 0.0;
+    double _activeRequestedStartTime = 0.0;
+    bool _activeUsesDefinitionTimeWindow = true;
+    unsigned int _activeStepsToSynchronize = 0;
+    CompletionId _nextCompletionId = 1;
+    std::map<CompletionId, CompletionHandler> _completionHandlers;
     double _defaultStopTime;
     double _defaultStepSize;
     unsigned int _defaultStepsToSynchronize;

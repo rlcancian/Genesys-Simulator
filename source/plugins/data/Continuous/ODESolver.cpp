@@ -180,10 +180,14 @@ std::string ODESolver::getOutputFile() const {
 
 void ODESolver::integrate(double targetTime) {
     std::string errorMessage;
-    _stepsPerformed = 0;
-    if (!advanceTo(targetTime, errorMessage) && !errorMessage.empty()) {
+    if (!integrate(targetTime, errorMessage) && !errorMessage.empty()) {
         traceError("ODESolver integrate failed: " + errorMessage);
     }
+}
+
+bool ODESolver::integrate(double targetTime, std::string& errorMessage) {
+    _stepsPerformed = 0;
+    return advanceTo(targetTime, errorMessage);
 }
 
 bool ODESolver::evolveState(double currentTime, double dt, std::string& errorMessage) {
