@@ -263,7 +263,7 @@ This 2026-10-29 GitHub-only delivery records **approval, source inventory,
 architecture and a staged plan**, without claiming GUI code, record codec,
 Qt6 compilation, tests, sanitizer results, or a completed G0 gate.
 
-Manual impact for G0.1: **no user-visible behavior or public C++ contract changed**, so no current User/Developer Manual regeneration is required for this documentation-only inventory. The implementation stages G0.2/G1–G6 must reassess manual impact and update the applicable manuals per governance.
+**Manual impact gate:** the new editing-context interpretation and Network insertion contract are architectural and must be recorded in the **Developer Manual** before this code-bearing PR is eligible for integration. No new interactive Network viewer is implemented, so do **not** document it as a working User Manual feature. A local agent must update the appropriate LaTeX Developer Manual chapter(s), validate LaTeX and regenerate `docs/ManualGenESyS.pdf` according to governance; **this has not been executed in the GitHub-only session**. Reassess User Manual impact at G1 when the GUI becomes usable.
 
 Risks to resolve locally: stable identity of relation objects across reload,
 context ID width/possible truncation, Network-owned child registration/lifetime,
