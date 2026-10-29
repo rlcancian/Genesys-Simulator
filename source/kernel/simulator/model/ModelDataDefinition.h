@@ -338,7 +338,7 @@ protected:
 	std::string _typename;
 	bool _reportStatistics;
 	bool _hasChanged;
-	unsigned int _modelLevel = 0; // the ID of parent component (submodel or process, for now) in the "superlevel"
+	unsigned int _modelLevel = 0; // 0=root; otherwise ID of the ModelDataDefinition defining this editing context.
 	Model* _parentModel;
 
 private:
