@@ -2,8 +2,8 @@
 document_type: technical-reference
 authority: proposed-architecture
 owner: project-maintainer
-last_reviewed: 2026-08-31
-status: proposed
+last_reviewed: 2026-10-29
+status: active
 tracks: 511
 ---
 
@@ -14,9 +14,19 @@ tracks: 511
 This document defines the proposed GUI architecture for creating, editing and
 visualizing `DefaultNetwork`-based `ModalModel` networks in the GenESyS Qt6 GUI.
 
-It is a planning document. It does not authorize implementation by itself.
-Implementation should begin only after maintainer review because the GUI is the
-primary modeling interface for end users.
+This is a conceptual GUI reference: names of proposed GUI classes and commands
+are **not** evidence that they already exist in source.
+
+**Maintainer decision (2026-10-29):** the process-versus-Network separation
+and a separate hierarchical, submodel-like *Network diagram view* are approved.
+States, places, graph vertices, transitions and arcs do not become
+`ModelComponent` objects or process `Connection` objects for visualization.
+`DefaultNetwork` remains the mathematical source of truth and may be shared
+by several `ModalModelDefault` adapters. The maintainer explicitly activated
+G0 followed by the bounded read-only EFSM G1 viewer. See the operational,
+source-backed [implementation plan](MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md)
+and `../BACKLOG_HUMAN.md` (`HUM-MODAL-002`). Details beyond the approved
+contract remain design proposals and require verification against real code.
 
 ## 2. Current readiness
 
