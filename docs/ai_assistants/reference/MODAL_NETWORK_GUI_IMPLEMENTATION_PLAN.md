@@ -129,7 +129,7 @@ registration: rejected edges/arcs remain unchanged. Match the load-time contract
 without modifying mathematical transitions that are **not** data definitions.
 Four focused Google Test cases cover EFSM, Markov, Graph and CPN.
 **Validation update (2026-10-29):** CMake/Ninja/CTest passed at source SHA
-`5a37c7ae` on [GitHub Actions run 40961067698](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40961067698), including all ten new tests (1920 executed, zero failed, four legacy disabled). These results **do not** close the complete G0 gate because the manual PDF and GUI interaction are pending.
+`5a37c7ae` on [GitHub Actions run 40961067698](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40961067698), including all ten new tests (1920 executed, zero failed, four legacy disabled). These tests alone did not close G0.1b; the later local GUI/manual verification was reviewed and accepted on 2026-10-29. G0.2 persistence still remains to be implemented.
 
 **Identity/persistence limitation:** `ModelDataDefinition::_saveInstance()`
 persists `id`, `name` and other data but not `_modelLevel`; current Network
@@ -190,7 +190,7 @@ actual format and existing loaders.
 
 **Validation update:** all six `GuiSubmodelLevel.*` tests passed in the full
 CMake/Ninja/CTest run `40961067698` at SHA `5a37c7ae`; the GUI GMDD diagnostic job also passed. This demonstrates a tested Qt6 scene layer, **not** a `gui-app` startup or live interactive navigation result. Additional documentation-only commits do not change that tested source, but the final-head verification gate still applies.
-The Developer Manual's `chapter_gui_architecture.tex` has been updated; LaTeX validation and PDF regeneration are required **before milestone 2 can close or G0.2 can begin**.
+The Developer Manual's `chapter_gui_architecture.tex` has been updated; LaTeX compilation, PDF regeneration (388 pages) and bounded GUI interaction were completed in the local Codex execution and accepted for milestone 2 on 2026-10-29.
 
 **Deliberate non-goals:** no EFSM transitions are drawn yet, no owner resolution
 from `ModalModelDefault` is wired to a tab, no `.gui` Network layout schema
@@ -267,8 +267,8 @@ milestones or automatic scope expansion.
 | # | Existing reference | Bounded deliverable | Acceptance gate | Status as of 2026-10-29 |
 |---|---|---|---|---|
 | **1** | **G0.1** | Approve Alternative A and owner-ID `level` context contract; inspect existing code and record plan | Maintainer decision + architecture/backlog source links committed | **DONE** |
-| **2** | **G0.1b** | Finish verification of Network-level registration and direct level-only GUI data-definition projection, including mandatory manual | Final-head CMake/Ninja/CTest, six GUI and four domain regressions, `gui-app` build, short interaction check, LaTeX compile, regenerated `docs/ManualGenESyS.pdf`, dated evidence | **LOCALLY VALIDATED, AWAITING COORDINATOR REVIEW** |
-| **3** | **G0.2** | Persist only **EFSM** diagram layout/identity as versioned GUI overlay | Deterministic save/reload including unnamed/parallel EFSM transitions; invalid/unknown records safe; preexisting `.gui` loads; `.gen` semantics unchanged; focused tests green | **NOT STARTED** |
+| **2** | **G0.1b** | Finish verification of Network-level registration and direct level-only GUI data-definition projection, including mandatory manual | Final-head CMake/Ninja/CTest, six GUI and four domain regressions, `gui-app` build, short interaction check, LaTeX compile, regenerated `docs/ManualGenESyS.pdf`, dated evidence | **ACCEPTED — 2026-10-29** |
+| **3** | **G0.2** | Persist only **EFSM** diagram layout/identity as versioned GUI overlay | Deterministic save/reload including unnamed/parallel EFSM transitions; invalid/unknown records safe; preexisting `.gui` loads; `.gen` semantics unchanged; focused tests green | **AUTHORIZED NEXT; NOT IMPLEMENTED** |
 | **4** | **G1.1** | Draw read-only EFSM states and formal transitions in existing `ModelGraphicsScene` | Empty/normal/parallel EFSM cases; no fake `ModelComponent` or process `Connection`; layout clear; GUI tests green | **NOT STARTED** |
 | **5** | **G1.2** | Open attached EFSM Network through the existing submodel tabs at `Network.getId()` | Open/switch/close/reopen and no-Network handling; multiple adapters share one Network; root GUI unaffected | **NOT STARTED** |
 | **6** | **G2** | Create/select/attach an EFSM Network using existing GUI/Property Editor patterns | New and existing Network attachment, correct references and `.gen` save/reload; no duplicate domain objects | **NOT STARTED** |
@@ -278,8 +278,7 @@ milestones or automatic scope expansion.
 **Progress definition:** each accepted milestone contributes **12.5 percentage
 points**. Report `N/8 = NN.N%` on every subsequent iteration. Implementation
 in progress, green CI for an *earlier* head or a checked-in test that has not
-run **does not** count as a completed milestone. Current progress: **1/8 =
-12.5%**. Next acceptance target: milestone 2, then progress becomes **25%**.
+run **does not** count as a completed milestone. Current progress: **2/8 = 25% accepted** after coordinator audit of local Codex deliverable `de5f8ed3` and the matching [final-head unit/GUI CI run 40970233832](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40970233832), [kernel/smoke CI run 40970233761](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40970233761) and local evidence `history/evidence/2026/10/2026-10-29_modal_g0_1b_local.md`. Next acceptance target: G0.2 at **37.5%**.
 Percentage measures agreed deliverables, **not effort or elapsed time**.
 
 **Rule for scope control:** a newly discovered defect is resolved *inside*
@@ -324,7 +323,7 @@ needed for an eight-milestone acceptance gate remain in scope.
 4. **Evidence:** record exact SHA, toolchain, CMake/CTest results, GUI
    interaction/negative cases, PDF build/inspection and limitations in
    `docs/ai_assistants/history/evidence/`; reconcile task/STATUS and
-   manual impact. **Do not start G0.2 before these gates close.**
+   manual impact. **Milestone 2 gates accepted 2026-10-29; G0.2 is now authorized.**
 
 The GitHub connector cannot itself execute the local manual build or commit
 the generated binary PDF through its UTF-8 text-file update operation.
@@ -366,9 +365,9 @@ Modal/Network documents referenced in Section 1.
 
 ## 6. Current delivery and remaining risks
 
-This 2026-10-29 GitHub delivery contains **architecture and bounded G0.1b C++/Qt6 code with test coverage**. GitHub Actions run `40961067698` at commit `5a37c7ae` passed the ordinary unit/GUI GMDD tests (1920 executed, 4 legacy disabled); this is executed evidence, not a manual PDF or live-GUI interaction result. The frozen eight-milestone MVP is **12.5% accepted (1/8)** and G0.2 must not begin until milestone 2 closes.
+This 2026-10-29 GitHub delivery contains **architecture and bounded G0.1b C++/Qt6 code with test coverage**. GitHub Actions run `40961067698` at commit `5a37c7ae` passed the ordinary unit/GUI GMDD tests (1920 executed, 4 legacy disabled); this is executed evidence, not a manual PDF or live-GUI interaction result. The frozen eight-milestone MVP is **25% accepted (2/8)** after verification of the locally rebuilt PDF and GUI interaction evidence, plus final-head hosted CI. G0.2 is the sole authorized next implementation.
 
-**Manual impact gate:** the edited Developer Manual source chapter already documents editing-context semantics and level-only graphical reconstruction. It must be compiled, visually inspected and used to regenerate `docs/ManualGenESyS.pdf` before milestone 2 is accepted. No new interactive Network viewer exists yet, so do **not** document one as an operational User Manual feature. At G1/G2/G3 the User Manual impact is reassessed for actual user-visible behavior.
+**Manual impact gate:** the edited Developer Manual source chapter already documents editing-context semantics and level-only graphical reconstruction. It was compiled, visually inspected (section 26.7) and used to regenerate the committed `docs/ManualGenESyS.pdf`; this gate was accepted on 2026-10-29. No new interactive Network viewer exists yet, so do **not** document one as an operational User Manual feature. At G1/G2/G3 the User Manual impact is reassessed for actual user-visible behavior.
 
 Risks to resolve locally: stable identity of relation objects across reload,
 context ID width/possible truncation, Network-owned child registration/lifetime,
