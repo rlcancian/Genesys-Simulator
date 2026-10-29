@@ -167,7 +167,8 @@ completion. A continuous data definition starts at local time zero; its
 synchronization origin is the kernel clock when evolution begins.
 The \texttt{StepsToSynchronize} control determines how many local solver steps
 run between internal calendar events: zero runs the requested interval without
-calendar synchronization, while a positive value synchronizes after that many
+calendar synchronization and publishes its final state synchronously at the
+caller's current kernel time, while a positive value synchronizes after that many
 steps. The final event is synchronized at \texttt{StopTime}, including a partial
 last step when necessary.
 
@@ -240,7 +241,9 @@ a run the definition captures a fixed global origin \(T_0\), so local time
 \(t\) maps to global time \(T_0+t\). \texttt{StartTime} is not a configurable
 property of the base definition.
 
-\texttt{StepsToSynchronize=0} runs without internal calendar events. A
+\texttt{StepsToSynchronize=0} runs without internal calendar events and publishes
+its completed state synchronously at the caller's current kernel time, so ordinary
+discrete events cannot interleave that local interval. A
 positive value schedules synchronization after that many continuous steps and
 always schedules a final synchronization at the local stop time, including a
 partial final step. Creating an \texttt{InternalEvent} does not itself advance
@@ -261,21 +264,46 @@ continuous state concurrently. On numerical failure or cancellation, pending
 entities are removed with a diagnostic because these plugins do not currently
 define an error output port.
 
-An unrelated discrete event between synchronization boundaries observes the
-last continuous state confirmed by an internal event. For example, with
-\(T_0=100\), step size 1, and \texttt{StepsToSynchronize=5}, the continuous
-state is advanced to local time 5 when the kernel dispatches the event at 105;
-events at 102 or 104 see the state at the previous confirmed boundary. This
-prevents a discrete component from observing a future continuous state, but it
-leaves the state stale between boundaries. The physically correct hybrid
-semantics for those intermediate times remains an open maintainer decision
-tracked by \texttt{HUM-SCI-002}.
+The maintainer decision recorded on 2026-10-29 for \texttt{HUM-SCI-002} sets the
+hybrid observation contract for these continuous definitions: ordinary discrete
+events see the last globally confirmed state, while subscribed observers receive
+the calculated working state after every successful mathematical step. With
+\(T_0=100\), step size 1, and \texttt{StepsToSynchronize=5}, observers receive
+steps at absolute times 101 through 105 before the kernel dispatches the ordinary
+synchronization event at 105. A discrete event at 102 still reads the state
+confirmed at 100. An observer at local time 3 can request an ordinary calendar
+event at absolute time 103; the kernel later processes that event at 103 without
+the notification changing the global clock.
 
-\texttt{ContinuousSystemComponent} retains reactive ODE integration. It
-reports integration errors and refuses targets beyond the next pending
-synchronization boundary; events at or before that boundary can advance to the
-current kernel time and leave the remainder for the calendar callback. The
-relation between this reactive behavior and automatic full-window evolution remains a compatibility question. The
+The public API \texttt{addInternalStateEventHandler(observer, memberMethod,
+priority)} returns an ID that can be removed with
+\texttt{removeInternalStateEventHandler(id)}. Lower numeric priority runs first;
+equal priorities preserve registration order. Duplicate registrations receive
+independent IDs. Removal during a notification affects later callbacks in that
+same notification; registrations added during dispatch start at the next step.
+Observer lifetimes are tracked through weak lifetime tokens on
+\texttt{ModelDataDefinition}, so expired observers are skipped. Notifications
+contain a step count, local time, absolute time, source definition, and a typed
+borrowed view: \texttt{ODESolver::StateView},
+\texttt{DiffusionField::StateView}, or \texttt{BioNetwork::StateView}. A view is
+valid only during its callback. It avoids copying large diffusion fields at each
+step. \texttt{StepsToSynchronize=0} still notifies on every completed step but
+does not schedule global synchronization events.
+
+Each model keeps a working mathematical state for observers and a confirmed
+state for ordinary getters and model variables. The boundary \texttt{InternalEvent}
+commits the working state and confirmed local time after the kernel processes it.
+An observer may update other simulator objects or insert calendar events; a
+mutation made inside a notification is visible to subsequent continuous steps in
+the same lookahead block. Ordinary discrete events that mutate inputs used by
+work already calculated in that block can invalidate the prediction. Rollback
+and removal of observer-generated events are not implemented; such interactions
+need an explicit invalidation policy before they are used in a model.
+
+\texttt{ContinuousSystemComponent} retains its synchronous reactive request
+path. During a calculated synchronization block, a request at an intermediate
+kernel time reads the confirmed state rather than integrating ahead or exposing
+the working state. The boundary callback commits state before the next block. The
 legacy component time-window fields remain loadable; a nonzero local
 \texttt{StartTime} is rejected rather than reinterpreted as a global time.
 

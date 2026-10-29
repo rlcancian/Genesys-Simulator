@@ -226,8 +226,8 @@
 \contentsline {subsection}{\numberline {24.2.1}What the diffusion tests prove}{205}{subsection.24.2.1}%
 \contentsline {subsection}{\numberline {24.2.2}Shared continuous execution and entity flow}{205}{subsection.24.2.2}%
 \contentsline {section}{\numberline {24.3}Modal models and hybrid execution}{206}{section.24.3}%
-\contentsline {subsection}{\numberline {24.3.1}Petri nets}{206}{subsection.24.3.1}%
-\contentsline {section}{\numberline {24.4}Cellular automata}{206}{section.24.4}%
+\contentsline {subsection}{\numberline {24.3.1}Petri nets}{208}{subsection.24.3.1}%
+\contentsline {section}{\numberline {24.4}Cellular automata}{208}{section.24.4}%
 \contentsline {section}{\numberline {24.5}Hybrid coupling and validation boundary}{209}{section.24.5}%
 \contentsline {subsection}{\numberline {24.5.1}Current validation boundary}{210}{subsection.24.5.1}%
 \contentsline {chapter}{\numberline {25}Application Architecture}{213}{chapter.25}%

@@ -183,7 +183,7 @@ Startup does not imply functional or scientific maturity.
 - `HUM-SEC-002`: worker authentication architecture;
 - `HUM-SEC-004`: runtime signing public key provisioning for per-user Launcher updates;
 - `HUM-SCI-001`: authoritative numerical/statistical reference packages;
-- `HUM-SCI-002`: modal/hybrid time synchronization contract; now directly relevant to the planned biochemical CTMC phase because sampled CTMC holding times must be reconciled with the GenESyS event calendar;
+- `HUM-SCI-002`: the maintainer recorded the deterministic continuous-model observation/synchronization rule on 2026-10-29: ordinary discrete events read the last globally confirmed state, registered observers receive each completed working step, and only the kernel advances global time. Its separate reconciliation with stochastic CTMC holding times remains pending;
 - `HUM-OPT-001`: initial optimizer algorithm/benchmark package;
 - `HUM-VC-001`: initial AI virtual-cell organism/use case/data package;
 - `HUM-REL-001`: final supported set and promotion gate.
@@ -251,7 +251,7 @@ The documentation-migration-specific freeze has ended.
 
 Previously paused technical tasks remain `paused`; they do not resume automatically. A maintainer must explicitly activate the selected next task in `BACKLOG_AUTONOMOUS.md`.
 
-For Modal/Network, `AUTO-MODAL-001` is `closed` and `AUTO-MODAL-002` backend scope is `done_confirmed`. The next maintainer-selected direction is the academic biochemical CTMC phase defined in `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`. Its immediate work is specification/current-code audit/reference-validation design; runtime implementation must not begin by assumption while the `HUM-SCI-002` simulation-time contract remains unresolved.
+For Modal/Network, `AUTO-MODAL-001` is `closed` and `AUTO-MODAL-002` backend scope is `done_confirmed`. The next maintainer-selected direction is the academic biochemical CTMC phase defined in `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`. Its immediate work is specification/current-code audit/reference-validation design; runtime implementation must not assume that the deterministic continuous-model decision defines stochastic CTMC holding-time integration. That CTMC-specific reconciliation remains open under `HUM-SCI-002`.
 
 ## 13. Ongoing governance
 

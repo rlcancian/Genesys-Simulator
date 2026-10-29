@@ -168,7 +168,10 @@ Use for the proposed Qt6 editor/viewer architecture after the backend contracts 
 
 Use for the current continuous data-definition lifecycle, `StepsToSynchronize`,
 local/global clock mapping, shared continuous component entity handling, and the
-open hybrid-time semantics decision tracked by `HUM-SCI-002`.
+selected deterministic continuous observation rule tracked by `HUM-SCI-002`,
+including the internal-state Observable and confirmed-state publication. The
+separate stochastic CTMC holding-time reconciliation remains open under that
+identifier; it does not reopen the decision for the current continuous models.
 
 ## 3. Reference rules
 

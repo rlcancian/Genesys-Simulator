@@ -23,7 +23,10 @@ captures a fixed global origin `T0`; a local time `t` corresponds to absolute ti
 and component validation reject nonzero local starts.
 
 `StepsToSynchronize = 0` evolves synchronously without inserting internal calendar
-events. A positive value inserts an `InternalEvent` after that many continuous steps,
+events. It publishes the final state before returning while leaving the kernel clock
+at the caller's current time; the whole local interval is therefore an out-of-calendar
+operation and cannot interleave ordinary discrete events. Use a positive value when
+calendar-time observations are required. A positive value inserts an `InternalEvent` after that many continuous steps,
 with a mandatory final event at `StopTime`; a final partial step is bounded exactly
 at the requested endpoint. Inserting an event does not advance the kernel clock.
 The kernel confirms time only when it removes and dispatches that event.
@@ -41,18 +44,59 @@ request has finished or when the component is destroyed. Replication initializat
 cancels pending internal events and notifies outstanding consumers before resetting
 the definition.
 
-## Causality at intermediate discrete events
+## Confirmed state and per-step observation
 
-The current scheduler defers mathematical evolution until the corresponding
-`InternalEvent` is dispatched. Thus a discrete event between synchronization
-boundaries sees the last confirmed continuous state. For example, with `T0=100`,
-`StepSize=1`, and `StepsToSynchronize=5`, state evolves through local time 5 only
-when the event at global time 105 is dispatched; events at 102 and 104 see the
-state from the preceding confirmed boundary. This avoids exposing state from the
-future. It also means continuous state is stale relative to physical elapsed time
-between boundaries. The correct hybrid semantics for this interval remain open under
-`HUM-SCI-002`; alternatives include stepwise synchronization or tentative isolated
-state and require a maintainer decision.
+The maintainer's 2026-10-29 decision for `HUM-SCI-002` in this execution path is
+that ordinary discrete events read the latest state confirmed at a global
+synchronization. Continuous observers receive each successfully calculated
+working state, including steps between synchronization boundaries. The kernel
+clock remains owned by `ModelSimulation`; creating an observer notification does
+not advance it.
+
+When `StepsToSynchronize` is positive, the continuous definition first places the
+next boundary `InternalEvent` in the calendar, then calculates each continuous
+step through that boundary. After each successful step it invokes its active
+observers. For `T0=100`, `StepSize=1`, and `StepsToSynchronize=5`, observer
+notifications carry local/absolute times `(1,101)` through `(5,105)`. The
+ordinary synchronization event remains at 105. If an observer at local time 3
+requests a discrete event for absolute time 103, that event is inserted before
+the kernel reaches it and the kernel dispatches it at 103. A discrete event at
+102 sees the previous confirmed state, while the observer payload at step 3
+contains the working state at local time 3.
+
+`getCurrentTime()` and ordinary model getters expose confirmed values during
+lookahead. The observer payload uses a class-specific, read-only borrowed view:
+`ODESolver::StateView`, `DiffusionField::StateView`, or `BioNetwork::StateView`.
+The referenced data remains valid only for the duration of the callback and
+must not be retained. The views avoid copying the diffusion grid at every step.
+An observer can still update other simulator objects or schedule calendar
+events. Such changes made inside one notification are visible to subsequent
+continuous steps in that same lookahead block.
+
+Observers register a member method with
+`addInternalStateEventHandler(observer, &Observer::handle, priority)` and
+remove it by the returned ID with `removeInternalStateEventHandler(id)`.
+Lower numeric priorities run first; equal priorities use registration order.
+Duplicate registrations are separate subscriptions. Removal during dispatch
+takes effect immediately for later callbacks in the same notification; new
+registrations begin with the next step. A weak lifetime token skips observers
+whose `ModelDataDefinition` has begun destruction. Observer callbacks are
+independent of component entity dispatch and completion callbacks. Each
+successful full or partial step notifies once, including when
+`StepsToSynchronize=0`; that value still creates no synchronization event.
+An exception from a handler is recorded, remaining active handlers for that
+notification still run, and the continuous execution then fails and removes its
+pending synchronization event. Cancellation from a handler removes the pending
+event and notifies completion subscribers.
+
+The work state is calculated ahead of ordinary calendar events in the same
+synchronization block. An ordinary event that mutates inputs used by that
+continuous calculation can therefore invalidate already calculated work. The
+current implementation does not provide rollback or retract discrete events
+that an observer already scheduled from such work. Models that require discrete
+events to alter an active continuous trajectory need an explicit invalidation
+policy before relying on that interaction. The selected `HUM-SCI-002` policy
+does not make the working state visible through ordinary getters.
 
 ## Shared component lifecycle
 
@@ -72,15 +116,12 @@ the model with a fatal trace because these plugins have no error output port. Th
 failure-routing policy is explicit in code, but a richer user-facing recovery path
 requires a plugin contract decision.
 
-`ContinuousSystemComponent` retains its reactive ODE integration behavior. It uses
-the shared completion/forwarding path after a synchronous integration result. It
-returns errors from `ODESolver::integrate(targetTime, errorMessage)` and refuses to
-advance beyond the next pending synchronization boundary. A discrete event at or
-before that boundary can advance the ODE to the current kernel time; the scheduled
-callback then integrates the remaining interval. The relationship between this
-reactive path and automatic full-window evolution remains an open
-compatibility/semantic issue; the component does not silently join an unrelated ODE
-run.
+`ContinuousSystemComponent` retains its synchronous reactive request path and the
+shared entity completion/forwarding behavior. During an already calculated block,
+a request at an intermediate kernel time returns the confirmed state; it does not
+re-integrate the working state or advance beyond the pending synchronization
+boundary. The calendar callback commits the state at the boundary before the next
+block starts.
 
 ## Component time-window compatibility
 
@@ -93,12 +134,17 @@ selection remains available for existing serialized models.
 ## Evidence and limits
 
 The real-calendar integration regression in
-`source/tests/unit/test_simulator_runtime.cpp` verifies that two entities reaching
-the same `BioSimulate` before a run completes are both dispatched at completion, and
-that a discrete event before the next synchronization sees the last confirmed local
-time. Focused diffusion synchronization and component compatibility tests are in
-`source/tests/unit/test_plugins_continuous_diffusion.cpp`.
+`source/tests/unit/test_plugins_continuous_diffusion.cpp` uses a `ModelComponent`
+observer at `T0=100`, confirms an observer-generated entity event is processed at
+103, and verifies ordinary events at 102 and 103 read the state last confirmed at
+100. The same file covers typed observers for ODE, diffusion, and biochemical
+states, subscription removal during dispatch, newly registered observers,
+destroyed observers, and publication at a synchronization boundary. Existing tests
+in `source/tests/unit/test_simulator_runtime.cpp` cover asynchronous entity
+completion and multiple entities waiting on a `BioSimulate` run.
 
-These tests cover specific execution paths. They do not resolve `HUM-SCI-002`, prove
-all numerical solvers scientifically valid, or establish that all historical model
-files with nonzero component `StartTime` remain semantically compatible.
+These tests cover specific execution paths. They do not prove all numerical
+solvers scientifically valid or establish that all historical model files with
+nonzero component `StartTime` remain semantically compatible. Interactions where
+an ordinary discrete event changes an input used by an already calculated block
+remain unsupported and require an invalidation policy.

@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-09-19
+last_updated: 2026-10-29
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -305,15 +305,18 @@ A decision recorded here is not implemented automatically unless a corresponding
 ### HUM-SCI-002 — Modal/hybrid time synchronization contract
 
 - Priority: `P1`
-- Status: `research-needed`
-- Decision required: define the semantic relationship among discrete-event time, solver internal time, fixed/adaptive steps, event boundaries, and state publication.
+- Status: `decision-recorded`
+- Decision recorded by the maintainer on 2026-10-29 for the continuous-model integration scope: ordinary discrete events observe the last globally confirmed continuous state; registered observers receive each completed continuous working state, including steps between global synchronizations; only `ModelSimulation` advances global time; observers may schedule ordinary calendar events at the absolute time represented by their notification. Notifications are direct callbacks and do not create one `InternalEvent` per step.
+- Scope boundary: this decision governs `ContinuousModelDataDefinition`, `ODESolver`, `DiffusionField`, `BioNetwork`, and their current hybrid synchronization path. It does not by itself define stochastic holding-time semantics for the future biochemical CTMC plan.
+- Implementation status: Observable and confirmed-state publication are being implemented and validated in PR #550; update to `implemented` only after its acceptance evidence passes.
+- Remaining design condition: ordinary discrete events that mutate inputs used by already calculated continuous work need an explicit invalidation policy before such models rely on the interaction. This is not an open choice about which state ordinary events observe.
 - Required evidence:
   - current `ModelSimulation` event flow;
   - continuous and biochemical plugin behavior;
   - representative deterministic models;
   - unit and time-dimension conventions;
-  - expected handling of events inside a continuous step.
-- Decision unlocks: formal interface contract and regression fixtures.
+  - expected handling of event-driven mutations to an already calculated block.
+- Decision unlocks: formal interface contract and regression fixtures; the observation rule above is already selected.
 
 ## 6. Optimization decisions
 
