@@ -3,6 +3,7 @@
 
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "graphicals/ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsView.h"
 #include "services/GraphicalModelBuilder.h"
 
 #include "kernel/simulator/PluginManager.h"
@@ -17,6 +18,9 @@
 
 #include <QRectF>
 #include <QPointF>
+#include <QTextEdit>
+
+#include <map>
 
 namespace {
 
@@ -130,6 +134,55 @@ TEST(GuiSubmodelLevel, RebuildPreservesManualPositionOfExistingContextItem) {
     EXPECT_EQ(graphicalDefinitionFor(scene, &a), item);
     EXPECT_EQ(item->pos(), customPosition);
     EXPECT_NE(graphicalDefinitionFor(scene, &b), nullptr);
+}
+
+TEST(GuiSubmodelLevel, FullBuilderReconstructsDataOnlySubmodelLevel) {
+    Simulator simulator;
+    auto* plugins = simulator.getPluginManager();
+    ASSERT_NE(plugins, nullptr);
+    plugins->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EFSMNetwork network(model, "EFSM");
+    FSMState state(model, "OnlyState");
+    network.addState(&state);
+    ASSERT_TRUE(model->getComponentManager()->getAllComponents()->empty());
+
+    ModelGraphicsView view;
+    ModelGraphicsScene* scene = view.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setSimulator(&simulator);
+    QTextEdit console;
+    std::map<std::string, QColor> colors;
+    GraphicalModelBuilder builder(&simulator, &view, scene, &colors, &console);
+    builder.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+
+    builder.generateGraphicalModelFromModel();
+
+    EXPECT_NE(graphicalDefinitionFor(*scene, &state), nullptr);
+    EXPECT_TRUE(scene->existDiagram());
+}
+
+TEST(GuiSubmodelLevel, ArbitraryDataDefinitionCanOwnAnEditingContext) {
+    Simulator simulator;
+    auto* plugins = simulator.getPluginManager();
+    ASSERT_NE(plugins, nullptr);
+    plugins->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue owner(model, "ContextOwner");
+    Queue nested(model, "NestedData");
+    nested.setModelLevel(static_cast<unsigned int>(owner.getId()));
+
+    ModelGraphicsScene scene(0, 0, 2000, 2000);
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(owner.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+
+    EXPECT_NE(graphicalDefinitionFor(scene, &nested), nullptr);
+    EXPECT_EQ(graphicalDefinitionFor(scene, &owner), nullptr);
 }
 
 TEST(GuiSubmodelLevel, RootDisplayStillRequiresExistingVisibilityAssociations) {
