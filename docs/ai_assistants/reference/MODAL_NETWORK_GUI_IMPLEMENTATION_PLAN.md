@@ -157,6 +157,48 @@ between `.gen` semantics and `.gui` layout **does not imply** two physically
 independent files must always be present. New records must integrate with this
 actual format and existing loaders.
 
+### G0.1b — Level-only model data projection (implemented in branch; CI pending)
+
+**Source-backed patch as of 2026-10-29:**
+
+- `GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer()` now
+  enumerates registered `ModelDataDefinition` objects whose
+  `getLevel() == scene->modelLevelFilter()` for **non-root** contexts.
+  Previously the builder could discard the data-definition layer when there
+  were no visible process components or associated definitions.
+- A direct level member does not require a `ModelComponent` in that level,
+  a `SimulationControl` reference or an `INTERNAL`/`ATTACHED` relation.
+  Existing visibility toggles continue to apply to *association discovery*;
+  they do not hide the context's direct members.
+- Only non-root `level != 0` gains this direct-membership discovery. The
+  root canvas keeps its existing association-based data-definition visibility.
+- Existing graphical items and user positions are reused. New members with
+  no component or data-definition layout link receive an ID-ordered,
+  collision-avoiding vertical fallback; G1 formalism-specific layout will
+  supersede the fallback for an EFSM. This is **not** a mathematical
+  transition renderer.
+- `source/tests/unit/test_gui_submodel_level.cpp` is registered in the
+  existing `genesys_test_gui_gmdd_layout` target and checks:
+  (1) EFSM states in a level with zero process components, including association
+  visibility toggles off and no invented semantic links;
+  (2) switching contexts without altering Network state;
+  (3) preserving manual positions across synchronizations;
+  (4) direct context membership when an arbitrary data definition owns a level;
+  (5) the complete GraphicalModelBuilder rebuild path with zero process
+  components; and (6) unchanged root-level behavior for an unreferenced
+  data definition.
+
+**Validation boundary:** the source files and CMake registration have been
+inspected on the branch, but these assertions are **not claims of a passing
+test or Qt6 GUI startup**. Only a completed, reviewed final-head GitHub Actions
+run or local CMake/Ninja/CTest evidence can close the validation gate.
+The Developer Manual's `chapter_gui_architecture.tex` has been updated; its
+LaTeX validation and PDF regeneration are required before merge.
+
+**Deliberate non-goals:** no EFSM transitions are drawn yet, no owner resolution
+from `ModalModelDefault` is wired to a tab, no `.gui` Network layout schema
+is introduced, and no generic Entity-flow or domain ownership rule changes.
+
 ## 3. G0.2 — Network diagram persistence contract (proposed; not implemented)
 
 A `NetworkDiagramRecord` is a **planned GUI value object**, not an existing
@@ -210,7 +252,8 @@ mandatory regressions. G0.1 documentation alone does **not** close G0.
 
 | Phase | Minimal deliverable | Acceptance / stop gate |
 |---|---|---|
-| **G0.1** | Source-backed GUI inventory, Alternative A decision, level context contract and bounded Network insertion tests | Patch in branch; unit/GUI verification outstanding |
+| **G0.1** | Source-backed GUI inventory, Alternative A decision and Network-level insertion tests | Patch in branch; unit/GUI verification outstanding |
+| **G0.1b** | Discover/render standalone non-root data definitions in shared scene and add six focused Qt6 tests | Patch in branch; GUI tests, user interaction and PDF regeneration outstanding |
 | **G0.2** | Confirmed record schema, `.gui` overlay codec, headless tests | Qt6/CMake/Ninja tests; existing `.gui` compatibility; unknown schema safe; no math mutations |
 | **G1.1** | Read-only EFSM projection inside existing `ModelGraphicsScene`/submodel context using the Network ID level | States/transitions correct, no process-level `Connection`, no mutation, zero component scenario covered |
 | **G1.2** | Open a ModalModel's attached Network through existing submodel navigation, resolving the Network as context owner | Open, switch, close and reopen safely; shared Network does not duplicate data; GUI app builds and interaction tested |
