@@ -33,9 +33,13 @@ The existing G0–G6 milestone names are retained.
 2. `ModalModelDefault` remains a `ModelComponent` **adapter** that activates an
    attached `DefaultNetwork : ModelDataDefinition`; it does not own a nested process
    model merely because the GUI opens a hierarchical view.
-3. A Network opens in a **separate graphical editing context**, with the same
-   tab/navigation experience used for submodels where safe. That context is a view
-   of a mathematical network, **not a process submodel**.
+3. **Maintainer revision, 2026-10-29 — Alternative A adopted.** A Network opens
+   through the **existing hierarchical submodel scene/view/tab infrastructure**
+   using the Network's `ModelDataDefinition::getId()` as the context identifier.
+   The editor reuses `ModelGraphicsScene`, `ModelGraphicsView`, the existing
+   model-level filtering and common controls, introducing a formalism-specific
+   projection/interaction policy rather than a second independent Network scene.
+   This is an **editing submodel/context**, not a nested *process* simulation.
 4. Network nodes, states, places, transitions, graph edges and arcs retain their
    existing mathematical types and ownership. They do **not** become
    `ModelComponent` or ordinary process `Connection` objects.
@@ -53,6 +57,21 @@ The existing G0–G6 milestone names are retained.
 9. G1 starts with a read-only **EFSM** diagram. Editing, Network creation, other
    formalisms, runtime overlays and optional architecture extensions follow only
    after their respective phase gates.
+10. **Level contract (DEC-MODAL-LEVEL-20261029):** `level == 0` is the root
+    editing context; a nonzero `level` is the `getId()` of the
+    `ModelDataDefinition` whose nested editing context contains the element.
+    `ModelComponent` already inherits `ModelDataDefinition`, so both may
+    identify an editing context. This is a context-membership key **not** an
+    ordinal depth, an instruction to dispatch `Entity`, or a transfer of
+    ownership. A Network's node/edge data definitions use `network.getId()`;
+    graph/CPN incidence and EFSM/DTMC non-`ModelDataDefinition` transitions
+    continue to come from the owning Network's typed topology APIs.
+11. A single Network shared by multiple ModalModel adapters still has one
+    domain state and one editing context identity. Neither adapter's ID replaces
+    the shared Network ID.
+12. Drawings may reuse one scene infrastructure but **not** interchangeable
+    semantics. Projection, allowed tools, deletion/undo/redo and transition
+    rendering must be formalism-aware and delegate mutations to the domain.
 
 The approved decision **does not change** the backend hierarchy, object ownership,
 process execution semantics or persistence of mathematical state.
@@ -70,9 +89,9 @@ by compiling, running the GUI, or executing tests.
 | Process scene | `source/applications/gui/genesys/graphicals/ModelGraphicsScene.h` subclasses `QGraphicsScene` and supplies process-component/connection creation and diagram-definition helpers | Reuse Qt Graphics View patterns, not the process connection-creation path |
 | Existing data-definition item | `graphicals/GraphicalModelDataDefinition.h` subclasses `QGraphicsObject`, binds a non-owning `ModelDataDefinition*` | Rendering/mouse handling may be reused selectively; diagram item ownership and lifecycle require review |
 | Existing diagram link | `graphicals/GraphicalDiagramConnection.h` represents `ATTACHED`/`INTERNAL` data-definition visual associations | **Not** a formal-network edge; do not confuse with `EFSMTransition` or `GraphEdge` |
-| Existing hierarchical tabs | `mainwindow.cpp` already implements `_ensureSubmodelViewContext()`, `_closeSubmodelViewContext()`, `QTabWidget`, and “Open Submodel” | Reuse tab lifecycle and navigation, **not** the lower process-level rendering |
-| Tab context | `mainwindow.h` has `GraphicalModelViewContextKind::{RootModel, Submodel}`; the submodel context stores `modelLevel`, owner and graphics view | Introduce a separate Network context/kind after inspecting all tab switching, save, close and teardown paths |
-| Current submodel filter | `MainWindow::_canOpenSubmodelFor()` checks components/data definitions by `getLevel() == owner->getId()`, while `_ensureSubmodelViewContext()` calls `setModelLevelFilter()` | This filter cannot define mathematical Network membership; never fake model levels to make the diagram appear |
+| Existing hierarchical tabs | `mainwindow.cpp` implements `_ensureSubmodelViewContext()`, `_closeSubmodelViewContext()`, `QTabWidget`, and “Open Submodel” | **Reuse submodel tabs and level-filtered view**; for a ModalModel resolve its attached Network as the context owner |
+| Tab context | `mainwindow.h` has `GraphicalModelViewContextKind::{RootModel, Submodel}`; the submodel context stores `modelLevel`, owner and graphics view | Preserve `Submodel` as the hierarchical context; add a type-specific projection policy **if necessary**, not a second scene class |
+| Current submodel filter | `MainWindow::_canOpenSubmodelFor()` checks components/data definitions by `getLevel() == owner->getId()`, while `_ensureSubmodelViewContext()` calls `setModelLevelFilter()` | **Reuse this contract for Network data definitions.** This filter selects the context; the formalism supplies its semantic relations. Never confuse context filtering with edge traversal or ownership |
 | Context menu | `controllers/GraphicalContextMenuController.cpp` builds the item menu and currently appends the existing Open Submodel action for component/data-definition selections | G1 may add a distinct, type-checked `Open Network...` action without replacing general Submodel behavior |
 | Property editor | `controllers/PropertyEditorController.cpp` and `propertyeditor/` select/edit process controls and data definitions | G1 is read-only; G2/G4 must inspect editability, notification and commit pipelines before exposing Network properties |
 | Catalog | `controllers/PluginCatalogController.h` exposes categorized plugin-tree insertion/selection | G2 can reuse discovery where appropriate; do not display network edges as process component plugins |
@@ -85,13 +104,50 @@ by compiling, running the GUI, or executing tests.
 **Evidence boundary:** this is a source inspection, not a statement that any new
 Modal Network GUI behavior exists or that current HEAD passes build/tests.
 
-### G0.1 risk discovered: submodel navigation is not a Network editor
+### G0.1 follow-up: level filtering can support a Network context
 
-A regular submodel tab filters existing process elements by a model level.
-Network membership is instead established by its data-definition ownership and
-formalism-specific topology. Simply opening the existing submodel tab for a
-`ModalModelDefault` would therefore give incorrect/incomplete rendering.
-The safe reuse boundary is tab lifecycle and navigation, not scene semantics.
+The initial recommendation to separate Network scenes has been **superseded**
+by explicit maintainer approval of Alternative A on 2026-10-29.
+
+**Confirmed in code:** `ModelDataDefinition::getLevel()` and
+`setModelLevel()` exist; `_canOpenSubmodelFor()` already considers both
+`ModelComponent` and `ModelDataDefinition` instances; Network load routines
+for EFSM, Markov, Graph and CPN set the child `ModelDataDefinition` level to
+the Network's ID. `ModelComponent : ModelDataDefinition`.
+
+**Confirmed gap:** the process-oriented `GraphicalModelBuilder` starts from
+visible process components and their attached/internal data and uses
+`GraphicalDiagramConnection` for those associations; correct `level`
+alone does not yet render a Network's formal transitions. G1 must support
+level-scoped data-definition discovery even with zero process components,
+then render the Network's typed topology using a formalism-specific adapter.
+
+**Initial bounded code slice:** on programmatic insertion of states/nodes/edges,
+places/CPN transitions/arcs into their Network, set the accepted data
+definition's `modelLevel` to the Network's `getId()`. Apply only on successful
+registration: rejected edges/arcs remain unchanged. Match the load-time contract
+without modifying mathematical transitions that are **not** data definitions.
+Four focused Google Test cases cover EFSM, Markov, Graph and CPN.
+**Tests still require CMake/Ninja/CTest execution**; these commits do not
+satisfy the complete G0 gate.
+
+**Identity/persistence limitation:** `ModelDataDefinition::_saveInstance()`
+persists `id`, `name` and other data but not `_modelLevel`; current Network
+loaders reconstruct levels. A general nested process submodel may require a
+separate persistence contract. `getId()` is `Util::identification` (currently
+`unsigned long`), while `getLevel()/setModelLevel()` use `unsigned int`.
+The existing GUI casts the owner ID to `unsigned int`; whether widening the
+level type is necessary is a dedicated compatibility/ABI and persistence gate,
+**not authorized as a cosmetic change**.
+
+**Ownership limitation:** `level` encodes context membership, not an
+exclusive-owning pointer. A Network can be shared across adapters; its child
+objects should not be reused simultaneously in multiple distinct Network
+contexts without an explicit supported multi-membership model.
+
+**Other important limitation:** the existing process `Submodel` plugin has
+TODOs in load/save/check; its execution currently forwards entities. It must
+not be presumed to implement general hierarchical editor semantics.
 
 ### G0.1 risk discovered: the current `.gui` file is a combined artifact
 
@@ -154,10 +210,10 @@ mandatory regressions. G0.1 documentation alone does **not** close G0.
 
 | Phase | Minimal deliverable | Acceptance / stop gate |
 |---|---|---|
-| **G0.1** | Source-backed GUI and ownership inventory, architectural decision and handoff plan | Documentation review; **prepared in this branch** |
+| **G0.1** | Source-backed GUI inventory, Alternative A decision, level context contract and bounded Network insertion tests | Patch in branch; unit/GUI verification outstanding |
 | **G0.2** | Confirmed record schema, `.gui` overlay codec, headless tests | Qt6/CMake/Ninja tests; existing `.gui` compatibility; unknown schema safe; no math mutations |
-| **G1.1** | Separate read-only EFSM scene/render mapping with non-owning domain references | EFSM states/transitions correct, empty/null safe, no mutation or simulation side effects |
-| **G1.2** | `Open Network...` action on ModalModel + hierarchical tab/view context | Open, switch, close and reopen safely; shared Network does not duplicate data; GUI app builds and interaction tested |
+| **G1.1** | Read-only EFSM projection inside existing `ModelGraphicsScene`/submodel context using the Network ID level | States/transitions correct, no process-level `Connection`, no mutation, zero component scenario covered |
+| **G1.2** | Open a ModalModel's attached Network through existing submodel navigation, resolving the Network as context owner | Open, switch, close and reopen safely; shared Network does not duplicate data; GUI app builds and interaction tested |
 | **G2** | Create/choose/attach Networks; persist `.gen` plus `.gui` | Current-format save/reload/execute unchanged; binding synchronization verified |
 | **G3** | Formalism-specific topology editing, commands and undo/redo | Invalid relations rejected, delete/undo ownership safe, focused sanitizers |
 | **G4** | Property editing and semantic diagnostics | Backend remains authoritative; EFSM/DTMC/CPN validation and persistence tests |
@@ -179,9 +235,12 @@ Modal/Network documents referenced in Section 1.
 1. Confirm clean Git status, fetch and inspect `origin/WorkInProgress`, and
    check that `WiP20261029/modalmodel-architecture` has not drifted.
 2. Inspect implementation (not only headers) of tab/switch/close workflows,
-   `GraphicalModelSerializer`, model identity and formalism relations.
-3. Validate G0.2 identity and storage contract before creating C++ files or
-   changing `source/tests/unit/CMakeLists.txt`.
+   `GraphicalModelSerializer`, `GraphicalModelBuilder`, level discovery,
+   model identity and formalism relations. Respect the new Alternative A
+   decision: no independent `GraphicalNetworkScene` as default approach.
+3. Validate the Network insertion level tests already added in this branch
+   using the actual CMake/Ninja targets. Then validate G0.2 GUI layout
+   identity/storage before changing the serializer or test target graph.
 4. Implement one bounded concern per commit; use tests first for the codec,
    then add read-only EFSM presentation as an independently reviewable slice.
 5. Run `cmake --preset gui-app`, `cmake --build --preset gui-app`,
@@ -207,7 +266,9 @@ Qt6 compilation, tests, sanitizer results, or a completed G0 gate.
 Manual impact for G0.1: **no user-visible behavior or public C++ contract changed**, so no current User/Developer Manual regeneration is required for this documentation-only inventory. The implementation stages G0.2/G1–G6 must reassess manual impact and update the applicable manuals per governance.
 
 Risks to resolve locally: stable identity of relation objects across reload,
-process-versus-Network scene lifetime, switching and restoring the active tab,
+context ID width/possible truncation, Network-owned child registration/lifetime,
+level persistence in generic submodels, formalism-aware rendering inside the
+shared scene, multi-view reference invalidation, switching/restoring active tabs,
 Qt QObject/GraphicsItem versus kernel object ownership, `.gui` compatibility,
 editing command rollback, and regression against existing GUI/property-editor
 behavior. Do not start G2+ until those prerequisites are demonstrated.
