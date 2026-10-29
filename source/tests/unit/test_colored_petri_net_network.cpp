@@ -97,6 +97,31 @@ CPNArc* outputArc(Model* model, CPNTransition* transition, PetriPlace* place, un
 
 } // namespace
 
+TEST(ColoredPetriNetNetworkTest, ProgrammaticPlacesTransitionsAndArcsBelongToNetworkEditingLevel) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	ColoredPetriNetNetwork network(model, "CPN");
+	PetriPlace place(model, "P");
+	CPNTransition transition(model, "T");
+	CPNArc arc(model, &place, &transition, CPNArc::Direction::PlaceToTransition, "PT");
+
+	EXPECT_FALSE(network.addArc(&arc));
+	EXPECT_EQ(arc.getLevel(), 0u);
+	network.addPlace(&place);
+	network.addTransition(&transition);
+	ASSERT_TRUE(network.addArc(&arc));
+
+	const auto networkLevel = static_cast<unsigned int>(network.getId());
+	EXPECT_NE(networkLevel, 0u);
+	EXPECT_EQ(place.getLevel(), networkLevel);
+	EXPECT_EQ(transition.getLevel(), networkLevel);
+	EXPECT_EQ(arc.getLevel(), networkLevel);
+	EXPECT_FALSE(network.addArc(&arc));
+	EXPECT_EQ(network.getArcs()->size(), 1u);
+}
+
 TEST(ColoredPetriNetNetworkTest, ConstructionCreatesFireAndFiredPorts) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
