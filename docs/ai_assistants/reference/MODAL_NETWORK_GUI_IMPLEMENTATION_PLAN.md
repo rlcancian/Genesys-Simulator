@@ -79,7 +79,7 @@ by compiling, running the GUI, or executing tests.
 | GUI persistence | `services/GraphicalModelSerializer.cpp` uses `saveGraphicalModel()` / `loadGraphicalModel()`, emits comment-prefixed `Graphical Model Data Definitions` and `Graphical Model Components` sections, parses `GuiSection` | Add a dedicated, versioned **Network diagram overlay section**; preserve existing sections and legacy load |
 | Diagram reconstruction | `services/GraphicalModelBuilder.cpp` reconstructs model graphics, including data-definition associations | Keep process diagram reconstruction unchanged; build Network views from a resolved `DefaultNetwork` |
 | Undo/redo | `graphicals/ModelGraphicsScene.h` exposes `getUndoStack()`; existing actions reside in `actions/` | Read-only G1 must create no undo actions; G3 tests command ownership and atomicity |
-| Qt6 build | `source/applications/gui/genesys/CMakeLists.txt` provides `genesys_gui_application` / `genesys-gui`, with C++23 | Use the existing `gui-app` preset and retain Qt6-only target semantics |
+| Qt6 build | `source/applications/gui/genesys/CMakeLists.txt` provides `genesys_gui_application` / `genesys-gui`, with C++23 | Use the existing `gui-app` preset and the normative Qt6 baseline; the existing CMake Qt5 fallback is outside this work |
 | Unit harness | `source/tests/unit/CMakeLists.txt` has `genesys_add_unit_test()`, `gtest_discover_tests()`, and conditional Qt GUI tests | G0.2 may add headless record-codec tests following actual target/link patterns |
 
 **Evidence boundary:** this is a source inspection, not a statement that any new
@@ -203,6 +203,8 @@ Modal/Network documents referenced in Section 1.
 This 2026-10-29 GitHub-only delivery records **approval, source inventory,
 architecture and a staged plan**, without claiming GUI code, record codec,
 Qt6 compilation, tests, sanitizer results, or a completed G0 gate.
+
+Manual impact for G0.1: **no user-visible behavior or public C++ contract changed**, so no current User/Developer Manual regeneration is required for this documentation-only inventory. The implementation stages G0.2/G1–G6 must reassess manual impact and update the applicable manuals per governance.
 
 Risks to resolve locally: stable identity of relation objects across reload,
 process-versus-Network scene lifetime, switching and restoring the active tab,
