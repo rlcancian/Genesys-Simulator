@@ -128,8 +128,8 @@ definition's `modelLevel` to the Network's `getId()`. Apply only on successful
 registration: rejected edges/arcs remain unchanged. Match the load-time contract
 without modifying mathematical transitions that are **not** data definitions.
 Four focused Google Test cases cover EFSM, Markov, Graph and CPN.
-**Tests still require CMake/Ninja/CTest execution**; these commits do not
-satisfy the complete G0 gate.
+**Validation update (2026-10-29):** CMake/Ninja/CTest passed at source SHA
+`5a37c7ae` on [GitHub Actions run 40961067698](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40961067698), including all ten new tests (1920 executed, zero failed, four legacy disabled). These results **do not** close the complete G0 gate because the manual PDF and GUI interaction are pending.
 
 **Identity/persistence limitation:** `ModelDataDefinition::_saveInstance()`
 persists `id`, `name` and other data but not `_modelLevel`; current Network
@@ -157,7 +157,7 @@ between `.gen` semantics and `.gui` layout **does not imply** two physically
 independent files must always be present. New records must integrate with this
 actual format and existing loaders.
 
-### G0.1b — Level-only model data projection (implemented in branch; CI pending)
+### G0.1b — Level-only model data projection (code + CI passed; manual gate pending)
 
 **Source-backed patch as of 2026-10-29:**
 
@@ -188,12 +188,9 @@ actual format and existing loaders.
   components; and (6) unchanged root-level behavior for an unreferenced
   data definition.
 
-**Validation boundary:** the source files and CMake registration have been
-inspected on the branch, but these assertions are **not claims of a passing
-test or Qt6 GUI startup**. Only a completed, reviewed final-head GitHub Actions
-run or local CMake/Ninja/CTest evidence can close the validation gate.
-The Developer Manual's `chapter_gui_architecture.tex` has been updated; its
-LaTeX validation and PDF regeneration are required before merge.
+**Validation update:** all six `GuiSubmodelLevel.*` tests passed in the full
+CMake/Ninja/CTest run `40961067698` at SHA `5a37c7ae`; the GUI GMDD diagnostic job also passed. This demonstrates a tested Qt6 scene layer, **not** a `gui-app` startup or live interactive navigation result. Additional documentation-only commits do not change that tested source, but the final-head verification gate still applies.
+The Developer Manual's `chapter_gui_architecture.tex` has been updated; LaTeX validation and PDF regeneration are required **before milestone 2 can close or G0.2 can begin**.
 
 **Deliberate non-goals:** no EFSM transitions are drawn yet, no owner resolution
 from `ModalModelDefault` is wired to a tab, no `.gui` Network layout schema
