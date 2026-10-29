@@ -129,13 +129,20 @@ public:
 	 */
 	void setHasChanged(bool hasChanged);
 	/*!
-	 * \brief Returns the level in the model hierarchy where this definition lives.
-	 * \return Model nesting level.
+	 * \brief Returns the hierarchical editing context containing this element.
+	 * \details Zero denotes the root model view. A nonzero value identifies
+	 * the ModelDataDefinition that owns the editing context; a ModelComponent
+	 * may identify a context because it derives from ModelDataDefinition.
+	 * Context membership does not transfer object ownership or imply Entity flow.
+	 * \return Current editing-context identifier (not an ordinal depth).
 	 */
 	unsigned int getLevel() const;
 	/*!
-	 * \brief Sets the model nesting level for this definition.
-	 * \param _modelLevel New hierarchy level.
+	 * \brief Sets this element's hierarchical editing context.
+	 * \details Use zero for the root context, or the ID of the containing
+	 * ModelDataDefinition / ModelComponent. This API only updates the context
+	 * key: the caller remains responsible for domain ownership and persistence.
+	 * \param _modelLevel Editing-context identifier.
 	 */
 	void setModelLevel(unsigned int _modelLevel);
 	/*!
