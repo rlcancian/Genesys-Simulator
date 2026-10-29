@@ -159,10 +159,12 @@ Method of Lines, and time stepping is delegated to the selected ODE solver from
 the factory.
 
 The component counterpart is \texttt{DiffusionSimulate}. It acts as a
-discrete-to-continuous bridge: when an entity arrives, it can trigger a
+discrete-to-continuous bridge: when an entity arrives, it can request a
 diffusion solve using either the field's own configured window or the
-component's override window. A continuous data definition starts at local time
-zero; its synchronization origin is the kernel clock when evolution begins.
+component's override window. When synchronization is enabled, the component
+retains the entity and forwards it only after the continuous run reports
+completion. A continuous data definition starts at local time zero; its
+synchronization origin is the kernel clock when evolution begins.
 The \texttt{StepsToSynchronize} control determines how many local solver steps
 run between internal calendar events: zero runs the requested interval without
 calendar synchronization, while a positive value synchronizes after that many
@@ -226,6 +228,56 @@ confirms all of the following in the current tree:
 \item invalid solver and invalid grid or boundary settings are rejected;
 \item the \texttt{DiffusionSimulate} component can drive the field.
 \end{itemize}
+
+\subsection{Shared continuous execution and entity flow}
+\label{subsec:shared-continuous-execution}
+
+\texttt{ContinuousModelDataDefinition} owns the shared temporal lifecycle for
+\texttt{ODESolver}, \texttt{DiffusionField}, and \texttt{BioNetwork}. The
+kernel owns global simulated time; each continuous definition advances its
+local time from zero to its configured \texttt{StopTime}. At the beginning of
+a run the definition captures a fixed global origin \(T_0\), so local time
+\(t\) maps to global time \(T_0+t\). \texttt{StartTime} is not a configurable
+property of the base definition.
+
+\texttt{StepsToSynchronize=0} runs without internal calendar events. A
+positive value schedules synchronization after that many continuous steps and
+always schedules a final synchronization at the local stop time, including a
+partial final step. Creating an \texttt{InternalEvent} does not itself advance
+the kernel clock; the calendar advances when it dispatches that event.
+The current \texttt{ODESolver} defaults (\texttt{StopTime=60},
+\texttt{StepSize=0.01}, \texttt{StepsToSynchronize=1}) start automatically
+between replications and can schedule about 6,000 internal events per
+replication even when no component requests the solver. Those defaults remain
+unchanged for compatibility.
+
+\texttt{ContinuousModelComponent} is the common component base for
+\texttt{ContinuousSystemComponent}, \texttt{DiffusionSimulate}, and
+\texttt{BioSimulate}. It keeps pending entity identifiers, listens for the
+continuous execution result, and forwards each still-live entity once after a
+successful completion. Multiple entities that request the same active window
+share that run. A conflicting request is rejected rather than mutating the same
+continuous state concurrently. On numerical failure or cancellation, pending
+entities are removed with a diagnostic because these plugins do not currently
+define an error output port.
+
+An unrelated discrete event between synchronization boundaries observes the
+last continuous state confirmed by an internal event. For example, with
+\(T_0=100\), step size 1, and \texttt{StepsToSynchronize=5}, the continuous
+state is advanced to local time 5 when the kernel dispatches the event at 105;
+events at 102 or 104 see the state at the previous confirmed boundary. This
+prevents a discrete component from observing a future continuous state, but it
+leaves the state stale between boundaries. The physically correct hybrid
+semantics for those intermediate times remains an open maintainer decision
+tracked by \texttt{HUM-SCI-002}.
+
+\texttt{ContinuousSystemComponent} retains reactive ODE integration. It
+reports integration errors and refuses targets beyond the next pending
+synchronization boundary; events at or before that boundary can advance to the
+current kernel time and leave the remainder for the calendar callback. The
+relation between this reactive behavior and automatic full-window evolution remains a compatibility question. The
+legacy component time-window fields remain loadable; a nonzero local
+\texttt{StartTime} is rejected rather than reinterpreted as a global time.
 
 Those checks are strong runtime evidence, but they are still evidence for the
 specific scenarios under test. They are not a claim that every diffusion
@@ -424,8 +476,8 @@ interaction in several ways:
 \begin{itemize}
 \item \texttt{DiffusionField} can auto-schedule internal events so the field
   advances one step per kernel event;
-\item \texttt{DiffusionSimulate} can launch a diffusion solve when an entity
-  arrives at the component;
+\item \texttt{DiffusionSimulate} and \texttt{BioSimulate} retain an arriving
+  entity until the requested synchronized run completes;
 \item \texttt{ContinuousSystemComponent} and the ODE examples show how a
   continuous solver can be driven from a discrete-event workflow;
 \item the model-specific continuous trace example demonstrates that solver time

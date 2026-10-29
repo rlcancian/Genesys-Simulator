@@ -3,7 +3,7 @@ document_type: evidence-ledger
 authority: informative
 owner: project-maintainer
 period: 2026-10
-last_updated: 2026-10-16
+last_updated: 2026-10-29
 status: active
 tracks: 511
 ---
@@ -42,3 +42,7 @@ and the historical integration plan §22.9. Build/CTest results are local only.
 | 2026-10-16 | PR #550 continuous temporal base, ODESolver, DiffusionField, BioNetwork, event lifetime and plugin loaders | `WiP20261016/ContinuousModels`; implementation `6cb42d1c`; based on `origin/WorkInProgress` `6df79436ff9d72e302e9d2b047fc5a8f6e1f297b` | `tests-unit`: 1,918 passed / 4 disabled; `tests-kernel-unit`: 1,917 passed / 4 disabled, plus focused T0=100 integration; `tests-smoke`: 3/3; focused ASan/UBSan 3/3 with LeakSanitizer disabled; developer manual rebuilt; User Manual Doxygen-LaTeX PDF failed on existing Unicode `Δ` | Deferred evolution until calendar dispatch fixed time-run-ahead; matrix tests cover sync counts 0/1/2/3/5/20, final partial steps, nonzero global origin, event destruction and BioNetwork replication reset | Nonzero `DiffusionSimulate` component override, LeakSanitizer, User Manual PDF, final-head hosted CI and exhaustive legacy model compatibility remain unverified; PR remains draft |
 
 Detailed diagnosis, commands, environment, test counts, sanitizer scope, manual impact, and remaining decisions are recorded in [`2026-10-16_PR550_ContinuousModels_local_handoff.md`](2026-10-16_PR550_ContinuousModels_local_handoff.md).
+
+| 2026-10-29 | PR #550 continuous model component integration and completion lifecycle | `WiP20261016/ContinuousModels`; starting head `c00921b91db131087cff16c12488940d38801f32` | Shared continuous component base, typed execution state, asynchronous entity-retention tests, unit/kernel/smoke and GUI build results, focused ASan/UBSan and LeakSanitizer outcome are recorded in the linked handoff | Local code implements a causal calendar-driven lifecycle and routes entities only after completion; the continuous state observed between synchronization events remains at the last completed synchronization point | `HUM-SCI-002` time semantics remain a maintainer decision; LeakSanitizer reported plugin-fixture/process-lifetime allocations; final hosted CI must be checked after push; unrelated GUI crash fix already in branch history |
+
+Detailed diagnosis, architectural decisions, exact commands, test counts, sanitizer evidence, changed files, and follow-up gates are recorded in [`2026-10-29_ContinuousModels_Component_Integration_Handoff.md`](2026-10-29_ContinuousModels_Component_Integration_Handoff.md).

@@ -164,6 +164,12 @@ Use for the next backend research phase after the Modal/Network backend gate:
 
 Use for the proposed Qt6 editor/viewer architecture after the backend contracts and completion gate in `MODAL_NETWORK_COMPLETION_PLAN.md` have been revalidated locally.
 
+### [`CONTINUOUS_MODEL_EXECUTION.md`](CONTINUOUS_MODEL_EXECUTION.md)
+
+Use for the current continuous data-definition lifecycle, `StepsToSynchronize`,
+local/global clock mapping, shared continuous component entity handling, and the
+open hybrid-time semantics decision tracked by `HUM-SCI-002`.
+
 ## 3. Reference rules
 
 Reference files:
