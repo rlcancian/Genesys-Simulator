@@ -65,6 +65,8 @@ ModelDataDefinition* EFSMNetwork::LoadInstance(Model* model, PersistenceRecord* 
 void EFSMNetwork::addState(FSMState* state) {
 	if (state != nullptr && _states->find(state) == _states->list()->end()) {
 		_states->insert(state);
+		// The containing Network is also this state's hierarchical editing context.
+		state->setModelLevel(static_cast<unsigned int>(getId()));
 		if (_initialState == nullptr || state->isInitialNode()) {
 			_initialState = state;
 			_currentState = state;
