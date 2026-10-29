@@ -54,7 +54,12 @@ void fatalSignalHandler(int signalNumber) {
     writeStderr("\nBacktrace:\n");
     ::backtrace_symbols_fd(trace, traceSize, STDERR_FILENO);
 
-    std::_Exit(128 + signalNumber);
+    // SA_RESETHAND restored the default disposition before this handler ran.
+    // Re-raise the fatal signal so the kernel can create a core dump (for
+    // example through systemd-coredump) after this diagnostic backtrace.
+    if (::raise(signalNumber) != 0) {
+        std::_Exit(128 + signalNumber);
+    }
 }
 
 // Registers one POSIX signal to the temporary GUI diagnostic handler.

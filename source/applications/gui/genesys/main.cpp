@@ -56,7 +56,9 @@ void _terminateHandler() {
         }
         free(messages);
     }
-    std::_Exit(EXIT_FAILURE);
+    // Route terminate through SIGABRT so the fatal-signal handler can emit its
+    // trace and the kernel can produce a core dump when the launch limit allows it.
+    std::abort();
 }
 
 void _installCrashAndLogHandlers() {

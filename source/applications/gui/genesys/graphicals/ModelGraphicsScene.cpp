@@ -1999,10 +1999,30 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition* animationTran
             delete transitionPtr;
         }
         else {
-            // Log paused retention path when transition remains available for resume.
-            qInfo() << "GUI ModelGraphicsScene runAnimateTransition cleanup destination=pausedMap"
-                << "transitionPtr=" << transitionAddress
-                << "eventPtr=" << event;
+            // Store the transition only after its final state has settled. A pause
+            // can race with natural completion in the same Qt timer delivery:
+            // stateChanged(Paused) may be followed by finished and Stopped before
+            // this nested event loop returns. Registering during stateChanged
+            // would leave a dangling map entry when the terminal path deletes it.
+            if (_animationPaused == nullptr) {
+                transitionPtr->stopAnimation();
+                delete transitionPtr;
+            } else {
+                QList<AnimationTransition*>* pausedAnimations = _animationPaused->value(event, nullptr);
+                if (pausedAnimations == nullptr) {
+                    pausedAnimations = new QList<AnimationTransition*>();
+                    _animationPaused->insert(event, pausedAnimations);
+                }
+                const bool appendedToPausedList = !pausedAnimations->contains(transitionPtr);
+                if (appendedToPausedList) {
+                    pausedAnimations->append(transitionPtr);
+                }
+                qInfo() << "GUI ModelGraphicsScene runAnimateTransition cleanup destination=pausedMap"
+                    << "transitionPtr=" << transitionAddress
+                    << "eventPtr=" << event
+                    << "appendPaused=" << appendedToPausedList
+                    << "pausedListSize=" << pausedAnimations->size();
+            }
         }
     }
 
@@ -2023,43 +2043,9 @@ void ModelGraphicsScene::handleAnimationStateChanged(QAbstractAnimation::State n
         return;
     }
 
-    // Protect map usage when paused storage is not available.
-    if (_animationPaused == nullptr) {
-        return;
-    }
-
-    // Ignore invalid transition pointers to avoid storing null entries.
-    if (animationTransition == nullptr) {
-        return;
-    }
-
-    // Ensure there is a paused-animation list for the current event key.
-    if (!_animationPaused->contains(event)) {
-        QList<AnimationTransition*>* newList = new QList<AnimationTransition*>();
-        _animationPaused->insert(event, newList);
-    }
-
-    // Track whether paused-list append happened for deterministic state correlation.
-    bool appendedToPausedList = false;
-    // Append only when this transition is not already tracked for the event.
-    QList<AnimationTransition*>* pausedAnimations = _animationPaused->value(event);
-    if (pausedAnimations != nullptr && !pausedAnimations->contains(animationTransition)) {
-        // Log paused-list append when transition is first tracked for this event.
-        qInfo() << "GUI ModelGraphicsScene handleAnimationStateChanged appendPaused=true eventPtr=" << event
-            << "transitionPtr=" << animationTransition
-            << "state=" << newState;
-        pausedAnimations->append(animationTransition);
-        appendedToPausedList = true;
-    }
-
-    // Log paused-state handling outcome even when transition was already present.
-    qInfo() << "GUI ModelGraphicsScene handleAnimationStateChanged appendPaused="
-        << appendedToPausedList
-        << "eventPtr=" << event
-        << "transitionPtr=" << animationTransition
-        << "state=" << newState;
-
-    // Preserve local loop exit when the animation transitions to paused.
+    // Defer ownership registration until runAnimateTransition observes the
+    // final state after this Qt callback and any natural-finish callback settle.
+    // The animation may report Paused and then Stopped in the same timer tick.
     if (loop) loop->quit();
 }
 
