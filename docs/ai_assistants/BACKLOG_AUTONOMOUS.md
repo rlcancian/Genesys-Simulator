@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-10-08
+last_updated: 2026-10-29
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -478,6 +478,34 @@ This is the only approved source for work an AI agent may execute without a new 
   - evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 `AUTO-MODAL-001` remains in Section 4 as a closed historical development cycle, not as `done_confirmed`.
+
+### AUTO-MODAL-003 — Qt6 Network diagram G0: inventory and persistence contract
+
+- Priority: `P1`
+- Status: `running` — **G0.1 code-backed inventory and planning prepared via GitHub; G0.2 code/tests not started**.
+- Environment: `github` for inspection/planning; `local` for serializer code, CMake/Ninja, headless Qt6 tests and full validation.
+- Branch: `WiP20261029/modalmodel-architecture`, based on `WorkInProgress`.
+- Authorization: maintainer's explicit 2026-10-29 approval in `HUM-MODAL-002`; decision `DEC-MODAL-GUI-20261029`.
+- Primary plan: [`reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md), G0.1/G0.2; conceptual baseline `reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`.
+- Scope: map real process-scene/context-menu/tab/Property Editor/serializer paths; define versioned GUI-only Network diagram identity/layout record; prove backward-compatible `.gui` serialization; add headless record round-trip, malformed input, unknown-version, orphan and parallel-edge tests.
+- Non-goals: `DefaultNetwork` execution changes, process `Connection` generalization, graph/node conversion to `ModelComponent`, runtime GUI activation, CTMC, Cellular Automata migration, dynamic plugins, broad GUI rewrite, Network creation/interactive topology editing.
+- Acceptance: reviewed source-backed inventory; stable identity/duplicate-arc strategy; versioned overlay codec; tests executed on real Qt6 CMake/Ninja toolchain; old `.gui` files load unchanged; malformed/orphan GUI records cannot alter `.gen` semantics; mandatory regression green; manual impact assessed; evidence published.
+- Stop gates: unstable relation identity across reload, incompatible GUI file format, unexpected domain ownership, incomplete/failed mandatory tests, or new architectural choices beyond `HUM-MODAL-002`. Return to maintainer before changing kernel identity or data ownership.
+- Progress 2026-10-29: source inspection discovered working process **Submodel** tabs built on model-level filtering, which cannot be used as Network membership. The G0.1 inventory and proposed record contract are written in the linked plan. These are **inspection results, not executable validation**.
+- Handoff: local agent to complete G0.2, validate and record exact executed evidence before marking `done_confirmed` or beginning G1 implementation.
+
+### AUTO-MODAL-004 — Qt6 Network diagram G1: read-only EFSM viewer
+
+- Priority: `P1`
+- Status: `blocked-dependency` (requires validated G0 codec/identity contract under `AUTO-MODAL-003` and a fresh local baseline).
+- Environment: `local` (Qt6 GUI build and interactive verification).
+- Branch family: `WiP20261029/modalmodel-architecture`, with bounded commits/PR scopes into `WorkInProgress`.
+- Authorization: same maintainer decision `DEC-MODAL-GUI-20261029`; **read-only EFSM first**.
+- Scope: a separate, non-owning Network-domain diagram view for existing EFSM states/transitions; `Open Network...` only for a `ModalModelDefault` attached to an EFSM; reuse tab navigation/lifecycle without reusing process-level membership; deterministic initial layout and graceful null/missing Network diagnostics.
+- Non-goals: editing/creating Network topology, process `Connection` creation, mathematical state duplication, new simulation activation rules, new formalisms beyond the accepted EFSM first slice.
+- Acceptance: build GUI with the supported preset; focused GUI tests and ordinary regression green; verify nested-tab opening, switch/close/reopen, two adapters sharing one Network, no-Network case, root model teardown, and unchanged simulation semantics; record manual UI interaction evidence.
+- Stop gates: dangling GUI-to-Network references, duplicate domain objects, unexpectedly mutated `.gen` state, incorrect model switching, or regressions in existing process/property-editor workflows.
+
 
 ## 5.1. Scientific rigor program — biochemical and WholeCell models (S0–S13)
 
