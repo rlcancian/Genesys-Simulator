@@ -8,6 +8,7 @@
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
