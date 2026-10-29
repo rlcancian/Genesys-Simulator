@@ -15,6 +15,7 @@
 
 #include <cmath>
 #include <string>
+#include <stdexcept>
 #include <vector>
 
 #include "kernel/simulator/Simulator.h"
@@ -23,6 +24,10 @@
 #include "kernel/simulator/Event.h"
 #include "plugins/data/Continuous/DiffusionField.h"
 #include "plugins/data/Continuous/ODESolver.h"
+#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/BiochemicalSimulation/BioNetwork.h"
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/components/Continuous/DiffusionSimulate.h"
 
 namespace {
@@ -58,6 +63,10 @@ public:
 		setStepsToSynchronize(2u);
 		_startSucceeded = simulate(_startErrorMessage);
 	}
+	void startObservableRun(void*) {
+		setStepsToSynchronize(5u);
+		_startSucceeded = simulate(_startErrorMessage);
+	}
 	bool startSucceeded() const { return _startSucceeded; }
 	const std::string& startErrorMessage() const { return _startErrorMessage; }
 
@@ -75,6 +84,102 @@ public:
 	void DispatchEventProbe(Entity* entity) { _onDispatchEvent(entity, 0u); }
 };
 
+class ObservableDefinitionProbe : public ModelDataDefinition {
+public:
+	ObservableDefinitionProbe(Model* model, std::string name)
+		: ModelDataDefinition(model, "ObservableDefinitionProbe", std::move(name)) {}
+	void onInternalState(const ContinuousModelDataDefinition::InternalStateEvent& event) {
+		steps.push_back(event.step);
+		localTimes.push_back(event.localTime);
+		absoluteTimes.push_back(event.absoluteTime);
+		if (const auto* view = event.stateAs<DiffusionField::StateView>())
+			workingValues.push_back(view->values.at(1));
+	}
+	void onOdeState(const ContinuousModelDataDefinition::InternalStateEvent& event) {
+		if (const auto* view = event.stateAs<ODESolver::StateView>()) odeWorkingValues.push_back(view->values.at(0));
+	}
+	void onBioState(const ContinuousModelDataDefinition::InternalStateEvent& event) {
+		if (const auto* view = event.stateAs<BioNetwork::StateView>()) bioWorkingAmounts.push_back(view->amounts.at(0));
+	}
+	std::vector<std::uint64_t> steps;
+	std::vector<double> localTimes;
+	std::vector<double> absoluteTimes;
+	std::vector<double> workingValues;
+	std::vector<double> odeWorkingValues;
+	std::vector<double> bioWorkingAmounts;
+};
+
+class SubscriptionMutationProbe : public ModelDataDefinition {
+public:
+	SubscriptionMutationProbe(Model* model, std::string name, ContinuousModelDataDefinition* source)
+		: ModelDataDefinition(model, "SubscriptionMutationProbe", std::move(name)), _source(source) {}
+	void onInternalState(const ContinuousModelDataDefinition::InternalStateEvent& event) {
+		steps.push_back(event.step);
+		if (cancelOnNotification) _source->cancelExecution("cancelled by observer");
+		if (throwOnNotification) throw std::runtime_error("observer fixture failure");
+		if (_removeOnFirst && !_mutated) {
+			_mutated = true;
+			_source->removeInternalStateEventHandler(removeId);
+			_source->removeInternalStateEventHandler(selfId);
+			lateId = _source->addInternalStateEventHandler(lateObserver, &SubscriptionMutationProbe::onInternalState);
+		}
+	}
+	void configureMutation(ContinuousModelDataDefinition::InternalStateEventHandlerId self,
+		ContinuousModelDataDefinition::InternalStateEventHandlerId remove,
+		SubscriptionMutationProbe* late) {
+		selfId = self;
+		removeId = remove;
+		lateObserver = late;
+		_removeOnFirst = true;
+	}
+	ContinuousModelDataDefinition::InternalStateEventHandlerId selfId = 0;
+	ContinuousModelDataDefinition::InternalStateEventHandlerId removeId = 0;
+	ContinuousModelDataDefinition::InternalStateEventHandlerId lateId = 0;
+	SubscriptionMutationProbe* lateObserver = nullptr;
+	std::vector<std::uint64_t> steps;
+	bool cancelOnNotification = false;
+	bool throwOnNotification = false;
+private:
+	ContinuousModelDataDefinition* _source;
+	bool _removeOnFirst = false;
+	bool _mutated = false;
+};
+
+class ObservableComponentProbe : public ModelComponent {
+public:
+	ObservableComponentProbe(Model* model, DiffusionField* field)
+		: ModelComponent(model, "ObservableComponentProbe", "ObservableComponentProbe"), _field(field) {}
+	void onInternalState(const ContinuousModelDataDefinition::InternalStateEvent& event) {
+		if (const auto* view = event.stateAs<DiffusionField::StateView>()) {
+			observedLocalTimes.push_back(event.localTime);
+			observedWorkingValues.push_back(view->values.at(1));
+		}
+		observedAbsoluteTimes.push_back(event.absoluteTime);
+		observedGlobalTimes.push_back(_parentModel->getSimulation()->getSimulatedTime());
+		if (std::abs(event.localTime - 3.0) < 1e-12) {
+			Entity* entity = _parentModel->createEntity("ObserverGeneratedEvent");
+			_parentModel->sendEntityToComponent(entity, this, event.absoluteTime -
+				_parentModel->getSimulation()->getSimulatedTime());
+		}
+	}
+	std::vector<double> observedLocalTimes;
+	std::vector<double> observedWorkingValues;
+	std::vector<double> observedAbsoluteTimes;
+	std::vector<double> observedGlobalTimes;
+	std::vector<double> arrivalTimes;
+	std::vector<double> confirmedLocalTimes;
+	std::vector<double> confirmedValues;
+protected:
+	void _onDispatchEvent(Entity* entity, unsigned int) override {
+		arrivalTimes.push_back(_parentModel->getSimulation()->getSimulatedTime());
+		confirmedLocalTimes.push_back(_field->getCurrentTime());
+		confirmedValues.push_back(_field->getFieldValue({1}));
+		_parentModel->removeEntity(entity);
+	}
+private:
+	DiffusionField* _field;
+};
+
 struct StartDiffusionAtCalendarTime {
 	DiffusionField* field;
 	Model* model;
@@ -84,6 +189,19 @@ struct StartDiffusionAtCalendarTime {
 		event->setEventHandler(static_cast<DiffusionFieldProbe*>(field),
 			&DiffusionFieldProbe::startAtNonzeroGlobalTime, nullptr);
 		model->getFutureEvents()->insert(event);
+	}
+};
+
+struct ScheduleObservableCalendarScenario {
+	DiffusionFieldProbe* field;
+	ObservableComponentProbe* component;
+	Model* model;
+	void schedule(SimulationEvent*) {
+		auto* start = new InternalEvent(100.0, "StartObservableContinuousRun");
+		start->setEventHandler(field, &DiffusionFieldProbe::startObservableRun, nullptr);
+		model->getFutureEvents()->insert(start);
+		Entity* entity = model->createEntity("DiscreteAt102");
+		model->sendEntityToComponent(entity, component, 102.0);
 	}
 };
 
@@ -533,4 +651,293 @@ TEST(DiffusionFieldPluginTest, ZeroStepsToSynchronizeRunsWithoutCalendarEvents) 
     EXPECT_TRUE(model->getFutureEvents()->empty());
     EXPECT_NEAR(field.getCurrentTime(), 0.12, 1e-9);
     EXPECT_EQ(field.getLastStatus(), "Completed");
+}
+
+TEST(ContinuousObservableTest, ModelDataDefinitionObserverSeesEveryWorkingStepAndConfirmedGettersStayBehind) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	DiffusionFieldProbe field(model, "ObservableField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStepSize(1.0);
+	field.setStopTime(2.0);
+	field.setStepsToSynchronize(2u);
+	ObservableDefinitionProbe observer(model, "DefinitionObserver");
+	auto id = field.addInternalStateEventHandler(&observer, &ObservableDefinitionProbe::onInternalState);
+	ASSERT_NE(id, 0u);
+	std::string errorMessage;
+	ASSERT_TRUE(field.simulate(errorMessage)) << errorMessage;
+	ASSERT_EQ(observer.steps, (std::vector<std::uint64_t>{1u, 2u}));
+	EXPECT_EQ(observer.localTimes, (std::vector<double>{1.0, 2.0}));
+	EXPECT_EQ(observer.absoluteTimes, (std::vector<double>{1.0, 2.0}));
+	ASSERT_EQ(observer.workingValues.size(), 2u);
+	EXPECT_LT(observer.workingValues.back(), observer.workingValues.front());
+	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 0.0);
+	EXPECT_DOUBLE_EQ(field.getFieldValue({1}), 1.0);
+	EXPECT_EQ(model->getFutureEvents()->size(), 1u);
+	auto* sync = dynamic_cast<InternalEvent*>(model->getFutureEvents()->front());
+	ASSERT_NE(sync, nullptr);
+	model->getFutureEvents()->pop_front();
+	sync->dispatchEvent();
+	delete sync;
+	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 2.0);
+	EXPECT_NEAR(field.getFieldValue({1}), observer.workingValues.back(), 1e-12);
+	field.removeInternalStateEventHandler(id);
+}
+
+TEST(ContinuousObservableTest, PartialFinalStepIsNotifiedOnceAndSynchronizationRemainsOnCalendar) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	DiffusionFieldProbe field(model, "ObservablePartialField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStepSize(1.0);
+	field.setStopTime(2.5);
+	field.setStepsToSynchronize(2u);
+	ObservableDefinitionProbe observer(model, "PartialObserver");
+	field.addInternalStateEventHandler(&observer, &ObservableDefinitionProbe::onInternalState);
+	std::string errorMessage;
+	ASSERT_TRUE(field.simulate(errorMessage)) << errorMessage;
+	EXPECT_EQ(observer.localTimes, (std::vector<double>{1.0, 2.0}));
+	ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+	auto* first = dynamic_cast<InternalEvent*>(model->getFutureEvents()->front());
+	ASSERT_NE(first, nullptr);
+	EXPECT_DOUBLE_EQ(first->getTime(), 2.0);
+	model->getFutureEvents()->pop_front();
+	first->dispatchEvent();
+	delete first;
+	EXPECT_EQ(observer.localTimes, (std::vector<double>{1.0, 2.0, 2.5}));
+	ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+	auto* final = dynamic_cast<InternalEvent*>(model->getFutureEvents()->front());
+	ASSERT_NE(final, nullptr);
+	EXPECT_DOUBLE_EQ(final->getTime(), 2.5);
+	model->getFutureEvents()->pop_front();
+	final->dispatchEvent();
+	delete final;
+	EXPECT_EQ(observer.localTimes, (std::vector<double>{1.0, 2.0, 2.5}));
+	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 2.5);
+}
+
+TEST(ContinuousObservableTest, RemovalAndRegistrationDuringNotificationAreDeterministic) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	DiffusionFieldProbe field(model, "ObservableMutationField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStopTime(2.0);
+	field.setStepSize(1.0);
+	field.setStepsToSynchronize(0u);
+	SubscriptionMutationProbe first(model, "ObserverA", &field);
+	SubscriptionMutationProbe removed(model, "ObserverB", &field);
+	SubscriptionMutationProbe late(model, "ObserverC", &field);
+	first.selfId = field.addInternalStateEventHandler(&first,
+		&SubscriptionMutationProbe::onInternalState, -1);
+	const auto removedId = field.addInternalStateEventHandler(&removed,
+		&SubscriptionMutationProbe::onInternalState, 0);
+	first.configureMutation(first.selfId, removedId, &late);
+	std::string errorMessage;
+	ASSERT_TRUE(field.simulate(errorMessage)) << errorMessage;
+	EXPECT_EQ(first.steps, (std::vector<std::uint64_t>{1u}));
+	EXPECT_TRUE(removed.steps.empty());
+	EXPECT_EQ(late.steps, (std::vector<std::uint64_t>{2u}));
+	EXPECT_TRUE(model->getFutureEvents()->empty());
+	field.removeInternalStateEventHandler(first.lateId);
+}
+
+TEST(ContinuousObservableTest, PriorityAndDuplicateSubscriptionsHaveDeterministicOrder) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	DiffusionFieldProbe field(model, "ObservablePriorityField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStopTime(1.0);
+	field.setStepSize(1.0);
+	field.setStepsToSynchronize(0u);
+	ObservableDefinitionProbe first(model, "PriorityFirst");
+	ObservableDefinitionProbe second(model, "PrioritySecond");
+	std::vector<int> order;
+	const auto firstId = field.addInternalStateEventHandler(&first,
+		[&order](const auto&) { order.push_back(1); }, 10);
+	const auto secondId = field.addInternalStateEventHandler(&second,
+		[&order](const auto&) { order.push_back(2); }, -10);
+	const auto duplicateId = field.addInternalStateEventHandler(&first,
+		[&order](const auto&) { order.push_back(3); }, 10);
+	ASSERT_NE(firstId, 0u);
+	ASSERT_NE(secondId, 0u);
+	ASSERT_NE(duplicateId, 0u);
+	EXPECT_NE(firstId, duplicateId);
+	std::string errorMessage;
+	ASSERT_TRUE(field.simulate(errorMessage)) << errorMessage;
+	EXPECT_EQ(order, (std::vector<int>{2, 1, 3}));
+	field.removeInternalStateEventHandler(firstId);
+	field.removeInternalStateEventHandler(secondId);
+	field.removeInternalStateEventHandler(duplicateId);
+}
+
+TEST(ContinuousObservableTest, DestroyedObserverIsSkippedByLifetimeToken) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	DiffusionFieldProbe field(model, "ObservableLifetimeField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStopTime(1.0);
+	field.setStepSize(1.0);
+	field.setStepsToSynchronize(0u);
+	auto* observer = new ObservableDefinitionProbe(model, "DestroyedObserver");
+	ASSERT_NE(field.addInternalStateEventHandler(observer, &ObservableDefinitionProbe::onInternalState), 0u);
+	delete observer;
+	std::string errorMessage;
+	EXPECT_TRUE(field.simulate(errorMessage)) << errorMessage;
+	EXPECT_EQ(field.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed);
+}
+
+TEST(ContinuousObservableTest, ObserverExceptionsFailTheRunAfterNotifyingRemainingObservers) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	DiffusionFieldProbe field(model, "ObservableExceptionField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStopTime(1.0);
+	field.setStepSize(1.0);
+	field.setStepsToSynchronize(0u);
+	SubscriptionMutationProbe throwing(model, "ThrowingObserver", &field);
+	SubscriptionMutationProbe remaining(model, "RemainingObserver", &field);
+	throwing.throwOnNotification = true;
+	field.addInternalStateEventHandler(&throwing, &SubscriptionMutationProbe::onInternalState, -1);
+	field.addInternalStateEventHandler(&remaining, &SubscriptionMutationProbe::onInternalState, 0);
+	std::string errorMessage;
+	EXPECT_FALSE(field.simulate(errorMessage));
+	EXPECT_EQ(throwing.steps, (std::vector<std::uint64_t>{1u}));
+	EXPECT_EQ(remaining.steps, (std::vector<std::uint64_t>{1u}));
+	EXPECT_EQ(field.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Failed);
+	EXPECT_NE(field.getLastErrorMessage().find("observer fixture failure"), std::string::npos);
+}
+
+TEST(ContinuousObservableTest, ObserverCanCancelRunAndPendingSynchronization) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	DiffusionFieldProbe field(model, "ObservableCancelField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStopTime(3.0);
+	field.setStepSize(1.0);
+	field.setStepsToSynchronize(2u);
+	SubscriptionMutationProbe observer(model, "CancellingObserver", &field);
+	observer.cancelOnNotification = true;
+	field.addInternalStateEventHandler(&observer, &SubscriptionMutationProbe::onInternalState);
+	std::string errorMessage;
+	EXPECT_TRUE(field.simulate(errorMessage)) << errorMessage;
+	EXPECT_EQ(observer.steps, (std::vector<std::uint64_t>{1u}));
+	EXPECT_EQ(field.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Cancelled);
+	EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
+TEST(ContinuousObservableTest, ODESolverPublishesOnlyConfirmedVariablesWhileObserverSeesWorkVector) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	Variable state(model, "ObservableOdeState");
+	state.setValue(1.0);
+	ODESolver solver(model, "ObservableOde");
+	solver.setStateVariableNames({"ObservableOdeState"});
+	solver.setEquationExpressions({"-ObservableOdeState"});
+	solver.setInitialStateValues({1.0});
+	solver.setStepSize(1.0);
+	solver.setStopTime(2.0);
+	solver.setStepsToSynchronize(2u);
+	ObservableDefinitionProbe observer(model, "OdeDefinitionObserver");
+	solver.addInternalStateEventHandler(&observer, &ObservableDefinitionProbe::onOdeState);
+	std::string errorMessage;
+	ASSERT_TRUE(solver.simulate(errorMessage)) << errorMessage;
+	ASSERT_EQ(observer.odeWorkingValues.size(), 2u);
+	EXPECT_LT(observer.odeWorkingValues.back(), observer.odeWorkingValues.front());
+	EXPECT_DOUBLE_EQ(solver.getStateValue(0u), 1.0);
+	EXPECT_DOUBLE_EQ(state.getValue(), 1.0);
+	auto* sync = dynamic_cast<InternalEvent*>(model->getFutureEvents()->front());
+	ASSERT_NE(sync, nullptr);
+	model->getFutureEvents()->pop_front();
+	sync->dispatchEvent();
+	delete sync;
+	EXPECT_NEAR(solver.getStateValue(0u), 0.140625, 1e-12);
+	EXPECT_NEAR(state.getValue(), solver.getStateValue(0u), 1e-12);
+}
+
+TEST(ContinuousObservableTest, BioNetworkKeepsSpeciesAndPublicResultAtLastConfirmedBoundary) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	BioSpecies substrate(model, "ObservableSubstrate");
+	substrate.setInitialAmount(10.0);
+	substrate.setAmount(10.0);
+	BioSpecies product(model, "ObservableProduct");
+	product.setInitialAmount(0.0);
+	product.setAmount(0.0);
+	BioReaction reaction(model, "ObservableReaction");
+	reaction.addReactant("ObservableSubstrate", 1.0);
+	reaction.addProduct("ObservableProduct", 1.0);
+	reaction.setRateConstant(0.2);
+	BioNetwork network(model, "ObservableNetwork");
+	network.addSpecies("ObservableSubstrate");
+	network.addSpecies("ObservableProduct");
+	network.addReaction("ObservableReaction");
+	network.setStepSize(1.0);
+	network.setStopTime(2.0);
+	network.setStepsToSynchronize(2u);
+	ObservableDefinitionProbe observer(model, "BioDefinitionObserver");
+	network.addInternalStateEventHandler(&observer, &ObservableDefinitionProbe::onBioState);
+	std::string errorMessage;
+	ASSERT_TRUE(network.simulate(errorMessage)) << errorMessage;
+	ASSERT_EQ(observer.bioWorkingAmounts.size(), 2u);
+	EXPECT_LT(observer.bioWorkingAmounts.back(), observer.bioWorkingAmounts.front());
+	EXPECT_DOUBLE_EQ(substrate.getAmount(), 10.0);
+	EXPECT_DOUBLE_EQ(network.getCurrentTime(), 0.0);
+	EXPECT_EQ(network.getLastSimulationResult().sampleCount(), 1u);
+	auto* sync = dynamic_cast<InternalEvent*>(model->getFutureEvents()->front());
+	ASSERT_NE(sync, nullptr);
+	model->getFutureEvents()->pop_front();
+	sync->dispatchEvent();
+	delete sync;
+	EXPECT_NEAR(substrate.getAmount(), observer.bioWorkingAmounts.back(), 1e-12);
+	EXPECT_DOUBLE_EQ(network.getCurrentTime(), 2.0);
+	EXPECT_EQ(network.getLastSimulationResult().sampleCount(), 3u);
+}
+
+TEST(ContinuousObservableTest, ComponentObserverSchedulesIntermediateCalendarEventWithoutPublishingWorkState) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	DiffusionFieldProbe field(model, "ObservableCalendarField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStepSize(1.0);
+	field.setStopTime(10.0);
+	field.setStepsToSynchronize(0u); // Explicit request at global time 100 starts the run.
+	ObservableComponentProbe component(model, &field);
+	model->getComponentManager()->remove(&component); // Test callback target, not a graph node in this fixture.
+	auto id = field.addInternalStateEventHandler(&component, &ObservableComponentProbe::onInternalState);
+	ASSERT_NE(id, 0u);
+	ScheduleObservableCalendarScenario schedule{&field, &component, model};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&schedule, &ScheduleObservableCalendarScenario::schedule);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(110.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check());
+	model->getSimulation()->start();
+	ASSERT_TRUE(field.startSucceeded()) << field.startErrorMessage();
+	ASSERT_EQ(component.arrivalTimes.size(), 2u);
+	EXPECT_DOUBLE_EQ(component.arrivalTimes[0], 102.0);
+	EXPECT_DOUBLE_EQ(component.arrivalTimes[1], 103.0);
+	EXPECT_DOUBLE_EQ(component.confirmedLocalTimes[0], 0.0);
+	EXPECT_DOUBLE_EQ(component.confirmedLocalTimes[1], 0.0);
+	EXPECT_DOUBLE_EQ(component.confirmedValues[0], 1.0);
+	EXPECT_DOUBLE_EQ(component.confirmedValues[1], 1.0);
+	ASSERT_EQ(component.observedLocalTimes.size(), 10u);
+	EXPECT_DOUBLE_EQ(component.observedLocalTimes[2], 3.0);
+	EXPECT_DOUBLE_EQ(component.observedAbsoluteTimes[2], 103.0);
+	EXPECT_DOUBLE_EQ(component.observedGlobalTimes[2], 100.0);
+	EXPECT_DOUBLE_EQ(component.observedGlobalTimes[5], 105.0);
+	EXPECT_LT(component.observedWorkingValues[2], 1.0);
+	EXPECT_NEAR(field.getCurrentTime(), 10.0, 1e-12);
+	field.removeInternalStateEventHandler(id);
 }

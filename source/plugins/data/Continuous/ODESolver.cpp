@@ -101,7 +101,7 @@ std::string ODESolver::show() {
 			",step=" + std::to_string(getStep()) +
 			",precision=" + std::to_string(_precision) +
 			",maxSteps=" + std::to_string(_maxSteps) +
-			",currentTime=" + std::to_string(_currentTime);
+			",currentTime=" + std::to_string(getCurrentTime());
 }
 
 // gets & sets
@@ -118,6 +118,7 @@ void ODESolver::setStateVariableNames(std::vector<std::string> stateVariableName
 	this->_stateVariableNames = stateVariableNames;
 	_stateValues.resize(stateVariableNames.size(), 0.0);
 	_initialStateValues.resize(stateVariableNames.size(), 0.0);
+	_confirmedStateValues.resize(stateVariableNames.size(), 0.0);
 }
 
 std::vector<std::string> ODESolver::getStateVariableNames() const {
@@ -152,10 +153,13 @@ int ODESolver::getMaxSteps() const {
 
 void ODESolver::setStateValues(std::vector<double> stateValues) {
 	this->_stateValues = stateValues;
+	_confirmedStateValues = std::move(stateValues);
+	_stateValues = _confirmedStateValues;
+	writeStateToVariables();
 }
 
 std::vector<double> ODESolver::getStateValues() const {
-	return _stateValues;
+	return _confirmedStateValues;
 }
 
 void ODESolver::setInitialStateValues(std::vector<double> initialStateValues) {
@@ -247,19 +251,38 @@ bool ODESolver::evolveState(double currentTime, double dt, std::string& errorMes
 }
 
 void ODESolver::onContinuousStepCompleted() {
-    writeStateToVariables();
+    writeStateToVariables(); // Keep ordinary model variables at the confirmed state during lookahead.
     if (!_outputFile.empty()) _appendOutputRow();
+}
+
+std::any ODESolver::internalStateView() const {
+	return StateView{_stateVariableNames, _stateValues};
+}
+
+void ODESolver::confirmContinuousState() {
+	_confirmedStateValues = _stateValues;
+	writeStateToVariables();
+}
+
+void ODESolver::onInternalStateObserversCompleted() {
+	for (std::size_t i = 0; i < _stateVariableNames.size() && i < _stateValues.size(); ++i) {
+		Variable* variable = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(
+			Util::TypeOf<Variable>(), _stateVariableNames[i]));
+		if (variable != nullptr && i < _confirmedStateValues.size() &&
+			variable->getValue() != _confirmedStateValues[i]) _stateValues[i] = variable->getValue();
+	}
 }
 
 void ODESolver::resetState() {
 	_currentTime = 0.0;
 	_stateValues = _initialStateValues;
+	_confirmedStateValues = _stateValues;
 	writeStateToVariables();
 }
 
 double ODESolver::getStateValue(unsigned int index) const {
-	if (index < _stateValues.size()) {
-		return _stateValues[index];
+	if (index < _confirmedStateValues.size()) {
+		return _confirmedStateValues[index];
 	}
 	return 0.0;
 }
@@ -267,6 +290,7 @@ double ODESolver::getStateValue(unsigned int index) const {
 void ODESolver::setStateValue(unsigned int index, double value) {
 	if (index < _stateValues.size()) {
 		_stateValues[index] = value;
+		_confirmedStateValues[index] = value;
 
 		// Update model variable
 		if (index < _stateVariableNames.size()) {
@@ -333,6 +357,7 @@ bool ODESolver::_loadInstance(PersistenceRecord *fields) {
 			_initialStateValues = _stateValues;
 		}
 		_stateValues.resize(_stateVariableNames.size(), 0.0);
+		_confirmedStateValues = _stateValues;
 		_initialStateValues.resize(_stateVariableNames.size(), 0.0);
 		writeStateToVariables();
 	}
@@ -408,6 +433,7 @@ void ODESolver::initializeContinuousState() {
 	_currentTime = 0.0;
 	_stateValues = _initialStateValues;
 	_stateValues.resize(_stateVariableNames.size(), 0.0);
+	_confirmedStateValues = _stateValues;
 	writeStateToVariables();
 	// Start a fresh trajectory file (header + initial state) when export is enabled.
 	if (!_outputFile.empty()) {
@@ -481,18 +507,19 @@ void ODESolver::synchronizeStateFromVariables() {
 		_stateValues.push_back(_readVariableValue(variableName));
 	}
 	_stateValues.resize(_stateVariableNames.size(), 0.0);
+	_confirmedStateValues = _stateValues;
 }
 
 void ODESolver::writeStateToVariables() const {
 	for (unsigned int i = 0; i < _stateVariableNames.size(); i++) {
 		Variable* stateVar = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), _stateVariableNames[i]));
 		if (stateVar != nullptr) {
-			stateVar->setValue(i < _stateValues.size() ? _stateValues[i] : 0.0);
+			stateVar->setValue(i < _confirmedStateValues.size() ? _confirmedStateValues[i] : 0.0);
 		}
 	}
 	Variable* timeVar = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), _timeVariableName));
 	if (timeVar != nullptr) {
-		timeVar->setValue(_currentTime);
+		timeVar->setValue(getCurrentTime());
 	}
 }
 

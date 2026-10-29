@@ -24,6 +24,10 @@ class MassActionOdeSystem;
  */
 class BioNetwork : public ContinuousModelDataDefinition {
 public:
+	struct StateView {
+		const std::vector<std::string>& speciesNames;
+		const std::vector<double>& amounts;
+	};
 	BioNetwork(Model* model, std::string name = "");
 	virtual ~BioNetwork() override = default;
 
@@ -59,7 +63,11 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
 	void initializeContinuousState() override;
+	void onContinuousReplicationStart() override;
 	void onContinuousStepCompleted() override;
+	std::any internalStateView() const override;
+	void confirmContinuousState() override;
+	void onInternalStateObserversCompleted() override;
 	bool evolveState(double currentTime, double dt, std::string& errorMessage) override;
 
 
@@ -93,6 +101,11 @@ private:
 	std::vector<std::string> _speciesNames;
 	std::vector<std::string> _reactionNames;
 	BioSimulationResult _lastSimulationResult;
+	BioSimulationResult _workingSimulationResult;
+	std::string _workingResponsePayload;
+	std::vector<double> _workingAmounts;
+	std::vector<double> _confirmedAmounts;
+	std::vector<std::string> _workingSpeciesNames;
 };
 
 #endif /* BIONETWORK_H */

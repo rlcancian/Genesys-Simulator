@@ -2,7 +2,9 @@
  * Teste para ContinuousSystemComponent com oscilador harmônico
  *
  * Sistema: dx/dt = v, dv/dt = -x
- * Solução exata: x(t) = cos(t), v(t) = -sin(t)
+ * Solução exata: x(t) = cos(t), v(t) = -sin(t). A component observes the
+ * latest globally confirmed solver state, which may be one step behind the
+ * final discrete event time.
  *
  * Modelo:
  * - Create (inter-arrival time = 0.1)
@@ -177,6 +179,8 @@ int main() {
 
 	const Sample& first = samples.front();
 	const Sample& last = samples.back();
+	const double globalTime = model->getSimulation()->getSimulatedTime();
+	const double confirmedStateLag = globalTime - last.t;
 
 	double minEnergy = first.energy;
 	double maxEnergy = first.energy;
@@ -193,6 +197,8 @@ int main() {
 	// Mostrar valores finais
 	std::cout << "Valores finais:" << std::endl;
 	std::cout << "  t real final = " << last.t << std::endl;
+	std::cout << "  tempo global final = " << globalTime << std::endl;
+	std::cout << "  atraso do estado confirmado = " << confirmedStateLag << std::endl;
 	std::cout << "  x_final = " << last.x << std::endl;
 	std::cout << "  v_final = " << last.v << std::endl;
 	std::cout << "x via odeSolver = " << odeSolver->getStateValue(0) << std::endl;
@@ -206,11 +212,11 @@ int main() {
 	std::cout << "  pontos coletados = " << samples.size() << std::endl;
 	std::cout << std::endl;
 
-	// Valores esperados em t=2*pi
-	double x_expected = std::cos(twoPi);
-	double v_expected = -std::sin(twoPi);
+	// Compare against the exact trajectory at the time of the confirmed state.
+	double x_expected = std::cos(last.t);
+	double v_expected = -std::sin(last.t);
 
-	std::cout << "Valores esperados (solução exata em t=2*pi):" << std::endl;
+	std::cout << "Valores esperados (solução exata no tempo local confirmado):" << std::endl;
 	std::cout << "  x = " << x_expected << std::endl;
 	std::cout << "  v = " << v_expected << std::endl;
 	std::cout << std::endl;
@@ -225,9 +231,10 @@ int main() {
 	std::cout << std::endl;
 
 	// Verificar se os erros são aceitáveis
-	if (err_x < 1e-4 && err_v < 1e-4 && maxEnergyVariationPercent < 1.0) {
-		std::cout << "✓ Teste PASSOU: integração contínua numericamente estável em t=2*pi" << std::endl;
-		std::cout << "✓ x_final próximo de 1.0, v_final próximo de 0.0" << std::endl;
+	if (err_x < 1e-4 && err_v < 1e-4 && maxEnergyVariationPercent < 1.0 &&
+	    confirmedStateLag >= -1e-12 && confirmedStateLag <= odeSolver->getStep() + 1e-12) {
+		std::cout << "✓ Teste PASSOU: integração contínua estável no estado confirmado" << std::endl;
+		std::cout << "✓ atraso limitado a no máximo um passo contínuo" << std::endl;
 		std::cout << "✓ Energia variou menos de 1% ao longo da simulação" << std::endl;
 		return 0;
 	} else {

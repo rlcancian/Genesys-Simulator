@@ -18,6 +18,7 @@
 #include <list>
 #include <vector>
 #include <map>
+#include <memory>
 
 #include "../../util/List.h"
 #include "../ParserChangesInformation.h"
@@ -89,6 +90,8 @@ public: // get & set
 	 * \return Parent model pointer, or \c nullptr when detached.
 	 */
 	Model* getParentModel() const;
+	// Expires as destruction starts; intended for non-owning callback registries.
+	std::weak_ptr<void> getLifetimeToken() const;
 	/*!
 	 * \brief Indicates whether this data definition contributes report statistics.
 	 * \return \c true when this definition emits simulation statistics.
@@ -117,6 +120,7 @@ public:
 	 * \return Map of attached data indexed by name.
 	 */
 	std::map<std::string, ModelDataDefinition*>* getAttachedData() const;
+
 	//ModelDataDefinition* getInternalData(std::string key) const;
 	/*!
 	 * \brief Indicates whether this instance has been modified since the last reset.
@@ -335,6 +339,7 @@ protected:
 	Model* _parentModel;
 
 private:
+	std::shared_ptr<void> _lifetimeToken = std::make_shared<int>(0);
 	bool _checkSpecificTraceLevel(TraceManager::Level level);
 
 protected: //! not just an easy access to trace manager, but wrappers to check if specific trace level applies

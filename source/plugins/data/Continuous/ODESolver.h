@@ -19,6 +19,10 @@
 
 class ODESolver : public ContinuousModelDataDefinition {
 public:
+	struct StateView {
+		const std::vector<std::string>& names;
+		const std::vector<double>& values;
+	};
 	ODESolver(Model* model, std::string name = "");
 	virtual ~ODESolver() = default;
 public: // static
@@ -65,6 +69,9 @@ protected: // could be overriden
 	void initializeContinuousState() override;
 	bool evolveState(double t, double dt, std::string& errorMessage) override;
 	void onContinuousStepCompleted() override;
+	std::any internalStateView() const override;
+	void confirmContinuousState() override;
+	void onInternalStateObserversCompleted() override;
 	virtual void _createEditableDataDefinitions() override;
 
 private:
@@ -81,6 +88,7 @@ private:
 	int _maxSteps = DEFAULT.maxSteps;
 	std::string _outputFile = DEFAULT.outputFile;
 	std::vector<double> _stateValues;
+	std::vector<double> _confirmedStateValues;
 	std::vector<double> _initialStateValues;
 	RungeKutta4OdeSolver _solver;
 

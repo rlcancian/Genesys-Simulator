@@ -37,6 +37,14 @@ class DiffusionMethodOfLinesSystem;
 // Continuous stepping and synchronization are controlled by the shared base.
 class DiffusionField : public ContinuousModelDataDefinition {
 public:
+	struct StateView {
+		const std::vector<double>& values;
+		unsigned int dimensions;
+		unsigned int pointsPerDimension;
+		double totalMass;
+		double maxValue;
+		double l2Norm;
+	};
 	DiffusionField(Model* model, std::string name = "");
 	virtual ~DiffusionField() override = default;
 
@@ -85,6 +93,8 @@ protected:
 	void initializeContinuousState() override;
 	bool evolveState(double currentTime, double dt, std::string& errorMessage) override;
 	void onContinuousRunCompleted() override;
+	std::any internalStateView() const override;
+	void confirmContinuousState() override;
 
 private:
 	bool buildSystem(DiffusionMethodOfLinesSystem* system, std::string& errorMessage) const;
@@ -115,9 +125,13 @@ private:
 	std::string _odeSolver = DEFAULT.odeSolver;
 
 	std::vector<double> _field;       // current flattened grid state
+	std::vector<double> _confirmedField;
 	double _lastTotalMass = 0.0;
 	double _lastMaxValue = 0.0;
 	double _lastL2Norm = 0.0;
+	double _confirmedTotalMass = 0.0;
+	double _confirmedMaxValue = 0.0;
+	double _confirmedL2Norm = 0.0;
 };
 
 #endif /* DIFFUSIONFIELD_H */

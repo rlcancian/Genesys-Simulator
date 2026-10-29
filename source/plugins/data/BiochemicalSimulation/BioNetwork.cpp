@@ -229,7 +229,7 @@ std::string BioNetwork::show() {
 	return ModelDataDefinition::show() +
 			",stopTime=" + Util::StrTruncIfInt(std::to_string(_stopTime)) +
 			",stepSize=" + Util::StrTruncIfInt(std::to_string(_stepSize)) +
-			",currentTime=" + Util::StrTruncIfInt(std::to_string(_currentTime)) +
+			",currentTime=" + Util::StrTruncIfInt(std::to_string(getCurrentTime())) +
 			",stepsToSynchronize=" + std::to_string(getStepsToSynchronize()) +
 			",species=" + std::to_string(_speciesNames.size()) +
 			",reactions=" + std::to_string(_reactionNames.size()) +
@@ -341,7 +341,34 @@ bool BioNetwork::_check(std::string& errorMessage) {
 
 void BioNetwork::initializeContinuousState() {
     _lastResponsePayload.clear();
+    _workingResponsePayload.clear();
     _lastSimulationResult.clear();
+    _workingSimulationResult.clear();
+    _workingAmounts.clear();
+    _confirmedAmounts.clear();
+    _workingSpeciesNames.clear();
+    std::vector<BioSpecies*> species;
+    std::string errorMessage;
+    if (collectSpecies(species, errorMessage)) {
+        _workingAmounts.reserve(species.size());
+        for (BioSpecies* item : species) {
+            _workingAmounts.push_back(item->getAmount());
+            _confirmedAmounts.push_back(item->getAmount());
+            _workingSpeciesNames.push_back(item->getName());
+        }
+        configureSimulationResult(species);
+        appendSimulationResultSample(species);
+        _lastSimulationResult = _workingSimulationResult;
+        updatePayload(species);
+        _lastResponsePayload = _workingResponsePayload;
+    }
+}
+
+void BioNetwork::onContinuousReplicationStart() {
+	std::vector<BioSpecies*> species;
+	std::string errorMessage;
+	if (!collectSpecies(species, errorMessage)) return;
+	for (BioSpecies* item : species) item->setAmount(item->getInitialAmount());
 }
 
 bool BioNetwork::evolveState(double currentTime, double dt, std::string& errorMessage) {
@@ -353,10 +380,19 @@ bool BioNetwork::evolveState(double currentTime, double dt, std::string& errorMe
 		_lastErrorMessage = errorMessage;
 		return false;
 	}
-	if (_lastSimulationResult.empty()) {
-		configureSimulationResult(species);
-		appendSimulationResultSample(species);
-	}
+    if (_workingAmounts.size() != species.size()) {
+        _workingAmounts.clear();
+        _workingSpeciesNames.clear();
+        for (BioSpecies* item : species) {
+            _workingAmounts.push_back(item->getAmount());
+            _confirmedAmounts.push_back(item->getAmount());
+            _workingSpeciesNames.push_back(item->getName());
+        }
+    }
+    if (_workingSimulationResult.empty()) {
+        configureSimulationResult(species);
+        appendSimulationResultSample(species);
+    }
 
 	MassActionOdeSystem system;
 	if (!buildSystem(species, reactions, &system, errorMessage)) {
@@ -368,7 +404,7 @@ bool BioNetwork::evolveState(double currentTime, double dt, std::string& errorMe
 	std::vector<double> y0(species.size(), 0.0);
 	std::vector<double> y1(species.size(), 0.0);
 	for (unsigned int i = 0; i < species.size(); ++i) {
-		y0[i] = species[i]->getAmount();
+        y0[i] = _workingAmounts[i];
 	}
 
 	RungeKutta4OdeSolver solver;
@@ -379,11 +415,9 @@ bool BioNetwork::evolveState(double currentTime, double dt, std::string& errorMe
 		return false;
 	}
 
-	for (unsigned int i = 0; i < species.size(); ++i) {
-		if (!species[i]->isBoundaryCondition() && !species[i]->isConstant()) {
-			species[i]->setAmount(std::max(0.0, y1[i]));
-		}
-	}
+    for (unsigned int i = 0; i < species.size(); ++i)
+        if (!species[i]->isBoundaryCondition() && !species[i]->isConstant())
+            _workingAmounts[i] = std::max(0.0, y1[i]);
 	return true;
 }
 
@@ -394,6 +428,32 @@ void BioNetwork::onContinuousStepCompleted() {
         appendSimulationResultSample(species);
         updatePayload(species);
     }
+}
+
+std::any BioNetwork::internalStateView() const {
+    return StateView{_workingSpeciesNames, _workingAmounts};
+}
+
+void BioNetwork::confirmContinuousState() {
+	std::vector<BioSpecies*> species;
+	std::string errorMessage;
+	if (!collectSpecies(species, errorMessage)) return;
+	for (std::size_t i = 0; i < species.size() && i < _workingAmounts.size(); ++i)
+		if (!species[i]->isBoundaryCondition() && !species[i]->isConstant())
+			species[i]->setAmount(_workingAmounts[i]);
+	_lastSimulationResult = _workingSimulationResult;
+	_lastResponsePayload = _workingResponsePayload;
+	_confirmedAmounts = _workingAmounts;
+}
+
+void BioNetwork::onInternalStateObserversCompleted() {
+	std::vector<BioSpecies*> species;
+	std::string errorMessage;
+	if (!collectSpecies(species, errorMessage) || species.size() != _workingAmounts.size()) return;
+	for (std::size_t i = 0; i < species.size(); ++i) {
+		const double confirmed = i < _confirmedAmounts.size() ? _confirmedAmounts[i] : species[i]->getInitialAmount();
+		if (species[i]->getAmount() != confirmed) _workingAmounts[i] = species[i]->getAmount();
+	}
 }
 
 bool BioNetwork::collectSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const {
@@ -559,14 +619,15 @@ void BioNetwork::updatePayload(const std::vector<BioSpecies*>& species) {
 	std::string payload = "{\"status\":\"" + jsonEscape(_lastStatus) + "\"" +
 			",\"time\":" + formatDouble(_currentTime) +
 			",\"species\":{";
-	for (const BioSpecies* bioSpecies : species) {
-		payload += "\"" + jsonEscape(bioSpecies->getName()) + "\":" + formatDouble(bioSpecies->getAmount()) + ",";
+	for (std::size_t i = 0; i < species.size(); ++i) {
+		payload += "\"" + jsonEscape(species[i]->getName()) + "\":" +
+			formatDouble(i < _workingAmounts.size() ? _workingAmounts[i] : species[i]->getAmount()) + ",";
 	}
 	if (!species.empty()) {
 		payload.pop_back();
 	}
 	payload += "}}";
-	_lastResponsePayload = payload;
+	_workingResponsePayload = payload;
 }
 
 void BioNetwork::configureSimulationResult(const std::vector<BioSpecies*>& species) {
@@ -575,16 +636,17 @@ void BioNetwork::configureSimulationResult(const std::vector<BioSpecies*>& speci
 	for (const BioSpecies* bioSpecies : species) {
 		speciesNames.push_back(bioSpecies->getName());
 	}
-	_lastSimulationResult.configure(getName(), 0.0, _stopTime, _stepSize, speciesNames);
+	_workingSimulationResult.configure(getName(), 0.0, _stopTime, _stepSize, speciesNames);
 }
 
 void BioNetwork::appendSimulationResultSample(const std::vector<BioSpecies*>& species) {
 	std::vector<BioSimulationSpeciesAmount> amounts;
 	amounts.reserve(species.size());
 	for (const BioSpecies* bioSpecies : species) {
-		amounts.push_back({bioSpecies->getName(), bioSpecies->getAmount()});
+		const std::size_t i = amounts.size();
+		amounts.push_back({bioSpecies->getName(), i < _workingAmounts.size() ? _workingAmounts[i] : bioSpecies->getAmount()});
 	}
-	_lastSimulationResult.appendSample(_currentTime, amounts);
+	_workingSimulationResult.appendSample(_currentTime, amounts);
 }
 
 void BioNetwork::setLastResponsePayload(std::string lastResponsePayload) {

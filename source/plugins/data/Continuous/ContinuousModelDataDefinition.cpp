@@ -5,6 +5,7 @@
 #include "kernel/simulator/model/ModelSimulation.h"
 
 #include <algorithm>
+#include <exception>
 #include <cmath>
 #include <functional>
 #include <limits>
@@ -79,10 +80,11 @@ void ContinuousModelDataDefinition::setStepSize(double value) {
 double ContinuousModelDataDefinition::getStepSize() const { return _stepSize; }
 void ContinuousModelDataDefinition::setStep(double value) { setStepSize(value); }
 double ContinuousModelDataDefinition::getStep() const { return getStepSize(); }
-double ContinuousModelDataDefinition::getCurrentTime() const { return _currentTime; }
+double ContinuousModelDataDefinition::getCurrentTime() const { return _confirmedCurrentTime; }
 void ContinuousModelDataDefinition::setCurrentTime(double value) {
     if (std::isfinite(value) && value >= 0.0 && !_isExecutionActive()) {
         _currentTime = value;
+        _confirmedCurrentTime = value;
     }
 }
 void ContinuousModelDataDefinition::setStepsToSynchronize(unsigned int value) {
@@ -105,6 +107,18 @@ ContinuousModelDataDefinition::addCompletionHandler(CompletionHandler handler) {
 void ContinuousModelDataDefinition::removeCompletionHandler(CompletionId id) {
     _completionHandlers.erase(id);
 }
+ContinuousModelDataDefinition::InternalStateEventHandlerId
+ContinuousModelDataDefinition::addInternalStateEventHandler(
+        ModelDataDefinition* observer, InternalStateEventHandler handler, int priority) {
+    if (observer == nullptr || !handler) return 0;
+    const auto id = _nextInternalStateHandlerId++;
+    _internalStateHandlers.emplace(id, InternalStateSubscription{
+        id, priority, observer->getLifetimeToken(), std::move(handler)});
+    return id;
+}
+void ContinuousModelDataDefinition::removeInternalStateEventHandler(InternalStateEventHandlerId id) {
+    _internalStateHandlers.erase(id);
+}
 void ContinuousModelDataDefinition::_setExecutionState(ExecutionState state, std::string message) {
     _executionState = state;
     _lastStatus = state == ExecutionState::WaitingForSynchronization ? "WaitingForSynchronization" :
@@ -113,15 +127,23 @@ void ContinuousModelDataDefinition::_setExecutionState(ExecutionState state, std
     if (state == ExecutionState::Failed || state == ExecutionState::Cancelled) _lastErrorMessage = std::move(message);
 }
 void ContinuousModelDataDefinition::_notifyCompletion(const ExecutionResult& result) {
-    const auto handlers = _completionHandlers;
-    for (const auto& [id, handler] : handlers) {
-        (void)id;
-        if (handler) handler(result);
+    std::vector<CompletionId> ids;
+    ids.reserve(_completionHandlers.size());
+    for (const auto& [id, handler] : _completionHandlers) { (void)handler; ids.push_back(id); }
+    for (CompletionId id : ids) {
+        auto it = _completionHandlers.find(id);
+        if (it != _completionHandlers.end() && it->second) {
+            CompletionHandler handler = it->second;
+            handler(result);
+        }
     }
 }
 void ContinuousModelDataDefinition::_notifyCompletion(CompletionId id, const ExecutionResult& result) {
     auto it = _completionHandlers.find(id);
-    if (it != _completionHandlers.end() && it->second) it->second(result);
+    if (it != _completionHandlers.end() && it->second) {
+        CompletionHandler handler = it->second;
+        handler(result);
+    }
 }
 bool ContinuousModelDataDefinition::requestSimulation(CompletionId id, const ExecutionRequest& request,
                                                        std::string& errorMessage) {
@@ -213,6 +235,8 @@ bool ContinuousModelDataDefinition::_loadInstance(PersistenceRecord* fields) {
     _stepSize = fields->loadField("stepSize", _defaultStepSize);
     _stepsToSynchronize = fields->loadField("stepsToSynchronize", _defaultStepsToSynchronize);
     _currentTime = 0.0;
+    _confirmedCurrentTime = 0.0;
+    _continuousStepNumber = 0;
     _originInitialized = false;
     _lastStatus = "Idle";
     _lastErrorMessage.clear();
@@ -230,6 +254,8 @@ void ContinuousModelDataDefinition::_beginAtCurrentKernelTime() {
     _originTime = _parentModel->getSimulation()->getSimulatedTime();
     _originInitialized = true;
     _currentTime = 0.0;
+    _confirmedCurrentTime = 0.0;
+    _continuousStepNumber = 0;
     _stepsSinceSynchronization = 0;
     _activeStopTime = _stopTime;
     _activeStepSize = _stepSize;
@@ -263,11 +289,53 @@ bool ContinuousModelDataDefinition::_advanceStep(double targetTime, std::string&
     }
     _currentTime = next;
     ++_stepsSinceSynchronization;
+    ++_continuousStepNumber;
     onContinuousStepCompleted();
+    if (!_notifyInternalStateEvent(errorMessage)) return false;
+    return true;
+}
+
+bool ContinuousModelDataDefinition::_notifyInternalStateEvent(std::string& errorMessage) {
+    std::vector<InternalStateEventHandlerId> ids;
+    ids.reserve(_internalStateHandlers.size());
+    for (const auto& [id, subscription] : _internalStateHandlers) {
+        (void)subscription;
+        ids.push_back(id);
+    }
+    std::stable_sort(ids.begin(), ids.end(), [this](auto left, auto right) {
+        return _internalStateHandlers.at(left).priority < _internalStateHandlers.at(right).priority;
+    });
+    const InternalStateEvent event{this, _continuousStepNumber, _currentTime,
+        _originTime + _currentTime, internalStateView()};
+    std::string firstException;
+    for (InternalStateEventHandlerId id : ids) {
+        auto it = _internalStateHandlers.find(id);
+        if (it == _internalStateHandlers.end()) continue;
+        if (it->second.lifetime.expired()) {
+            _internalStateHandlers.erase(it);
+            continue;
+        }
+        try {
+            InternalStateEventHandler handler = it->second.handler;
+            if (handler) handler(event);
+        } catch (const std::exception& e) {
+            if (firstException.empty()) firstException = e.what();
+        } catch (...) {
+            if (firstException.empty()) firstException = "unknown exception";
+        }
+    }
+    onInternalStateObserversCompleted();
+    if (!firstException.empty()) {
+        errorMessage = "Continuous state observer failed: " + firstException;
+        _lastErrorMessage = errorMessage;
+        return false;
+    }
     return true;
 }
 
 void ContinuousModelDataDefinition::_completeRun() {
+    _confirmedCurrentTime = _currentTime;
+    confirmContinuousState();
     _lastStatus = "Completed";
     onContinuousRunCompleted();
     if (_lastStatus == "Failed") {
@@ -333,7 +401,7 @@ bool ContinuousModelDataDefinition::_scheduleSynchronization(std::string& errorM
     auto* event = new InternalEvent(eventTime, "ContinuousModelSynchronization");
     event->setEventHandler(this, &ContinuousModelDataDefinition::_onSynchronization, nullptr);
     _parentModel->getFutureEvents()->insert(event);
-    _setExecutionState(ExecutionState::WaitingForSynchronization);
+    _setExecutionState(ExecutionState::Running);
     return true;
 }
 
@@ -343,7 +411,12 @@ bool ContinuousModelDataDefinition::_continueEvolution(std::string& errorMessage
         return false;
     }
     if (_executionState == ExecutionState::Running && _currentTime < _activeStopTime && _activeStepsToSynchronize > 0u) {
-        return _scheduleSynchronization(errorMessage);
+        if (!_scheduleSynchronization(errorMessage)) return false;
+        while (_executionState == ExecutionState::Running && _currentTime < _pendingSynchronizationTime) {
+            if (!_advanceStep(_pendingSynchronizationTime, errorMessage)) return false;
+        }
+        if (_executionState == ExecutionState::Running) _setExecutionState(ExecutionState::WaitingForSynchronization);
+        return true;
     }
     while (_executionState == ExecutionState::Running && _currentTime < _activeStopTime) {
         if (!_advanceStep(_activeStopTime, errorMessage)) return false;
@@ -354,15 +427,9 @@ bool ContinuousModelDataDefinition::_continueEvolution(std::string& errorMessage
 
 void ContinuousModelDataDefinition::_onSynchronization(void*) {
     if (!isAwaitingSynchronization()) return;
+    _confirmedCurrentTime = _pendingSynchronizationTime;
+    confirmContinuousState();
     _setExecutionState(ExecutionState::Running);
-    while (_currentTime < _pendingSynchronizationTime) {
-        std::string errorMessage;
-        if (!_advanceStep(_pendingSynchronizationTime, errorMessage)) {
-            traceError("Continuous model synchronization failed: " + errorMessage);
-            _failRun(errorMessage);
-            return;
-        }
-    }
     _stepsSinceSynchronization = 0u;
     if (_currentTime >= _activeStopTime) {
         _completeRun();
@@ -378,8 +445,11 @@ void ContinuousModelDataDefinition::_onSynchronization(void*) {
 void ContinuousModelDataDefinition::_initBetweenReplications() {
     ModelDataDefinition::_initBetweenReplications();
     cancelExecution("Continuous execution cancelled at replication boundary.");
+    onContinuousReplicationStart();
     _stepsSinceSynchronization = 0;
     _currentTime = 0.0;
+    _confirmedCurrentTime = 0.0;
+    _continuousStepNumber = 0;
     _originTime = _parentModel->getSimulation()->getSimulatedTime();
     _originInitialized = true;
     _lastStatus = "Idle";
@@ -464,8 +534,7 @@ bool ContinuousModelDataDefinition::advanceOneStep(std::string& errorMessage) {
     }
     if (_activeStepsToSynchronize > 0 &&
         (_stepsSinceSynchronization >= _activeStepsToSynchronize || _currentTime >= _activeStopTime)) {
-        _pendingSynchronizationTime = _currentTime;
-        return _scheduleSynchronization(errorMessage);
+        return _continueEvolution(errorMessage);
     }
     if (_currentTime >= _activeStopTime) _completeRun();
     return true;
@@ -485,9 +554,15 @@ bool ContinuousModelDataDefinition::advanceTo(double targetTime, std::string& er
         errorMessage = "Continuous integration target precedes its global time origin.";
         return false;
     }
-    if (isAwaitingSynchronization() && localTargetTime > _pendingSynchronizationTime) {
-        errorMessage = "Continuous integration target exceeds the pending synchronization time.";
-        return false;
+    if (isAwaitingSynchronization()) {
+        if (localTargetTime > _pendingSynchronizationTime) {
+            errorMessage = "Continuous integration target exceeds the pending synchronization time.";
+            return false;
+        }
+        // A block has already been mathematically evaluated ahead of the kernel.
+        // Reactive callers at an intermediate calendar time observe the last
+        // confirmed state; they must not re-integrate or expose the work state.
+        if (localTargetTime <= _currentTime && localTargetTime >= _confirmedCurrentTime) return true;
     }
     if (!_check(errorMessage) || localTargetTime < _currentTime) {
         if (errorMessage.empty()) errorMessage = "Invalid continuous integration target.";
@@ -509,6 +584,8 @@ bool ContinuousModelDataDefinition::advanceTo(double targetTime, std::string& er
         }
     }
     if (!isAwaitingSynchronization()) {
+        _confirmedCurrentTime = _currentTime;
+        confirmContinuousState();
         if (_currentTime >= _activeStopTime) _completeRun();
         else _setExecutionState(ExecutionState::Idle);
     }

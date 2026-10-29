@@ -99,19 +99,19 @@ ModelDataDefinition* DiffusionField::LoadInstance(Model* model, PersistenceRecor
 
 // --- configuration accessors ---
 
-void DiffusionField::setDimensions(unsigned int dimensions) { _dimensions = dimensions; _field.clear(); }
+void DiffusionField::setDimensions(unsigned int dimensions) { _dimensions = dimensions; _field.clear(); _confirmedField.clear(); }
 unsigned int DiffusionField::getDimensions() const { return _dimensions; }
-void DiffusionField::setPointsPerDimension(unsigned int pointsPerDimension) { _pointsPerDimension = pointsPerDimension; _field.clear(); }
+void DiffusionField::setPointsPerDimension(unsigned int pointsPerDimension) { _pointsPerDimension = pointsPerDimension; _field.clear(); _confirmedField.clear(); }
 unsigned int DiffusionField::getPointsPerDimension() const { return _pointsPerDimension; }
-void DiffusionField::setDomainLength(double domainLength) { _domainLength = domainLength; _field.clear(); }
+void DiffusionField::setDomainLength(double domainLength) { _domainLength = domainLength; _field.clear(); _confirmedField.clear(); }
 double DiffusionField::getDomainLength() const { return _domainLength; }
 void DiffusionField::setDiffusionCoefficient(double diffusionCoefficient) { _diffusionCoefficient = diffusionCoefficient; }
 double DiffusionField::getDiffusionCoefficient() const { return _diffusionCoefficient; }
-void DiffusionField::setBoundaryCondition(std::string boundaryCondition) { _boundaryCondition = boundaryCondition; _field.clear(); }
+void DiffusionField::setBoundaryCondition(std::string boundaryCondition) { _boundaryCondition = boundaryCondition; _field.clear(); _confirmedField.clear(); }
 std::string DiffusionField::getBoundaryCondition() const { return _boundaryCondition; }
-void DiffusionField::setInitialCondition(std::string initialCondition) { _initialCondition = initialCondition; _field.clear(); }
+void DiffusionField::setInitialCondition(std::string initialCondition) { _initialCondition = initialCondition; _confirmedField.clear(); _field.clear(); }
 std::string DiffusionField::getInitialCondition() const { return _initialCondition; }
-void DiffusionField::setInitialParameter(double initialParameter) { _initialParameter = initialParameter; _field.clear(); }
+void DiffusionField::setInitialParameter(double initialParameter) { _initialParameter = initialParameter; _field.clear(); _confirmedField.clear(); }
 double DiffusionField::getInitialParameter() const { return _initialParameter; }
 void DiffusionField::setOdeSolver(std::string odeSolver) {
 	_odeSolver = odeSolver.empty() ? OdeSolverFactory::defaultKey() : odeSolver;
@@ -119,13 +119,13 @@ void DiffusionField::setOdeSolver(std::string odeSolver) {
 std::string DiffusionField::getOdeSolver() const { return _odeSolver; }
 // --- diagnostics ---
 
-double DiffusionField::getTotalMass() const { return _lastTotalMass; }
-double DiffusionField::getMaxValue() const { return _lastMaxValue; }
-double DiffusionField::getL2Norm() const { return _lastL2Norm; }
-const std::vector<double>& DiffusionField::getField() const { return _field; }
+double DiffusionField::getTotalMass() const { return _confirmedTotalMass; }
+double DiffusionField::getMaxValue() const { return _confirmedMaxValue; }
+double DiffusionField::getL2Norm() const { return _confirmedL2Norm; }
+const std::vector<double>& DiffusionField::getField() const { return _confirmedField; }
 
 double DiffusionField::getFieldValue(const std::vector<unsigned int>& multiIndex) const {
-	if (multiIndex.size() != _dimensions || _field.empty()) {
+	if (multiIndex.size() != _dimensions || _confirmedField.empty()) {
 		return 0.0;
 	}
 	std::size_t idx = 0;
@@ -138,13 +138,13 @@ double DiffusionField::getFieldValue(const std::vector<unsigned int>& multiIndex
 		if (multiIndex[d] >= _pointsPerDimension) return 0.0;
 		idx += static_cast<std::size_t>(multiIndex[d]) * strides[d];
 	}
-	return idx < _field.size() ? _field[idx] : 0.0;
+	return idx < _confirmedField.size() ? _confirmedField[idx] : 0.0;
 }
 
 // --- display ---
 
 std::string DiffusionField::showFieldAsAscii() const {
-	if (_dimensions != 2u || _field.empty()) {
+	if (_dimensions != 2u || _confirmedField.empty()) {
 		return "";
 	}
 
@@ -153,9 +153,9 @@ std::string DiffusionField::showFieldAsAscii() const {
 
 	std::string out;
 	out += "DiffusionField \"" + getName() + "\"";
-	out += " | t=" + Util::StrTruncIfInt(std::to_string(_currentTime));
-	out += " | mass=" + Util::StrTruncIfInt(std::to_string(_lastTotalMass));
-	out += " | max=" + Util::StrTruncIfInt(std::to_string(_lastMaxValue));
+	out += " | t=" + Util::StrTruncIfInt(std::to_string(getCurrentTime()));
+	out += " | mass=" + Util::StrTruncIfInt(std::to_string(_confirmedTotalMass));
+	out += " | max=" + Util::StrTruncIfInt(std::to_string(_confirmedMaxValue));
 	out += "\n\n";
 
 	for (unsigned int i = 0; i < _pointsPerDimension; ++i) {
@@ -237,8 +237,31 @@ void DiffusionField::refreshDiagnostics(const DiffusionMethodOfLinesSystem& syst
 // --- model-specific evolution ---
 
 void DiffusionField::initializeContinuousState() {
-    _field.clear();
+	_field.clear();
+	_confirmedField.clear();
     _lastTotalMass = _lastMaxValue = _lastL2Norm = 0.0;
+    _confirmedTotalMass = _confirmedMaxValue = _confirmedL2Norm = 0.0;
+    DiffusionMethodOfLinesSystem system;
+    std::string errorMessage;
+    if (buildSystem(&system, errorMessage)) {
+        buildInitialField(system, _field);
+        refreshDiagnostics(system);
+        confirmContinuousState();
+    } else {
+        _lastStatus = "Failed";
+        _lastErrorMessage = errorMessage;
+    }
+}
+
+std::any DiffusionField::internalStateView() const {
+	return StateView{_field, _dimensions, _pointsPerDimension, _lastTotalMass, _lastMaxValue, _lastL2Norm};
+}
+
+void DiffusionField::confirmContinuousState() {
+	_confirmedField = _field;
+	_confirmedTotalMass = _lastTotalMass;
+	_confirmedMaxValue = _lastMaxValue;
+	_confirmedL2Norm = _lastL2Norm;
 }
 
 bool DiffusionField::evolveState(double currentTime, double dt, std::string& errorMessage) {
@@ -309,6 +332,7 @@ bool DiffusionField::_loadInstance(PersistenceRecord* fields) {
 			_odeSolver = OdeSolverFactory::defaultKey();
 		}
 		_field.clear();
+		_confirmedField.clear();
 	}
 	return res;
 }
