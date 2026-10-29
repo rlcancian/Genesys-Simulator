@@ -232,18 +232,22 @@ Rules for the on-disk format:
 - Multiple views of the same Network share **one Network identity** and its
   domain state. Layout can be per-Network; per-view viewport metadata must not
   create a second mathematical Network.
-- **Identity gate:** prove stable references for duplicate names, unnamed EFSM
-  transitions, parallel graph/Markov edges and CPN arcs. If current persistence
-  cannot distinguish them, stop and record the limitation; do not silently
-  select the wrong edge or change kernel ownership solely for GUI convenience.
+- **Identity gate for this delivery:** prove stable references for EFSM
+  states (including duplicate display names where permitted), unnamed EFSM
+  transitions and parallel EFSM relations. If current persistence cannot
+  distinguish them, stop and record the limitation; do not silently select
+  the wrong transition or change kernel ownership solely for GUI convenience.
+  Identities for Graph/DTMC/CPN relations are deferred until their editors
+  are explicitly authorized.
 - The initial EFSM viewer does not require persisted layout to display a diagram:
   building the view from the current domain topology with deterministic
   positions is a valid G1 fallback.
 
-G0.2 must add headless tests for: empty Network record, 1–N diagrams,
+G0.2 must add headless tests for: empty and populated EFSM diagram records,
 Unicode/escaping, deterministic round-trip, unknown-version and malformed
-records, missing domain elements, duplicate/parallel relation identity,
-and loading an old `.gui` without Network sections.
+records, missing EFSM elements, distinct unnamed/parallel EFSM transition
+identities and loading an old `.gui` without Network sections. Other formalism
+codecs are not a requirement of the frozen MVP.
 
 **G0 gate:** approved record format + unit tests executed and green; no
 mandatory regressions. G0.1 documentation alone does **not** close G0.
