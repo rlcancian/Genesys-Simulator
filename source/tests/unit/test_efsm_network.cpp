@@ -41,6 +41,29 @@ public:
 
 } // namespace
 
+TEST(EFSMNetworkTest, ProgrammaticStatesBelongToNetworkEditingLevel) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork network(model, "Machine");
+	FSMState idle(model, "Idle");
+	FSMState busy(model, "Busy");
+
+	ASSERT_EQ(idle.getLevel(), 0u);
+	ASSERT_EQ(busy.getLevel(), 0u);
+	network.addState(&idle);
+	network.addState(&busy);
+
+	const auto networkLevel = static_cast<unsigned int>(network.getId());
+	EXPECT_NE(networkLevel, 0u);
+	EXPECT_EQ(idle.getLevel(), networkLevel);
+	EXPECT_EQ(busy.getLevel(), networkLevel);
+	// A second registration is a no-op and does not create new domain objects.
+	network.addState(&busy);
+	EXPECT_EQ(network.getStates()->size(), 2u);
+}
+
 TEST(EFSMNetworkTest, ConstructionCreatesDefaultInputAndOutputPorts) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
