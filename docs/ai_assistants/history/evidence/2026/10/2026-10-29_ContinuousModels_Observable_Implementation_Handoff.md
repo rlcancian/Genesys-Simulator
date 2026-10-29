@@ -144,7 +144,7 @@ excluded from staging and commits.
 | Developer Manual | PDF regenerated; figure-spec and AI docs validators passed |
 | Doxygen PDF | Failed on pre-existing Unicode `Δ` in `CellGrowthComponent.h` |
 | ASan / UBSan / LSan | Focused test executable: 28/28 passed; no sanitizer diagnostics or leak report |
-| PR checks after push | Pending |
+| PR checks after push | All reported checks passed for published SHA `d3462b987c2a492cd45031ce6d0b9e354a2f2666` |
 
 The report records observed outcomes only. The final documentation commit, push,
 and hosted checks are recorded after publication.
@@ -181,7 +181,9 @@ publication, recheck hosted CI while keeping PR #550 in draft. Do not merge into
 ### Identificação e estado Git
 
 - Initial SHA: `ad2c261ec7878638a8812090599397cee78eed69`.
-- Final SHA: pending final commit.
+- Final validated implementation/documentation SHA: `d3462b987c2a492cd45031ce6d0b9e354a2f2666`.
+- This report is updated in a separate evidence-only commit after that validation;
+  the resulting branch HEAD is given in the final response.
 - Branch: `WiP20261016/ContinuousModels`.
 - PR: #550, existing draft PR; refresh exact state/head after push.
 - `WorkInProgress` is not modified or merged.
@@ -293,5 +295,10 @@ dispatches it at 103. Boundary processing publishes step 5 and the next block st
 
 ### Publication
 
-- Final commit SHA and hosted check state are appended after push; PR #550 remains
-  an open draft targeting `WorkInProgress`. No merge is authorized or performed.
+- **Confirmed by execution:** all checks reported by `gh pr checks 550` passed
+  for validated SHA `d3462b987c2a492cd45031ce6d0b9e354a2f2666`, including unit,
+  kernel, smoke, GUI application, worker, shell, optimizer, AI Assistant, Data
+  Analyser, Debian package build/lifecycle, archive/link inspection, plugin target
+  graph, documentation governance, launcher, and GUI diagnostics.
+- PR #550 remains open, draft, and mergeable, targeting `WorkInProgress`. No merge
+  was authorized or performed.
