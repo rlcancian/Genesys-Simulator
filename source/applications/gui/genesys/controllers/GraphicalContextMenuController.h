@@ -29,6 +29,8 @@ public:
     GraphicalContextMenuController(ModelGraphicsView* graphicsView,
                                    Ui::MainWindow* ui,
                                    QAction* openSubmodelAction,
+                                   QAction* createModalNetworkAction,
+                                   QAction* selectModalNetworkAction,
                                    std::function<ModelGraphicsScene*()> currentScene,
                                    std::function<void()> actualizeActions);
 
@@ -122,6 +124,8 @@ private:
     ModelGraphicsView* _graphicsView;
     Ui::MainWindow* _ui;
     QAction* _openSubmodelAction;
+    QAction* _createModalNetworkAction;
+    QAction* _selectModalNetworkAction;
     std::function<ModelGraphicsScene*()> _currentScene;
     std::function<void()> _actualizeActions;
 };

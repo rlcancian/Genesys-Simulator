@@ -23,6 +23,7 @@
 #include "../../../kernel/simulator/model/ModelComponentManager.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"// GUI
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/Submodel.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
@@ -1001,6 +1002,7 @@ void MainWindow::_createNetworkForSelectedModalModel() {
     _graphicalModelHasChanged = true;
     _actualizeActions();
     _generateGraphicalModelFromModel();
+    _ensureSubmodelViewContext(network);
 }
 
 void MainWindow::_selectNetworkForSelectedModalModel() {
@@ -1451,6 +1453,18 @@ bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
             return false;
         }
         return model->getDataManager()->getDataDefinition(network->getClassname(), network->getId()) == network;
+    }
+
+    if (dynamic_cast<Submodel*>(owner) != nullptr) {
+        if (model->getComponentManager() == nullptr) {
+            return false;
+        }
+        for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
+            if (component == owner) {
+                return true;
+            }
+        }
+        return false;
     }
 
     const unsigned int submodelLevel = static_cast<unsigned int>(owner->getId());
@@ -2232,6 +2246,8 @@ void MainWindow::_rebuildViewDependentControllers() {
         ui->graphicsView,
         ui,
         _actionOpenSelectedSubmodel,
+        _actionCreateModalNetwork,
+        _actionSelectModalNetwork,
         [this]() { return ui->graphicsView->getScene(); },
         [this]() { _actualizeActions(); });
     ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
@@ -2448,7 +2464,14 @@ void MainWindow::_actualizeActions() {
                                                   && adapter->getNetwork() == nullptr);
         }
         if (_actionSelectModalNetwork != nullptr) {
-            _actionSelectModalNetwork->setEnabled(opened && !simulationInteractionLocked && adapter != nullptr);
+            bool hasEfsmNetwork = false;
+            if (opened && adapter != nullptr && simulator->getModelManager()->current()->getDataManager() != nullptr) {
+                auto* networks = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(
+                    Util::TypeOf<EFSMNetwork>());
+                hasEfsmNetwork = networks != nullptr && !networks->list()->empty();
+            }
+            _actionSelectModalNetwork->setEnabled(opened && !simulationInteractionLocked && adapter != nullptr
+                                                  && hasEfsmNetwork);
         }
         if (_actionEditModalModelBindings != nullptr) {
             _actionEditModalModelBindings->setEnabled(opened && !simulationInteractionLocked && adapter != nullptr

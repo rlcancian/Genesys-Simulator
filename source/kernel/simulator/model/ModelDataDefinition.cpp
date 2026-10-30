@@ -232,6 +232,7 @@ bool ModelDataDefinition::_loadInstance(PersistenceRecord* fields) {
 	_label = fields->loadField("label", "");
 	this->_reportStatistics = fields->
 		loadField("reportStatistics", TraitsKernel<ModelDataDefinition>::reportStatistics);
+	_modelLevel = fields->loadField("modelLevel", 0u);
 
 	return true;
 }
@@ -243,6 +244,7 @@ void ModelDataDefinition::_saveInstance(PersistenceRecord* fields, bool saveDefa
 	fields->saveField("label", _label, "", saveDefaultValues);
 	fields->saveField("reportStatistics", _reportStatistics, TraitsKernel<ModelDataDefinition>::reportStatistics,
 	                  saveDefaultValues);
+	fields->saveField("modelLevel", _modelLevel, 0u, saveDefaultValues);
 }
 
 void ModelDataDefinition::_createInternalStatisticReporters() { }
