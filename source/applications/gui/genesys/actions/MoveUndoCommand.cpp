@@ -1,5 +1,16 @@
 #include "MoveUndoCommand.h"
 #include "graphicals/ModelGraphicsScene.h"
+#include "services/EFSMNetworkDiagramProjection.h"
+
+namespace {
+
+void refreshEfsmProjection(ModelGraphicsScene* scene) {
+    if (scene != nullptr && scene->hasModelLevelFilter() && scene->modelLevelFilter() != 0) {
+        EFSMNetworkDiagramProjection::synchronize(scene->getSimulator(), scene);
+    }
+}
+
+} // namespace
 
 MoveUndoCommand::MoveUndoCommand(QList<QGraphicsItem*> item, ModelGraphicsScene *scene, QList<QPointF> &oldPos, QList<QPointF> &newPos, QUndoCommand *parent)
     : QUndoCommand(parent), _myGraphicalItem(item), _myGraphicsScene(scene), _myOldPos(oldPos), _myNewPos(newPos) {
@@ -26,6 +37,7 @@ void MoveUndoCommand::undo() {
 
     // atualiza a cena
     _myGraphicsScene->update();
+    refreshEfsmProjection(_myGraphicsScene);
 }
 
 void MoveUndoCommand::redo() {
@@ -45,4 +57,5 @@ void MoveUndoCommand::redo() {
 
     // atualiza a cena
     _myGraphicsScene->update();
+    refreshEfsmProjection(_myGraphicsScene);
 }

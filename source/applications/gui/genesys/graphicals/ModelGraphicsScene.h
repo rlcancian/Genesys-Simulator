@@ -110,6 +110,8 @@ public:
     // Disable copy assignment to prevent shallow copies of GUI-owned resources.
     ModelGraphicsScene& operator=(const ModelGraphicsScene& other) = delete;
     virtual ~ModelGraphicsScene();
+    /** @brief Clears the scene and all formal-network projection bookkeeping. */
+    void clear();
 public: // editing graphic model
     enum DrawingMode{
         NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED,
@@ -223,6 +225,12 @@ public: // editing graphic model
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
     /** @brief Finds one graphical data definition by kernel pointer. */
     GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
+    /** @brief Removes all read-only EFSM transition graphics from this scene. */
+    void clearEFSMNetworkDiagramItems();
+    /** @brief Adds one scene-owned read-only EFSM transition graphic. */
+    void addEFSMNetworkDiagramItem(QGraphicsItem* item);
+    /** @brief Returns the scene-owned EFSM transition graphics. */
+    QList<QGraphicsItem*>* getEFSMNetworkDiagramItems() const;
     /** @brief Resolves the source component associated with one graphical connection. */
     GraphicalModelComponent* resolveSourceComponent(GraphicalConnection* connection) const;
     /** @brief Resolves the destination component associated with one graphical connection. */
@@ -566,6 +574,7 @@ private:
     QList<QGraphicsItem*>* _graphicalModelDataDefinitions = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalConnections = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalDiagramConnections = new QList<QGraphicsItem*>();
+    QList<QGraphicsItem*>* _efsmNetworkDiagramItems = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalAssociations = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalGeometries = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalAnimations = new QList<QGraphicsItem*>();

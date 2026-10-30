@@ -108,6 +108,8 @@ ModelDataDefinition* MarkovChainNetwork::LoadInstance(Model* model, PersistenceR
 void MarkovChainNetwork::addState(MarkovState* state) {
 	if (state != nullptr && _states->find(state) == _states->list()->end()) {
 		_states->insert(state);
+		// Keep programmatic creation consistent with the Network reload path.
+		state->setModelLevel(static_cast<unsigned int>(getId()));
 		if (_initialState == nullptr || state->isInitialNode()) {
 			_initialState = state;
 			_currentState = state;

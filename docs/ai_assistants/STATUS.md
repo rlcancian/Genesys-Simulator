@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-10-08
+last_updated: 2026-10-30
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -19,6 +19,8 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
+- Most recently inspected `WorkInProgress` HEAD (GitHub compare, 2026-10-29): `6df79436ff9d72e302e9d2b047fc5a8f6e1f297b`. This GitHub inspection does **not** constitute a fresh CMake/Ninja/CTest run.
+- **ModalModel GUI frozen MVP:** exactly **8 milestones** (see `reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`, Section 4). G0.1, G0.1b and G0.2 remain the three maintainer-approved milestones (**3/8 approved = 37.5%**). The 2026-10-30 mandate authorized sequential execution of the remaining five. At published code HEAD `2a3ca292414b121ea4e19cd98768cec86b66e0b6`, all remaining EFSM editor behaviors G1.1/G1.2/G2/G3-G4/G6 are implemented and validated through MainWindow/Qt coverage. Local tests-unit/kernel-unit each passed 1,963 with four disabled; smoke passed 3/3; `gui-app` built; focused EFSM suite passed 37/37; targeted ASan/UBSan passed on deletion and mixed history (LSan disabled). Hosted checks for this exact SHA passed, including tests-unit, tests-kernel-unit, smoke, GUI diagnostics, Debian build and lifecycle, and documentation governance. Developer Manual (390 pages) and User Manual (3,981 pages, EFSM guide page 177) were regenerated and inspected. The existing maintainer mandate authorizes final integration after the reviewable validation record; PR #551 is still draft pending that action. Evidence: [`history/evidence/2026/10/2026-10-30_modal_efsm_g6_final.md`](history/evidence/2026/10/2026-10-30_modal_efsm_g6_final.md). The three prior milestones remain the accepted baseline until the authorized final review/integration closes the remaining five.
 - Current remote `WorkInProgress` HEAD confirmed on 2026-10-08: `dce3484739056ae1e15ca694d8e1ed251d6a89a6` (`Merge PR #545: repair SimulLang persistence and GUI editing synchronization`).
 - PR #545 is integrated. It corrects complex `.gen` text persistence (including exact `GroProgram::sourceCode` round-trip), localized double commits in the Qt Property Editor, automatic semantic SimulLang/TextCodeEditor synchronization, and graphical/kernel connection ownership required by undo/redo. Final evidence: `tests-unit` 1846/1846 executed passed plus 4 historical disabled tests (run `37861026075`), `tests-kernel-unit` 1846/1846 and `tests-smoke` 3/3 (run `37861026002`), focused ASan+UBSan connection undo/redo green (run `37860210595`, job `113593863912`), and manual LaTeX/figure-spec validation with regenerated `docs/ManualGenESyS.pdf` green (run `37860534212`, artifact `11585458197`).
 - Immediately preceding integrated Modal/Network-relevant merges on this line:
@@ -106,9 +108,14 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   `source/plugins/components/CMakeLists.txt`, which would continue compiling
   component sources placed in nested directories. Do not complicate CMake
   solely to retain obsolete implementation files; Git history is the archive.
-- A Phase 9 GUI/editor architecture remains proposed rather than established as
-  implemented; backend contracts must be stabilized and revalidated first:
-  [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md).
+- The Modal/Network GUI remained deferred at the prior checkpoint. On
+  **2026-10-29**, the maintainer explicitly activated G0 (inventory/diagram
+  record contract), then G1 (read-only EFSM viewer), and **subsequently chose
+  the shared submodel canvas/level filtering (Alternative A)** rather than an
+  independent Network scene, preserving process-vs-Network semantics.
+  **No new GUI feature is validated yet.**
+  See [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md)
+  and [`reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md).
 - Maintainer direction recorded 2026-10-04: the next Modal/Network backend research phase is an academically grounded **continuous-time Markov chain / Markov jump process for biochemical reaction networks**. The first step is specification and validation design, explicitly reconciling the existing WholeCell Gillespie SSA path with `DefaultNetwork` and the GenESyS event calendar; see [`reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`](reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md). GUI remains deferred.
 
 ## 3. Technical baseline

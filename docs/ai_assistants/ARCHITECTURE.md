@@ -2,7 +2,7 @@
 document_type: architecture
 authority: normative-reference
 owner: project-maintainer
-last_reviewed: 2026-09-18
+last_reviewed: 2026-10-29
 review_cadence: 90d
 status: active
 tracks: 511
@@ -235,6 +235,40 @@ The durable network-centered boundary is:
 - graph/EFSM/Markov/CPN relations are not ordinary process `Connection` objects;
 - a pure mathematical graph does not imply Entity movement, a current vertex, random walk or routing semantics;
 - stochastic network choices use reproducible GenESyS random-number infrastructure.
+
+### 9.1. Hierarchical editing contexts (maintainer decision 2026-10-29)
+
+The GenESyS Qt GUI evolves the **existing submodel editor** (Alternative A);
+it must not create an independent parallel Network-scene infrastructure by
+default. `ModelGraphicsScene`, `ModelGraphicsView`, scene-level filtering
+and submodel tabs remain shared infrastructure; diagram projection, notation,
+available tools, and domain-editing commands vary by the context owner type.
+
+The existing `ModelDataDefinition::getLevel()` / `setModelLevel()` fields
+are interpreted as **editing-context identifiers**, not ordinal nesting
+depths. `level == 0` identifies the root. A nonzero value identifies the
+containing `ModelDataDefinition::getId()`. Because `ModelComponent` derives
+from `ModelDataDefinition`, either kind of object may own an editing context.
+For a `ModalModelDefault` adapter, the hierarchical Network view is owned by
+its attached **`DefaultNetwork`**, so the context key is the **Network ID**,
+not the ModalModel component ID.
+
+Context membership must not be mistaken for lifetime ownership or semantic
+incidence. An EFSM transition, DTMC transition, graph edge or Petri arc remains
+a mathematical relation, not an Entity-flow `Connection`. Some existing
+transition objects are **not** `ModelDataDefinition` objects; the domain
+Network supplies them through its specialized topology rather than requiring
+a fictitious `level`. A Network can be shared by multiple ModalModels without
+duplicating mathematical state or diagram ownership.
+
+The approved implementation is incremental: first ensure Network-owned data
+elements get the Network level during programmatic creation as well as reload;
+then generalize level-scoped data-definition discovery with no process
+components, add a read-only EFSM projection, and introduce specialized edit
+commands only after interaction/persistence/ownership tests. This decision
+does not alter process dispatch, `DefaultNetwork::activate()`, Entity routing,
+mathematical state or the existing `Submodel` plugin's incomplete semantics.
+See [`reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md).
 
 Current approved initial formalism direction:
 

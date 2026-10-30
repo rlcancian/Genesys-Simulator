@@ -88,6 +88,28 @@ MarkovChainNetwork::MarkovTransition* transition(MarkovState* source, MarkovStat
 
 } // namespace
 
+TEST(MarkovChainNetworkTest, ProgrammaticStatesBelongToNetworkEditingLevel) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	MarkovChainNetwork network(model, "Chain");
+	MarkovState a(model, "A");
+	MarkovState b(model, "B");
+	ASSERT_EQ(a.getLevel(), 0u);
+	ASSERT_EQ(b.getLevel(), 0u);
+
+	network.addState(&a);
+	network.addState(&b);
+
+	const auto networkLevel = static_cast<unsigned int>(network.getId());
+	EXPECT_NE(networkLevel, 0u);
+	EXPECT_EQ(a.getLevel(), networkLevel);
+	EXPECT_EQ(b.getLevel(), networkLevel);
+	network.addState(&a);
+	EXPECT_EQ(network.getStates()->size(), 2u);
+}
+
 TEST(MarkovChainNetworkTest, ConstructionCreatesStepAndStatePorts) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();

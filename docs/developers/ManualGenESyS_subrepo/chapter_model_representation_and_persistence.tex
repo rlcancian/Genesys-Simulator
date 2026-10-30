@@ -337,6 +337,59 @@ trustworthy.
 Figure~\ref{fig:model-persistence-error-handling} should be read as a list of
 current boundaries, not as a promise that every malformed file will be repaired.
 
+\section{GUI overlays for EFSM Networks}
+\label{sec:model-persistence-efsm-gui-overlay}
+
+The graphical serializer keeps the mathematical model and its presentation
+separate. A \texttt{.gui} file may contain a version-1
+\texttt{Graphical EFSM Network Diagrams} section alongside the existing GUI
+sections. The section identifies an \texttt{EFSMNetwork} by model ID and
+stores state IDs with positions plus optional transition control points and
+label positions. It does not duplicate states, transitions, guards, actions,
+priorities, probabilities, or execution state; those remain authoritative in
+the companion \texttt{.gen} file.
+
+\texttt{EFSMTransition} has no persistent kernel ID. The graphical record
+therefore uses its zero-based position in the complete transition list. This
+is a valid reference under the current \texttt{EFSMNetwork} persistence
+contract because \texttt{.gen} writes and reconstructs that list in the same
+order. The codec additionally checks source and destination and checks the
+exact transition name, including an empty name. The ordinal is stable for a
+round-trip that preserves the same transition sequence. Reordering
+mathematically indistinguishable parallel transitions can invalidate their
+graphical identity; the codec then drops unresolved layout data rather than
+reattributing it to a different transition. Future topology-editing commands
+must explicitly invalidate or update affected layout records. This format
+does not introduce mathematical transition IDs.
+
+Loading an old \texttt{.gui} without this section remains valid. Unknown
+overlay versions, missing references, invalid numbers, and malformed lines
+are ignored without changing the mathematical model. Network references from
+\texttt{ModalModelDefault} and state references from \texttt{EFSMNetwork} are
+non-owning attached associations used by model orphan detection; they do not
+transfer ownership or duplicate shared Networks. The shared GUI scene can
+project this presentation data as state and transition graphics. The codec
+never creates, deletes, or modifies mathematical objects; GUI editing actions
+invoke the domain APIs separately. Current Qt offscreen MainWindow integration
+tests exercise Network creation, state and transition editing/deletion, mixed
+undo/redo, and 	exttt{.gen}/	exttt{.gui} save-close-reopen; focused lifecycle
+tests cover shared Networks and tab recreation. These are branch-level
+implementation evidence, not final milestone acceptance. Final-head baselines,
+hosted CI, and the remaining project acceptance gates are still required before
+the editor is considered complete.
+
+The current projection renders directed arrows, offsets parallel relations,
+draws self-loops, and highlights initial and final states. A transition label
+combines its non-empty name, input/trigger event, guard, output expression and
+probability expression, so a mathematically unnamed relation can still carry
+visible information. Moving a state changes only its graphical position.
+Network creation/selection, state and transition editing/deletion, initial
+state selection, and undo/redo use the existing MainWindow and scene command
+path. The edit dialogs store expression text but do not perform a new
+parse-only validation: the current model parser evaluates expressions, so it
+cannot safely be used as a syntax-only check without changing kernel behavior.
+Runtime expression semantics remain with the kernel.
+
 \section{Validation evidence}
 \label{sec:model-persistence-validation}
 

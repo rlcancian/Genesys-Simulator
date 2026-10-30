@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-09-19
+last_updated: 2026-10-30
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -52,14 +52,17 @@ A decision recorded here is not implemented automatically unless a corresponding
   - `DefaultNode` is now a `ModelDataDefinition`;
   - graph, EFSM, Markov and CPN topology elements belong to network data definitions;
   - `GraphEdge` and `CPNArc` are not process `Connection` objects;
-  - `ModalModelDefault` mirrors the attached network's logical port schema, but the current GUI synchronization for network ports and bindings remains unfinished.
+  - `ModalModelDefault` mirrors the attached network's logical port schema. The active GUI branch now has a selected-adapter binding dialog with undo/redo; full end-to-end execution remains pending.
 - Options:
   - add a dedicated network/data-definition editor independent from the process-flow canvas;
   - add modal-network editing panels inside the existing component property editor;
   - provide model-file/API construction first and defer GUI editing;
   - temporarily expose only read-only network visualization until editing contracts are stable.
 - Recommendation retained: implement the GUI only after backend contracts and the compatibility/persistence audit are stable; do not overload the existing process `Connection` canvas with graph/CPN arcs.
-- Implementation status: backend prerequisite closed (`AUTO-MODAL-002` / #541); GUI phase remains deferred until explicitly activated.
+- Implementation status: backend prerequisite closed (`AUTO-MODAL-002` / #541). **GUI phase explicitly activated on 2026-10-29; on 2026-10-30 the maintainer authorized autonomous continuation through all five remaining milestones.** G0.1b/G0.2 are accepted. The active branch implements the shared EFSM projection/navigation, GUI create/select/attach, adapter bindings, and undoable state/transition editing. At published code HEAD `eed82946d`, local unit/kernel baselines, smoke, GUI build, MainWindow save/reopen tests, Developer Manual and User Manual are complete; all hosted checks passed. A docs-only update is prepared and requires checks at its resulting SHA. PR #551 is still draft and unmerged; acceptance of the remaining milestones is pending final CI/review. Evidence: [`history/evidence/2026/10/2026-10-30_modal_efsm_mainwindow_e2e.md`](history/evidence/2026/10/2026-10-30_modal_efsm_mainwindow_e2e.md).
+- **DEC-MODAL-GUI-20261029 (revised and approved):** adopt **Alternative A**: evolve and reuse the existing submodel scene/view/tab infrastructure and existing `level` filter for both process and mathematical-model editing contexts. Add formalism-specific projection/commands rather than an independent `GraphicalNetworkScene`. `ModalModelDefault` remains a process `ModelComponent` adapter; `DefaultNetwork` remains potentially shared mathematical data; mathematical arcs are never process `Connection` objects. The first GUI visual slice remains read-only EFSM.
+- **DEC-MODAL-LEVEL-20261029 (approved):** reinterpret `ModelDataDefinition::getLevel()` / `setModelLevel()` as **editing-context membership**: root is `0`; non-root level equals the `getId()` of the context-defining `ModelDataDefinition` (including `ModelComponent`, which inherits from it). For a ModalModel, resolve the attached Network; use the **Network ID** as the submodel level, never the adapter ID. Level does not transfer ownership, imply Entity flow, or represent ordinal depth. This contract requires normalizing Network-owned data definitions on programmatic insertion and preserving the same result after load.
+- Approved implementation and handoff plan: [`reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md). The existing G0–G6 GUI reference remains the conceptual architecture; `AUTO-MODAL-003` owns G0 preparation/codec and `AUTO-MODAL-004` is the dependent G1 viewer.
 - Decision unlocks:
   - GUI creation/editing of network-owned nodes, places, transitions, arcs and graph edges;
   - synchronized `ModalModelDefault` input/output bindings;

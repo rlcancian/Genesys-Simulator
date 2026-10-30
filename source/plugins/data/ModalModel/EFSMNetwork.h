@@ -12,6 +12,7 @@
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/components/ModalModel/FSMState.h"
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -57,6 +58,16 @@ public:
 	List<FSMState*>* getStates() const;
 	void addTransition(EFSMTransition* transition);
 	void removeTransition(EFSMTransition* transition);
+	/**
+	 * Detaches an owned transition without destroying it. The returned owner can
+	 * safely retain the transition for an undo command. `ordinal` receives its
+	 * former persisted sequence position. Returns empty if it is not registered.
+	 */
+	std::unique_ptr<EFSMTransition> detachTransition(EFSMTransition* transition, unsigned int* ordinal = nullptr);
+	/** Reattaches a detached transition at its prior sequence position. Ownership
+	 * transfers to the network only when this returns true.
+	 */
+	bool restoreTransition(EFSMTransition* transition, unsigned int ordinal);
 	List<EFSMTransition*>* getTransitions() const;
 	void setInitialState(FSMState* state);
 	FSMState* getInitialState() const;

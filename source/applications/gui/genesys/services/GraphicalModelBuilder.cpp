@@ -2,6 +2,7 @@
 
 #include "GraphicalDataDefinitionLayout.h"
 #include "GraphicalAutomaticPositioningStrategy.h"
+#include "EFSMNetworkDiagramProjection.h"
 #include "../TraitsGUI.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -19,9 +20,11 @@
 #include <QTextEdit>
 #include <QSet>
 #include <QDebug>
+#include <algorithm>
 #include <functional>
 #include <cctype>
 #include <set>
+#include <vector>
 
 namespace {
     constexpr qreal minimumAutomaticLayoutCoordinate = 20.0;
@@ -1001,9 +1004,35 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
     }
 
+    // Non-root editing contexts can consist entirely of ModelDataDefinitions.
+    // Their level is the context owner's ID, not the ordinal nesting depth.
+    // Direct context members must be visible even when the Attached/Editable
+    // link filters are off: those controls filter associations, not membership.
+    // Keep the historical root canvas (level 0) driven by process references.
+    if (hasModelLevelFilter && modelLevelFilter != 0) {
+        for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
+            List<ModelDataDefinition*>* definitions = dataManager->getDataDefinitionList(dataTypename);
+            if (definitions == nullptr) {
+                continue;
+            }
+            for (ModelDataDefinition* definition : *definitions->list()) {
+                if (!belongsToModelLevel(definition, true, modelLevelFilter)
+                    || dynamic_cast<ModelComponent*>(definition) != nullptr) {
+                    continue;
+                }
+                const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(
+                    definition, editablePropertyDataDefinitions);
+                registerVisibleDataDefinition(definition, category,
+                                              &visibleDataDefinitions, &visibleCategories);
+                expandVisibleDataDefinition(definition);
+            }
+        }
+    }
+
     if (visibleDataDefinitions.isEmpty()) {
         scene->clearGraphicalDiagramConnections();
         scene->clearGraphicalModelDataDefinitions();
+        EFSMNetworkDiagramProjection::synchronize(simulator, scene);
         scene->setDiagramLayerState(false, false);
         return;
     }
@@ -1322,7 +1351,60 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
     }
 
+    // The process layout above positions definitions attached to graphical
+    // components or to other definitions. A context containing standalone
+    // data (e.g. EFSM states) has no such anchors. Give only *new*, unanchored
+    // items a deterministic, collision-free fallback without moving any saved
+    // or manually positioned item. G1 can later use a formalism-specific layout.
+    if (hasModelLevelFilter && modelLevelFilter != 0) {
+        std::vector<GraphicalModelDataDefinition*> unpositioned;
+        for (const auto& entry : dataDefinitionMap) {
+            if (entry.second != nullptr
+                && newDataDefinitions.contains(entry.first)
+                && !positionedDataDefinitions.contains(entry.first)) {
+                unpositioned.push_back(entry.second);
+            }
+        }
+        std::sort(unpositioned.begin(), unpositioned.end(),
+                  [](const GraphicalModelDataDefinition* first,
+                     const GraphicalModelDataDefinition* second) {
+            return first->getDataDefinition()->getId() < second->getDataDefinition()->getId();
+        });
+
+        qreal nextTop = minimumAutomaticLayoutCoordinate;
+        for (GraphicalModelDataDefinition* item : unpositioned) {
+            QPointF position = visibleAutomaticPosition(item,
+                QPointF(minimumAutomaticLayoutCoordinate, nextTop));
+            QRectF candidate = paddedLayoutRect(dataDefinitionLayoutRect(item, position));
+
+            // Each retry moves below an occupied rectangle. Because there are
+            // finitely many scene items, no unbounded search is necessary.
+            for (int step = 0; step <= occupiedLayoutRects.size(); ++step) {
+                bool overlaps = false;
+                qreal bottom = candidate.top();
+                for (const QRectF& occupied : occupiedLayoutRects) {
+                    if (candidate.intersects(occupied)) {
+                        overlaps = true;
+                        bottom = std::max(bottom, occupied.bottom());
+                    }
+                }
+                if (!overlaps) {
+                    break;
+                }
+                position.setY(bottom + automaticLayoutCollisionPadding
+                              - item->boundingRect().top());
+                candidate = paddedLayoutRect(dataDefinitionLayoutRect(item, position));
+            }
+
+            setAutomaticPosition(item, position);
+            positionedDataDefinitions.insert(item->getDataDefinition());
+            occupiedLayoutRects.append(candidate);
+            nextTop = candidate.bottom() + automaticLayoutCollisionPadding;
+        }
+    }
+
     const bool hasDataDefinitions = !dataDefinitionMap.empty();
+    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
     scene->setDiagramLayerState(hasDataDefinitions, hasDataDefinitions);
     if (hasDataDefinitions) {
         scene->showDiagrams();
