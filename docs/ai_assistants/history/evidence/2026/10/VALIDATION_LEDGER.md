@@ -30,7 +30,7 @@ and the historical integration plan §22.9. Build/CTest results are local only.
 
 | Date | Scope | Branch / head | Commands / result | Bounded conclusion | Limitation |
 |---|---|---|---|---|---|
-| 2026-10-30 | Integrated GUI save/reopen followed by kernel EFSM activation; status/evidence reconciliation | Base `WorkInProgress` `17338f8e566f87fc3b06eb422a5dd354e6d57b02`; follow-up `WiP20261030/efsm-editor-e2e-closeout` | Focused EFSM GUI 37/37; ModalModel/EFSM 26/26; unit and kernel CTest each 1,963 passed / 4 disabled; smoke 3/3; GUI build passed | The MainWindow-created, edited, saved and reloaded EFSM activated through the kernel API with expected output and final state; no kernel production code changed | Hosted checks for follow-up pending; no separate manual mouse/keyboard session; sanitizer evidence is from PR #551 and LSan was disabled; see [`2026-10-30_modal_efsm_postmerge_closeout.md`](2026-10-30_modal_efsm_postmerge_closeout.md) |
+| 2026-10-30 | Integrated GUI save/reopen followed by kernel EFSM activation; status/evidence reconciliation | Base `WorkInProgress` `17338f8e566f87fc3b06eb422a5dd354e6d57b02`; PR #552 merged as `51851415fb8abe33f08a67d1d571ad233ab081a5` | Focused EFSM GUI 37/37; ModalModel/EFSM 26/26; unit and kernel CTest each 1,963 passed / 4 disabled; smoke 3/3; GUI build passed; all eight hosted checks passed | The MainWindow-created, edited, saved and reloaded EFSM activated through the kernel API with expected output and final state; no kernel production code changed | No separate manual mouse/keyboard session; sanitizer evidence is from PR #551 and LSan was disabled; see [`2026-10-30_modal_efsm_postmerge_closeout.md`](2026-10-30_modal_efsm_postmerge_closeout.md) |
 
 ## 4. Interpretation
 
