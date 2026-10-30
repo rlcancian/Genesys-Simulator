@@ -353,8 +353,8 @@ the companion \texttt{.gen} file.
 therefore uses its zero-based position in the complete transition list. This
 is a valid reference under the current \texttt{EFSMNetwork} persistence
 contract because \texttt{.gen} writes and reconstructs that list in the same
-order. The codec additionally checks source and destination and checks a
-non-empty transition name when present. A changed or malformed topology is
+order. The codec additionally checks source and destination and checks the
+exact transition name, including an empty name. A changed or malformed topology is
 handled fail-closed by dropping only the unresolved graphical entry.
 
 Loading an old \texttt{.gui} without this section remains valid. Unknown

@@ -361,9 +361,10 @@ state IDs and positions, and optional transition control/label points.
 
 State IDs are resolved against the loaded Network and transition records use
 the zero-based global transition-list index that the existing \texttt{.gen}
-serializer writes and reconstructs. Source/destination names and non-empty
-transition names are integrity checks. An index that no longer resolves, an
-identity mismatch, malformed data, or an unknown schema version is ignored;
+serializer writes and reconstructs. Source/destination names and the exact
+transition name, including an empty name, are integrity checks. An index that
+no longer resolves, an identity mismatch, malformed data, or an unknown schema
+version is ignored;
 the codec never creates, deletes, or changes a mathematical transition.
 Network and state references used by orphan detection are non-owning
 \texttt{attachedData} associations, so shared Networks remain one mathematical
