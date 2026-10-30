@@ -1378,6 +1378,17 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     auto* reopenedView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
     ASSERT_NE(reopenedView, nullptr);
     EXPECT_EQ(reopenedView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    Model* secondModel = simulator->getModelManager()->current();
+    ASSERT_NE(secondModel, nullptr);
+    EXPECT_NE(secondModel, model);
+    EXPECT_EQ(tabs->indexOf(reopenedView), networkTabIndex);
+    tabs->setCurrentWidget(reopenedView);
+    QApplication::processEvents();
+    EXPECT_EQ(simulator->getModelManager()->current(), model);
+    EXPECT_EQ(reopenedView->getScene()->getSimulator(), simulator);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), network->getId()), network);
 }
 
 TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
