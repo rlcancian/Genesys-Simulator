@@ -341,6 +341,53 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	EXPECT_EQ(loadedTransition->getProbabilityExpression(), "1");
 }
 
+TEST(EFSMNetworkTest, PersistencePreservesExplicitlyEmptyTransitionName) {
+	Simulator simulator;
+	ASSERT_NE(simulator.getPluginManager()->insert("fsmstate.so"), nullptr);
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetworkProbe source(model, "UnnamedMachine");
+	FSMState idle(model, "Idle");
+	FSMState busy(model, "Busy");
+	EFSMTransition* unnamed = new EFSMTransition(&idle, &busy, "");
+	unnamed->setGuardExpression("1");
+	EFSMTransition* named = new EFSMTransition(&busy, &idle, "Named");
+	source.setInitialState(&idle);
+	source.addState(&busy);
+	source.addTransition(unnamed);
+	source.addTransition(named);
+
+	FakeModelPersistenceRuntime persistence;
+	PersistenceRecord fields(persistence);
+	source.SaveInstanceProbe(&fields, false);
+
+	ASSERT_TRUE(fields.find("transitionName[0]") != fields.end());
+	EXPECT_EQ(fields.loadField("transitionName[0]", "missing"), "");
+	ASSERT_TRUE(fields.find("transitionName[1]") != fields.end());
+	EXPECT_EQ(fields.loadField("transitionName[1]", "missing"), "Named");
+
+	EFSMNetworkProbe loaded(model, "LoadedUnnamedMachine");
+	ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+	ASSERT_EQ(loaded.getTransitions()->size(), 2u);
+	ASSERT_NE(loaded.getTransitions()->front(), nullptr);
+	EXPECT_EQ(loaded.getTransitions()->front()->getName(), "");
+	auto loadedTransitionIt = loaded.getTransitions()->list()->begin();
+	ASSERT_NE(loadedTransitionIt, loaded.getTransitions()->list()->end());
+	++loadedTransitionIt;
+	ASSERT_NE(loadedTransitionIt, loaded.getTransitions()->list()->end());
+	ASSERT_NE(*loadedTransitionIt, nullptr);
+	EXPECT_EQ((*loadedTransitionIt)->getName(), "Named");
+
+	// A legacy record without the field retains the established fallback.
+	fields.erase("transitionName[0]");
+	EFSMNetworkProbe legacyLoaded(model, "LegacyUnnamedMachine");
+	ASSERT_TRUE(legacyLoaded.LoadInstanceProbe(&fields));
+	ASSERT_EQ(legacyLoaded.getTransitions()->size(), 2u);
+	ASSERT_NE(legacyLoaded.getTransitions()->front(), nullptr);
+	EXPECT_EQ(legacyLoaded.getTransitions()->front()->getName(), "T[0]");
+}
+
 TEST(EFSMNetworkTest, ModelFileRoundTripPreservesConflictPolicyAndActivation) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();

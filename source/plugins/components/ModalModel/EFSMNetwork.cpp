@@ -312,7 +312,11 @@ void EFSMNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefaultValue
 		if (transition->getDestination() != nullptr) {
 			fields->saveField("transitionDestination" + suffix, transition->getDestination()->getName(), std::string(""), saveDefaultValues);
 		}
-		fields->saveField("transitionName" + suffix, transition->getName(), std::string(""), saveDefaultValues);
+		// The presence of this field distinguishes an explicitly unnamed
+		// transition from a legacy record that omitted the field entirely.
+		// The loader intentionally retains its T<ordinal> fallback for those
+		// older records, while current saves preserve the exact empty name.
+		fields->saveField("transitionName" + suffix, transition->getName());
 		fields->saveField("transitionGuard" + suffix, transition->getGuardExpression(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionOutput" + suffix, transition->getOutputExpression(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionInputEvent" + suffix, transition->getInputEvent(), std::string(""), saveDefaultValues);
