@@ -337,6 +337,34 @@ trustworthy.
 Figure~\ref{fig:model-persistence-error-handling} should be read as a list of
 current boundaries, not as a promise that every malformed file will be repaired.
 
+\section{GUI overlays for EFSM Networks}
+\label{sec:model-persistence-efsm-gui-overlay}
+
+The graphical serializer keeps the mathematical model and its presentation
+separate. A \texttt{.gui} file may contain a version-1
+\texttt{Graphical EFSM Network Diagrams} section alongside the existing GUI
+sections. The section identifies an \texttt{EFSMNetwork} by model ID and
+stores state IDs with positions plus optional transition control points and
+label positions. It does not duplicate states, transitions, guards, actions,
+priorities, probabilities, or execution state; those remain authoritative in
+the companion \texttt{.gen} file.
+
+\texttt{EFSMTransition} has no persistent kernel ID. The graphical record
+therefore uses its zero-based position in the complete transition list. This
+is a valid reference under the current \texttt{EFSMNetwork} persistence
+contract because \texttt{.gen} writes and reconstructs that list in the same
+order. The codec additionally checks source and destination and checks a
+non-empty transition name when present. A changed or malformed topology is
+handled fail-closed by dropping only the unresolved graphical entry.
+
+Loading an old \texttt{.gui} without this section remains valid. Unknown
+overlay versions, missing references, invalid numbers, and malformed lines
+are ignored without changing the mathematical model. Network references from
+\texttt{ModalModelDefault} and state references from \texttt{EFSMNetwork} are
+non-owning attached associations used by model orphan detection; they do not
+transfer ownership or duplicate shared Networks. The implementation is a
+codec and persistence boundary, not an EFSM viewer or editor.
+
 \section{Validation evidence}
 \label{sec:model-persistence-validation}
 

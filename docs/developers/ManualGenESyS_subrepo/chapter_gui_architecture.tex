@@ -351,11 +351,28 @@ preserved. These behaviors are covered by focused, offscreen Qt6 Google Tests
 in \path{source/tests/unit/test_gui_submodel_level.cpp}; executable test results
 must be recorded for the final branch commit before integration.
 
-This infrastructure does not yet draw mathematical transitions. The subsequent
-EFSM viewer must derive its transition topology from \texttt{EFSMNetwork}
-rather than reusing ordinary process \texttt{GraphicalConnection} objects
-or the attached/internal association lines. The full editor, GUI-only
-persistence and integration tests remain pending. See the approved plan
+This infrastructure does not yet draw mathematical transitions. The graphical
+EFSM persistence seam is now implemented by
+\texttt{EFSMNetworkDiagramCodec}, integrated into
+\texttt{GraphicalModelSerializer}. It writes a version-1
+\texttt{Graphical EFSM Network Diagrams} section in the existing \texttt{.gui}
+overlay. The section stores only presentation data: the Network identity,
+state IDs and positions, and optional transition control/label points.
+
+State IDs are resolved against the loaded Network and transition records use
+the zero-based global transition-list index that the existing \texttt{.gen}
+serializer writes and reconstructs. Source/destination names and non-empty
+transition names are integrity checks. An index that no longer resolves, an
+identity mismatch, malformed data, or an unknown schema version is ignored;
+the codec never creates, deletes, or changes a mathematical transition.
+Network and state references used by orphan detection are non-owning
+\texttt{attachedData} associations, so shared Networks remain one mathematical
+object and a Network without an adapter remains subject to the existing orphan
+policy. Older \texttt{.gui} files without this section continue to load.
+
+The codec and its integration tests do not constitute a user-facing EFSM
+viewer or editor. Drawing, navigation, and editing mathematical states and
+transitions remain later milestones. See the approved plan
 \path{docs/ai_assistants/reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md}
 for acceptance gates and current limitations.
 
