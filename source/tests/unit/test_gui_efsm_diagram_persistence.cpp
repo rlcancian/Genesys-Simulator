@@ -17,6 +17,7 @@
 #include "controllers/EditCommandController.h"
 #include "mainwindow.h"
 #include "services/EFSMNetworkDiagramCodec.h"
+#include "services/EFSMNetworkDiagramProjection.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
 
@@ -50,8 +51,16 @@
 #include <QTabWidget>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QGraphicsSceneMouseEvent>
 
 namespace {
+
+class ExposedModelGraphicsScene final : public ModelGraphicsScene {
+public:
+    ExposedModelGraphicsScene() : ModelGraphicsScene(-1000, -1000, 4000, 4000) {}
+    using ModelGraphicsScene::mousePressEvent;
+    using ModelGraphicsScene::mouseReleaseEvent;
+};
 
 // Minimal widget/action bundle required by GraphicalModelSerializer's
 // constructor, mirroring the pattern already established by the
@@ -217,6 +226,66 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
     EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
     EXPECT_TRUE(scene->getGraphicalModelDataDefinitions()->isEmpty());
+}
+
+TEST(EFSMNetworkDiagramProjection, MovingAStateRefreshesItsFormalTransitionGeometry) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "MoveNetwork");
+    FSMState source(model, "Source");
+    FSMState destination(model, "Destination");
+    network.setInitialState(&source);
+    network.addState(&destination);
+    network.addTransition(new EFSMTransition(&source, &destination, "MoveEdge"));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    QUndoStack movementUndoStack;
+    scene.setUndoStack(&movementUndoStack);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    auto* sourceItem = scene.findGraphicalModelDataDefinition(&source);
+    ASSERT_NE(sourceItem, nullptr);
+    ASSERT_EQ(scene.getEFSMNetworkDiagramItems()->size(), 1);
+    auto* edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.getEFSMNetworkDiagramItems()->first());
+    ASSERT_NE(edgeItem, nullptr);
+    const QPointF before = edgeItem->path().pointAtPercent(0.5);
+
+    const QPointF pressPoint = sourceItem->sceneBoundingRect().center();
+    QGraphicsSceneMouseEvent press(QEvent::GraphicsSceneMousePress);
+    press.setButton(Qt::LeftButton);
+    press.setButtons(Qt::LeftButton);
+    press.setScenePos(pressPoint);
+    press.setButtonDownScenePos(Qt::LeftButton, pressPoint);
+    scene.mousePressEvent(&press);
+    sourceItem->setPos(sourceItem->pos() + QPointF(125.0, 90.0));
+    sourceItem->setSelected(true);
+    QGraphicsSceneMouseEvent release(QEvent::GraphicsSceneMouseRelease);
+    release.setButton(Qt::LeftButton);
+    release.setScenePos(sourceItem->sceneBoundingRect().center());
+    scene.mouseReleaseEvent(&release);
+
+    ASSERT_EQ(scene.getEFSMNetworkDiagramItems()->size(), 1);
+    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.getEFSMNetworkDiagramItems()->first());
+    ASSERT_NE(edgeItem, nullptr);
+    const QPointF moved = edgeItem->path().pointAtPercent(0.5);
+    EXPECT_NE(moved, before);
+    EXPECT_EQ(network.getTransitions()->size(), 1u);
+    ASSERT_EQ(movementUndoStack.count(), 1);
+    movementUndoStack.undo();
+    ASSERT_EQ(scene.getEFSMNetworkDiagramItems()->size(), 1);
+    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.getEFSMNetworkDiagramItems()->first());
+    ASSERT_NE(edgeItem, nullptr);
+    EXPECT_NEAR(edgeItem->path().pointAtPercent(0.5).x(), before.x(), 0.01);
+    EXPECT_NEAR(edgeItem->path().pointAtPercent(0.5).y(), before.y(), 0.01);
+    movementUndoStack.redo();
+    ASSERT_EQ(scene.getEFSMNetworkDiagramItems()->size(), 1);
+    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.getEFSMNetworkDiagramItems()->first());
+    ASSERT_NE(edgeItem, nullptr);
+    EXPECT_NE(edgeItem->path().pointAtPercent(0.5), before);
 }
 
 TEST(EFSMNetworkUndo, DeleteActionAndUndoRefreshTheSharedSceneProjection) {
