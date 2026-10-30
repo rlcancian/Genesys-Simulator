@@ -2117,6 +2117,27 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
     ASSERT_EQ(network->getTransitions()->front(), transition);
 
+    QUndoStack* editorHistory = networkView->getScene()->getUndoStack();
+    ASSERT_NE(editorHistory, nullptr);
+    const int mixedCommandCount = editorHistory->count();
+    ASSERT_GE(mixedCommandCount, 6);
+    for (int command = 0; command < mixedCommandCount; ++command) {
+        ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    }
+    EXPECT_TRUE(network->getStates()->empty());
+    EXPECT_TRUE(network->getTransitions()->empty());
+    EXPECT_EQ(network->getInitialState(), nullptr);
+    for (int command = 0; command < mixedCommandCount; ++command) {
+        ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditRedo_triggered", Qt::DirectConnection));
+    }
+    ASSERT_EQ(network->getStates()->size(), 1u);
+    EXPECT_TRUE(network->getTransitions()->empty());
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    ASSERT_EQ(network->getStates()->size(), 2u);
+    ASSERT_EQ(network->getTransitions()->size(), 1u);
+    EXPECT_EQ(network->getInitialState(), idle);
+    EXPECT_EQ(network->getTransitions()->front(), transition);
+    EXPECT_EQ(transition->getGuardExpression(), "true");
     idleItem = networkView->getScene()->findGraphicalModelDataDefinition(idle);
     ASSERT_NE(idleItem, nullptr);
     const QPointF savedPosition(431.25, -127.5);
