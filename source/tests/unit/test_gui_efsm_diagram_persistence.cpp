@@ -1372,18 +1372,20 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
 
     QAction* openAction = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Open Submodel")) {
+        if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) {
             openAction = action;
             break;
         }
     }
     ASSERT_NE(openAction, nullptr);
     firstItem->setSelected(true);
+    EXPECT_EQ(openAction->text(), QStringLiteral("Open EFSM Network"));
     EXPECT_TRUE(openAction->isEnabled());
     openAction->trigger();
     ASSERT_EQ(tabs->count(), rootCount + 1);
     auto* networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
     ASSERT_NE(networkView, nullptr);
+    EXPECT_TRUE(tabs->tabText(tabs->currentIndex()).contains(QStringLiteral("EFSM Network: SharedNavigationNetwork")));
     ASSERT_TRUE(networkView->getScene()->hasModelLevelFilter());
     EXPECT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
     EXPECT_NE(networkView->getScene()->findGraphicalModelDataDefinition(state), nullptr);
@@ -1528,7 +1530,7 @@ TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
     ASSERT_NE(graphicalAdapter, nullptr);
     QAction* openAction = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Open Submodel")) {
+        if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) {
             openAction = action;
             break;
         }
@@ -1584,7 +1586,7 @@ TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnInc
     ASSERT_NE(createAction, nullptr);
     QAction* openAction = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Open Submodel")) openAction = action;
+        if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) openAction = action;
     }
     ASSERT_NE(openAction, nullptr);
     EXPECT_FALSE(openAction->isEnabled());
@@ -1931,7 +1933,7 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     QAction* openSubmodel = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
         if (action->text() == QStringLiteral("Create EFSM Network")) createNetwork = action;
-        if (action->text() == QStringLiteral("Open Submodel")) openSubmodel = action;
+        if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) openSubmodel = action;
     }
     ASSERT_NE(createNetwork, nullptr);
     ASSERT_NE(openSubmodel, nullptr);

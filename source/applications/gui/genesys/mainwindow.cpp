@@ -334,6 +334,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _actionModelNext->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
     connect(_actionModelNext, &QAction::triggered, this, [this]() { _activateNextModel(); });
     _actionOpenSelectedSubmodel = new QAction(tr("Open Submodel"), this);
+    _actionOpenSelectedSubmodel->setObjectName(QStringLiteral("actionOpenSelectedSubmodel"));
     _actionOpenSelectedSubmodel->setToolTip(tr("Open a graphical tab scoped to the selected item's internal model level."));
     connect(_actionOpenSelectedSubmodel, &QAction::triggered, this, [this]() { _openSelectedSubmodel(); });
     _actionCreateModalNetwork = new QAction(tr("Create EFSM Network"), this);
@@ -892,6 +893,10 @@ QString MainWindow::_viewContextTitle(const GraphicalModelViewContext& context) 
                                      QString::fromStdString(context.ownerComponent->getName()));
         }
         if (context.ownerDataDefinition != nullptr) {
+            if (dynamic_cast<EFSMNetwork*>(context.ownerDataDefinition) != nullptr) {
+                return tr("%1 > EFSM Network: %2").arg(_modelDisplayName(context.rootModel),
+                                                        QString::fromStdString(context.ownerDataDefinition->getName()));
+            }
             return tr("%1 > %2").arg(_modelDisplayName(context.rootModel),
                                      QString::fromStdString(context.ownerDataDefinition->getName()));
         }
@@ -2427,6 +2432,11 @@ void MainWindow::_actualizeActions() {
         _actionModelNext->setEnabled(opened && simulator->getModelManager()->canGoNext() && !simulationInteractionLocked);
     }
     if (_actionOpenSelectedSubmodel != nullptr) {
+        const bool selectedModalAdapter = _selectedModalModelDefault() != nullptr;
+        _actionOpenSelectedSubmodel->setText(selectedModalAdapter ? tr("Open EFSM Network") : tr("Open Submodel"));
+        _actionOpenSelectedSubmodel->setToolTip(selectedModalAdapter
+            ? tr("Open the EFSM Network attached to the selected ModalModelDefault.")
+            : tr("Open a graphical tab scoped to the selected item's internal model level."));
         _actionOpenSelectedSubmodel->setEnabled(opened
                                                 && !simulationInteractionLocked
                                                 && _canOpenSubmodelFor(_selectedSubmodelOwner()));
