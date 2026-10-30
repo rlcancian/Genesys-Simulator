@@ -2144,4 +2144,16 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     EXPECT_EQ(restoredIdlePosition->position, savedPosition);
     EXPECT_EQ(idleItem->pos(), savedPosition);
     EXPECT_EQ(restoredModel->getComponentManager()->getAllComponents()->size(), 3u);
+    std::map<std::string, ModelComponent*> restoredComponents;
+    for (ModelComponent* component : *restoredModel->getComponentManager()->getAllComponents()) {
+        if (component != nullptr) {
+            restoredComponents.emplace(component->getName(), component);
+        }
+    }
+    ASSERT_TRUE(restoredComponents.contains("PersistedGuiSource"));
+    ASSERT_TRUE(restoredComponents.contains("PersistedGuiAdapter"));
+    ASSERT_TRUE(restoredComponents.contains("PersistedGuiSink"));
+    EXPECT_EQ(restoredComponents.at("PersistedGuiSource")->getConnectionManager()->size(), 1u);
+    EXPECT_EQ(restoredComponents.at("PersistedGuiAdapter")->getConnectionManager()->size(), 1u);
+    EXPECT_EQ(restoredComponents.at("PersistedGuiSink")->getConnectionManager()->size(), 0u);
 }
