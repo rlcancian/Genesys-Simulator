@@ -270,17 +270,17 @@ milestones or automatic scope expansion.
 |---|---|---|---|---|
 | **1** | **G0.1** | Approve Alternative A and owner-ID `level` context contract; inspect existing code and record plan | Maintainer decision + architecture/backlog source links committed | **DONE** |
 | **2** | **G0.1b** | Finish verification of Network-level registration and direct level-only GUI data-definition projection, including mandatory manual | Final-head CMake/Ninja/CTest, six GUI and four domain regressions, `gui-app` build, short interaction check, LaTeX compile, regenerated `docs/ManualGenESyS.pdf`, dated evidence | **ACCEPTED — 2026-10-29** |
-| **3** | **G0.2** | Persist only **EFSM** diagram layout/identity as versioned GUI overlay | Deterministic save/reload including unnamed/parallel EFSM transitions; invalid/unknown records safe; preexisting `.gui` loads; `.gen` semantics unchanged; focused tests green | **ACCEPTED WITH EXPLICIT DEVIATION — 2026-10-30**: `EFSMNetworkDiagramCodec` distinguishes unnamed parallel transitions directly; pre-existing `.gen` omission of empty `transitionName` restores it as `T<ordinal>`, so **integrated unnamed-name round-trip is NOT achieved**. Codec refuses a mismatched layout. This is a tracked G1.1 prerequisite, not evidence of complete compatibility. |
-| **4** | **G1.1** | Draw read-only EFSM states and formal transitions in existing `ModelGraphicsScene` | Empty/normal/parallel EFSM cases; no fake `ModelComponent` or process `Connection`; layout clear; GUI tests green; **close the documented empty-name `.gen` round-trip incompatibility before G1.1 acceptance** | **AUTHORIZED NEXT; NOT STARTED** |
-| **5** | **G1.2** | Open attached EFSM Network through the existing submodel tabs at `Network.getId()` | Open/switch/close/reopen and no-Network handling; multiple adapters share one Network; root GUI unaffected | **NOT STARTED** |
-| **6** | **G2** | Create/select/attach an EFSM Network using existing GUI/Property Editor patterns | New and existing Network attachment, correct references and `.gen` save/reload; no duplicate domain objects | **NOT STARTED** |
-| **7** | **G3/G4** | Edit EFSM states/transitions and essential guard/action/properties through domain APIs; undo/redo | Create/change/delete, invalid-operation rejection, undo/redo, backend checks and persistence; targeted ownership sanitizer if appropriate | **NOT STARTED** |
+| **3** | **G0.2** | Persist only **EFSM** diagram layout/identity as versioned GUI overlay | Deterministic save/reload including unnamed/parallel EFSM transitions; invalid/unknown records safe; preexisting `.gui` loads; `.gen` semantics unchanged; focused tests green | **ACCEPTED 2026-10-30.** The accepted exception for empty transition names was subsequently corrected by saving the `transitionName` field even when empty; omitted legacy fields retain their existing load fallback. Regression: `EFSMNetworkTest.PersistencePreservesExplicitlyEmptyTransitionName`. |
+| **4** | **G1.1** | Draw read-only EFSM states and formal transitions in existing `ModelGraphicsScene` | Empty/normal/parallel EFSM cases; no fake `ModelComponent` or process `Connection`; layout clear; GUI tests green | **IMPLEMENTED; milestone validation in progress.** Projection scene test passes and `gui-app` builds; interactive Network view and broader regression evidence remain pending. |
+| **5** | **G1.2** | Open attached EFSM Network through the existing submodel tabs at `Network.getId()` | Open/switch/close/reopen and no-Network handling; multiple adapters share one Network; root GUI unaffected | **PARTIALLY IMPLEMENTED; interaction and lifecycle validation pending.** |
+| **6** | **G2** | Create/select/attach an EFSM Network using existing GUI/Property Editor patterns | New and existing Network attachment, correct references and `.gen` save/reload; no duplicate domain objects | **PARTIALLY IMPLEMENTED; real GUI workflow validation pending.** |
+| **7** | **G3/G4** | Edit EFSM states/transitions and essential guard/action/properties through domain APIs; undo/redo | Create/change/delete, invalid-operation rejection, undo/redo, backend checks and persistence; targeted ownership sanitizer if appropriate | **IN PROGRESS.** Safe transition detach/restore groundwork is published in `cfea4abc5`; GUI undo/redo commands and property editing are not yet claimed. |
 | **8** | **G6 (delivery)** | Final integration/regression, manuals, evidence and review | `gui-app` and full relevant CTest suites green; bounded real GUI end-to-end scenario; manual PDF current; draft PR reviewed and merged to `WorkInProgress` only with maintainer approval | **NOT STARTED** |
 
 **Progress definition:** each accepted milestone contributes **12.5 percentage
 points**. Report `N/8 = NN.N%` on every subsequent iteration. Implementation
 in progress, green CI for an *earlier* head or a checked-in test that has not
-run **does not** count as a completed milestone. Current progress: **3/8 = 37.5% accepted with one explicitly recorded compatibility deviation** as of the 2026-10-30 coordinator process review. The G0.2 code and tests are published through `df0f0a03848ba1798f7a0fe85d389ae19cf67766`. Local evidence reports 26/26 focused, 1938/1938 unit and kernel tests (four disabled), smoke 3/3, `gui-app` built and regenerated 388-page manual; final-head hosted [unit and GMDD CI 41003044960](https://github.com/rlcancian/Genesys-Simulator/actions/runs/41003044960), [smoke CI 41003045027](https://github.com/rlcancian/Genesys-Simulator/actions/runs/41003045027), and [governance CI 41003044983](https://github.com/rlcancian/Genesys-Simulator/actions/runs/41003044983) passed at review. The `tests-kernel-unit` hosted job was still running at that review; do not represent it as green without a later check. **Acceptance is an explicit coordinator exception, not a claim that unnamed `.gen` transitions round-trip.** The codec handles parallel/unnamed records and fails closed, but the existing `.gen` loader materializes missing names as `T<ordinal>`. Resolve and regression-test this in the *next single G1.1 execution*, before G1.1 is accepted; do not create a new stage or require another handoff just for this repair. Next target: G1.1 = **4/8 = 50%**.
+run **does not** count as a completed milestone. Current accepted progress remains **3/8 = 37.5%**. At the time of G0.2 review, the empty-name `.gen` behavior was an explicitly accepted exception; it was corrected in commit `5f63fee85`, which now saves explicit empty transition names while preserving legacy omitted-field loading. The current source checkpoint and validation are recorded in `history/evidence/2026/10/2026-10-30_modal_efsm_transition_undo_foundation.md`. A maintainer mandate dated 2026-10-30 authorizes sequential execution of all remaining milestones. G1.1 is implemented but not yet accepted; its interactive view verification and broader regression gates remain pending.
 Percentage measures agreed deliverables, **not effort or elapsed time**.
 
 **Rule for scope control:** a newly discovered defect is resolved *inside*
@@ -367,9 +367,9 @@ Modal/Network documents referenced in Section 1.
 
 ## 6. Current delivery and remaining risks
 
-This 2026-10-29 GitHub delivery contains **architecture and bounded G0.1b C++/Qt6 code with test coverage**. GitHub Actions run `40961067698` at commit `5a37c7ae` passed the ordinary unit/GUI GMDD tests (1920 executed, 4 legacy disabled); this is executed evidence, not a manual PDF or live-GUI interaction result. The frozen eight-milestone MVP is **37.5% accepted (3/8)** after the bounded G0.2 codec delivery and subsequent exact-identity audit. This acceptance carries the explicit empty-transition-name `.gen` round-trip exception recorded above; it must be closed inside G1.1. G1.1 is the sole authorized next milestone.
+The initial 2026-10-29 delivery and its historical CI evidence are recorded above and in the dated evidence files. Current accepted progress remains **3/8 = 37.5%**. The G0.2 empty-transition-name exception was corrected in `5f63fee85` with a regression test. The read-only EFSM projection, tab resolution and basic create actions are present on the active branch; current limitations and executed results are in the 2026-10-30 checkpoint evidence. The maintainer mandate dated 2026-10-30 authorizes the executor to continue all remaining milestones sequentially; G1.1 is still in validation and no later milestone is accepted.
 
-**Manual impact gate:** the edited Developer Manual source chapter already documents editing-context semantics and level-only graphical reconstruction. It was compiled, visually inspected (section 26.7) and used to regenerate the committed `docs/ManualGenESyS.pdf`; this gate was accepted on 2026-10-29. No new interactive Network viewer exists yet, so do **not** document one as an operational User Manual feature. At G1/G2/G3 the User Manual impact is reassessed for actual user-visible behavior.
+**Manual impact gate:** the edited Developer Manual source chapter already documents editing-context semantics and level-only graphical reconstruction. It was compiled, visually inspected (section 26.7) and used to regenerate the committed `docs/ManualGenESyS.pdf`; this gate was accepted on 2026-10-29. A projection implementation now exists, but an end-to-end interactive Network-view workflow has not yet been demonstrated; do **not** document the complete editor as an operational User Manual feature. At G1/G2/G3 the User Manual impact is reassessed for actual user-visible behavior.
 
 Risks to resolve locally: stable identity of relation objects across reload,
 context ID width/possible truncation, Network-owned child registration/lifetime,
@@ -377,7 +377,7 @@ level persistence in generic submodels, formalism-aware rendering inside the
 shared scene, multi-view reference invalidation, switching/restoring active tabs,
 Qt QObject/GraphicsItem versus kernel object ownership, `.gui` compatibility,
 editing command rollback, and regression against existing GUI/property-editor
-behavior. Do not start G2+ until those prerequisites are demonstrated.
+behavior. Resolve these prerequisites within the milestone they affect; the current maintainer mandate authorizes continuing through G1.1, G1.2, G2, G3/G4 and G6 without intermediate prompts, while preserving each milestone acceptance gate.
 
 ### Coordinator operating clarification — 2026-10-30
 
@@ -386,6 +386,8 @@ local agent must self-review, fix all in-scope defects, run focused and relevant
 full tests, document, commit and push within **one execution per milestone**.
 Coordinator review must distinguish a genuine safety/semantic blocker from
 nonblocking debt and must not add new acceptance criteria after implementation.
-The accepted G0.2 exception above is explicit, does not excuse silent
-misassociation, and has a fixed closeout in G1.1. Stop only for reproducible
-architectural blockers, destructive operations, or irreconcilable test failures.
+The accepted G0.2 exception was closed by `5f63fee85`. The 2026-10-30
+maintainer mandate supersedes the earlier G1.1-only handoff and authorizes
+sequential implementation of all five remaining milestones. Stop only for a
+real governance gate, unsafe ownership/persistence change, or reproducible
+blocker that cannot be resolved within the approved architecture.
