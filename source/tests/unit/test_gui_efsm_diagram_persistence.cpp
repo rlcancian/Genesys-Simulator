@@ -10,6 +10,7 @@
 #include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "actions/EFSMTransitionUndoCommand.h"
 #include "actions/EFSMTransitionPropertiesUndoCommand.h"
+#include "actions/EFSMInitialStateUndoCommand.h"
 #include "controllers/EditCommandController.h"
 #include "services/EFSMNetworkDiagramCodec.h"
 #include "services/GraphicalModelBuilder.h"
@@ -848,4 +849,32 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     stack.redo();
     EXPECT_EQ(transition->getName(), "finish");
     EXPECT_EQ(transition->getPriority(), 7u);
+}
+
+TEST(EFSMNetworkUndo, InitialStateChangeUndoRedoRestoresPointerAndStateFlags) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "InitialUndoNetwork");
+    FSMState idle(model, "Idle");
+    FSMState done(model, "Done");
+    network.addState(&idle);
+    network.addState(&done);
+    network.setInitialState(&idle);
+
+    QUndoStack stack;
+    stack.push(new EFSMInitialStateUndoCommand(&network, &done));
+    EXPECT_EQ(network.getInitialState(), &done);
+    EXPECT_TRUE(done.isInitialNode());
+    EXPECT_FALSE(idle.isInitialNode());
+
+    stack.undo();
+    EXPECT_EQ(network.getInitialState(), &idle);
+    EXPECT_TRUE(idle.isInitialNode());
+    EXPECT_FALSE(done.isInitialNode());
+
+    stack.redo();
+    EXPECT_EQ(network.getInitialState(), &done);
+    EXPECT_TRUE(done.isInitialNode());
+    EXPECT_FALSE(idle.isInitialNode());
 }

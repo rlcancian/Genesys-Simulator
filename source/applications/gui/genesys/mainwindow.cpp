@@ -23,6 +23,7 @@
 #include "../../../kernel/simulator/model/ModelComponentManager.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"// GUI
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "graphicals/ModelGraphicsScene.h"
@@ -52,6 +53,7 @@
 #include "controllers/DialogUtilityController.h"
 #include "actions/EFSMTransitionUndoCommand.h"
 #include "actions/EFSMTransitionPropertiesUndoCommand.h"
+#include "actions/EFSMInitialStateUndoCommand.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "services/EFSMNetworkDiagramProjection.h"
 #include "extensions/GuiExtensionContracts.h"
@@ -342,6 +344,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(_actionCreateEfsmTransition, &QAction::triggered, this, [this]() { _createEfsmTransition(); });
     _actionEditEfsmTransition = new QAction(tr("Edit EFSM Transition..."), this);
     connect(_actionEditEfsmTransition, &QAction::triggered, this, [this]() { _editEfsmTransition(); });
+    _actionSetEfsmInitialState = new QAction(tr("Set Selected EFSM State as Initial"), this);
+    connect(_actionSetEfsmInitialState, &QAction::triggered, this, [this]() { _setEfsmInitialState(); });
     _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
@@ -351,6 +355,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmState);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmTransition);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionEditEfsmTransition);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionSetEfsmInitialState);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
     ui->menuModel->insertMenu(ui->actionModelOpen, _menuOpenRecent);
 
@@ -1179,6 +1184,42 @@ void MainWindow::_editEfsmTransition() {
     updated.triggerEvent = trigger->text().toStdString();
     updated.probabilityExpression = probability->text().toStdString();
     scene->getUndoStack()->push(new EFSMTransitionPropertiesUndoCommand(network, transition, std::move(updated)));
+    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
+    _graphicalModelHasChanged = true;
+    _actualizeActions();
+}
+
+void MainWindow::_setEfsmInitialState() {
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
+        || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    ModelGraphicsScene* scene = ui->graphicsView->getScene();
+    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0 || scene->getUndoStack() == nullptr) {
+        return;
+    }
+    FSMState* selectedState = nullptr;
+    for (QGraphicsItem* item : scene->selectedItems()) {
+        auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        auto* state = graphicalDefinition != nullptr
+            ? dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) : nullptr;
+        if (state == nullptr) {
+            continue;
+        }
+        if (selectedState != nullptr) {
+            return;
+        }
+        selectedState = state;
+    }
+    Model* model = simulator->getModelManager()->current();
+    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
+        ? model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
+        : nullptr);
+    if (network == nullptr || selectedState == nullptr
+        || network->getStates()->find(selectedState) == network->getStates()->list()->end()) {
+        return;
+    }
+    scene->getUndoStack()->push(new EFSMInitialStateUndoCommand(network, selectedState));
     EFSMNetworkDiagramProjection::synchronize(simulator, scene);
     _graphicalModelHasChanged = true;
     _actualizeActions();
@@ -2206,6 +2247,19 @@ void MainWindow::_actualizeActions() {
             }
         }
         _actionEditEfsmTransition->setEnabled(efsmContext && selectedTransitionCount == 1);
+    }
+    if (_actionSetEfsmInitialState != nullptr) {
+        int selectedStateCount = 0;
+        if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr) {
+            for (QGraphicsItem* item : ui->graphicsView->getScene()->selectedItems()) {
+                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+                if (graphicalDefinition != nullptr
+                    && dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) != nullptr) {
+                    ++selectedStateCount;
+                }
+            }
+        }
+        _actionSetEfsmInitialState->setEnabled(efsmContext && selectedStateCount == 1);
     }
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.
