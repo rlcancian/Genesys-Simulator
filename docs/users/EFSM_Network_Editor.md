@@ -1,8 +1,8 @@
 # Editing an EFSM Network in the graphical interface
 
-This guide describes the EFSM Network editor currently available on the
-`WiP20261029/modalmodel-architecture` development branch. Menu labels below are
-the English labels in the current GUI. The editor uses the model's existing
+This guide describes the EFSM Network editor integrated into the GenESyS Qt6
+GUI. Menu labels below are the English labels in the current GUI. The editor
+uses the model's existing
 `ModalModelDefault`, `EFSMNetwork`, states, and transitions; EFSM relations are
 not process-flow connections.
 
@@ -63,7 +63,7 @@ positions are unavailable.
 
 ## Current scope
 
-This branch provides a diagram editor for EFSM Networks. It does not provide a
+The integrated editor provides a diagram editor for EFSM Networks. It does not provide a
 separate EFSM execution animation or a new runtime. Simulation semantics remain
 in the existing GenESyS kernel. The guide records the tested menu and dialog
 workflow; it does not claim that every possible expression is syntactically or
