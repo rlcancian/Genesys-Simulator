@@ -337,17 +337,19 @@ Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 ## 16. Continuous Models / PR #550 checkpoint
 
-The latest source/test checkpoint is `c9881a20b`; its concrete
-`DiffusionSimulate` calendar interruption case passes locally. The follow-up
-documentation checkpoint `9c0f40da98b39e8a0a56fa3d4a5d420d224b81e7` passed
+The latest source/test checkpoint is `be3eaac42`; its concrete
+`DiffusionSimulate` calendar interruption case now verifies two waiting
+entities across the calendar interruption. The preceding follow-up
+documentation checkpoint `c3d23b0ed7c204e13a262e173f5873e04ab580b6` passed
 all 16 GitHub checks on 2026-10-30, including unit, kernel, smoke, GUI startup,
-Debian package and lifecycle gates. PR #550 remains open and draft against
-`WorkInProgress`; `reviewDecision` is empty. Passing CI and GitHub's
+Debian package and lifecycle gates. Hosted CI for `be3eaac42` is pending. PR
+#550 remains open and draft against `WorkInProgress`; `reviewDecision` is
+empty. Passing CI and GitHub's
 mergeable metadata do not satisfy the independent-review gate.
 
-On the latest source/test checkpoint, `tests-unit` passed 1,942 tests with 4
-disabled and 0 failures; `tests-kernel-unit` passed 1,941 with 4 disabled and
-0 failures; smoke passed 3/3; the focused continuous plugin target passed
+On the latest source/test checkpoint, `tests-unit` and `tests-kernel-unit` each
+passed 1,942 tests with 4 disabled and 0 failures; smoke passed 3/3; the
+focused continuous plugin target passed
 41/41; ASan/UBSan focused calendar and Observable tests passed 21/21 with LSan
 disabled. Real-calendar component tests cover ODE, BioSimulate, and the concrete
 DiffusionSimulate interruption path. The shared-calendar data-definition test
@@ -358,6 +360,8 @@ and the concrete diffusion component follow-up
 [`history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionComponentCalendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionComponentCalendar_Evidence.md).
 Final-head hosted checks are recorded in
 [`history/evidence/2026/10/2026-10-30_ContinuousModels_Diffusion_Final_CI_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Diffusion_Final_CI_Evidence.md).
+The concurrent-entity test extension is recorded in
+[`history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionConcurrentEntities_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionConcurrentEntities_Evidence.md).
 
 LSan reported 4,910 bytes/161 allocations both for the branch ODE test and a
 `WorkInProgress` plugin-bootstrap baseline, with matching normalized stacks

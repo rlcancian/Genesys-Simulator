@@ -203,12 +203,11 @@ This is the only approved source for work an AI agent may execute without a new 
 - Status: `running`
 - Environment: local Ubuntu 24.04/C++23/CMake/Ninja/Qt6 and GitHub PR checks.
 - Branch: `WiP20261016/ContinuousModels`; PR #550 to `WorkInProgress`.
-- Source/test checkpoint: `c9881a20b` adds a concrete `DiffusionSimulate`
-  interruption/resumption regression. Local unit, kernel, smoke, 41 focused
-  continuous tests, and 21 focused ASan/UBSan tests pass. The follow-up
-  documentation checkpoint `9c0f40da98b39e8a0a56fa3d4a5d420d224b81e7` passed
-  all 16 hosted checks, including Debian package lifecycle; see the final CI
-  evidence linked below.
+- Source/test checkpoint: `be3eaac42` extends the concrete `DiffusionSimulate`
+  interruption/resumption regression to two waiting entities. Local unit,
+  kernel, smoke, 41 focused continuous tests, and the focused ASan/UBSan case
+  pass. The preceding documentation checkpoint `c3d23b0ed7c204e13a262e173f5873e04ab580b6`
+  passed all 16 hosted checks; hosted CI for `be3eaac42` is pending.
 - Authorization: direct maintainer mission dated 2026-10-30 continues the
   existing PR #550 scope; it does not authorize bypassing review, failed CI,
   human scientific decisions, or the PR draft gate.
