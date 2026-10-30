@@ -390,6 +390,14 @@ TEST(EFSMNetworkDiagramPersistence, NetworkIdentityRequiresMatchingClassAndName)
                           .arg(static_cast<unsigned long>(firstState.getId()));
     EXPECT_TRUE(EFSMNetworkDiagramCodec::parseSection(mismatchedName, model).isEmpty());
 
+    QStringList emptyNameMismatch;
+    emptyNameMismatch << QString("%1\tEFSMNetworkDiagram\tclassname=EFSMNetwork\tname=\tversion=1")
+                             .arg(firstId);
+    emptyNameMismatch << QString("%1\tEFSMState\tid=%2\tname=FirstState\tposition=(1,2)")
+                             .arg(firstId)
+                             .arg(static_cast<unsigned long>(firstState.getId()));
+    EXPECT_TRUE(EFSMNetworkDiagramCodec::parseSection(emptyNameMismatch, model).isEmpty());
+
     QStringList invalidClass;
     invalidClass << QString("%1\tEFSMNetworkDiagram\tclassname=DefaultNetwork\tname=FirstNetwork\tversion=1")
                         .arg(firstId);

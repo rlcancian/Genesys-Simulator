@@ -396,8 +396,7 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
         const unsigned long networkId = it.key();
         EFSMNetworkDiagramLayout& layout = it.value();
         EFSMNetwork* network = findNetworkById(model, networkId);
-        if (network != nullptr && !layout.networkName.isEmpty()
-            && QString::fromStdString(network->getName()) != layout.networkName) {
+        if (network != nullptr && QString::fromStdString(network->getName()) != layout.networkName) {
             continue; // ID/name disagreement must never select the wrong Network
         }
         if (network == nullptr && !layout.networkName.isEmpty()) {
