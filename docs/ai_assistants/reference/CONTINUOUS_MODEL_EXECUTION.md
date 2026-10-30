@@ -69,6 +69,11 @@ allows no complete step before it, so the model wakes at the next grid endpoint.
 
 The calendar is rechecked after each successful step, including when no
 observers are registered. Thus events inserted by observers are also detected.
+The post-step check treats only events strictly later than the kernel's current
+global time as future bounds. Events already at or behind that clock, including
+same-timestamp events that the calendar has not ordered yet, do not trigger a
+false "event in the past" failure. The event comparator and tie behavior are
+unchanged.
 If a handler inserts an event before the already calculated working time, the
 run fails with an explicit diagnostic; this implementation does not roll back
 mathematical state or arbitrary handler side effects. No tie-break rule was

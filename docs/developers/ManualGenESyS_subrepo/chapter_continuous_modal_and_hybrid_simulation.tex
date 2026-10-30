@@ -248,6 +248,11 @@ positive value schedules synchronization after that many continuous steps and
 always schedules a final synchronization at the local stop time, including a
 partial final step. Creating an \texttt{InternalEvent} does not itself advance
 the kernel clock; the calendar advances when it dispatches that event.
+Before and during a synchronized block, future calendar events can limit the
+continuous lookahead to the last permitted step on the configured time grid.
+Events at or behind the current global clock are not treated as future bounds.
+Events with the same timestamp remain simultaneous under the existing calendar
+contract; continuous synchronization does not add a tie-breaking priority.
 The current \texttt{ODESolver} defaults (\texttt{StopTime=60},
 \texttt{StepSize=0.01}, \texttt{StepsToSynchronize=1}) start automatically
 between replications and can schedule about 6,000 internal events per
@@ -300,11 +305,15 @@ work already calculated in that block can invalidate the prediction. Rollback
 and removal of observer-generated events are not implemented; such interactions
 need an explicit invalidation policy before they are used in a model.
 
-\texttt{ContinuousSystemComponent} retains its synchronous reactive request
-path. During a calculated synchronization block, a request at an intermediate
-kernel time reads the confirmed state rather than integrating ahead or exposing
-the working state. The boundary callback commits state before the next block. The
-legacy component time-window fields remain loadable; a nonzero local
+\texttt{ContinuousSystemComponent}, \texttt{DiffusionSimulate}, and
+\texttt{BioSimulate} use the shared asynchronous component lifecycle. The
+component retains an arriving entity while a synchronized run is active and
+forwards it after successful completion. If a future discrete event interrupts
+lookahead, the same execution resumes from its preserved state after the event;
+it is not initialized as a new run. The standalone
+\texttt{ODESolver::integrate(targetTime)} API remains available to explicit
+reactive callers, but the entity-driven component does not use that synchronous
+path. The legacy component time-window fields remain loadable; a nonzero local
 \texttt{StartTime} is rejected rather than reinterpreted as a global time.
 
 Those checks are strong runtime evidence, but they are still evidence for the

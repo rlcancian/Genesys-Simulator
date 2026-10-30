@@ -197,6 +197,44 @@ This is the only approved source for work an AI agent may execute without a new 
   complete Debian build validation and the pre-existing BacteriaColony test
   failure remain explicitly unresolved.
 
+### AUTO-CONT-001 — Continuous models and hybrid calendar integration
+
+- Priority: `P1`
+- Status: `running`
+- Environment: local Ubuntu 24.04/C++23/CMake/Ninja/Qt6 and GitHub PR checks.
+- Branch: `WiP20261016/ContinuousModels`; PR #550 to `WorkInProgress`.
+- Current source/test checkpoint: `419d8287f`; final validation and evidence
+  are being added in the same bounded PR.
+- Authorization: direct maintainer mission dated 2026-10-30 continues the
+  existing PR #550 scope; it does not authorize bypassing review, failed CI,
+  human scientific decisions, or the PR draft gate.
+- Scope: finish the shared temporal lifecycle, per-step Observable, calendar
+  bounded advancement and continuation, and entity integration for
+  `ODESolver`, `DiffusionField`, `BioNetwork`, `ContinuousSystemComponent`,
+  `DiffusionSimulate`, and `BioSimulate`; close regression gaps, reconcile the
+  reference/manual/evidence, and prepare the existing PR for independent review.
+- Non-goals: no change to simultaneous-event ordering, no generic rollback,
+  no Failure-plugin changes, no broad kernel/plugin/GUI refactor, no CTMC
+  holding-time semantics, and no merge to stable branches.
+- Acceptance: real-calendar regressions for the three continuous domains and
+  independent concurrent definitions; entity continuation and lifecycle
+  tests; relevant numerical and persistence regressions; unit, kernel, smoke,
+  GUI build and focused sanitizers at final source HEAD; documentation and
+  evidence reconciled; final-head GitHub checks green; PR review and governed
+  integration. `done_confirmed` also requires the remaining `HUM-SCI-002`
+  invalidation condition to be resolved or its use explicitly excluded by an
+  approved maintainer decision.
+- Current limitations: `HUM-SCI-002` still identifies changes to inputs used
+  by already-calculated work as requiring an invalidation policy; LSan reports
+  4,910 bytes/161 allocations without an equivalent base-branch comparison;
+  broader three-domain lifecycle/persistence matrix and PR review remain
+  outstanding. See
+  [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md).
+- Stop/escalation: do not invent scientific rollback or continuous-time
+  discontinuity semantics, do not merge with an incomplete check or unmet
+  review gate, and continue independent implementation/test/documentation work
+  while a material decision is pending.
+
 ### AUTO-ARENA-001 — Close Arena compatibility audit for Advanced Transfer and parser-variable scope
 
 - Priority: `P1`
