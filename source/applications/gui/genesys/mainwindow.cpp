@@ -56,6 +56,7 @@
 #include "actions/EFSMInitialStateUndoCommand.h"
 #include "actions/EFSMStateMembershipUndoCommand.h"
 #include "actions/EFSMStatePropertiesUndoCommand.h"
+#include "actions/ModalModelBindingsUndoCommand.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "services/EFSMNetworkDiagramProjection.h"
 #include "extensions/GuiExtensionContracts.h"
@@ -66,6 +67,7 @@
 #include "services/CppModelExporter.h"
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "UtilGUI.h"
 #include "guithememanager.h"
 // PropEditor
@@ -342,6 +344,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _actionSelectModalNetwork->setToolTip(tr("Attach an existing EFSM Network to the selected ModalModelDefault."));
     connect(_actionSelectModalNetwork, &QAction::triggered, this,
             [this]() { _selectNetworkForSelectedModalModel(); });
+    _actionEditModalModelBindings = new QAction(tr("Edit EFSM Bindings..."), this);
+    connect(_actionEditModalModelBindings, &QAction::triggered, this,
+            [this]() { _editModalModelBindings(); });
     _actionCreateEfsmState = new QAction(tr("Create EFSM State"), this);
     connect(_actionCreateEfsmState, &QAction::triggered, this, [this]() { _createEfsmState(); });
     _actionCreateEfsmTransition = new QAction(tr("Create EFSM Transition"), this);
@@ -358,6 +363,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->menuModel->insertAction(ui->actionModelOpen, _actionOpenSelectedSubmodel);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateModalNetwork);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionSelectModalNetwork);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionEditModalModelBindings);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmState);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmTransition);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionEditEfsmTransition);
@@ -1030,6 +1036,54 @@ void MainWindow::_selectNetworkForSelectedModalModel() {
                              tr("The EFSM Network association could not be verified."));
         return;
     }
+    _graphicalModelHasChanged = true;
+    _actualizeActions();
+}
+
+void MainWindow::_editModalModelBindings() {
+    ModalModelDefault* adapter = _selectedModalModelDefault();
+    auto* network = adapter != nullptr ? dynamic_cast<DefaultNetwork*>(adapter->getNetwork()) : nullptr;
+    if (adapter == nullptr || network == nullptr || ui == nullptr || ui->graphicsView == nullptr
+        || ui->graphicsView->getScene() == nullptr || ui->graphicsView->getScene()->getUndoStack() == nullptr) {
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Edit EFSM Bindings"));
+    auto* form = new QFormLayout(&dialog);
+    std::vector<QLineEdit*> inputEditors;
+    std::vector<QLineEdit*> outputEditors;
+    inputEditors.reserve(network->getNumInputPorts());
+    outputEditors.reserve(network->getNumOutputPorts());
+    for (unsigned int port = 0; port < network->getNumInputPorts(); ++port) {
+        auto* editor = new QLineEdit(QString::fromStdString(adapter->getInputBinding(port)), &dialog);
+        editor->setObjectName(QStringLiteral("efsmInputBinding_%1").arg(port));
+        form->addRow(tr("Input %1 (%2)").arg(port + 1)
+                         .arg(QString::fromStdString(network->getInputPortName(port))), editor);
+        inputEditors.push_back(editor);
+    }
+    for (unsigned int port = 0; port < network->getNumOutputPorts(); ++port) {
+        auto* editor = new QLineEdit(QString::fromStdString(adapter->getOutputBinding(port)), &dialog);
+        editor->setObjectName(QStringLiteral("efsmOutputBinding_%1").arg(port));
+        form->addRow(tr("Output %1 (%2)").arg(port + 1)
+                         .arg(QString::fromStdString(network->getOutputPortName(port))), editor);
+        outputEditors.push_back(editor);
+    }
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    ModalModelBindingsUndoCommand::Bindings updated;
+    updated.inputs.reserve(inputEditors.size());
+    updated.outputs.reserve(outputEditors.size());
+    for (QLineEdit* editor : inputEditors) updated.inputs.push_back(editor->text().toStdString());
+    for (QLineEdit* editor : outputEditors) updated.outputs.push_back(editor->text().toStdString());
+    ui->graphicsView->getScene()->getUndoStack()->push(
+        new ModalModelBindingsUndoCommand(adapter, network, std::move(updated)));
     _graphicalModelHasChanged = true;
     _actualizeActions();
 }
@@ -2370,6 +2424,10 @@ void MainWindow::_actualizeActions() {
         }
         if (_actionSelectModalNetwork != nullptr) {
             _actionSelectModalNetwork->setEnabled(opened && !simulationInteractionLocked && adapter != nullptr);
+        }
+        if (_actionEditModalModelBindings != nullptr) {
+            _actionEditModalModelBindings->setEnabled(opened && !simulationInteractionLocked && adapter != nullptr
+                                                     && adapter->getNetwork() != nullptr);
         }
     }
     const bool efsmContext = opened && !simulationInteractionLocked && ui != nullptr

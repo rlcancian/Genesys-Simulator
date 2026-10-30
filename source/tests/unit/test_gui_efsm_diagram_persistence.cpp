@@ -14,6 +14,7 @@
 #include "actions/EFSMInitialStateUndoCommand.h"
 #include "actions/EFSMStateMembershipUndoCommand.h"
 #include "actions/EFSMStatePropertiesUndoCommand.h"
+#include "actions/ModalModelBindingsUndoCommand.h"
 #include "controllers/EditCommandController.h"
 #include "mainwindow.h"
 #include "services/EFSMNetworkDiagramCodec.h"
@@ -1583,4 +1584,70 @@ TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete)
     EXPECT_EQ(transition->getDestination(), done);
     EXPECT_TRUE(transition->getName().empty());
     EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), network->getId()), network);
+}
+
+TEST(EFSMNetworkEditor, AdapterBindingsCanBeEditedAndUndoneFromTheProcessCanvas) {
+    MainWindow window;
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    Simulator* simulator = window.myScene()->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    simulator->getPluginManager()->autoInsertPlugins();
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+    auto* network = new EFSMNetwork(model, "BindingNetwork");
+    network->addInputPort("Arrival");
+    network->addOutputPort("Result");
+    auto* adapter = new ModalModelDefault(model, "BindingAdapter");
+    adapter->setNetwork(network);
+    adapter->setOutputBinding(0, "InitialResult");
+    auto* source = new Create(model, "BindingSource");
+    auto* sink = new Dispose(model, "BindingSink");
+    source->getConnectionManager()->insert(adapter);
+    adapter->getConnectionManager()->insert(sink);
+    auto* view = window.findChild<ModelGraphicsView*>();
+    ASSERT_NE(view, nullptr);
+    std::map<std::string, QColor> colors;
+    GraphicalModelBuilder builder(simulator, view, window.myScene(), &colors, nullptr);
+    builder.generateGraphicalModelFromModel();
+    GraphicalModelComponent* graphicalAdapter = nullptr;
+    for (QGraphicsItem* item : window.myScene()->items()) {
+        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+        if (graphical != nullptr && graphical->getComponent() == adapter) {
+            graphicalAdapter = graphical;
+            break;
+        }
+    }
+    ASSERT_NE(graphicalAdapter, nullptr);
+    graphicalAdapter->setSelected(true);
+    QAction* editBindings = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->text() == QStringLiteral("Edit EFSM Bindings...")) editBindings = action;
+    }
+    ASSERT_NE(editBindings, nullptr);
+    ASSERT_TRUE(editBindings->isEnabled());
+    QTimer dialogDriver;
+    QObject::connect(&dialogDriver, &QTimer::timeout, [&dialogDriver]() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* input = dialog->findChild<QLineEdit*>(QStringLiteral("efsmInputBinding_0"));
+        auto* output = dialog->findChild<QLineEdit*>(QStringLiteral("efsmOutputBinding_0"));
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        if (input != nullptr && output != nullptr && buttons.size() == 1) {
+            input->setText(QStringLiteral("2 + 3"));
+            output->setText(QStringLiteral("Outcome"));
+            dialogDriver.stop();
+            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
+        }
+    });
+    dialogDriver.start(5);
+    editBindings->trigger();
+    dialogDriver.stop();
+    EXPECT_EQ(adapter->getInputBinding(0), "2 + 3");
+    EXPECT_EQ(adapter->getOutputBinding(0), "Outcome");
+    ASSERT_TRUE(window.myScene()->getUndoStack()->canUndo());
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    EXPECT_EQ(adapter->getInputBinding(0), "1");
+    EXPECT_EQ(adapter->getOutputBinding(0), "InitialResult");
+    EXPECT_EQ(source->getConnectionManager()->size(), 1u);
+    EXPECT_EQ(adapter->getConnectionManager()->size(), 1u);
 }
