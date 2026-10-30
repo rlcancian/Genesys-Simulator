@@ -64,5 +64,9 @@ cmake --build build/observable-asan --target genesys_test_plugins_continuous_dif
 ASAN_OPTIONS=detect_leaks=0 build/observable-asan/source/tests/unit/genesys_test_plugins_continuous_diffusion --gtest_filter=ContinuousCalendarTest.ODEComponentWaitsAndResumesAfterDiscreteInterruption
 ```
 
-The source/test commit is `42bb445f2b63830e5622beec0377be4e04598502`. Hosted
-CI on this new source commit is pending. PR #550 remains open and draft.
+The source/test commit is `42bb445f2b63830e5622beec0377be4e04598502`.
+Subsequent documentation/validation checkpoint `f8f101f38a400726a745c3700859c0585ac133a2`
+included this code and passed all 16 hosted PR checks on 2026-10-30. The
+check inventory and run links are recorded in
+[`2026-10-30_ContinuousModels_ConcurrentEntities_Final_CI_Evidence.md`](2026-10-30_ContinuousModels_ConcurrentEntities_Final_CI_Evidence.md).
+PR #550 remains open and draft.

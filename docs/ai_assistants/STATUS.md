@@ -337,13 +337,13 @@ Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 ## 16. Continuous Models / PR #550 checkpoint
 
-The latest source/test checkpoint is `42bb445f2`; concrete
+The latest source/test checkpoint is `42bb445f2`; the corresponding
+documentation and hosted-validation checkpoint is `f8f101f38`. Concrete
 `DiffusionSimulate` and `ContinuousSystemComponent` calendar-interruption
-cases verify two waiting entities sharing an execution. The preceding
-documentation checkpoint `c9ab2ea99` has all checks except the Debian package
-workflow passing; its Debian build/lifecycle job was still running at the
-latest query. Hosted CI for `42bb445f2` is pending. PR #550 remains open and
-draft against `WorkInProgress`; `reviewDecision` is empty. Passing CI and GitHub's
+cases verify two waiting entities sharing an execution. All 16 hosted checks
+passed on `f8f101f38` on 2026-10-30, including unit, kernel, smoke, GUI startup,
+Debian package and lifecycle gates. PR #550 remains open and draft against
+`WorkInProgress`; `reviewDecision` is empty. Passing CI and GitHub's
 mergeable metadata do not satisfy the independent-review gate.
 
 On the latest source/test checkpoint, `tests-unit` and `tests-kernel-unit` each
@@ -365,6 +365,8 @@ The concurrent DiffusionSimulate test extension is recorded in
 [`history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionConcurrentEntities_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionConcurrentEntities_Evidence.md).
 The concurrent ODE test extension is recorded in
 [`history/evidence/2026/10/2026-10-30_ContinuousModels_ODEConcurrentEntities_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ODEConcurrentEntities_Evidence.md).
+Final hosted validation for this code checkpoint is recorded in
+[`history/evidence/2026/10/2026-10-30_ContinuousModels_ConcurrentEntities_Final_CI_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ConcurrentEntities_Final_CI_Evidence.md).
 
 LSan reported 4,910 bytes/161 allocations both for the branch ODE test and a
 `WorkInProgress` plugin-bootstrap baseline, with matching normalized stacks

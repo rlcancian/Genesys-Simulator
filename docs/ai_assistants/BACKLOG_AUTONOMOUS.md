@@ -208,7 +208,10 @@ This is the only approved source for work an AI agent may execute without a new 
   waiting entities. Local unit and kernel suites each pass 1,942 with four
   disabled; smoke passes 3/3; the focused continuous target passes 41/41;
   focused ASan/UBSan cases pass with LSan disabled. Hosted CI for this source
-  SHA is pending. Previous green hosted checks do not cover this commit.
+  code checkpoint `42bb445f2` was included in documentation/validation
+  checkpoint `f8f101f38`; all 16 hosted checks passed there, including unit,
+  kernel, smoke, GUI, Debian package/lifecycle, plugin evidence and docs
+  governance. The source/test itself remains `42bb445f2`.
 - Authorization: direct maintainer mission dated 2026-10-30 continues the
   existing PR #550 scope; it does not authorize bypassing review, failed CI,
   human scientific decisions, or the PR draft gate.
