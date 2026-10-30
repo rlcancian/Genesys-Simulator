@@ -80,6 +80,60 @@ TEST(EFSMNetworkTest, ConstructionCreatesDefaultInputAndOutputPorts) {
 	EXPECT_EQ(network.getCurrentState(), nullptr);
 }
 
+TEST(EFSMNetworkTest, DetachedTransitionCanBeUndoneAtItsOriginalOrdinal) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork network(model, "UndoMachine");
+	FSMState idle(model, "Idle");
+	FSMState busy(model, "Busy");
+	network.addState(&idle);
+	network.addState(&busy);
+	auto* first = new EFSMTransition(&idle, &busy, "First");
+	auto* middle = new EFSMTransition(&idle, &busy, "Middle");
+	auto* last = new EFSMTransition(&busy, &idle, "Last");
+	network.addTransition(first);
+	network.addTransition(middle);
+	network.addTransition(last);
+
+	unsigned int ordinal = 99;
+	std::unique_ptr<EFSMTransition> detached = network.detachTransition(middle, &ordinal);
+	ASSERT_NE(detached, nullptr);
+	EXPECT_EQ(ordinal, 1u);
+	ASSERT_EQ(network.getTransitions()->size(), 2u);
+	EXPECT_EQ(network.getTransitions()->getAtRank(0), first);
+	EXPECT_EQ(network.getTransitions()->getAtRank(1), last);
+	EXPECT_EQ(idle.getTransitions()->size(), 1u);
+	EXPECT_EQ(idle.getTransitions()->front(), first);
+
+	ASSERT_TRUE(network.restoreTransition(detached.get(), ordinal));
+	detached.release(); // ownership transfers back to EFSMNetwork on success
+	ASSERT_EQ(network.getTransitions()->size(), 3u);
+	EXPECT_EQ(network.getTransitions()->getAtRank(0), first);
+	EXPECT_EQ(network.getTransitions()->getAtRank(1), middle);
+	EXPECT_EQ(network.getTransitions()->getAtRank(2), last);
+	ASSERT_EQ(idle.getTransitions()->size(), 2u);
+	EXPECT_EQ(idle.getTransitions()->getAtRank(1), middle);
+}
+
+TEST(EFSMNetworkTest, RestoreRejectsTransitionWithEndpointOutsideNetworkWithoutTakingOwnership) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork network(model, "UndoMachine");
+	FSMState registered(model, "Registered");
+	FSMState external(model, "External");
+	network.addState(&registered);
+	std::unique_ptr<EFSMTransition> transition(new EFSMTransition(&registered, &external, "Invalid"));
+
+	EXPECT_FALSE(network.restoreTransition(transition.get(), 0));
+	EXPECT_EQ(network.getTransitions()->size(), 0u);
+	EXPECT_EQ(registered.getTransitions()->size(), 0u);
+	EXPECT_EQ(transition->getDestination(), &external);
+}
+
 TEST(EFSMNetworkTest, ActivationFiresOneEnabledTransitionAndPublishesOutput) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();

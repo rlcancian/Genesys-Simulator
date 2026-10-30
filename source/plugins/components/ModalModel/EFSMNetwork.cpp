@@ -110,14 +110,48 @@ void EFSMNetwork::addTransition(EFSMTransition* transition) {
 }
 
 void EFSMNetwork::removeTransition(EFSMTransition* transition) {
-	if (transition == nullptr) {
-		return;
+	(void)detachTransition(transition);
+}
+
+std::unique_ptr<EFSMTransition> EFSMNetwork::detachTransition(EFSMTransition* transition, unsigned int* ordinal) {
+	if (transition == nullptr || _transitions == nullptr) {
+		return {};
 	}
-	_transitions->remove(transition);
+	auto* entries = _transitions->list();
+	auto it = std::find(entries->begin(), entries->end(), transition);
+	if (it == entries->end()) {
+		return {};
+	}
+	const auto position = static_cast<unsigned int>(std::distance(entries->begin(), it));
+	if (ordinal != nullptr) {
+		*ordinal = position;
+	}
+	entries->erase(it);
 	if (transition->getSource() != nullptr) {
 		transition->getSource()->removeTransition(transition);
 	}
-	delete transition;
+	return std::unique_ptr<EFSMTransition>(transition);
+}
+
+bool EFSMNetwork::restoreTransition(EFSMTransition* transition, unsigned int ordinal) {
+	if (transition == nullptr || _transitions == nullptr
+		|| _transitions->find(transition) != _transitions->list()->end()) {
+		return false;
+	}
+	auto* source = dynamic_cast<FSMState*>(transition->getSource());
+	auto* destination = dynamic_cast<FSMState*>(transition->getDestination());
+	if (source == nullptr || destination == nullptr
+		|| _states->find(source) == _states->list()->end()
+		|| _states->find(destination) == _states->list()->end()) {
+		return false;
+	}
+	auto* entries = _transitions->list();
+	auto position = entries->begin();
+	const auto boundedOrdinal = std::min<std::size_t>(ordinal, entries->size());
+	std::advance(position, static_cast<std::ptrdiff_t>(boundedOrdinal));
+	entries->insert(position, transition);
+	source->addTransition(transition);
+	return true;
 }
 
 List<EFSMTransition*>* EFSMNetwork::getTransitions() const {
