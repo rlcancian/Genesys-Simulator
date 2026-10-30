@@ -78,18 +78,19 @@ public:
     Model* loadGraphicalModel(const std::string& filename) const;
 
     /**
-     * @brief Sets the GUI-only EFSM diagram layout to persist for the given network
+     * @brief Sets the GUI-only EFSM diagram layout for a root model and Network
      * on the next `saveGraphicalModel()` call. An empty layout removes any
-     * previously stored entry for that network id. This never touches kernel
+     * previously stored entry for that model/network pair. This never touches kernel
      * mathematical state; see `EFSMNetworkDiagramLayout`.
      */
-    void setEFSMNetworkDiagramLayout(unsigned long networkId, const EFSMNetworkDiagramLayout& layout);
+    void setEFSMNetworkDiagramLayout(Model* model, unsigned long networkId, const EFSMNetworkDiagramLayout& layout);
     /**
-     * @brief Returns the EFSM diagram layout currently held for `networkId`,
-     * either explicitly set or restored by the most recent `loadGraphicalModel()`
-     * call. Returns a default-constructed (empty) layout when none is known.
+     * @brief Returns the EFSM diagram layout held for this model and Network id.
+     * Returns a default-constructed (empty) layout when none is known.
      */
-    EFSMNetworkDiagramLayout efsmNetworkDiagramLayout(unsigned long networkId) const;
+    EFSMNetworkDiagramLayout efsmNetworkDiagramLayout(Model* model, unsigned long networkId) const;
+    /** @brief Drops cached GUI layouts when their owning root model is closed. */
+    void forgetEFSMNetworkLayouts(Model* model);
 
 private:
     // Encode free text fields into a tab-safe persisted value.
@@ -119,11 +120,11 @@ private:
     std::function<void()> _applyShowEditableElements;
     std::function<void()> _applyShowAttachedElements;
 
-    // GUI-only EFSM diagram layouts keyed by EFSMNetwork id. Mutable because
+    // GUI-only EFSM diagram layouts keyed by root model and EFSMNetwork id. Mutable because
     // loadGraphicalModel() is const (it mutates the caller-provided scene/view,
     // not this object's configured dependencies) yet must still refresh this
     // cache from what was actually persisted in the loaded file.
-    mutable QHash<unsigned long, EFSMNetworkDiagramLayout> _efsmNetworkDiagramLayouts;
+    mutable QHash<Model*, QHash<unsigned long, EFSMNetworkDiagramLayout>> _efsmNetworkDiagramLayouts;
 };
 
 #endif // GRAPHICALMODELSERIALIZER_H

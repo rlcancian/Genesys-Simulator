@@ -458,6 +458,8 @@ private: // opened-model document state
     GraphicalModelViewContext* _contextForView(ModelGraphicsView* graphicsView) const;
     /** @brief Returns the root-model context for a kernel model. */
     GraphicalModelViewContext* _rootContextForModel(Model* model) const;
+    /** @brief Saves the current EFSM presentation snapshot before a Network view is discarded. */
+    void _captureEFSMNetworkLayoutForContext(GraphicalModelViewContext* context);
     /** @brief Creates or updates the root context backing a model tab. */
     GraphicalModelViewContext* _ensureRootModelViewContext(Model* model, ModelGraphicsView* graphicsView);
     /** @brief Opens or activates a submodel tab for the selected owner data definition/component. */

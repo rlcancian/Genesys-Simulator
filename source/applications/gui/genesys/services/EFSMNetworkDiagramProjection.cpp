@@ -1,5 +1,7 @@
 #include "EFSMNetworkDiagramProjection.h"
 
+#include "EFSMNetworkDiagramLayout.h"
+
 #include "../graphicals/EFSMTransitionGraphicsItem.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -94,6 +96,70 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
                                        : QColor(220, 220, 220));
         }
     }
+}
+
+bool captureLayout(EFSMNetwork* network, ModelGraphicsScene* scene, EFSMNetworkDiagramLayout* layout) {
+    if (network == nullptr || scene == nullptr || layout == nullptr || !scene->hasModelLevelFilter()
+        || scene->modelLevelFilter() != static_cast<unsigned int>(network->getId())
+        || network->getStates() == nullptr) {
+        return false;
+    }
+
+    EFSMNetworkDiagramLayout captured;
+    captured.networkId = static_cast<unsigned long>(network->getId());
+    captured.networkName = QString::fromStdString(network->getName());
+    for (FSMState* state : *network->getStates()->list()) {
+        if (state == nullptr) {
+            continue;
+        }
+        GraphicalModelDataDefinition* item = scene->findGraphicalModelDataDefinition(state);
+        if (item == nullptr) {
+            return false;
+        }
+        const QPointF position = item->pos();
+        if (!std::isfinite(position.x()) || !std::isfinite(position.y())) {
+            return false;
+        }
+        captured.states.append({static_cast<unsigned long>(state->getId()),
+                                QString::fromStdString(state->getName()), position});
+    }
+
+    *layout = std::move(captured);
+    return true;
+}
+
+void restoreLayout(Simulator* simulator, EFSMNetwork* network, ModelGraphicsScene* scene,
+                   const EFSMNetworkDiagramLayout& layout) {
+    if (network == nullptr || scene == nullptr || !scene->hasModelLevelFilter()
+        || scene->modelLevelFilter() != static_cast<unsigned int>(network->getId())
+        || layout.networkId != static_cast<unsigned long>(network->getId())
+        || network->getStates() == nullptr
+        || (!layout.networkName.isEmpty() && layout.networkName != QString::fromStdString(network->getName()))) {
+        return;
+    }
+
+    for (const auto& statePosition : layout.states) {
+        if (!std::isfinite(statePosition.position.x()) || !std::isfinite(statePosition.position.y())) {
+            continue;
+        }
+        FSMState* matchingState = nullptr;
+        for (FSMState* state : *network->getStates()->list()) {
+            if (state != nullptr && static_cast<unsigned long>(state->getId()) == statePosition.stateId
+                && QString::fromStdString(state->getName()) == statePosition.stateName) {
+                matchingState = state;
+                break;
+            }
+        }
+        if (matchingState == nullptr) {
+            continue;
+        }
+        if (GraphicalModelDataDefinition* item = scene->findGraphicalModelDataDefinition(matchingState)) {
+            item->setPos(statePosition.position);
+            item->setOldPosition(statePosition.position.x(), statePosition.position.y());
+        }
+    }
+
+    synchronize(simulator, scene);
 }
 
 } // namespace EFSMNetworkDiagramProjection

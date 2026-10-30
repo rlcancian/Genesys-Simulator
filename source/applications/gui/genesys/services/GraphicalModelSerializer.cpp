@@ -377,19 +377,31 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
 /**
  * @brief Sets the GUI-only EFSM diagram layout to persist for the given network.
  */
-void GraphicalModelSerializer::setEFSMNetworkDiagramLayout(unsigned long networkId, const EFSMNetworkDiagramLayout& layout) {
-    if (layout.isEmpty()) {
-        _efsmNetworkDiagramLayouts.remove(networkId);
+void GraphicalModelSerializer::setEFSMNetworkDiagramLayout(
+    Model* model, unsigned long networkId, const EFSMNetworkDiagramLayout& layout) {
+    if (model == nullptr) {
         return;
     }
-    _efsmNetworkDiagramLayouts.insert(networkId, layout);
+    auto& modelLayouts = _efsmNetworkDiagramLayouts[model];
+    if (layout.isEmpty()) {
+        modelLayouts.remove(networkId);
+        if (modelLayouts.isEmpty()) {
+            _efsmNetworkDiagramLayouts.remove(model);
+        }
+        return;
+    }
+    modelLayouts.insert(networkId, layout);
 }
 
 /**
  * @brief Returns the EFSM diagram layout currently held for the given network.
  */
-EFSMNetworkDiagramLayout GraphicalModelSerializer::efsmNetworkDiagramLayout(unsigned long networkId) const {
-    return _efsmNetworkDiagramLayouts.value(networkId);
+EFSMNetworkDiagramLayout GraphicalModelSerializer::efsmNetworkDiagramLayout(Model* model, unsigned long networkId) const {
+    return _efsmNetworkDiagramLayouts.value(model).value(networkId);
+}
+
+void GraphicalModelSerializer::forgetEFSMNetworkLayouts(Model* model) {
+    _efsmNetworkDiagramLayouts.remove(model);
 }
 
 /**
@@ -934,7 +946,9 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             out << sectionFooterLine();
 
             out << sectionHeaderLine(EFSMNetworkDiagramCodec::kSectionName);
-            EFSMNetworkDiagramCodec::writeSection(out, _simulator, _efsmNetworkDiagramLayouts);
+            Model* currentModel = _simulator->getModelManager()->current();
+            EFSMNetworkDiagramCodec::writeSection(out, _simulator,
+                                                  _efsmNetworkDiagramLayouts.value(currentModel));
             out << sectionFooterLine();
 
         }
@@ -985,10 +999,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
     if (extension.compare("gui", Qt::CaseInsensitive) != 0) {
         model = _simulator->getModelManager()->loadModel(file.fileName().toStdString());
-        // A plain .gen file carries no GUI overlay, so any previously cached
-        // EFSM diagram layout (from an earlier .gui load) no longer applies.
-        _efsmNetworkDiagramLayouts.clear();
         if (model != nullptr) {
+            _efsmNetworkDiagramLayouts.remove(model);
             _rebuildGraphicalModelFromModel();
         }
         return model;
@@ -1495,7 +1507,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         // Resolve and cache GUI-only EFSM diagram layouts against the just-loaded
         // model. This never creates or mutates kernel objects; unresolved or
         // malformed entries are dropped by EFSMNetworkDiagramCodec::parseSection().
-        _efsmNetworkDiagramLayouts = EFSMNetworkDiagramCodec::parseSection(efsmNetworkDiagrams, model);
+        _efsmNetworkDiagramLayouts.insert(
+            model, EFSMNetworkDiagramCodec::parseSection(efsmNetworkDiagrams, model));
 
         if (!dataDefinitions.empty()) {
             // Parse persisted data definition layout metadata for id-based and fallback lookup.

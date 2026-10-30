@@ -811,6 +811,14 @@ ModelGraphicsView* MainWindow::_ensureSubmodelViewContext(ModelDataDefinition* o
 
     _activateModelGraphicsView(graphicsView);
     _generateGraphicalModelFromModel();
+    if (_graphicalModelSerializer != nullptr && graphicsView->getScene() != nullptr) {
+        if (auto* network = dynamic_cast<EFSMNetwork*>(owner)) {
+            EFSMNetworkDiagramProjection::restoreLayout(
+                simulator, network, graphicsView->getScene(),
+                _graphicalModelSerializer->efsmNetworkDiagramLayout(
+                    rootModel, static_cast<unsigned long>(network->getId())));
+        }
+    }
     _updateModelTabs();
     _actualizeActions();
     _actualizeTabPanes();
@@ -826,6 +834,8 @@ void MainWindow::_closeSubmodelViewContext(ModelGraphicsView* graphicsView) {
     if (context == nullptr || context->kind != GraphicalModelViewContextKind::Submodel) {
         return;
     }
+
+    _captureEFSMNetworkLayoutForContext(context);
 
     const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
     if (tabIndex >= 0) {
@@ -1732,6 +1742,9 @@ bool MainWindow::_closeModel(Model* model) {
     }
     _clearModelGraphicsViewForClose(closingView);
     _removeModelTab(model);
+    if (_graphicalModelSerializer != nullptr) {
+        _graphicalModelSerializer->forgetEFSMNetworkLayouts(model);
+    }
     simulator->getModelManager()->remove(model);
     ui->progressBarSimulation->setValue(0);
     ui->actionActivateGraphicalSimulation->setChecked(false);

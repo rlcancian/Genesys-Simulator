@@ -197,7 +197,8 @@ void writeSection(QTextStream& out, Simulator* simulator,
             continue;
         }
         EFSMNetwork* network = findNetworkById(model, networkId);
-        if (network == nullptr) {
+        if (network == nullptr || (!layout.networkName.isEmpty()
+                                   && layout.networkName != QString::fromStdString(network->getName()))) {
             continue;
         }
 

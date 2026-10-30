@@ -17,9 +17,13 @@
 #include "services/CppModelExporter.h"
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
+#include "services/EFSMNetworkDiagramProjection.h"
 
 // Kernel
 #include "kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/model/ModelDataManager.h"
+#include "kernel/util/Util.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
 
 #include <string>
 #include <fstream>
@@ -143,6 +147,18 @@ bool MainWindow::_saveTextModel(QFile *saveFile, QString data)
 bool MainWindow::_saveGraphicalModel(QString filename)
 {
     // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
+    if (simulator != nullptr && simulator->getModelManager() != nullptr) {
+        Model* model = simulator->getModelManager()->current();
+        if (model != nullptr) {
+            for (const auto& [view, ownedContext] : _viewContextsByGraphicsView) {
+                (void)view;
+                GraphicalModelViewContext* context = ownedContext.get();
+                if (context != nullptr && context->rootModel == model) {
+                    _captureEFSMNetworkLayoutForContext(context);
+                }
+            }
+        }
+    }
     const bool saved = _graphicalModelSerializer->saveGraphicalModel(filename);
     if (saved && simulator != nullptr && simulator->getModelManager() != nullptr) {
         if (Model* model = simulator->getModelManager()->current()) {
@@ -151,6 +167,23 @@ bool MainWindow::_saveGraphicalModel(QString filename)
         }
     }
     return saved;
+}
+
+void MainWindow::_captureEFSMNetworkLayoutForContext(GraphicalModelViewContext* context) {
+    if (_graphicalModelSerializer == nullptr || context == nullptr ||
+        context->kind != GraphicalModelViewContextKind::Submodel || context->rootModel == nullptr ||
+        context->rootModel->getDataManager() == nullptr || context->graphicsView == nullptr) {
+        return;
+    }
+
+    auto* network = dynamic_cast<EFSMNetwork*>(context->rootModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<EFSMNetwork>(), context->modelLevel));
+    EFSMNetworkDiagramLayout layout;
+    if (network != nullptr && EFSMNetworkDiagramProjection::captureLayout(
+            network, context->graphicsView->getScene(), &layout)) {
+        _graphicalModelSerializer->setEFSMNetworkDiagramLayout(
+            context->rootModel, context->modelLevel, layout);
+    }
 }
 
 Model *MainWindow::_loadGraphicalModel(std::string filename) {
