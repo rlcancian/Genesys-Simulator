@@ -132,9 +132,11 @@ public:
 	CalendarDiscreteObserverProbe(Model* model, DiffusionField* field)
 		: ModelComponent(model, "CalendarDiscreteObserverProbe", "CalendarDiscreteObserver"), _field(field) {}
 	double observedConfirmedTime = -1.0;
+	double observedGlobalTime = -1.0;
 protected:
 	void _onDispatchEvent(Entity* entity, unsigned int) override {
 		observedConfirmedTime = _field->getCurrentTime();
+		observedGlobalTime = _parentModel->getSimulation()->getSimulatedTime();
 		_parentModel->removeEntity(entity);
 	}
 private:
@@ -217,8 +219,11 @@ struct ScheduleContinuousComponentScenario {
 	ModelComponent* discreteObserver;
 	double discreteTime = 5.5;
 	double secondActivationTime = -1.0;
+	Util::identification requestedEntityId = 0;
 	void schedule(SimulationEvent*) {
-		model->sendEntityToComponent(model->createEntity("ContinuousRequest"), continuousComponent, 0.0);
+		Entity* request = model->createEntity("ContinuousRequest");
+		requestedEntityId = request->getId();
+		model->sendEntityToComponent(request, continuousComponent, 0.0);
 		if (secondActivationTime >= 0.0)
 			model->sendEntityToComponent(model->createEntity("ContinuousRequestTwo"), continuousComponent,
 				secondActivationTime);
@@ -1163,6 +1168,71 @@ TEST(ContinuousCalendarTest, ComponentEntityReturnsAtNextGridPointAfterDiscreteE
 	EXPECT_EQ(component.continuationDispatches, 1u);
 	EXPECT_DOUBLE_EQ(observer.observedConfirmedTime, 5.0);
 	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 10.0);
+}
+
+TEST(ContinuousCalendarTest, DiffusionSimulateRetainsEntityAcrossCalendarInterruption) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	DiffusionField field(model, "DiffusionComponentCalendarField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setDomainLength(1.0);
+	field.setDiffusionCoefficient(0.1);
+	field.setInitialCondition("SineMode");
+	field.setInitialParameter(1.0);
+	field.setStepSize(1.0);
+	field.setStopTime(10.0);
+	field.setStepsToSynchronize(10u);
+
+	auto* component = new DiffusionSimulate(model, "DiffusionCalendarComponent");
+	ASSERT_NE(component, nullptr);
+	component->setDiffusionField(&field);
+	component->setUseFieldTimeWindow(true);
+	// DiffusionSimulate is exercised directly here because this test target does
+	// not register its dynamic plugin type in the global plugin manager.
+	model->getComponentManager()->remove(component);
+	auto* source = new Create(model, "DiffusionCalendarSource");
+	auto* sink = new Dispose(model, "DiffusionCalendarSink");
+	ASSERT_NE(source, nullptr);
+	ASSERT_NE(sink, nullptr);
+	source->setTimeBetweenCreationsExpression("1");
+	source->setMaxCreations(0u);
+	source->setEntitiesPerCreation(0u);
+	sink->setReportStatistics(false);
+	// The test target links the component implementation statically but does
+	// not register its runtime plugin descriptor. Keep the checked model graph
+	// valid while the scheduled entity is injected directly into this instance.
+	source->connectTo(sink);
+	component->connectTo(sink);
+
+	CalendarDiscreteObserverProbe observer(model, &field);
+	model->getComponentManager()->remove(&observer);
+	ScheduleContinuousComponentScenario setup{model, component, &observer, 5.5};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&setup, &ScheduleContinuousComponentScenario::schedule);
+	ContinuousProcessArrivalProbe arrivals("DiffusionCalendarSink");
+	model->getOnEventManager()->addOnProcessEventHandler(
+		&arrivals, &ContinuousProcessArrivalProbe::onProcessEvent);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(20.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check()) << model->getTracer()->errorMessages()->list()->front();
+	model->getSimulation()->start();
+
+	EXPECT_DOUBLE_EQ(observer.observedGlobalTime, 5.5);
+	EXPECT_DOUBLE_EQ(observer.observedConfirmedTime, 5.0);
+	EXPECT_EQ(field.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed)
+		<< field.getLastErrorMessage();
+	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 10.0);
+	EXPECT_TRUE(component->getLastSucceeded()) << component->getLastMessage();
+	ASSERT_EQ(arrivals.times.size(), 1u);
+	EXPECT_DOUBLE_EQ(arrivals.times.front(), 10.0);
+	ASSERT_EQ(arrivals.entityIds.size(), 1u);
+	EXPECT_EQ(arrivals.entityIds.front(), setup.requestedEntityId);
 }
 
 TEST(ContinuousCalendarTest, NonzeroOriginPreservesLocalGridAcrossCalendarContinuation) {
