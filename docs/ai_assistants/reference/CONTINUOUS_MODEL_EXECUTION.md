@@ -2,7 +2,7 @@
 document_type: technical-reference
 authority: informative
 owner: project-maintainer
-last_reviewed: 2026-10-29
+last_reviewed: 2026-10-30
 status: active
 tracks: 550
 ---
@@ -38,7 +38,7 @@ replication even when no component requests the solver. The default is preserved
 compatibility; changing its meaning or default remains a separate policy decision.
 
 The execution state is represented by `ExecutionState` (`Idle`, `Running`,
-`WaitingForSynchronization`, `Completed`, `Failed`, or `Cancelled`). Completion
+`WaitingForSynchronization`, `WaitingForContinuation`, `Completed`, `Failed`, or `Cancelled`). Completion
 handlers receive an `ExecutionResult`; callbacks are removed when a component's
 request has finished or when the component is destroyed. Replication initialization
 cancels pending internal events and notifies outstanding consumers before resetting
@@ -53,16 +53,34 @@ working state, including steps between synchronization boundaries. The kernel
 clock remains owned by `ModelSimulation`; creating an observer notification does
 not advance it.
 
-When `StepsToSynchronize` is positive, the continuous definition first places the
-next boundary `InternalEvent` in the calendar, then calculates each continuous
-step through that boundary. After each successful step it invokes its active
-observers. For `T0=100`, `StepSize=1`, and `StepsToSynchronize=5`, observer
-notifications carry local/absolute times `(1,101)` through `(5,105)`. The
-ordinary synchronization event remains at 105. If an observer at local time 3
-requests a discrete event for absolute time 103, that event is inserted before
-the kernel reaches it and the kernel dispatches it at 103. A discrete event at
-102 sees the previous confirmed state, while the observer payload at step 3
-contains the working state at local time 3.
+When `StepsToSynchronize` is positive, the continuous definition calculates the
+next nominal synchronization boundary, then bounds it by the first later event
+already in the calendar. It skips its own queued synchronization event when
+finding that bound. A step is calculated only if its endpoint does not pass the
+event. For `T0=100`, `StepSize=1`, and a nominal boundary at 110, an event at
+105.5 limits work to local time 5 / absolute time 105. The state is confirmed
+when the internal synchronization event is dispatched at 105. The same run is
+then suspended and resumed by a conventional event carrying the waiting entity
+back to the same continuous component at 106. The component recognizes that
+event through the reserved runtime input port
+`ContinuousModelComponent::CONTINUATION_INPUT_PORT`; it does not issue a new
+simulation request or reinitialize the mathematical state. An event at 100.5
+allows no complete step before it, so the model wakes at the next grid endpoint.
+
+The calendar is rechecked after each successful step, including when no
+observers are registered. Thus events inserted by observers are also detected.
+If a handler inserts an event before the already calculated working time, the
+run fails with an explicit diagnostic; this implementation does not roll back
+mathematical state or arbitrary handler side effects. No tie-break rule was
+added for equal timestamps. A discrete event exactly at a synchronization time
+remains simultaneous under the existing calendar comparator, so tests and
+clients must not rely on either event being dispatched first.
+
+For an event between grid points, integration remains on the configured grid.
+The next step after the discrete event may span the interval containing that
+discontinuity; no fractional step or automatic solver restart at the
+discontinuity is introduced. `StepsToSynchronize=0` remains synchronous and
+unbounded by the calendar: it does not yield to intermediate discrete events.
 
 `getCurrentTime()` and ordinary model getters expose confirmed values during
 lookahead. The observer payload uses a class-specific, read-only borrowed view:
@@ -89,14 +107,13 @@ notification still run, and the continuous execution then fails and removes its
 pending synchronization event. Cancellation from a handler removes the pending
 event and notifies completion subscribers.
 
-The work state is calculated ahead of ordinary calendar events in the same
-synchronization block. An ordinary event that mutates inputs used by that
-continuous calculation can therefore invalidate already calculated work. The
-current implementation does not provide rollback or retract discrete events
-that an observer already scheduled from such work. Models that require discrete
-events to alter an active continuous trajectory need an explicit invalidation
-policy before relying on that interaction. The selected `HUM-SCI-002` policy
-does not make the working state visible through ordinary getters.
+The working state can be ahead of the kernel only up to the last allowed grid
+point before the next calendar event. An ordinary event that mutates inputs at
+that time can change the trajectory after the event; the following continuous
+step uses the updated values. The step that crosses a non-grid event uses the
+existing solver's ordinary step method as described above. The selected
+`HUM-SCI-002` policy keeps ordinary getters on the last confirmed state while
+observers receive the working state.
 
 ## Shared component lifecycle
 
@@ -116,6 +133,17 @@ the model with a fatal trace because these plugins have no error output port. Th
 failure-routing policy is explicit in code, but a richer user-facing recovery path
 requires a plugin contract decision.
 
+When a calendar event interrupts a component-owned run, the data definition
+enters `WaitingForContinuation` and asks the component to return one retained
+entity to itself at the next grid endpoint. Other entities joined to that run
+remain retained and are forwarded once, with the returning entity, only after
+the full requested `StopTime` is reached. Completion and cancellation remove a
+queued continuation event belonging to that component. Autonomous definitions
+without a waiting component use an internal continuation event instead.
+Automatic evolution with a positive synchronization count is started through a
+zero-time internal event so replication-start handlers can populate the
+calendar before the first lookahead is calculated.
+
 `ContinuousSystemComponent` retains its synchronous reactive request path and the
 shared entity completion/forwarding behavior. During an already calculated block,
 a request at an intermediate kernel time returns the confirmed state; it does not
@@ -133,18 +161,20 @@ selection remains available for existing serialized models.
 
 ## Evidence and limits
 
-The real-calendar integration regression in
-`source/tests/unit/test_plugins_continuous_diffusion.cpp` uses a `ModelComponent`
-observer at `T0=100`, confirms an observer-generated entity event is processed at
-103, and verifies ordinary events at 102 and 103 read the state last confirmed at
-100. The same file covers typed observers for ODE, diffusion, and biochemical
+The real-kernel regression in
+`source/tests/unit/test_plugins_continuous_diffusion.cpp` confirms an event at
+5.5 observes the continuous state confirmed at 5, the same entity returns to its
+continuous component at 6, and the run completes at local time 10. Other tests
+verify observer-generated events and typed observers for ODE, diffusion, and biochemical
 states, subscription removal during dispatch, newly registered observers,
 destroyed observers, and publication at a synchronization boundary. Existing tests
 in `source/tests/unit/test_simulator_runtime.cpp` cover asynchronous entity
 completion and multiple entities waiting on a `BioSimulate` run.
 
-These tests cover specific execution paths. They do not prove all numerical
-solvers scientifically valid or establish that all historical model files with
-nonzero component `StartTime` remain semantically compatible. Interactions where
-an ordinary discrete event changes an input used by an already calculated block
-remain unsupported and require an invalidation policy.
+The implementation currently scans the ordered event list after every step;
+the optimization to avoid those checks when no observer or event-producing hook
+exists has not been applied. These tests cover specific execution paths. They do
+not prove all numerical solvers scientifically valid or establish that all
+historical model files with nonzero component `StartTime` remain semantically
+compatible. `StepsToSynchronize=0` intentionally cannot interleave discrete
+events, and a step spanning a non-grid discontinuity remains an approximation.

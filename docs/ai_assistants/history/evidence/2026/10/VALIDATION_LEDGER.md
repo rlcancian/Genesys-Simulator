@@ -3,7 +3,7 @@ document_type: evidence-ledger
 authority: informative
 owner: project-maintainer
 period: 2026-10
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 status: active
 tracks: 511
 ---
@@ -45,5 +45,7 @@ Detailed diagnosis, commands, environment, test counts, sanitizer scope, manual 
 
 | 2026-10-29 | PR #550 continuous model component integration and completion lifecycle | `WiP20261016/ContinuousModels`; starting head `c00921b91db131087cff16c12488940d38801f32` | Shared continuous component base, typed execution state, asynchronous entity-retention tests, unit/kernel/smoke and GUI build results, focused ASan/UBSan and LeakSanitizer outcome are recorded in the linked handoff | Local code implements a causal calendar-driven lifecycle and routes entities only after completion; the continuous state observed between synchronization events remains at the last completed synchronization point | `HUM-SCI-002` time semantics remain a maintainer decision; LeakSanitizer reported plugin-fixture/process-lifetime allocations; final hosted CI must be checked after push; unrelated GUI crash fix already in branch history |
 | 2026-10-29 | PR #550 continuous state Observable and hybrid synchronization | [`2026-10-29_ContinuousModels_Observable_Implementation_Handoff.md`](2026-10-29_ContinuousModels_Observable_Implementation_Handoff.md); starting head `ad2c261ec7878638a8812090599397cee78eed69`; validated implementation/docs SHA `d3462b987c2a492cd45031ce6d0b9e354a2f2666` | Per-step typed state observers, confirmed/work state separation, real-kernel intermediate event test, unit/kernel/smoke and GUI builds, docs/manual validation, ASan/UBSan/LSan focused tests; all hosted checks passed on validated SHA | `HUM-SCI-002` is implemented for deterministic models; observer can schedule an event at an intermediate step while ordinary discrete readers retain the last confirmed state | Decision still needed for invalidating/replaying precomputed work and retracting observer-derived events after an ordinary event changes a continuous input; Doxygen PDF fails on a pre-existing Unicode delta; sanitizer baseline comparison against WorkInProgress was not run |
+
+| 2026-10-30 | PR #550 calendar-bounded continuous execution and entity continuation | [`2026-10-29_ContinuousModels_CalendarBoundedExecution_Handoff.md`](2026-10-29_ContinuousModels_CalendarBoundedExecution_Handoff.md); starting head `efc3efcbef31ac259d141582fb9d2906b7c8f2ac` | Calendar horizon limits, per-step recheck, conventional entity return at next grid point, auto-start deferral, invalid-window atomicity; unit 1,933 pass / 4 disabled, kernel 1,933 / 4, smoke 3/3, GUI Qt6 build, focused ASan/UBSan/LSan 32/32 | Real-kernel tests demonstrate event 105.5 at origin 100 observing confirmed local time 5, same entity return at 106, completion at 110, and initial bounds at 0.5/5.5/9.9/10; the kernel comparator remains unchanged | Post-push GitHub checks pending; `StepsToSynchronize=0` remains synchronous; non-grid discontinuities are integrated on the existing step grid; scan optimization not applied |
 
 Detailed diagnosis, architectural decisions, exact commands, test counts, sanitizer evidence, changed files, and follow-up gates are recorded in [`2026-10-29_ContinuousModels_Component_Integration_Handoff.md`](2026-10-29_ContinuousModels_Component_Integration_Handoff.md).
