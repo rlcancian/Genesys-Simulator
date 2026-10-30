@@ -144,12 +144,15 @@ Automatic evolution with a positive synchronization count is started through a
 zero-time internal event so replication-start handlers can populate the
 calendar before the first lookahead is calculated.
 
-`ContinuousSystemComponent` retains its synchronous reactive request path and the
-shared entity completion/forwarding behavior. During an already calculated block,
-a request at an intermediate kernel time returns the confirmed state; it does not
-re-integrate the working state or advance beyond the pending synchronization
-boundary. The calendar callback commits the state at the boundary before the next
-block starts.
+`ContinuousSystemComponent` submits the ODESolver's definition time window to
+the same asynchronous execution lifecycle used by `DiffusionSimulate` and
+`BioSimulate`. The component retains arriving entities while the definition is
+running or suspended, and forwards them only after the requested `StopTime` is
+completed. A calendar interruption returns one retained entity to the component
+at the next permitted grid point; that event resumes the existing ODE execution
+without resetting the mathematical state. The standalone
+`ODESolver::integrate(targetTime)` API remains available for explicit reactive
+integration callers; it is not used by the entity-driven component lifecycle.
 
 ## Component time-window compatibility
 
@@ -161,10 +164,15 @@ selection remains available for existing serialized models.
 
 ## Evidence and limits
 
-The real-kernel regression in
-`source/tests/unit/test_plugins_continuous_diffusion.cpp` confirms an event at
-5.5 observes the continuous state confirmed at 5, the same entity returns to its
-continuous component at 6, and the run completes at local time 10. Other tests
+The real-kernel regressions in
+`source/tests/unit/test_plugins_continuous_diffusion.cpp` confirm that ODE and
+BioNetwork component runs stop at the grid boundary before an event at 5.5,
+expose the state confirmed at 5 to the ordinary discrete event, resume at 6,
+and forward waiting entities only after local time 10. The BioNetwork case also
+checks that two entities share one run and that A-to-B mass is conserved. The
+ODE component case uses a constant derivative and checks the accumulated state;
+the separate ODE unit cases retain the solver's variable-dependent numeric
+regression coverage. Other tests
 verify observer-generated events and typed observers for ODE, diffusion, and biochemical
 states, subscription removal during dispatch, newly registered observers,
 destroyed observers, and publication at a synchronization boundary. Existing tests

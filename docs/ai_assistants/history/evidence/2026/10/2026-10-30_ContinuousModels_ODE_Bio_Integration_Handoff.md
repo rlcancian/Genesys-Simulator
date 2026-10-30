@@ -1,0 +1,257 @@
+---
+kind: handoff
+status: partial
+created: 2026-10-30
+source: Codex local validation
+document_type: implementation-handoff
+authority: informative
+owner: project-maintainer
+date: 2026-10-30
+tracks: 550
+---
+
+# GenESyS Continuous Models — ODE/Bio Integration Handoff
+
+**Evidence date:** 2026-10-30
+**Status:** `PARTIALLY_VALIDATED`
+**Branch:** `WiP20261016/ContinuousModels`
+**PR:** #550 (open, draft; not merged)
+
+## 1. Escopo analisado
+
+Esta rodada fechou uma lacuna no caminho de `ContinuousSystemComponent` e
+acrescentou regressões de calendário para ODE e BioNetwork. O escopo não cobriu
+todas as verificações F8–F10 do mandato de 30/10; em particular, não realizou
+uma matriz completa de falhas, cancelamento, múltiplos modelos contínuos,
+sanitizers ou validação funcional interativa da GUI.
+
+## 2. Diagnóstico inicial
+
+**Confirmado no código:** `ContinuousSystemComponent` recebia uma entidade,
+chamava `ODESolver::integrate(simulatedTime)` de forma síncrona e concluía a
+entidade imediatamente. `DiffusionSimulate` e `BioSimulate` já usavam
+`ContinuousModelComponent::_requestContinuousExecution()` e o ciclo assíncrono
+comum.
+
+**Confirmado no código:** o caminho compartilhado já suporta interrupção
+limitada pelo calendário, sincronização, evento convencional de continuação e
+reentrada no mesmo componente. A API explícita `ODESolver::integrate()` é
+separada desse fluxo.
+
+## 3. Evidências e problemas encontrados
+
+**Confirmado no código:** a implementação síncrona do componente ODE não
+participava do contrato de retenção e continuação aplicado aos outros dois
+componentes.
+
+**Confirmado por execução:** o novo cenário com `StopTime=10`, `StepSize=1`,
+`StepsToSynchronize=10` e evento discreto em 5,5 observou estado ODE confirmado
+no tempo local 5, retomou a execução e encaminhou a entidade uma única vez no
+tempo global 10.
+
+**Confirmado por execução:** o cenário BioNetwork com duas entidades aguardando
+uma execução compartilhada observou estado confirmado em 5,5, concluiu ambas no
+tempo 10 e preservou a soma dos montantes de A e B.
+
+**Confirmado por execução:** os dois testes de regressão passaram junto com os
+34 testes do target `genesys_test_plugins_continuous_diffusion`.
+
+## 4. Impacto arquitetural
+
+`ContinuousSystemComponent` passa a coordenar a solicitação usando a mesma
+infraestrutura de conclusão e retenção de entidade que `DiffusionSimulate` e
+`BioSimulate`. A entidade deixa de ser encaminhada no instante de chegada e
+aguarda a conclusão da janela de evolução da Data Definition.
+
+`ODESolver::integrate(targetTime)` permanece disponível para chamadas explícitas
+reativas. O componente de fluxo de entidades já não usa esse método diretamente.
+Não foram alterados o kernel, o comparador do calendário, `InternalEvent`, a
+ordenação de eventos simultâneos ou o plugin `Failure`.
+
+## 5. Solução implementada
+
+`ContinuousSystemComponent::_onDispatchEvent()` agora cria uma
+`ExecutionRequest` que usa a janela temporal da definição e chama
+`_requestContinuousExecution()`. Se a solicitação for rejeitada, registra erro
+fatal e remove a entidade, mantendo o comportamento de falha adotado pelos
+componentes contínuos sem porta de erro.
+
+Os testes novos executam o kernel/calendário real. O cenário ODE usa derivada
+constante para isolar o ciclo temporal; as regressões numéricas dependentes de
+estado continuam nos testes existentes do ODESolver. O cenário Bio usa a reação
+A → B e altera a constante de reação no evento discreto.
+
+## 6. Patches e commits
+
+**Confirmado no código:** arquivos alterados nesta rodada:
+
+- `source/plugins/components/Continuous/ContinuousSystemComponent.cpp`
+- `source/tests/unit/test_plugins_continuous_diffusion.cpp`
+- `docs/ai_assistants/reference/CONTINUOUS_MODEL_EXECUTION.md`
+- este handoff e o ledger de evidências.
+
+**Confirmado no código:** o commit de implementação é
+`f94a0201b15dfa3a9ea9207f01b7b509c072a6ec`
+(`fix(continuous): unify ODE component execution lifecycle`). O commit de
+documentação/evidências será posterior e não altera os arquivos executáveis.
+
+## 7. Validação executada
+
+**Confirmado por execução:**
+
+- Build completo `tests-unit`: passou.
+- `ctest --preset tests-unit --output-on-failure`: 1.935 passaram; 4
+  desabilitados; 0 falhas.
+- Build completo `tests-kernel-unit`: passou.
+- `ctest --preset tests-kernel-unit --output-on-failure`: 1.935 passaram; 4
+  desabilitados; 0 falhas.
+- Build `tests-smoke` e CTest: 3/3 passaram.
+- Target `genesys_test_plugins_continuous_diffusion`: 34/34 passaram.
+- Configuração e build `gui-app`: passaram; isso comprova compilação, não
+  interação funcional.
+- `python3 scripts/validate-ai-docs.py`: passou (50 Markdown ativos; 25
+  documentos históricos retidos).
+
+Os testes unitário e kernel executaram os inventários completos do preset,
+incluindo casos de inventário estrutural. Quatro casos históricos de
+Search/Remove permaneceram desabilitados.
+
+**Confirmado por execução:** os dois cenários de calendário passaram sob
+ASan/UBSan com `detect_leaks=0`, sem diagnóstico de acesso inválido ou
+comportamento indefinido.
+
+**LSan com detecção habilitada:** cada caso isolado chegou à conclusão
+funcional, mas o processo terminou com relatório idêntico de 4.910 bytes em
+161 alocações. Executados juntos, os dois casos reportaram exatamente o dobro:
+9.820 bytes em 322 alocações. Os stacks apontam para carregamento global de
+plugins pelo fixture (`PluginManager`, componentes e controles de `Buffer`). O
+total por caso coincide com os 4.910 bytes/161 alocações citados como referência
+histórica no mandato; contudo, não foi reconstruída a baseline `WorkInProgress`
+com este mesmo binário e fixtures. A repetição idêntica por teste é forte
+indício de custo do bootstrap compartilhado, mas não prova ausência de vazamento
+novo. LSan segue como ressalva não comparada com baseline equivalente.
+
+**Ainda não executado:** benchmark, teste interativo GUI e nova CI hospedada
+para o HEAD desta alteração. As aprovações observadas antes são de SHAs
+anteriores.
+
+## 8. Riscos remanescentes
+
+- A mudança de `ContinuousSystemComponent` para a janela completa da ODE
+  altera seu comportamento de encaminhamento em relação à integração reativa
+  anterior; o caso de oscilador harmônico do smoke passou, mas falta uma matriz
+  completa de compatibilidade para modelos históricos que dependem de várias
+  entidades e integrações reativas.
+- A validação híbrida numérica de ODE ainda não cobre uma alteração de parâmetro
+  que afete uma equação dependente do estado durante a execução. A regressão
+  integrada atual usa derivada constante para isolar relógio, interrupção e
+  continuação. Uma tentativa local de usar uma `Variable` de parâmetro na
+  expressão ODE durante o mesmo fixture produziu `-5` no estado confirmado em
+  local time 5, em vez do valor esperado; a causa não foi isolada e a tentativa
+  não foi incorporada. Isso é evidência de um problema ou limitação a investigar,
+  não uma causa-raiz confirmada.
+- Não foi repetida a matriz completa de eventos fracionários/criados por
+  observadores nos três domínios nesta rodada.
+- Lifetime sob sanitizers, eventos pendentes durante destruição e coexistência
+  de várias Data Definitions continuam dependendo de validação posterior.
+- A GUI foi compilada, sem teste interativo funcional.
+- `source/plugins/data/DiscreteProcessing/Resource.h` modificado e `teste1.gui`
+  não rastreado eram trabalho local preexistente e foram preservados; não
+  pertencem a esta implementação.
+
+## 9. Próximos passos
+
+1. Comparar o resultado LSan com baseline equivalente e investigar os
+   vazamentos reportados no carregamento do fixture.
+2. Isolar a regressão ODE com variável de parâmetro e ampliar regressões de
+   Diffusion com várias configurações, sem enfraquecer tolerâncias científicas.
+3. Cobrir múltiplas Data Definitions contínuas, cancelamento e destruição.
+4. Revisar persistência e testar a GUI em comportamento pertinente.
+5. Atualizar a PR e aguardar CI do SHA publicado; manter a PR em draft até que
+   os gates da governança estejam satisfeitos.
+6. Rever a PR completa e só então decidir se o fluxo governado permite merge.
+
+## Apêndice técnico
+
+### SHA, branch e PR
+
+- SHA inicial da rodada: `0bb9cbb66bef8650ec68d1a1dbbff292e64f9b6e`.
+- SHA final validado do código executável nesta rodada:
+  `f94a0201b15dfa3a9ea9207f01b7b509c072a6ec`. O SHA final do branch, incluindo
+  o commit de evidências e qualquer atualização de CI, será informado na
+  conclusão da execução.
+- Branch: `WiP20261016/ContinuousModels`.
+- PR: #550, aberta e draft no checkpoint histórico; estado atual deve ser
+  verificado depois do push.
+- Merge: não realizado.
+
+### Hierarquia e API
+
+- `ContinuousSystemComponent : ContinuousModelComponent`.
+- `DiffusionSimulate : ContinuousModelComponent`.
+- `BioSimulate : ContinuousModelComponent`.
+- API de solicitação utilizada: `_requestContinuousExecution(definition,
+  request, entity, errorMessage)`.
+- Nenhuma API pública foi adicionada ou removida nesta rodada.
+- Contrato de persistência não alterado.
+
+### Cenários executados
+
+- ODE: origem global zero, janela local 0–10, passo 1, sincronização nominal
+  10, evento discreto 5,5, sincronização em 5, retomada na grade seguinte e
+  conclusão/encaminhamento em 10.
+- BioNetwork: mesma janela, evento discreto 5,5, duas entidades ativadoras
+  compartilhando uma execução e encaminhadas no tempo 10; balanço A+B=10.
+
+### Comandos de validação
+
+```bash
+cmake --build --preset tests-unit --parallel 2
+ctest --preset tests-unit --output-on-failure
+cmake --build --preset tests-kernel-unit --parallel 2
+ctest --preset tests-kernel-unit --output-on-failure
+cmake --build --preset tests-smoke --parallel 2
+ctest --preset tests-smoke --output-on-failure
+cmake --preset gui-app
+cmake --build --preset gui-app --parallel 2
+```
+
+Logs locais:
+
+- `/tmp/genesys-unit-build-final.log`
+- `/tmp/genesys-unit-test-final.log`
+- `/tmp/genesys-kernel-build-final.log`
+- `/tmp/genesys-kernel-test-final.log`
+- `/tmp/genesys-smoke-build.log`
+- `/tmp/genesys-smoke-test.log`
+- `/tmp/genesys-gui-config-final.log`
+- `/tmp/genesys-gui-build-final.log`
+- `/tmp/genesys-asan-config.log`
+- `/tmp/genesys-asan-build.log`
+- `/tmp/genesys-asan-test.log` (dois testes: 9.820 bytes/322 alocações)
+- `/tmp/genesys-asan-no-lsan-test.log` (ASan/UBSan focado: 2/2 passaram)
+- `/tmp/genesys-asan-ode-lsan.log` (ODE: 4.910 bytes/161 alocações)
+- `/tmp/genesys-asan-bio-lsan.log` (Bio: 4.910 bytes/161 alocações)
+- execução do validador de documentação; código de saída 0.
+
+### Decisões preservadas
+
+- O relógio global segue controlado pelo kernel.
+- Eventos comuns veem o último estado confirmado.
+- O Observable expõe o estado interno por passo.
+- Eventos simultâneos não receberam nova prioridade.
+- Não foi implementado rollback.
+- `StepsToSynchronize` e a política de limite pelo calendário não foram
+  alterados nesta rodada.
+
+### Classificação do resultado
+
+**Confirmado por execução:** testes unitários, kernel, smoke, target contínuo e
+build GUI citados acima; ASan/UBSan focados passaram com LSan desligado.
+**Confirmado no código:** migração ODE ao ciclo assíncrono compartilhado.
+**Hipótese a validar:** compatibilidade completa dos modelos históricos que
+usam `ContinuousSystemComponent` como atualização reativa em cada chegada.
+**Forte indício:** os mesmos 4.910 bytes/161 alocações surgem em cada teste,
+com stacks no bootstrap de plugins; permanece pendente comparar com execução
+equivalente na baseline.
+**Status:** `PARTIALLY_VALIDATED`.
