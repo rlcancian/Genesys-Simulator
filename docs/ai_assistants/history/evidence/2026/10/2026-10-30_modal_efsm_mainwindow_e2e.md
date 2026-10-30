@@ -20,6 +20,7 @@ tracks: HUM-MODAL-002,AUTO-MODAL-003,AUTO-MODAL-004
 - Process-flow preservation assertion: `ffafc5ade794a927fbb373fad0a7f805cf620249`.
 - Network create/select negative-path regressions: `2bffa8a87698ab95ce8d10054e5b105df38dc559`.
 - MainWindow delete/undo/redo integration regression: `72dcbaf51`.
+- Mixed MainWindow command history regression: `9590b31ed`.
 - PR #551 remains draft. No merge or push to `WorkInProgress` was performed.
 
 ## Discovered cache-lifecycle defect and fix
@@ -57,6 +58,9 @@ The integrated MainWindow save/reopen workflow now also invokes the real Edit
 Delete action for a transition and for a state with an incident transition.
 Undo restores the same mathematical objects and manager registration; redo
 removes them again, and a final undo restores the saved graph.
+The same end-to-end case then undoes the full create/edit/delete history to an
+empty Network, redoes it to the deleted-state endpoint, and undoes that final
+deletion before saving. This follows the actual history endpoint semantics.
 
 The test uses Qt offscreen automation for modal dialogs and selection; it is
 not a claim of a separate manual mouse/keyboard session. Prior focused tests
@@ -74,6 +78,9 @@ root model switching and root model teardown.
   `ASAN_OPTIONS=detect_leaks=0:halt_on_error=1` and
   `UBSAN_OPTIONS=halt_on_error=1`. Leak detection was disabled; this is bounded
   evidence for those exercised paths, not repository-wide leak validation.
+- After the mixed-history extension, the complete focused EFSM suite remained
+  **37/37 passed** and the integrated MainWindow mixed undo/redo workflow passed
+  again under ASan/UBSan **1/1**, with leak detection disabled.
 - The expanded MainWindow test alone — **1/1 passed**.
 - Adversarial review found that the Create EFSM Transition handler validated
   `selectedStates[1]` even for the one-state self-loop path. The handler now
