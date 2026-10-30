@@ -55,6 +55,7 @@
 #include "actions/EFSMTransitionPropertiesUndoCommand.h"
 #include "actions/EFSMInitialStateUndoCommand.h"
 #include "actions/EFSMStateMembershipUndoCommand.h"
+#include "actions/EFSMStatePropertiesUndoCommand.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "services/EFSMNetworkDiagramProjection.h"
 #include "extensions/GuiExtensionContracts.h"
@@ -91,6 +92,7 @@
 #include <QDialogButtonBox>
 #include <QLineEdit>
 #include <QSpinBox>
+#include <QCheckBox>
 #include <QTextStream>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -347,6 +349,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(_actionEditEfsmTransition, &QAction::triggered, this, [this]() { _editEfsmTransition(); });
     _actionSetEfsmInitialState = new QAction(tr("Set Selected EFSM State as Initial"), this);
     connect(_actionSetEfsmInitialState, &QAction::triggered, this, [this]() { _setEfsmInitialState(); });
+    _actionEditEfsmState = new QAction(tr("Edit EFSM State..."), this);
+    connect(_actionEditEfsmState, &QAction::triggered, this, [this]() { _editEfsmState(); });
     _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
@@ -357,6 +361,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmTransition);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionEditEfsmTransition);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionSetEfsmInitialState);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionEditEfsmState);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
     ui->menuModel->insertMenu(ui->actionModelOpen, _menuOpenRecent);
 
@@ -962,10 +967,13 @@ void MainWindow::_createNetworkForSelectedModalModel() {
         return;
     }
     adapter->setNetwork(network);
-    if (!model->check()) {
+    const bool associationIsConsistent = adapter->getNetwork() == network
+        && model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), network->getId()) == network;
+    if (!associationIsConsistent) {
         adapter->setNetwork(nullptr);
+        delete network;
         QMessageBox::warning(this, tr("Create EFSM Network"),
-                             tr("The association failed model validation."));
+                             tr("The EFSM Network association could not be verified."));
         return;
     }
     _graphicalModelHasChanged = true;
@@ -1241,6 +1249,79 @@ void MainWindow::_setEfsmInitialState() {
         return;
     }
     scene->getUndoStack()->push(new EFSMInitialStateUndoCommand(network, selectedState));
+    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
+    _graphicalModelHasChanged = true;
+    _actualizeActions();
+}
+
+void MainWindow::_editEfsmState() {
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
+        || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    ModelGraphicsScene* scene = ui->graphicsView->getScene();
+    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0 || scene->getUndoStack() == nullptr) {
+        return;
+    }
+    FSMState* state = nullptr;
+    for (QGraphicsItem* item : scene->selectedItems()) {
+        auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        auto* candidate = graphicalDefinition != nullptr
+            ? dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) : nullptr;
+        if (candidate == nullptr) {
+            continue;
+        }
+        if (state != nullptr) {
+            return;
+        }
+        state = candidate;
+    }
+    Model* model = simulator->getModelManager()->current();
+    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
+        ? model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
+        : nullptr);
+    if (network == nullptr || state == nullptr
+        || network->getStates()->find(state) == network->getStates()->list()->end()) {
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Edit EFSM State"));
+    auto* form = new QFormLayout(&dialog);
+    auto* name = new QLineEdit(QString::fromStdString(state->getName()), &dialog);
+    auto* entry = new QLineEdit(QString::fromStdString(state->getEntryActionExpression()), &dialog);
+    auto* exit = new QLineEdit(QString::fromStdString(state->getExitActionExpression()), &dialog);
+    auto* finalState = new QCheckBox(tr("Final state"), &dialog);
+    finalState->setChecked(state->isFinalNode());
+    form->addRow(tr("Name"), name);
+    form->addRow(tr("Entry action"), entry);
+    form->addRow(tr("Exit action"), exit);
+    form->addRow(finalState);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+    const QString newName = name->text().trimmed();
+    if (newName.isEmpty()) {
+        QMessageBox::warning(this, tr("Edit EFSM State"), tr("State name cannot be empty."));
+        return;
+    }
+    ModelDataDefinition* sameName = model->getDataManager()->getDataDefinition(
+        Util::TypeOf<FSMState>(), newName.toStdString());
+    if (sameName != nullptr && sameName != state) {
+        QMessageBox::warning(this, tr("Edit EFSM State"), tr("A state with that name already exists."));
+        return;
+    }
+    EFSMStatePropertiesUndoCommand::Properties updated;
+    updated.name = newName.toStdString();
+    updated.entryActionExpression = entry->text().toStdString();
+    updated.exitActionExpression = exit->text().toStdString();
+    updated.finalNode = finalState->isChecked();
+    scene->getUndoStack()->push(new EFSMStatePropertiesUndoCommand(network, state, std::move(updated)));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
     EFSMNetworkDiagramProjection::synchronize(simulator, scene);
     _graphicalModelHasChanged = true;
     _actualizeActions();
@@ -2292,6 +2373,19 @@ void MainWindow::_actualizeActions() {
             }
         }
         _actionSetEfsmInitialState->setEnabled(efsmContext && selectedStateCount == 1);
+    }
+    if (_actionEditEfsmState != nullptr) {
+        int selectedStateCount = 0;
+        if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr) {
+            for (QGraphicsItem* item : ui->graphicsView->getScene()->selectedItems()) {
+                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+                if (graphicalDefinition != nullptr
+                    && dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) != nullptr) {
+                    ++selectedStateCount;
+                }
+            }
+        }
+        _actionEditEfsmState->setEnabled(efsmContext && selectedStateCount == 1);
     }
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.

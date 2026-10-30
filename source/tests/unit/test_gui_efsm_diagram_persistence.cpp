@@ -8,11 +8,14 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
+#include "graphicals/GraphicalModelComponent.h"
 #include "actions/EFSMTransitionUndoCommand.h"
 #include "actions/EFSMTransitionPropertiesUndoCommand.h"
 #include "actions/EFSMInitialStateUndoCommand.h"
 #include "actions/EFSMStateMembershipUndoCommand.h"
+#include "actions/EFSMStatePropertiesUndoCommand.h"
 #include "controllers/EditCommandController.h"
+#include "mainwindow.h"
 #include "services/EFSMNetworkDiagramCodec.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
@@ -37,6 +40,15 @@
 #include <QTemporaryDir>
 #include <QTextEdit>
 #include <QUndoStack>
+#include <QApplication>
+#include <QCheckBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QLineEdit>
+#include <QTimer>
+#include <QTabWidget>
+#include <QInputDialog>
+#include <QMessageBox>
 
 namespace {
 
@@ -991,4 +1003,287 @@ TEST(EFSMNetworkUndo, DeletingInitialStateSelectsReplacementAndRejectsDeletingLa
     EXPECT_EQ(singleStateNetwork.getStates()->size(), 1u);
     EXPECT_EQ(singleStateNetwork.getStates()->front(), only);
     EXPECT_EQ(singleStateStack.count(), 0);
+}
+
+TEST(EFSMNetworkUndo, StatePropertiesUndoRedoPreservesNameActionsAndFinalFlag) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "StatePropertiesNetwork");
+    auto* adapter = new ModalModelDefault(model, "StatePropertiesAdapter");
+    adapter->setNetwork(&network);
+    auto* state = new FSMState(model, "Working");
+    network.addState(state);
+    state->setEntryActionExpression("entered = 1");
+    state->setExitActionExpression("left = 1");
+    state->setFinalNode(false);
+
+    EFSMStatePropertiesUndoCommand::Properties updated;
+    updated.name = "Complete";
+    updated.entryActionExpression = "entered = 2";
+    updated.exitActionExpression = "left = 2";
+    updated.finalNode = true;
+    QUndoStack stack;
+    stack.push(new EFSMStatePropertiesUndoCommand(&network, state, updated));
+    EXPECT_EQ(state->getName(), "Complete");
+    EXPECT_EQ(state->getEntryActionExpression(), "entered = 2");
+    EXPECT_EQ(state->getExitActionExpression(), "left = 2");
+    EXPECT_TRUE(state->isFinalNode());
+
+    stack.undo();
+    EXPECT_EQ(state->getName(), "Working");
+    EXPECT_EQ(state->getEntryActionExpression(), "entered = 1");
+    EXPECT_EQ(state->getExitActionExpression(), "left = 1");
+    EXPECT_FALSE(state->isFinalNode());
+
+    stack.redo();
+    EXPECT_EQ(state->getName(), "Complete");
+    EXPECT_TRUE(state->isFinalNode());
+}
+
+TEST(EFSMNetworkEditor, SelectedStateCanBeEditedAndUndoneThroughTheMainWindowAction) {
+    MainWindow window;
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    Simulator* simulator = window.myScene()->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    simulator->getPluginManager()->autoInsertPlugins();
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+    auto* network = new EFSMNetwork(model, "InteractiveStateNetwork");
+    auto* state = new FSMState(model, "Working");
+    network->addState(state);
+
+    ModelGraphicsScene* scene = window.myScene();
+    scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
+    GraphicalModelDataDefinition* graphicalState = scene->findGraphicalModelDataDefinition(state);
+    ASSERT_NE(graphicalState, nullptr);
+    graphicalState->setSelected(true);
+
+    QAction* editAction = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->text() == QStringLiteral("Edit EFSM State...")) {
+            editAction = action;
+            break;
+        }
+    }
+    ASSERT_NE(editAction, nullptr);
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) {
+            return;
+        }
+        const auto edits = dialog->findChildren<QLineEdit*>();
+        const auto checks = dialog->findChildren<QCheckBox*>();
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        if (edits.size() == 3 && checks.size() == 1 && buttons.size() == 1) {
+            edits.at(0)->setText(QStringLiteral("Complete"));
+            edits.at(1)->setText(QStringLiteral("entered = 1"));
+            edits.at(2)->setText(QStringLiteral("left = 1"));
+            checks.at(0)->setChecked(true);
+            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
+        }
+    });
+    editAction->trigger();
+    EXPECT_EQ(state->getName(), "Complete");
+    EXPECT_EQ(state->getEntryActionExpression(), "entered = 1");
+    EXPECT_TRUE(state->isFinalNode());
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    EXPECT_EQ(state->getName(), "Working");
+    EXPECT_FALSE(state->isFinalNode());
+}
+
+TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
+    MainWindow window;
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    Simulator* simulator = window.myScene()->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    simulator->getPluginManager()->autoInsertPlugins();
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+    auto* network = new EFSMNetwork(model, "SharedNavigationNetwork");
+    auto* state = new FSMState(model, "Idle");
+    network->addState(state);
+    auto* firstAdapter = new ModalModelDefault(model, "FirstAdapter");
+    auto* secondAdapter = new ModalModelDefault(model, "SecondAdapter");
+    firstAdapter->setNetwork(network);
+    secondAdapter->setNetwork(network);
+
+    auto* view = window.findChild<ModelGraphicsView*>();
+    ASSERT_NE(view, nullptr);
+    std::map<std::string, QColor> colors;
+    GraphicalModelBuilder builder(simulator, view, window.myScene(), &colors, nullptr);
+    builder.generateGraphicalModelFromModel();
+    QTabWidget* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
+    ASSERT_NE(tabs, nullptr);
+    const int rootCount = tabs->count();
+    ASSERT_GE(rootCount, 1);
+
+    auto graphicalAdapter = [scene = window.myScene()](ModalModelDefault* adapter) {
+        for (QGraphicsItem* item : scene->items()) {
+            auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+            if (graphical != nullptr && graphical->getComponent() == adapter) {
+                return graphical;
+            }
+        }
+        return static_cast<GraphicalModelComponent*>(nullptr);
+    };
+    auto* firstItem = graphicalAdapter(firstAdapter);
+    auto* secondItem = graphicalAdapter(secondAdapter);
+    ASSERT_NE(firstItem, nullptr);
+    ASSERT_NE(secondItem, nullptr);
+
+    QAction* openAction = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->text() == QStringLiteral("Open Submodel")) {
+            openAction = action;
+            break;
+        }
+    }
+    ASSERT_NE(openAction, nullptr);
+    firstItem->setSelected(true);
+    EXPECT_TRUE(openAction->isEnabled());
+    openAction->trigger();
+    ASSERT_EQ(tabs->count(), rootCount + 1);
+    auto* networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
+    ASSERT_NE(networkView, nullptr);
+    ASSERT_TRUE(networkView->getScene()->hasModelLevelFilter());
+    EXPECT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
+    EXPECT_NE(networkView->getScene()->findGraphicalModelDataDefinition(state), nullptr);
+    EXPECT_EQ(networkView->getScene()->getEFSMNetworkDiagramItems()->size(), 0);
+
+    const int networkTabIndex = tabs->currentIndex();
+    int rootTabIndex = -1;
+    for (int index = 0; index < tabs->count(); ++index) {
+        auto* candidateView = dynamic_cast<ModelGraphicsView*>(tabs->widget(index));
+        if (candidateView == nullptr || candidateView->getScene() == nullptr
+            || !candidateView->getScene()->hasModelLevelFilter()
+            || candidateView->getScene()->modelLevelFilter() != 0) {
+            continue;
+        }
+        for (QGraphicsItem* item : candidateView->getScene()->items()) {
+            auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+            if (graphical != nullptr && graphical->getComponent() == firstAdapter) {
+                rootTabIndex = index;
+                break;
+            }
+        }
+        if (rootTabIndex >= 0) {
+            break;
+        }
+    }
+    ASSERT_GE(rootTabIndex, 0);
+    tabs->setCurrentIndex(rootTabIndex);
+    ASSERT_TRUE(window.myScene()->hasModelLevelFilter());
+    ASSERT_EQ(window.myScene()->modelLevelFilter(), 0u);
+    window.myScene()->clearSelection();
+    secondItem = graphicalAdapter(secondAdapter);
+    ASSERT_NE(secondItem, nullptr);
+    secondItem->setSelected(true);
+    EXPECT_TRUE(openAction->isEnabled());
+    openAction->trigger();
+    QApplication::processEvents();
+    EXPECT_EQ(tabs->count(), rootCount + 1);
+    EXPECT_EQ(tabs->currentWidget(), networkView);
+    EXPECT_EQ(tabs->currentIndex(), tabs->indexOf(networkView));
+    EXPECT_EQ(networkTabIndex, tabs->indexOf(networkView));
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(tabs, "tabCloseRequested", Qt::DirectConnection,
+                                         Q_ARG(int, tabs->indexOf(networkView))));
+    QApplication::processEvents();
+    EXPECT_EQ(tabs->count(), rootCount);
+    int activeRootIndex = -1;
+    for (int index = 0; index < tabs->count(); ++index) {
+        auto* candidateView = dynamic_cast<ModelGraphicsView*>(tabs->widget(index));
+        if (candidateView == nullptr || candidateView->getScene() == nullptr) {
+            continue;
+        }
+        for (QGraphicsItem* item : candidateView->getScene()->items()) {
+            auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+            if (graphical != nullptr && graphical->getComponent() == firstAdapter) {
+                activeRootIndex = index;
+                break;
+            }
+        }
+        if (activeRootIndex >= 0) {
+            break;
+        }
+    }
+    ASSERT_GE(activeRootIndex, 0);
+    tabs->setCurrentIndex(activeRootIndex);
+    window.myScene()->clearSelection();
+    firstItem = graphicalAdapter(firstAdapter);
+    ASSERT_NE(firstItem, nullptr);
+    firstItem->setSelected(true);
+    ASSERT_TRUE(openAction->isEnabled());
+    openAction->trigger();
+    EXPECT_EQ(tabs->count(), rootCount + 1);
+    auto* reopenedView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
+    ASSERT_NE(reopenedView, nullptr);
+    EXPECT_EQ(reopenedView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
+}
+
+TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnIncompleteModel) {
+    MainWindow window;
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    Simulator* simulator = window.myScene()->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    simulator->getPluginManager()->autoInsertPlugins();
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+    auto* source = new Create(model, "NetworkCreateSource");
+    auto* adapter = new ModalModelDefault(model, "NetworkCreateAdapter");
+    auto* sink = new Dispose(model, "NetworkCreateSink");
+    source->getConnectionManager()->insert(adapter);
+    adapter->getConnectionManager()->insert(sink);
+    auto* view = window.findChild<ModelGraphicsView*>();
+    ASSERT_NE(view, nullptr);
+    std::map<std::string, QColor> colors;
+    GraphicalModelBuilder builder(simulator, view, window.myScene(), &colors, nullptr);
+    builder.generateGraphicalModelFromModel();
+
+    GraphicalModelComponent* graphicalAdapter = nullptr;
+    for (QGraphicsItem* item : window.myScene()->items()) {
+        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+        if (graphical != nullptr && graphical->getComponent() == adapter) {
+            graphicalAdapter = graphical;
+            break;
+        }
+    }
+    ASSERT_NE(graphicalAdapter, nullptr);
+    graphicalAdapter->setSelected(true);
+    QAction* createAction = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->text() == QStringLiteral("Create EFSM Network")) {
+            createAction = action;
+            break;
+        }
+    }
+    ASSERT_NE(createAction, nullptr);
+
+    bool networkPromptHandled = false;
+    bool warningShown = false;
+    QTimer dialogDriver;
+    QObject::connect(&dialogDriver, &QTimer::timeout, [&]() {
+        QWidget* active = QApplication::activeModalWidget();
+        if (auto* prompt = qobject_cast<QInputDialog*>(active)) {
+            if (!networkPromptHandled) {
+                networkPromptHandled = true;
+                prompt->setTextValue(QStringLiteral("CreatedNetwork"));
+                prompt->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok)->click();
+            }
+        } else if (auto* warning = qobject_cast<QMessageBox*>(active)) {
+            warningShown = true;
+            warning->accept();
+        }
+    });
+    dialogDriver.start(5);
+    createAction->trigger();
+    dialogDriver.stop();
+    EXPECT_FALSE(warningShown);
+    ASSERT_NE(adapter->getNetwork(), nullptr);
+    EXPECT_EQ(adapter->getNetwork()->getName(), "CreatedNetwork");
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
 }
