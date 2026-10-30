@@ -10,8 +10,10 @@
 EFSMTransitionGraphicsItem::EFSMTransitionGraphicsItem(EFSMTransition* transition, int ordinal, QGraphicsItem* parent)
     : QGraphicsPathItem(parent), _transition(transition), _ordinal(ordinal) {
     setZValue(-10.0);
-    setAcceptedMouseButtons(Qt::NoButton);
-    setFlag(QGraphicsItem::ItemIsSelectable, false);
+    setAcceptedMouseButtons(Qt::LeftButton);
+    setFlag(QGraphicsItem::ItemIsSelectable, true);
+    // Give thin paths a practical hit target; paint() retains the visible pen.
+    setPen(QPen(Qt::black, 12.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     setToolTip(QString::fromStdString(transition != nullptr ? transition->getName() : std::string()));
 }
 

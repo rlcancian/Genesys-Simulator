@@ -50,6 +50,7 @@
 #include "controllers/GraphicalContextMenuController.h"
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
+#include "actions/EFSMTransitionUndoCommand.h"
 #include "extensions/GuiExtensionContracts.h"
 #include "extensions/GuiExtensionManager.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
@@ -1076,8 +1077,23 @@ void MainWindow::_createEfsmTransition() {
     if (!accepted) {
         return;
     }
-    network->addTransition(new EFSMTransition(selectedStates.at(0), selectedStates.at(1), name.toStdString()));
+    auto transition = std::make_unique<EFSMTransition>(selectedStates.at(0), selectedStates.at(1), name.toStdString());
+    EFSMTransition* transitionPointer = transition.get();
+    QUndoStack* undoStack = scene->getUndoStack();
+    EFSMTransitionUndoCommand* undoCommand = nullptr;
+    if (undoStack == nullptr) {
+        network->addTransition(transition.release());
+    } else {
+        undoCommand = new EFSMTransitionUndoCommand(network, std::move(transition));
+        undoStack->push(undoCommand);
+    }
     if (!model->check()) {
+        if (undoStack != nullptr && undoCommand != nullptr) {
+            undoCommand->setObsolete(true);
+            undoStack->undo();
+        } else {
+            network->removeTransition(transitionPointer);
+        }
         QMessageBox::warning(this, tr("Create EFSM Transition"), tr("The transition failed model validation."));
         return;
     }

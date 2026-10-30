@@ -1,6 +1,7 @@
 #include "EditCommandController.h"
 
 #include "../actions/DeleteUndoCommand.h"
+#include "../actions/EFSMTransitionUndoCommand.h"
 #include "../actions/PasteUndoCommand.h"
 #include "../animations/AnimationCounter.h"
 #include "../animations/AnimationPlaceholder.h"
@@ -9,11 +10,18 @@
 #include "../graphicals/GraphicalConnection.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/GraphicalModelComponent.h"
+#include "../graphicals/EFSMTransitionGraphicsItem.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/ModelGraphicsView.h"
+#include "../services/EFSMNetworkDiagramProjection.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/Simulator.h"
+#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "kernel/util/Util.h"
 
 #include <QGraphicsEllipseItem>
 #include <QGraphicsItemGroup>
@@ -53,6 +61,7 @@ void EditCommandController::onActionEditUndoTriggered() const {
     ModelGraphicsScene* currentScene = scene();
     if (currentScene != nullptr && currentScene->getUndoStack() != nullptr) {
         currentScene->getUndoStack()->undo();
+        EFSMNetworkDiagramProjection::synchronize(_simulator, currentScene);
     }
 }
 
@@ -61,6 +70,7 @@ void EditCommandController::onActionEditRedoTriggered() const {
     ModelGraphicsScene* currentScene = scene();
     if (currentScene != nullptr && currentScene->getUndoStack() != nullptr) {
         currentScene->getUndoStack()->redo();
+        EFSMNetworkDiagramProjection::synchronize(_simulator, currentScene);
     }
 }
 
@@ -203,12 +213,52 @@ void EditCommandController::onActionEditPasteTriggered() const {
 
 // Preserve delete behavior and action-state refresh callback.
 void EditCommandController::onActionEditDeleteTriggered() const {
-    QList<QGraphicsItem*> selecteds = scene()->userDeletableItems(_graphicsView->scene()->selectedItems());
+    ModelGraphicsScene* currentScene = scene();
+    QList<QGraphicsItem*> selectedItems = _graphicsView->scene()->selectedItems();
+    QList<EFSMTransition*> selectedTransitions;
+    for (QGraphicsItem* item : selectedItems) {
+        if (auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(item)) {
+            if (graphicalTransition->transition() != nullptr) {
+                selectedTransitions.append(graphicalTransition->transition());
+            }
+        }
+    }
+    if (!selectedTransitions.isEmpty()) {
+        if (_simulator == nullptr || _simulator->getModelManager() == nullptr
+            || _simulator->getModelManager()->current() == nullptr
+            || _simulator->getModelManager()->current()->getDataManager() == nullptr
+            || currentScene == nullptr || !currentScene->hasModelLevelFilter()
+            || currentScene->modelLevelFilter() == 0 || currentScene->getUndoStack() == nullptr) {
+            return;
+        }
+        Model* model = _simulator->getModelManager()->current();
+        auto* network = dynamic_cast<EFSMNetwork*>(model->getDataManager()->getDataDefinition(
+            Util::TypeOf<EFSMNetwork>(), currentScene->modelLevelFilter()));
+        if (network == nullptr) {
+            return;
+        }
+        for (EFSMTransition* transition : selectedTransitions) {
+            if (network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) {
+                return;
+            }
+        }
+        auto* deleteTransitions = new QUndoCommand(QObject::tr("Delete EFSM transitions"));
+        for (EFSMTransition* transition : selectedTransitions) {
+            new EFSMTransitionUndoCommand(network, transition, deleteTransitions);
+        }
+        currentScene->getUndoStack()->push(deleteTransitions);
+        EFSMNetworkDiagramProjection::synchronize(_simulator, currentScene);
+        if (_actualizeActions) {
+            _actualizeActions();
+        }
+        return;
+    }
+
+    QList<QGraphicsItem*> selecteds = currentScene->userDeletableItems(selectedItems);
     if (selecteds.isEmpty()) {
         return;
     }
 
-    ModelGraphicsScene* currentScene = scene();
     QUndoCommand* deleteUndoCommand = new DeleteUndoCommand(selecteds, currentScene);
     currentScene->getUndoStack()->push(deleteUndoCommand);
     if (_actualizeActions) {

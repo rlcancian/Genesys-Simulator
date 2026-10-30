@@ -2,11 +2,14 @@
 // EFSMNetworkDiagramCodec plus its integration into
 // GraphicalModelSerializer::saveGraphicalModel()/loadGraphicalModel(). These
 // tests exercise the real .gui save/load path, not just the codec in
-// isolation, even though no interactive EFSM viewer exists yet.
+// isolation. The same target also covers the real scene projection and
+// transition edit/undo command path.
 
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
+#include "actions/EFSMTransitionUndoCommand.h"
+#include "controllers/EditCommandController.h"
 #include "services/EFSMNetworkDiagramCodec.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
@@ -28,6 +31,7 @@
 #include <QSlider>
 #include <QTemporaryDir>
 #include <QTextEdit>
+#include <QUndoStack>
 
 namespace {
 
@@ -153,7 +157,7 @@ TEST(EFSMNetworkDiagramPersistence, EmptyLayoutProducesNoEntriesAndLeavesOtherSe
         static_cast<unsigned long>(loadedNetwork->getId())).isEmpty());
 }
 
-TEST(EFSMNetworkDiagramProjection, BuildsReadOnlyStatesAndFormalTransitions) {
+TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangingTheDomain) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
@@ -180,7 +184,7 @@ TEST(EFSMNetworkDiagramProjection, BuildsReadOnlyStatesAndFormalTransitions) {
     auto* first = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(0));
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(first->ordinal(), 0);
-    EXPECT_FALSE(first->flags().testFlag(QGraphicsItem::ItemIsSelectable));
+    EXPECT_TRUE(first->flags().testFlag(QGraphicsItem::ItemIsSelectable));
     EXPECT_EQ(scene->getGraphicalConnections()->size(), 0);
     EXPECT_EQ(network.getStates()->size(), 2u);
     EXPECT_EQ(network.getTransitions()->size(), 3u);
@@ -195,6 +199,61 @@ TEST(EFSMNetworkDiagramProjection, BuildsReadOnlyStatesAndFormalTransitions) {
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
     EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
     EXPECT_TRUE(scene->getGraphicalModelDataDefinitions()->isEmpty());
+}
+
+TEST(EFSMNetworkUndo, DeleteActionAndUndoRefreshTheSharedSceneProjection) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "EditableNetwork");
+    FSMState idle(model, "Idle");
+    FSMState done(model, "Done");
+    network.addState(&idle);
+    network.addState(&done);
+    auto* transition = new EFSMTransition(&idle, &done, "Finish");
+    auto* parallel = new EFSMTransition(&idle, &done, "ParallelFinish");
+    network.addTransition(transition);
+    network.addTransition(parallel);
+
+    ModelGraphicsView view;
+    view.setSimulator(&simulator);
+    ModelGraphicsScene* scene = view.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setSimulator(&simulator);
+    scene->setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    QUndoStack undoStack;
+    scene->setUndoStack(&undoStack);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 2);
+
+    auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->front());
+    ASSERT_NE(graphicalTransition, nullptr);
+    auto* graphicalParallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(1));
+    ASSERT_NE(graphicalParallel, nullptr);
+    graphicalTransition->setSelected(true);
+    graphicalParallel->setSelected(true);
+    EditCommandController editController(&simulator, &view, []() {}, nullptr, nullptr, nullptr, nullptr, nullptr);
+    editController.onActionEditDeleteTriggered();
+
+    EXPECT_EQ(network.getTransitions()->size(), 0u);
+    EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
+    ASSERT_EQ(undoStack.count(), 1);
+    editController.onActionEditUndoTriggered();
+    ASSERT_EQ(network.getTransitions()->size(), 2u);
+    EXPECT_EQ(network.getTransitions()->front(), transition);
+    EXPECT_EQ(network.getTransitions()->getAtRank(1), parallel);
+    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 2);
+    auto* restored = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->front());
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored->transition(), transition);
+    auto* restoredParallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(1));
+    ASSERT_NE(restoredParallel, nullptr);
+    EXPECT_EQ(restoredParallel->transition(), parallel);
+
+    editController.onActionEditRedoTriggered();
+    EXPECT_TRUE(network.getTransitions()->empty());
+    EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
 }
 
 TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTransitionOrdinals) {
@@ -666,4 +725,75 @@ TEST(EFSMNetworkDiagramPersistence, SaveAndLoadDoesNotChangeTopologyOrDuplicateO
     ASSERT_NE(loadedTransition, nullptr);
     EXPECT_EQ(loadedTransition->getGuardExpression(), "");
     EXPECT_EQ(loadedTransition->getPriority(), 0u);
+}
+
+TEST(EFSMNetworkUndo, TransitionDeletionUndoRestoresTheSameOrdinalAndSemantics) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "UndoNetwork");
+    FSMState idle(model, "Idle");
+    FSMState busy(model, "Busy");
+    network.addState(&idle);
+    network.addState(&busy);
+    auto* first = new EFSMTransition(&idle, &busy, "First");
+    auto* removed = new EFSMTransition(&idle, &busy, "Removed");
+    auto* last = new EFSMTransition(&busy, &idle, "Last");
+    removed->setGuardExpression("1");
+    removed->setOutputExpression("42");
+    removed->setPriority(7);
+    network.addTransition(first);
+    network.addTransition(removed);
+    network.addTransition(last);
+
+    QUndoStack undoStack;
+    undoStack.push(new EFSMTransitionUndoCommand(&network, removed));
+    ASSERT_EQ(network.getTransitions()->size(), 2u);
+    EXPECT_EQ(idle.getTransitions()->size(), 1u);
+    undoStack.undo();
+
+    ASSERT_EQ(network.getTransitions()->size(), 3u);
+    EXPECT_EQ(network.getTransitions()->getAtRank(0), first);
+    EXPECT_EQ(network.getTransitions()->getAtRank(1), removed);
+    EXPECT_EQ(network.getTransitions()->getAtRank(2), last);
+    EXPECT_EQ(idle.getTransitions()->getAtRank(1), removed);
+    EXPECT_EQ(removed->getGuardExpression(), "1");
+    EXPECT_EQ(removed->getOutputExpression(), "42");
+    EXPECT_EQ(removed->getPriority(), 7u);
+
+    undoStack.redo();
+    EXPECT_EQ(network.getTransitions()->size(), 2u);
+    undoStack.undo();
+    EXPECT_EQ(network.getTransitions()->getAtRank(1), removed);
+}
+
+TEST(EFSMNetworkUndo, TransitionCreationUndoRedoTransfersOwnershipSafely) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "UndoNetwork");
+    FSMState idle(model, "Idle");
+    FSMState busy(model, "Busy");
+    network.addState(&idle);
+    network.addState(&busy);
+    auto* existing = new EFSMTransition(&idle, &busy, "Existing");
+    network.addTransition(existing);
+
+    auto transition = std::make_unique<EFSMTransition>(&busy, &idle, "Created");
+    transition->setGuardExpression("1");
+    transition->setOutputExpression("9");
+    EFSMTransition* created = transition.get();
+    QUndoStack undoStack;
+    undoStack.push(new EFSMTransitionUndoCommand(&network, std::move(transition)));
+    ASSERT_EQ(network.getTransitions()->size(), 2u);
+    EXPECT_EQ(network.getTransitions()->getAtRank(1), created);
+
+    undoStack.undo();
+    ASSERT_EQ(network.getTransitions()->size(), 1u);
+    EXPECT_EQ(busy.getTransitions()->size(), 0u);
+    undoStack.redo();
+    ASSERT_EQ(network.getTransitions()->size(), 2u);
+    EXPECT_EQ(network.getTransitions()->getAtRank(1), created);
+    EXPECT_EQ(created->getGuardExpression(), "1");
+    EXPECT_EQ(created->getOutputExpression(), "9");
 }
