@@ -182,9 +182,17 @@ commits locais `5f6e059dc` e `4c1baab2e` ainda não publicados.
 aprovados, 4 desabilitados e nenhuma falha; smoke passou 3/3; GUI Qt6 compilou;
 os quatro casos de regressão passaram sob ASan/UBSan com `detect_leaks=0`.
 O teste de janela de difusão verifica a restrição de início zero já presente
-no código. LSan não foi reexecutado neste addendum: o histórico desta rodada
-reportou 4.910 bytes/161 alocações no bootstrap de plugins, ainda sem baseline
-comparável de `WorkInProgress`.
+no código. A execução atual de LSan está detalhada abaixo; a baseline
+comparável de `WorkInProgress` permanece pendente.
+
+**Atualização de LSan após os testes acima:** com `detect_leaks=1`, os quatro
+casos de regressão executaram suas asserções funcionais. Os testes de difusão e
+Bio síncrono terminaram sem leaks; o caso ODE com inicialização de plugins e o
+Bio componentizado reportaram cada um 4.910 bytes/161 alocações, com origem no
+bootstrap global de plugins/controles de `Buffer`. Isso reproduz a quantidade
+registrada antes, mas ainda não a compara com uma fixture equivalente de
+`WorkInProgress`; portanto não é evidência suficiente para atribuir ou excluir
+regressão de leak.
 
 O novo código ainda precisa de CI no SHA publicado e permanece sujeito às
 lacunas da seção 8; este addendum não eleva o status `PARTIALLY_VALIDATED`.
