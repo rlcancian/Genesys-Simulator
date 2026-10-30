@@ -5,8 +5,8 @@ This directory contains user-facing documentation configuration for GenESyS.
 The current EFSM Network editor workflow is documented in
 [EFSM_Network_Editor.md](EFSM_Network_Editor.md). The Doxygen configuration
 includes it as the main page so it appears before the generated API reference.
-The guide describes the tested development-branch menu workflow and records
-its current expression-validation and runtime limits.
+The guide describes the tested integrated menu workflow and records its current
+expression-validation and runtime limits.
 
 Current Doxygen entrypoint:
 
