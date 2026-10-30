@@ -220,13 +220,16 @@ struct ScheduleContinuousComponentScenario {
 	double discreteTime = 5.5;
 	double secondActivationTime = -1.0;
 	Util::identification requestedEntityId = 0;
+	Util::identification secondRequestedEntityId = 0;
 	void schedule(SimulationEvent*) {
 		Entity* request = model->createEntity("ContinuousRequest");
 		requestedEntityId = request->getId();
 		model->sendEntityToComponent(request, continuousComponent, 0.0);
-		if (secondActivationTime >= 0.0)
-			model->sendEntityToComponent(model->createEntity("ContinuousRequestTwo"), continuousComponent,
-				secondActivationTime);
+		if (secondActivationTime >= 0.0) {
+			Entity* secondRequest = model->createEntity("ContinuousRequestTwo");
+			secondRequestedEntityId = secondRequest->getId();
+			model->sendEntityToComponent(secondRequest, continuousComponent, secondActivationTime);
+		}
 		model->sendEntityToComponent(model->createEntity("DiscreteInterruption"), discreteObserver, discreteTime);
 	}
 };
@@ -1210,7 +1213,7 @@ TEST(ContinuousCalendarTest, DiffusionSimulateRetainsEntityAcrossCalendarInterru
 
 	CalendarDiscreteObserverProbe observer(model, &field);
 	model->getComponentManager()->remove(&observer);
-	ScheduleContinuousComponentScenario setup{model, component, &observer, 5.5};
+	ScheduleContinuousComponentScenario setup{model, component, &observer, 5.5, 2.5};
 	model->getOnEventManager()->addOnReplicationStartHandler(
 		&setup, &ScheduleContinuousComponentScenario::schedule);
 	ContinuousProcessArrivalProbe arrivals("DiffusionCalendarSink");
@@ -1229,10 +1232,13 @@ TEST(ContinuousCalendarTest, DiffusionSimulateRetainsEntityAcrossCalendarInterru
 		<< field.getLastErrorMessage();
 	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 10.0);
 	EXPECT_TRUE(component->getLastSucceeded()) << component->getLastMessage();
-	ASSERT_EQ(arrivals.times.size(), 1u);
-	EXPECT_DOUBLE_EQ(arrivals.times.front(), 10.0);
-	ASSERT_EQ(arrivals.entityIds.size(), 1u);
-	EXPECT_EQ(arrivals.entityIds.front(), setup.requestedEntityId);
+	ASSERT_EQ(arrivals.times.size(), 2u);
+	EXPECT_DOUBLE_EQ(arrivals.times[0], 10.0);
+	EXPECT_DOUBLE_EQ(arrivals.times[1], 10.0);
+	ASSERT_EQ(arrivals.entityIds.size(), 2u);
+	EXPECT_NE(arrivals.entityIds[0], arrivals.entityIds[1]);
+	EXPECT_EQ(arrivals.entityIds[0], setup.requestedEntityId);
+	EXPECT_EQ(arrivals.entityIds[1], setup.secondRequestedEntityId);
 }
 
 TEST(ContinuousCalendarTest, NonzeroOriginPreservesLocalGridAcrossCalendarContinuation) {
