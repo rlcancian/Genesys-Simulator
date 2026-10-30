@@ -1385,6 +1385,72 @@ TEST(ContinuousCalendarTest, AutonomousOdeResetsMaxStepsForEachSynchronizationBa
 	EXPECT_NEAR(solver.getCurrentTime(), 1.0, 1e-12);
 }
 
+TEST(ContinuousCalendarTest, IndependentAutonomousOdesShareCalendarWithoutLosingTheirRuns) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	Variable firstState(model, "IndependentOdeStateOne");
+	firstState.setValue(0.0);
+	Variable secondState(model, "IndependentOdeStateTwo");
+	secondState.setValue(0.0);
+	ODESolver first(model, "IndependentOdeOne");
+	first.setStateVariableNames({"IndependentOdeStateOne"});
+	first.setEquationExpressions({"1"});
+	first.setInitialStateValues({0.0});
+	first.setStepSize(1.0);
+	first.setStopTime(4.0);
+	first.setStepsToSynchronize(4u);
+	ODESolver second(model, "IndependentOdeTwo");
+	second.setStateVariableNames({"IndependentOdeStateTwo"});
+	second.setEquationExpressions({"2"});
+	second.setInitialStateValues({0.0});
+	second.setStepSize(1.0);
+	second.setStopTime(6.0);
+	second.setStepsToSynchronize(2u);
+	auto* firstComponent = new ContinuousSystemComponent(model, "IndependentOdeComponentOne");
+	firstComponent->setOdeSolver(&first);
+	auto* secondComponent = new ContinuousSystemComponent(model, "IndependentOdeComponentTwo");
+	secondComponent->setOdeSolver(&second);
+	auto* firstSource = new Create(model, "IndependentOdeSourceOne");
+	firstSource->setTimeBetweenCreationsExpression("1");
+	firstSource->setMaxCreations(1u);
+	firstSource->setEntitiesPerCreation(1u);
+	auto* secondSource = new Create(model, "IndependentOdeSourceTwo");
+	secondSource->setTimeBetweenCreationsExpression("1");
+	secondSource->setMaxCreations(1u);
+	secondSource->setEntitiesPerCreation(1u);
+	auto* firstSink = new Dispose(model, "IndependentOdeSinkOne");
+	firstSink->setReportStatistics(false);
+	auto* secondSink = new Dispose(model, "IndependentOdeSinkTwo");
+	secondSink->setReportStatistics(false);
+	firstSource->connectTo(firstComponent);
+	firstComponent->connectTo(firstSink);
+	secondSource->connectTo(secondComponent);
+	secondComponent->connectTo(secondSink);
+
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(10.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check()) << model->getTracer()->errorMessages()->list()->front();
+	ASSERT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<ODESolver>(), "IndependentOdeOne"), &first);
+	ASSERT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<ODESolver>(), "IndependentOdeTwo"), &second);
+
+	model->getSimulation()->start();
+
+	EXPECT_EQ(first.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed)
+		<< first.getLastErrorMessage();
+	EXPECT_EQ(second.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed)
+		<< second.getLastErrorMessage();
+	EXPECT_NEAR(first.getStateValue(0u), 4.0, 1e-12);
+	EXPECT_NEAR(second.getStateValue(0u), 12.0, 1e-12);
+	EXPECT_DOUBLE_EQ(first.getCurrentTime(), 4.0);
+	EXPECT_DOUBLE_EQ(second.getCurrentTime(), 6.0);
+	EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 6.0);
+}
+
 TEST(ContinuousCalendarTest, BioSimulateResumesSharedRunForBothWaitingEntities) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();

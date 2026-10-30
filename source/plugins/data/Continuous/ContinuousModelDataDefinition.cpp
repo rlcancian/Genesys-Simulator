@@ -487,10 +487,16 @@ double ContinuousModelDataDefinition::_nextExternalCalendarEventTime() const {
 
 bool ContinuousModelDataDefinition::_hasExternalCalendarEventBefore(double absoluteTime) const {
     if (_parentModel == nullptr || _parentModel->getFutureEvents() == nullptr) return false;
+    const double globalTime = _parentModel->getSimulation()->getSimulatedTime();
     const double tolerance = 8.0 * std::numeric_limits<double>::epsilon() *
         std::max(1.0, std::abs(absoluteTime));
     for (const Event* event : *_parentModel->getFutureEvents()->list()) {
         if (event == nullptr) continue;
+        // Events at or behind the kernel clock are not future calendar bounds.
+        // In particular, events tied at the current timestamp remain unordered
+        // by the kernel and must not make a later post-step check report that
+        // work crossed an event that was never temporally in the future.
+        if (event->getTime() <= globalTime) continue;
         const auto* ownSync = dynamic_cast<const InternalEvent*>(event);
         if (ownSync != nullptr && ownSync->object() == this) continue;
         if (event->getTime() < absoluteTime - tolerance) return true;
