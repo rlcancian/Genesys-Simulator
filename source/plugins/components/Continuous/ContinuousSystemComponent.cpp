@@ -10,7 +10,6 @@
 
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelDataManager.h"
-#include "plugins/data/Logic/Variable.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
@@ -119,55 +118,15 @@ void ContinuousSystemComponent::_onDispatchEvent(Entity* entity, unsigned int in
 		return;
 	}
 
-	double simTime = _parentModel->getSimulation()->getSimulatedTime();
-	double currentTimeBefore = _odeSolver->getCurrentTime();
-	std::vector<std::string> stateVariableNames = _odeSolver->getStateVariableNames();
-	std::vector<double> solverStateBefore = _odeSolver->getStateValues();
-	std::string variableStateBefore;
-	std::string solverStateTextBefore;
-	for (unsigned int i = 0; i < stateVariableNames.size(); i++) {
-		Variable* variable = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(
-				Util::TypeOf<Variable>(), stateVariableNames[i]));
-		variableStateBefore += stateVariableNames[i] + "=" +
-		                       std::to_string(variable != nullptr ? variable->getValue() : 0.0);
-		solverStateTextBefore += stateVariableNames[i] + "=" +
-		                         std::to_string(i < solverStateBefore.size() ? solverStateBefore[i] : 0.0);
-		if (i + 1 < stateVariableNames.size()) {
-			variableStateBefore += ", ";
-			solverStateTextBefore += ", ";
-		}
-	}
-	traceSimulation(this, TraceManager::Level::L9_mostDetailed,
-	                "[ContinuousSystem] evento recebido: simTime=" + std::to_string(simTime) +
-	                ", odeSolver._currentTime=" + std::to_string(currentTimeBefore) + " (antes)");
-	traceSimulation(this, TraceManager::Level::L9_mostDetailed,
-	                "[ContinuousSystem] variáveis antes: " + variableStateBefore);
-	traceSimulation(this, TraceManager::Level::L9_mostDetailed,
-	                "[ContinuousSystem] estado interno antes: " + solverStateTextBefore);
-
-	// advance the continuous ODE from wherever it last stopped up to the current event time,
-	// bridging the gap between the previous discrete event and this one
+	ContinuousModelDataDefinition::ExecutionRequest request;
+	request.useDefinitionTimeWindow = true;
 	std::string errorMessage;
-	const bool success = _odeSolver->integrate(simTime, errorMessage);
-
-	double currentTimeAfter = _odeSolver->getCurrentTime();
-	std::vector<double> solverStateAfter = _odeSolver->getStateValues();
-	std::string solverStateTextAfter;
-	for (unsigned int i = 0; i < stateVariableNames.size(); i++) {
-		solverStateTextAfter += stateVariableNames[i] + "=" +
-		                        std::to_string(i < solverStateAfter.size() ? solverStateAfter[i] : 0.0);
-		if (i + 1 < stateVariableNames.size()) {
-			solverStateTextAfter += ", ";
-		}
+	if (!_requestContinuousExecution(_odeSolver, request, entity, errorMessage)) {
+		traceSimulation(this, TraceManager::Level::L1_errorFatal,
+		                "ContinuousSystemComponent failed to start ODESolver \"" +
+		                _odeSolver->getName() + "\": " + errorMessage);
+		if (entity != nullptr) _parentModel->removeEntity(entity);
 	}
-	traceSimulation(this, TraceManager::Level::L9_mostDetailed,
-	                "[ContinuousSystem] após integrate: _currentTime=" + std::to_string(currentTimeAfter) +
-	                ", " + solverStateTextAfter);
-
-	_completeEntityImmediately(entity, {
-		success ? ContinuousModelDataDefinition::ExecutionState::Completed
-		        : ContinuousModelDataDefinition::ExecutionState::Failed,
-		errorMessage});
 }
 
 void ContinuousSystemComponent::_onContinuousExecutionResult(

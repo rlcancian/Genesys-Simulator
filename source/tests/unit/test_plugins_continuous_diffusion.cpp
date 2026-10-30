@@ -29,6 +29,10 @@
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/components/Continuous/DiffusionSimulate.h"
+#include "plugins/components/Continuous/ContinuousSystemComponent.h"
+#include "plugins/components/BiochemicalSimulation/BioSimulate.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Logic/Create.h"
 
 namespace {
 
@@ -135,6 +139,81 @@ protected:
 	}
 private:
 	DiffusionField* _field;
+};
+
+class OdeCalendarDiscreteProbe : public ModelComponent {
+public:
+	OdeCalendarDiscreteProbe(Model* model, ODESolver* solver)
+		: ModelComponent(model, "OdeCalendarDiscreteProbe", "OdeCalendarDiscreteProbe"),
+		  _solver(solver) {}
+	double observedTime = -1.0;
+	double observedGlobalTime = -1.0;
+	double observedState = -1.0;
+protected:
+	void _onDispatchEvent(Entity* entity, unsigned int) override {
+		observedGlobalTime = _parentModel->getSimulation()->getSimulatedTime();
+		observedTime = _solver->getCurrentTime();
+		observedState = _solver->getStateValue(0u);
+		_solver->setEquationExpressions({"0"});
+		_parentModel->removeEntity(entity);
+	}
+private:
+	ODESolver* _solver;
+};
+
+class BioCalendarDiscreteProbe : public ModelComponent {
+public:
+	BioCalendarDiscreteProbe(Model* model, BioNetwork* network, BioSpecies* species,
+	                         BioReaction* reaction)
+		: ModelComponent(model, "BioCalendarDiscreteProbe", "BioCalendarDiscreteProbe"),
+		  _network(network), _species(species), _reaction(reaction) {}
+	double observedTime = -1.0;
+	double observedGlobalTime = -1.0;
+	double observedAmount = -1.0;
+protected:
+	void _onDispatchEvent(Entity* entity, unsigned int) override {
+		observedGlobalTime = _parentModel->getSimulation()->getSimulatedTime();
+		observedTime = _network->getCurrentTime();
+		observedAmount = _species->getAmount();
+		_reaction->setRateConstant(0.2);
+		_parentModel->removeEntity(entity);
+	}
+private:
+	BioNetwork* _network;
+	BioSpecies* _species;
+	BioReaction* _reaction;
+};
+
+class ContinuousProcessArrivalProbe {
+public:
+	explicit ContinuousProcessArrivalProbe(std::string componentName)
+		: _componentName(std::move(componentName)) {}
+	std::vector<double> times;
+	std::vector<Util::identification> entityIds;
+	void onProcessEvent(SimulationEvent* event) {
+		Event* current = event != nullptr ? event->getCurrentEvent() : nullptr;
+		if (current == nullptr || current->getComponent() == nullptr ||
+		    current->getComponent()->getName() != _componentName) return;
+		times.push_back(event->getSimulatedTime());
+		if (current->getEntity() != nullptr) entityIds.push_back(current->getEntity()->getId());
+	}
+private:
+	std::string _componentName;
+};
+
+struct ScheduleContinuousComponentScenario {
+	Model* model;
+	ModelComponent* continuousComponent;
+	ModelComponent* discreteObserver;
+	double discreteTime = 5.5;
+	double secondActivationTime = -1.0;
+	void schedule(SimulationEvent*) {
+		model->sendEntityToComponent(model->createEntity("ContinuousRequest"), continuousComponent, 0.0);
+		if (secondActivationTime >= 0.0)
+			model->sendEntityToComponent(model->createEntity("ContinuousRequestTwo"), continuousComponent,
+				secondActivationTime);
+		model->sendEntityToComponent(model->createEntity("DiscreteInterruption"), discreteObserver, discreteTime);
+	}
 };
 
 struct ScheduleCalendarBoundComponentScenario {
@@ -1127,4 +1206,125 @@ TEST(ContinuousCalendarTest, InitialLookaheadUsesLastGridPointBeforeCalendarEven
 		ASSERT_NE(sync, nullptr);
 		EXPECT_DOUBLE_EQ(sync->getTime(), testCase.expectedSyncTime);
 	}
+}
+
+TEST(ContinuousCalendarTest, ODEComponentWaitsAndResumesAfterDiscreteInterruption) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	Variable state(model, "ObservableOdeState");
+	state.setValue(0.0);
+	ODESolver solver(model, "OdeCalendarSolver");
+	solver.setStateVariableNames({"ObservableOdeState"});
+	solver.setEquationExpressions({"1"});
+	solver.setInitialStateValues({0.0});
+	solver.setStepSize(1.0);
+	solver.setStopTime(10.0);
+	solver.setStepsToSynchronize(10u);
+
+	auto* component = new ContinuousSystemComponent(model, "OdeCalendarComponent");
+	component->setOdeSolver(&solver);
+	auto* sink = new Dispose(model, "OdeCalendarSink");
+	sink->setReportStatistics(false);
+	auto* source = new Create(model, "OdeCalendarSource");
+	ASSERT_NE(source, nullptr);
+	source->setTimeBetweenCreationsExpression("1");
+	source->setMaxCreations(0u);
+	source->setEntitiesPerCreation(0u);
+	ASSERT_NE(sink, nullptr);
+	source->connectTo(component);
+	component->connectTo(sink);
+	OdeCalendarDiscreteProbe observer(model, &solver);
+	model->getComponentManager()->remove(&observer);
+	ScheduleContinuousComponentScenario setup{model, component, &observer, 5.5};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&setup, &ScheduleContinuousComponentScenario::schedule);
+	ContinuousProcessArrivalProbe arrivals("OdeCalendarSink");
+	model->getOnEventManager()->addOnProcessEventHandler(
+		&arrivals, &ContinuousProcessArrivalProbe::onProcessEvent);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(20.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check()) << model->getTracer()->errorMessages()->list()->front();
+	model->getSimulation()->start();
+
+	EXPECT_DOUBLE_EQ(observer.observedTime, 5.0);
+	EXPECT_DOUBLE_EQ(observer.observedGlobalTime, 5.5);
+	EXPECT_NEAR(observer.observedState, 5.0, 1e-12);
+	ASSERT_EQ(arrivals.times.size(), 1u);
+	EXPECT_DOUBLE_EQ(arrivals.times.front(), 10.0);
+	EXPECT_NEAR(solver.getStateValue(0u), 5.0, 1e-12);
+	EXPECT_EQ(solver.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed);
+}
+
+TEST(ContinuousCalendarTest, BioSimulateResumesSharedRunForBothWaitingEntities) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	BioSpecies substrate(model, "BioCalendarSubstrate");
+	substrate.setInitialAmount(10.0);
+	substrate.setAmount(10.0);
+	BioSpecies product(model, "BioCalendarProduct");
+	product.setInitialAmount(0.0);
+	product.setAmount(0.0);
+	BioReaction reaction(model, "BioCalendarReaction");
+	reaction.addReactant("BioCalendarSubstrate", 1.0);
+	reaction.addProduct("BioCalendarProduct", 1.0);
+	reaction.setRateConstant(0.1);
+	BioNetwork network(model, "BioCalendarNetwork");
+	network.addSpecies("BioCalendarSubstrate");
+	network.addSpecies("BioCalendarProduct");
+	network.addReaction("BioCalendarReaction");
+	network.setStopTime(10.0);
+	network.setStepSize(1.0);
+	network.setStepsToSynchronize(10u);
+
+	auto* component = new BioSimulate(model, "BioCalendarSimulate");
+	component->setBioNetwork(&network);
+	auto* sink = new Dispose(model, "BioCalendarSink");
+	sink->setReportStatistics(false);
+	auto* source = new Create(model, "BioCalendarSource");
+	ASSERT_NE(source, nullptr);
+	source->setTimeBetweenCreationsExpression("1");
+	source->setMaxCreations(0u);
+	source->setEntitiesPerCreation(0u);
+	ASSERT_NE(sink, nullptr);
+	source->connectTo(component);
+	component->connectTo(sink);
+	BioCalendarDiscreteProbe observer(model, &network, &substrate, &reaction);
+	model->getComponentManager()->remove(&observer);
+	ScheduleContinuousComponentScenario setup{model, component, &observer, 5.5, 0.25};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&setup, &ScheduleContinuousComponentScenario::schedule);
+	ContinuousProcessArrivalProbe arrivals("BioCalendarSink");
+	model->getOnEventManager()->addOnProcessEventHandler(
+		&arrivals, &ContinuousProcessArrivalProbe::onProcessEvent);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(20.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check()) << model->getTracer()->errorMessages()->list()->front();
+	model->getSimulation()->start();
+
+	EXPECT_EQ(network.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed)
+		<< network.getLastErrorMessage() << " status=" << network.getLastStatus();
+	EXPECT_TRUE(component->getLastSucceeded()) << component->getLastMessage();
+	EXPECT_DOUBLE_EQ(observer.observedTime, 5.0);
+	const double rk4Before = 1.0 - 0.1 + 0.1 * 0.1 / 2.0 -
+		0.1 * 0.1 * 0.1 / 6.0 + 0.1 * 0.1 * 0.1 * 0.1 / 24.0;
+	const double rk4After = 1.0 - 0.2 + 0.2 * 0.2 / 2.0 -
+		0.2 * 0.2 * 0.2 / 6.0 + 0.2 * 0.2 * 0.2 * 0.2 / 24.0;
+	EXPECT_NEAR(observer.observedAmount, 10.0 * std::pow(rk4Before, 5.0), 1e-12);
+	ASSERT_EQ(arrivals.times.size(), 2u);
+	EXPECT_DOUBLE_EQ(arrivals.times[0], 10.0);
+	EXPECT_DOUBLE_EQ(arrivals.times[1], 10.0);
+	EXPECT_NE(arrivals.entityIds[0], arrivals.entityIds[1]);
+	EXPECT_EQ(network.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed);
+	EXPECT_NEAR(substrate.getAmount() + product.getAmount(), 10.0, 1e-12);
+	EXPECT_NEAR(substrate.getAmount(), 10.0 * std::pow(rk4Before, 5.0) * std::pow(rk4After, 5.0), 1e-11);
 }
