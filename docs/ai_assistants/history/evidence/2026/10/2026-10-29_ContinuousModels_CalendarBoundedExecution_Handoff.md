@@ -93,7 +93,9 @@ SHA inicial: `efc3efcbef31ac259d141582fb9d2906b7c8f2ac`.
 
 Commit de implementação e testes: `e3ecf6278` —
 `feat(continuous): bound evolution by calendar events`.
-O commit seguinte agrupa referência técnica, ledger e este handoff.
+Commit de documentação: `ff1751920d058c52cc3f7e518aa02285e3d91244`
+(`docs(continuous): document calendar-bounded resumption`), que atualiza a
+referência técnica, o ledger e este handoff.
 
 Arquivos de implementação e teste previstos:
 
@@ -144,11 +146,12 @@ Logs locais em `/tmp/genesys-{unit,kernel,smoke,gui,sanitize}-*.log`.
 
 ## 9. Próximos passos
 
-1. Executar `git diff --check`, revisar os patches seletivos e confirmar que
-   `Resource.h` e `teste1.gui` continuam fora do staging.
-2. Criar commits pequenos no branch `WiP20261016/ContinuousModels`.
-3. Enviar o branch, conferir checks e estado da PR #550, mantendo-a em draft.
-4. Não fazer merge em `WorkInProgress`.
+1. Acompanhar a conclusão dos checks da PR #550; no último levantamento ainda
+   estavam pendentes.
+2. Se algum check falhar, diagnosticar a causa e corrigir apenas problemas
+   pertencentes a este escopo.
+3. Manter a PR em draft para revisão independente; não fazer merge em
+   `WorkInProgress`.
 
 ## Apêndice técnico
 
@@ -157,8 +160,11 @@ Logs locais em `/tmp/genesys-{unit,kernel,smoke,gui,sanitize}-*.log`.
 - Branch: `WiP20261016/ContinuousModels`
 - PR: #550, alvo `WorkInProgress`, estado draft a revalidar depois do push.
 - SHA inicial: `efc3efcbef31ac259d141582fb9d2906b7c8f2ac`.
-- SHA final da implementação validada: `e3ecf6278`.
-- O HEAD final da branch incluirá o commit de documentação deste handoff.
+- SHA da implementação validada: `e3ecf6278`.
+- SHA final publicado (implementação e documentação):
+  `ff1751920d058c52cc3f7e518aa02285e3d91244`.
+- Estado Git observado após o push: apenas `Resource.h` modificado e
+  `teste1.gui` não rastreado, ambos preexistentes e preservados fora dos commits.
 
 ### Interfaces adicionadas
 
