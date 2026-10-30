@@ -20,6 +20,19 @@ not process-flow connections.
    in a tab titled `Model > EFSM Network: NetworkName`. Adapters that refer to
    the same Network open the same context.
 
+An attached Network may be opened before it contains any states. Creating a new
+Network opens its empty editing tab automatically after the dialog is accepted;
+canceling the dialog does not change the model. When an adapter has no Network,
+**Open EFSM Network** remains disabled. **Create EFSM Network** is available for
+that adapter, while **Select EFSM Network** is available only when the current
+model already contains a Network that can be associated.
+
+An empty `Submodel` can likewise be opened as a valid editing tab. Components
+created or dropped in that tab remain in the Submodel editing context and retain
+that context when the model is saved and reloaded. This is a graphical editing
+context; it does not add a separate hierarchical execution implementation to the
+`Submodel` plugin.
+
 ## Add states and transitions
 
 1. In the Network tab, choose **Model > Create EFSM State** and enter a unique
