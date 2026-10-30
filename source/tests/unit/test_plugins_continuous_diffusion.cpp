@@ -143,22 +143,32 @@ private:
 
 class OdeCalendarDiscreteProbe : public ModelComponent {
 public:
-	OdeCalendarDiscreteProbe(Model* model, ODESolver* solver)
+	OdeCalendarDiscreteProbe(Model* model, ODESolver* solver, Variable* parameter = nullptr,
+	                         double parameterValue = 0.0)
 		: ModelComponent(model, "OdeCalendarDiscreteProbe", "OdeCalendarDiscreteProbe"),
-		  _solver(solver) {}
+		  _solver(solver), _parameter(parameter), _parameterValue(parameterValue) {}
 	double observedTime = -1.0;
 	double observedGlobalTime = -1.0;
 	double observedState = -1.0;
+	double observedParameter = -1.0;
+	double parsedParameter = -1.0;
 protected:
 	void _onDispatchEvent(Entity* entity, unsigned int) override {
 		observedGlobalTime = _parentModel->getSimulation()->getSimulatedTime();
 		observedTime = _solver->getCurrentTime();
 		observedState = _solver->getStateValue(0u);
-		_solver->setEquationExpressions({"0"});
+		if (_parameter != nullptr) {
+			observedParameter = _parameter->getValue();
+			parsedParameter = _parentModel->parseExpression(_parameter->getName());
+		}
+		if (_parameter != nullptr) _parameter->setValue(_parameterValue);
+		else _solver->setEquationExpressions({"0"});
 		_parentModel->removeEntity(entity);
 	}
 private:
 	ODESolver* _solver;
+	Variable* _parameter;
+	double _parameterValue;
 };
 
 class BioCalendarDiscreteProbe : public ModelComponent {
@@ -1257,6 +1267,65 @@ TEST(ContinuousCalendarTest, ODEComponentWaitsAndResumesAfterDiscreteInterruptio
 	ASSERT_EQ(arrivals.times.size(), 1u);
 	EXPECT_DOUBLE_EQ(arrivals.times.front(), 10.0);
 	EXPECT_NEAR(solver.getStateValue(0u), 5.0, 1e-12);
+	EXPECT_EQ(solver.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed);
+}
+
+TEST(ContinuousCalendarTest, ODEReadsDiscreteParameterChangeAfterCalendarResumption) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	Variable state(model, "OdeParameterState");
+	state.setValue(0.0);
+	Variable rate(model, "OdeDiscreteRate");
+	rate.setInitialValuesText("1");
+	ODESolver solver(model, "OdeParameterCalendarSolver");
+	solver.setStateVariableNames({"OdeParameterState"});
+	solver.setEquationExpressions({"OdeDiscreteRate"});
+	solver.setInitialStateValues({0.0});
+	solver.setStepSize(1.0);
+	solver.setStopTime(10.0);
+	solver.setStepsToSynchronize(10u);
+
+	auto* component = new ContinuousSystemComponent(model, "OdeParameterCalendarComponent");
+	component->setOdeSolver(&solver);
+	auto* sink = new Dispose(model, "OdeParameterCalendarSink");
+	sink->setReportStatistics(false);
+	auto* source = new Create(model, "OdeParameterCalendarSource");
+	source->setTimeBetweenCreationsExpression("1");
+	source->setMaxCreations(0u);
+	source->setEntitiesPerCreation(0u);
+	source->connectTo(component);
+	component->connectTo(sink);
+
+	OdeCalendarDiscreteProbe observer(model, &solver, &rate, 2.0);
+	model->getComponentManager()->remove(&observer);
+	ScheduleContinuousComponentScenario setup{model, component, &observer, 5.5};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&setup, &ScheduleContinuousComponentScenario::schedule);
+	ContinuousProcessArrivalProbe arrivals("OdeParameterCalendarSink");
+	model->getOnEventManager()->addOnProcessEventHandler(
+		&arrivals, &ContinuousProcessArrivalProbe::onProcessEvent);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(20.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "OdeDiscreteRate"), &rate);
+	ASSERT_TRUE(model->check()) << model->getTracer()->errorMessages()->list()->front();
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "OdeDiscreteRate"), &rate);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), "OdeDiscreteRate"), nullptr);
+	EXPECT_DOUBLE_EQ(model->parseExpression("OdeDiscreteRate"), 1.0);
+	model->getSimulation()->start();
+
+	EXPECT_DOUBLE_EQ(observer.observedTime, 5.0);
+	EXPECT_DOUBLE_EQ(observer.observedGlobalTime, 5.5);
+	EXPECT_DOUBLE_EQ(observer.observedParameter, 1.0);
+	EXPECT_DOUBLE_EQ(observer.parsedParameter, 1.0);
+	EXPECT_NEAR(observer.observedState, 5.0, 1e-12);
+	ASSERT_EQ(arrivals.times.size(), 1u);
+	EXPECT_DOUBLE_EQ(arrivals.times.front(), 10.0);
+	EXPECT_NEAR(solver.getStateValue(0u), 15.0, 1e-12);
 	EXPECT_EQ(solver.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed);
 }
 

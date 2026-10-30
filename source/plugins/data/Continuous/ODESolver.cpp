@@ -16,6 +16,8 @@
 #include <sstream>
 #include <fstream>
 #include <ios>
+#include <list>
+#include <map>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -492,6 +494,26 @@ void ODESolver::_createEditableDataDefinitions() {
 			_parentModel->getDataManager()->insert(stateVar);
 		}
 		_optionalEditableDataDefinitionInsert("StateVariable_" + _stateVariableNames[i], stateVar);
+	}
+	// Equations may reference shared variables, attributes, formulas, or other
+	// data definitions that would otherwise be classified as orphans before
+	// ModelChecker validates the ODE. Keep every parser-resolved reference
+	// attached to this solver so its equations remain executable after check().
+	for (const std::string& expression : _equationExpressions) {
+		std::map<std::string, std::list<std::string>*> references;
+		_parentModel->checkReferencesToDataDefinitions(expression, &references);
+		for (auto& [type, names] : references) {
+			if (names == nullptr) continue;
+			for (const std::string& referencedName : *names) {
+				ModelDataDefinition* referenced = _parentModel->getDataManager()->getDataDefinition(type, referencedName);
+				if (referenced != nullptr) {
+					_optionalEditableDataDefinitionInsert(
+						"EquationReference_" + type + "_" + referencedName, referenced);
+				}
+			}
+			delete names;
+			names = nullptr;
+		}
 	}
 	if (_initialStateValues.empty()) {
 		synchronizeStateFromVariables();

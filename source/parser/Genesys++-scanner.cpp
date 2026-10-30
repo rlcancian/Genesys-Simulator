@@ -6108,9 +6108,18 @@ YY_RULE_SETUP
 
 		//std::cout << "Verificando o que é o Literal \""+std::string(yytext)+"\"\n";
 		//std::cout << driver.getModel()->getInfos()->getName() << std::endl;
+		// Variable derives from Attribute, so resolve global variables before
+		// the entity-scoped attribute lookup below.
+		datadef = driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), std::string(yytext));
+		if (datadef != nullptr) {
+			Variable* var = static_cast<Variable*>(datadef);
+			driver.addRefered({Util::TypeOf<Variable>(),std::string(yytext)});
+			return yy::genesyspp_parser::make_VARI(obj_t(0, Util::TypeOf<Variable>(), var->getId()),loc);
+		}
+
         // check if it is an ATTRIBUTE (and return the attribute ID (and not the value!)
 		datadef = driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), std::string(yytext));
-        if (datadef != nullptr) {
+		if (datadef != nullptr) {
 			//std::cout << "Found ATTRIBUTE " << std::string(yytext) << std::endl;
 			driver.addRefered({Util::TypeOf<Attribute>(),std::string(yytext)});
             return yy::genesyspp_parser::make_ATRIB(obj_t(0, Util::TypeOf<Attribute>(), datadef->getId()),loc);
@@ -6217,19 +6226,19 @@ YY_RULE_SETUP
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 337 "lexerparser.ll"
+#line 346 "lexerparser.ll"
 {return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string(yytext)), loc);}
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 339 "lexerparser.ll"
+#line 348 "lexerparser.ll"
 {return yy::genesyspp_parser::make_END(loc);}
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 342 "lexerparser.ll"
+#line 351 "lexerparser.ll"
 ECHO;
 	YY_BREAK
-#line 6233 "../Genesys++-scanner.cpp"
+#line 6242 "../Genesys++-scanner.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -7190,7 +7199,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 342 "lexerparser.ll"
+#line 351 "lexerparser.ll"
 
 
 void
