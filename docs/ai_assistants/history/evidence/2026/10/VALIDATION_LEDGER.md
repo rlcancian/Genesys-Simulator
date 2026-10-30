@@ -3,7 +3,7 @@ document_type: evidence-ledger
 authority: informative
 owner: project-maintainer
 period: 2026-10
-last_updated: 2026-10-11
+last_updated: 2026-10-30
 status: active
 tracks: 511
 ---
@@ -26,7 +26,13 @@ Detailed scope, source findings, provenance, discrepancies, and remaining gates
 are recorded in [`BACTERIA_COLONY_AGENT_REPORT.md`](../../../../reference/BACTERIA_COLONY_AGENT_REPORT.md)
 and the historical integration plan §22.9. Build/CTest results are local only.
 
-## 3. Interpretation
+## 3. EFSM editor post-merge closeout
+
+| Date | Scope | Branch / head | Commands / result | Bounded conclusion | Limitation |
+|---|---|---|---|---|---|
+| 2026-10-30 | Integrated GUI save/reopen followed by kernel EFSM activation; status/evidence reconciliation | Base `WorkInProgress` `17338f8e566f87fc3b06eb422a5dd354e6d57b02`; follow-up `WiP20261030/efsm-editor-e2e-closeout` | Focused EFSM GUI 37/37; ModalModel/EFSM 26/26; unit and kernel CTest each 1,963 passed / 4 disabled; smoke 3/3; GUI build passed | The MainWindow-created, edited, saved and reloaded EFSM activated through the kernel API with expected output and final state; no kernel production code changed | Hosted checks for follow-up pending; no separate manual mouse/keyboard session; sanitizer evidence is from PR #551 and LSan was disabled; see [`2026-10-30_modal_efsm_postmerge_closeout.md`](2026-10-30_modal_efsm_postmerge_closeout.md) |
+
+## 4. Interpretation
 
 - CTest passed counts include four disabled historical Search/Remove cases,
   which were not executed.
