@@ -91,6 +91,14 @@ private:
 	std::string _startErrorMessage;
 };
 
+class BioNetworkPersistenceProbe : public BioNetwork {
+public:
+	using BioNetwork::BioNetwork;
+	void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+		_saveInstance(fields, saveDefaultValues);
+	}
+};
+
 // Probe exposing DiffusionSimulate's protected check/dispatch hooks so a test can
 // validate the component and drive it as if an entity had arrived.
 class DiffusionSimulateProbe : public DiffusionSimulate {
@@ -426,6 +434,38 @@ TEST(ODESolverPluginTest, RejectsPersistedNonzeroLegacyStartTime) {
 	EXPECT_EQ(ODESolver::LoadInstance(model, &fields), nullptr);
 }
 
+TEST(ODESolverPluginTest, ConfigurationRoundTripsThroughPersistence) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	ODESolver source(model, "OdePersistSource");
+	source.setTimeVariableName("clock");
+	source.setStateVariableNames({"position", "velocity"});
+	source.setEquationExpressions({"velocity", "-position"});
+	source.setInitialStateValues({2.0, 0.0});
+	source.setPrecision(1e-8);
+	source.setMaxSteps(321);
+	source.setStepSize(0.025);
+	source.setStopTime(3.5);
+	source.setStepsToSynchronize(4u);
+
+	FakeModelPersistenceRuntime persistence;
+	PersistenceRecord fields(persistence);
+	ODESolver::SaveInstance(&fields, &source);
+	auto* loaded = dynamic_cast<ODESolver*>(ODESolver::LoadInstance(model, &fields));
+	ASSERT_NE(loaded, nullptr);
+	EXPECT_EQ(loaded->getTimeVariableName(), "clock");
+	EXPECT_EQ(loaded->getStateVariableNames(), (std::vector<std::string>{"position", "velocity"}));
+	EXPECT_EQ(loaded->getEquationExpressions(), (std::vector<std::string>{"velocity", "-position"}));
+	EXPECT_EQ(loaded->getInitialStateValues(), (std::vector<double>{2.0, 0.0}));
+	EXPECT_DOUBLE_EQ(loaded->getPrecision(), 1e-8);
+	EXPECT_EQ(loaded->getMaxSteps(), 321);
+	EXPECT_DOUBLE_EQ(loaded->getStepSize(), 0.025);
+	EXPECT_DOUBLE_EQ(loaded->getStopTime(), 3.5);
+	EXPECT_EQ(loaded->getStepsToSynchronize(), 4u);
+}
+
 TEST(DiffusionFieldPluginTest, MatchesAnalyticalEigenmodeDecay) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -558,6 +598,33 @@ TEST(DiffusionFieldPluginTest, ConfigRoundTripsThroughPersistence) {
 	EXPECT_EQ(loaded.getBoundaryCondition(), "Neumann");
 	EXPECT_EQ(loaded.getInitialCondition(), "Gaussian");
 	EXPECT_EQ(loaded.getOdeSolver(), "DormandPrince54");
+}
+
+TEST(BioNetworkPluginTest, ConfigurationRoundTripsThroughPersistence) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	BioNetworkPersistenceProbe source(model, "BioPersistSource");
+	source.setStepSize(0.25);
+	source.setStopTime(12.0);
+	source.setStepsToSynchronize(3u);
+	source.addSpecies("Substrate");
+	source.addSpecies("Product");
+	source.addReaction("Conversion");
+	source.setLastResponsePayload("{\"status\":\"Idle\"}");
+
+	FakeModelPersistenceRuntime persistence;
+	PersistenceRecord fields(persistence);
+	source.SaveInstanceProbe(&fields, true);
+	auto* loaded = dynamic_cast<BioNetwork*>(BioNetwork::LoadInstance(model, &fields));
+	ASSERT_NE(loaded, nullptr);
+	EXPECT_DOUBLE_EQ(loaded->getStepSize(), 0.25);
+	EXPECT_DOUBLE_EQ(loaded->getStopTime(), 12.0);
+	EXPECT_EQ(loaded->getStepsToSynchronize(), 3u);
+	EXPECT_EQ(loaded->getSpeciesNames(), (std::vector<std::string>{"Substrate", "Product"}));
+	EXPECT_EQ(loaded->getReactionNames(), (std::vector<std::string>{"Conversion"}));
+	EXPECT_EQ(loaded->getLastResponsePayload(), "{\"status\":\"Idle\"}");
 }
 
 TEST(DiffusionFieldPluginTest, RejectsInvalidSolverAndConfig) {

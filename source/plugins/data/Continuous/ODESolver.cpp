@@ -18,6 +18,8 @@
 #include <ios>
 #include <list>
 #include <map>
+#include <charconv>
+#include <limits>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -25,6 +27,17 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 	return &ODESolver::GetPluginInformation;
 }
 #endif
+
+namespace {
+std::string formatExactDouble(double value) {
+	char buffer[64];
+	const auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), value,
+	                                        std::chars_format::general,
+	                                        std::numeric_limits<double>::max_digits10);
+	if (error != std::errc{}) return std::to_string(value);
+	return std::string(buffer, end);
+}
+}
 
 ModelDataDefinition* ODESolver::NewInstance(Model* model, std::string name) {
 	return new ODESolver(model, name);
@@ -318,7 +331,10 @@ bool ODESolver::_loadInstance(PersistenceRecord *fields) {
 	if (res) {
 		_timeVariableName = fields->loadField("timeVariableName", DEFAULT.timeVariableName);
 		setStepSize(fields->loadField("step", getStepSize()));
-		_precision = fields->loadField("precision", DEFAULT.precision);
+		const std::string exactPrecision = fields->loadField("precisionExact", "");
+		_precision = exactPrecision.empty()
+			? fields->loadField("precision", DEFAULT.precision)
+			: std::stod(exactPrecision);
 		_maxSteps = fields->loadField("maxSteps", DEFAULT.maxSteps);
 		setStepsToSynchronize(fields->loadField("stepsToSynchronize",
 			fields->loadField("autoAdvance", 1u) != 0u ? 1u : 0u));
@@ -379,6 +395,11 @@ void ODESolver::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues)
 	fields->saveField("timeVariableName", _timeVariableName, DEFAULT.timeVariableName, saveDefaultValues);
 	fields->saveField("step", getStep(), 0.01, saveDefaultValues); // legacy format
 	fields->saveField("precision", _precision, DEFAULT.precision, saveDefaultValues);
+	if (saveDefaultValues || _precision != DEFAULT.precision) {
+		// Preserve sub-micro tolerances exactly while keeping the legacy numeric
+		// field for older readers and existing model files.
+		fields->saveField("precisionExact", formatExactDouble(_precision));
+	}
 	fields->saveField("maxSteps", _maxSteps, DEFAULT.maxSteps, saveDefaultValues);
 	fields->saveField("outputFile", _outputFile, DEFAULT.outputFile, saveDefaultValues);
 
