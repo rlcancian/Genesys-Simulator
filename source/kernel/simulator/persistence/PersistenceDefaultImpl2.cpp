@@ -90,14 +90,12 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing components:");
 	Util::IncIndent();
 	for (ModelComponent* component : *_model->getComponentManager()) {
-		if (component->getLevel() == 0) {
-			fields->clear();
-			component->SaveInstance(fields.get(), component);
-			auto name = component->getName();
-			auto id = component->getId();
-			auto type = component->getClassname();
-			serializer->put(name, type, id, fields.get());
-		}
+		fields->clear();
+		component->SaveInstance(fields.get(), component);
+		auto name = component->getName();
+		auto id = component->getId();
+		auto type = component->getClassname();
+		serializer->put(name, type, id, fields.get());
 	}
 	Util::DecIndent();
 

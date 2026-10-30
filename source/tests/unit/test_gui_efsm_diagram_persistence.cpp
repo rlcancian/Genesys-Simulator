@@ -1374,7 +1374,6 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     for (QAction* action : window.findChildren<QAction*>()) {
         if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) {
             openAction = action;
-            break;
         }
     }
     ASSERT_NE(openAction, nullptr);
@@ -1529,18 +1528,25 @@ TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
     }
     ASSERT_NE(graphicalAdapter, nullptr);
     QAction* openAction = nullptr;
+    QAction* createAction = nullptr;
+    QAction* selectAction = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
         if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) {
             openAction = action;
-            break;
         }
+        if (action->text() == QStringLiteral("Create EFSM Network")) createAction = action;
+        if (action->text() == QStringLiteral("Select EFSM Network")) selectAction = action;
     }
     ASSERT_NE(openAction, nullptr);
+    ASSERT_NE(createAction, nullptr);
+    ASSERT_NE(selectAction, nullptr);
     QTabWidget* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
     ASSERT_NE(tabs, nullptr);
     const int tabCount = tabs->count();
     graphicalAdapter->setSelected(true);
     EXPECT_FALSE(openAction->isEnabled());
+    EXPECT_TRUE(createAction->isEnabled());
+    EXPECT_FALSE(selectAction->isEnabled());
     openAction->trigger();
     EXPECT_EQ(tabs->count(), tabCount);
     EXPECT_EQ(adapter->getNetwork(), nullptr);
@@ -1589,6 +1595,9 @@ TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnInc
         if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) openAction = action;
     }
     ASSERT_NE(openAction, nullptr);
+    QTabWidget* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
+    ASSERT_NE(tabs, nullptr);
+    const int rootTabCount = tabs->count();
     EXPECT_FALSE(openAction->isEnabled());
 
     auto attemptNetworkCreation = [&](const QString& name, bool acceptPrompt) {
@@ -1638,19 +1647,7 @@ TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnInc
     ASSERT_NE(adapter->getNetwork(), nullptr);
     EXPECT_EQ(adapter->getNetwork()->getName(), "CreatedNetwork");
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 2u);
-    window.myScene()->clearSelection();
-    graphicalAdapter = nullptr;
-    for (QGraphicsItem* item : window.myScene()->items()) {
-        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
-        if (graphical != nullptr && graphical->getComponent() == adapter) {
-            graphicalAdapter = graphical;
-            break;
-        }
-    }
-    ASSERT_NE(graphicalAdapter, nullptr);
-    graphicalAdapter->setSelected(true);
-    ASSERT_TRUE(openAction->isEnabled());
-    openAction->trigger();
+    EXPECT_EQ(tabs->count(), rootTabCount + 1);
     ASSERT_TRUE(window.myScene()->hasModelLevelFilter());
     EXPECT_EQ(window.myScene()->modelLevelFilter(), static_cast<unsigned int>(adapter->getNetwork()->getId()));
     EXPECT_TRUE(window.myScene()->getGraphicalModelDataDefinitions()->isEmpty());
@@ -1937,6 +1934,9 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     }
     ASSERT_NE(createNetwork, nullptr);
     ASSERT_NE(openSubmodel, nullptr);
+    auto* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
+    ASSERT_NE(tabs, nullptr);
+    const int rootTabCount = tabs->count();
     graphicalAdapter->setSelected(true);
     ASSERT_TRUE(createNetwork->isEnabled());
     QTimer::singleShot(0, []() {
@@ -1951,16 +1951,7 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     ASSERT_NE(network, nullptr);
     EXPECT_EQ(originalModel->getDataManager()->getDataDefinition(
                   Util::TypeOf<EFSMNetwork>(), network->getId()), network);
-    window.myScene()->clearSelection();
-    graphicalAdapter = findAdapterItem();
-    ASSERT_NE(graphicalAdapter, nullptr);
-    graphicalAdapter->setSelected(true);
-    QApplication::processEvents();
-    ASSERT_TRUE(openSubmodel->isEnabled());
-    openSubmodel->trigger();
-
-    auto* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
-    ASSERT_NE(tabs, nullptr);
+    ASSERT_EQ(tabs->count(), rootTabCount + 1);
     auto* networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
     ASSERT_NE(networkView, nullptr);
     ASSERT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));

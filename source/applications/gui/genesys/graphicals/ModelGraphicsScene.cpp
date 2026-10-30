@@ -368,6 +368,9 @@ void ModelGraphicsScene::notifyGraphicalModelChange(GraphicalModelEvent::EventTy
 GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* plugin, ModelComponent* component,
                                                                         QPointF position, QColor color, bool notify,
                                                                         GraphicalModelComponent* autoConnectSource) {
+    if (component != nullptr && hasModelLevelFilter()) {
+        component->setModelLevel(modelLevelFilter());
+    }
     _propertyEditor->addElement(component);
     for (auto prop : *component->getSimulationControls()->list()) {
         if (prop->getIsList()) {

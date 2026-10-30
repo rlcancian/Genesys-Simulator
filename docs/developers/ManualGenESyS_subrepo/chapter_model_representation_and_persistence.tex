@@ -349,6 +349,14 @@ label positions. It does not duplicate states, transitions, guards, actions,
 priorities, probabilities, or execution state; those remain authoritative in
 the companion \texttt{.gen} file.
 
+The shared graphical editing context also permits an empty \texttt{Submodel} or
+an empty attached \texttt{EFSMNetwork} to be opened. Creating an EFSM Network
+opens its empty tab after successful association; canceling creation leaves the
+mathematical model unchanged. Components inserted into a filtered Submodel scene
+receive that editing-context level, and the level is persisted in \texttt{.gen}
+with a default of zero for older files. This preserves the editing context only;
+it does not implement hierarchical execution for the \texttt{Submodel} plugin.
+
 \texttt{EFSMTransition} has no persistent kernel ID. The graphical record
 therefore uses its zero-based position in the complete transition list. This
 is a valid reference under the current \texttt{EFSMNetwork} persistence
