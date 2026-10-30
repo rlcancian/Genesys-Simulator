@@ -157,6 +157,15 @@ During model consistency checking, `ODESolver` records each model-data reference
 found in its equation expressions as an attached dependency. This prevents a
 shared parameter variable from being pruned as an orphan before checking and
 keeps it available when the equation is evaluated after a calendar interruption.
+For ODEs, `MaxSteps` bounds an integration batch. The shared asynchronous driver
+starts a fresh ODE step budget for each synchronization batch, matching the
+budget previously provided by a direct `integrate(targetTime)` call per batch.
+With `StepsToSynchronize=0`, the synchronous run remains one batch.
+
+`BioNetwork` refreshes its response payload after the base execution state is
+changed to `Completed`. Thus `getLastStatus()` and the terminal payload agree
+for both synchronous and calendar-driven runs; intermediate working payloads
+remain associated with their step state.
 
 ## Component time-window compatibility
 
@@ -182,6 +191,14 @@ states, subscription removal during dispatch, newly registered observers,
 destroyed observers, and publication at a synchronization boundary. Existing tests
 in `source/tests/unit/test_simulator_runtime.cpp` cover asynchronous entity
 completion and multiple entities waiting on a `BioSimulate` run.
+
+The calendar regressions also exercise an ODE with `MaxSteps=2` over ten
+one-step synchronization batches, and BioNetwork verifies that the final JSON
+payload says `Completed`. `DiffusionSimulate` rejects a nonzero local
+`StartTime` when `UseFieldTimeWindow=false`; the rejection is explicit during
+component validation and has a regression test. This retains the zero-origin
+contract rather than accepting a configuration that the data definition cannot
+execute.
 
 The implementation currently scans the ordered event list after every step;
 the optimization to avoid those checks when no observer or event-producing hook

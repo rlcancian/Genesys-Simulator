@@ -128,7 +128,8 @@ constante de reação no evento discreto.
 - `ctest --preset tests-kernel-unit --output-on-failure`: 1.936 passaram; 4
   desabilitados; 0 falhas.
 - Build `tests-smoke` e CTest: 3/3 passaram.
-- Target `genesys_test_plugins_continuous_diffusion`: 35/35 passaram.
+- Target `genesys_test_plugins_continuous_diffusion`: 36/36 passaram após os
+  achados da revisão automatizada e os respectivos testes de regressão.
 - Build `gui-app`: passou; isso comprova compilação, não
   interação funcional.
 - `python3 scripts/validate-ai-docs.py`: passou (50 Markdown ativos; 25
@@ -158,6 +159,35 @@ novo. LSan segue como ressalva não comparada com baseline equivalente.
 SHA final desta rodada. Os 12 workflows do HEAD publicado
 `46410ce7624668bbed356d15d232d1ab46b64777` foram aprovados; eles não cobrem os
 commits locais `5f6e059dc` e `4c1baab2e` ainda não publicados.
+
+### Addendum — achados da revisão automatizada da PR
+
+**Confirmado no código:** a revisão independente apontou três riscos P2.
+
+- `DiffusionSimulate` já rejeitava explicitamente `StartTime != 0` para janela
+  local customizada (commit `8a5a42cc10`); foi acrescentado teste confirmando
+  que a configuração falha com diagnóstico claro, sem iniciar/encaminhar como
+  sucesso.
+- O orçamento `ODESolver::MaxSteps` acumulava passos entre blocos autônomos.
+  A base agora invoca um hook no início de cada lote e ODESolver reinicia o
+  orçamento nesse ponto. A regressão executa dez passos com
+  `MaxSteps=2`, sincronização a cada passo e verifica a conclusão no tempo 1.
+- O payload final de BioNetwork preservava `status=Running`. Um hook de
+  conclusão atualiza o payload depois da transição do estado para `Completed`;
+  testes cobrem execução síncrona e execução de calendário com duas entidades.
+
+**Confirmado por execução no commit local `0e6ac0cd8`:** os 36 casos de
+`DiffusionFieldPluginTest`, `ContinuousObservableTest` e
+`ContinuousCalendarTest` passaram; unitários e kernel passaram com 1.939
+aprovados, 4 desabilitados e nenhuma falha; smoke passou 3/3; GUI Qt6 compilou;
+os quatro casos de regressão passaram sob ASan/UBSan com `detect_leaks=0`.
+O teste de janela de difusão verifica a restrição de início zero já presente
+no código. LSan não foi reexecutado neste addendum: o histórico desta rodada
+reportou 4.910 bytes/161 alocações no bootstrap de plugins, ainda sem baseline
+comparável de `WorkInProgress`.
+
+O novo código ainda precisa de CI no SHA publicado e permanece sujeito às
+lacunas da seção 8; este addendum não eleva o status `PARTIALLY_VALIDATED`.
 
 ## 8. Riscos remanescentes
 
