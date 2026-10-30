@@ -203,9 +203,10 @@ This is the only approved source for work an AI agent may execute without a new 
 - Status: `running`
 - Environment: local Ubuntu 24.04/C++23/CMake/Ninja/Qt6 and GitHub PR checks.
 - Branch: `WiP20261016/ContinuousModels`; PR #550 to `WorkInProgress`.
-- Current source/test checkpoint: `419d8287f`; current branch HEAD:
-  `6d0c0f68052f6ada1128dddc709cdb3ce0fad6ff` (documentation/evidence commit).
-  GitHub checks for the current HEAD were pending on 2026-10-30.
+- Current source/test checkpoint: `d658c48848e4eac27563404e90b93a85ceba65cd`;
+  the three-domain shared-calendar regression was added and its focused test
+  plus the 40-test continuous plugin target passed locally. GitHub checks for
+  this HEAD were pending on 2026-10-30.
 - Authorization: direct maintainer mission dated 2026-10-30 continues the
   existing PR #550 scope; it does not authorize bypassing review, failed CI,
   human scientific decisions, or the PR draft gate.
@@ -232,7 +233,8 @@ This is the only approved source for work an AI agent may execute without a new 
   matching normalized stacks in `Buffer` templates (strong evidence of
   pre-existing plugin-bootstrap leaks); broader
   three-domain lifecycle/persistence matrix and PR review remain outstanding. See
-  [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md).
+  [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md)
+  and [`history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md).
 - Stop/escalation: do not invent scientific rollback or continuous-time
   discontinuity semantics, do not merge with an incomplete check or unmet
   review gate, and continue independent implementation/test/documentation work

@@ -338,7 +338,7 @@ Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 ## 16. Continuous Models / PR #550 checkpoint
 
 As of 2026-10-30, `WiP20261016/ContinuousModels` is at
-`6d0c0f68052f6ada1128dddc709cdb3ce0fad6ff`, matching the remote branch.
+`d658c48848e4eac27563404e90b93a85ceba65cd`, matching the remote branch.
 PR #550 remains open and draft against `WorkInProgress`; `reviewDecision` is
 empty. The checks for this HEAD were pending at the time of this checkpoint.
 The PR is mergeable according to GitHub metadata, which does not satisfy the
@@ -354,7 +354,11 @@ stacks match and point to `Buffer` templates constructed by
 `PluginManager::completePluginsFieldsAndTemplates()`. This is strong evidence
 that the reported leak is pre-existing plugin-bootstrap behavior, although the
 two test bodies differ. These results do not close the broader ODE, diffusion,
-BioNetwork, lifecycle, persistence or performance matrices.
+BioNetwork, lifecycle, persistence or performance matrices. A subsequent
+shared-calendar test starts ODE, diffusion and BioNetwork together with STS
+2/3/1; its dedicated test and all 40 tests in the continuous plugin target
+passed locally. The full unit suite is being rerun on that source/test HEAD;
+see [`history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md).
 
 The calendar regression fix ignores events at or behind the global time when
 checking whether an event lies before already-computed work. It does not alter
