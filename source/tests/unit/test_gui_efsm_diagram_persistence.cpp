@@ -1403,6 +1403,12 @@ TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnInc
         }
     }
     ASSERT_NE(createAction, nullptr);
+    QAction* openAction = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->text() == QStringLiteral("Open Submodel")) openAction = action;
+    }
+    ASSERT_NE(openAction, nullptr);
+    EXPECT_FALSE(openAction->isEnabled());
 
     bool networkPromptHandled = false;
     bool warningShown = false;
@@ -1427,6 +1433,22 @@ TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnInc
     ASSERT_NE(adapter->getNetwork(), nullptr);
     EXPECT_EQ(adapter->getNetwork()->getName(), "CreatedNetwork");
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
+    window.myScene()->clearSelection();
+    graphicalAdapter = nullptr;
+    for (QGraphicsItem* item : window.myScene()->items()) {
+        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+        if (graphical != nullptr && graphical->getComponent() == adapter) {
+            graphicalAdapter = graphical;
+            break;
+        }
+    }
+    ASSERT_NE(graphicalAdapter, nullptr);
+    graphicalAdapter->setSelected(true);
+    ASSERT_TRUE(openAction->isEnabled());
+    openAction->trigger();
+    ASSERT_TRUE(window.myScene()->hasModelLevelFilter());
+    EXPECT_EQ(window.myScene()->modelLevelFilter(), static_cast<unsigned int>(adapter->getNetwork()->getId()));
+    EXPECT_TRUE(window.myScene()->getGraphicalModelDataDefinitions()->isEmpty());
 }
 
 TEST(EFSMNetworkEditor, SelectNetworkActionAssociatesTheChosenIdentityWithoutGlobalValidation) {
@@ -1438,7 +1460,7 @@ TEST(EFSMNetworkEditor, SelectNetworkActionAssociatesTheChosenIdentityWithoutGlo
     Model* model = simulator->getModelManager()->current();
     ASSERT_NE(model, nullptr);
     auto* first = new EFSMNetwork(model, "DuplicateLabel");
-    auto* second = new EFSMNetwork(model, "DuplicateLabel_2");
+    auto* second = new EFSMNetwork(model, "DuplicateLabel");
     auto* adapter = new ModalModelDefault(model, "NetworkSelectAdapter");
     auto* source = new Create(model, "NetworkSelectSource");
     auto* sink = new Dispose(model, "NetworkSelectSink");
