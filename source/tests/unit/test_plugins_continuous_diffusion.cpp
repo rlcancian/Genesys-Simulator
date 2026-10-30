@@ -1451,6 +1451,100 @@ TEST(ContinuousCalendarTest, IndependentAutonomousOdesShareCalendarWithoutLosing
 	EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 6.0);
 }
 
+TEST(ContinuousCalendarTest, OdeDiffusionAndBioNetworkShareOneRealEventCalendar) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	Variable odeState(model, "ThreeDomainOdeState");
+	odeState.setValue(0.0);
+	ODESolver ode(model, "ThreeDomainOde");
+	ode.setStateVariableNames({"ThreeDomainOdeState"});
+	ode.setEquationExpressions({"1"});
+	ode.setInitialStateValues({0.0});
+	ode.setStepSize(1.0);
+	ode.setStopTime(4.0);
+	ode.setStepsToSynchronize(2u);
+
+	DiffusionField field(model, "ThreeDomainDiffusion");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setDomainLength(1.0);
+	field.setDiffusionCoefficient(0.1);
+	field.setInitialCondition("SineMode");
+	field.setInitialParameter(1.0);
+	field.setStepSize(1.0);
+	field.setStopTime(4.0);
+	field.setStepsToSynchronize(3u);
+
+	BioSpecies substrate(model, "ThreeDomainSubstrate");
+	substrate.setInitialAmount(10.0);
+	substrate.setAmount(10.0);
+	BioSpecies product(model, "ThreeDomainProduct");
+	product.setInitialAmount(0.0);
+	product.setAmount(0.0);
+	BioReaction reaction(model, "ThreeDomainReaction");
+	reaction.addReactant("ThreeDomainSubstrate", 1.0);
+	reaction.addProduct("ThreeDomainProduct", 1.0);
+	reaction.setRateConstant(0.1);
+	BioNetwork network(model, "ThreeDomainBioNetwork");
+	network.addSpecies("ThreeDomainSubstrate");
+	network.addSpecies("ThreeDomainProduct");
+	network.addReaction("ThreeDomainReaction");
+	network.setStepSize(1.0);
+	network.setStopTime(4.0);
+	network.setStepsToSynchronize(1u);
+	auto* bioComponent = new BioSimulate(model, "ThreeDomainBioComponent");
+	ASSERT_NE(bioComponent, nullptr);
+	bioComponent->setBioNetwork(&network);
+	auto* entitySource = new Create(model, "ThreeDomainEntitySource");
+	auto* entitySink = new Dispose(model, "ThreeDomainEntitySink");
+	ASSERT_NE(entitySource, nullptr);
+	ASSERT_NE(entitySink, nullptr);
+	entitySource->setMaxCreations(0u);
+	entitySource->connectTo(bioComponent);
+	bioComponent->connectTo(entitySink);
+
+	struct StartDefinitions {
+		ODESolver* ode;
+		DiffusionField* field;
+		BioNetwork* network;
+		bool started = false;
+		std::string error;
+		void start(SimulationEvent*) {
+			started = ode->simulate(error);
+			if (!started) return;
+			started = field->simulate(error);
+			if (!started) return;
+			started = network->simulate(error);
+		}
+	} startDefinitions{&ode, &field, &network};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&startDefinitions, &StartDefinitions::start);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(6.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check()) << model->getTracer()->errorMessages()->list()->front();
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "ThreeDomainSubstrate"), &substrate);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "ThreeDomainProduct"), &product);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<BioReaction>(), "ThreeDomainReaction"), &reaction);
+	model->getSimulation()->start();
+
+	ASSERT_TRUE(startDefinitions.started) << startDefinitions.error;
+	EXPECT_EQ(ode.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed)
+		<< ode.getLastErrorMessage();
+	EXPECT_EQ(field.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed)
+		<< field.getLastErrorMessage();
+	EXPECT_EQ(network.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed)
+		<< network.getLastErrorMessage();
+	EXPECT_NEAR(ode.getStateValue(0u), 4.0, 1e-12);
+	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 4.0);
+	EXPECT_NEAR(substrate.getAmount() + product.getAmount(), 10.0, 1e-12);
+	EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 4.0);
+}
+
 TEST(ContinuousCalendarTest, BioSimulateResumesSharedRunForBothWaitingEntities) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();
