@@ -20,6 +20,7 @@ tracks: HUM-MODAL-002,AUTO-MODAL-003,AUTO-MODAL-004
 - Process-flow preservation assertion: `ffafc5ade794a927fbb373fad0a7f805cf620249`.
 - Network create/select negative-path regressions: `2bffa8a87698ab95ce8d10054e5b105df38dc559`.
 - MainWindow delete/undo/redo integration regression: `72dcbaf51`.
+- EFSM-specific navigation action and tab title: `b9172abf9`.
 - Mixed MainWindow command history regression: `9590b31ed`.
 - EFSM semantic transition labels and Developer Manual update: `94724d519`.
 - PR #551 remains draft. No merge or push to `WorkInProgress` was performed.
@@ -96,6 +97,18 @@ root model switching and root model teardown.
   section on page 176 visually inspected. LaTeX emitted existing overfull
   table warnings and `xdvipdfmx` annotation-boundary/ICC warnings, but exited
   successfully. Exact-head hosted CI remains pending publication.
+- At local code HEAD `b9172abf9`, the focused EFSM selection
+  `EFSMNetworkDiagramPersistence.*:EFSMNetworkEditor.*:EFSMNetworkUndo.*:EFSMNetworkDiagramProjection.*`
+  passed **37/37** and `cmake --preset gui-app && cmake --build --preset gui-app --parallel 4`
+  passed. The shared-Network MainWindow test additionally asserts the action
+  text `Open EFSM Network` and tab title containing
+  `EFSM Network: SharedNavigationNetwork`. The Developer Manual was rebuilt
+  with `./validate_figure_specs.sh && ./make.sh`; the resulting
+  `docs/ManualGenESyS.pdf` is 390 pages (8,077,907 bytes), and page 245 text
+  extraction confirms the updated navigation contract. Existing XeLaTeX
+  overfull-box and xdvipdfmx annotation/ICC warnings remain non-fatal. The
+  generated tracked `.ptc` intermediate was restored and is not part of the
+  deliverable.
 - The expanded MainWindow test alone — **1/1 passed**.
 - Adversarial review found that the Create EFSM Transition handler validated
   `selectedStates[1]` even for the one-state self-loop path. The handler now

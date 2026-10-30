@@ -392,7 +392,13 @@ policy. Older \texttt{.gui} files without this section continue to load.
 
 The existing submodel-tab flow resolves a selected \texttt{ModalModelDefault}
 to its attached Network ID; adapters sharing one Network reuse the same tab
-context. The Model menu exposes Network create/select, adapter binding edits,
+context. With a ModalModelDefault selected, the shared menu action is labeled
+\texttt{Open EFSM Network}; other submodel owners retain the generic
+\texttt{Open Submodel} label. The Network tab title identifies both the root
+model and its domain, in the form
+\texttt{Model > EFSM Network: NetworkName}. A MainWindow regression verifies
+the adapter-specific action label and the resulting tab title for a shared
+Network. The Model menu exposes Network create/select, adapter binding edits,
 state/transition creation, state and transition property edits, and setting the
 initial state. State deletion also detaches incident transitions and supports
 undo/redo. Transition creation asks for source and destination explicitly,
