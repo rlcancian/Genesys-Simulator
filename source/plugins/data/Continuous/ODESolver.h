@@ -11,14 +11,18 @@
 #include <string>
 #include <vector>
 
-#include "kernel/simulator/model/ModelDataDefinition.h"
+#include "plugins/data/Continuous/ContinuousModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 #include "tools/Continuous/OdeSolver_if.h"
 #include "tools/Continuous/OdeSystem_if.h"
 #include "tools/Continuous/RungeKutta4OdeSolver.h"
 
-class ODESolver : public ModelDataDefinition {
+class ODESolver : public ContinuousModelDataDefinition {
 public:
+	struct StateView {
+		const std::vector<std::string>& names;
+		const std::vector<double>& values;
+	};
 	ODESolver(Model* model, std::string name = "");
 	virtual ~ODESolver() = default;
 public: // static
@@ -38,24 +42,19 @@ public: // gets & sets
 	std::vector<std::string> getStateVariableNames() const;
 	void setEquationExpressions(std::vector<std::string> equationExpressions);
 	std::vector<std::string> getEquationExpressions() const;
-	void setStep(double step);
-	double getStep() const;
 	void setPrecision(double precision);
 	double getPrecision() const;
 	void setMaxSteps(int maxSteps);
 	int getMaxSteps() const;
-	void setCurrentTime(double currentTime);
-	double getCurrentTime() const;
 	void setStateValues(std::vector<double> stateValues);
 	std::vector<double> getStateValues() const;
 	void setInitialStateValues(std::vector<double> initialStateValues);
 	std::vector<double> getInitialStateValues() const;
-	void setAutoAdvance(bool autoAdvance);
-	bool isAutoAdvance() const;
 	void setOutputFile(std::string outputFile);
 	std::string getOutputFile() const;
 public: // new methods
 	void integrate(double targetTime);
+	bool integrate(double targetTime, std::string& errorMessage);
 	void resetState();
 	double getStateValue(unsigned int index) const;
 	void setStateValue(unsigned int index, double value);
@@ -67,29 +66,30 @@ protected: // must be overriden
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: // could be overriden
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _initBetweenReplications() override;
+	void initializeContinuousState() override;
+	void onContinuousEvolutionBatchStarted() override;
+	bool evolveState(double t, double dt, std::string& errorMessage) override;
+	void onContinuousStepCompleted() override;
+	std::any internalStateView() const override;
+	void confirmContinuousState() override;
+	void onInternalStateObserversCompleted() override;
 	virtual void _createEditableDataDefinitions() override;
 
 private:
 	const struct DEFAULT_VALUES {
 		const std::string timeVariableName = "t";
-		const double step = 0.01;
 		const double precision = 1e-6;
 		const int maxSteps = 100000;
-		const double currentTime = 0.0;
-		const bool autoAdvance = true;
 		const std::string outputFile = "";
 	} DEFAULT;
 	std::string _timeVariableName = DEFAULT.timeVariableName;
 	std::vector<std::string> _stateVariableNames;
 	std::vector<std::string> _equationExpressions;
-	double _step = DEFAULT.step;
 	double _precision = DEFAULT.precision;
 	int _maxSteps = DEFAULT.maxSteps;
-	double _currentTime = DEFAULT.currentTime;
-	bool _autoAdvance = DEFAULT.autoAdvance;
 	std::string _outputFile = DEFAULT.outputFile;
 	std::vector<double> _stateValues;
+	std::vector<double> _confirmedStateValues;
 	std::vector<double> _initialStateValues;
 	RungeKutta4OdeSolver _solver;
 
@@ -99,11 +99,7 @@ private:
 	                      const std::vector<double>& values,
 	                      bool saveDefaultValues) const;
 	double _readVariableValue(const std::string& variableName) const;
-	// Self-scheduling that couples the continuous integration to the discrete event calendar:
-	// each internal event advances the ODE by one step and schedules the next, so the continuous
-	// state evolves with the simulation clock instead of only when a discrete entity arrives.
-	void _handleInternalEvent(void* parameter);
-	void _scheduleNextInternalEvent();
+	unsigned int _stepsPerformed = 0;
 	// Optional CSV dump of the trajectory: when _outputFile is set, one row per integration
 	// step is written (t and each state variable), so any model can export its trajectory.
 	void _writeOutputHeader() const;

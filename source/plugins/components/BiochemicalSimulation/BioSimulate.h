@@ -9,8 +9,7 @@
 #define BIOSIMULATE_H
 
 #include <string>
-
-#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "plugins/components/Continuous/ContinuousModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 
@@ -21,10 +20,10 @@
  * arriving entity can either run the network with its own configured time
  * window or with component-provided start/stop/step values.
  */
-class BioSimulate : public ModelComponent {
+class BioSimulate : public ContinuousModelComponent {
 public:
 	BioSimulate(Model* model, std::string name = "");
-	virtual ~BioSimulate() override = default;
+	virtual ~BioSimulate() override;
 
 public:
 	static PluginInformation* GetPluginInformation();
@@ -64,7 +63,7 @@ protected:
 	// virtual void _createAttachedAttributes() override;
 
 private:
-	void _forwardEntity(Entity* entity);
+	void _onContinuousExecutionResult(const ContinuousModelDataDefinition::ExecutionResult& result) override;
 
 private:
 	const struct DEFAULT_VALUES {

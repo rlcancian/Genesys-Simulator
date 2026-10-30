@@ -1473,6 +1473,37 @@ public:
     }
 };
 
+class ContinuousEntityArrivalRecorder {
+public:
+    ContinuousEntityArrivalRecorder(BioNetwork* network, std::string componentName)
+        : _network(network), _componentName(std::move(componentName)) {}
+
+    void onProcessEvent(SimulationEvent* event) {
+        Event* currentEvent = event->getCurrentEvent();
+        if (currentEvent == nullptr || currentEvent->getComponent() == nullptr ||
+            currentEvent->getComponent()->getName() != _componentName) {
+            return;
+        }
+        ++_arrivals;
+        _arrivalTime = event->getSimulatedTime();
+        _networkTimeAtArrival = _network->getCurrentTime();
+        _networkStatusAtArrival = _network->getLastStatus();
+    }
+
+    unsigned int arrivals() const { return _arrivals; }
+    double arrivalTime() const { return _arrivalTime; }
+    double networkTimeAtArrival() const { return _networkTimeAtArrival; }
+    const std::string& networkStatusAtArrival() const { return _networkStatusAtArrival; }
+
+private:
+    BioNetwork* _network;
+    std::string _componentName;
+    unsigned int _arrivals = 0;
+    double _arrivalTime = -1.0;
+    double _networkTimeAtArrival = -1.0;
+    std::string _networkStatusAtArrival;
+};
+
 class BioSteadyStateProbe : public BioSteadyState {
 public:
     BioSteadyStateProbe(Model* model, const std::string& name = "") : BioSteadyState(model, name) {}
@@ -7596,6 +7627,91 @@ TEST(SimulatorRuntimeTest, BioSimulateComponentRunsAssignedBioNetwork) {
     EXPECT_GT(b.getAmount(), 0.0);
 }
 
+TEST(SimulatorRuntimeTest, BioSimulateForwardsEntityOnlyAfterSynchronizedRunCompletes) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "ContinuousEntity");
+    auto* create = new Create(model, "ContinuousCreate");
+    auto* secondCreate = new Create(model, "ContinuousSecondCreate");
+    auto* midpointCreate = new Create(model, "ContinuousMidpointCreate");
+    auto* simulate = new BioSimulate(model, "ContinuousBioSimulate");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(simulate, nullptr);
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(1);
+    secondCreate->setEntityType(entityType);
+    secondCreate->setFirstCreation(0.25);
+    secondCreate->setTimeBetweenCreationsExpression("1");
+    secondCreate->setMaxCreations(1);
+    midpointCreate->setEntityType(entityType);
+    midpointCreate->setFirstCreation(0.25);
+    midpointCreate->setTimeBetweenCreationsExpression("1");
+    midpointCreate->setMaxCreations(1);
+
+    BioSpecies substrate(model, "ContinuousA");
+    substrate.setInitialAmount(10.0);
+    substrate.setAmount(10.0);
+    BioSpecies product(model, "ContinuousB");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+    BioReaction reaction(model, "ContinuousAtoB");
+    reaction.addReactant("ContinuousA", 1.0);
+    reaction.addProduct("ContinuousB", 1.0);
+    reaction.setRateConstant(0.2);
+
+    BioNetwork network(model, "ContinuousNetwork");
+    network.addSpecies("ContinuousA");
+    network.addSpecies("ContinuousB");
+    network.addReaction("ContinuousAtoB");
+    network.setStopTime(1.0);
+    network.setStepSize(0.25);
+    network.setStepsToSynchronize(2u);
+    simulate->setBioNetwork(&network);
+
+    auto* dispose = new Dispose(model, "ContinuousDownstream");
+    auto* midpointDispose = new Dispose(model, "ContinuousMidpointProbe");
+    ASSERT_NE(dispose, nullptr);
+    create->connectTo(simulate);
+    secondCreate->connectTo(simulate);
+    simulate->connectTo(dispose);
+    midpointCreate->connectTo(midpointDispose);
+    ContinuousEntityArrivalRecorder arrivalRecorder(&network, "ContinuousDownstream");
+    ContinuousEntityArrivalRecorder midpointRecorder(&network, "ContinuousMidpointProbe");
+    model->getOnEventManager()->addOnProcessEventHandler(
+        &arrivalRecorder, &ContinuousEntityArrivalRecorder::onProcessEvent);
+    model->getOnEventManager()->addOnProcessEventHandler(
+        &midpointRecorder, &ContinuousEntityArrivalRecorder::onProcessEvent);
+
+    ModelSimulation* simulation = model->getSimulation();
+    simulation->setNumberOfReplications(1);
+    simulation->setReplicationLength(2.0, Util::TimeUnit::second);
+    simulation->setShowReportsAfterReplication(false);
+    simulation->setShowReportsAfterSimulation(false);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    simulation->start();
+
+    ASSERT_EQ(arrivalRecorder.arrivals(), 2u);
+    EXPECT_DOUBLE_EQ(arrivalRecorder.arrivalTime(), 1.0);
+    EXPECT_DOUBLE_EQ(arrivalRecorder.networkTimeAtArrival(), 1.0);
+    EXPECT_EQ(arrivalRecorder.networkStatusAtArrival(), "Completed");
+    EXPECT_TRUE(simulate->getLastSucceeded());
+    ASSERT_EQ(midpointRecorder.arrivals(), 1u);
+    EXPECT_DOUBLE_EQ(midpointRecorder.arrivalTime(), 0.25);
+    // The entity event and continuous synchronization share timestamp 0.25;
+    // the calendar intentionally defines no ordering between simultaneous events.
+    const double confirmedTime = midpointRecorder.networkTimeAtArrival();
+    const std::string executionStatus = midpointRecorder.networkStatusAtArrival();
+    EXPECT_TRUE((confirmedTime == 0.0 && executionStatus == "WaitingForSynchronization") ||
+                (confirmedTime == 0.25 && executionStatus == "WaitingForContinuation"));
+}
+
 TEST(SimulatorRuntimeTest, BioSteadyStateComponentStoresLastCheckOutput) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -8981,7 +9097,7 @@ TEST(SimulatorRuntimeTest, BioNetworkMvpReversibleEnzymeExampleProducesAnalysisA
     EXPECT_GT(sensitivity.entries[1].maxAbsoluteSensitivity, 0.0);
 }
 
-TEST(SimulatorRuntimeTest, BioNetworkAutoScheduleAdvancesWithKernelInternalEvents) {
+TEST(SimulatorRuntimeTest, BioNetworkStepSynchronizationAdvancesWithKernelInternalEvents) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
@@ -9022,11 +9138,11 @@ TEST(SimulatorRuntimeTest, BioNetworkAutoScheduleAdvancesWithKernelInternalEvent
     network.setStartTime(0.0);
     network.setStopTime(1.0);
     network.setStepSize(0.25);
-    network.setAutoSchedule(true);
+    network.setStepsToSynchronize(1u);
     owner->AttachEditableDataDefinitionProbe("BioNetwork", &network);
 
     ModelSimulation* simulation = model->getSimulation();
-    simulation->setNumberOfReplications(1);
+    simulation->setNumberOfReplications(2);
     simulation->setReplicationLength(1.0, Util::TimeUnit::second);
     simulation->setShowReportsAfterReplication(false);
     simulation->setShowReportsAfterSimulation(false);

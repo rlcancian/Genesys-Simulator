@@ -10,8 +10,7 @@
 #define DIFFUSIONSIMULATE_H
 
 #include <string>
-
-#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "plugins/components/Continuous/ContinuousModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/data/Continuous/DiffusionField.h"
 
@@ -23,13 +22,14 @@
  * entity runs the field either with its own configured time window or with
  * component-provided start/stop/step values, then forwards the entity. This is the
  * discrete->continuous bridge: a discrete-event component drives the continuous PDE
- * subsystem. For event-clock-synchronized advance, enable AutoSchedule on the
- * DiffusionField instead, so it steps once per kernel InternalEvent.
+ * subsystem. A DiffusionField configured with StepsToSynchronize greater than
+ * zero advances at explicit kernel-clock synchronization events; zero runs the
+ * requested interval without posting synchronization events.
  */
-class DiffusionSimulate : public ModelComponent {
+class DiffusionSimulate : public ContinuousModelComponent {
 public:
 	DiffusionSimulate(Model* model, std::string name = "");
-	virtual ~DiffusionSimulate() override = default;
+	virtual ~DiffusionSimulate() override;
 
 public:
 	static PluginInformation* GetPluginInformation();
@@ -64,7 +64,7 @@ protected:
 	virtual void _createEditableDataDefinitions() override;
 
 private:
-	void _forwardEntity(Entity* entity);
+	void _onContinuousExecutionResult(const ContinuousModelDataDefinition::ExecutionResult& result) override;
 
 private:
 	const struct DEFAULT_VALUES {

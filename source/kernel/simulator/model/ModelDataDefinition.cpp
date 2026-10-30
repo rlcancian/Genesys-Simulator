@@ -89,6 +89,7 @@ void ModelDataDefinition::setModelLevel(unsigned int _modelLevel) {
 }
 
 ModelDataDefinition::~ModelDataDefinition() {
+	_lifetimeToken.reset();
 	// Release all owned internal modeldata definitions registered by this model element.
 	_dataAssociations.clearAll();
 	// Keep model registry consistent by removing this modeldata from the manager first.
@@ -109,6 +110,10 @@ ModelDataDefinition::~ModelDataDefinition() {
 		delete _simulationControls;
 		_simulationControls = nullptr;
 	}
+}
+
+std::weak_ptr<void> ModelDataDefinition::getLifetimeToken() const {
+	return _lifetimeToken;
 }
 
 void ModelDataDefinition::_internaStatisticReportersClear() {

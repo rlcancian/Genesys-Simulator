@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "plugins/data/Continuous/ContinuousModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
 class DiffusionMethodOfLinesSystem;
@@ -34,12 +34,17 @@ class DiffusionMethodOfLinesSystem;
 // specific, well-tested class for diffusion - leaving a general user-defined
 // equation mechanism (parser or CppCompiler) as a future extension.
 //
-// Time semantics: with AutoSchedule enabled, the field steps once per kernel
-// InternalEvent (see scheduleNextInternalEvent), so the continuous solve advances
-// in sync with the discrete-event clock; otherwise simulate() runs the whole time
-// window synchronously when driven by the DiffusionSimulate component.
-class DiffusionField : public ModelDataDefinition {
+// Continuous stepping and synchronization are controlled by the shared base.
+class DiffusionField : public ContinuousModelDataDefinition {
 public:
+	struct StateView {
+		const std::vector<double>& values;
+		unsigned int dimensions;
+		unsigned int pointsPerDimension;
+		double totalMass;
+		double maxValue;
+		double l2Norm;
+	};
 	DiffusionField(Model* model, std::string name = "");
 	virtual ~DiffusionField() override = default;
 
@@ -64,25 +69,8 @@ public:
 	std::string getInitialCondition() const;
 	void setInitialParameter(double initialParameter);
 	double getInitialParameter() const;
-	void setStartTime(double startTime);
-	double getStartTime() const;
-	void setStopTime(double stopTime);
-	double getStopTime() const;
-	void setStepSize(double stepSize);
-	double getStepSize() const;
-	void setCurrentTime(double currentTime);
-	double getCurrentTime() const;
-	// When true, the field schedules itself on the kernel's event queue and
-	// advances one step per InternalEvent, staying in sync with simulated time.
-	void setAutoSchedule(bool autoSchedule);
-	bool getAutoSchedule() const;
 	void setOdeSolver(std::string odeSolver);
 	std::string getOdeSolver() const;
-	void setLastStatus(std::string lastStatus);
-	std::string getLastStatus() const;
-	void setLastErrorMessage(std::string lastErrorMessage);
-	std::string getLastErrorMessage() const;
-
 	// --- diagnostics (read-only outputs) ---
 	double getTotalMass() const;
 	double getMaxValue() const;
@@ -91,10 +79,7 @@ public:
 	/// Field value at a multi-index (size must equal Dimensions); 0 if invalid.
 	double getFieldValue(const std::vector<unsigned int>& multiIndex) const;
 
-	// --- execution ---
-	bool simulate(std::string& errorMessage);
-	bool simulate(double startTime, double stopTime, double stepSize, std::string& errorMessage);
-	bool advanceOneStep(std::string& errorMessage);
+	// Temporal execution is inherited from ContinuousModelDataDefinition.
 
 	// --- display ---
 	std::string showFieldAsAscii() const;
@@ -105,16 +90,16 @@ protected:
 	virtual bool _loadInstance(PersistenceRecord* fields) override;
 	virtual void _saveInstance(PersistenceRecord* fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _initBetweenReplications() override;
+	void initializeContinuousState() override;
+	bool evolveState(double currentTime, double dt, std::string& errorMessage) override;
+	void onContinuousRunCompleted() override;
+	std::any internalStateView() const override;
+	void confirmContinuousState() override;
 
 private:
 	bool buildSystem(DiffusionMethodOfLinesSystem* system, std::string& errorMessage) const;
 	void buildInitialField(const DiffusionMethodOfLinesSystem& system, std::vector<double>& field) const;
 	void refreshDiagnostics(const DiffusionMethodOfLinesSystem& system);
-	// Event-driven advance (mirrors BioNetwork): each InternalEvent advances one
-	// step and reschedules the next, coupling the continuous solve to the kernel clock.
-	void handleInternalEvent(void* parameter);
-	void scheduleNextInternalEvent();
 
 private:
 	const struct DEFAULT_VALUES {
@@ -125,11 +110,6 @@ private:
 		std::string boundaryCondition = "Dirichlet";
 		std::string initialCondition = "SineMode";
 		double initialParameter = 1.0;
-		double startTime = 0.0;
-		double stopTime = 0.1;
-		double stepSize = 0.01;
-		double currentTime = 0.0;
-		bool autoSchedule = false;
 		std::string odeSolver = "RungeKutta4";
 		std::string lastStatus = "Idle";
 		std::string lastErrorMessage = "";
@@ -142,19 +122,16 @@ private:
 	std::string _boundaryCondition = DEFAULT.boundaryCondition;
 	std::string _initialCondition = DEFAULT.initialCondition;
 	double _initialParameter = DEFAULT.initialParameter;
-	double _startTime = DEFAULT.startTime;
-	double _stopTime = DEFAULT.stopTime;
-	double _stepSize = DEFAULT.stepSize;
-	double _currentTime = DEFAULT.currentTime;
-	bool _autoSchedule = DEFAULT.autoSchedule;
 	std::string _odeSolver = DEFAULT.odeSolver;
-	std::string _lastStatus = DEFAULT.lastStatus;
-	std::string _lastErrorMessage = DEFAULT.lastErrorMessage;
 
 	std::vector<double> _field;       // current flattened grid state
+	std::vector<double> _confirmedField;
 	double _lastTotalMass = 0.0;
 	double _lastMaxValue = 0.0;
 	double _lastL2Norm = 0.0;
+	double _confirmedTotalMass = 0.0;
+	double _confirmedMaxValue = 0.0;
+	double _confirmedL2Norm = 0.0;
 };
 
 #endif /* DIFFUSIONFIELD_H */

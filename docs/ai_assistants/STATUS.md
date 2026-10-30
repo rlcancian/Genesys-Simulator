@@ -190,7 +190,7 @@ Startup does not imply functional or scientific maturity.
 - `HUM-SEC-002`: worker authentication architecture;
 - `HUM-SEC-004`: runtime signing public key provisioning for per-user Launcher updates;
 - `HUM-SCI-001`: authoritative numerical/statistical reference packages;
-- `HUM-SCI-002`: modal/hybrid time synchronization contract; now directly relevant to the planned biochemical CTMC phase because sampled CTMC holding times must be reconciled with the GenESyS event calendar;
+- `HUM-SCI-002`: the maintainer recorded the deterministic continuous-model observation/synchronization rule on 2026-10-29: ordinary discrete events read the last globally confirmed state, registered observers receive each completed working step, and only the kernel advances global time. Its separate reconciliation with stochastic CTMC holding times remains pending;
 - `HUM-OPT-001`: initial optimizer algorithm/benchmark package;
 - `HUM-VC-001`: initial AI virtual-cell organism/use case/data package;
 - `HUM-REL-001`: final supported set and promotion gate.
@@ -258,7 +258,7 @@ The documentation-migration-specific freeze has ended.
 
 Previously paused technical tasks remain `paused`; they do not resume automatically. A maintainer must explicitly activate the selected next task in `BACKLOG_AUTONOMOUS.md`.
 
-For Modal/Network, `AUTO-MODAL-001` is `closed` and `AUTO-MODAL-002` backend scope is `done_confirmed`. The next maintainer-selected direction is the academic biochemical CTMC phase defined in `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`. Its immediate work is specification/current-code audit/reference-validation design; runtime implementation must not begin by assumption while the `HUM-SCI-002` simulation-time contract remains unresolved.
+For Modal/Network, `AUTO-MODAL-001` is `closed` and `AUTO-MODAL-002` backend scope is `done_confirmed`. The next maintainer-selected direction is the academic biochemical CTMC phase defined in `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`. Its immediate work is specification/current-code audit/reference-validation design; runtime implementation must not assume that the deterministic continuous-model decision defines stochastic CTMC holding-time integration. That CTMC-specific reconciliation remains open under `HUM-SCI-002`.
 
 ## 13. Ongoing governance
 
@@ -341,3 +341,50 @@ Next maintainer-selected backend research phase:
 
 The authoritative completed-backend guide remains `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. The next backend research plan is `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`.
 Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
+
+## 16. Continuous Models / PR #550 checkpoint
+
+The local closeout started at source SHA `fc9afd79e2923afdbe09f8660e403932b97d97b6`.
+The latest source/test checkpoint is `a28bc2168`. Unit and kernel each passed
+1,945 tests with four disabled and zero failures; smoke passed 3/3; the focused
+continuous plugin target passed 44/44. Focused ASan/UBSan/LSan passed the
+rejected-request lifetime regression and ODE/BioNetwork configuration
+round-trips. The Qt6 GUI compiled; no interactive pause/resume validation is
+claimed. The AI documentation governance validator passed after the
+`HUM-SCI-002` reconciliation.
+
+The new lifetime regression reproduced a heap-use-after-free before the fix:
+an entityless rejected request removed its completion subscription but left a
+continuation lambda capturing the component. Both subscriptions are now removed
+on that rejection path. ODE persistence now preserves sub-micro precision via
+an optional exact-text field while retaining the legacy numeric field; a `1e-8`
+round-trip regression verifies this correction.
+
+The deterministic known-event calendar policy in `HUM-SCI-002` is implemented:
+ordinary discrete events observe the last confirmed state; the calendar bounds
+lookahead; a waiting entity returns to the same component and execution; and the
+ODE regression proves a parameter change at 5.5 is applied after resumption.
+Off-grid events retain the configured integration grid and use the documented
+crossing-step approximation. Arbitrary handler effects are not rolled back;
+retroactive events fail explicitly. Stochastic CTMC holding-time semantics are
+separate and remain open.
+
+The historical PR diff was reviewed by scope. Continuous lifecycle, Observable,
+calendar and persistence changes are retained. The GUI pause/resume crash and
+crash-diagnostic changes are retained because they directly address the original
+reported incident. BioNetwork editor changes align its UI with the zero local
+origin. A whitespace-only scanner/parser drift was removed; that cleanup has no
+parser behavior change. The regenerated manual follows its source chapter
+update. The pre-existing local `Resource.h` edit and `teste1.gui` remain
+unstaged and are not part of this branch work.
+
+At this checkpoint PR #550 remains open and draft against `WorkInProgress`.
+Three older automated review comments were checked against current code and
+tests: unsupported nonzero component start is rejected during validation, ODE
+`MaxSteps` is reset per synchronization batch, and BioNetwork's terminal
+payload reports `Completed`. Final hosted checks, the ready-for-review
+transition and merge remain pending. See
+[`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Closeout.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Closeout.md).
+**Continuous Models maturity: `running` / `PARTIALLY_VALIDATED` until final
+hosted checks and governed PR integration are confirmed; no new feature
+development is authorized after this closeout.**

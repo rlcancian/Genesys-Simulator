@@ -171,6 +171,15 @@ the source-backed G0.1 GUI inventory, the proposed versioned diagram
 record contract, G0.2 acceptance criteria, the read-only EFSM G1 slice,
 subsequent G2–G6 gates, and eventual local-agent handoff.
 
+### [`CONTINUOUS_MODEL_EXECUTION.md`](CONTINUOUS_MODEL_EXECUTION.md)
+
+Use for the current continuous data-definition lifecycle, `StepsToSynchronize`,
+local/global clock mapping, shared continuous component entity handling, and the
+selected deterministic continuous observation rule tracked by `HUM-SCI-002`,
+including the internal-state Observable and confirmed-state publication. The
+separate stochastic CTMC holding-time reconciliation remains open under that
+identifier; it does not reopen the decision for the current continuous models.
+
 ## 3. Reference rules
 
 Reference files:

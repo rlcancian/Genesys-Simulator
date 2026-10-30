@@ -16,6 +16,10 @@
 #include <sstream>
 #include <fstream>
 #include <ios>
+#include <list>
+#include <map>
+#include <charconv>
+#include <limits>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -24,11 +28,22 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
+namespace {
+std::string formatExactDouble(double value) {
+	char buffer[64];
+	const auto [end, error] = std::to_chars(buffer, buffer + sizeof(buffer), value,
+	                                        std::chars_format::general,
+	                                        std::numeric_limits<double>::max_digits10);
+	if (error != std::errc{}) return std::to_string(value);
+	return std::string(buffer, end);
+}
+}
+
 ModelDataDefinition* ODESolver::NewInstance(Model* model, std::string name) {
 	return new ODESolver(model, name);
 }
 
-ODESolver::ODESolver(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<ODESolver>(), name) {
+ODESolver::ODESolver(Model* model, std::string name) : ContinuousModelDataDefinition(model, Util::TypeOf<ODESolver>(), name, 60.0, 0.01, 1u) {
 	// Initialize state values vector to match state variable names size
 	_stateValues.resize(_stateVariableNames.size(), 0.0);
 	_initialStateValues.resize(_stateVariableNames.size(), 0.0);
@@ -39,9 +54,15 @@ ODESolver::ODESolver(Model* model, std::string name) : ModelDataDefinition(model
 ModelDataDefinition* ODESolver::LoadInstance(Model* model, PersistenceRecord *fields) {
 	ODESolver* newElement = new ODESolver(model);
 	try {
-		newElement->_loadInstance(fields);
+		const bool loaded = newElement->_loadInstance(fields);
+		if (!loaded && fields->size() != 0) {
+			delete newElement;
+			return nullptr;
+		}
 	} catch (const std::exception& e) {
-		// Handle exception
+		newElement->traceError("Failed to load ODESolver instance: " + std::string(e.what()));
+		delete newElement;
+		return nullptr;
 	}
 	return newElement;
 }
@@ -92,10 +113,10 @@ std::string ODESolver::show() {
 	return ModelDataDefinition::show() +
 			",timeVariableName=\"" + _timeVariableName + "\"" +
 			",stateVariables=[" + stateVars + "]" +
-			",step=" + std::to_string(_step) +
+			",step=" + std::to_string(getStep()) +
 			",precision=" + std::to_string(_precision) +
 			",maxSteps=" + std::to_string(_maxSteps) +
-			",currentTime=" + std::to_string(_currentTime);
+			",currentTime=" + std::to_string(getCurrentTime());
 }
 
 // gets & sets
@@ -112,6 +133,7 @@ void ODESolver::setStateVariableNames(std::vector<std::string> stateVariableName
 	this->_stateVariableNames = stateVariableNames;
 	_stateValues.resize(stateVariableNames.size(), 0.0);
 	_initialStateValues.resize(stateVariableNames.size(), 0.0);
+	_confirmedStateValues.resize(stateVariableNames.size(), 0.0);
 }
 
 std::vector<std::string> ODESolver::getStateVariableNames() const {
@@ -126,13 +148,6 @@ std::vector<std::string> ODESolver::getEquationExpressions() const {
 	return _equationExpressions;
 }
 
-void ODESolver::setStep(double step) {
-	this->_step = step;
-}
-
-double ODESolver::getStep() const {
-	return _step;
-}
 
 void ODESolver::setPrecision(double precision) {
 	this->_precision = precision;
@@ -150,20 +165,16 @@ int ODESolver::getMaxSteps() const {
 	return _maxSteps;
 }
 
-void ODESolver::setCurrentTime(double currentTime) {
-	this->_currentTime = currentTime;
-}
-
-double ODESolver::getCurrentTime() const {
-	return _currentTime;
-}
 
 void ODESolver::setStateValues(std::vector<double> stateValues) {
 	this->_stateValues = stateValues;
+	_confirmedStateValues = std::move(stateValues);
+	_stateValues = _confirmedStateValues;
+	writeStateToVariables();
 }
 
 std::vector<double> ODESolver::getStateValues() const {
-	return _stateValues;
+	return _confirmedStateValues;
 }
 
 void ODESolver::setInitialStateValues(std::vector<double> initialStateValues) {
@@ -175,13 +186,6 @@ std::vector<double> ODESolver::getInitialStateValues() const {
 	return _initialStateValues;
 }
 
-void ODESolver::setAutoAdvance(bool autoAdvance) {
-	this->_autoAdvance = autoAdvance;
-}
-
-bool ODESolver::isAutoAdvance() const {
-	return _autoAdvance;
-}
 
 void ODESolver::setOutputFile(std::string outputFile) {
 	this->_outputFile = outputFile;
@@ -194,12 +198,26 @@ std::string ODESolver::getOutputFile() const {
 // new methods
 
 void ODESolver::integrate(double targetTime) {
-	if (_stateVariableNames.empty() || _equationExpressions.empty()) {
-		return;
-	}
+    std::string errorMessage;
+    if (!integrate(targetTime, errorMessage) && !errorMessage.empty()) {
+        traceError("ODESolver integrate failed: " + errorMessage);
+    }
+}
 
-	const double startTime = _currentTime;
+bool ODESolver::integrate(double targetTime, std::string& errorMessage) {
+    _stepsPerformed = 0;
+    return advanceTo(targetTime, errorMessage);
+}
 
+bool ODESolver::evolveState(double currentTime, double dt, std::string& errorMessage) {
+    if (_stateVariableNames.empty() || _equationExpressions.empty()) {
+        errorMessage = "ODESolver equations and state variables must not be empty.";
+        return false;
+    }
+    if (_stepsPerformed >= static_cast<unsigned int>(_maxSteps)) {
+        errorMessage = "ODESolver maximum number of steps exceeded.";
+        return false;
+    }
 	// Local ODE system implementation
 	struct ODESystem : public OdeSystem_if {
 		ODESolver* _solver;
@@ -237,62 +255,56 @@ void ODESolver::integrate(double targetTime) {
 	};
 
 	ODESystem odeSystem(this);
-	std::vector<double> y = _stateValues;
-	std::vector<double> yNext(_stateValues.size());
-	int steps = 0;
+    std::vector<double> next(_stateValues.size());
+    if (!_solver.advance(odeSystem, currentTime, dt, _stateValues.data(), next.data())) {
+        errorMessage = "ODESolver numerical integration step failed.";
+        return false;
+    }
+    _stateValues.swap(next);
+    ++_stepsPerformed;
+    return true;
+}
 
-	// Main integration loop with fixed step size
-	while (_currentTime + _step <= targetTime && steps < _maxSteps) {
-		bool success = _solver.advance(odeSystem, _currentTime, _step, y.data(), yNext.data());
-		if (!success) {
-			break;
-		}
+void ODESolver::onContinuousEvolutionBatchStarted() {
+    // MaxSteps limits one integration batch. Autonomous execution divides a
+    // trajectory into synchronization batches, so each batch receives the same
+    // budget that integrate(targetTime) gives a direct integration request.
+    _stepsPerformed = 0;
+}
 
-		_currentTime += _step;
-		y = yNext;
-		steps++;
-	}
+void ODESolver::onContinuousStepCompleted() {
+    writeStateToVariables(); // Keep ordinary model variables at the confirmed state during lookahead.
+    if (!_outputFile.empty()) _appendOutputRow();
+}
 
-	// Final partial step if needed
-	if (_currentTime < targetTime && steps < _maxSteps) {
-		double lastStep = targetTime - _currentTime;
-		bool success = _solver.advance(odeSystem, _currentTime, lastStep, y.data(), yNext.data());
-		if (success) {
-			_currentTime = targetTime;
-			y = yNext;
-		}
-	}
+std::any ODESolver::internalStateView() const {
+	return StateView{_stateVariableNames, _stateValues};
+}
 
-	// Update internal state and model variables
-	_stateValues = y;
-	for (unsigned int i = 0; i < _stateVariableNames.size(); i++) {
-		Variable* stateVar = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), _stateVariableNames[i]));
-		if (stateVar != nullptr) {
-			stateVar->setValue(y[i]);
-		}
-	}
+void ODESolver::confirmContinuousState() {
+	_confirmedStateValues = _stateValues;
+	writeStateToVariables();
+}
 
-	// Update time variable in model
-	Variable* timeVar = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), _timeVariableName));
-	if (timeVar != nullptr) {
-		timeVar->setValue(_currentTime);
-	}
-
-	// Record one CSV row per advance, so the trajectory can be exported/plotted.
-	if (_currentTime > startTime) {
-		_appendOutputRow();
+void ODESolver::onInternalStateObserversCompleted() {
+	for (std::size_t i = 0; i < _stateVariableNames.size() && i < _stateValues.size(); ++i) {
+		Variable* variable = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(
+			Util::TypeOf<Variable>(), _stateVariableNames[i]));
+		if (variable != nullptr && i < _confirmedStateValues.size() &&
+			variable->getValue() != _confirmedStateValues[i]) _stateValues[i] = variable->getValue();
 	}
 }
 
 void ODESolver::resetState() {
 	_currentTime = 0.0;
 	_stateValues = _initialStateValues;
+	_confirmedStateValues = _stateValues;
 	writeStateToVariables();
 }
 
 double ODESolver::getStateValue(unsigned int index) const {
-	if (index < _stateValues.size()) {
-		return _stateValues[index];
+	if (index < _confirmedStateValues.size()) {
+		return _confirmedStateValues[index];
 	}
 	return 0.0;
 }
@@ -300,6 +312,7 @@ double ODESolver::getStateValue(unsigned int index) const {
 void ODESolver::setStateValue(unsigned int index, double value) {
 	if (index < _stateValues.size()) {
 		_stateValues[index] = value;
+		_confirmedStateValues[index] = value;
 
 		// Update model variable
 		if (index < _stateVariableNames.size()) {
@@ -314,14 +327,17 @@ void ODESolver::setStateValue(unsigned int index, double value) {
 // must be overriden
 
 bool ODESolver::_loadInstance(PersistenceRecord *fields) {
-	bool res = ModelDataDefinition::_loadInstance(fields);
+	bool res = ContinuousModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		_timeVariableName = fields->loadField("timeVariableName", DEFAULT.timeVariableName);
-		_step = fields->loadField("step", DEFAULT.step);
-		_precision = fields->loadField("precision", DEFAULT.precision);
+		setStepSize(fields->loadField("step", getStepSize()));
+		const std::string exactPrecision = fields->loadField("precisionExact", "");
+		_precision = exactPrecision.empty()
+			? fields->loadField("precision", DEFAULT.precision)
+			: std::stod(exactPrecision);
 		_maxSteps = fields->loadField("maxSteps", DEFAULT.maxSteps);
-		_currentTime = fields->loadField("currentTime", DEFAULT.currentTime);
-		_autoAdvance = fields->loadField("autoAdvance", DEFAULT.autoAdvance ? 1 : 0) != 0;
+		setStepsToSynchronize(fields->loadField("stepsToSynchronize",
+			fields->loadField("autoAdvance", 1u) != 0u ? 1u : 0u));
 		_outputFile = fields->loadField("outputFile", DEFAULT.outputFile);
 
 		// Load state variable names as ";" delimited string
@@ -366,6 +382,7 @@ bool ODESolver::_loadInstance(PersistenceRecord *fields) {
 			_initialStateValues = _stateValues;
 		}
 		_stateValues.resize(_stateVariableNames.size(), 0.0);
+		_confirmedStateValues = _stateValues;
 		_initialStateValues.resize(_stateVariableNames.size(), 0.0);
 		writeStateToVariables();
 	}
@@ -373,14 +390,17 @@ bool ODESolver::_loadInstance(PersistenceRecord *fields) {
 }
 
 void ODESolver::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
-	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	ContinuousModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 
 	fields->saveField("timeVariableName", _timeVariableName, DEFAULT.timeVariableName, saveDefaultValues);
-	fields->saveField("step", _step, DEFAULT.step, saveDefaultValues);
+	fields->saveField("step", getStep(), 0.01, saveDefaultValues); // legacy format
 	fields->saveField("precision", _precision, DEFAULT.precision, saveDefaultValues);
+	if (saveDefaultValues || _precision != DEFAULT.precision) {
+		// Preserve sub-micro tolerances exactly while keeping the legacy numeric
+		// field for older readers and existing model files.
+		fields->saveField("precisionExact", formatExactDouble(_precision));
+	}
 	fields->saveField("maxSteps", _maxSteps, DEFAULT.maxSteps, saveDefaultValues);
-	fields->saveField("currentTime", _currentTime, DEFAULT.currentTime, saveDefaultValues);
-	fields->saveField("autoAdvance", _autoAdvance ? 1 : 0, DEFAULT.autoAdvance ? 1 : 0, saveDefaultValues);
 	fields->saveField("outputFile", _outputFile, DEFAULT.outputFile, saveDefaultValues);
 
 	// Save state variable names as ";" delimited string
@@ -418,7 +438,7 @@ void ODESolver::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues)
 // could be overriden
 
 bool ODESolver::_check(std::string& errorMessage) {
-	bool resultAll = true;
+	bool resultAll = ContinuousModelDataDefinition::_check(errorMessage);
 
 	if (_timeVariableName.empty()) {
 		errorMessage += "TimeVariableName must not be empty. ";
@@ -435,54 +455,22 @@ bool ODESolver::_check(std::string& errorMessage) {
 		resultAll = false;
 	}
 
-	if (_step <= 0) {
-		errorMessage += "Step must be greater than 0. ";
-		resultAll = false;
-	}
 
 	return resultAll;
 }
 
-void ODESolver::_initBetweenReplications() {
+void ODESolver::initializeContinuousState() {
 	_currentTime = 0.0;
 	_stateValues = _initialStateValues;
 	_stateValues.resize(_stateVariableNames.size(), 0.0);
+	_confirmedStateValues = _stateValues;
 	writeStateToVariables();
 	// Start a fresh trajectory file (header + initial state) when export is enabled.
 	if (!_outputFile.empty()) {
 		_writeOutputHeader();
 		_appendOutputRow();
 	}
-	// Kick off the autonomous integration coupled to the event calendar. Without this the
-	// continuous state would only advance reactively, when a discrete entity reaches a
-	// ContinuousSystemComponent; with it, the ODE evolves with the simulation clock.
-	if (_autoAdvance) {
-		_scheduleNextInternalEvent();
-	}
-}
-
-void ODESolver::_handleInternalEvent(void* /*parameter*/) {
-	// The internal event fired at its scheduled time, so simulatedTime is now that instant.
-	// Bring the continuous state up to it, then keep the chain alive for the next step.
-	double simTime = _parentModel->getSimulation()->getSimulatedTime();
-	integrate(simTime);
-	if (_autoAdvance) {
-		_scheduleNextInternalEvent();
-	}
-}
-
-void ODESolver::_scheduleNextInternalEvent() {
-	if (_step <= 0.0 || _stateVariableNames.empty() || _equationExpressions.empty()) {
-		return;
-	}
-	double simTime = _parentModel->getSimulation()->getSimulatedTime();
-	double eventTime = simTime + _step;
-	// ModelSimulation discards out-of-window events without dispatching them, so this
-	// self-scheduling chain stops on its own at the end of the replication — no need to
-	// query the replication length here.
-	InternalEvent* event = new InternalEvent(eventTime, "ODESolverStep");
-	event->setEventHandler(this, &ODESolver::_handleInternalEvent, nullptr);
-	_parentModel->getFutureEvents()->insert(event);
+	_stepsPerformed = 0;
 }
 
 void ODESolver::_writeOutputHeader() const {
@@ -535,6 +523,26 @@ void ODESolver::_createEditableDataDefinitions() {
 		}
 		_optionalEditableDataDefinitionInsert("StateVariable_" + _stateVariableNames[i], stateVar);
 	}
+	// Equations may reference shared variables, attributes, formulas, or other
+	// data definitions that would otherwise be classified as orphans before
+	// ModelChecker validates the ODE. Keep every parser-resolved reference
+	// attached to this solver so its equations remain executable after check().
+	for (const std::string& expression : _equationExpressions) {
+		std::map<std::string, std::list<std::string>*> references;
+		_parentModel->checkReferencesToDataDefinitions(expression, &references);
+		for (auto& [type, names] : references) {
+			if (names == nullptr) continue;
+			for (const std::string& referencedName : *names) {
+				ModelDataDefinition* referenced = _parentModel->getDataManager()->getDataDefinition(type, referencedName);
+				if (referenced != nullptr) {
+					_optionalEditableDataDefinitionInsert(
+						"EquationReference_" + type + "_" + referencedName, referenced);
+				}
+			}
+			delete names;
+			names = nullptr;
+		}
+	}
 	if (_initialStateValues.empty()) {
 		synchronizeStateFromVariables();
 		_initialStateValues = _stateValues;
@@ -549,18 +557,19 @@ void ODESolver::synchronizeStateFromVariables() {
 		_stateValues.push_back(_readVariableValue(variableName));
 	}
 	_stateValues.resize(_stateVariableNames.size(), 0.0);
+	_confirmedStateValues = _stateValues;
 }
 
 void ODESolver::writeStateToVariables() const {
 	for (unsigned int i = 0; i < _stateVariableNames.size(); i++) {
 		Variable* stateVar = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), _stateVariableNames[i]));
 		if (stateVar != nullptr) {
-			stateVar->setValue(i < _stateValues.size() ? _stateValues[i] : 0.0);
+			stateVar->setValue(i < _confirmedStateValues.size() ? _confirmedStateValues[i] : 0.0);
 		}
 	}
 	Variable* timeVar = dynamic_cast<Variable*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), _timeVariableName));
 	if (timeVar != nullptr) {
-		timeVar->setValue(_currentTime);
+		timeVar->setValue(getCurrentTime());
 	}
 }
 

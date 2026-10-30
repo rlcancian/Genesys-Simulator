@@ -197,6 +197,57 @@ This is the only approved source for work an AI agent may execute without a new 
   complete Debian build validation and the pre-existing BacteriaColony test
   failure remain explicitly unresolved.
 
+### AUTO-CONT-001 — Continuous models and hybrid calendar integration
+
+- Priority: `P1`
+- Status: `running`
+- Environment: local Ubuntu 24.04/C++23/CMake/Ninja/Qt6 and GitHub PR checks.
+- Branch: `WiP20261016/ContinuousModels`; PR #550 to `WorkInProgress`.
+- Source/test checkpoint: `a28bc2168` adds regression coverage and fixes for
+  rejected continuation subscription lifetime and ODE persistence of
+  sub-micro precision. On this code, unit/kernel each pass 1,945 with four
+  disabled; smoke 3/3; the focused continuous target 44/44; focused
+  ASan/UBSan/LSan 3/3; Qt6 GUI build passes. Final hosted checks for this
+  checkpoint are pending publication. Earlier hosted CI on `f8f101f38` passed
+  all 16 checks, but does not validate this code checkpoint.
+- Authorization: direct maintainer mission dated 2026-10-30 continues the
+  existing PR #550 scope; it does not authorize bypassing review, failed CI,
+  human scientific decisions, or the PR draft gate.
+- Scope: close the shared temporal lifecycle, per-step Observable, calendar
+  bounded advancement and continuation, and entity integration for
+  `ODESolver`, `DiffusionField`, `BioNetwork`, `ContinuousSystemComponent`,
+  `DiffusionSimulate`, and `BioSimulate`; close regression gaps, reconcile the
+  reference/manual/evidence, and prepare the existing PR for independent review.
+- Non-goals: no change to simultaneous-event ordering, no generic rollback,
+  no Failure-plugin changes, no broad kernel/plugin/GUI refactor, no CTMC
+  holding-time semantics, and no merge to stable branches.
+- Acceptance: real-calendar regressions for the three continuous domains and
+  independent concurrent definitions; entity continuation and lifecycle
+  tests; relevant numerical and persistence regressions; unit, kernel, smoke,
+  GUI build and focused sanitizers at final source HEAD; documentation and
+  evidence reconciled; final-head GitHub checks green; PR review and governed
+  integration. The deterministic known-calendar-event policy in `HUM-SCI-002`
+  is implemented and covered by the ODE parameter-change/resumption regression;
+  stochastic CTMC timing remains separately scoped.
+- Current limitations: arbitrary observer side effects are not rolled back and
+  retroactive events fail explicitly; off-grid discontinuities retain the
+  configured integration grid and therefore use the documented crossing-step
+  approximation. The present regression set covers representative cancellation,
+  destruction, concurrent-entity, three-domain calendar and data-definition
+  persistence paths, not every possible cross-product of lifecycle states.
+  Interactive GUI pause/resume was not exercised in this closeout. LSan reports
+  4,910 bytes/161 allocations on both the ODE case and a `WorkInProgress`
+  plugin-bootstrap baseline (`6df79436ff9d72e302e9d2b047fc5a8f6e1f297b`), with
+  matching normalized stacks in `Buffer` templates (strong evidence of
+  pre-existing plugin-bootstrap leaks); final PR review and hosted validation
+  remain outstanding. See
+  [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md)
+  and [`history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md), with final check status in [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md).
+- Stop/escalation: do not invent scientific rollback or continuous-time
+  discontinuity semantics, do not merge with an incomplete check or unmet
+  review gate, and continue independent implementation/test/documentation work
+  while a material decision is pending.
+
 ### AUTO-ARENA-001 — Close Arena compatibility audit for Advanced Transfer and parser-variable scope
 
 - Priority: `P1`
