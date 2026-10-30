@@ -1342,7 +1342,7 @@ TEST(ContinuousCalendarTest, ODEComponentWaitsAndResumesAfterDiscreteInterruptio
 	component->connectTo(sink);
 	OdeCalendarDiscreteProbe observer(model, &solver);
 	model->getComponentManager()->remove(&observer);
-	ScheduleContinuousComponentScenario setup{model, component, &observer, 5.5};
+	ScheduleContinuousComponentScenario setup{model, component, &observer, 5.5, 2.5};
 	model->getOnEventManager()->addOnReplicationStartHandler(
 		&setup, &ScheduleContinuousComponentScenario::schedule);
 	ContinuousProcessArrivalProbe arrivals("OdeCalendarSink");
@@ -1358,8 +1358,13 @@ TEST(ContinuousCalendarTest, ODEComponentWaitsAndResumesAfterDiscreteInterruptio
 	EXPECT_DOUBLE_EQ(observer.observedTime, 5.0);
 	EXPECT_DOUBLE_EQ(observer.observedGlobalTime, 5.5);
 	EXPECT_NEAR(observer.observedState, 5.0, 1e-12);
-	ASSERT_EQ(arrivals.times.size(), 1u);
-	EXPECT_DOUBLE_EQ(arrivals.times.front(), 10.0);
+	ASSERT_EQ(arrivals.times.size(), 2u);
+	EXPECT_DOUBLE_EQ(arrivals.times[0], 10.0);
+	EXPECT_DOUBLE_EQ(arrivals.times[1], 10.0);
+	ASSERT_EQ(arrivals.entityIds.size(), 2u);
+	EXPECT_NE(arrivals.entityIds[0], arrivals.entityIds[1]);
+	EXPECT_EQ(arrivals.entityIds[0], setup.requestedEntityId);
+	EXPECT_EQ(arrivals.entityIds[1], setup.secondRequestedEntityId);
 	EXPECT_NEAR(solver.getStateValue(0u), 5.0, 1e-12);
 	EXPECT_EQ(solver.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed);
 }
