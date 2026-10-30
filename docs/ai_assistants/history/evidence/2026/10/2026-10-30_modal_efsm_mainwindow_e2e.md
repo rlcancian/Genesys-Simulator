@@ -153,6 +153,46 @@ complete a full mouse/keyboard EFSM editing workflow; the actual editor action
 sequence and file dialogs are covered by the offscreen MainWindow regression
 above. The GUI and Xvfb processes were stopped and no residual process remained.
 
+## Final local continuation checkpoint — 2026-10-30
+
+- Code checkpoint: `eed82946d61290dd58b3c65f6387fd26f5e216eb` on
+  `WiP20261029/modalmodel-architecture`; this was the published branch HEAD at
+  the time of validation. `b9172abf9` adds the EFSM-specific open-action label
+  and the tab title `Model > EFSM Network: NetworkName`; the shared-Network GUI
+  test asserts both.
+- At this code checkpoint, configure/build succeeded for `tests-unit`,
+  `tests-kernel-unit`, `tests-smoke`, and `gui-app`. CTest results:
+  `tests-unit` **1,963 passed, 4 disabled, 0 failed** (1,967 registered);
+  `tests-kernel-unit` **1,963 passed, 4 disabled, 0 failed**; `tests-smoke`
+  **3/3 passed**. Focused EFSM suites previously passed **37/37**; the current
+  full baselines include those unchanged code tests. An isolated rerun of
+  `EFSMNetworkUndo.TransitionPropertiesUndoRedoRestoresMathematicalValues`
+  passed; the old `LastTestsFailed.log` entry predated the current full CTest
+  run, whose captured summary was clean.
+- A fresh Doxygen run includes `docs/users/EFSM_Network_Editor.md` as its main
+  page. The combined `docs/users/GenESyS-User-Documentation.pdf` was regenerated
+  at **3,981 pages / 22,723,592 bytes**; extraction places the guide at PDF page
+  177, and that page was visually inspected. The generated LaTeX has 14
+  duplicate reference-label warnings; compilation completes successfully.
+  A Doxygen stylesheet maps unsupported Unicode glyphs in source comments for
+  pdfLaTeX. The Developer Manual remains 390 pages; its navigation update was
+  compiled and extracted from page 245 after `validate_figure_specs.sh` and
+  `make.sh` passed.
+- The AI-doc governance validator passes after the user-guide addition. GitHub
+  checks for published code HEAD `eed82946d` all completed successfully: unit,
+  kernel-unit, smoke, Debian package and lifecycle, GUI diagnostics, shell,
+  worker, launcher, GUI startup, plugin graph, archive/link and documentation
+  governance (workflow runs `41068932256`, `41068932277`, `41068932280`,
+  `41068932285`, `41068932290`, `41068932303`, `41068932320`, `41068932384`,
+  `41068932412`, `41068932442`, `41068932462`, and `41068932469`). This is
+  evidence for `eed82946d`; any later docs-only commit requires its own checks.
+- The real MainWindow offscreen workflow exercises EFSM creation, state and
+  transition edits, mixed undo/redo, deletion, `.gen`/`.gui` save-close-reopen,
+  and process-flow preservation. Separate tests cover parallel edges,
+  self-loops, shared adapters, missing Networks and lifecycle. There was no
+  separate manual mouse/keyboard EFSM editing session; the earlier Xvfb run
+  covered application startup and menu navigation only.
+
 ## Milestones and remaining work
 
 The accepted baseline remains **3/8 = 37.5%**. The automated GUI path now
