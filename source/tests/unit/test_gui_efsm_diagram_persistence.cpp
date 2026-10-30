@@ -1380,6 +1380,52 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     EXPECT_EQ(reopenedView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
 }
 
+TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
+    MainWindow window;
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    Simulator* simulator = window.myScene()->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    simulator->getPluginManager()->autoInsertPlugins();
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+    auto* adapter = new ModalModelDefault(model, "UnattachedAdapter");
+    auto* source = new Create(model, "UnattachedSource");
+    auto* sink = new Dispose(model, "UnattachedSink");
+    source->getConnectionManager()->insert(adapter);
+    adapter->getConnectionManager()->insert(sink);
+
+    auto* view = window.findChild<ModelGraphicsView*>();
+    ASSERT_NE(view, nullptr);
+    std::map<std::string, QColor> colors;
+    GraphicalModelBuilder builder(simulator, view, window.myScene(), &colors, nullptr);
+    builder.generateGraphicalModelFromModel();
+    GraphicalModelComponent* graphicalAdapter = nullptr;
+    for (QGraphicsItem* item : window.myScene()->items()) {
+        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+        if (graphical != nullptr && graphical->getComponent() == adapter) {
+            graphicalAdapter = graphical;
+            break;
+        }
+    }
+    ASSERT_NE(graphicalAdapter, nullptr);
+    QAction* openAction = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->text() == QStringLiteral("Open Submodel")) {
+            openAction = action;
+            break;
+        }
+    }
+    ASSERT_NE(openAction, nullptr);
+    QTabWidget* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
+    ASSERT_NE(tabs, nullptr);
+    const int tabCount = tabs->count();
+    graphicalAdapter->setSelected(true);
+    EXPECT_FALSE(openAction->isEnabled());
+    openAction->trigger();
+    EXPECT_EQ(tabs->count(), tabCount);
+    EXPECT_EQ(adapter->getNetwork(), nullptr);
+}
+
 TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnIncompleteModel) {
     MainWindow window;
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
