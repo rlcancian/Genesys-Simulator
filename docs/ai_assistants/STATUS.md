@@ -337,48 +337,47 @@ Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 ## 16. Continuous Models / PR #550 checkpoint
 
-The latest source/test checkpoint is `42bb445f2`; the corresponding
-documentation and hosted-validation checkpoint is `f8f101f38`. Concrete
-`DiffusionSimulate` and `ContinuousSystemComponent` calendar-interruption
-cases verify two waiting entities sharing an execution. All 16 hosted checks
-passed on `f8f101f38` on 2026-10-30, including unit, kernel, smoke, GUI startup,
-Debian package and lifecycle gates. PR #550 remains open and draft against
-`WorkInProgress`; `reviewDecision` is empty. Passing CI and GitHub's
-mergeable metadata do not satisfy the independent-review gate.
+The local closeout started at source SHA `fc9afd79e2923afdbe09f8660e403932b97d97b6`.
+The latest source/test checkpoint is `a28bc2168`. Unit and kernel each passed
+1,945 tests with four disabled and zero failures; smoke passed 3/3; the focused
+continuous plugin target passed 44/44. Focused ASan/UBSan/LSan passed the
+rejected-request lifetime regression and ODE/BioNetwork configuration
+round-trips. The Qt6 GUI compiled; no interactive pause/resume validation is
+claimed. The AI documentation governance validator passed after the
+`HUM-SCI-002` reconciliation.
 
-On the latest source/test checkpoint, `tests-unit` and `tests-kernel-unit` each
-passed 1,942 tests with 4 disabled and 0 failures; smoke passed 3/3; the
-focused continuous plugin target passed
-41/41; the prior focused ASan/UBSan calendar and Observable suite passed 21/21
-with LSan disabled, and the newly extended ODE case passed separately under
-ASan/UBSan with LSan disabled. Real-calendar component tests cover ODE, BioSimulate, and the concrete
-DiffusionSimulate interruption path; all three component paths now have a
-two-entity shared-run regression. The shared-calendar data-definition test
-starts ODE, diffusion and BioNetwork runs with STS 2/3/1 and confirms their
-terminal states and biochemical mass balance. The full evidence is in
-[`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md)
-and the concrete diffusion component follow-up
-[`history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionComponentCalendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionComponentCalendar_Evidence.md).
-Final-head hosted checks are recorded in
-[`history/evidence/2026/10/2026-10-30_ContinuousModels_Diffusion_Final_CI_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Diffusion_Final_CI_Evidence.md).
-The concurrent DiffusionSimulate test extension is recorded in
-[`history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionConcurrentEntities_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionConcurrentEntities_Evidence.md).
-The concurrent ODE test extension is recorded in
-[`history/evidence/2026/10/2026-10-30_ContinuousModels_ODEConcurrentEntities_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ODEConcurrentEntities_Evidence.md).
-Final hosted validation for this code checkpoint is recorded in
-[`history/evidence/2026/10/2026-10-30_ContinuousModels_ConcurrentEntities_Final_CI_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ConcurrentEntities_Final_CI_Evidence.md).
+The new lifetime regression reproduced a heap-use-after-free before the fix:
+an entityless rejected request removed its completion subscription but left a
+continuation lambda capturing the component. Both subscriptions are now removed
+on that rejection path. ODE persistence now preserves sub-micro precision via
+an optional exact-text field while retaining the legacy numeric field; a `1e-8`
+round-trip regression verifies this correction.
 
-LSan reported 4,910 bytes/161 allocations both for the branch ODE test and a
-`WorkInProgress` plugin-bootstrap baseline, with matching normalized stacks
-pointing to `Buffer` templates created during plugin loading. This is strong
-evidence of pre-existing bootstrap allocations, but the fixture bodies differ.
-Qt6 GUI build and Developer Manual generation passed on a source-identical
-checkpoint; hosted startup checks for the supported Qt applications and GUI
-GMDD passed on `69a4a25`.
+The deterministic known-event calendar policy in `HUM-SCI-002` is implemented:
+ordinary discrete events observe the last confirmed state; the calendar bounds
+lookahead; a waiting entity returns to the same component and execution; and the
+ODE regression proves a parameter change at 5.5 is applied after resumption.
+Off-grid events retain the configured integration grid and use the documented
+crossing-step approximation. Arbitrary handler effects are not rolled back;
+retroactive events fail explicitly. Stochastic CTMC holding-time semantics are
+separate and remain open.
 
-The complete cancellation/destruction, persistence, and cross-model interaction
-matrices remain incomplete. `HUM-SCI-002` still requires an explicit policy for
-discrete changes to inputs already used by precomputed continuous work. The
-full historical PR diff also needs independent scope review. **Continuous
-Models maturity: `running` / `PARTIALLY_VALIDATED`; keep the PR draft and do not
-merge until the scientific and governance gates are satisfied.**
+The historical PR diff was reviewed by scope. Continuous lifecycle, Observable,
+calendar and persistence changes are retained. The GUI pause/resume crash and
+crash-diagnostic changes are retained because they directly address the original
+reported incident. BioNetwork editor changes align its UI with the zero local
+origin. A whitespace-only scanner/parser drift was removed; that cleanup has no
+parser behavior change. The regenerated manual follows its source chapter
+update. The pre-existing local `Resource.h` edit and `teste1.gui` remain
+unstaged and are not part of this branch work.
+
+At this checkpoint PR #550 remains open and draft against `WorkInProgress`.
+Three older automated review comments were checked against current code and
+tests: unsupported nonzero component start is rejected during validation, ODE
+`MaxSteps` is reset per synchronization batch, and BioNetwork's terminal
+payload reports `Completed`. Final hosted checks, the ready-for-review
+transition and merge remain pending. See
+[`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Closeout.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Closeout.md).
+**Continuous Models maturity: `running` / `PARTIALLY_VALIDATED` until final
+hosted checks and governed PR integration are confirmed; no new feature
+development is authorized after this closeout.**

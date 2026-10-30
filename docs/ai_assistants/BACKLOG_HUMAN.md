@@ -305,18 +305,14 @@ A decision recorded here is not implemented automatically unless a corresponding
 ### HUM-SCI-002 — Modal/hybrid time synchronization contract
 
 - Priority: `P1`
-- Status: `decision-recorded`
+- Status: `implemented` (deterministic continuous-model scope; stochastic CTMC semantics remain separate)
 - Decision recorded by the maintainer on 2026-10-29 for the continuous-model integration scope: ordinary discrete events observe the last globally confirmed continuous state; registered observers receive each completed continuous working state, including steps between global synchronizations; only `ModelSimulation` advances global time; observers may schedule ordinary calendar events at the absolute time represented by their notification. Notifications are direct callbacks and do not create one `InternalEvent` per step.
 - Scope boundary: this decision governs `ContinuousModelDataDefinition`, `ODESolver`, `DiffusionField`, `BioNetwork`, and their current hybrid synchronization path. It does not by itself define stochastic holding-time semantics for the future biochemical CTMC plan.
-- Implementation status: Observable and confirmed-state publication are being implemented and validated in PR #550; update to `implemented` only after its acceptance evidence passes.
-- Remaining design condition: ordinary discrete events that mutate inputs used by already calculated continuous work need an explicit invalidation policy before such models rely on the interaction. This is not an open choice about which state ordinary events observe.
-- Required evidence:
-  - current `ModelSimulation` event flow;
-  - continuous and biochemical plugin behavior;
-  - representative deterministic models;
-  - unit and time-dimension conventions;
-  - expected handling of event-driven mutations to an already calculated block.
-- Decision unlocks: formal interface contract and regression fixtures; the observation rule above is already selected.
+- Implementation status: implemented for the deterministic continuous execution path in PR #550. Calendar-bounded lookahead stops before a known discrete event, synchronizes the last permitted grid state, returns the retained entity to the same component, and resumes the preserved run. The regression `ContinuousCalendarTest.ODEReadsDiscreteParameterChangeAfterCalendarResumption` demonstrates a discrete parameter change at 5.5 affecting subsequent ODE steps while ordinary getters expose the last confirmed state.
+- Numerical boundary: off-grid events do not create an automatic fractional step. With step size 1 and event time 5.5, calculation stops at 5 and resumes on the next grid point; the step spanning the discontinuity uses the existing numerical step method. This is an explicit approximation, not rollback.
+- Limitation: arbitrary observer side effects and retroactive events are not transactionally reversed. Events inserted behind already-computed working time fail with a diagnostic; no generic rollback is provided. This limitation does not leave the approved known-calendar-event policy undecided.
+- Evidence: `docs/ai_assistants/reference/CONTINUOUS_MODEL_EXECUTION.md` and the continuous calendar regressions in `source/tests/unit/test_plugins_continuous_diffusion.cpp`; final closeout evidence is linked from the October validation ledger.
+- Decision status: the deterministic synchronization decision is implemented; future stochastic CTMC holding-time synchronization remains outside this decision and requires its own evidence/contract.
 
 ## 6. Optimization decisions
 

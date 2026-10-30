@@ -44,6 +44,11 @@ request has finished or when the component is destroyed. Replication initializat
 cancels pending internal events and notifies outstanding consumers before resetting
 the definition.
 
+If a request is rejected before any entity is attached, both the completion and
+continuation subscriptions created for that request are removed immediately. This
+prevents a later calendar interruption from calling a continuation lambda whose
+component has already been destroyed.
+
 ## Confirmed state and per-step observation
 
 The maintainer's 2026-10-29 decision for `HUM-SCI-002` in this execution path is
