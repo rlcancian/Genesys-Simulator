@@ -9,6 +9,7 @@
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "actions/EFSMTransitionUndoCommand.h"
+#include "actions/EFSMTransitionPropertiesUndoCommand.h"
 #include "controllers/EditCommandController.h"
 #include "services/EFSMNetworkDiagramCodec.h"
 #include "services/GraphicalModelBuilder.h"
@@ -796,4 +797,55 @@ TEST(EFSMNetworkUndo, TransitionCreationUndoRedoTransfersOwnershipSafely) {
     EXPECT_EQ(network.getTransitions()->getAtRank(1), created);
     EXPECT_EQ(created->getGuardExpression(), "1");
     EXPECT_EQ(created->getOutputExpression(), "9");
+}
+
+TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "Network");
+    FSMState idle(model, "Idle");
+    FSMState busy(model, "Busy");
+    network.addState(&idle);
+    network.addState(&busy);
+    auto* transition = new EFSMTransition(&idle, &busy, "begin");
+    transition->setGuardExpression("ready == 1");
+    transition->setOutputExpression("started = 1");
+    transition->setInputEvent("start");
+    transition->setPriority(2);
+    transition->setTriggerEvent("trigger-start");
+    transition->setProbabilityExpression("0.75");
+    network.addTransition(transition);
+
+    EFSMTransitionPropertiesUndoCommand::Properties edited;
+    edited.name = "finish";
+    edited.guardExpression = "done == 1";
+    edited.outputExpression = "finished = 1";
+    edited.inputEvent = "finish";
+    edited.priority = 7;
+    edited.triggerEvent = "trigger-finish";
+    edited.probabilityExpression = "0.25";
+
+    QUndoStack stack;
+    stack.push(new EFSMTransitionPropertiesUndoCommand(&network, transition, edited));
+    EXPECT_EQ(transition->getName(), "finish");
+    EXPECT_EQ(transition->getGuardExpression(), "done == 1");
+    EXPECT_EQ(transition->getOutputExpression(), "finished = 1");
+    EXPECT_EQ(transition->getInputEvent(), "finish");
+    EXPECT_EQ(transition->getPriority(), 7u);
+    EXPECT_EQ(transition->getTriggerEvent(), "trigger-finish");
+    EXPECT_EQ(transition->getProbabilityExpression(), "0.25");
+
+    stack.undo();
+    EXPECT_EQ(transition->getName(), "begin");
+    EXPECT_EQ(transition->getGuardExpression(), "ready == 1");
+    EXPECT_EQ(transition->getOutputExpression(), "started = 1");
+    EXPECT_EQ(transition->getInputEvent(), "start");
+    EXPECT_EQ(transition->getPriority(), 2u);
+    EXPECT_EQ(transition->getTriggerEvent(), "trigger-start");
+    EXPECT_EQ(transition->getProbabilityExpression(), "0.75");
+
+    stack.redo();
+    EXPECT_EQ(transition->getName(), "finish");
+    EXPECT_EQ(transition->getPriority(), 7u);
 }

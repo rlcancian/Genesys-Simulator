@@ -488,6 +488,7 @@ private: // opened-model document state
     void _createEfsmState();
     /** @brief Creates one EFSMTransition between two selected states. */
     void _createEfsmTransition();
+    void _editEfsmTransition();
     void _refreshRecentModelsMenu();
     bool _openRecentModelFile(const QString& fileName);
     /** @brief Stores the active editor/dirty state before switching away from the current model. */
@@ -552,6 +553,7 @@ private: // interface and model main elements to join
     QAction* _actionSelectModalNetwork = nullptr;
     QAction* _actionCreateEfsmState = nullptr;
     QAction* _actionCreateEfsmTransition = nullptr;
+    QAction* _actionEditEfsmTransition = nullptr;
     QMenu* _menuOpenRecent = nullptr;
     QList<QAction*> _recentModelActions;
     // Keep core simulation command gateway owned by MainWindow composition root.

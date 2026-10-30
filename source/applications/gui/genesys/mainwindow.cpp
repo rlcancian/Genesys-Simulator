@@ -51,6 +51,9 @@
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
 #include "actions/EFSMTransitionUndoCommand.h"
+#include "actions/EFSMTransitionPropertiesUndoCommand.h"
+#include "graphicals/EFSMTransitionGraphicsItem.h"
+#include "services/EFSMNetworkDiagramProjection.h"
 #include "extensions/GuiExtensionContracts.h"
 #include "extensions/GuiExtensionManager.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
@@ -80,6 +83,11 @@
 // QT
 #include <QMessageBox>
 #include <QInputDialog>
+#include <QDialog>
+#include <QFormLayout>
+#include <QDialogButtonBox>
+#include <QLineEdit>
+#include <QSpinBox>
 #include <QTextStream>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -332,6 +340,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(_actionCreateEfsmState, &QAction::triggered, this, [this]() { _createEfsmState(); });
     _actionCreateEfsmTransition = new QAction(tr("Create EFSM Transition"), this);
     connect(_actionCreateEfsmTransition, &QAction::triggered, this, [this]() { _createEfsmTransition(); });
+    _actionEditEfsmTransition = new QAction(tr("Edit EFSM Transition..."), this);
+    connect(_actionEditEfsmTransition, &QAction::triggered, this, [this]() { _editEfsmTransition(); });
     _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
@@ -340,6 +350,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->menuModel->insertAction(ui->actionModelOpen, _actionSelectModalNetwork);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmState);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmTransition);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionEditEfsmTransition);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
     ui->menuModel->insertMenu(ui->actionModelOpen, _menuOpenRecent);
 
@@ -1099,6 +1110,77 @@ void MainWindow::_createEfsmTransition() {
     }
     _graphicalModelHasChanged = true;
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
+    _actualizeActions();
+}
+
+void MainWindow::_editEfsmTransition() {
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
+        || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    ModelGraphicsScene* scene = ui->graphicsView->getScene();
+    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0 || scene->getUndoStack() == nullptr) {
+        return;
+    }
+    EFSMTransitionGraphicsItem* selectedItem = nullptr;
+    for (QGraphicsItem* item : scene->selectedItems()) {
+        auto* candidate = dynamic_cast<EFSMTransitionGraphicsItem*>(item);
+        if (candidate == nullptr) {
+            continue;
+        }
+        if (selectedItem != nullptr) {
+            return;
+        }
+        selectedItem = candidate;
+    }
+    Model* model = simulator->getModelManager()->current();
+    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
+        ? model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
+        : nullptr);
+    if (network == nullptr || selectedItem == nullptr || selectedItem->transition() == nullptr
+        || network->getTransitions()->find(selectedItem->transition()) == network->getTransitions()->list()->end()) {
+        return;
+    }
+
+    EFSMTransition* transition = selectedItem->transition();
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Edit EFSM Transition"));
+    auto* form = new QFormLayout(&dialog);
+    auto* name = new QLineEdit(QString::fromStdString(transition->getName()), &dialog);
+    auto* guard = new QLineEdit(QString::fromStdString(transition->getGuardExpression()), &dialog);
+    auto* output = new QLineEdit(QString::fromStdString(transition->getOutputExpression()), &dialog);
+    auto* input = new QLineEdit(QString::fromStdString(transition->getInputEvent()), &dialog);
+    auto* priority = new QSpinBox(&dialog);
+    priority->setRange(0, std::numeric_limits<int>::max());
+    priority->setValue(static_cast<int>(std::min<unsigned int>(transition->getPriority(), std::numeric_limits<int>::max())));
+    auto* trigger = new QLineEdit(QString::fromStdString(transition->getTriggerEvent()), &dialog);
+    auto* probability = new QLineEdit(QString::fromStdString(transition->getProbabilityExpression()), &dialog);
+    form->addRow(tr("Name"), name);
+    form->addRow(tr("Guard expression"), guard);
+    form->addRow(tr("Output expression"), output);
+    form->addRow(tr("Input event"), input);
+    form->addRow(tr("Priority"), priority);
+    form->addRow(tr("Trigger event"), trigger);
+    form->addRow(tr("Probability expression"), probability);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    EFSMTransitionPropertiesUndoCommand::Properties updated;
+    updated.name = name->text().toStdString();
+    updated.guardExpression = guard->text().toStdString();
+    updated.outputExpression = output->text().toStdString();
+    updated.inputEvent = input->text().toStdString();
+    updated.priority = static_cast<unsigned int>(priority->value());
+    updated.triggerEvent = trigger->text().toStdString();
+    updated.probabilityExpression = probability->text().toStdString();
+    scene->getUndoStack()->push(new EFSMTransitionPropertiesUndoCommand(network, transition, std::move(updated)));
+    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
+    _graphicalModelHasChanged = true;
     _actualizeActions();
 }
 
@@ -2113,6 +2195,17 @@ void MainWindow::_actualizeActions() {
     }
     if (_actionCreateEfsmTransition != nullptr) {
         _actionCreateEfsmTransition->setEnabled(efsmContext);
+    }
+    if (_actionEditEfsmTransition != nullptr) {
+        int selectedTransitionCount = 0;
+        if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr) {
+            for (QGraphicsItem* item : ui->graphicsView->getScene()->selectedItems()) {
+                if (dynamic_cast<EFSMTransitionGraphicsItem*>(item) != nullptr) {
+                    ++selectedTransitionCount;
+                }
+            }
+        }
+        _actionEditEfsmTransition->setEnabled(efsmContext && selectedTransitionCount == 1);
     }
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.
