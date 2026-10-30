@@ -337,42 +337,31 @@ Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 ## 16. Continuous Models / PR #550 checkpoint
 
-As of 2026-10-30, `WiP20261016/ContinuousModels` is at
-`d658c48848e4eac27563404e90b93a85ceba65cd`, matching the remote branch.
-PR #550 remains open and draft against `WorkInProgress`; `reviewDecision` is
-empty. The checks for this HEAD were pending at the time of this checkpoint.
-The PR is mergeable according to GitHub metadata, which does not satisfy the
-review or validation gates.
+The latest source/test checkpoint is `d658c48848e4eac27563404e90b93a85ceba65cd`;
+the follow-up validation/documentation checkpoint `69a4a25b1f069f689fb944e16a34c16169996e59`
+passed all 16 GitHub checks on 2026-10-30. PR #550 remains open and draft
+against `WorkInProgress`; `reviewDecision` is empty. Passing CI and GitHub's
+mergeable metadata do not satisfy the independent-review gate.
 
-Local verification on the source/test commit `419d8287f` passed the focused
-continuous/calendar tests (37/37), `tests-unit` (1,940 passed, 4 disabled),
-`tests-kernel-unit` (1,940 passed, 4 disabled), `tests-smoke` (3/3), Qt6 GUI
-build and Developer Manual generation. Focused ASan/UBSan passed 19/19 with
-LeakSanitizer disabled. LSan reported 4,910 bytes/161 allocations both for
-the ODE case and for a `WorkInProgress` plugin-bootstrap baseline; normalized
-stacks match and point to `Buffer` templates constructed by
-`PluginManager::completePluginsFieldsAndTemplates()`. This is strong evidence
-that the reported leak is pre-existing plugin-bootstrap behavior, although the
-two test bodies differ. These results do not close the broader ODE, diffusion,
-BioNetwork, lifecycle, persistence or performance matrices. A subsequent
-shared-calendar test starts ODE, diffusion and BioNetwork together with STS
-2/3/1; its dedicated test and all 40 tests in the continuous plugin target
-passed locally. The full unit suite is being rerun on that source/test HEAD;
-see [`history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md).
+On the source/test checkpoint, `tests-unit` and `tests-kernel-unit` each passed
+1,941 tests with 4 disabled and 0 failures; smoke passed 3/3; the focused
+continuous plugin target passed 40/40; ASan/UBSan focused calendar and
+Observable tests passed 20/20 with LSan disabled. The shared-calendar test
+starts ODE, diffusion and BioNetwork runs with STS 2/3/1 and confirms their
+terminal states and biochemical mass balance. The full evidence is in
+[`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md).
 
-The calendar regression fix ignores events at or behind the global time when
-checking whether an event lies before already-computed work. It does not alter
-the calendar comparator or simultaneous-event behavior. Full status and
-limitations: [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md).
+LSan reported 4,910 bytes/161 allocations both for the branch ODE test and a
+`WorkInProgress` plugin-bootstrap baseline, with matching normalized stacks
+pointing to `Buffer` templates created during plugin loading. This is strong
+evidence of pre-existing bootstrap allocations, but the fixture bodies differ.
+Qt6 GUI build and Developer Manual generation passed on a source-identical
+checkpoint; hosted startup checks for the supported Qt applications and GUI
+GMDD passed on `69a4a25`.
 
-After this checkpoint was first recorded, all 16 PR checks on
-`72f455a5cab4322478facb40586813bf182bfd7a` passed, including Debian package
-lifecycle. A comparison LSan run on `WorkInProgress` reported the same
-4,910-byte/161-allocation total and normalized plugin-bootstrap stacks as the
-branch's ODE test, strongly indicating the leak belongs to existing
-`Buffer`-template bootstrap behavior. The tests are not identical, so this is
-not an absolute proof. Later documentation-only commits cause CI to run again.
-
-**Continuous Models maturity: `running` / `PARTIALLY_VALIDATED`.** Do not mark
-`done_confirmed`, change the PR from draft, or merge until the documented
-acceptance gaps, final-HEAD checks and required independent review are closed.
+The complete cancellation/destruction, persistence, and cross-model interaction
+matrices remain incomplete. `HUM-SCI-002` still requires an explicit policy for
+discrete changes to inputs already used by precomputed continuous work. The
+full historical PR diff also needs independent scope review. **Continuous
+Models maturity: `running` / `PARTIALLY_VALIDATED`; keep the PR draft and do not
+merge until the scientific and governance gates are satisfied.**

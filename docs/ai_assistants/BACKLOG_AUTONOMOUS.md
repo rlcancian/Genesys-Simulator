@@ -203,10 +203,10 @@ This is the only approved source for work an AI agent may execute without a new 
 - Status: `running`
 - Environment: local Ubuntu 24.04/C++23/CMake/Ninja/Qt6 and GitHub PR checks.
 - Branch: `WiP20261016/ContinuousModels`; PR #550 to `WorkInProgress`.
-- Current source/test checkpoint: `d658c48848e4eac27563404e90b93a85ceba65cd`;
-  the three-domain shared-calendar regression was added and its focused test
-  plus the 40-test continuous plugin target passed locally. GitHub checks for
-  this HEAD were pending on 2026-10-30.
+- Source/test checkpoint: `d658c48848e4eac27563404e90b93a85ceba65cd`;
+  follow-up validation checkpoint `69a4a25b1f069f689fb944e16a34c16169996e59`
+  passed all 16 GitHub checks on 2026-10-30. The three-domain shared-calendar
+  regression and 40-test continuous plugin target passed locally.
 - Authorization: direct maintainer mission dated 2026-10-30 continues the
   existing PR #550 scope; it does not authorize bypassing review, failed CI,
   human scientific decisions, or the PR draft gate.
@@ -234,7 +234,7 @@ This is the only approved source for work an AI agent may execute without a new 
   pre-existing plugin-bootstrap leaks); broader
   three-domain lifecycle/persistence matrix and PR review remain outstanding. See
   [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md)
-  and [`history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md).
+  and [`history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_ThreeDomain_Calendar_Evidence.md), with final check status in [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md).
 - Stop/escalation: do not invent scientific rollback or continuous-time
   discontinuity semantics, do not merge with an incomplete check or unmet
   review gate, and continue independent implementation/test/documentation work
