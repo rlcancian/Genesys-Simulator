@@ -2063,6 +2063,60 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditRedo_triggered", Qt::DirectConnection));
     EXPECT_EQ(transition->getGuardExpression(), "true");
 
+    QAction* deleteSelection = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->objectName() == QStringLiteral("actionEditDelete")) {
+            deleteSelection = action;
+            break;
+        }
+    }
+    ASSERT_NE(deleteSelection, nullptr);
+    networkView->getScene()->clearSelection();
+    transitionItem = nullptr;
+    for (QGraphicsItem* item : networkView->getScene()->items()) {
+        if (auto* candidate = dynamic_cast<EFSMTransitionGraphicsItem*>(item)) {
+            transitionItem = candidate;
+            break;
+        }
+    }
+    ASSERT_NE(transitionItem, nullptr);
+    transitionItem->setSelected(true);
+    QApplication::processEvents();
+    ASSERT_TRUE(deleteSelection->isEnabled());
+    deleteSelection->trigger();
+    EXPECT_TRUE(network->getTransitions()->empty());
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    ASSERT_EQ(network->getTransitions()->size(), 1u);
+    EXPECT_EQ(network->getTransitions()->front(), transition);
+    EXPECT_EQ(transition->getGuardExpression(), "true");
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditRedo_triggered", Qt::DirectConnection));
+    EXPECT_TRUE(network->getTransitions()->empty());
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    ASSERT_EQ(network->getTransitions()->front(), transition);
+
+    networkView->getScene()->clearSelection();
+    doneItem = networkView->getScene()->findGraphicalModelDataDefinition(done);
+    ASSERT_NE(doneItem, nullptr);
+    doneItem->setSelected(true);
+    QApplication::processEvents();
+    ASSERT_TRUE(deleteSelection->isEnabled());
+    deleteSelection->trigger();
+    ASSERT_EQ(network->getStates()->size(), 1u);
+    EXPECT_TRUE(network->getTransitions()->empty());
+    EXPECT_EQ(originalModel->getDataManager()->getDataDefinition(
+                  Util::TypeOf<FSMState>(), static_cast<unsigned long>(done->getId())), nullptr);
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    ASSERT_EQ(network->getStates()->size(), 2u);
+    ASSERT_EQ(network->getTransitions()->size(), 1u);
+    EXPECT_EQ(network->getStates()->find(done) != network->getStates()->list()->end(), true);
+    EXPECT_EQ(originalModel->getDataManager()->getDataDefinition(
+                  Util::TypeOf<FSMState>(), static_cast<unsigned long>(done->getId())), done);
+    EXPECT_EQ(network->getTransitions()->front(), transition);
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditRedo_triggered", Qt::DirectConnection));
+    EXPECT_TRUE(network->getTransitions()->empty());
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    ASSERT_EQ(network->getTransitions()->front(), transition);
+
     idleItem = networkView->getScene()->findGraphicalModelDataDefinition(idle);
     ASSERT_NE(idleItem, nullptr);
     const QPointF savedPosition(431.25, -127.5);
