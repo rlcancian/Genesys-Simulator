@@ -198,8 +198,8 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     network.setInitialState(&idle);
     network.addState(&done);
     done.setFinalNode(true);
-    network.addTransition(new EFSMTransition(&idle, &done, "First"));
-    network.addTransition(new EFSMTransition(&idle, &done, "Parallel"));
+    network.addTransition(new EFSMTransition(&idle, &done));
+    network.addTransition(new EFSMTransition(&idle, &done));
     network.addTransition(new EFSMTransition(&done, &done, "Loop"));
 
     SerializerHarness harness(&simulator);
@@ -216,6 +216,10 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     auto* first = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(0));
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(first->ordinal(), 0);
+    auto* parallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(1));
+    ASSERT_NE(parallel, nullptr);
+    EXPECT_EQ(parallel->ordinal(), 1);
+    EXPECT_NE(first->path(), parallel->path());
     EXPECT_TRUE(first->flags().testFlag(QGraphicsItem::ItemIsSelectable));
     EXPECT_EQ(scene->getGraphicalConnections()->size(), 0);
     EXPECT_EQ(network.getStates()->size(), 2u);
@@ -231,6 +235,15 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
     EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
     EXPECT_TRUE(scene->getGraphicalModelDataDefinitions()->isEmpty());
+
+    EFSMNetwork singleStateNetwork(model, "SingleStateViewerNetwork");
+    FSMState onlyState(model, "Only");
+    singleStateNetwork.addState(&onlyState);
+    scene->setModelLevelFilter(static_cast<unsigned int>(singleStateNetwork.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, scene);
+    EXPECT_EQ(scene->getGraphicalModelDataDefinitions()->size(), 1);
+    EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
 }
 
 TEST(EFSMNetworkDiagramProjection, MovingAStateRefreshesItsFormalTransitionGeometry) {
