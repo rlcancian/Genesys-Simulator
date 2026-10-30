@@ -253,7 +253,11 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     network.setInitialState(&idle);
     network.addState(&done);
     done.setFinalNode(true);
-    network.addTransition(new EFSMTransition(&idle, &done));
+    auto* guardedUnnamed = new EFSMTransition(&idle, &done);
+    guardedUnnamed->setInputEvent("arrive");
+    guardedUnnamed->setGuardExpression("ready == 1");
+    guardedUnnamed->setOutputExpression("result = 1");
+    network.addTransition(guardedUnnamed);
     network.addTransition(new EFSMTransition(&idle, &done));
     network.addTransition(new EFSMTransition(&done, &done, "Loop"));
 
@@ -271,6 +275,8 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     auto* first = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(0));
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(first->ordinal(), 0);
+    EXPECT_EQ(first->transitionLabel(), QStringLiteral("on arrive [ready == 1] / result = 1"));
+    EXPECT_EQ(first->toolTip(), first->transitionLabel());
     auto* parallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(1));
     ASSERT_NE(parallel, nullptr);
     EXPECT_EQ(parallel->ordinal(), 1);

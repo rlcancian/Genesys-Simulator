@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QPen>
 #include <QPolygonF>
+#include <QStringList>
 #include <QtMath>
 
 EFSMTransitionGraphicsItem::EFSMTransitionGraphicsItem(EFSMTransition* transition, int ordinal, QGraphicsItem* parent)
@@ -14,7 +15,7 @@ EFSMTransitionGraphicsItem::EFSMTransitionGraphicsItem(EFSMTransition* transitio
     setFlag(QGraphicsItem::ItemIsSelectable, true);
     // Give thin paths a practical hit target; paint() retains the visible pen.
     setPen(QPen(Qt::black, 12.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    setToolTip(QString::fromStdString(transition != nullptr ? transition->getName() : std::string()));
+    setToolTip(transitionLabel());
 }
 
 EFSMTransition* EFSMTransitionGraphicsItem::transition() const {
@@ -23,6 +24,35 @@ EFSMTransition* EFSMTransitionGraphicsItem::transition() const {
 
 int EFSMTransitionGraphicsItem::ordinal() const {
     return _ordinal;
+}
+
+QString EFSMTransitionGraphicsItem::transitionLabel() const {
+    if (_transition == nullptr) {
+        return {};
+    }
+    QStringList parts;
+    const auto append = [&parts](const QString& value) {
+        if (!value.isEmpty()) {
+            parts.append(value);
+        }
+    };
+    append(QString::fromStdString(_transition->getName()));
+    if (!_transition->getInputEvent().empty()) {
+        append(QStringLiteral("on %1").arg(QString::fromStdString(_transition->getInputEvent())));
+    }
+    if (!_transition->getTriggerEvent().empty()) {
+        append(QStringLiteral("trigger %1").arg(QString::fromStdString(_transition->getTriggerEvent())));
+    }
+    if (!_transition->getGuardExpression().empty()) {
+        append(QStringLiteral("[%1]").arg(QString::fromStdString(_transition->getGuardExpression())));
+    }
+    if (!_transition->getOutputExpression().empty()) {
+        append(QStringLiteral("/ %1").arg(QString::fromStdString(_transition->getOutputExpression())));
+    }
+    if (!_transition->getProbabilityExpression().empty()) {
+        append(QStringLiteral("p=%1").arg(QString::fromStdString(_transition->getProbabilityExpression())));
+    }
+    return parts.join(QLatin1Char(' '));
 }
 
 void EFSMTransitionGraphicsItem::setGeometry(const QPointF& sourceCenter, const QPointF& destinationCenter,
@@ -75,9 +105,9 @@ void EFSMTransitionGraphicsItem::paint(QPainter* painter, const QStyleOptionGrap
     painter->setBrush(QColor(45, 75, 130));
     painter->drawPolygon(QPolygonF() << end << left << right);
 
-    if (_transition != nullptr && !_transition->getName().empty()) {
+    const QString label = transitionLabel();
+    if (!label.isEmpty()) {
         painter->setPen(QPen(QColor(30, 30, 30), 1.0));
-        painter->drawText(path().pointAtPercent(0.5) + QPointF(5.0, -5.0),
-                          QString::fromStdString(_transition->getName()));
+        painter->drawText(path().pointAtPercent(0.5) + QPointF(5.0, -5.0), label);
     }
 }

@@ -18,6 +18,7 @@ public:
 
     EFSMTransition* transition() const;
     int ordinal() const;
+    QString transitionLabel() const;
     void setGeometry(const QPointF& sourceCenter, const QPointF& destinationCenter, int parallelRank,
                      int parallelCount);
 

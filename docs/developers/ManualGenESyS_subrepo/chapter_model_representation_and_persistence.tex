@@ -370,10 +370,25 @@ non-owning attached associations used by model orphan detection; they do not
 transfer ownership or duplicate shared Networks. The shared GUI scene can
 project this presentation data as state and transition graphics. The codec
 never creates, deletes, or modifies mathematical objects; GUI editing actions
-invoke the domain APIs separately. The current editing and undo/redo actions
-are an implementation checkpoint and still require full GUI lifecycle,
-end-to-end persistence, and regression validation before the editor is
-considered complete.
+invoke the domain APIs separately. Current Qt offscreen MainWindow integration
+tests exercise Network creation, state and transition editing/deletion, mixed
+undo/redo, and 	exttt{.gen}/	exttt{.gui} save-close-reopen; focused lifecycle
+tests cover shared Networks and tab recreation. These are branch-level
+implementation evidence, not final milestone acceptance. Final-head baselines,
+hosted CI, and the remaining project acceptance gates are still required before
+the editor is considered complete.
+
+The current projection renders directed arrows, offsets parallel relations,
+draws self-loops, and highlights initial and final states. A transition label
+combines its non-empty name, input/trigger event, guard, output expression and
+probability expression, so a mathematically unnamed relation can still carry
+visible information. Moving a state changes only its graphical position.
+Network creation/selection, state and transition editing/deletion, initial
+state selection, and undo/redo use the existing MainWindow and scene command
+path. The edit dialogs store expression text but do not perform a new
+parse-only validation: the current model parser evaluates expressions, so it
+cannot safely be used as a syntax-only check without changing kernel behavior.
+Runtime expression semantics remain with the kernel.
 
 \section{Validation evidence}
 \label{sec:model-persistence-validation}
