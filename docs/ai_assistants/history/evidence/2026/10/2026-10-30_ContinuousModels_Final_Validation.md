@@ -55,11 +55,15 @@ correção.
 - **Confirmado por execução:** 37 testes focados de Diffusion, Observable e
   calendário híbrido passaram.
 - **Confirmado por execução:** 19 testes focados passaram em ASan/UBSan.
-- **Confirmado por execução:** LSan, no novo teste isolado, reportou 4.910 bytes
-  em 161 alocações. O total coincide com o registro histórico da execução
-  anterior de PR #550, mas não foi construída nesta rodada uma baseline
-  equivalente em `WorkInProgress`; portanto, não se conclui que o vazamento seja
-  preexistente nem causado pela correção.
+- **Confirmado por execução:** LSan no teste ODE desta branch reportou 4.910
+  bytes em 161 alocações. Uma build ASan/UBSan isolada de `WorkInProgress`
+  (`6df79436ff9d72e302e9d2b047fc5a8f6e1f297b`) executou um teste baseline que
+  apenas inicializa o `PluginManager`, carrega plugins e cria um `Model`; também
+  reportou exatamente 4.910 bytes/161 alocações. Os stacks normalizados
+  coincidiram, com origem em templates `Buffer` criados por
+  `PluginManager::completePluginsFieldsAndTemplates()`. Como os corpos dos dois
+  testes não são idênticos, isso é forte evidência de leak preexistente no
+  bootstrap de plugins, não prova absoluta de igualdade de todos os caminhos.
 - **Confirmado por execução:** o build da GUI Qt6 e a geração do Developer
   Manual foram concluídos. Não houve interação manual na GUI.
 - **Evidência histórica:** os 15 checks registrados anteriormente estavam
@@ -124,10 +128,10 @@ Ambiente registrado:
 | `tests-kernel-unit` | 1.940 passaram, 4 desabilitados, 0 falhos (1.944 listados) |
 | `tests-smoke` | 3/3 passaram |
 | ASan/UBSan foco Observable + calendário | 19/19 passaram; `detect_leaks=0` nesta execução |
-| LSan novo teste de coexistência | testes passaram, relatório final de 4.910 bytes/161 alocações; baseline comparável pendente |
+| LSan: ODE na branch versus bootstrap de plugins no `WorkInProgress` | ambos 4.910 bytes/161 alocações e mesmos stacks normalizados; forte evidência de leak preexistente em templates `Buffer` |
 | GUI | `cmake --build --preset gui-app --parallel 2` passou; sem interação manual |
 | Developer Manual | `./make.sh` passou; PDF com 388 páginas e 8.074.782 bytes |
-| GitHub Actions no SHA novo | pendente de push/conclusão; os checks verdes no SHA anterior não contam como validação do novo código |
+| GitHub Actions no SHA `72f455a5cab4322478facb40586813bf182bfd7a` | 16/16 checks aprovados, incluindo unitários, kernel, smoke, GUI GMDD, pacote Debian e ciclo de vida do pacote |
 
 Comandos de validação executados:
 
@@ -142,6 +146,9 @@ cmake --build --preset gui-app --parallel 2
 cmake --build build/observable-asan --target genesys_test_plugins_continuous_diffusion --parallel 2
 ASAN_OPTIONS=detect_leaks=0 build/observable-asan/source/tests/unit/genesys_test_plugins_continuous_diffusion --gtest_filter='ContinuousCalendarTest.*:ContinuousObservableTest.*'
 ASAN_OPTIONS=detect_leaks=1:exitcode=0 build/observable-asan/source/tests/unit/genesys_test_plugins_continuous_diffusion --gtest_filter=ContinuousCalendarTest.IndependentAutonomousOdesShareCalendarWithoutLosingTheirRuns
+cmake --preset tests-unit -B /tmp/genesys-continuous-wip-lsan-build -DCMAKE_CXX_FLAGS='-fsanitize=address,undefined -fno-omit-frame-pointer' -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address,undefined'
+cmake --build /tmp/genesys-continuous-wip-lsan-build --target genesys_test_plugins_continuous_diffusion --parallel 2
+ASAN_OPTIONS=detect_leaks=1:exitcode=0 /tmp/genesys-continuous-wip-lsan-build/source/tests/unit/genesys_test_plugins_continuous_diffusion --gtest_filter=LSanBaseline.PluginBootstrapOnly
 ./make.sh  # from docs/developers/ManualGenESyS_subrepo
 ```
 
@@ -152,12 +159,15 @@ ASAN_OPTIONS=detect_leaks=1:exitcode=0 build/observable-asan/source/tests/unit/g
   calculado; política de invalidação/impacto precisa de tratamento explícito
   antes de esse padrão ser considerado suportado. Esta rodada não implementa
   rollback.
-- **Confirmado por execução:** LSan detecta 4.910 bytes em 161 alocações no
-  fixture executado. A origem e a relação com o código novo permanecem
-  indeterminadas sem baseline equivalente.
-- **Confirmado no estado da PR observado antes deste commit:** PR #550 continuava
-  draft, com `reviewDecision` vazio. Não há autorização normativa para marcar
-  pronta ou integrar sem o gate de revisão aplicável.
+- **Confirmado por execução:** LSan detecta 4.910 bytes/161 alocações tanto no
+  teste ODE da branch quanto no baseline de bootstrap de plugins em
+  `WorkInProgress`; os stacks normalizados coincidem e apontam para os
+  templates `Buffer`. É forte evidência de leak preexistente, embora os testes
+  não tenham corpos idênticos.
+- **Confirmado no estado atual observado antes deste commit:** PR #550 continua
+  draft, com `reviewDecision` vazio. Embora os checks no SHA `72f455a5` estejam
+  verdes, a governança ainda requer revisão independente desses checks e
+  artifacts antes de mudar o estado ou integrar.
 - **Confirmado no diff da PR observado:** o escopo histórico da PR contém mudanças
   de GUI/crash e outros arquivos além da integração contínua; a revisão integral
   e a separação/justificativa dessas mudanças continuam necessárias antes da
@@ -169,14 +179,13 @@ ASAN_OPTIONS=detect_leaks=1:exitcode=0 build/observable-asan/source/tests/unit/g
 
 ## 9. Próximos passos
 
-1. Publicar os commits no branch existente e verificar os checks do SHA final.
-2. Executar revisão independente da PR completa, inclusive mudanças históricas
+1. Executar revisão independente da PR completa, inclusive mudanças históricas
    fora do escopo contínuo; manter a PR em draft até satisfazer a governança.
-3. Executar baseline comparável de LSan em `WorkInProgress` e investigar a
-   origem dos 4.910 bytes/161 alocações.
-4. Completar a matriz de lifecycle, replicação, persistência e calendário para
+2. Tratar os leaks de bootstrap dos templates `Buffer` em trabalho separado,
+   caso seja priorizado, pois a baseline aponta para o caminho global de plugins.
+3. Completar a matriz de lifecycle, replicação, persistência e calendário para
    ODE, difusão e BioNetwork, sem alterar a semântica científica pendente.
-5. Manter `HUM-SCI-002` sem status `implemented` até concluir sua evidência e
+4. Manter `HUM-SCI-002` sem status `implemented` até concluir sua evidência e
    resolver a condição de invalidação que o backlog explicita.
 
 **Status da missão nesta evidência: `PARTIALLY_VALIDATED`.** A correção do caso

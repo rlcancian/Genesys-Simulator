@@ -348,15 +348,26 @@ Local verification on the source/test commit `419d8287f` passed the focused
 continuous/calendar tests (37/37), `tests-unit` (1,940 passed, 4 disabled),
 `tests-kernel-unit` (1,940 passed, 4 disabled), `tests-smoke` (3/3), Qt6 GUI
 build and Developer Manual generation. Focused ASan/UBSan passed 19/19 with
-LeakSanitizer disabled. A separate LSan run reports 4,910 bytes in 161
-allocations; no equivalent `WorkInProgress` baseline has yet established
-whether this is pre-existing. These results do not close the broader ODE,
-diffusion, BioNetwork, lifecycle, persistence or performance matrices.
+LeakSanitizer disabled. LSan reported 4,910 bytes/161 allocations both for
+the ODE case and for a `WorkInProgress` plugin-bootstrap baseline; normalized
+stacks match and point to `Buffer` templates constructed by
+`PluginManager::completePluginsFieldsAndTemplates()`. This is strong evidence
+that the reported leak is pre-existing plugin-bootstrap behavior, although the
+two test bodies differ. These results do not close the broader ODE, diffusion,
+BioNetwork, lifecycle, persistence or performance matrices.
 
 The calendar regression fix ignores events at or behind the global time when
 checking whether an event lies before already-computed work. It does not alter
 the calendar comparator or simultaneous-event behavior. Full status and
 limitations: [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md).
+
+After this checkpoint was first recorded, all 16 PR checks on
+`72f455a5cab4322478facb40586813bf182bfd7a` passed, including Debian package
+lifecycle. A comparison LSan run on `WorkInProgress` reported the same
+4,910-byte/161-allocation total and normalized plugin-bootstrap stacks as the
+branch's ODE test, strongly indicating the leak belongs to existing
+`Buffer`-template bootstrap behavior. The tests are not identical, so this is
+not an absolute proof. Later documentation-only commits cause CI to run again.
 
 **Continuous Models maturity: `running` / `PARTIALLY_VALIDATED`.** Do not mark
 `done_confirmed`, change the PR from draft, or merge until the documented

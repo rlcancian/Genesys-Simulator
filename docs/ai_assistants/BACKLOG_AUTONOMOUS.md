@@ -227,9 +227,11 @@ This is the only approved source for work an AI agent may execute without a new 
   approved maintainer decision.
 - Current limitations: `HUM-SCI-002` still identifies changes to inputs used
   by already-calculated work as requiring an invalidation policy; LSan reports
-  4,910 bytes/161 allocations without an equivalent base-branch comparison;
-  broader three-domain lifecycle/persistence matrix and PR review remain
-  outstanding. See
+  4,910 bytes/161 allocations on both the ODE case and a `WorkInProgress`
+  plugin-bootstrap baseline (`6df79436ff9d72e302e9d2b047fc5a8f6e1f297b`), with
+  matching normalized stacks in `Buffer` templates (strong evidence of
+  pre-existing plugin-bootstrap leaks); broader
+  three-domain lifecycle/persistence matrix and PR review remain outstanding. See
   [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md).
 - Stop/escalation: do not invent scientific rollback or continuous-time
   discontinuity semantics, do not merge with an incomplete check or unmet
