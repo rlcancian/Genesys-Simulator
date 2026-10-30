@@ -15,6 +15,8 @@ tracks: HUM-MODAL-002,AUTO-MODAL-003,AUTO-MODAL-004
 - Branch: `WiP20261029/modalmodel-architecture`
 - Production code checkpoint: `622f4f48ced9ec92d60cbc1e3dad61411abf904b`.
 - MainWindow integration regression commit: `5d4ae61eb2ebdb565706b36189929434fc4cb747`.
+- Self-loop correction and regression: `64644b2c78a403c9613d286390c04fc7cb34bf92`.
+- GUI parallel-transition regression: `fc815a597dd58c48cfe481317f779cf54bf2fccb`.
 - PR #551 remains draft. No merge or push to `WorkInProgress` was performed.
 
 ## Discovered cache-lifecycle defect and fix
@@ -52,6 +54,15 @@ root model switching and root model teardown.
   `EFSMNetworkDiagramPersistence.*:EFSMNetworkEditor.*:EFSMNetworkUndo.*:EFSMNetworkDiagramProjection.*`
   — **37/37 passed**, including the expanded MainWindow workflow.
 - The expanded MainWindow test alone — **1/1 passed**.
+- Adversarial review found that the Create EFSM Transition handler validated
+  `selectedStates[1]` even for the one-state self-loop path. The handler now
+  validates the second endpoint only for a two-state transition. The GUI
+  regression creates both parallel transitions and a self-loop through the
+  actual action; it verifies the selected-state endpoints and the disabled
+  endpoint selectors for a self-loop. The affected test passes. The edited GUI
+  target and application target compile, and focused ASan/UBSan covering
+  parallel/self-loop creation and integrated save/reopen passed **2/2** with
+  leak detection disabled.
 - On production-code SHA `622f4f48ced9ec92d60cbc1e3dad61411abf904b`, ordinary unit and
   kernel-unit suites each passed **1,963 tests**, with four existing tests
   disabled; smoke passed **3/3**; `gui-app` configured and built.
@@ -69,6 +80,19 @@ root model switching and root model teardown.
   documentation-governance checks passing when inspected. The Debian package
   job was still pending; these checks do not apply to the later local test
   change until that change is pushed and its own checks complete.
+- The focused suite after the parallel/self-loop corrections at local HEAD
+  `fc815a597` passes **37/37**.
+  Full unit/kernel/smoke tests and hosted checks for this latest source commit
+  are pending.
+
+## Bounded direct GUI inspection
+
+The `gui-app` executable was started on a private Xvfb display with the XCB
+platform. The MainWindow appeared, the Model menu showed the EFSM commands, and
+the New Model action opened a second model tab. This check did not manually
+complete a full mouse/keyboard EFSM editing workflow; the actual editor action
+sequence and file dialogs are covered by the offscreen MainWindow regression
+above. The GUI and Xvfb processes were stopped and no residual process remained.
 
 ## Milestones and remaining work
 
