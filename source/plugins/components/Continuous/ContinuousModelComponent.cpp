@@ -59,6 +59,8 @@ bool ContinuousModelComponent::_requestContinuousExecution(
     }
     if (!accepted && it->second.entityIds.empty()) {
         definition->removeCompletionHandler(it->second.completionId);
+        if (it->second.continuationId != 0)
+            definition->removeContinuationHandler(it->second.continuationId);
         _pendingExecutions.erase(it);
     }
     return accepted;

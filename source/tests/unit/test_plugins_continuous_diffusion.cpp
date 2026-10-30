@@ -127,6 +127,24 @@ private:
 	DiffusionField* _field;
 };
 
+class RejectingContinuousComponentProbe : public ContinuousModelComponent {
+public:
+	RejectingContinuousComponentProbe(Model* model)
+		: ContinuousModelComponent(model, "RejectingContinuousComponentProbe", "RejectingContinuous") {}
+	bool requestInvalidWindowWithoutEntity(ContinuousModelDataDefinition* definition) {
+		ContinuousModelDataDefinition::ExecutionRequest request;
+		request.useDefinitionTimeWindow = false;
+		request.startTime = 1.0;
+		request.stopTime = 4.0;
+		request.stepSize = 1.0;
+		std::string errorMessage;
+		return _requestContinuousExecution(definition, request, nullptr, errorMessage);
+	}
+protected:
+	void _onDispatchEvent(Entity*, unsigned int) override {}
+	void _onContinuousExecutionResult(const ContinuousModelDataDefinition::ExecutionResult&) override {}
+};
+
 class CalendarDiscreteObserverProbe : public ModelComponent {
 public:
 	CalendarDiscreteObserverProbe(Model* model, DiffusionField* field)
@@ -828,6 +846,38 @@ TEST(DiffusionFieldPluginTest, DestroyingFieldCancelsItsPendingSynchronizationEv
 
 	delete field;
 	EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
+TEST(ContinuousModelComponentTest, RejectedEntitylessRequestDoesNotRetainContinuationAfterDestruction) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	DiffusionFieldProbe field(model, "ReusableAfterRejectedComponent");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStepSize(1.0);
+	field.setStopTime(4.0);
+	field.setStepsToSynchronize(4u);
+
+	auto* component = new RejectingContinuousComponentProbe(model);
+	ASSERT_FALSE(component->requestInvalidWindowWithoutEntity(&field));
+	delete component;
+
+	CalendarDiscreteObserverProbe discreteEvent(model, &field);
+	model->sendEntityToComponent(model->createEntity("InterveningDiscreteEvent"), &discreteEvent, 1.5);
+	std::string errorMessage;
+	ASSERT_TRUE(field.simulate(errorMessage)) << errorMessage;
+	ASSERT_FALSE(model->getFutureEvents()->empty());
+	auto* synchronization = dynamic_cast<InternalEvent*>(model->getFutureEvents()->front());
+	ASSERT_NE(synchronization, nullptr);
+	EXPECT_DOUBLE_EQ(synchronization->getTime(), 1.0);
+	model->getFutureEvents()->pop_front();
+	synchronization->dispatchEvent();
+	delete synchronization;
+
+	EXPECT_EQ(field.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::WaitingForContinuation);
+	field.cancelExecution("End lifetime regression");
 }
 
 
