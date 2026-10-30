@@ -327,12 +327,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _actionSelectModalNetwork->setToolTip(tr("Attach an existing EFSM Network to the selected ModalModelDefault."));
     connect(_actionSelectModalNetwork, &QAction::triggered, this,
             [this]() { _selectNetworkForSelectedModalModel(); });
+    _actionCreateEfsmState = new QAction(tr("Create EFSM State"), this);
+    connect(_actionCreateEfsmState, &QAction::triggered, this, [this]() { _createEfsmState(); });
+    _actionCreateEfsmTransition = new QAction(tr("Create EFSM Transition"), this);
+    connect(_actionCreateEfsmTransition, &QAction::triggered, this, [this]() { _createEfsmTransition(); });
     _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionOpenSelectedSubmodel);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateModalNetwork);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionSelectModalNetwork);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmState);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmTransition);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
     ui->menuModel->insertMenu(ui->actionModelOpen, _menuOpenRecent);
 
@@ -992,6 +998,91 @@ void MainWindow::_selectNetworkForSelectedModalModel() {
         return;
     }
     _graphicalModelHasChanged = true;
+    _actualizeActions();
+}
+
+void MainWindow::_createEfsmState() {
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
+        || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    ModelGraphicsScene* scene = ui->graphicsView->getScene();
+    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->current();
+    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
+                                                    ? model->getDataManager()->getDataDefinition(
+                                                          Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
+                                                    : nullptr);
+    if (network == nullptr) {
+        return;
+    }
+    bool accepted = false;
+    const QString name = QInputDialog::getText(this, tr("Create EFSM State"), tr("State name:"),
+                                               QLineEdit::Normal, tr("State"), &accepted);
+    if (!accepted || name.trimmed().isEmpty()) {
+        return;
+    }
+    auto* state = new FSMState(model, name.toStdString());
+    network->addState(state);
+    if (!model->check()) {
+        network->removeState(state);
+        QMessageBox::warning(this, tr("Create EFSM State"), tr("The state failed model validation."));
+        return;
+    }
+    _graphicalModelHasChanged = true;
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
+    _actualizeActions();
+}
+
+void MainWindow::_createEfsmTransition() {
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
+        || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    ModelGraphicsScene* scene = ui->graphicsView->getScene();
+    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0) {
+        return;
+    }
+    QList<FSMState*> selectedStates;
+    for (QGraphicsItem* item : scene->selectedItems()) {
+        if (auto* graphicalState = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
+            if (auto* state = dynamic_cast<FSMState*>(graphicalState->getDataDefinition())) {
+                selectedStates.append(state);
+            }
+        }
+    }
+    if (selectedStates.size() < 1 || selectedStates.size() > 2) {
+        QMessageBox::information(this, tr("Create EFSM Transition"),
+                                 tr("Select one state for a self-loop or two states for a directed transition."));
+        return;
+    }
+    if (selectedStates.size() == 1) {
+        selectedStates.append(selectedStates.first());
+    }
+    Model* model = simulator->getModelManager()->current();
+    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
+                                                    ? model->getDataManager()->getDataDefinition(
+                                                          Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
+                                                    : nullptr);
+    if (network == nullptr || network->getStates()->find(selectedStates.at(0)) == network->getStates()->list()->end()
+        || network->getStates()->find(selectedStates.at(1)) == network->getStates()->list()->end()) {
+        return;
+    }
+    bool accepted = false;
+    const QString name = QInputDialog::getText(this, tr("Create EFSM Transition"), tr("Transition name:"),
+                                               QLineEdit::Normal, QString(), &accepted);
+    if (!accepted) {
+        return;
+    }
+    network->addTransition(new EFSMTransition(selectedStates.at(0), selectedStates.at(1), name.toStdString()));
+    if (!model->check()) {
+        QMessageBox::warning(this, tr("Create EFSM Transition"), tr("The transition failed model validation."));
+        return;
+    }
+    _graphicalModelHasChanged = true;
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
     _actualizeActions();
 }
 
@@ -1992,6 +2083,20 @@ void MainWindow::_actualizeActions() {
         if (_actionSelectModalNetwork != nullptr) {
             _actionSelectModalNetwork->setEnabled(opened && !simulationInteractionLocked && adapter != nullptr);
         }
+    }
+    const bool efsmContext = opened && !simulationInteractionLocked && ui != nullptr
+                             && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr
+                             && ui->graphicsView->getScene()->hasModelLevelFilter()
+                             && ui->graphicsView->getScene()->modelLevelFilter() != 0
+                             && simulator->getModelManager()->current() != nullptr
+                             && simulator->getModelManager()->current()->getDataManager() != nullptr
+                             && simulator->getModelManager()->current()->getDataManager()->getDataDefinition(
+                                    Util::TypeOf<EFSMNetwork>(), ui->graphicsView->getScene()->modelLevelFilter()) != nullptr;
+    if (_actionCreateEfsmState != nullptr) {
+        _actionCreateEfsmState->setEnabled(efsmContext);
+    }
+    if (_actionCreateEfsmTransition != nullptr) {
+        _actionCreateEfsmTransition->setEnabled(efsmContext);
     }
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.

@@ -484,6 +484,10 @@ private: // opened-model document state
     void _createNetworkForSelectedModalModel();
     /** @brief Selects an existing EFSMNetwork and attaches it to the selected adapter. */
     void _selectNetworkForSelectedModalModel();
+    /** @brief Creates one FSMState in the active EFSM Network context. */
+    void _createEfsmState();
+    /** @brief Creates one EFSMTransition between two selected states. */
+    void _createEfsmTransition();
     void _refreshRecentModelsMenu();
     bool _openRecentModelFile(const QString& fileName);
     /** @brief Stores the active editor/dirty state before switching away from the current model. */
@@ -546,6 +550,8 @@ private: // interface and model main elements to join
     QAction* _actionOpenSelectedSubmodel = nullptr;
     QAction* _actionCreateModalNetwork = nullptr;
     QAction* _actionSelectModalNetwork = nullptr;
+    QAction* _actionCreateEfsmState = nullptr;
+    QAction* _actionCreateEfsmTransition = nullptr;
     QMenu* _menuOpenRecent = nullptr;
     QList<QAction*> _recentModelActions;
     // Keep core simulation command gateway owned by MainWindow composition root.
