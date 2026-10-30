@@ -169,10 +169,9 @@
 \contentsline {section}{\numberline {18.3}How loading works}{155}{section.18.3}%
 \contentsline {section}{\numberline {18.4}The \texttt {.gen} layout}{156}{section.18.4}%
 \contentsline {section}{\numberline {18.5}Ownership during round-trip}{158}{section.18.5}%
-\contentsline {section}{\numberline {18.6}GUI overlays for EFSM Networks}{158}{section.18.6}%
-\contentsline {section}{\numberline {18.7}Validation evidence}{160}{section.18.7}%
-\contentsline {section}{\numberline {18.8}What this chapter does not claim}{160}{section.18.8}%
-\contentsline {section}{\numberline {18.9}Final considerations}{160}{section.18.9}%
+\contentsline {section}{\numberline {18.6}Validation evidence}{158}{section.18.6}%
+\contentsline {section}{\numberline {18.7}What this chapter does not claim}{158}{section.18.7}%
+\contentsline {section}{\numberline {18.8}Final considerations}{160}{section.18.8}%
 \contentsline {chapter}{\numberline {19}Model Components and Data Definitions}{161}{chapter.19}%
 \contentsline {section}{\numberline {19.1}Shared vocabulary}{161}{section.19.1}%
 \contentsline {section}{\numberline {19.2}How the model owns the objects}{162}{section.19.2}%
@@ -248,281 +247,273 @@
 \contentsline {section}{\numberline {26.4}Model open and close flow}{223}{section.26.4}%
 \contentsline {section}{\numberline {26.5}Simulation action flow}{224}{section.26.5}%
 \contentsline {section}{\numberline {26.6}Scene, property editor, and plugin catalog boundaries}{226}{section.26.6}%
-\contentsline {section}{\numberline {26.7}Hierarchical editing contexts for model data (development branch)}{226}{section.26.7}%
-\contentsline {section}{\numberline {26.8}Current limitations}{227}{section.26.8}%
-\contentsline {chapter}{\numberline {27}Worker and Remote Execution}{229}{chapter.27}%
-\contentsline {section}{\numberline {27.1}Worker process boundary}{230}{section.27.1}%
-\contentsline {section}{\numberline {27.2}HTTP transport and request routing}{231}{section.27.2}%
-\contentsline {section}{\numberline {27.3}Session, token, and workspace model}{231}{section.27.3}%
-\contentsline {section}{\numberline {27.4}Current API surface}{232}{section.27.4}%
-\contentsline {section}{\numberline {27.5}Worker jobs and synchronous execution}{234}{section.27.5}%
-\contentsline {section}{\numberline {27.6}Security, logging, and recovery boundary}{235}{section.27.6}%
-\contentsline {section}{\numberline {27.7}Practical reading order}{236}{section.27.7}%
-\contentsline {chapter}{\numberline {28}AI and External Integrations}{237}{chapter.28}%
-\contentsline {section}{\numberline {28.1}Current AI boundary}{238}{section.28.1}%
-\contentsline {section}{\numberline {28.2}Configuration and permissions}{238}{section.28.2}%
-\contentsline {section}{\numberline {28.3}Provider pipeline}{241}{section.28.3}%
-\contentsline {section}{\numberline {28.4}Audit and secret handling}{242}{section.28.4}%
-\contentsline {section}{\numberline {28.5}Sandbox and workflow control}{242}{section.28.5}%
-\contentsline {section}{\numberline {28.6}GUI and model-specific example}{244}{section.28.6}%
-\contentsline {section}{\numberline {28.7}External code and process integration}{244}{section.28.7}%
-\contentsline {section}{\numberline {28.8}Current limitations}{244}{section.28.8}%
-\contentsline {chapter}{\numberline {29}Biological and Whole-Cell Extensions}{247}{chapter.29}%
-\contentsline {section}{\numberline {29.1}Scope and contract}{247}{section.29.1}%
-\contentsline {section}{\numberline {29.2}Biochemical surface}{248}{section.29.2}%
-\contentsline {subsection}{\numberline {29.2.1}Native deterministic and network-oriented classes}{248}{subsection.29.2.1}%
-\contentsline {subsection}{\numberline {29.2.2}Flux-style metabolic models}{248}{subsection.29.2.2}%
-\contentsline {subsection}{\numberline {29.2.3}Compartment transport}{248}{subsection.29.2.3}%
-\contentsline {section}{\numberline {29.3}Whole-cell surface}{251}{section.29.3}%
-\contentsline {section}{\numberline {29.4}Didactic examples}{252}{section.29.4}%
-\contentsline {subsection}{\numberline {29.4.1}Gro-inspired bacteria colony signal channels}{255}{subsection.29.4.1}%
-\contentsline {section}{\numberline {29.5}Evidence and validation}{255}{section.29.5}%
-\contentsline {section}{\numberline {29.6}Scientific limits and future work}{255}{section.29.6}%
-\contentsline {chapter}{\numberline {30}Testing and Validation}{259}{chapter.30}%
-\contentsline {section}{\numberline {30.1}Validation layers}{260}{section.30.1}%
-\contentsline {section}{\numberline {30.2}Current preset matrix}{260}{section.30.2}%
-\contentsline {section}{\numberline {30.3}What the suites cover}{261}{section.30.3}%
-\contentsline {section}{\numberline {30.4}Focused sanitizer path}{263}{section.30.4}%
-\contentsline {section}{\numberline {30.5}Interpreting results}{265}{section.30.5}%
-\contentsline {section}{\numberline {30.6}Current evidence snapshot}{265}{section.30.6}%
-\contentsline {section}{\numberline {30.7}Practical reading rule}{266}{section.30.7}%
-\contentsline {chapter}{\numberline {31}Packaging and CI}{267}{chapter.31}%
-\contentsline {section}{\numberline {31.1}Current CI topology}{268}{section.31.1}%
-\contentsline {section}{\numberline {31.2}Debian packaging workflow}{269}{section.31.2}%
-\contentsline {section}{\numberline {31.3}Package layout and install surface}{269}{section.31.3}%
-\contentsline {section}{\numberline {31.4}The Launcher/Dispatcher packaging contract}{271}{section.31.4}%
-\contentsline {section}{\numberline {31.5}Generic CMake install tree and DESTDIR staging}{274}{section.31.5}%
-\contentsline {section}{\numberline {31.6}Package lifecycle validation}{274}{section.31.6}%
-\contentsline {section}{\numberline {31.7}Release boundary and limitations}{275}{section.31.7}%
-\contentsline {chapter}{\numberline {32}Governance and Contribution}{277}{chapter.32}%
-\contentsline {section}{\numberline {32.1}Where governance lives}{277}{section.32.1}%
-\contentsline {section}{\numberline {32.2}Branch and review conventions}{278}{section.32.2}%
-\contentsline {section}{\numberline {32.3}How contributors are expected to work}{278}{section.32.3}%
-\contentsline {section}{\numberline {32.4}Validation and evidence discipline}{279}{section.32.4}%
-\contentsline {section}{\numberline {32.5}Human-decision boundaries}{279}{section.32.5}%
-\contentsline {section}{\numberline {32.6}Contribution checklist}{279}{section.32.6}%
-\contentsline {chapter}{Editorial Migration Table}{281}{chapter*.172}%
-\contentsline {part}{\@mypartnumtocformat {III}{Legacy Chapters (Temporary)}}{283}{part.3}%
+\contentsline {section}{\numberline {26.7}Current limitations}{226}{section.26.7}%
+\contentsline {chapter}{\numberline {27}Worker and Remote Execution}{227}{chapter.27}%
+\contentsline {section}{\numberline {27.1}Worker process boundary}{228}{section.27.1}%
+\contentsline {section}{\numberline {27.2}HTTP transport and request routing}{229}{section.27.2}%
+\contentsline {section}{\numberline {27.3}Session, token, and workspace model}{229}{section.27.3}%
+\contentsline {section}{\numberline {27.4}Current API surface}{230}{section.27.4}%
+\contentsline {section}{\numberline {27.5}Worker jobs and synchronous execution}{232}{section.27.5}%
+\contentsline {section}{\numberline {27.6}Security, logging, and recovery boundary}{233}{section.27.6}%
+\contentsline {section}{\numberline {27.7}Practical reading order}{234}{section.27.7}%
+\contentsline {chapter}{\numberline {28}AI and External Integrations}{235}{chapter.28}%
+\contentsline {section}{\numberline {28.1}Current AI boundary}{236}{section.28.1}%
+\contentsline {section}{\numberline {28.2}Configuration and permissions}{236}{section.28.2}%
+\contentsline {section}{\numberline {28.3}Provider pipeline}{239}{section.28.3}%
+\contentsline {section}{\numberline {28.4}Audit and secret handling}{240}{section.28.4}%
+\contentsline {section}{\numberline {28.5}Sandbox and workflow control}{240}{section.28.5}%
+\contentsline {section}{\numberline {28.6}GUI and model-specific example}{242}{section.28.6}%
+\contentsline {section}{\numberline {28.7}External code and process integration}{242}{section.28.7}%
+\contentsline {section}{\numberline {28.8}Current limitations}{242}{section.28.8}%
+\contentsline {chapter}{\numberline {29}Biological and Whole-Cell Extensions}{245}{chapter.29}%
+\contentsline {section}{\numberline {29.1}Scope and contract}{245}{section.29.1}%
+\contentsline {section}{\numberline {29.2}Biochemical surface}{246}{section.29.2}%
+\contentsline {subsection}{\numberline {29.2.1}Native deterministic and network-oriented classes}{246}{subsection.29.2.1}%
+\contentsline {subsection}{\numberline {29.2.2}Flux-style metabolic models}{246}{subsection.29.2.2}%
+\contentsline {subsection}{\numberline {29.2.3}Compartment transport}{246}{subsection.29.2.3}%
+\contentsline {section}{\numberline {29.3}Whole-cell surface}{249}{section.29.3}%
+\contentsline {section}{\numberline {29.4}Didactic examples}{250}{section.29.4}%
+\contentsline {subsection}{\numberline {29.4.1}Gro-inspired bacteria colony signal channels}{253}{subsection.29.4.1}%
+\contentsline {section}{\numberline {29.5}Evidence and validation}{253}{section.29.5}%
+\contentsline {section}{\numberline {29.6}Scientific limits and future work}{253}{section.29.6}%
+\contentsline {chapter}{\numberline {30}Testing and Validation}{257}{chapter.30}%
+\contentsline {section}{\numberline {30.1}Validation layers}{258}{section.30.1}%
+\contentsline {section}{\numberline {30.2}Current preset matrix}{258}{section.30.2}%
+\contentsline {section}{\numberline {30.3}What the suites cover}{259}{section.30.3}%
+\contentsline {section}{\numberline {30.4}Focused sanitizer path}{261}{section.30.4}%
+\contentsline {section}{\numberline {30.5}Interpreting results}{263}{section.30.5}%
+\contentsline {section}{\numberline {30.6}Current evidence snapshot}{263}{section.30.6}%
+\contentsline {section}{\numberline {30.7}Practical reading rule}{264}{section.30.7}%
+\contentsline {chapter}{\numberline {31}Packaging and CI}{265}{chapter.31}%
+\contentsline {section}{\numberline {31.1}Current CI topology}{266}{section.31.1}%
+\contentsline {section}{\numberline {31.2}Debian packaging workflow}{267}{section.31.2}%
+\contentsline {section}{\numberline {31.3}Package layout and install surface}{267}{section.31.3}%
+\contentsline {section}{\numberline {31.4}The Launcher/Dispatcher packaging contract}{269}{section.31.4}%
+\contentsline {section}{\numberline {31.5}Generic CMake install tree and DESTDIR staging}{272}{section.31.5}%
+\contentsline {section}{\numberline {31.6}Package lifecycle validation}{272}{section.31.6}%
+\contentsline {section}{\numberline {31.7}Release boundary and limitations}{273}{section.31.7}%
+\contentsline {chapter}{\numberline {32}Governance and Contribution}{275}{chapter.32}%
+\contentsline {section}{\numberline {32.1}Where governance lives}{275}{section.32.1}%
+\contentsline {section}{\numberline {32.2}Branch and review conventions}{276}{section.32.2}%
+\contentsline {section}{\numberline {32.3}How contributors are expected to work}{276}{section.32.3}%
+\contentsline {section}{\numberline {32.4}Validation and evidence discipline}{277}{section.32.4}%
+\contentsline {section}{\numberline {32.5}Human-decision boundaries}{277}{section.32.5}%
+\contentsline {section}{\numberline {32.6}Contribution checklist}{277}{section.32.6}%
+\contentsline {chapter}{Editorial Migration Table}{279}{chapter*.172}%
+\contentsline {part}{\@mypartnumtocformat {III}{Legacy Chapters (Temporary)}}{281}{part.3}%
 \ttl@stoptoc {default@2}
 \ttl@starttoc {default@3}
-\contentsline {chapter}{\numberline {33}What is GenESyS}{285}{chapter.33}%
-\contentsline {section}{\numberline {33.1}Introduction}{285}{section.33.1}%
-\contentsline {section}{\numberline {33.2}Purpose of GenESyS}{286}{section.33.2}%
-\contentsline {subsection}{\numberline {33.2.1}GenESyS as a modeling and simulation tool}{286}{subsection.33.2.1}%
-\contentsline {subsection}{\numberline {33.2.2}GenESyS as an evolving system}{286}{subsection.33.2.2}%
-\contentsline {section}{\numberline {33.3}How the User Works with GenESyS}{286}{section.33.3}%
-\contentsline {section}{\numberline {33.4}The Graphical Interface as the Main Point of Use}{287}{section.33.4}%
-\contentsline {subsection}{\numberline {33.4.1}Why GUI comes before language}{288}{subsection.33.4.1}%
-\contentsline {section}{\numberline {33.5}Example Models as a Gateway}{288}{section.33.5}%
-\contentsline {section}{\numberline {33.6}What the Reader Will Find in This Manual}{288}{section.33.6}%
-\contentsline {section}{\numberline {33.7}How to Read This Book in the Most Beneficial Way}{289}{section.33.7}%
-\contentsline {section}{\numberline {33.8}Final Considerations}{289}{section.33.8}%
-\contentsline {chapter}{\numberline {34}Download, installation and compilation}{291}{chapter.34}%
-\contentsline {section}{\numberline {34.1}Introduction}{291}{section.34.1}%
-\contentsline {section}{\numberline {34.2}Getting the project}{291}{section.34.2}%
-\contentsline {section}{\numberline {34.3}What the user really needs at this stage}{292}{section.34.3}%
-\contentsline {section}{\numberline {34.4}Environment dependencies}{292}{section.34.4}%
-\contentsline {subsection}{\numberline {34.4.1}Minimum environment checklist}{293}{subsection.34.4.1}%
-\contentsline {section}{\numberline {34.5}Compiling the graphical application}{293}{section.34.5}%
-\contentsline {subsection}{\numberline {34.5.1}Why is the GUI explicitly enabled}{293}{subsection.34.5.1}%
-\contentsline {section}{\numberline {34.6}How to interpret configuration and compilation}{294}{section.34.6}%
-\contentsline {section}{\numberline {34.7}What to do in case of an error}{294}{section.34.7}%
-\contentsline {section}{\numberline {34.8}First run of the GUI}{294}{section.34.8}%
-\contentsline {subsection}{\numberline {34.8.1}What to validate on the first run}{295}{subsection.34.8.1}%
-\contentsline {section}{\numberline {34.9}First useful observations about the interface}{295}{section.34.9}%
-\contentsline {section}{\numberline {34.10}Preparing the next step}{295}{section.34.10}%
-\contentsline {section}{\numberline {34.11}Final Considerations}{295}{section.34.11}%
-\contentsline {chapter}{\numberline {35}First steps in the graphical interface}{297}{chapter.35}%
-\contentsline {section}{\numberline {35.1}Introduction}{297}{section.35.1}%
-\contentsline {section}{\numberline {35.2}The Main Window as a Workspace}{298}{section.35.2}%
-\contentsline {section}{\numberline {35.3}Opening the Application and First Visual Reading}{298}{section.35.3}%
-\contentsline {section}{\numberline {35.4}Interface Functional Groups}{298}{section.35.4}%
-\contentsline {subsection}{\numberline {35.4.1}Template Commands}{298}{subsection.35.4.1}%
-\contentsline {subsection}{\numberline {35.4.2}Editing Commands}{299}{subsection.35.4.2}%
-\contentsline {subsection}{\numberline {35.4.3}View Commands}{299}{subsection.35.4.3}%
-\contentsline {subsection}{\numberline {35.4.4}Simulation Commands}{299}{subsection.35.4.4}%
-\contentsline {subsection}{\numberline {35.4.5}Inspection and Support Commands}{299}{subsection.35.4.5}%
-\contentsline {section}{\numberline {35.5}The Graphics Area of the Model}{300}{section.35.5}%
-\contentsline {subsection}{\numberline {35.5.1}Graphic area is not just drawing}{300}{subsection.35.5.1}%
-\contentsline {section}{\numberline {35.6}Trees, Panels, and Helper Editors}{300}{section.35.6}%
-\contentsline {subsection}{\numberline {35.6.1}Navigation Trees}{300}{subsection.35.6.1}%
-\contentsline {subsection}{\numberline {35.6.2}Property Editor}{300}{subsection.35.6.2}%
-\contentsline {subsection}{\numberline {35.6.3}Complementary tabs and views}{301}{subsection.35.6.3}%
-\contentsline {section}{\numberline {35.7}Minimal User Guidance Flow in the GUI}{301}{section.35.7}%
-\contentsline {section}{\numberline {35.8}What Is Not Necessary to Master Now}{301}{section.35.8}%
-\contentsline {section}{\numberline {35.9}Good Practices When First Encountering the Interface}{301}{section.35.9}%
-\contentsline {section}{\numberline {35.10}Final Considerations}{302}{section.35.10}%
-\contentsline {chapter}{\numberline {36}Example models and initial use of the simulator}{303}{chapter.36}%
-\contentsline {section}{\numberline {36.1}Introduction}{303}{section.36.1}%
-\contentsline {section}{\numberline {36.2}Why start with example templates}{304}{section.36.2}%
-\contentsline {subsection}{\numberline {36.2.1}The mistake of starting from scratch too soon}{304}{subsection.36.2.1}%
-\contentsline {subsection}{\numberline {36.2.2}Example templates as reading material}{304}{subsection.36.2.2}%
-\contentsline {section}{\numberline {36.3}The \texttt {models/} folder as a reference for use}{305}{section.36.3}%
-\contentsline {subsection}{\numberline {36.3.1}What to look for in the \texttt {models/} folder}{305}{subsection.36.3.1}%
-\contentsline {subsection}{\numberline {36.3.2}How to select good first examples}{305}{subsection.36.3.2}%
-\contentsline {section}{\numberline {36.4}Opening a sample model in the GUI}{305}{section.36.4}%
-\contentsline {subsection}{\numberline {36.4.1}What to confirm immediately after opening}{306}{subsection.36.4.1}%
-\contentsline {subsection}{\numberline {36.4.2}Exploring the Gro bacteria-colony example}{306}{subsection.36.4.2}%
-\contentsline {subsection}{\numberline {36.4.3}When the model appears ``too big''}{306}{subsection.36.4.3}%
-\contentsline {section}{\numberline {36.5}How to read a model in the graphics area}{306}{section.36.5}%
-\contentsline {subsection}{\numberline {36.5.1}Identifying the main flow}{307}{subsection.36.5.1}%
-\contentsline {subsection}{\numberline {36.5.2}Distinguishing main flow from auxiliary elements}{307}{subsection.36.5.2}%
-\contentsline {section}{\numberline {36.6}Running the model for the first time}{307}{section.36.6}%
-\contentsline {subsection}{\numberline {36.6.1}What to watch out for while running}{307}{subsection.36.6.1}%
-\contentsline {subsection}{\numberline {36.6.2}First validation of behavior}{308}{subsection.36.6.2}%
-\contentsline {section}{\numberline {36.7}Modifying an example model in a controlled way}{308}{section.36.7}%
-\contentsline {subsection}{\numberline {36.7.1}Why small changes are better}{308}{subsection.36.7.1}%
-\contentsline {section}{\numberline {36.8}Best practices for exploring example models}{308}{section.36.8}%
-\contentsline {subsection}{\numberline {36.8.1}Start with smaller cases}{309}{subsection.36.8.1}%
-\contentsline {subsection}{\numberline {36.8.2}Save separate copies}{309}{subsection.36.8.2}%
-\contentsline {subsection}{\numberline {36.8.3}Use execution as a reading tool}{309}{subsection.36.8.3}%
-\contentsline {subsection}{\numberline {36.8.4}Return to structure after running}{309}{subsection.36.8.4}%
-\contentsline {section}{\numberline {36.9}Final Considerations}{309}{section.36.9}%
-\contentsline {chapter}{\numberline {37}GUI, Simulang, model execution and observation}{311}{chapter.37}%
-\contentsline {section}{\numberline {37.1}Introduction}{311}{section.37.1}%
-\contentsline {section}{\numberline {37.2}From static structure to model dynamics}{312}{section.37.2}%
-\contentsline {subsection}{\numberline {37.2.1}What changes when the model starts running}{312}{subsection.37.2.1}%
-\contentsline {section}{\numberline {37.3}Execution commands and their usage logic}{312}{section.37.3}%
-\contentsline {subsection}{\numberline {37.3.1}Start the simulation}{312}{subsection.37.3.1}%
-\contentsline {subsection}{\numberline {37.3.2}Pause, resume and advance step by step}{313}{subsection.37.3.2}%
-\contentsline {subsection}{\numberline {37.3.3}Stop and configure}{313}{subsection.37.3.3}%
-\contentsline {section}{\numberline {37.4}Observing model behavior during execution}{313}{section.37.4}%
-\contentsline {subsection}{\numberline {37.4.1}First level: the global flow}{313}{subsection.37.4.1}%
-\contentsline {subsection}{\numberline {37.4.2}Second level: specific elements}{313}{subsection.37.4.2}%
-\contentsline {subsection}{\numberline {37.4.3}Third level: comparison between runs}{314}{subsection.37.4.3}%
-\contentsline {section}{\numberline {37.5}The \textit {Simulang} Tab as a Textual Representation of the Model}{314}{section.37.5}%
-\contentsline {subsection}{\numberline {37.5.1}How to Read the \textit {Simulang} Tab}{314}{subsection.37.5.1}%
-\contentsline {subsection}{\numberline {37.5.2}Why textual representation is useful to the user}{314}{subsection.37.5.2}%
-\contentsline {section}{\numberline {37.6}Tracing, breakpoints and initial observability}{314}{section.37.6}%
-\contentsline {subsection}{\numberline {37.6.1}Tracing as reading behavior}{315}{subsection.37.6.1}%
-\contentsline {subsection}{\numberline {37.6.2}Breakpoints as a controlled observation tool}{315}{subsection.37.6.2}%
-\contentsline {section}{\numberline {37.7}First reading of the results}{315}{section.37.7}%
-\contentsline {subsection}{\numberline {37.7.1}Results as continuation of model reading}{315}{subsection.37.7.1}%
-\contentsline {section}{\numberline {37.8}Best practices for observing running models}{316}{section.37.8}%
-\contentsline {subsection}{\numberline {37.8.1}Set an observation focus}{316}{subsection.37.8.1}%
-\contentsline {subsection}{\numberline {37.8.2}Switch between views}{316}{subsection.37.8.2}%
-\contentsline {subsection}{\numberline {37.8.3}Make small changes and compare}{316}{subsection.37.8.3}%
-\contentsline {subsection}{\numberline {37.8.4}Don't try to exhaust everything in a single run}{316}{subsection.37.8.4}%
-\contentsline {section}{\numberline {37.9}Final Considerations}{316}{section.37.9}%
-\contentsline {chapter}{\numberline {38}Source Code Organization and Overall Architecture}{319}{chapter.38}%
-\contentsline {section}{\numberline {38.1}Introduction}{319}{section.38.1}%
-\contentsline {section}{\numberline {38.2}From Simulator Application to Software System}{320}{section.38.2}%
-\contentsline {section}{\numberline {38.3}The Overall Logic of the Directory Tree}{320}{section.38.3}%
-\contentsline {subsection}{\numberline {38.3.1}Why the \texttt {source/} folder is the center of reading}{320}{subsection.38.3.1}%
-\contentsline {subsection}{\numberline {38.3.2}Why \texttt {models/} remains relevant to developers}{321}{subsection.38.3.2}%
-\contentsline {section}{\numberline {38.4}The large areas of \texttt {source/}}{321}{section.38.4}%
-\contentsline {subsection}{\numberline {38.4.1}\texttt {source/kernel}}{321}{subsection.38.4.1}%
-\contentsline {subsection}{\numberline {38.4.2}\texttt {source/parser}}{321}{subsection.38.4.2}%
-\contentsline {subsection}{\numberline {38.4.3}\texttt {source/plugins}}{321}{subsection.38.4.3}%
-\contentsline {subsection}{\numberline {38.4.4}\texttt {source/applications}}{322}{subsection.38.4.4}%
-\contentsline {subsection}{\numberline {38.4.5}\texttt {source/tools}}{322}{subsection.38.4.5}%
-\contentsline {subsection}{\numberline {38.4.6}\texttt {source/tests}}{322}{subsection.38.4.6}%
-\contentsline {section}{\numberline {38.5}A Layered Reading of the System}{322}{section.38.5}%
-\contentsline {section}{\numberline {38.6}The Role of the \texttt {Simulator} Class in the System View}{323}{section.38.6}%
-\contentsline {subsection}{\numberline {38.6.1}Why This Matters for Reading the Code}{323}{subsection.38.6.1}%
-\contentsline {section}{\numberline {38.7}Misreadings This Chapter Avoids}{323}{section.38.7}%
-\contentsline {section}{\numberline {38.8}Recommended Reading Strategy for the Code}{323}{section.38.8}%
-\contentsline {section}{\numberline {38.9}Final Considerations}{324}{section.38.9}%
-\contentsline {chapter}{\numberline {39}Simulator Kernel}{325}{chapter.39}%
-\contentsline {section}{\numberline {39.1}Introduction}{325}{section.39.1}%
-\contentsline {section}{\numberline {39.2}The Kernel as Simulation Infrastructure}{326}{section.39.2}%
-\contentsline {section}{\numberline {39.3}The \texttt {Simulator} class as kernel entry point}{326}{section.39.3}%
-\contentsline {subsection}{\numberline {39.3.1}What This Class Suggests About the Architecture}{326}{subsection.39.3.1}%
-\contentsline {section}{\numberline {39.4}The class \texttt {Model} as the center of the simulation model}{326}{section.39.4}%
-\contentsline {subsection}{\numberline {39.4.1}Why \texttt {Model} is so central}{327}{subsection.39.4.1}%
-\contentsline {subsection}{\numberline {39.4.2}Model as a Combination of Components and Data}{327}{subsection.39.4.2}%
-\contentsline {subsection}{\numberline {39.4.3}The Future Event List}{327}{subsection.39.4.3}%
-\contentsline {section}{\numberline {39.5}The class \texttt {ModelSimulation}}{327}{section.39.5}%
-\contentsline {subsection}{\numberline {39.5.1}Responsibilities of \texttt {ModelSimulation}}{327}{subsection.39.5.1}%
-\contentsline {subsection}{\numberline {39.5.2}The Simulation Cycle}{328}{subsection.39.5.2}%
-\contentsline {subsection}{\numberline {39.5.3}Simulated Time, Replications, and \textit {Warm-up}}{328}{subsection.39.5.3}%
-\contentsline {section}{\numberline {39.6}Events, the Current Event, and Sequential Processing}{328}{section.39.6}%
-\contentsline {section}{\numberline {39.7}The \texttt {OnEventManager} class and core observability}{329}{section.39.7}%
-\contentsline {subsection}{\numberline {39.7.1}Why this is architecturally important}{329}{subsection.39.7.1}%
-\contentsline {subsection}{\numberline {39.7.2}ModelEvent e SimulationEvent}{329}{subsection.39.7.2}%
-\contentsline {section}{\numberline {39.8}Breakpoints and Fine-Grained Execution Control}{329}{section.39.8}%
-\contentsline {section}{\numberline {39.9}An integrated reading of the kernel}{330}{section.39.9}%
-\contentsline {section}{\numberline {39.10}Final Considerations}{330}{section.39.10}%
-\contentsline {chapter}{\numberline {40}Components, \textit {model data} and \textit {plugins} system}{331}{chapter.40}%
-\contentsline {section}{\numberline {40.1}Introduction}{331}{section.40.1}%
-\contentsline {section}{\numberline {40.2}\texttt {ModelDataDefinition} as model base class}{332}{section.40.2}%
-\contentsline {subsection}{\numberline {40.2.1}Core responsibilities of \texttt {ModelDataDefinition}}{332}{subsection.40.2.1}%
-\contentsline {subsection}{\numberline {40.2.2}Internal Data and Attached Data}{332}{subsection.40.2.2}%
-\contentsline {subsection}{\numberline {40.2.3}Persistence and Verification as Base Responsibilities}{332}{subsection.40.2.3}%
-\contentsline {section}{\numberline {40.3}\texttt {ModelComponent} as behavioral specialization}{333}{section.40.3}%
-\contentsline {subsection}{\numberline {40.3.1}The Idea of Flow Between Components}{333}{subsection.40.3.1}%
-\contentsline {subsection}{\numberline {40.3.2}Event dispatch and \texttt {\_onDispatchEvent}}{333}{subsection.40.3.2}%
-\contentsline {subsection}{\numberline {40.3.3}Components as Specialized Model Data}{333}{subsection.40.3.3}%
-\contentsline {section}{\numberline {40.4}Main Flow and Supporting Data}{334}{section.40.4}%
-\contentsline {subsection}{\numberline {40.4.1}Why This Distinction Improves the Architecture}{334}{subsection.40.4.1}%
-\contentsline {section}{\numberline {40.5}Composition, Aggregation, and the Internal Model Design}{334}{section.40.5}%
-\contentsline {subsection}{\numberline {40.5.1}Internal data as a composition relationship}{334}{subsection.40.5.1}%
-\contentsline {subsection}{\numberline {40.5.2}Attached data as an aggregation relationship}{335}{subsection.40.5.2}%
-\contentsline {section}{\numberline {40.6}The \textit {plugins} system}{335}{section.40.6}%
-\contentsline {subsection}{\numberline {40.6.1}Why \textit {plugins} are important}{335}{subsection.40.6.1}%
-\contentsline {subsection}{\numberline {40.6.2}Components and Data as Natural Extensions}{335}{subsection.40.6.2}%
-\contentsline {section}{\numberline {40.7}How to Think About a New Extension}{336}{section.40.7}%
-\contentsline {section}{\numberline {40.8}Misreading This Chapter Avoids}{336}{section.40.8}%
-\contentsline {section}{\numberline {40.9}Final Considerations}{336}{section.40.9}%
-\contentsline {chapter}{\numberline {41}Parser, Expressions, and Internal Language}{339}{chapter.41}%
-\contentsline {section}{\numberline {41.1}Introduction}{339}{section.41.1}%
-\contentsline {section}{\numberline {41.2}The Role of the Parser in GenESyS}{340}{section.41.2}%
-\contentsline {subsection}{\numberline {41.2.1}Parser as a Semantic Subsystem}{340}{subsection.41.2.1}%
-\contentsline {section}{\numberline {41.3}The \texttt {Parser\_if} interface}{340}{section.41.3}%
-\contentsline {subsection}{\numberline {41.3.1}Expression Evaluation}{340}{subsection.41.3.1}%
-\contentsline {subsection}{\numberline {41.3.2}Integration with \texttt {Sampler\_if}}{341}{subsection.41.3.2}%
-\contentsline {section}{\numberline {41.4}The \texttt {Model} class as parser user}{341}{section.41.4}%
-\contentsline {subsection}{\numberline {41.4.1}Why does \texttt {Model} invoke the parser}{341}{subsection.41.4.1}%
-\contentsline {subsection}{\numberline {41.4.2}Expressions and Consistency Checking}{341}{subsection.41.4.2}%
-\contentsline {section}{\numberline {41.5}The GenESyS Bison/Flex Grammar}{341}{section.41.5}%
-\contentsline {subsection}{\numberline {41.5.1}A Language Truly Integrated with the Model}{342}{subsection.41.5.1}%
-\contentsline {subsection}{\numberline {41.5.2}Probabilistic Functions and Sampling}{342}{subsection.41.5.2}%
-\contentsline {section}{\numberline {41.6}Model Symbols and Dependence on the Current State}{342}{section.41.6}%
-\contentsline {subsection}{\numberline {41.6.1}Parser como consumidor do estado do kernel}{342}{subsection.41.6.1}%
-\contentsline {section}{\numberline {41.7}Extension points by \textit {plugins}}{343}{section.41.7}%
-\contentsline {subsection}{\numberline {41.7.1}Syntactic and Semantic Extension}{343}{subsection.41.7.1}%
-\contentsline {section}{\numberline {41.8}The class \texttt {ParserManager}}{343}{section.41.8}%
-\contentsline {subsection}{\numberline {41.8.1}What This Means for the Developer}{343}{subsection.41.8.1}%
-\contentsline {section}{\numberline {41.9}Erros, mensagens e robustez}{344}{section.41.9}%
-\contentsline {section}{\numberline {41.10}How to Study and Modify the Parser Productively}{344}{section.41.10}%
-\contentsline {section}{\numberline {41.11}Final Considerations}{344}{section.41.11}%
-\contentsline {chapter}{\numberline {42}Applications, Tools, \texttt {C++} Examples, Tests, and Project Evolution}{347}{chapter.42}%
-\contentsline {section}{\numberline {42.1}Introduction}{347}{section.42.1}%
-\contentsline {section}{\numberline {42.2}Applications as Projections of the Kernel}{348}{section.42.2}%
-\contentsline {subsection}{\numberline {42.2.1}The GUI as an Application on the Core}{348}{subsection.42.2.1}%
-\contentsline {subsection}{\numberline {42.2.2}The Shell and Model-Specific Applications as Alternative Forms of Use}{348}{subsection.42.2.2}%
-\contentsline {section}{\numberline {42.3}The examples in \texttt {C++} as developer material}{349}{section.42.3}%
-\contentsline {subsection}{\numberline {42.3.1}Why These Examples Are So Valuable}{349}{subsection.42.3.1}%
-\contentsline {subsection}{\numberline {42.3.2}The bridge between examples in \texttt {C++} and saved models}{349}{subsection.42.3.2}%
-\contentsline {section}{\numberline {42.4}Tools as a Support Layer}{349}{section.42.4}%
-\contentsline {subsection}{\numberline {42.4.1}When to study \texttt {tools}}{350}{subsection.42.4.1}%
-\contentsline {section}{\numberline {42.5}Future cross-cutting concerns with an explicit AOP-lite pipeline}{350}{section.42.5}%
-\contentsline {subsection}{\numberline {42.5.1}How the pipeline works}{350}{subsection.42.5.1}%
-\contentsline {subsection}{\numberline {42.5.2}Applying a logging aspect}{350}{subsection.42.5.2}%
-\contentsline {subsection}{\numberline {42.5.3}Applying a timing aspect}{351}{subsection.42.5.3}%
-\contentsline {subsection}{\numberline {42.5.4}Combining aspects}{351}{subsection.42.5.4}%
-\contentsline {subsection}{\numberline {42.5.5}How difficult is the first implementation?}{351}{subsection.42.5.5}%
-\contentsline {section}{\numberline {42.6}The Importance of Tests}{351}{section.42.6}%
-\contentsline {subsection}{\numberline {42.6.1}Why Tests Are Part of the Architecture, Not Just the Routine}{352}{subsection.42.6.1}%
-\contentsline {subsection}{\numberline {42.6.2}How the Developer Should Use the Tests}{352}{subsection.42.6.2}%
-\contentsline {section}{\numberline {42.7}Build, Applications, and Behavior Selection}{352}{section.42.7}%
-\contentsline {section}{\numberline {42.8}Project Evolution and Contribution Paths}{353}{section.42.8}%
-\contentsline {subsection}{\numberline {42.8.1}How to Choose an Entry Point for Contribution}{353}{subsection.42.8.1}%
-\contentsline {subsection}{\numberline {42.8.2}The Role of Examples and Tests in Evolution}{353}{subsection.42.8.2}%
-\contentsline {section}{\numberline {42.9}An Integrated Final View of GenESyS}{353}{section.42.9}%
-\contentsline {section}{\numberline {42.10}Final Considerations}{354}{section.42.10}%
-\contentsline {chapter}{\numberline {A}Command Reference}{355}{appendix.A}%
-\contentsline {chapter}{\numberline {B}CMake Options and Presets}{357}{appendix.B}%
-\contentsline {chapter}{\numberline {C}Application and Target Matrix}{359}{appendix.C}%
-\contentsline {chapter}{\numberline {D}Model File Catalog}{361}{appendix.D}%
-\contentsline {chapter}{\numberline {E}Evidence and Maturity Matrix}{363}{appendix.E}%
-\contentsline {chapter}{\numberline {F}Glossary}{365}{appendix.F}%
-\contentsline {chapter}{\numberline {G}Known Limitations}{367}{appendix.G}%
-\contentsline {section}{\numberline {G.1}Simulation and numerical limits}{367}{section.G.1}%
-\contentsline {section}{\numberline {G.2}Biological and domain limits}{367}{section.G.2}%
-\contentsline {section}{\numberline {G.3}Build and toolchain limits}{368}{section.G.3}%
-\contentsline {section}{\numberline {G.4}Testing and quality limits}{368}{section.G.4}%
-\contentsline {section}{\numberline {G.5}What the appendix does not claim}{368}{section.G.5}%
-\contentsline {chapter}{Bibliography}{369}{appendix*.190}%
-\contentsline {chapter}{Index}{371}{section*.191}%
+\contentsline {chapter}{\numberline {33}What is GenESyS}{283}{chapter.33}%
+\contentsline {section}{\numberline {33.1}Introduction}{283}{section.33.1}%
+\contentsline {section}{\numberline {33.2}Purpose of GenESyS}{284}{section.33.2}%
+\contentsline {subsection}{\numberline {33.2.1}GenESyS as a modeling and simulation tool}{284}{subsection.33.2.1}%
+\contentsline {subsection}{\numberline {33.2.2}GenESyS as an evolving system}{284}{subsection.33.2.2}%
+\contentsline {section}{\numberline {33.3}How the User Works with GenESyS}{284}{section.33.3}%
+\contentsline {section}{\numberline {33.4}The Graphical Interface as the Main Point of Use}{285}{section.33.4}%
+\contentsline {subsection}{\numberline {33.4.1}Why GUI comes before language}{286}{subsection.33.4.1}%
+\contentsline {section}{\numberline {33.5}Example Models as a Gateway}{286}{section.33.5}%
+\contentsline {section}{\numberline {33.6}What the Reader Will Find in This Manual}{286}{section.33.6}%
+\contentsline {section}{\numberline {33.7}How to Read This Book in the Most Beneficial Way}{287}{section.33.7}%
+\contentsline {section}{\numberline {33.8}Final Considerations}{287}{section.33.8}%
+\contentsline {chapter}{\numberline {34}Download, installation and compilation}{289}{chapter.34}%
+\contentsline {section}{\numberline {34.1}Introduction}{289}{section.34.1}%
+\contentsline {section}{\numberline {34.2}Getting the project}{289}{section.34.2}%
+\contentsline {section}{\numberline {34.3}What the user really needs at this stage}{290}{section.34.3}%
+\contentsline {section}{\numberline {34.4}Environment dependencies}{290}{section.34.4}%
+\contentsline {subsection}{\numberline {34.4.1}Minimum environment checklist}{291}{subsection.34.4.1}%
+\contentsline {section}{\numberline {34.5}Compiling the graphical application}{291}{section.34.5}%
+\contentsline {subsection}{\numberline {34.5.1}Why is the GUI explicitly enabled}{291}{subsection.34.5.1}%
+\contentsline {section}{\numberline {34.6}How to interpret configuration and compilation}{292}{section.34.6}%
+\contentsline {section}{\numberline {34.7}What to do in case of an error}{292}{section.34.7}%
+\contentsline {section}{\numberline {34.8}First run of the GUI}{292}{section.34.8}%
+\contentsline {subsection}{\numberline {34.8.1}What to validate on the first run}{293}{subsection.34.8.1}%
+\contentsline {section}{\numberline {34.9}First useful observations about the interface}{293}{section.34.9}%
+\contentsline {section}{\numberline {34.10}Preparing the next step}{293}{section.34.10}%
+\contentsline {section}{\numberline {34.11}Final Considerations}{293}{section.34.11}%
+\contentsline {chapter}{\numberline {35}First steps in the graphical interface}{295}{chapter.35}%
+\contentsline {section}{\numberline {35.1}Introduction}{295}{section.35.1}%
+\contentsline {section}{\numberline {35.2}The Main Window as a Workspace}{296}{section.35.2}%
+\contentsline {section}{\numberline {35.3}Opening the Application and First Visual Reading}{296}{section.35.3}%
+\contentsline {section}{\numberline {35.4}Interface Functional Groups}{296}{section.35.4}%
+\contentsline {subsection}{\numberline {35.4.1}Template Commands}{296}{subsection.35.4.1}%
+\contentsline {subsection}{\numberline {35.4.2}Editing Commands}{297}{subsection.35.4.2}%
+\contentsline {subsection}{\numberline {35.4.3}View Commands}{297}{subsection.35.4.3}%
+\contentsline {subsection}{\numberline {35.4.4}Simulation Commands}{297}{subsection.35.4.4}%
+\contentsline {subsection}{\numberline {35.4.5}Inspection and Support Commands}{297}{subsection.35.4.5}%
+\contentsline {section}{\numberline {35.5}The Graphics Area of the Model}{298}{section.35.5}%
+\contentsline {subsection}{\numberline {35.5.1}Graphic area is not just drawing}{298}{subsection.35.5.1}%
+\contentsline {section}{\numberline {35.6}Trees, Panels, and Helper Editors}{298}{section.35.6}%
+\contentsline {subsection}{\numberline {35.6.1}Navigation Trees}{298}{subsection.35.6.1}%
+\contentsline {subsection}{\numberline {35.6.2}Property Editor}{298}{subsection.35.6.2}%
+\contentsline {subsection}{\numberline {35.6.3}Complementary tabs and views}{299}{subsection.35.6.3}%
+\contentsline {section}{\numberline {35.7}Minimal User Guidance Flow in the GUI}{299}{section.35.7}%
+\contentsline {section}{\numberline {35.8}What Is Not Necessary to Master Now}{299}{section.35.8}%
+\contentsline {section}{\numberline {35.9}Good Practices When First Encountering the Interface}{299}{section.35.9}%
+\contentsline {section}{\numberline {35.10}Final Considerations}{300}{section.35.10}%
+\contentsline {chapter}{\numberline {36}Example models and initial use of the simulator}{301}{chapter.36}%
+\contentsline {section}{\numberline {36.1}Introduction}{301}{section.36.1}%
+\contentsline {section}{\numberline {36.2}Why start with example templates}{302}{section.36.2}%
+\contentsline {subsection}{\numberline {36.2.1}The mistake of starting from scratch too soon}{302}{subsection.36.2.1}%
+\contentsline {subsection}{\numberline {36.2.2}Example templates as reading material}{302}{subsection.36.2.2}%
+\contentsline {section}{\numberline {36.3}The \texttt {models/} folder as a reference for use}{303}{section.36.3}%
+\contentsline {subsection}{\numberline {36.3.1}What to look for in the \texttt {models/} folder}{303}{subsection.36.3.1}%
+\contentsline {subsection}{\numberline {36.3.2}How to select good first examples}{303}{subsection.36.3.2}%
+\contentsline {section}{\numberline {36.4}Opening a sample model in the GUI}{303}{section.36.4}%
+\contentsline {subsection}{\numberline {36.4.1}What to confirm immediately after opening}{304}{subsection.36.4.1}%
+\contentsline {subsection}{\numberline {36.4.2}When the model appears ``too big''}{304}{subsection.36.4.2}%
+\contentsline {section}{\numberline {36.5}How to read a model in the graphics area}{304}{section.36.5}%
+\contentsline {subsection}{\numberline {36.5.1}Identifying the main flow}{304}{subsection.36.5.1}%
+\contentsline {subsection}{\numberline {36.5.2}Distinguishing main flow from auxiliary elements}{305}{subsection.36.5.2}%
+\contentsline {section}{\numberline {36.6}Running the model for the first time}{305}{section.36.6}%
+\contentsline {subsection}{\numberline {36.6.1}What to watch out for while running}{305}{subsection.36.6.1}%
+\contentsline {subsection}{\numberline {36.6.2}First validation of behavior}{305}{subsection.36.6.2}%
+\contentsline {section}{\numberline {36.7}Modifying an example model in a controlled way}{306}{section.36.7}%
+\contentsline {subsection}{\numberline {36.7.1}Why small changes are better}{306}{subsection.36.7.1}%
+\contentsline {section}{\numberline {36.8}Best practices for exploring example models}{306}{section.36.8}%
+\contentsline {subsection}{\numberline {36.8.1}Start with smaller cases}{306}{subsection.36.8.1}%
+\contentsline {subsection}{\numberline {36.8.2}Save separate copies}{306}{subsection.36.8.2}%
+\contentsline {subsection}{\numberline {36.8.3}Use execution as a reading tool}{306}{subsection.36.8.3}%
+\contentsline {subsection}{\numberline {36.8.4}Return to structure after running}{307}{subsection.36.8.4}%
+\contentsline {section}{\numberline {36.9}Final Considerations}{307}{section.36.9}%
+\contentsline {chapter}{\numberline {37}GUI, Simulang, model execution and observation}{309}{chapter.37}%
+\contentsline {section}{\numberline {37.1}Introduction}{309}{section.37.1}%
+\contentsline {section}{\numberline {37.2}From static structure to model dynamics}{310}{section.37.2}%
+\contentsline {subsection}{\numberline {37.2.1}What changes when the model starts running}{310}{subsection.37.2.1}%
+\contentsline {section}{\numberline {37.3}Execution commands and their usage logic}{310}{section.37.3}%
+\contentsline {subsection}{\numberline {37.3.1}Start the simulation}{310}{subsection.37.3.1}%
+\contentsline {subsection}{\numberline {37.3.2}Pause, resume and advance step by step}{311}{subsection.37.3.2}%
+\contentsline {subsection}{\numberline {37.3.3}Stop and configure}{311}{subsection.37.3.3}%
+\contentsline {section}{\numberline {37.4}Observing model behavior during execution}{311}{section.37.4}%
+\contentsline {subsection}{\numberline {37.4.1}First level: the global flow}{311}{subsection.37.4.1}%
+\contentsline {subsection}{\numberline {37.4.2}Second level: specific elements}{311}{subsection.37.4.2}%
+\contentsline {subsection}{\numberline {37.4.3}Third level: comparison between runs}{312}{subsection.37.4.3}%
+\contentsline {section}{\numberline {37.5}The \textit {Simulang} Tab as a Textual Representation of the Model}{312}{section.37.5}%
+\contentsline {subsection}{\numberline {37.5.1}How to Read the \textit {Simulang} Tab}{312}{subsection.37.5.1}%
+\contentsline {subsection}{\numberline {37.5.2}Why textual representation is useful to the user}{312}{subsection.37.5.2}%
+\contentsline {section}{\numberline {37.6}Tracing, breakpoints and initial observability}{312}{section.37.6}%
+\contentsline {subsection}{\numberline {37.6.1}Tracing as reading behavior}{313}{subsection.37.6.1}%
+\contentsline {subsection}{\numberline {37.6.2}Breakpoints as a controlled observation tool}{313}{subsection.37.6.2}%
+\contentsline {section}{\numberline {37.7}First reading of the results}{313}{section.37.7}%
+\contentsline {subsection}{\numberline {37.7.1}Results as continuation of model reading}{313}{subsection.37.7.1}%
+\contentsline {section}{\numberline {37.8}Best practices for observing running models}{314}{section.37.8}%
+\contentsline {subsection}{\numberline {37.8.1}Set an observation focus}{314}{subsection.37.8.1}%
+\contentsline {subsection}{\numberline {37.8.2}Switch between views}{314}{subsection.37.8.2}%
+\contentsline {subsection}{\numberline {37.8.3}Make small changes and compare}{314}{subsection.37.8.3}%
+\contentsline {subsection}{\numberline {37.8.4}Don't try to exhaust everything in a single run}{314}{subsection.37.8.4}%
+\contentsline {section}{\numberline {37.9}Final Considerations}{314}{section.37.9}%
+\contentsline {chapter}{\numberline {38}Source Code Organization and Overall Architecture}{317}{chapter.38}%
+\contentsline {section}{\numberline {38.1}Introduction}{317}{section.38.1}%
+\contentsline {section}{\numberline {38.2}From Simulator Application to Software System}{318}{section.38.2}%
+\contentsline {section}{\numberline {38.3}The Overall Logic of the Directory Tree}{318}{section.38.3}%
+\contentsline {subsection}{\numberline {38.3.1}Why the \texttt {source/} folder is the center of reading}{318}{subsection.38.3.1}%
+\contentsline {subsection}{\numberline {38.3.2}Why \texttt {models/} remains relevant to developers}{319}{subsection.38.3.2}%
+\contentsline {section}{\numberline {38.4}The large areas of \texttt {source/}}{319}{section.38.4}%
+\contentsline {subsection}{\numberline {38.4.1}\texttt {source/kernel}}{319}{subsection.38.4.1}%
+\contentsline {subsection}{\numberline {38.4.2}\texttt {source/parser}}{319}{subsection.38.4.2}%
+\contentsline {subsection}{\numberline {38.4.3}\texttt {source/plugins}}{319}{subsection.38.4.3}%
+\contentsline {subsection}{\numberline {38.4.4}\texttt {source/applications}}{320}{subsection.38.4.4}%
+\contentsline {subsection}{\numberline {38.4.5}\texttt {source/tools}}{320}{subsection.38.4.5}%
+\contentsline {subsection}{\numberline {38.4.6}\texttt {source/tests}}{320}{subsection.38.4.6}%
+\contentsline {section}{\numberline {38.5}A Layered Reading of the System}{320}{section.38.5}%
+\contentsline {section}{\numberline {38.6}The Role of the \texttt {Simulator} Class in the System View}{321}{section.38.6}%
+\contentsline {subsection}{\numberline {38.6.1}Why This Matters for Reading the Code}{321}{subsection.38.6.1}%
+\contentsline {section}{\numberline {38.7}Misreadings This Chapter Avoids}{321}{section.38.7}%
+\contentsline {section}{\numberline {38.8}Recommended Reading Strategy for the Code}{321}{section.38.8}%
+\contentsline {section}{\numberline {38.9}Final Considerations}{322}{section.38.9}%
+\contentsline {chapter}{\numberline {39}Simulator Kernel}{323}{chapter.39}%
+\contentsline {section}{\numberline {39.1}Introduction}{323}{section.39.1}%
+\contentsline {section}{\numberline {39.2}The Kernel as Simulation Infrastructure}{324}{section.39.2}%
+\contentsline {section}{\numberline {39.3}The \texttt {Simulator} class as kernel entry point}{324}{section.39.3}%
+\contentsline {subsection}{\numberline {39.3.1}What This Class Suggests About the Architecture}{324}{subsection.39.3.1}%
+\contentsline {section}{\numberline {39.4}The class \texttt {Model} as the center of the simulation model}{324}{section.39.4}%
+\contentsline {subsection}{\numberline {39.4.1}Why \texttt {Model} is so central}{325}{subsection.39.4.1}%
+\contentsline {subsection}{\numberline {39.4.2}Model as a Combination of Components and Data}{325}{subsection.39.4.2}%
+\contentsline {subsection}{\numberline {39.4.3}The Future Event List}{325}{subsection.39.4.3}%
+\contentsline {section}{\numberline {39.5}The class \texttt {ModelSimulation}}{325}{section.39.5}%
+\contentsline {subsection}{\numberline {39.5.1}Responsibilities of \texttt {ModelSimulation}}{325}{subsection.39.5.1}%
+\contentsline {subsection}{\numberline {39.5.2}The Simulation Cycle}{326}{subsection.39.5.2}%
+\contentsline {subsection}{\numberline {39.5.3}Simulated Time, Replications, and \textit {Warm-up}}{326}{subsection.39.5.3}%
+\contentsline {section}{\numberline {39.6}Events, the Current Event, and Sequential Processing}{326}{section.39.6}%
+\contentsline {section}{\numberline {39.7}The \texttt {OnEventManager} class and core observability}{327}{section.39.7}%
+\contentsline {subsection}{\numberline {39.7.1}Why this is architecturally important}{327}{subsection.39.7.1}%
+\contentsline {subsection}{\numberline {39.7.2}ModelEvent e SimulationEvent}{327}{subsection.39.7.2}%
+\contentsline {section}{\numberline {39.8}Breakpoints and Fine-Grained Execution Control}{327}{section.39.8}%
+\contentsline {section}{\numberline {39.9}An integrated reading of the kernel}{328}{section.39.9}%
+\contentsline {section}{\numberline {39.10}Final Considerations}{328}{section.39.10}%
+\contentsline {chapter}{\numberline {40}Components, \textit {model data} and \textit {plugins} system}{329}{chapter.40}%
+\contentsline {section}{\numberline {40.1}Introduction}{329}{section.40.1}%
+\contentsline {section}{\numberline {40.2}\texttt {ModelDataDefinition} as model base class}{330}{section.40.2}%
+\contentsline {subsection}{\numberline {40.2.1}Core responsibilities of \texttt {ModelDataDefinition}}{330}{subsection.40.2.1}%
+\contentsline {subsection}{\numberline {40.2.2}Internal Data and Attached Data}{330}{subsection.40.2.2}%
+\contentsline {subsection}{\numberline {40.2.3}Persistence and Verification as Base Responsibilities}{330}{subsection.40.2.3}%
+\contentsline {section}{\numberline {40.3}\texttt {ModelComponent} as behavioral specialization}{331}{section.40.3}%
+\contentsline {subsection}{\numberline {40.3.1}The Idea of Flow Between Components}{331}{subsection.40.3.1}%
+\contentsline {subsection}{\numberline {40.3.2}Event dispatch and \texttt {\_onDispatchEvent}}{331}{subsection.40.3.2}%
+\contentsline {subsection}{\numberline {40.3.3}Components as Specialized Model Data}{331}{subsection.40.3.3}%
+\contentsline {section}{\numberline {40.4}Main Flow and Supporting Data}{332}{section.40.4}%
+\contentsline {subsection}{\numberline {40.4.1}Why This Distinction Improves the Architecture}{332}{subsection.40.4.1}%
+\contentsline {section}{\numberline {40.5}Composition, Aggregation, and the Internal Model Design}{332}{section.40.5}%
+\contentsline {subsection}{\numberline {40.5.1}Internal data as a composition relationship}{332}{subsection.40.5.1}%
+\contentsline {subsection}{\numberline {40.5.2}Attached data as an aggregation relationship}{333}{subsection.40.5.2}%
+\contentsline {section}{\numberline {40.6}The \textit {plugins} system}{333}{section.40.6}%
+\contentsline {subsection}{\numberline {40.6.1}Why \textit {plugins} are important}{333}{subsection.40.6.1}%
+\contentsline {subsection}{\numberline {40.6.2}Components and Data as Natural Extensions}{333}{subsection.40.6.2}%
+\contentsline {section}{\numberline {40.7}How to Think About a New Extension}{334}{section.40.7}%
+\contentsline {section}{\numberline {40.8}Misreading This Chapter Avoids}{334}{section.40.8}%
+\contentsline {section}{\numberline {40.9}Final Considerations}{334}{section.40.9}%
+\contentsline {chapter}{\numberline {41}Parser, Expressions, and Internal Language}{337}{chapter.41}%
+\contentsline {section}{\numberline {41.1}Introduction}{337}{section.41.1}%
+\contentsline {section}{\numberline {41.2}The Role of the Parser in GenESyS}{338}{section.41.2}%
+\contentsline {subsection}{\numberline {41.2.1}Parser as a Semantic Subsystem}{338}{subsection.41.2.1}%
+\contentsline {section}{\numberline {41.3}The \texttt {Parser\_if} interface}{338}{section.41.3}%
+\contentsline {subsection}{\numberline {41.3.1}Expression Evaluation}{338}{subsection.41.3.1}%
+\contentsline {subsection}{\numberline {41.3.2}Integration with \texttt {Sampler\_if}}{339}{subsection.41.3.2}%
+\contentsline {section}{\numberline {41.4}The \texttt {Model} class as parser user}{339}{section.41.4}%
+\contentsline {subsection}{\numberline {41.4.1}Why does \texttt {Model} invoke the parser}{339}{subsection.41.4.1}%
+\contentsline {subsection}{\numberline {41.4.2}Expressions and Consistency Checking}{339}{subsection.41.4.2}%
+\contentsline {section}{\numberline {41.5}The GenESyS Bison/Flex Grammar}{339}{section.41.5}%
+\contentsline {subsection}{\numberline {41.5.1}A Language Truly Integrated with the Model}{340}{subsection.41.5.1}%
+\contentsline {subsection}{\numberline {41.5.2}Probabilistic Functions and Sampling}{340}{subsection.41.5.2}%
+\contentsline {section}{\numberline {41.6}Model Symbols and Dependence on the Current State}{340}{section.41.6}%
+\contentsline {subsection}{\numberline {41.6.1}Parser como consumidor do estado do kernel}{340}{subsection.41.6.1}%
+\contentsline {section}{\numberline {41.7}Extension points by \textit {plugins}}{341}{section.41.7}%
+\contentsline {subsection}{\numberline {41.7.1}Syntactic and Semantic Extension}{341}{subsection.41.7.1}%
+\contentsline {section}{\numberline {41.8}The class \texttt {ParserManager}}{341}{section.41.8}%
+\contentsline {subsection}{\numberline {41.8.1}What This Means for the Developer}{341}{subsection.41.8.1}%
+\contentsline {section}{\numberline {41.9}Erros, mensagens e robustez}{342}{section.41.9}%
+\contentsline {section}{\numberline {41.10}How to Study and Modify the Parser Productively}{342}{section.41.10}%
+\contentsline {section}{\numberline {41.11}Final Considerations}{342}{section.41.11}%
+\contentsline {chapter}{\numberline {42}Applications, Tools, \texttt {C++} Examples, Tests, and Project Evolution}{345}{chapter.42}%
+\contentsline {section}{\numberline {42.1}Introduction}{345}{section.42.1}%
+\contentsline {section}{\numberline {42.2}Applications as Projections of the Kernel}{346}{section.42.2}%
+\contentsline {subsection}{\numberline {42.2.1}The GUI as an Application on the Core}{346}{subsection.42.2.1}%
+\contentsline {subsection}{\numberline {42.2.2}The Shell and Model-Specific Applications as Alternative Forms of Use}{346}{subsection.42.2.2}%
+\contentsline {section}{\numberline {42.3}The examples in \texttt {C++} as developer material}{347}{section.42.3}%
+\contentsline {subsection}{\numberline {42.3.1}Why These Examples Are So Valuable}{347}{subsection.42.3.1}%
+\contentsline {subsection}{\numberline {42.3.2}The bridge between examples in \texttt {C++} and saved models}{347}{subsection.42.3.2}%
+\contentsline {section}{\numberline {42.4}Tools as a Support Layer}{347}{section.42.4}%
+\contentsline {subsection}{\numberline {42.4.1}When to study \texttt {tools}}{348}{subsection.42.4.1}%
+\contentsline {section}{\numberline {42.5}The Importance of Tests}{348}{section.42.5}%
+\contentsline {subsection}{\numberline {42.5.1}Why Tests Are Part of the Architecture, Not Just the Routine}{348}{subsection.42.5.1}%
+\contentsline {subsection}{\numberline {42.5.2}How the Developer Should Use the Tests}{348}{subsection.42.5.2}%
+\contentsline {section}{\numberline {42.6}Build, Applications, and Behavior Selection}{349}{section.42.6}%
+\contentsline {section}{\numberline {42.7}Project Evolution and Contribution Paths}{349}{section.42.7}%
+\contentsline {subsection}{\numberline {42.7.1}How to Choose an Entry Point for Contribution}{349}{subsection.42.7.1}%
+\contentsline {subsection}{\numberline {42.7.2}The Role of Examples and Tests in Evolution}{349}{subsection.42.7.2}%
+\contentsline {section}{\numberline {42.8}An Integrated Final View of GenESyS}{350}{section.42.8}%
+\contentsline {section}{\numberline {42.9}Final Considerations}{350}{section.42.9}%
+\contentsline {chapter}{\numberline {A}Command Reference}{353}{appendix.A}%
+\contentsline {chapter}{\numberline {B}CMake Options and Presets}{355}{appendix.B}%
+\contentsline {chapter}{\numberline {C}Application and Target Matrix}{357}{appendix.C}%
+\contentsline {chapter}{\numberline {D}Model File Catalog}{359}{appendix.D}%
+\contentsline {chapter}{\numberline {E}Evidence and Maturity Matrix}{361}{appendix.E}%
+\contentsline {chapter}{\numberline {F}Glossary}{363}{appendix.F}%
+\contentsline {chapter}{\numberline {G}Known Limitations}{365}{appendix.G}%
+\contentsline {section}{\numberline {G.1}Simulation and numerical limits}{365}{section.G.1}%
+\contentsline {section}{\numberline {G.2}Biological and domain limits}{365}{section.G.2}%
+\contentsline {section}{\numberline {G.3}Build and toolchain limits}{366}{section.G.3}%
+\contentsline {section}{\numberline {G.4}Testing and quality limits}{366}{section.G.4}%
+\contentsline {section}{\numberline {G.5}What the appendix does not claim}{366}{section.G.5}%
+\contentsline {chapter}{Bibliography}{367}{appendix*.190}%
+\contentsline {chapter}{Index}{369}{section*.191}%
 \contentsfinish 
