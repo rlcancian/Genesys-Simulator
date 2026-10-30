@@ -22,6 +22,8 @@
 #include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../kernel/simulator/model/ModelComponentManager.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"// GUI
+#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
@@ -858,7 +860,14 @@ ModelDataDefinition* MainWindow::_selectedSubmodelOwner() const {
 
     QGraphicsItem* item = selectedItems.first();
     if (auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(item)) {
-        return graphicalComponent->getComponent();
+        ModelComponent* component = graphicalComponent->getComponent();
+        // A ModalModelDefault is an adapter to a formal Network, not the
+        // owner of a process submodel. Open the shared Network context so
+        // multiple adapters resolve to the same mathematical object.
+        if (auto* modalModel = dynamic_cast<ModalModelDefault*>(component)) {
+            return modalModel->getNetwork();
+        }
+        return component;
     }
     if (auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
         return graphicalDataDefinition->getDataDefinition();
@@ -874,6 +883,16 @@ bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
     Model* model = simulator->getModelManager()->current();
     if (model == nullptr) {
         return false;
+    }
+
+    // A Network is itself the owner of an editing context.  Its states may be
+    // empty, so checking only for children would incorrectly disable opening a
+    // valid empty Network.
+    if (auto* network = dynamic_cast<DefaultNetwork*>(owner)) {
+        if (model->getDataManager() == nullptr) {
+            return false;
+        }
+        return model->getDataManager()->getDataDefinition(network->getClassname(), network->getId()) == network;
     }
 
     const unsigned int submodelLevel = static_cast<unsigned int>(owner->getId());
