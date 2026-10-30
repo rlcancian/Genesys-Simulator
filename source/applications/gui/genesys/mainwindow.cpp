@@ -54,6 +54,7 @@
 #include "actions/EFSMTransitionUndoCommand.h"
 #include "actions/EFSMTransitionPropertiesUndoCommand.h"
 #include "actions/EFSMInitialStateUndoCommand.h"
+#include "actions/EFSMStateMembershipUndoCommand.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "services/EFSMNetworkDiagramProjection.h"
 #include "extensions/GuiExtensionContracts.h"
@@ -1041,15 +1042,35 @@ void MainWindow::_createEfsmState() {
     if (!accepted || name.trimmed().isEmpty()) {
         return;
     }
-    auto* state = new FSMState(model, name.toStdString());
-    network->addState(state);
+    if (model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), name.toStdString()) != nullptr) {
+        QMessageBox::warning(this, tr("Create EFSM State"), tr("A state with that name already exists in this model."));
+        return;
+    }
+    auto state = std::make_unique<FSMState>(model, name.toStdString());
+    FSMState* statePointer = state.get();
+    QUndoStack* undoStack = scene->getUndoStack();
+    EFSMStateMembershipUndoCommand* command = nullptr;
+    if (undoStack != nullptr) {
+        command = new EFSMStateMembershipUndoCommand(model, network, std::move(state));
+        undoStack->push(command);
+    } else {
+        network->addState(state.release());
+    }
     if (!model->check()) {
-        network->removeState(state);
+        if (undoStack != nullptr && command != nullptr) {
+            command->setObsolete(true);
+            undoStack->undo();
+        } else {
+            network->removeState(statePointer);
+            model->getDataManager()->remove(statePointer);
+            delete statePointer;
+        }
         QMessageBox::warning(this, tr("Create EFSM State"), tr("The state failed model validation."));
         return;
     }
     _graphicalModelHasChanged = true;
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
+    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
     _actualizeActions();
 }
 
@@ -2170,6 +2191,17 @@ void MainWindow::_actualizeActions() {
             const QList<QGraphicsItem*> selectedItems = scene->selectedItems();
             const QList<QGraphicsItem*> userOperableSelection = scene->userOperableItems(selectedItems);
             canCutCopyDelete = !userOperableSelection.isEmpty();
+            if (!canCutCopyDelete && scene->hasModelLevelFilter() && scene->modelLevelFilter() != 0
+                && selectedItems.size() == 1) {
+                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(selectedItems.first());
+                auto* selectedState = graphicalDefinition != nullptr
+                    ? dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) : nullptr;
+                auto* network = dynamic_cast<EFSMNetwork*>(simulator->getModelManager()->current()->getDataManager()
+                    ->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter()));
+                canCutCopyDelete = selectedState != nullptr && network != nullptr
+                    && network->getStates()->size() > 1u
+                    && network->getStates()->find(selectedState) != network->getStates()->list()->end();
+            }
             canPaste = !_draw_copy->empty() || !_gmc_copies->empty() || !_group_copy->empty() || !_ports_copies->empty();
 
             int selectedComponents = 0;

@@ -2,6 +2,7 @@
 
 #include "../actions/DeleteUndoCommand.h"
 #include "../actions/EFSMTransitionUndoCommand.h"
+#include "../actions/EFSMStateMembershipUndoCommand.h"
 #include "../actions/PasteUndoCommand.h"
 #include "../animations/AnimationCounter.h"
 #include "../animations/AnimationPlaceholder.h"
@@ -14,12 +15,14 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../services/EFSMNetworkDiagramProjection.h"
+#include "../services/GraphicalModelBuilder.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
+#include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "kernel/util/Util.h"
 
@@ -61,6 +64,9 @@ void EditCommandController::onActionEditUndoTriggered() const {
     ModelGraphicsScene* currentScene = scene();
     if (currentScene != nullptr && currentScene->getUndoStack() != nullptr) {
         currentScene->getUndoStack()->undo();
+        if (currentScene->hasModelLevelFilter() && currentScene->modelLevelFilter() != 0) {
+            GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, currentScene);
+        }
         EFSMNetworkDiagramProjection::synchronize(_simulator, currentScene);
     }
 }
@@ -70,6 +76,9 @@ void EditCommandController::onActionEditRedoTriggered() const {
     ModelGraphicsScene* currentScene = scene();
     if (currentScene != nullptr && currentScene->getUndoStack() != nullptr) {
         currentScene->getUndoStack()->redo();
+        if (currentScene->hasModelLevelFilter() && currentScene->modelLevelFilter() != 0) {
+            GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, currentScene);
+        }
         EFSMNetworkDiagramProjection::synchronize(_simulator, currentScene);
     }
 }
@@ -215,6 +224,30 @@ void EditCommandController::onActionEditPasteTriggered() const {
 void EditCommandController::onActionEditDeleteTriggered() const {
     ModelGraphicsScene* currentScene = scene();
     QList<QGraphicsItem*> selectedItems = _graphicsView->scene()->selectedItems();
+    if (selectedItems.size() == 1) {
+        auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(selectedItems.first());
+        auto* selectedState = graphicalDefinition != nullptr
+            ? dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) : nullptr;
+        Model* model = _simulator != nullptr && _simulator->getModelManager() != nullptr
+            ? _simulator->getModelManager()->current() : nullptr;
+        if (selectedState != nullptr && model != nullptr && model->getDataManager() != nullptr
+            && currentScene != nullptr && currentScene->hasModelLevelFilter()
+            && currentScene->modelLevelFilter() != 0 && currentScene->getUndoStack() != nullptr) {
+            auto* network = dynamic_cast<EFSMNetwork*>(model->getDataManager()->getDataDefinition(
+                Util::TypeOf<EFSMNetwork>(), currentScene->modelLevelFilter()));
+            if (network != nullptr && network->getStates()->size() > 1u
+                && network->getStates()->find(selectedState) != network->getStates()->list()->end()) {
+                currentScene->getUndoStack()->push(
+                    new EFSMStateMembershipUndoCommand(model, network, selectedState));
+                GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, currentScene);
+                EFSMNetworkDiagramProjection::synchronize(_simulator, currentScene);
+                if (_actualizeActions) {
+                    _actualizeActions();
+                }
+                return;
+            }
+        }
+    }
     QList<EFSMTransition*> selectedTransitions;
     for (QGraphicsItem* item : selectedItems) {
         if (auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(item)) {

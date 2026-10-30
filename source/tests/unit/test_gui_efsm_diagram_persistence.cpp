@@ -11,6 +11,7 @@
 #include "actions/EFSMTransitionUndoCommand.h"
 #include "actions/EFSMTransitionPropertiesUndoCommand.h"
 #include "actions/EFSMInitialStateUndoCommand.h"
+#include "actions/EFSMStateMembershipUndoCommand.h"
 #include "controllers/EditCommandController.h"
 #include "services/EFSMNetworkDiagramCodec.h"
 #include "services/GraphicalModelBuilder.h"
@@ -23,6 +24,8 @@
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 
 #include <gtest/gtest.h>
@@ -877,4 +880,115 @@ TEST(EFSMNetworkUndo, InitialStateChangeUndoRedoRestoresPointerAndStateFlags) {
     EXPECT_EQ(network.getInitialState(), &done);
     EXPECT_TRUE(done.isInitialNode());
     EXPECT_FALSE(idle.isInitialNode());
+}
+
+TEST(EFSMNetworkUndo, StateDeletionUndoRedoRestoresIncidentTransitionsAndManagerIdentity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "StateDeleteNetwork");
+    auto* adapter = new ModalModelDefault(model, "StateDeleteAdapter");
+    adapter->setNetwork(&network);
+    auto* sink = new Dispose(model, "StateDeleteSink");
+    adapter->getConnectionManager()->insert(sink);
+    auto* source = new Create(model, "StateDeleteSource");
+    source->getConnectionManager()->insert(adapter);
+    auto* idle = new FSMState(model, "Idle");
+    auto* busy = new FSMState(model, "Busy");
+    network.setInitialState(idle);
+    network.addState(busy);
+    auto* intoBusy = new EFSMTransition(idle, busy, "to-busy");
+    auto* outOfBusy = new EFSMTransition(busy, idle, "to-idle");
+    auto* parallel = new EFSMTransition(idle, busy, "parallel");
+    network.addTransition(intoBusy);
+    network.addTransition(outOfBusy);
+    network.addTransition(parallel);
+
+    const unsigned long busyId = static_cast<unsigned long>(busy->getId());
+    QUndoStack stack;
+    stack.push(new EFSMStateMembershipUndoCommand(model, &network, busy));
+    ASSERT_EQ(network.getStates()->size(), 1u);
+    EXPECT_EQ(network.getTransitions()->size(), 0u);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), busyId), nullptr);
+    EXPECT_EQ(network.getInitialState(), idle);
+    (void)model->check(); // The fixture exercises orphan scanning; unrelated model-check diagnostics do not gate identity.
+    EXPECT_EQ(busy->getName(), "Busy");
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), busyId), nullptr);
+
+    stack.undo();
+    ASSERT_EQ(network.getStates()->size(), 2u);
+    ASSERT_EQ(network.getTransitions()->size(), 3u);
+    EXPECT_EQ(network.getTransitions()->getAtRank(0), intoBusy);
+    EXPECT_EQ(network.getTransitions()->getAtRank(1), outOfBusy);
+    EXPECT_EQ(network.getTransitions()->getAtRank(2), parallel);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), busyId), busy);
+    EXPECT_EQ(busy->getTransitions()->size(), 1u);
+    (void)model->check();
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), busyId), busy);
+
+    stack.redo();
+    EXPECT_EQ(network.getStates()->size(), 1u);
+    EXPECT_TRUE(network.getTransitions()->empty());
+    stack.undo();
+    EXPECT_EQ(network.getStates()->size(), 2u);
+    EXPECT_EQ(network.getTransitions()->size(), 3u);
+}
+
+TEST(EFSMNetworkUndo, StateCreationUndoRedoKeepsModelManagerAndNetworkMembershipAligned) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "StateCreateNetwork");
+    auto* adapter = new ModalModelDefault(model, "StateCreateAdapter");
+    adapter->setNetwork(&network);
+    auto* sink = new Dispose(model, "StateCreateSink");
+    adapter->getConnectionManager()->insert(sink);
+
+    auto state = std::make_unique<FSMState>(model, "Created");
+    FSMState* statePointer = state.get();
+    const unsigned long stateId = static_cast<unsigned long>(statePointer->getId());
+    QUndoStack stack;
+    stack.push(new EFSMStateMembershipUndoCommand(model, &network, std::move(state)));
+    ASSERT_EQ(network.getStates()->size(), 1u);
+    EXPECT_EQ(network.getStates()->front(), statePointer);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), stateId), statePointer);
+
+    stack.undo();
+    EXPECT_TRUE(network.getStates()->empty());
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), stateId), nullptr);
+
+    stack.redo();
+    ASSERT_EQ(network.getStates()->size(), 1u);
+    EXPECT_EQ(network.getStates()->front(), statePointer);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), stateId), statePointer);
+}
+
+TEST(EFSMNetworkUndo, DeletingInitialStateSelectsReplacementAndRejectsDeletingLastState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "InitialDeleteNetwork");
+    auto* first = new FSMState(model, "First");
+    auto* second = new FSMState(model, "Second");
+    network.setInitialState(first);
+    network.addState(second);
+
+    QUndoStack stack;
+    stack.push(new EFSMStateMembershipUndoCommand(model, &network, first));
+    EXPECT_EQ(network.getInitialState(), second);
+    EXPECT_FALSE(first->isInitialNode());
+    EXPECT_TRUE(second->isInitialNode());
+    stack.undo();
+    EXPECT_EQ(network.getInitialState(), first);
+    EXPECT_TRUE(first->isInitialNode());
+    EXPECT_FALSE(second->isInitialNode());
+
+    QUndoStack singleStateStack;
+    EFSMNetwork singleStateNetwork(model, "SingleStateNetwork");
+    auto* only = new FSMState(model, "Only");
+    singleStateNetwork.addState(only);
+    singleStateStack.push(new EFSMStateMembershipUndoCommand(model, &singleStateNetwork, only));
+    EXPECT_EQ(singleStateNetwork.getStates()->size(), 1u);
+    EXPECT_EQ(singleStateNetwork.getStates()->front(), only);
+    EXPECT_EQ(singleStateStack.count(), 0);
 }
