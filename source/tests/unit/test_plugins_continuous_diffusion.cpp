@@ -1207,7 +1207,8 @@ TEST(ContinuousCalendarTest, DiffusionSimulateRetainsEntityAcrossCalendarInterru
 	sink->setReportStatistics(false);
 	// The test target links the component implementation statically but does
 	// not register its runtime plugin descriptor. Keep the checked model graph
-	// valid while the scheduled entity is injected directly into this instance.
+	// valid while both scheduled entities are injected directly into this
+	// instance.
 	source->connectTo(sink);
 	component->connectTo(sink);
 
