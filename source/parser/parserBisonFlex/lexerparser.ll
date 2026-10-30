@@ -228,7 +228,7 @@ L      [A-Za-z0-9_.]+
 		//std::cout << driver.getModel()->getInfos()->getName() << std::endl;
         // check if it is an ATTRIBUTE (and return the attribute ID (and not the value!)
 		datadef = driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), std::string(yytext));
-		if (datadef != nullptr) {
+        if (datadef != nullptr) {
 			//std::cout << "Found ATTRIBUTE " << std::string(yytext) << std::endl;
 			driver.addRefered({Util::TypeOf<Attribute>(),std::string(yytext)});
             return yy::genesyspp_parser::make_ATRIB(obj_t(0, Util::TypeOf<Attribute>(), datadef->getId()),loc);
