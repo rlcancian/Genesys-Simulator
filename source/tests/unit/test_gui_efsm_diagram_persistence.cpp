@@ -163,9 +163,11 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     FSMState busy(model, "Busy");
     network.addState(&idle);
     network.addState(&busy);
-    // Two parallel transitions Idle->Busy sharing an empty name, plus one named one.
-    network.addTransition(new EFSMTransition(&idle, &busy, ""));
-    network.addTransition(new EFSMTransition(&idle, &busy, ""));
+    // Two parallel transitions Idle->Busy plus one named one. Empty-name
+    // identity is covered by the direct codec test below because the current
+    // .gen loader materializes omitted empty names as T<ordinal> defaults.
+    network.addTransition(new EFSMTransition(&idle, &busy, "Parallel0"));
+    network.addTransition(new EFSMTransition(&idle, &busy, "Parallel1"));
     network.addTransition(new EFSMTransition(&idle, &busy, "Go"));
     auto* adapter = new ModalModelDefault(model, "RoundTripAdapter");
     adapter->setNetwork(&network);
@@ -177,8 +179,8 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     layout.networkName = QString::fromStdString(network.getName());
     layout.states.append({static_cast<unsigned long>(idle.getId()), "Idle", QPointF(10.0, 20.0)});
     layout.states.append({static_cast<unsigned long>(busy.getId()), "Busy", QPointF(310.5, 220.25)});
-    layout.transitions.append({"Idle", "Busy", "", 0, {QPointF(50, 60)}, true, QPointF(70, 80)});
-    layout.transitions.append({"Idle", "Busy", "", 1, {}, false, QPointF()});
+    layout.transitions.append({"Idle", "Busy", "Parallel0", 0, {QPointF(50, 60)}, true, QPointF(70, 80)});
+    layout.transitions.append({"Idle", "Busy", "Parallel1", 1, {}, false, QPointF()});
     layout.transitions.append({"Idle", "Busy", "Go", 2, {}, false, QPointF()});
     harness.serializer->setEFSMNetworkDiagramLayout(layout.networkId, layout);
 
@@ -221,25 +223,25 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     EXPECT_NEAR(busyPosition->position.x(), 310.5, 0.001);
     EXPECT_NEAR(busyPosition->position.y(), 220.25, 0.001);
 
-    // The two unnamed parallel transitions must remain distinguished by ordinal.
-    int unnamedOrdinal0 = -1;
-    int unnamedOrdinal1 = -1;
+    // The two parallel transitions remain distinguished by ordinal.
+    int parallelOrdinal0 = -1;
+    int parallelOrdinal1 = -1;
     int namedOrdinal = -1;
     for (const auto& transitionLayout : restored.transitions) {
-        if (transitionLayout.transitionName.isEmpty() && transitionLayout.ordinal == 0) {
-            unnamedOrdinal0 = transitionLayout.ordinal;
+        if (transitionLayout.transitionName == "Parallel0") {
+            parallelOrdinal0 = transitionLayout.ordinal;
             EXPECT_TRUE(transitionLayout.hasLabelPosition);
             ASSERT_EQ(transitionLayout.controlPoints.size(), 1);
             EXPECT_NEAR(transitionLayout.controlPoints.front().x(), 50.0, 0.001);
-        } else if (transitionLayout.transitionName.isEmpty() && transitionLayout.ordinal == 1) {
-            unnamedOrdinal1 = transitionLayout.ordinal;
+        } else if (transitionLayout.transitionName == "Parallel1") {
+            parallelOrdinal1 = transitionLayout.ordinal;
             EXPECT_FALSE(transitionLayout.hasLabelPosition);
         } else if (transitionLayout.transitionName == "Go") {
             namedOrdinal = transitionLayout.ordinal;
         }
     }
-    EXPECT_EQ(unnamedOrdinal0, 0);
-    EXPECT_EQ(unnamedOrdinal1, 1);
+    EXPECT_EQ(parallelOrdinal0, 0);
+    EXPECT_EQ(parallelOrdinal1, 1);
     EXPECT_EQ(namedOrdinal, 2);
 }
 
@@ -366,6 +368,131 @@ TEST(EFSMNetworkDiagramPersistence, UnknownSchemaVersionIsRejectedWithoutCrashin
 
     const auto resolved = EFSMNetworkDiagramCodec::parseSection(lines, model);
     EXPECT_TRUE(resolved.isEmpty());
+}
+
+TEST(EFSMNetworkDiagramPersistence, NetworkIdentityRequiresMatchingClassAndName) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork first(model, "FirstNetwork");
+    EFSMNetwork second(model, "SecondNetwork");
+    FSMState firstState(model, "FirstState");
+    first.addState(&firstState);
+
+    const unsigned long firstId = static_cast<unsigned long>(first.getId());
+    const unsigned long secondId = static_cast<unsigned long>(second.getId());
+    QStringList mismatchedName;
+    mismatchedName << QString("%1\tEFSMNetworkDiagram\tclassname=EFSMNetwork\tname=SecondNetwork\tversion=1")
+                          .arg(firstId);
+    mismatchedName << QString("%1\tEFSMState\tid=%2\tname=FirstState\tposition=(1,2)")
+                          .arg(firstId)
+                          .arg(static_cast<unsigned long>(firstState.getId()));
+    EXPECT_TRUE(EFSMNetworkDiagramCodec::parseSection(mismatchedName, model).isEmpty());
+
+    QStringList invalidClass;
+    invalidClass << QString("%1\tEFSMNetworkDiagram\tclassname=DefaultNetwork\tname=FirstNetwork\tversion=1")
+                        .arg(firstId);
+    invalidClass << QString("%1\tEFSMState\tid=%2\tname=FirstState\tposition=(1,2)")
+                        .arg(firstId)
+                        .arg(static_cast<unsigned long>(firstState.getId()));
+    EXPECT_TRUE(EFSMNetworkDiagramCodec::parseSection(invalidClass, model).isEmpty());
+
+    QStringList uniqueFallback;
+    uniqueFallback << QString("999999\tEFSMNetworkDiagram\tclassname=EFSMNetwork\tname=FirstNetwork\tversion=1");
+    uniqueFallback << QString("999999\tEFSMState\tid=%1\tname=%2\tposition=(1,2)")
+                          .arg(static_cast<unsigned long>(first.getId()))
+                          .arg("FirstState");
+    const auto fallback = EFSMNetworkDiagramCodec::parseSection(uniqueFallback, model);
+    EXPECT_TRUE(fallback.contains(firstId));
+    EXPECT_FALSE(fallback.contains(secondId));
+}
+
+TEST(EFSMNetworkDiagramPersistence, AmbiguousNetworkNameFallbackIsRejected) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork first(model, "DuplicateNetwork");
+    EFSMNetwork second(model, "DuplicateNetwork");
+
+    QStringList lines;
+    lines << "999999\tEFSMNetworkDiagram\tclassname=EFSMNetwork\tname=DuplicateNetwork\tversion=1";
+    EXPECT_TRUE(EFSMNetworkDiagramCodec::parseSection(lines, model).isEmpty());
+}
+
+TEST(EFSMNetworkDiagramPersistence, StateIdentityRequiresMatchingIdAndName) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "Net");
+    FSMState state(model, "ActualState");
+    network.addState(&state);
+
+    const unsigned long networkId = static_cast<unsigned long>(network.getId());
+    const unsigned long stateId = static_cast<unsigned long>(state.getId());
+    QStringList lines;
+    lines << QString("%1\tEFSMNetworkDiagram\tclassname=EFSMNetwork\tname=Net\tversion=1").arg(networkId);
+    lines << QString("%1\tEFSMState\tid=%2\tname=DifferentState\tposition=(1,2)")
+                  .arg(networkId)
+                  .arg(stateId);
+    EXPECT_TRUE(EFSMNetworkDiagramCodec::parseSection(lines, model).isEmpty());
+}
+
+TEST(EFSMNetworkDiagramPersistence, UnnamedParallelTransitionsRequireExactNames) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "Net");
+    FSMState source(model, "A");
+    FSMState destination(model, "B");
+    network.addState(&source);
+    network.addState(&destination);
+    network.addTransition(new EFSMTransition(&source, &destination, ""));
+    network.addTransition(new EFSMTransition(&source, &destination, ""));
+
+    const unsigned long networkId = static_cast<unsigned long>(network.getId());
+    QStringList lines;
+    lines << QString("%1\tEFSMNetworkDiagram\tclassname=EFSMNetwork\tname=Net\tversion=1").arg(networkId);
+    lines << QString("%1\tEFSMTransition\tsource=A\tdestination=B\tname=\tordinal=0").arg(networkId);
+    lines << QString("%1\tEFSMTransition\tsource=A\tdestination=B\tname=\tordinal=1").arg(networkId);
+    const auto resolved = EFSMNetworkDiagramCodec::parseSection(lines, model);
+    ASSERT_TRUE(resolved.contains(networkId));
+    ASSERT_EQ(resolved.value(networkId).transitions.size(), 2);
+    EXPECT_EQ(resolved.value(networkId).transitions.at(0).ordinal, 0);
+    EXPECT_EQ(resolved.value(networkId).transitions.at(1).ordinal, 1);
+
+    network.getTransitions()->getAtRank(1)->setName("Renamed");
+    const auto renamed = EFSMNetworkDiagramCodec::parseSection(lines, model);
+    ASSERT_TRUE(renamed.contains(networkId));
+    ASSERT_EQ(renamed.value(networkId).transitions.size(), 1);
+    EXPECT_EQ(renamed.value(networkId).transitions.front().ordinal, 0);
+
+    QStringList missingName;
+    missingName << QString("%1\tEFSMNetworkDiagram\tclassname=EFSMNetwork\tname=Net\tversion=1").arg(networkId);
+    missingName << QString("%1\tEFSMTransition\tsource=A\tdestination=B\tordinal=0").arg(networkId);
+    EXPECT_TRUE(EFSMNetworkDiagramCodec::parseSection(missingName, model).isEmpty());
+}
+
+TEST(EFSMNetworkDiagramPersistence, NonFiniteStatePositionIsRejected) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "Net");
+    FSMState state(model, "State");
+    network.addState(&state);
+
+    const unsigned long networkId = static_cast<unsigned long>(network.getId());
+    const unsigned long stateId = static_cast<unsigned long>(state.getId());
+    QStringList lines;
+    lines << QString("%1\tEFSMNetworkDiagram\tclassname=EFSMNetwork\tname=Net\tversion=1").arg(networkId);
+    lines << QString("%1\tEFSMState\tid=%2\tname=State\tposition=(nan,2)")
+                  .arg(networkId)
+                  .arg(stateId);
+    EXPECT_TRUE(EFSMNetworkDiagramCodec::parseSection(lines, model).isEmpty());
 }
 
 TEST(EFSMNetworkDiagramPersistence, MalformedAndIncompleteLinesAreSkippedIndividually) {

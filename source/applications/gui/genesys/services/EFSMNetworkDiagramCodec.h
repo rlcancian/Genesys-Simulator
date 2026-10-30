@@ -18,7 +18,8 @@ class Model;
  * agnostic of concrete network formalisms (EFSM, Graph, DTMC, CPN). It writes
  * the smallest versioned record that can recover, deterministically: the
  * identity of the associated EFSMNetwork, the identity and position of its
- * states, and the validated sequence identity for its transitions (see
+ * states, and the validated sequence identity for its transitions (including
+ * an exact empty-name comparison; see
  * `EFSMNetworkDiagramLayout`). It never reads or writes mathematical state,
  * and it never creates kernel objects -- malformed or unresolved entries are
  * skipped, not substituted.

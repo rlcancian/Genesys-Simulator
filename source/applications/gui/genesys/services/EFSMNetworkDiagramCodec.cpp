@@ -15,6 +15,8 @@
 #include <QTextStream>
 #include <QUrl>
 
+#include <cmath>
+
 namespace {
 
 QString encodeToken(const QString& text) {
@@ -43,7 +45,7 @@ bool parsePoint(const QString& text, QPointF* out) {
     bool okY = false;
     const double x = parseDouble(match.captured(1), &okX);
     const double y = parseDouble(match.captured(2), &okY);
-    if (!okX || !okY) {
+    if (!okX || !okY || !std::isfinite(x) || !std::isfinite(y)) {
         return false;
     }
     *out = QPointF(x, y);
@@ -71,7 +73,7 @@ QVector<QPointF> parseControlPoints(const QString& text) {
         bool okY = false;
         const double x = parseDouble(coords[0], &okX);
         const double y = parseDouble(coords[1], &okY);
-        if (okX && okY) {
+        if (okX && okY && std::isfinite(x) && std::isfinite(y)) {
             points.append(QPointF(x, y));
         }
     }
@@ -95,8 +97,9 @@ QHash<QString, QString> tokenizeFields(const QStringList& tokens, int startIndex
 // EFSMTransition has no persistent id. Its global position is nevertheless
 // stable across the existing .gen save/load contract: EFSMNetwork writes and
 // reconstructs transitions by this same sequence index. The graphical codec
-// also validates source/destination and (when non-empty) name before accepting
-// the reference, so topology changes fail closed instead of being guessed.
+// also validates source/destination and the exact persisted name before
+// accepting the reference, so topology changes fail closed instead of being
+// guessed.
 QVector<EFSMTransition*> liveTransitions(EFSMNetwork* network) {
     QVector<EFSMTransition*> transitions;
     if (network == nullptr || network->getTransitions() == nullptr) {
@@ -119,12 +122,27 @@ EFSMNetwork* findNetworkById(Model* model, unsigned long id) {
     return dynamic_cast<EFSMNetwork*>(found);
 }
 
-EFSMNetwork* findNetworkByName(Model* model, const QString& name) {
-    if (model == nullptr || model->getDataManager() == nullptr) {
+EFSMNetwork* findUniqueNetworkByName(Model* model, const QString& name) {
+    if (model == nullptr || model->getDataManager() == nullptr || name.isEmpty()) {
         return nullptr;
     }
-    ModelDataDefinition* found = model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), name.toStdString());
-    return dynamic_cast<EFSMNetwork*>(found);
+    EFSMNetwork* match = nullptr;
+    List<ModelDataDefinition*>* definitions =
+        model->getDataManager()->getDataDefinitionList(Util::TypeOf<EFSMNetwork>());
+    if (definitions == nullptr) {
+        return nullptr;
+    }
+    for (ModelDataDefinition* definition : *definitions->list()) {
+        auto* candidate = dynamic_cast<EFSMNetwork*>(definition);
+        if (candidate == nullptr || QString::fromStdString(candidate->getName()) != name) {
+            continue;
+        }
+        if (match != nullptr) {
+            return nullptr;
+        }
+        match = candidate;
+    }
+    return match;
 }
 
 FSMState* findStateById(EFSMNetwork* network, unsigned long id) {
@@ -219,8 +237,7 @@ void writeSection(QTextStream& out, Simulator* simulator,
                                             : QString();
             const QString name = QString::fromStdString(transition->getName());
             if (source != transitionLayout.sourceName || destination != transitionLayout.destinationName
-                || (!transitionLayout.transitionName.isEmpty()
-                    && name != transitionLayout.transitionName)) {
+                || name != transitionLayout.transitionName) {
                 continue;
             }
             QString line = QString("%1\tEFSMTransition\tsource=%2\tdestination=%3\tname=%4\tordinal=%5")
@@ -247,6 +264,7 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
     }
 
     QHash<unsigned long, int> declaredVersionByNetworkId;
+    QHash<unsigned long, bool> validHeaderByNetworkId;
     QHash<unsigned long, EFSMNetworkDiagramLayout> rawByNetworkId;
 
     // First pass: collect declared schema versions so state/transition lines
@@ -265,12 +283,28 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
             continue;
         }
         const QHash<QString, QString> fields = tokenizeFields(tokens, 2);
+        const QString expectedClassname = QString::fromStdString(Util::TypeOf<EFSMNetwork>());
+        if (!fields.contains("classname") || fields.value("classname") != expectedClassname
+            || !fields.contains("name")) {
+            validHeaderByNetworkId.insert(networkId, false);
+            continue;
+        }
         bool versionOk = false;
         const int version = fields.value("version").toInt(&versionOk);
         if (!versionOk) {
+            validHeaderByNetworkId.insert(networkId, false);
             continue;
         }
+        if (validHeaderByNetworkId.contains(networkId)) {
+            const EFSMNetworkDiagramLayout& existing = rawByNetworkId.value(networkId);
+            if (!validHeaderByNetworkId.value(networkId) || declaredVersionByNetworkId.value(networkId) != version
+                || existing.networkName != decodeToken(fields.value("name"))) {
+                validHeaderByNetworkId.insert(networkId, false);
+                continue;
+            }
+        }
         declaredVersionByNetworkId.insert(networkId, version);
+        validHeaderByNetworkId.insert(networkId, true);
         EFSMNetworkDiagramLayout layout;
         layout.networkId = networkId;
         layout.networkName = decodeToken(fields.value("name"));
@@ -296,7 +330,8 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
             continue;
         }
         auto versionIt = declaredVersionByNetworkId.find(networkId);
-        if (versionIt == declaredVersionByNetworkId.end() || versionIt.value() != kSupportedSchemaVersion) {
+        if (versionIt == declaredVersionByNetworkId.end() || versionIt.value() != kSupportedSchemaVersion
+            || !validHeaderByNetworkId.value(networkId, false)) {
             // Unknown/unsupported/missing version for this network: reject
             // its lines in a controlled way instead of guessing a mapping.
             continue;
@@ -309,6 +344,9 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
         const QHash<QString, QString> fields = tokenizeFields(tokens, 2);
 
         if (kind == "EFSMState") {
+            if (!fields.contains("id") || !fields.contains("name") || !fields.contains("position")) {
+                continue; // the v1 state identity and position are mandatory
+            }
             bool stateIdOk = false;
             const unsigned long stateId = fields.value("id").toULong(&stateIdOk);
             QPointF position;
@@ -322,7 +360,8 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
             statePosition.position = position;
             layoutIt->states.append(statePosition);
         } else if (kind == "EFSMTransition") {
-            if (!fields.contains("source") || !fields.contains("destination") || !fields.contains("ordinal")) {
+            if (!fields.contains("source") || !fields.contains("destination") || !fields.contains("name")
+                || !fields.contains("ordinal")) {
                 continue; // malformed: skip this entry only
             }
             bool ordinalOk = false;
@@ -357,11 +396,19 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
         const unsigned long networkId = it.key();
         EFSMNetworkDiagramLayout& layout = it.value();
         EFSMNetwork* network = findNetworkById(model, networkId);
+        if (network != nullptr && !layout.networkName.isEmpty()
+            && QString::fromStdString(network->getName()) != layout.networkName) {
+            continue; // ID/name disagreement must never select the wrong Network
+        }
         if (network == nullptr && !layout.networkName.isEmpty()) {
-            network = findNetworkByName(model, layout.networkName);
+            network = findUniqueNetworkByName(model, layout.networkName);
         }
         if (network == nullptr) {
             continue; // network no longer exists: drop its whole layout
+        }
+        if (QString::fromStdString(network->getClassname())
+            != QString::fromStdString(Util::TypeOf<EFSMNetwork>())) {
+            continue;
         }
 
         EFSMNetworkDiagramLayout resolved;
@@ -376,8 +423,7 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
             if (state == nullptr) {
                 continue; // unresolved state reference: skip this entry only
             }
-            if (!statePosition.stateName.isEmpty()
-                && QString::fromStdString(state->getName()) != statePosition.stateName) {
+            if (QString::fromStdString(state->getName()) != statePosition.stateName) {
                 continue; // id/name mismatch: do not attach to an approximate state
             }
             EFSMNetworkDiagramLayout::StatePosition resolvedState;
@@ -401,8 +447,7 @@ QHash<unsigned long, EFSMNetworkDiagramLayout> parseSection(const QStringList& l
                                             : QString();
             const QString name = QString::fromStdString(transition->getName());
             if (source != transitionLayout.sourceName || destination != transitionLayout.destinationName
-                || (!transitionLayout.transitionName.isEmpty()
-                    && name != transitionLayout.transitionName)) {
+                || name != transitionLayout.transitionName) {
                 continue; // stale or ambiguous reference: skip this entry only
             }
             resolved.transitions.append(transitionLayout);
