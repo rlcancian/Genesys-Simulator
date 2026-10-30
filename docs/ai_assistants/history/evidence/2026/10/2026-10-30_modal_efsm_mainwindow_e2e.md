@@ -21,6 +21,7 @@ tracks: HUM-MODAL-002,AUTO-MODAL-003,AUTO-MODAL-004
 - Network create/select negative-path regressions: `2bffa8a87698ab95ce8d10054e5b105df38dc559`.
 - MainWindow delete/undo/redo integration regression: `72dcbaf51`.
 - Mixed MainWindow command history regression: `9590b31ed`.
+- EFSM semantic transition labels and Developer Manual update: `94724d519`.
 - PR #551 remains draft. No merge or push to `WorkInProgress` was performed.
 
 ## Discovered cache-lifecycle defect and fix
@@ -62,6 +63,13 @@ The same end-to-end case then undoes the full create/edit/delete history to an
 empty Network, redoes it to the deleted-state endpoint, and undoes that final
 deletion before saving. This follows the actual history endpoint semantics.
 
+The scene projection now displays transition names and the available input or
+trigger event, guard, output expression and probability expression. An
+unnamed transition with domain properties therefore still has a visible label;
+the projection test verifies that exact label. The Developer Manual describes
+this rendering and states that expression edit dialogs do not perform a
+parse-only check, because the current parser evaluates expressions.
+
 The test uses Qt offscreen automation for modal dialogs and selection; it is
 not a claim of a separate manual mouse/keyboard session. Prior focused tests
 cover multiple adapters sharing one tab, missing Network, tab close/reopen,
@@ -81,6 +89,13 @@ root model switching and root model teardown.
 - After the mixed-history extension, the complete focused EFSM suite remained
   **37/37 passed** and the integrated MainWindow mixed undo/redo workflow passed
   again under ASan/UBSan **1/1**, with leak detection disabled.
+- After the transition-label change, the focused EFSM suite passed **37/37**,
+  and `cmake --preset gui-app && cmake --build --preset gui-app --parallel 4`
+  passed. `validate_figure_specs.sh` and `make.sh` passed; the regenerated
+  `docs/ManualGenESyS.pdf` is 390 pages (8,077,566 bytes), with the changed
+  section on page 176 visually inspected. LaTeX emitted existing overfull
+  table warnings and `xdvipdfmx` annotation-boundary/ICC warnings, but exited
+  successfully. Exact-head hosted CI remains pending publication.
 - The expanded MainWindow test alone — **1/1 passed**.
 - Adversarial review found that the Create EFSM Transition handler validated
   `selectedStates[1]` even for the one-state self-loop path. The handler now
