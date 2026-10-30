@@ -498,13 +498,14 @@ This is the only approved source for work an AI agent may execute without a new 
 ### AUTO-MODAL-004 — Qt6 Network diagram G1: read-only EFSM viewer
 
 - Priority: `P1`
-- Status: `running` (G1.1 projection and core G1.2 shared-tab navigation have focused GUI coverage; root teardown, model switching, no-Network UX, full baselines and manual interaction evidence remain pending).
+- Status: `running` (projection, shared-tab lifecycle and no-Network behavior have focused GUI coverage; an integrated MainWindow regression now exercises GUI Network creation, state/transition creation, properties, undo/redo, and `.gen`/`.gui` save-close-reopen. Final-head full baselines/CI and separate manual mouse/keyboard evidence remain pending).
 - Environment: `local` (Qt6 GUI build and interactive verification).
 - Branch family: `WiP20261029/modalmodel-architecture`, with bounded commits/PR scopes into `WorkInProgress`.
 - Authorization: same maintainer decision `DEC-MODAL-GUI-20261029`; **read-only EFSM first**.
 - Scope: a read-only EFSM **projection within the existing level-filtered `ModelGraphicsScene` and submodel tab infrastructure**. Resolve an attached EFSMNetwork from the `ModalModelDefault`, then use `network.getId()` as the level owner. Render states/transitions through domain topology APIs, not process Connections or attached/internal association lines; deterministic initial layout and graceful null/missing Network diagnostics.
 - Non-goals: editing/creating Network topology, process `Connection` creation, mathematical state duplication, new simulation activation rules, new formalisms beyond the accepted EFSM first slice.
 - Acceptance: build GUI with the supported preset; focused GUI tests and ordinary regression green; verify nested-tab opening, switch/close/reopen, two adapters sharing one Network, no-Network case, root model teardown, and unchanged simulation semantics; record manual UI interaction evidence.
+- Latest local validation at code/test checkpoint `5d4ae61eb`: 37 focused EFSM diagram/editor/undo tests pass, including the real MainWindow save-close-reopen action path; tests-unit and tests-kernel-unit each passed 1,963 cases (+4 disabled) on production-code SHA `622f4f48c`, smoke 3/3, `gui-app` built, focused ASan/UBSan 3/3 with leak detection disabled, and the 388-page Developer Manual regenerated. CI for `622f4f4` had core unit/kernel/smoke/governance and app-start jobs green, with Debian packaging pending; the new test commit still needs its own CI. Evidence: [`history/evidence/2026/10/2026-10-30_modal_efsm_mainwindow_e2e.md`](history/evidence/2026/10/2026-10-30_modal_efsm_mainwindow_e2e.md).
 - Stop gates: dangling GUI-to-Network references, duplicate domain objects, unexpectedly mutated `.gen` state, incorrect model switching, or regressions in existing process/property-editor workflows.
 
 

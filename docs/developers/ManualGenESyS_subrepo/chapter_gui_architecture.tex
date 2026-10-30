@@ -368,12 +368,15 @@ state IDs and positions, and optional transition control/label points.
 Before saving, \texttt{MainWindow} captures positions from every open EFSM
 context belonging to the root model being saved. Closing a Network tab also
 captures its last scene before Qt destroys the view. The serializer keeps these
-layouts scoped to the root-model object, so two open models with the same
-Network ID cannot share a cached layout. When a Network tab is opened after a
-load, the saved positions are applied only after the Network ID/name, state
-ID/name and finite coordinates have been checked; transition paths are then
-recomputed from the restored state positions. A missing, stale or incomplete
-layout leaves the deterministic automatic positions in place.
+layouts in a cache shared by the MainWindow and its view-scoped serializer
+instances. This preserves records when activating another tab rebuilds the
+serializer, while the root-model key prevents two open models with the same
+Network ID from sharing a layout. Closing a root model removes its cache entry.
+When a Network tab is opened after a load, saved positions are applied only
+after the Network ID/name, state ID/name and finite coordinates have been
+checked; transition paths are then recomputed from the restored state
+positions. A missing, stale or incomplete layout leaves the deterministic
+automatic positions in place.
 
 State IDs are resolved against the loaded Network and transition records use
 the zero-based global transition-list index that the existing \texttt{.gen}
@@ -403,8 +406,12 @@ Expression fields are stored through the existing domain API; this GUI slice
 does not provide a new expression parser or guarantee expression validity.
 Root-model teardown with an open Network tab, switching between root models,
 focused sanitizer runs and full unit/kernel/smoke baselines are covered by the
-current continuation evidence. Full end-to-end GUI interaction evidence and
-final hosted CI for the latest SHA remain pending.
+current continuation evidence. An automated MainWindow test exercises the
+actual GUI actions for Network creation, state and transition creation,
+initial-state selection, transition-property editing, undo/redo, and file
+save/close/reopen. It confirms restoration of the EFSM layout and domain
+properties. Separate manual mouse/keyboard verification and final hosted CI
+remain pending.
 This is not yet a completed EFSM editor. See the approved plan
 \path{docs/ai_assistants/reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md}
 for acceptance gates and current limitations.
