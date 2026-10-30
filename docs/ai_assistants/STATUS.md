@@ -19,7 +19,7 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Current `WorkInProgress` HEAD verified after PR #552: `51851415fb8abe33f08a67d1d571ad233ab081a5` (merge commit, 2026-10-30). PR #551 delivered the editor; PR #552 adds the integrated save/reopen-to-kernel-activation regression and final status/evidence reconciliation.
+- Current `WorkInProgress` HEAD before this documentation-only reconciliation, verified after PR #553: `e74e477f2eeeddd089df52c41547442171a513fd` (merge commit, 2026-10-30). The latest code-bearing change is PR #552 at `51851415fb8abe33f08a67d1d571ad233ab081a5`; PR #553 reconciled the implementation and follow-up test records.
 - **ModalModel GUI frozen MVP:** all **8/8 milestones (100%)** are implemented and accepted under the 2026-10-30 maintainer mandate. PR #551 merged at `17338f8e566f87fc3b06eb422a5dd354e6d57b02`; PR #552 merged at `51851415fb8abe33f08a67d1d571ad233ab081a5`. At PR #551 head `a9d718b5b085c47a5a9aeee4b41a25a98716b7d7`, `tests-unit` and `tests-kernel-unit` each passed 1,963 tests with four disabled; smoke passed 3/3; `gui-app` built; 37 focused EFSM tests passed; targeted ASan/UBSan covered deletion and mixed undo/redo (LSan disabled); hosted checks passed, including Debian package lifecycle and documentation governance. The follow-up PR #552 adds a MainWindow save/reopen-to-kernel-activation regression; all eight of its hosted checks passed. Developer Manual (390 pages) and User Manual (3,981 pages, EFSM guide page 177) were regenerated and inspected for PR #551. Full evidence: [`history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md`](history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md).
 - Current remote `WorkInProgress` HEAD: `51851415fb8abe33f08a67d1d571ad233ab081a5` (verified 2026-10-30; PR #552 merge).
 - PR #545 is integrated. It corrects complex `.gen` text persistence (including exact `GroProgram::sourceCode` round-trip), localized double commits in the Qt Property Editor, automatic semantic SimulLang/TextCodeEditor synchronization, and graphical/kernel connection ownership required by undo/redo. Final evidence: `tests-unit` 1846/1846 executed passed plus 4 historical disabled tests (run `37861026075`), `tests-kernel-unit` 1846/1846 and `tests-smoke` 3/3 (run `37861026002`), focused ASan+UBSan connection undo/redo green (run `37860210595`, job `113593863912`), and manual LaTeX/figure-spec validation with regenerated `docs/ManualGenESyS.pdf` green (run `37860534212`, artifact `11585458197`).
@@ -108,15 +108,17 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
   `source/plugins/components/CMakeLists.txt`, which would continue compiling
   component sources placed in nested directories. Do not complicate CMake
   solely to retain obsolete implementation files; Git history is the archive.
-- The Modal/Network GUI remained deferred at the prior checkpoint. On
+- Historical checkpoint before the editor delivery: the Modal/Network GUI was
+  deferred. On
   **2026-10-29**, the maintainer explicitly activated G0 (inventory/diagram
   record contract), then G1 (read-only EFSM viewer), and **subsequently chose
   the shared submodel canvas/level filtering (Alternative A)** rather than an
-  independent Network scene, preserving process-vs-Network semantics.
-  **No new GUI feature is validated yet.**
+  independent Network scene, preserving process-vs-Network semantics. This
+  checkpoint is superseded by the accepted eight-milestone editor in §2 and the
+  2026-10-30 evidence linked there.
   See [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md)
   and [`reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md).
-- Maintainer direction recorded 2026-10-04: the next Modal/Network backend research phase is an academically grounded **continuous-time Markov chain / Markov jump process for biochemical reaction networks**. The first step is specification and validation design, explicitly reconciling the existing WholeCell Gillespie SSA path with `DefaultNetwork` and the GenESyS event calendar; see [`reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`](reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md). GUI remains deferred.
+- Maintainer direction recorded 2026-10-04: the next Modal/Network backend research phase is an academically grounded **continuous-time Markov chain / Markov jump process for biochemical reaction networks**. The first step is specification and validation design, explicitly reconciling the existing WholeCell Gillespie SSA path with `DefaultNetwork` and the GenESyS event calendar; see [`reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`](reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md). That biochemical/CTMC work is separate from the EFSM GUI MVP, which is now integrated; no other formalism editor is claimed.
 
 ## 3. Technical baseline
 
@@ -305,9 +307,13 @@ For Modal/Network, `AUTO-MODAL-001` is `closed` and `AUTO-MODAL-002` backend sco
   package signing was produced by this work; `genesys-debian-packages` is a
   workflow artifact, not a distribution channel.
 
-## 15. ModalModel / DefaultNetwork continuation checkpoint
+## 15. Historical ModalModel / DefaultNetwork backend checkpoint (2026-09-20)
 
-Current status: **backend gate PASSED on implementation checkpoint `5bd10bb5`; `AUTO-MODAL-002` backend scope `done_confirmed`; global Modal/Network not `done_confirmed` (GUI deferred under `HUM-MODAL-002`)**. Current `WorkInProgress` HEAD `4d83e940` is the documentation-only #542 close-out of that gate.
+At that checkpoint, the backend gate had passed on implementation checkpoint
+`5bd10bb5`; `AUTO-MODAL-002` covered backend scope, while the GUI was still
+deferred. The following entries are historical evidence, not current state.
+Current state is in [§2](#2-repository-state) and the 2026-10-30 closeout
+evidence.
 
 Completed since the 2026-09-19 baseline on `dd7bd649`:
 
@@ -322,9 +328,9 @@ Completed since the 2026-09-19 baseline on `dd7bd649`:
 9. focused Modal/Network 73/73; unit 1830/1830 (+4 disabled); smoke 3/3;
 10. backend-gate documentation/evidence reconciled (#542).
 
-Remaining outside the completed backend gate:
+Remaining at the historical 2026-09-20 backend checkpoint:
 
-1. GUI/editor phase (`HUM-MODAL-002` / `MODAL_NETWORK_GUI_ARCHITECTURE.md`) — still deferred;
+1. GUI/editor phase — subsequently completed and accepted as 8/8 milestones through PRs #551/#552;
 2. Cellular Automata migration — still deferred;
 3. process-lifetime plugin-template Buffer leaks outside Modal ownership.
 
@@ -337,7 +343,7 @@ Next maintainer-selected backend research phase:
 
 **Backend gate (completed mission):** PASSED.
 
-**Global Modal/Network `done_confirmed`:** not applicable until GUI phase is decided/executed per the completion plan.
+**Historical gate state:** global Modal/Network `done_confirmed` was not applicable until the GUI phase was decided/executed. The EFSM GUI phase is now accepted at 8/8; current status and evidence are in §2.
 
 The authoritative completed-backend guide remains `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. The next backend research plan is `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`.
 Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.

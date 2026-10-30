@@ -41,6 +41,16 @@ Commands used for the CTest baselines included `LC_ALL=C LANG=C QT_QPA_PLATFORM=
 
 PR #551 and its test/documentation closeout PR #552 are merged; the eight approved milestones are recorded as accepted (8/8 = 100%). The dated ledger, current status, backlog, implementation plan and AI changelog are linked to this closeout. The manuals and `docs/ManualGenESyS.pdf` were not changed by this test-only follow-up; their last regenerated and inspected state is documented in the PR #551 evidence.
 
+## Final active-document audit
+
+After PR #553, a final read-through found older active architecture and backend
+checkpoint text that still described the EFSM editor as unavailable. A focused
+CTest selection on `WorkInProgress` at `e74e477f2eeeddd089df52c41547442171a513fd`
+passed **45/45** tests across EFSM persistence/editor/undo and
+`ModalModelDefaultNetworkTest`. PR #554 updates those statements to identify
+their historical scope and points to the accepted EFSM implementation. No
+runtime or product behavior changed in that documentation reconciliation.
+
 ## Limits
 
 - No outstanding PR #552 checks; all reported checks passed on its final head.

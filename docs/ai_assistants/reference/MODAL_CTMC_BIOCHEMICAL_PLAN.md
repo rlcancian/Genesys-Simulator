@@ -14,7 +14,7 @@ tracks: HUM-SCI-002
 
 This document defines the next backend phase after the ModalModel / DefaultNetwork backend gate closed on 2026-09-20.
 
-The maintainer decision dated 2026-10-04 is to develop an academically grounded **continuous-time Markov chain (CTMC) / Markov jump process model for biochemical reaction networks**. This phase remains backend-only; the Modal/Network GUI remains deferred.
+The maintainer decision dated 2026-10-04 is to develop an academically grounded **continuous-time Markov chain (CTMC) / Markov jump process model for biochemical reaction networks**. This phase remains backend-only. The separate EFSM GUI MVP is now integrated; a CTMC or biochemical Network editor remains outside that GUI scope.
 
 The goal is not to add a superficial continuous-time option to the existing DTMC. The new work must reconcile stochastic chemical kinetics, GenESyS event time, persistence, reproducibility, and the biochemical/whole-cell code that already exists.
 

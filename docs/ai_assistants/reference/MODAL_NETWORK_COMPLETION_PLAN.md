@@ -23,6 +23,14 @@ The companion architectural baseline remains:
 
 This document narrows the continuation work, records maintainer decisions made on 2026-09-18, and distinguishes verified historical evidence from **verification pending on the current branch**.
 
+**Current-state note (2026-10-30):** this plan's backend verification matrix and
+GUI deferral statements below are a historical snapshot from 2026-09-20. The
+EFSM GUI phase (`HUM-MODAL-002`, G0–G6) was subsequently implemented, accepted
+and integrated through PR #551 at `17338f8e566f87fc3b06eb422a5dd354e6d57b02`
+and closeout PR #552 at `51851415fb8abe33f08a67d1d571ad233ab081a5`. Current
+status and exact validation are in `../STATUS.md` and
+`../history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md`.
+
 ## 1.1 Current integration checkpoint (2026-09-20)
 
 Confirmed by executed local evidence on `WorkInProgress` HEAD `5bd10bb5`:
@@ -38,7 +46,7 @@ Confirmed by executed local evidence on `WorkInProgress` HEAD `5bd10bb5`:
 - `tests-smoke`: 3/3;
 - focused Modal/Network: 73/73.
 
-**Backend gate: PASSED.** `AUTO-MODAL-002` backend scope is `done_confirmed`. Global Modal/Network architecture remains **not** `done_confirmed` while GUI (`HUM-MODAL-002` / Section 13) is still an approved completion-plan phase.
+**At the 2026-09-20 backend checkpoint:** `AUTO-MODAL-002` backend scope was `done_confirmed`; global Modal/Network was not yet `done_confirmed` because GUI (`HUM-MODAL-002` / Section 13) remained an approved phase. The EFSM GUI phase was subsequently completed and accepted through PRs #551/#552; see the current-state note in §1.
 
 Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
@@ -199,9 +207,11 @@ Before coding:
 
 The result of this first pass should be a **verification matrix**, not an immediate refactor.
 
-## 6. Required verification matrix
+## 6. Historical verification matrix (2026-09-20; GUI status superseded)
 
-At minimum, classify each item below using current-code/current-run evidence.
+The table below records the first-pass matrix required at the 2026-09-20
+backend checkpoint. `pending` values are historical and are not claims about
+the current branch; consult the current-state note above before selecting work.
 
 | Area | Current implementation | Current focused tests | Current aggregate regression | Status/gap |
 |---|---|---|---|---|
@@ -215,7 +225,7 @@ At minimum, classify each item below using current-code/current-run evidence.
 | persistence/current round-trip | verify | verify | verify | pending |
 | plugin/factory registration | verify | verify where possible | verify | pending |
 | legacy classes/current references | removed (#541) | N/A | build/test | confirmed by execution |
-| GUI integration | deferred | deferred | deferred | pending (post-backend; HUM-MODAL-002) |
+| GUI integration | deferred at this checkpoint; later implemented through PRs #551/#552 | N/A in this backend-only verification | see EFSM GUI evidence | completed and accepted, 8/8 milestones |
 | Cellular Automata migration prerequisites | inspect only | N/A | N/A | deferred |
 
 ## 7. Candidate work A — complete the already-approved backend architecture
