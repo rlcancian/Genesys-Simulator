@@ -7,6 +7,7 @@
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"
 #include "../graphicals/GraphicalDiagramConnection.h"
+#include "../graphicals/EFSMTransitionGraphicsItem.h"
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -161,6 +162,9 @@ QGraphicsItem* GraphicalContextMenuController::semanticItemFor(QGraphicsItem* it
             return current;
         }
         if (dynamic_cast<GraphicalDiagramConnection*>(current) != nullptr) {
+            return current;
+        }
+        if (dynamic_cast<EFSMTransitionGraphicsItem*>(current) != nullptr) {
             return current;
         }
         if (dynamic_cast<QGraphicsItemGroup*>(current) != nullptr) {

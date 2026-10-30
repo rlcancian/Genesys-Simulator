@@ -87,6 +87,7 @@ bool GraphNetwork::addNode(GraphNode* node) {
 		return false;
 	}
 	_nodes.push_back(node);
+	node->setModelLevel(static_cast<unsigned int>(getId()));
 	return true;
 }
 
@@ -129,6 +130,7 @@ bool GraphNetwork::addEdge(GraphEdge* edge) {
 	}
 	edge->setDirected(isDirected());
 	_edges.push_back(edge);
+	edge->setModelLevel(static_cast<unsigned int>(getId()));
 	return true;
 }
 

@@ -18,6 +18,12 @@
 #include <memory>
 #include <vector>
 
+namespace {
+std::string stateAssociationKey(const FSMState* state) {
+	return "EFSMNetwork.State." + std::to_string(state != nullptr ? state->getId() : 0);
+}
+}
+
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
 	return &EFSMNetwork::GetPluginInformation;
@@ -65,6 +71,11 @@ ModelDataDefinition* EFSMNetwork::LoadInstance(Model* model, PersistenceRecord* 
 void EFSMNetwork::addState(FSMState* state) {
 	if (state != nullptr && _states->find(state) == _states->list()->end()) {
 		_states->insert(state);
+		// States remain owned by ModelDataManager; this is a non-owning
+		// association used by orphan detection and model validation.
+		_attachedDataInsert(stateAssociationKey(state), state);
+		// The containing Network is also this state's hierarchical editing context.
+		state->setModelLevel(static_cast<unsigned int>(getId()));
 		if (_initialState == nullptr || state->isInitialNode()) {
 			_initialState = state;
 			_currentState = state;
@@ -73,6 +84,9 @@ void EFSMNetwork::addState(FSMState* state) {
 }
 
 void EFSMNetwork::removeState(FSMState* state) {
+	if (state != nullptr) {
+		_attachedDataRemove(stateAssociationKey(state));
+	}
 	_states->remove(state);
 	if (_initialState == state) {
 		_initialState = nullptr;
@@ -96,14 +110,48 @@ void EFSMNetwork::addTransition(EFSMTransition* transition) {
 }
 
 void EFSMNetwork::removeTransition(EFSMTransition* transition) {
-	if (transition == nullptr) {
-		return;
+	(void)detachTransition(transition);
+}
+
+std::unique_ptr<EFSMTransition> EFSMNetwork::detachTransition(EFSMTransition* transition, unsigned int* ordinal) {
+	if (transition == nullptr || _transitions == nullptr) {
+		return {};
 	}
-	_transitions->remove(transition);
+	auto* entries = _transitions->list();
+	auto it = std::find(entries->begin(), entries->end(), transition);
+	if (it == entries->end()) {
+		return {};
+	}
+	const auto position = static_cast<unsigned int>(std::distance(entries->begin(), it));
+	if (ordinal != nullptr) {
+		*ordinal = position;
+	}
+	entries->erase(it);
 	if (transition->getSource() != nullptr) {
 		transition->getSource()->removeTransition(transition);
 	}
-	delete transition;
+	return std::unique_ptr<EFSMTransition>(transition);
+}
+
+bool EFSMNetwork::restoreTransition(EFSMTransition* transition, unsigned int ordinal) {
+	if (transition == nullptr || _transitions == nullptr
+		|| _transitions->find(transition) != _transitions->list()->end()) {
+		return false;
+	}
+	auto* source = dynamic_cast<FSMState*>(transition->getSource());
+	auto* destination = dynamic_cast<FSMState*>(transition->getDestination());
+	if (source == nullptr || destination == nullptr
+		|| _states->find(source) == _states->list()->end()
+		|| _states->find(destination) == _states->list()->end()) {
+		return false;
+	}
+	auto* entries = _transitions->list();
+	auto position = entries->begin();
+	const auto boundedOrdinal = std::min<std::size_t>(ordinal, entries->size());
+	std::advance(position, static_cast<std::ptrdiff_t>(boundedOrdinal));
+	entries->insert(position, transition);
+	source->addTransition(transition);
+	return true;
 }
 
 List<EFSMTransition*>* EFSMNetwork::getTransitions() const {
@@ -298,7 +346,11 @@ void EFSMNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefaultValue
 		if (transition->getDestination() != nullptr) {
 			fields->saveField("transitionDestination" + suffix, transition->getDestination()->getName(), std::string(""), saveDefaultValues);
 		}
-		fields->saveField("transitionName" + suffix, transition->getName(), std::string(""), saveDefaultValues);
+		// The presence of this field distinguishes an explicitly unnamed
+		// transition from a legacy record that omitted the field entirely.
+		// The loader intentionally retains its T<ordinal> fallback for those
+		// older records, while current saves preserve the exact empty name.
+		fields->saveField("transitionName" + suffix, transition->getName());
 		fields->saveField("transitionGuard" + suffix, transition->getGuardExpression(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionOutput" + suffix, transition->getOutputExpression(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionInputEvent" + suffix, transition->getInputEvent(), std::string(""), saveDefaultValues);

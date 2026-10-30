@@ -2,7 +2,7 @@
 document_type: reference-index
 authority: informative
 owner: project-maintainer
-last_reviewed: 2026-10-04
+last_reviewed: 2026-10-29
 status: active
 tracks: 511
 ---
@@ -162,7 +162,14 @@ Use for the next backend research phase after the Modal/Network backend gate:
 
 ### [`MODAL_NETWORK_GUI_ARCHITECTURE.md`](MODAL_NETWORK_GUI_ARCHITECTURE.md)
 
-Use for the proposed Qt6 editor/viewer architecture after the backend contracts and completion gate in `MODAL_NETWORK_COMPLETION_PLAN.md` have been revalidated locally.
+Use for the Qt6 Network editor/viewer conceptual architecture, with its process-versus-Network separation approved by the maintainer on 2026-10-29. Proposed GUI class names still require current-code implementation and validation.
+
+### [`MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md)
+
+Use for the approved 2026-10-29 hierarchical Network-view decision,
+the source-backed G0.1 GUI inventory, the proposed versioned diagram
+record contract, G0.2 acceptance criteria, the read-only EFSM G1 slice,
+subsequent G2–G6 gates, and eventual local-agent handoff.
 
 ### [`CONTINUOUS_MODEL_EXECUTION.md`](CONTINUOUS_MODEL_EXECUTION.md)
 

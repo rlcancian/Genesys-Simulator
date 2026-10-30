@@ -18,6 +18,7 @@
 #include "kernel/simulator/PropertyGenesys.h"
 #include "kernel/simulator/TraceManager.h"
 #include "graphicals/ModelGraphicsScene.h"
+#include "services/EFSMNetworkDiagramLayout.h"
 
 QT_BEGIN_NAMESPACE
 		namespace Ui {
@@ -49,6 +50,7 @@ class QTabWidget;
 class ModelGraphicsView;
 class ModelComponent;
 class ModelDataDefinition;
+class ModalModelDefault;
 
 // Document MainWindow as composition root and incremental compatibility façade.
 /**
@@ -457,6 +459,8 @@ private: // opened-model document state
     GraphicalModelViewContext* _contextForView(ModelGraphicsView* graphicsView) const;
     /** @brief Returns the root-model context for a kernel model. */
     GraphicalModelViewContext* _rootContextForModel(Model* model) const;
+    /** @brief Saves the current EFSM presentation snapshot before a Network view is discarded. */
+    void _captureEFSMNetworkLayoutForContext(GraphicalModelViewContext* context);
     /** @brief Creates or updates the root context backing a model tab. */
     GraphicalModelViewContext* _ensureRootModelViewContext(Model* model, ModelGraphicsView* graphicsView);
     /** @brief Opens or activates a submodel tab for the selected owner data definition/component. */
@@ -477,6 +481,21 @@ private: // opened-model document state
     bool _canOpenSubmodelFor(ModelDataDefinition* owner) const;
     /** @brief Slot target for the context-menu/model-menu submodel-opening command. */
     void _openSelectedSubmodel();
+    /** @brief Returns the selected ModalModelDefault adapter, if any. */
+    ModalModelDefault* _selectedModalModelDefault() const;
+    /** @brief Creates and attaches an EFSMNetwork through the real GUI action path. */
+    void _createNetworkForSelectedModalModel();
+    /** @brief Edits the selected adapter's network input/output bindings. */
+    void _editModalModelBindings();
+    /** @brief Selects an existing EFSMNetwork and attaches it to the selected adapter. */
+    void _selectNetworkForSelectedModalModel();
+    /** @brief Creates one FSMState in the active EFSM Network context. */
+    void _createEfsmState();
+    /** @brief Creates one EFSMTransition between two selected states. */
+    void _createEfsmTransition();
+    void _editEfsmTransition();
+    void _setEfsmInitialState();
+    void _editEfsmState();
     void _refreshRecentModelsMenu();
     bool _openRecentModelFile(const QString& fileName);
     /** @brief Stores the active editor/dirty state before switching away from the current model. */
@@ -530,6 +549,9 @@ private: // interface and model main elements to join
     std::map<Model*, bool> _modelTextHasChanged;
     // Tracks graphical dirty state per opened model while legacy flags mirror only the active model.
     std::map<Model*, bool> _modelGraphicalHasChanged;
+    // Serializer instances are rebuilt when the active graphical view changes.
+    std::shared_ptr<EFSMNetworkDiagramLayoutsByModel> _efsmNetworkDiagramLayouts =
+        std::make_shared<EFSMNetworkDiagramLayoutsByModel>();
     // Tracks tabs being changed programmatically to avoid re-entrant model switching.
     bool _changingModelTabProgrammatically = false;
     // Runtime menu actions for navigating the opened-model list.
@@ -537,6 +559,14 @@ private: // interface and model main elements to join
     QAction* _actionModelNext = nullptr;
     // Runtime action that opens a level-scoped graphical tab from the selected owner item.
     QAction* _actionOpenSelectedSubmodel = nullptr;
+    QAction* _actionCreateModalNetwork = nullptr;
+    QAction* _actionSelectModalNetwork = nullptr;
+    QAction* _actionEditModalModelBindings = nullptr;
+    QAction* _actionCreateEfsmState = nullptr;
+    QAction* _actionCreateEfsmTransition = nullptr;
+    QAction* _actionEditEfsmTransition = nullptr;
+    QAction* _actionSetEfsmInitialState = nullptr;
+    QAction* _actionEditEfsmState = nullptr;
     QMenu* _menuOpenRecent = nullptr;
     QList<QAction*> _recentModelActions;
     // Keep core simulation command gateway owned by MainWindow composition root.

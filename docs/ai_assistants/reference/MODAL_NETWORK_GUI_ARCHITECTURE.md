@@ -1,9 +1,9 @@
 ---
 document_type: technical-reference
-authority: proposed-architecture
+authority: maintainer-approved-architecture
 owner: project-maintainer
-last_reviewed: 2026-08-31
-status: proposed
+last_reviewed: 2026-10-29
+status: active
 tracks: 511
 ---
 
@@ -14,9 +14,28 @@ tracks: 511
 This document defines the proposed GUI architecture for creating, editing and
 visualizing `DefaultNetwork`-based `ModalModel` networks in the GenESyS Qt6 GUI.
 
-It is a planning document. It does not authorize implementation by itself.
-Implementation should begin only after maintainer review because the GUI is the
-primary modeling interface for end users.
+This is a conceptual GUI reference: names of proposed GUI classes and commands
+are **not** evidence that they already exist in source.
+
+**Maintainer decisions (2026-10-29, DEC-MODAL-GUI-20261029 and
+DEC-MODAL-LEVEL-20261029):** choose **Alternative A: evolve the existing
+submodel editor**, including its `ModelGraphicsScene`, level filter and
+hierarchical tab/navigation context. A non-root `level` is the ID of the
+`ModelDataDefinition` that defines the editing context (which can also be a
+`ModelComponent`, since it inherits `ModelDataDefinition`); root is level 0.
+A `ModalModelDefault` opens its attached `DefaultNetwork` context, identified
+by **the Network ID**, not by the adapter ID.
+
+States, places, graph vertices, transitions and arcs do not become
+`ModelComponent` or process `Connection` objects for visualization.
+`DefaultNetwork` remains the mathematical source of truth and may be shared
+by several `ModalModelDefault` adapters. A common canvas supports different
+domain projections and interaction commands; reusing the canvas never means
+reusing Entity/Connection process semantics. The first visual slice is a
+read-only EFSM representation. See the operational, source-backed
+[implementation plan](MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md) and
+`../BACKLOG_HUMAN.md` (`HUM-MODAL-002`). Other detailed class/interface
+names below are conceptual proposals, not claims of implemented APIs.
 
 ## 2. Current readiness
 
@@ -102,95 +121,101 @@ This follows the proven subsystem/statechart pattern: the outer component is an
 adapter in the process-flow model; the inner diagram is a different model of
 computation with its own notation.
 
-## 5. Layered Architecture
+## 5. Layered Architecture — shared submodel editor
 
-Use a strict three-layer split:
+Three conceptual layers remain strictly separated:
 
 ```text
-Kernel domain model
-    DefaultNetwork
-    GraphNetwork / EFSMNetwork / MarkovChainNetwork / ColoredPetriNetNetwork
-    GraphNode / GraphEdge / FSMState / EFSMTransition / MarkovState / CPNTransition / CPNArc / PetriPlace
+Kernel domain model (never depends on Qt)
+    ModelDataDefinition / ModelComponent (hierarchy context identity)
+    DefaultNetwork: EFSM, Graph, Markov DTMC, Colored Petri Net
+    Domain nodes and formalism-specific relationships
 
-GUI diagram model
-    GraphicalNetworkScene
-    GraphicalNetworkNode
-    GraphicalNetworkEdge
-    GraphicalNetworkPort
-    GraphicalNetworkAnnotation
-    GraphicalNetworkLayoutRecord
+Common Qt graphical scene/view/navigation
+    ModelGraphicsScene / ModelGraphicsView / existing Submodel tabs
+    level-filtered context: level=0 or owner ModelDataDefinition::getId()
+    GUI-only positions, routes, styles, viewport records
 
-GUI controllers and commands
-    NetworkEditorController
-    NetworkNavigationController
-    NetworkPaletteController
-    NetworkPropertyController
-    NetworkCommand stack
+Formalism-specific graphical projection and commands
+    Process: ModelComponent + process Connection
+    EFSM: FSMState + EFSMTransition (read-only first)
+    Graph: GraphNode + GraphEdge
+    DTMC: MarkovState + MarkovTransition
+    CPN: PetriPlace + CPNTransition + CPNArc
 ```
 
-The GUI diagram model stores positions, bends, colors, labels, collapsed state,
-selection state and editor metadata. It must not be the source of truth for
-simulation semantics.
+A non-root level is **not** an ordinal depth, a domain ownership transfer or a
+simulation execution mode. A single Network shared by several ModalModel
+adapters retains one mathematical state and one Network-ID editing context.
+A context projection may be configured according to its owner type, using a
+bounded strategy/policy rather than embedding every formalism in the scene.
 
-The kernel domain model stores topology, semantics, persistence, model checking
-and activation behavior. It must not depend on Qt.
+The GUI persists presentation metadata but never transition firing,
+probabilities, guards, mathematical state or token semantics. Those remain in
+the Network domain object. No Qt dependency is introduced into the kernel.
 
-## 6. New GUI Concepts
+## 6. GUI Concepts — reuse first, specialize where required
 
-### GraphicalNetworkScene
+### Shared ModelGraphicsScene and submodel tabs
 
-`GraphicalNetworkScene` should wrap a `QGraphicsScene` for exactly one
-`DefaultNetwork` instance.
+Reuse the already implemented `GraphicalModelViewContext` and tab lifecycle.
+`MainWindow::_ensureSubmodelViewContext()` currently sets the level filter
+to the passed owner's ID and can therefore be called with the Network
+`ModelDataDefinition`, after resolving the attached Network from the selected
+`ModalModelDefault`. The existing process `Submodel` component is not a
+general-purpose implementation of mathematical topology and retains
+incomplete load/save/check methods; do not change its dispatch semantics.
 
-Responsibilities:
+The existing `GraphicalModelBuilder` must grow a bounded, type-aware
+projection path: the level filter discovers data definitions even if there are
+no process `ModelComponent` objects at that level, and domain topology
+generates correct formal relations. Reusing the existing scene does **not**
+mean interpreting `GraphicalDiagramConnection` (internal/attached data links)
+or `GraphicalConnection` (Entity flow) as a mathematical edge.
 
-- render network-domain nodes and relations;
-- expose hit testing, selection, drag, rubber-band selection and guides;
-- dispatch mouse events to tools;
-- request synchronization after kernel-domain edits;
-- keep graphical records separate from kernel persistence.
+### Domain node presentation
 
-It should not dispatch entities, schedule simulation events or mutate process
-`Connection` objects.
+A node-like GUI item refers non-owningly to an existing Network element
+(`FSMState`, `GraphNode`, `MarkovState`, `PetriPlace`, `CPNTransition`).
+The existing `GraphicalModelDataDefinition` and rendering strategy may be
+extended or wrapped where appropriate, without modifying the domain type.
+Rendering an EFSM state does not create a process `ModelComponent`.
 
-### GraphicalNetworkNode
+### Domain relation presentation
 
-Visual wrapper for network-owned node-like elements:
+Formal relations use their domain APIs. `EFSMTransition` and the present
+Markov transition type do not derive from `ModelDataDefinition` and thus do
+not have a `level` property; the EFSM/DTMC Network's transition collections
+supply them. `GraphEdge` and `CPNArc` are `ModelDataDefinition` objects and
+can also carry the Network's context level. The renderer must preserve
+direction, parallel relations, edge labels and the meaning of the formalism.
 
-- `GraphNode`;
-- `FSMState`;
-- `MarkovState`;
-- `PetriPlace`;
-- `CPNTransition`.
-
-It owns only graphical state and a non-owning pointer or stable model reference
-to the underlying `ModelDataDefinition`.
-
-### GraphicalNetworkEdge
-
-Visual wrapper for formalism-owned relation-like elements:
-
-- `GraphEdge`;
-- `EFSMTransition`;
-- `MarkovTransition`;
-- `CPNArc`.
-
-It is not `GraphicalConnection` because it is not a process-flow `Connection`.
+A specialized graphical edge item may be introduced if the generic data link
+item cannot represent these details. That is a **graphic item specialization
+inside the shared scene**, not an independent Network scene.
 
 ### NetworkDiagramRecord
 
-Persist GUI-only diagram state separately from kernel `.gen` semantics:
+Persist GUI-only state in the existing `.gui` overlay, separately from
+the canonical kernel/Network semantics:
 
-- network name or stable data-definition identifier;
-- graphical item positions;
-- edge bend points;
-- label positions;
-- collapsed/expanded state;
-- style overrides;
-- editor viewport state.
+- parent model and Network identity;
+- node positions and formal-relation bend/label points;
+- style annotations, collapsed state and editor viewport;
+- a versioned record format with tolerant loading of missing visual items.
 
-The current `.gui` serializer already persists graphical process items. Extend
-that concept rather than placing GUI coordinates inside `DefaultNetwork`.
+The file format currently combines the kernel model with a comment-prefixed
+GUI overlay, so do not assume separate physical files. The GUI representation
+must not be required for headless execution. Graphical identity for unnamed
+and parallel transitions remains a gated G0.2 requirement.
+
+### Implementation boundary
+
+Prefer a shared scene plus isolated projection/interaction policies. If
+further code inspection demonstrates substantial coupling or untestable
+ownership conflicts, re-evaluate this implementation technique explicitly;
+do not silently substitute an entirely separate scene for the approved
+Alternative A.
 
 ## 7. Controller and Command Pattern
 
@@ -310,13 +335,18 @@ Visual grammar:
 
 ## 9. Navigation Model
 
-Use hierarchical editor levels:
+Use hierarchical editing contexts keyed by owner identity (not ordinal depth):
 
 ```text
-Level 0: process model canvas
-Level 1: attached DefaultNetwork canvas
-Level 2: future nested state refinement or subnetwork, if approved
+level = 0                         -> root process model
+level = Network_X.getId()         -> Network_X mathematical diagram
+level = Component_Y.getId()       -> Component_Y process submodel
+level = child_owner.getId()       -> optional nested context, if supported
 ```
+
+The editor resolves a selected `ModalModelDefault` to its attached Network,
+then reuses the existing Submodel tab/level filter with the **Network as owner**.
+Two ModalModel components sharing a Network open the same logical context.
 
 Required UI elements:
 
@@ -433,11 +463,12 @@ Therefore:
 
 ### Phase G1 - Read-only network viewer
 
-- add `GraphicalNetworkScene`;
-- render nodes and edges for existing networks;
-- add context menu action `Open Network...` on `ModalModelDefault`;
-- add tab or breadcrumb navigation;
-- no topology edits yet.
+- extend the existing level-filtered `ModelGraphicsScene`/builder with a
+  read-only EFSM projection; do **not** create an independent scene;
+- render Network states and typed transitions from the attached domain object;
+- add a context action `Open Network...` on `ModalModelDefault`;
+- reuse existing Submodel tabs and the Network's `getId()` as context level;
+- no topology edits or process-connection behavior yet.
 
 Acceptance:
 
@@ -509,8 +540,9 @@ The first code slice should be G1:
 ```text
 right-click ModalModelDefault
     -> Open Network...
-    -> new tab/breadcrumb level
-    -> read-only GraphicalNetworkScene renders attached network topology
+    -> resolve the attached DefaultNetwork
+    -> reuse existing Submodel tab with level = Network.getId()
+    -> read-only EFSM projection in ModelGraphicsScene
 ```
 
 This produces immediate user value, proves the navigation model, and keeps risk

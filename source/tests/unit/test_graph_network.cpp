@@ -69,6 +69,32 @@ std::vector<std::string> names(const std::vector<GraphNode*>& nodes) {
 
 } // namespace
 
+TEST(GraphNetworkTest, ProgrammaticVerticesAndEdgesBelongToNetworkEditingLevel) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	GraphNetwork graph(model, "Graph");
+	GraphNode a(model, "A");
+	GraphNode b(model, "B");
+	GraphEdge ab(model, &a, &b, "AB");
+
+	// Rejected insertions must not alter an element's editing context.
+	EXPECT_FALSE(graph.addEdge(&ab));
+	EXPECT_EQ(ab.getLevel(), 0u);
+	ASSERT_TRUE(graph.addNode(&a));
+	ASSERT_TRUE(graph.addNode(&b));
+	ASSERT_TRUE(graph.addEdge(&ab));
+
+	const auto graphLevel = static_cast<unsigned int>(graph.getId());
+	EXPECT_NE(graphLevel, 0u);
+	EXPECT_EQ(a.getLevel(), graphLevel);
+	EXPECT_EQ(b.getLevel(), graphLevel);
+	EXPECT_EQ(ab.getLevel(), graphLevel);
+	EXPECT_FALSE(graph.addEdge(&ab));
+	EXPECT_EQ(graph.getEdges().size(), 1u);
+}
+
 TEST(GraphNetworkTest, EmptyGraphAndSingleNodeHaveStructuralSemanticsOnly) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();

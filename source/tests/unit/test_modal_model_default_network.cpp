@@ -371,3 +371,82 @@ TEST(ModalModelDefaultNetworkTest, CheckRejectsUnknownNetworkReference) {
 	EXPECT_NE(errorMessage.find("MissingNetwork"), std::string::npos);
 }
 
+TEST(ModalModelDefaultNetworkTest, ModelCheckPreservesReferencedEfsmNetworkAndStates) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork* network = new EFSMNetwork(model, "CheckedNetwork");
+	FSMState* idle = new FSMState(model, "CheckedIdle");
+	FSMState* busy = new FSMState(model, "CheckedBusy");
+	network->setInitialState(idle);
+	network->addState(busy);
+	network->addTransition(new EFSMTransition(idle, busy, "CheckedTransition"));
+
+	ModalModelDefault* modal = new ModalModelDefault(model, "CheckedModal");
+	Dispose* sink = new Dispose(model, "CheckedSink");
+	modal->getConnectionManager()->insert(sink);
+	modal->setNetwork(network);
+
+	ASSERT_TRUE(modal->getAttachedData()->size() > 0u);
+	ASSERT_TRUE(network->getAttachedData()->size() >= 2u);
+	EXPECT_EQ(modal->getNetwork(), network);
+	EXPECT_EQ(network->getStates()->size(), 2u);
+	EXPECT_EQ(network->getTransitions()->size(), 1u);
+
+	model->check();
+
+	ModelDataDefinition* preserved =
+		model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), "CheckedNetwork");
+	ASSERT_EQ(preserved, network);
+	EXPECT_EQ(modal->getNetwork(), network);
+	EXPECT_EQ(network->getStates()->size(), 2u);
+	EXPECT_EQ(network->getTransitions()->size(), 1u);
+	EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "CheckedIdle"), nullptr);
+	EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "CheckedBusy"), nullptr);
+}
+
+TEST(ModalModelDefaultNetworkTest, SharedNetworkReferencesAndReplacementAreNonOwning) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	TestNetwork* first = new TestNetwork(model, "FirstSharedNetwork");
+	TestNetwork* second = new TestNetwork(model, "SecondSharedNetwork");
+	ModalModelDefault* modalA = new ModalModelDefault(model, "SharedModalA");
+	ModalModelDefault* modalB = new ModalModelDefault(model, "SharedModalB");
+
+	modalA->setNetwork(first);
+	modalB->setNetwork(first);
+	ASSERT_EQ(modalA->getNetwork(), first);
+	ASSERT_EQ(modalB->getNetwork(), first);
+	ASSERT_EQ(modalA->getAttachedData()->size(), 1u);
+	ASSERT_EQ(modalB->getAttachedData()->size(), 1u);
+
+	modalB->setNetwork(second);
+	EXPECT_EQ(modalA->getNetwork(), first);
+	EXPECT_EQ(modalB->getNetwork(), second);
+	EXPECT_EQ(modalA->getAttachedData()->size(), 1u);
+	EXPECT_EQ(modalB->getAttachedData()->size(), 1u);
+
+	model->check();
+	EXPECT_EQ(model->getDataManager()->getDataDefinition("TestNetwork", "FirstSharedNetwork"), first);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition("TestNetwork", "SecondSharedNetwork"), second);
+}
+
+TEST(ModalModelDefaultNetworkTest, NetworkWithoutAdapterRemainsSubjectToOrphanPolicy) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork* network = new EFSMNetwork(model, "UnboundNetwork");
+	FSMState* state = new FSMState(model, "UnboundState");
+	network->setInitialState(state);
+
+	model->check();
+
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), "UnboundNetwork"), nullptr);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "UnboundState"), nullptr);
+}
+

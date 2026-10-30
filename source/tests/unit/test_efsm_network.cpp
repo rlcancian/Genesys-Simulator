@@ -41,6 +41,29 @@ public:
 
 } // namespace
 
+TEST(EFSMNetworkTest, ProgrammaticStatesBelongToNetworkEditingLevel) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork network(model, "Machine");
+	FSMState idle(model, "Idle");
+	FSMState busy(model, "Busy");
+
+	ASSERT_EQ(idle.getLevel(), 0u);
+	ASSERT_EQ(busy.getLevel(), 0u);
+	network.addState(&idle);
+	network.addState(&busy);
+
+	const auto networkLevel = static_cast<unsigned int>(network.getId());
+	EXPECT_NE(networkLevel, 0u);
+	EXPECT_EQ(idle.getLevel(), networkLevel);
+	EXPECT_EQ(busy.getLevel(), networkLevel);
+	// A second registration is a no-op and does not create new domain objects.
+	network.addState(&busy);
+	EXPECT_EQ(network.getStates()->size(), 2u);
+}
+
 TEST(EFSMNetworkTest, ConstructionCreatesDefaultInputAndOutputPorts) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -55,6 +78,60 @@ TEST(EFSMNetworkTest, ConstructionCreatesDefaultInputAndOutputPorts) {
 	EXPECT_EQ(network.getStates()->size(), 0u);
 	EXPECT_EQ(network.getTransitions()->size(), 0u);
 	EXPECT_EQ(network.getCurrentState(), nullptr);
+}
+
+TEST(EFSMNetworkTest, DetachedTransitionCanBeUndoneAtItsOriginalOrdinal) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork network(model, "UndoMachine");
+	FSMState idle(model, "Idle");
+	FSMState busy(model, "Busy");
+	network.addState(&idle);
+	network.addState(&busy);
+	auto* first = new EFSMTransition(&idle, &busy, "First");
+	auto* middle = new EFSMTransition(&idle, &busy, "Middle");
+	auto* last = new EFSMTransition(&busy, &idle, "Last");
+	network.addTransition(first);
+	network.addTransition(middle);
+	network.addTransition(last);
+
+	unsigned int ordinal = 99;
+	std::unique_ptr<EFSMTransition> detached = network.detachTransition(middle, &ordinal);
+	ASSERT_NE(detached, nullptr);
+	EXPECT_EQ(ordinal, 1u);
+	ASSERT_EQ(network.getTransitions()->size(), 2u);
+	EXPECT_EQ(network.getTransitions()->getAtRank(0), first);
+	EXPECT_EQ(network.getTransitions()->getAtRank(1), last);
+	EXPECT_EQ(idle.getTransitions()->size(), 1u);
+	EXPECT_EQ(idle.getTransitions()->front(), first);
+
+	ASSERT_TRUE(network.restoreTransition(detached.get(), ordinal));
+	detached.release(); // ownership transfers back to EFSMNetwork on success
+	ASSERT_EQ(network.getTransitions()->size(), 3u);
+	EXPECT_EQ(network.getTransitions()->getAtRank(0), first);
+	EXPECT_EQ(network.getTransitions()->getAtRank(1), middle);
+	EXPECT_EQ(network.getTransitions()->getAtRank(2), last);
+	ASSERT_EQ(idle.getTransitions()->size(), 2u);
+	EXPECT_EQ(idle.getTransitions()->getAtRank(1), middle);
+}
+
+TEST(EFSMNetworkTest, RestoreRejectsTransitionWithEndpointOutsideNetworkWithoutTakingOwnership) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetwork network(model, "UndoMachine");
+	FSMState registered(model, "Registered");
+	FSMState external(model, "External");
+	network.addState(&registered);
+	std::unique_ptr<EFSMTransition> transition(new EFSMTransition(&registered, &external, "Invalid"));
+
+	EXPECT_FALSE(network.restoreTransition(transition.get(), 0));
+	EXPECT_EQ(network.getTransitions()->size(), 0u);
+	EXPECT_EQ(registered.getTransitions()->size(), 0u);
+	EXPECT_EQ(transition->getDestination(), &external);
 }
 
 TEST(EFSMNetworkTest, ActivationFiresOneEnabledTransitionAndPublishesOutput) {
@@ -316,6 +393,53 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	EXPECT_EQ(loadedTransition->getInputEvent(), "go");
 	EXPECT_EQ(loadedTransition->getPriority(), 3u);
 	EXPECT_EQ(loadedTransition->getProbabilityExpression(), "1");
+}
+
+TEST(EFSMNetworkTest, PersistencePreservesExplicitlyEmptyTransitionName) {
+	Simulator simulator;
+	ASSERT_NE(simulator.getPluginManager()->insert("fsmstate.so"), nullptr);
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	EFSMNetworkProbe source(model, "UnnamedMachine");
+	FSMState idle(model, "Idle");
+	FSMState busy(model, "Busy");
+	EFSMTransition* unnamed = new EFSMTransition(&idle, &busy, "");
+	unnamed->setGuardExpression("1");
+	EFSMTransition* named = new EFSMTransition(&busy, &idle, "Named");
+	source.setInitialState(&idle);
+	source.addState(&busy);
+	source.addTransition(unnamed);
+	source.addTransition(named);
+
+	FakeModelPersistenceRuntime persistence;
+	PersistenceRecord fields(persistence);
+	source.SaveInstanceProbe(&fields, false);
+
+	ASSERT_TRUE(fields.find("transitionName[0]") != fields.end());
+	EXPECT_EQ(fields.loadField("transitionName[0]", "missing"), "");
+	ASSERT_TRUE(fields.find("transitionName[1]") != fields.end());
+	EXPECT_EQ(fields.loadField("transitionName[1]", "missing"), "Named");
+
+	EFSMNetworkProbe loaded(model, "LoadedUnnamedMachine");
+	ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+	ASSERT_EQ(loaded.getTransitions()->size(), 2u);
+	ASSERT_NE(loaded.getTransitions()->front(), nullptr);
+	EXPECT_EQ(loaded.getTransitions()->front()->getName(), "");
+	auto loadedTransitionIt = loaded.getTransitions()->list()->begin();
+	ASSERT_NE(loadedTransitionIt, loaded.getTransitions()->list()->end());
+	++loadedTransitionIt;
+	ASSERT_NE(loadedTransitionIt, loaded.getTransitions()->list()->end());
+	ASSERT_NE(*loadedTransitionIt, nullptr);
+	EXPECT_EQ((*loadedTransitionIt)->getName(), "Named");
+
+	// A legacy record without the field retains the established fallback.
+	fields.erase("transitionName[0]");
+	EFSMNetworkProbe legacyLoaded(model, "LegacyUnnamedMachine");
+	ASSERT_TRUE(legacyLoaded.LoadInstanceProbe(&fields));
+	ASSERT_EQ(legacyLoaded.getTransitions()->size(), 2u);
+	ASSERT_NE(legacyLoaded.getTransitions()->front(), nullptr);
+	EXPECT_EQ(legacyLoaded.getTransitions()->front()->getName(), "T[0]");
 }
 
 TEST(EFSMNetworkTest, ModelFileRoundTripPreservesConflictPolicyAndActivation) {

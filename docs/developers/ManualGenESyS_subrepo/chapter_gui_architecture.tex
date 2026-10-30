@@ -320,6 +320,108 @@ Three GUI subsystems deserve separate mention because they are still coupled to 
 
 That boundary is deliberately conservative. The GUI still uses scene-selection callbacks, direct widget refreshes, and a few legacy slots, but the meaningful logic is already in controller classes where it can be tested and reasoned about more locally.
 
+\section{Hierarchical editing contexts for model data (development branch)}
+\label{sec:gui-hierarchical-editing-contexts}
+
+The GenESyS development branch
+\texttt{WiP20261029/modalmodel-architecture} adopts a shared submodel editor
+for process components and mathematical Networks. As of 2026-10-30, the branch
+contains an EFSM diagram projection and initial editing actions. This is an
+active implementation checkpoint, not a claim that the complete editor or its
+end-to-end workflow is ready for general use.
+
+The \texttt{ModelDataDefinition::getLevel()} value identifies an editing
+context rather than an ordinal depth. Level zero is the root context.
+A nonzero level is the identifier of the containing
+\texttt{ModelDataDefinition}; a \texttt{ModelComponent} may also identify a
+context because it derives from \texttt{ModelDataDefinition}.
+For a \texttt{ModalModelDefault}, the nested editing context is identified
+by its attached \texttt{DefaultNetwork}, not by the adapter component.
+This level key is not a transfer of ownership and must not be interpreted
+as a process \texttt{Connection} or an instruction to dispatch entities.
+
+The \texttt{GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer()}
+implementation on this development branch discovers data definitions registered
+at a selected non-root level even when there are no process components
+or attached/internal process links in that level. Such direct context members
+remain visible independently of the process association visibility switches.
+The root model's original association-driven data-definition behavior remains
+unchanged. Newly encountered data definitions without a graphical anchor receive
+a deterministic, collision-avoiding fallback position; existing positions are
+preserved. These behaviors are covered by focused, offscreen Qt6 Google Tests
+in \path{source/tests/unit/test_gui_submodel_level.cpp}; executable test results
+must be recorded for the final branch commit before integration.
+
+The shared scene projects states using the existing data-definition graphics
+and formal transitions using non-owning directed path items, including
+parallel relations and self-loops. Initial and final states receive distinct
+visual styling. New states without saved positions use deterministic,
+collision-avoiding fallback placement. Moving a state refreshes its formal
+edges, and the existing move undo command refreshes them on undo and redo.
+The graphical EFSM persistence seam is now implemented by
+\texttt{EFSMNetworkDiagramCodec}, integrated into
+\texttt{GraphicalModelSerializer}. It writes a version-1
+\texttt{Graphical EFSM Network Diagrams} section in the existing \texttt{.gui}
+overlay. The section stores only presentation data: the Network identity,
+state IDs and positions, and optional transition control/label points.
+
+Before saving, \texttt{MainWindow} captures positions from every open EFSM
+context belonging to the root model being saved. Closing a Network tab also
+captures its last scene before Qt destroys the view. The serializer keeps these
+layouts in a cache shared by the MainWindow and its view-scoped serializer
+instances. This preserves records when activating another tab rebuilds the
+serializer, while the root-model key prevents two open models with the same
+Network ID from sharing a layout. Closing a root model removes its cache entry.
+When a Network tab is opened after a load, saved positions are applied only
+after the Network ID/name, state ID/name and finite coordinates have been
+checked; transition paths are then recomputed from the restored state
+positions. A missing, stale or incomplete layout leaves the deterministic
+automatic positions in place.
+
+State IDs are resolved against the loaded Network and transition records use
+the zero-based global transition-list index that the existing \texttt{.gen}
+serializer writes and reconstructs. Source/destination names and the exact
+transition name, including an empty name, are integrity checks. An index that
+no longer resolves, an identity mismatch, malformed data, or an unknown schema
+version is ignored;
+the codec never creates, deletes, or changes a mathematical transition.
+Network and state references used by orphan detection are non-owning
+\texttt{attachedData} associations, so shared Networks remain one mathematical
+object and a Network without an adapter remains subject to the existing orphan
+policy. Older \texttt{.gui} files without this section continue to load.
+
+The existing submodel-tab flow resolves a selected \texttt{ModalModelDefault}
+to its attached Network ID; adapters sharing one Network reuse the same tab
+context. With a ModalModelDefault selected, the shared menu action is labeled
+\texttt{Open EFSM Network}; other submodel owners retain the generic
+\texttt{Open Submodel} label. The Network tab title identifies both the root
+model and its domain, in the form
+\texttt{Model > EFSM Network: NetworkName}. A MainWindow regression verifies
+the adapter-specific action label and the resulting tab title for a shared
+Network. The Model menu exposes Network create/select, adapter binding edits,
+state/transition creation, state and transition property edits, and setting the
+initial state. State deletion also detaches incident transitions and supports
+undo/redo. Transition creation asks for source and destination explicitly,
+because graphics-scene selection order is not a direction contract. These
+actions call the mathematical domain APIs and do not create process
+\texttt{Connection}s for formal transitions. Global \texttt{Model::check()} is
+not run after each edit because an EFSM is often incomplete while it is being
+constructed; local object registration and membership are checked instead.
+
+Expression fields are stored through the existing domain API; this GUI slice
+does not provide a new expression parser or guarantee expression validity.
+Root-model teardown with an open Network tab, switching between root models,
+focused sanitizer runs and full unit/kernel/smoke baselines are covered by the
+current continuation evidence. An automated MainWindow test exercises the
+actual GUI actions for Network creation, state and transition creation,
+initial-state selection, transition-property editing, undo/redo, and file
+save/close/reopen. It confirms restoration of the EFSM layout and domain
+properties. Separate manual mouse/keyboard verification and final hosted CI
+remain pending.
+This is not yet a completed EFSM editor. See the approved plan
+\path{docs/ai_assistants/reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md}
+for acceptance gates and current limitations.
+
 \section{Current limitations}
 \label{sec:gui-architecture-limitations}
 

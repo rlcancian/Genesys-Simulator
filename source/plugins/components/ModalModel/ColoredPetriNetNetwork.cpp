@@ -50,6 +50,7 @@ ModelDataDefinition* ColoredPetriNetNetwork::LoadInstance(Model* model, Persiste
 void ColoredPetriNetNetwork::addPlace(PetriPlace* place) {
 	if (place != nullptr && !_hasPlace(place)) {
 		_places->insert(place);
+		place->setModelLevel(static_cast<unsigned int>(getId()));
 		if (_initialMarking.find(place) == _initialMarking.end()) {
 			_initialMarking[place] = *place->getAllTokens();
 		}
@@ -72,6 +73,7 @@ List<PetriPlace*>* ColoredPetriNetNetwork::getPlaces() const {
 void ColoredPetriNetNetwork::addTransition(CPNTransition* transition) {
 	if (transition != nullptr && !_hasTransition(transition)) {
 		_transitions->insert(transition);
+		transition->setModelLevel(static_cast<unsigned int>(getId()));
 	}
 }
 
@@ -92,6 +94,7 @@ bool ColoredPetriNetNetwork::addArc(CPNArc* arc) {
 		return false;
 	}
 	_arcs->insert(arc);
+	arc->setModelLevel(static_cast<unsigned int>(getId()));
 	return true;
 }
 

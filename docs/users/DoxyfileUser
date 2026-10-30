@@ -9,8 +9,10 @@
 # - The compatibility file DoxyfileUser2022 exists only because it was the historical entrypoint.
 
 PROJECT_LOGO           = source/applications/gui/genesys/resources/genesys_name.gif
+PROJECT_NAME           = GenESyS User Documentation
 OUTPUT_DIRECTORY       = build/doxygen/users
-INPUT                  = source
+INPUT                  = source docs/users/EFSM_Network_Editor.md
+USE_MDFILE_AS_MAINPAGE = docs/users/EFSM_Network_Editor.md
 STRIP_FROM_PATH        = source
 STRIP_FROM_INC_PATH    = source
 RECURSIVE              = YES
@@ -20,6 +22,7 @@ GENERATE_LATEX         = YES
 LATEX_OUTPUT           = latex
 USE_PDFLATEX           = YES
 PDF_HYPERLINKS         = YES
+LATEX_EXTRA_STYLESHEET = docs/users/genesys-user-pdf-compat.sty
 
 GENERATE_MAN           = YES
 MAN_OUTPUT             = man
