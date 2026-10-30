@@ -1546,6 +1546,7 @@ TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnInc
     simulator->getPluginManager()->autoInsertPlugins();
     Model* model = simulator->getModelManager()->current();
     ASSERT_NE(model, nullptr);
+    auto* existingNetwork = new EFSMNetwork(model, "TakenNetwork");
     auto* source = new Create(model, "NetworkCreateSource");
     auto* adapter = new ModalModelDefault(model, "NetworkCreateAdapter");
     auto* sink = new Dispose(model, "NetworkCreateSink");
@@ -1582,29 +1583,53 @@ TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnInc
     ASSERT_NE(openAction, nullptr);
     EXPECT_FALSE(openAction->isEnabled());
 
-    bool networkPromptHandled = false;
-    bool warningShown = false;
-    QTimer dialogDriver;
-    QObject::connect(&dialogDriver, &QTimer::timeout, [&]() {
-        QWidget* active = QApplication::activeModalWidget();
-        if (auto* prompt = qobject_cast<QInputDialog*>(active)) {
-            if (!networkPromptHandled) {
-                networkPromptHandled = true;
-                prompt->setTextValue(QStringLiteral("CreatedNetwork"));
-                prompt->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok)->click();
+    auto attemptNetworkCreation = [&](const QString& name, bool acceptPrompt) {
+        bool promptHandled = false;
+        bool warningShown = false;
+        QTimer dialogDriver;
+        QObject::connect(&dialogDriver, &QTimer::timeout, [&]() {
+            QWidget* active = QApplication::activeModalWidget();
+            if (auto* prompt = qobject_cast<QInputDialog*>(active)) {
+                if (!promptHandled) {
+                    promptHandled = true;
+                    prompt->setTextValue(name);
+                    auto* buttons = prompt->findChild<QDialogButtonBox*>();
+                    buttons->button(acceptPrompt ? QDialogButtonBox::Ok : QDialogButtonBox::Cancel)->click();
+                }
+            } else if (auto* warning = qobject_cast<QMessageBox*>(active)) {
+                warningShown = true;
+                warning->accept();
             }
-        } else if (auto* warning = qobject_cast<QMessageBox*>(active)) {
-            warningShown = true;
-            warning->accept();
-        }
-    });
-    dialogDriver.start(5);
-    createAction->trigger();
-    dialogDriver.stop();
-    EXPECT_FALSE(warningShown);
+        });
+        dialogDriver.start(5);
+        createAction->trigger();
+        dialogDriver.stop();
+        return std::pair{promptHandled, warningShown};
+    };
+
+    const auto [cancelPromptHandled, cancelWarningShown] =
+        attemptNetworkCreation(QStringLiteral("CanceledNetwork"), false);
+    EXPECT_TRUE(cancelPromptHandled);
+    EXPECT_FALSE(cancelWarningShown);
+    EXPECT_EQ(adapter->getNetwork(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
+
+    const auto [conflictPromptHandled, conflictWarningShown] =
+        attemptNetworkCreation(QStringLiteral("TakenNetwork"), true);
+    EXPECT_TRUE(conflictPromptHandled);
+    EXPECT_TRUE(conflictWarningShown);
+    EXPECT_EQ(adapter->getNetwork(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), existingNetwork->getId()),
+              existingNetwork);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
+
+    const auto [createPromptHandled, createWarningShown] =
+        attemptNetworkCreation(QStringLiteral("CreatedNetwork"), true);
+    EXPECT_TRUE(createPromptHandled);
+    EXPECT_FALSE(createWarningShown);
     ASSERT_NE(adapter->getNetwork(), nullptr);
     EXPECT_EQ(adapter->getNetwork()->getName(), "CreatedNetwork");
-    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 2u);
     window.myScene()->clearSelection();
     graphicalAdapter = nullptr;
     for (QGraphicsItem* item : window.myScene()->items()) {
@@ -1634,6 +1659,7 @@ TEST(EFSMNetworkEditor, SelectNetworkActionAssociatesTheChosenIdentityWithoutGlo
     auto* first = new EFSMNetwork(model, "DuplicateLabel");
     auto* second = new EFSMNetwork(model, "DuplicateLabel");
     auto* adapter = new ModalModelDefault(model, "NetworkSelectAdapter");
+    adapter->setNetwork(first);
     auto* source = new Create(model, "NetworkSelectSource");
     auto* sink = new Dispose(model, "NetworkSelectSink");
     source->getConnectionManager()->insert(adapter);
@@ -1677,6 +1703,7 @@ TEST(EFSMNetworkEditor, SelectNetworkActionAssociatesTheChosenIdentityWithoutGlo
     EXPECT_EQ(adapter->getNetwork(), second);
     EXPECT_NE(adapter->getNetwork(), first);
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 2u);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), first->getId()), first);
 }
 
 TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete) {
