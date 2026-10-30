@@ -362,8 +362,11 @@ overlay versions, missing references, invalid numbers, and malformed lines
 are ignored without changing the mathematical model. Network references from
 \texttt{ModalModelDefault} and state references from \texttt{EFSMNetwork} are
 non-owning attached associations used by model orphan detection; they do not
-transfer ownership or duplicate shared Networks. The implementation is a
-codec and persistence boundary, not an EFSM viewer or editor.
+transfer ownership or duplicate shared Networks. The shared GUI scene can
+project this presentation data as read-only state and transition graphics;
+the codec still never changes the mathematical model. The current GUI
+creation actions do not yet constitute complete property editing, deletion,
+or undo/redo support for EFSM topology.
 
 \section{Validation evidence}
 \label{sec:model-persistence-validation}
