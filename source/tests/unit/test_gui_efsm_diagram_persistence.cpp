@@ -1900,7 +1900,7 @@ TEST(EFSMNetworkEditor, AdapterBindingsCanBeEditedAndUndoneFromTheProcessCanvas)
     EXPECT_EQ(adapter->getConnectionManager()->size(), 1u);
 }
 
-TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain) {
+TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     MainWindow window;
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
     Simulator* simulator = window.myScene()->getSimulator();
@@ -2051,8 +2051,8 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
         const auto spins = dialog->findChildren<QSpinBox*>();
         const auto buttons = dialog->findChildren<QDialogButtonBox*>();
         if (edits.size() >= 6 && spins.size() == 1 && buttons.size() == 1) {
-            edits.at(1)->setText(QStringLiteral("true"));
-            edits.at(2)->setText(QStringLiteral("complete"));
+            edits.at(1)->setText(QStringLiteral("1"));
+            edits.at(2)->setText(QStringLiteral("91"));
             spins.at(0)->setValue(7);
             transitionEditHandled = true;
             editDialogDriver.stop();
@@ -2063,13 +2063,13 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     editTransition->trigger();
     editDialogDriver.stop();
     ASSERT_TRUE(transitionEditHandled);
-    EXPECT_EQ(transition->getGuardExpression(), "true");
-    EXPECT_EQ(transition->getOutputExpression(), "complete");
+    EXPECT_EQ(transition->getGuardExpression(), "1");
+    EXPECT_EQ(transition->getOutputExpression(), "91");
     EXPECT_EQ(transition->getPriority(), 7u);
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
     EXPECT_TRUE(transition->getGuardExpression().empty());
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditRedo_triggered", Qt::DirectConnection));
-    EXPECT_EQ(transition->getGuardExpression(), "true");
+    EXPECT_EQ(transition->getGuardExpression(), "1");
 
     QAction* deleteSelection = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
@@ -2096,7 +2096,7 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
     ASSERT_EQ(network->getTransitions()->size(), 1u);
     EXPECT_EQ(network->getTransitions()->front(), transition);
-    EXPECT_EQ(transition->getGuardExpression(), "true");
+    EXPECT_EQ(transition->getGuardExpression(), "1");
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditRedo_triggered", Qt::DirectConnection));
     EXPECT_TRUE(network->getTransitions()->empty());
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
@@ -2145,7 +2145,7 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     ASSERT_EQ(network->getTransitions()->size(), 1u);
     EXPECT_EQ(network->getInitialState(), idle);
     EXPECT_EQ(network->getTransitions()->front(), transition);
-    EXPECT_EQ(transition->getGuardExpression(), "true");
+    EXPECT_EQ(transition->getGuardExpression(), "1");
     idleItem = networkView->getScene()->findGraphicalModelDataDefinition(idle);
     ASSERT_NE(idleItem, nullptr);
     const QPointF savedPosition(431.25, -127.5);
@@ -2217,8 +2217,8 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     ASSERT_NE(restoredNetwork->getInitialState(), nullptr);
     EXPECT_EQ(restoredNetwork->getInitialState()->getName(), "PersistedIdle");
     EXPECT_EQ(restoredNetwork->getTransitions()->front()->getName(), "Complete");
-    EXPECT_EQ(restoredNetwork->getTransitions()->front()->getGuardExpression(), "true");
-    EXPECT_EQ(restoredNetwork->getTransitions()->front()->getOutputExpression(), "complete");
+    EXPECT_EQ(restoredNetwork->getTransitions()->front()->getGuardExpression(), "1");
+    EXPECT_EQ(restoredNetwork->getTransitions()->front()->getOutputExpression(), "91");
     EXPECT_EQ(restoredNetwork->getTransitions()->front()->getPriority(), 7u);
     EXPECT_EQ(restoredModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
     const auto parsedLayouts = EFSMNetworkDiagramCodec::parseSection(savedGuiText.split(QLatin1Char('\n')), restoredModel);
@@ -2266,4 +2266,14 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain)
     EXPECT_EQ(restoredComponents.at("PersistedGuiSource")->getConnectionManager()->size(), 1u);
     EXPECT_EQ(restoredComponents.at("PersistedGuiAdapter")->getConnectionManager()->size(), 1u);
     EXPECT_EQ(restoredComponents.at("PersistedGuiSink")->getConnectionManager()->size(), 0u);
+
+    // This Network was built and edited through the GUI, persisted, and loaded
+    // above. Exercise the restored mathematical Network through the kernel API
+    // to verify that the saved guard and output retain executable semantics.
+    const NetworkActivationResult activation = restoredNetwork->activate(
+        NetworkActivationFrame(restoredNetwork->getNumInputPorts()));
+    ASSERT_TRUE(activation.isPresent(0));
+    EXPECT_DOUBLE_EQ(activation.getValue(0), 91.0);
+    ASSERT_NE(restoredNetwork->getCurrentState(), nullptr);
+    EXPECT_EQ(restoredNetwork->getCurrentState()->getName(), "PersistedDone");
 }
