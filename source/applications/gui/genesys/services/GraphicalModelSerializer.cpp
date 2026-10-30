@@ -1,4 +1,5 @@
 #include "GraphicalModelSerializer.h"
+#include "EFSMNetworkDiagramCodec.h"
 #include "GraphicalModelBuilder.h"
 
 #include "../TraitsGUI.h"
@@ -236,6 +237,7 @@ bool containsPersistenceMarkers(const QString& text) {
            || text.contains("# Graphical Plugins")
            || text.contains("# Graphical Model Data Definitions")
            || text.contains("# Graphical Model Components")
+           || text.contains("# Graphical EFSM Network Diagrams")
            || text.contains("# Groups")
            || text.contains("# Model Data Definitions")
            || text.contains("# Model Components");
@@ -370,6 +372,24 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
       _applyShowInternalElements(std::move(applyShowInternalElements)),
       _applyShowEditableElements(std::move(applyShowEditableElements)),
       _applyShowAttachedElements(std::move(applyShowAttachedElements)) {}
+
+/**
+ * @brief Sets the GUI-only EFSM diagram layout to persist for the given network.
+ */
+void GraphicalModelSerializer::setEFSMNetworkDiagramLayout(unsigned long networkId, const EFSMNetworkDiagramLayout& layout) {
+    if (layout.isEmpty()) {
+        _efsmNetworkDiagramLayouts.remove(networkId);
+        return;
+    }
+    _efsmNetworkDiagramLayouts.insert(networkId, layout);
+}
+
+/**
+ * @brief Returns the EFSM diagram layout currently held for the given network.
+ */
+EFSMNetworkDiagramLayout GraphicalModelSerializer::efsmNetworkDiagramLayout(unsigned long networkId) const {
+    return _efsmNetworkDiagramLayouts.value(networkId);
+}
 
 /**
  * @brief Encodes free-form GUI text so it survives tab-separated persistence.
@@ -911,6 +931,11 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                 }
             }
             out << sectionFooterLine();
+
+            out << sectionHeaderLine(EFSMNetworkDiagramCodec::kSectionName);
+            EFSMNetworkDiagramCodec::writeSection(out, _simulator, _efsmNetworkDiagramLayouts);
+            out << sectionFooterLine();
+
         }
 
         if (out.status() != QTextStream::Status::Ok || !saveFile.flush()) {
@@ -959,6 +984,9 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
     if (extension.compare("gui", Qt::CaseInsensitive) != 0) {
         model = _simulator->getModelManager()->loadModel(file.fileName().toStdString());
+        // A plain .gen file carries no GUI overlay, so any previously cached
+        // EFSM diagram layout (from an earlier .gui load) no longer applies.
+        _efsmNetworkDiagramLayouts.clear();
         if (model != nullptr) {
             _rebuildGraphicalModelFromModel();
         }
@@ -980,6 +1008,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QStringList groups;
     QStringList dataDefinitions;
     QStringList components;
+    QStringList efsmNetworkDiagrams;
 
     enum class GuiSection {
         Header,
@@ -988,6 +1017,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         Plugins,
         DataDefinitions,
         Components,
+        EFSMNetworkDiagrams,
         Groups,
         LegacyCounters,
         LegacyVariables,
@@ -1042,6 +1072,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             activeSection = GuiSection::Components;
             continue;
         }
+        if (normalized.compare(EFSMNetworkDiagramCodec::kSectionName, Qt::CaseInsensitive) == 0) {
+            activeSection = GuiSection::EFSMNetworkDiagrams;
+            continue;
+        }
         if (normalized.compare("Groups", Qt::CaseInsensitive) == 0) {
             activeSection = GuiSection::Groups;
             continue;
@@ -1087,6 +1121,9 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 break;
             case GuiSection::Components:
                 components.append(normalized);
+                break;
+            case GuiSection::EFSMNetworkDiagrams:
+                efsmNetworkDiagrams.append(normalized);
                 break;
             case GuiSection::Groups:
                 groups.append(normalized);
@@ -1453,6 +1490,11 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         // Rebuild data-definition visibility after applying persisted header flags and component positions.
         // Persisted GMDD positions are restored immediately after this synchronization pass.
         GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, scene);
+
+        // Resolve and cache GUI-only EFSM diagram layouts against the just-loaded
+        // model. This never creates or mutates kernel objects; unresolved or
+        // malformed entries are dropped by EFSMNetworkDiagramCodec::parseSection().
+        _efsmNetworkDiagramLayouts = EFSMNetworkDiagramCodec::parseSection(efsmNetworkDiagrams, model);
 
         if (!dataDefinitions.empty()) {
             // Parse persisted data definition layout metadata for id-based and fallback lookup.
