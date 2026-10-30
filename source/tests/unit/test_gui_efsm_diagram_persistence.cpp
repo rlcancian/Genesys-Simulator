@@ -1389,6 +1389,26 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     EXPECT_EQ(simulator->getModelManager()->current(), model);
     EXPECT_EQ(reopenedView->getScene()->getSimulator(), simulator);
     EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), network->getId()), network);
+
+    const unsigned int modelCountBeforeClose = simulator->getModelManager()->size();
+    ASSERT_GT(modelCountBeforeClose, 1u);
+    QTimer closePromptDriver;
+    QObject::connect(&closePromptDriver, &QTimer::timeout, [&closePromptDriver]() {
+        auto* prompt = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        if (prompt != nullptr && prompt->button(QMessageBox::No) != nullptr) {
+            closePromptDriver.stop();
+            prompt->button(QMessageBox::No)->click();
+        }
+    });
+    closePromptDriver.start(5);
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelClose_triggered", Qt::DirectConnection));
+    closePromptDriver.stop();
+    QApplication::processEvents();
+    EXPECT_FALSE(simulator->getModelManager()->hasModel(model));
+    EXPECT_EQ(simulator->getModelManager()->size(), modelCountBeforeClose - 1);
+    EXPECT_EQ(tabs->indexOf(reopenedView), -1);
+    EXPECT_NE(simulator->getModelManager()->current(), nullptr);
+    EXPECT_NE(simulator->getModelManager()->current(), model);
 }
 
 TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
