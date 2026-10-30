@@ -153,6 +153,10 @@ at the next permitted grid point; that event resumes the existing ODE execution
 without resetting the mathematical state. The standalone
 `ODESolver::integrate(targetTime)` API remains available for explicit reactive
 integration callers; it is not used by the entity-driven component lifecycle.
+During model consistency checking, `ODESolver` records each model-data reference
+found in its equation expressions as an attached dependency. This prevents a
+shared parameter variable from being pruned as an orphan before checking and
+keeps it available when the equation is evaluated after a calendar interruption.
 
 ## Component time-window compatibility
 
@@ -169,10 +173,10 @@ The real-kernel regressions in
 BioNetwork component runs stop at the grid boundary before an event at 5.5,
 expose the state confirmed at 5 to the ordinary discrete event, resume at 6,
 and forward waiting entities only after local time 10. The BioNetwork case also
-checks that two entities share one run and that A-to-B mass is conserved. The
-ODE component case uses a constant derivative and checks the accumulated state;
-the separate ODE unit cases retain the solver's variable-dependent numeric
-regression coverage. Other tests
+checks that two entities share one run and that A-to-B mass is conserved. ODE
+component cases cover a constant derivative and a shared parameter variable
+changed by a discrete event: rate 1 yields state 5 at the event at 5.5; after
+the event changes the rate to 2, the run resumes and finishes at state 15. Other tests
 verify observer-generated events and typed observers for ODE, diffusion, and biochemical
 states, subscription removal during dispatch, newly registered observers,
 destroyed observers, and publication at a synchronization boundary. Existing tests

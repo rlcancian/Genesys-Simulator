@@ -23,7 +23,9 @@ Esta rodada fechou uma lacuna no caminho de `ContinuousSystemComponent` e
 acrescentou regressões de calendário para ODE e BioNetwork. O escopo não cobriu
 todas as verificações F8–F10 do mandato de 30/10; em particular, não realizou
 uma matriz completa de falhas, cancelamento, múltiplos modelos contínuos,
-sanitizers ou validação funcional interativa da GUI.
+validação sanitizer completa (ASan/UBSan focados foram executados, mas LSan
+reportou alocações do fixture sem comparação reproduzida na base) ou validação
+funcional interativa da GUI.
 
 ## 2. Diagnóstico inicial
 
@@ -37,6 +39,11 @@ comum.
 limitada pelo calendário, sincronização, evento convencional de continuação e
 reentrada no mesmo componente. A API explícita `ODESolver::integrate()` é
 separada desse fluxo.
+
+**Confirmado no código:** as referências citadas nas equações do ODESolver não
+eram mantidas como dependências antes de `_clearOrphanedDataDefinitions()`. O
+Data Definition de parâmetro era removido antes do solver voltar a avaliar a
+expressão durante a simulação.
 
 ## 3. Evidências e problemas encontrados
 
@@ -53,8 +60,15 @@ tempo global 10.
 uma execução compartilhada observou estado confirmado em 5,5, concluiu ambas no
 tempo 10 e preservou a soma dos montantes de A e B.
 
-**Confirmado por execução:** os dois testes de regressão passaram junto com os
-34 testes do target `genesys_test_plugins_continuous_diffusion`.
+**Confirmado por execução:** o cenário híbrido com variável confirmou que o
+parâmetro valia 1 antes da simulação, que o parser o resolvia após `Model::check()`,
+que o estado confirmado era 5 no evento de 5,5 e que, após alterar a taxa para 2,
+o estado final era 15. Isso reproduz e corrige o resultado `-5` da tentativa
+anterior.
+
+**Confirmado no código:** não foi necessário manter a alteração experimental do
+lexer. A causa confirmada foi a poda da dependência sem associação; o teste do
+parâmetro também passou com o lexer original.
 
 ## 4. Impacto arquitetural
 
@@ -77,37 +91,45 @@ fatal e remove a entidade, mantendo o comportamento de falha adotado pelos
 componentes contínuos sem porta de erro.
 
 Os testes novos executam o kernel/calendário real. O cenário ODE usa derivada
-constante para isolar o ciclo temporal; as regressões numéricas dependentes de
-estado continuam nos testes existentes do ODESolver. O cenário Bio usa a reação
-A → B e altera a constante de reação no evento discreto.
+constante para isolar o ciclo temporal, além de um parâmetro global em equação
+ODE que muda de 1 para 2 num evento discreto. `ODESolver::_createEditableDataDefinitions()`
+associa as referências de cada expressão usando o mecanismo do modelo, para que
+elas sobrevivam à poda de órfãos. O cenário Bio usa a reação A → B e altera a
+constante de reação no evento discreto.
 
 ## 6. Patches e commits
 
 **Confirmado no código:** arquivos alterados nesta rodada:
 
 - `source/plugins/components/Continuous/ContinuousSystemComponent.cpp`
+- `source/plugins/data/Continuous/ODESolver.cpp`
 - `source/tests/unit/test_plugins_continuous_diffusion.cpp`
 - `docs/ai_assistants/reference/CONTINUOUS_MODEL_EXECUTION.md`
 - este handoff e o ledger de evidências.
 
-**Confirmado no código:** o commit de implementação é
-`f94a0201b15dfa3a9ea9207f01b7b509c072a6ec`
-(`fix(continuous): unify ODE component execution lifecycle`). O commit de
-documentação/evidências será posterior e não altera os arquivos executáveis.
+**Confirmado no código:** commits da rodada até este handoff:
+
+- `f94a0201b15dfa3a9ea9207f01b7b509c072a6ec` — integra `ContinuousSystemComponent`
+  ao ciclo assíncrono.
+- `46410ce7624668bbed356d15d232d1ab46b64777` — documentação e evidências.
+- `5f6e059dc` — corrige a retenção de referências ODE e adiciona a regressão de
+  parâmetro; contém também uma tentativa de precedência lexical.
+- `4c1baab2e` — remove a alteração lexical redundante após a regressão provar que
+  a causa era somente a falta de associação de dependências.
 
 ## 7. Validação executada
 
 **Confirmado por execução:**
 
 - Build completo `tests-unit`: passou.
-- `ctest --preset tests-unit --output-on-failure`: 1.935 passaram; 4
+- `ctest --preset tests-unit --output-on-failure`: 1.936 passaram; 4
   desabilitados; 0 falhas.
 - Build completo `tests-kernel-unit`: passou.
-- `ctest --preset tests-kernel-unit --output-on-failure`: 1.935 passaram; 4
+- `ctest --preset tests-kernel-unit --output-on-failure`: 1.936 passaram; 4
   desabilitados; 0 falhas.
 - Build `tests-smoke` e CTest: 3/3 passaram.
-- Target `genesys_test_plugins_continuous_diffusion`: 34/34 passaram.
-- Configuração e build `gui-app`: passaram; isso comprova compilação, não
+- Target `genesys_test_plugins_continuous_diffusion`: 35/35 passaram.
+- Build `gui-app`: passou; isso comprova compilação, não
   interação funcional.
 - `python3 scripts/validate-ai-docs.py`: passou (50 Markdown ativos; 25
   documentos históricos retidos).
@@ -116,13 +138,14 @@ Os testes unitário e kernel executaram os inventários completos do preset,
 incluindo casos de inventário estrutural. Quatro casos históricos de
 Search/Remove permaneceram desabilitados.
 
-**Confirmado por execução:** os dois cenários de calendário passaram sob
+**Confirmado por execução:** três cenários ODE/Bio de calendário passaram sob
 ASan/UBSan com `detect_leaks=0`, sem diagnóstico de acesso inválido ou
 comportamento indefinido.
 
 **LSan com detecção habilitada:** cada caso isolado chegou à conclusão
 funcional, mas o processo terminou com relatório idêntico de 4.910 bytes em
-161 alocações. Executados juntos, os dois casos reportaram exatamente o dobro:
+161 alocações. Os três casos (ODE, ODE com parâmetro e BioNetwork) repetiram a
+mesma contagem. Executados juntos, dois casos reportaram exatamente o dobro:
 9.820 bytes em 322 alocações. Os stacks apontam para carregamento global de
 plugins pelo fixture (`PluginManager`, componentes e controles de `Buffer`). O
 total por caso coincide com os 4.910 bytes/161 alocações citados como referência
@@ -131,9 +154,10 @@ com este mesmo binário e fixtures. A repetição idêntica por teste é forte
 indício de custo do bootstrap compartilhado, mas não prova ausência de vazamento
 novo. LSan segue como ressalva não comparada com baseline equivalente.
 
-**Ainda não executado:** benchmark, teste interativo GUI e nova CI hospedada
-para o HEAD desta alteração. As aprovações observadas antes são de SHAs
-anteriores.
+**Ainda não executado:** benchmark, teste interativo GUI e CI hospedada para o
+SHA final desta rodada. Os 12 workflows do HEAD publicado
+`46410ce7624668bbed356d15d232d1ab46b64777` foram aprovados; eles não cobrem os
+commits locais `5f6e059dc` e `4c1baab2e` ainda não publicados.
 
 ## 8. Riscos remanescentes
 
@@ -142,14 +166,12 @@ anteriores.
   anterior; o caso de oscilador harmônico do smoke passou, mas falta uma matriz
   completa de compatibilidade para modelos históricos que dependem de várias
   entidades e integrações reativas.
-- A validação híbrida numérica de ODE ainda não cobre uma alteração de parâmetro
-  que afete uma equação dependente do estado durante a execução. A regressão
-  integrada atual usa derivada constante para isolar relógio, interrupção e
-  continuação. Uma tentativa local de usar uma `Variable` de parâmetro na
-  expressão ODE durante o mesmo fixture produziu `-5` no estado confirmado em
-  local time 5, em vez do valor esperado; a causa não foi isolada e a tentativa
-  não foi incorporada. Isso é evidência de um problema ou limitação a investigar,
-  não uma causa-raiz confirmada.
+- Compatibilidade total com modelos históricos que dependam de uma entidade
+  solicitar integrações reativas repetidas ainda não foi validada; o componente
+  agora espera o fim do intervalo configurado.
+- A matriz integral de interrupções continua concentrada em Diffusion e nos
+  novos cenários ODE/Bio; combinações de várias Data Definitions, cancelamento
+  e eventos gerados por observadores não foram todas repetidas nesta rodada.
 - Não foi repetida a matriz completa de eventos fracionários/criados por
   observadores nos três domínios nesta rodada.
 - Lifetime sob sanitizers, eventos pendentes durante destruição e coexistência
@@ -163,8 +185,8 @@ anteriores.
 
 1. Comparar o resultado LSan com baseline equivalente e investigar os
    vazamentos reportados no carregamento do fixture.
-2. Isolar a regressão ODE com variável de parâmetro e ampliar regressões de
-   Diffusion com várias configurações, sem enfraquecer tolerâncias científicas.
+2. Ampliar regressões de Diffusion com várias configurações, sem enfraquecer
+   tolerâncias científicas.
 3. Cobrir múltiplas Data Definitions contínuas, cancelamento e destruição.
 4. Revisar persistência e testar a GUI em comportamento pertinente.
 5. Atualizar a PR e aguardar CI do SHA publicado; manter a PR em draft até que
@@ -177,9 +199,10 @@ anteriores.
 
 - SHA inicial da rodada: `0bb9cbb66bef8650ec68d1a1dbbff292e64f9b6e`.
 - SHA final validado do código executável nesta rodada:
-  `f94a0201b15dfa3a9ea9207f01b7b509c072a6ec`. O SHA final do branch, incluindo
-  o commit de evidências e qualquer atualização de CI, será informado na
-  conclusão da execução.
+  `4c1baab2e21830af0eead9b6e6dff8d6e3d5037e` (inclui a integração ODE,
+  dependências das expressões e regressões).
+  O SHA final do branch, incluindo a consolidação de evidências, será informado
+  na conclusão desta execução.
 - Branch: `WiP20261016/ContinuousModels`.
 - PR: #550, aberta e draft no checkpoint histórico; estado atual deve ser
   verificado depois do push.
@@ -200,6 +223,8 @@ anteriores.
 - ODE: origem global zero, janela local 0–10, passo 1, sincronização nominal
   10, evento discreto 5,5, sincronização em 5, retomada na grade seguinte e
   conclusão/encaminhamento em 10.
+- ODE com parâmetro: `y'=rate`, `rate=1` até a fronteira confirmada 5; evento em
+  5,5 altera `rate` para 2; a retomada conclui em `y=15` no tempo local 10.
 - BioNetwork: mesma janela, evento discreto 5,5, duas entidades ativadoras
   compartilhando uma execução e encaminhadas no tempo 10; balanço A+B=10.
 
@@ -212,26 +237,29 @@ cmake --build --preset tests-kernel-unit --parallel 2
 ctest --preset tests-kernel-unit --output-on-failure
 cmake --build --preset tests-smoke --parallel 2
 ctest --preset tests-smoke --output-on-failure
-cmake --preset gui-app
 cmake --build --preset gui-app --parallel 2
+cmake --build /tmp/genesys-continuous-asan --target genesys_test_plugins_continuous_diffusion --parallel 2
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 /tmp/genesys-continuous-asan/source/tests/unit/genesys_test_plugins_continuous_diffusion --gtest_filter='ContinuousCalendarTest.ODEComponentWaitsAndResumesAfterDiscreteInterruption:ContinuousCalendarTest.ODEReadsDiscreteParameterChangeAfterCalendarResumption:ContinuousCalendarTest.BioSimulateResumesSharedRunForBothWaitingEntities'
 ```
 
 Logs locais:
 
-- `/tmp/genesys-unit-build-final.log`
-- `/tmp/genesys-unit-test-final.log`
-- `/tmp/genesys-kernel-build-final.log`
-- `/tmp/genesys-kernel-test-final.log`
-- `/tmp/genesys-smoke-build.log`
-- `/tmp/genesys-smoke-test.log`
-- `/tmp/genesys-gui-config-final.log`
-- `/tmp/genesys-gui-build-final.log`
+- `/tmp/genesys-unit-build-final-final.log`
+- `/tmp/genesys-unit-test-final-final.log`
+- `/tmp/genesys-kernel-build-final-final.log`
+- `/tmp/genesys-kernel-test-final-final.log`
+- `/tmp/genesys-smoke-build-final-final.log`
+- `/tmp/genesys-smoke-test-final-final.log`
+- `/tmp/genesys-gui-build-final-final.log`
 - `/tmp/genesys-asan-config.log`
-- `/tmp/genesys-asan-build.log`
-- `/tmp/genesys-asan-test.log` (dois testes: 9.820 bytes/322 alocações)
-- `/tmp/genesys-asan-no-lsan-test.log` (ASan/UBSan focado: 2/2 passaram)
-- `/tmp/genesys-asan-ode-lsan.log` (ODE: 4.910 bytes/161 alocações)
-- `/tmp/genesys-asan-bio-lsan.log` (Bio: 4.910 bytes/161 alocações)
+- `/tmp/genesys-asan-build-final-final.log`
+- `/tmp/genesys-asan-test-final-final.log` (ASan/UBSan: 3/3 passaram,
+  LSan desligado)
+- `/tmp/genesys-asan-final-ode-parameter-lsan.log` (teste passou; LSan: 4.910
+  bytes/161 alocações)
+- `/tmp/genesys-asan-final-ode-lsan.log` e
+  `/tmp/genesys-asan-final-bio-lsan.log` (cada teste passou; LSan: 4.910
+  bytes/161 alocações)
 - execução do validador de documentação; código de saída 0.
 
 ### Decisões preservadas
