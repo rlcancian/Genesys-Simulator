@@ -337,19 +337,24 @@ Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
 
 ## 16. Continuous Models / PR #550 checkpoint
 
-The latest source/test checkpoint is `d658c48848e4eac27563404e90b93a85ceba65cd`;
-the follow-up validation/documentation checkpoint `69a4a25b1f069f689fb944e16a34c16169996e59`
-passed all 16 GitHub checks on 2026-10-30. PR #550 remains open and draft
+The latest source/test checkpoint is `c9881a20b`; its concrete
+`DiffusionSimulate` calendar interruption case passes locally. The preceding
+validation/documentation checkpoint `69a4a25b1f069f689fb944e16a34c16169996e59`
+passed all 16 GitHub checks on 2026-10-30; hosted CI for the new test is pending. PR #550 remains open and draft
 against `WorkInProgress`; `reviewDecision` is empty. Passing CI and GitHub's
 mergeable metadata do not satisfy the independent-review gate.
 
-On the source/test checkpoint, `tests-unit` and `tests-kernel-unit` each passed
-1,941 tests with 4 disabled and 0 failures; smoke passed 3/3; the focused
-continuous plugin target passed 40/40; ASan/UBSan focused calendar and
-Observable tests passed 20/20 with LSan disabled. The shared-calendar test
+On the latest source/test checkpoint, `tests-unit` passed 1,942 tests with 4
+disabled and 0 failures; `tests-kernel-unit` passed 1,941 with 4 disabled and
+0 failures; smoke passed 3/3; the focused continuous plugin target passed
+41/41; ASan/UBSan focused calendar and Observable tests passed 21/21 with LSan
+disabled. Real-calendar component tests cover ODE, BioSimulate, and the concrete
+DiffusionSimulate interruption path. The shared-calendar data-definition test
 starts ODE, diffusion and BioNetwork runs with STS 2/3/1 and confirms their
 terminal states and biochemical mass balance. The full evidence is in
-[`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md).
+[`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_CI_Closeout.md)
+and the concrete diffusion component follow-up
+[`history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionComponentCalendar_Evidence.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_DiffusionComponentCalendar_Evidence.md).
 
 LSan reported 4,910 bytes/161 allocations both for the branch ODE test and a
 `WorkInProgress` plugin-bootstrap baseline, with matching normalized stacks
