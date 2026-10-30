@@ -205,9 +205,10 @@ This is the only approved source for work an AI agent may execute without a new 
 - Branch: `WiP20261016/ContinuousModels`; PR #550 to `WorkInProgress`.
 - Source/test checkpoint: `c9881a20b` adds a concrete `DiffusionSimulate`
   interruption/resumption regression. Local unit, kernel, smoke, 41 focused
-  continuous tests, and 21 focused ASan/UBSan tests pass. Hosted CI for this
-  source/test change is pending; the preceding documented SHA `27f03ad13`
-  passed all 16 checks.
+  continuous tests, and 21 focused ASan/UBSan tests pass. The follow-up
+  documentation checkpoint `9c0f40da98b39e8a0a56fa3d4a5d420d224b81e7` passed
+  all 16 hosted checks, including Debian package lifecycle; see the final CI
+  evidence linked below.
 - Authorization: direct maintainer mission dated 2026-10-30 continues the
   existing PR #550 scope; it does not authorize bypassing review, failed CI,
   human scientific decisions, or the PR draft gate.
