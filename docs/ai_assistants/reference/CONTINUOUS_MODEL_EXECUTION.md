@@ -187,10 +187,13 @@ The real-kernel regressions in
 BioNetwork component runs stop at the grid boundary before an event at 5.5,
 expose the state confirmed at 5 to the ordinary discrete event, resume at 6,
 and forward waiting entities only after local time 10. The BioNetwork case also
-checks that two entities share one run and that A-to-B mass is conserved. ODE
-component cases cover a constant derivative and a shared parameter variable
-changed by a discrete event: rate 1 yields state 5 at the event at 5.5; after
-the event changes the rate to 2, the run resumes and finishes at state 15. Other tests
+checks that two entities share one run and that A-to-B mass is conserved. The
+ODE and concrete DiffusionSimulate component cases also check two entities
+sharing one run across calendar interruption; each original ID is forwarded
+exactly once at completion. ODE component cases cover a constant derivative
+and a shared parameter variable changed by a discrete event: rate 1 yields
+state 5 at the event at 5.5; after the event changes the rate to 2, the run
+resumes and finishes at state 15. Other tests
 verify observer-generated events and typed observers for ODE, diffusion, and biochemical
 states, subscription removal during dispatch, newly registered observers,
 destroyed observers, and publication at a synchronization boundary. Existing tests

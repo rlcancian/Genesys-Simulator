@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-10-08
+last_updated: 2026-10-30
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -203,11 +203,12 @@ This is the only approved source for work an AI agent may execute without a new 
 - Status: `running`
 - Environment: local Ubuntu 24.04/C++23/CMake/Ninja/Qt6 and GitHub PR checks.
 - Branch: `WiP20261016/ContinuousModels`; PR #550 to `WorkInProgress`.
-- Source/test checkpoint: `be3eaac42` extends the concrete `DiffusionSimulate`
-  interruption/resumption regression to two waiting entities. Local unit,
-  kernel, smoke, 41 focused continuous tests, and the focused ASan/UBSan case
-  pass. The preceding documentation checkpoint `c3d23b0ed7c204e13a262e173f5873e04ab580b6`
-  passed all 16 hosted checks; hosted CI for `be3eaac42` is pending.
+- Source/test checkpoint: `42bb445f2` extends both `DiffusionSimulate` and
+  `ContinuousSystemComponent` interruption/resumption regressions to two
+  waiting entities. Local unit and kernel suites each pass 1,942 with four
+  disabled; smoke passes 3/3; the focused continuous target passes 41/41;
+  focused ASan/UBSan cases pass with LSan disabled. Hosted CI for this source
+  SHA is pending. Previous green hosted checks do not cover this commit.
 - Authorization: direct maintainer mission dated 2026-10-30 continues the
   existing PR #550 scope; it does not authorize bypassing review, failed CI,
   human scientific decisions, or the PR draft gate.
