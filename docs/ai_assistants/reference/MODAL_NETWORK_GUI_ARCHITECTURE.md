@@ -37,9 +37,17 @@ read-only EFSM representation. See the operational, source-backed
 `../BACKLOG_HUMAN.md` (`HUM-MODAL-002`). Other detailed class/interface
 names below are conceptual proposals, not claims of implemented APIs.
 
-## 2. Current readiness
+## 2. Current readiness (verified 2026-10-30)
 
-Current code is ready for GUI planning, but not yet for GUI editing:
+The EFSM GUI MVP has been implemented and integrated through PRs #551 and #552.
+The editor reuses `ModelGraphicsScene`, `ModelGraphicsView`, the level-filtered
+submodel context and MainWindow tabs. It supports EFSM projection, Network
+navigation and creation/association, state and transition editing, undo/redo,
+and `.gen`/`.gui` persistence. Its eight milestones are accepted. Current
+integration and validation are recorded in [`STATUS.md`](../STATUS.md) and
+[`history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md`](../history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md).
+
+Current backend contracts include:
 
 - `DefaultNetwork` is a `ModelDataDefinition` with input/output port schema,
   activation frame/result and an activation counter.
@@ -53,12 +61,12 @@ Current code is ready for GUI planning, but not yet for GUI editing:
 - Legacy `.gen` model compatibility is no longer a product requirement by
   maintainer decision on 2026-08-31.
 
-What is not ready yet:
+The following remain outside the delivered EFSM editor scope:
 
-- the GUI has no dedicated editor for `DefaultNetwork` topology;
+- no dedicated editor is delivered for Graph, Markov/DTMC or CPN topology;
 - the process-flow canvas still represents `ModelComponent + Connection`;
-- existing graphical data-definition items are not sufficient for network-owned
-  nodes, graph edges, EFSM transitions, Markov transitions and CPN arcs;
+- other formalisms need their own formalism-aware projections and interaction
+  policies; the EFSM implementation is not a generic renderer for those types;
 - model-specific sample apps still contain legacy construction examples that
   should be migrated or hidden before user-facing release.
 
