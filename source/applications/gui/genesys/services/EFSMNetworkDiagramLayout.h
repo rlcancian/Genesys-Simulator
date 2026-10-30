@@ -2,8 +2,11 @@
 #define EFSMNETWORKDIAGRAMLAYOUT_H
 
 #include <QPointF>
+#include <QHash>
 #include <QString>
 #include <QVector>
+
+class Model;
 
 /**
  * @brief GUI-only presentation layout for one EFSMNetwork diagram.
@@ -47,5 +50,8 @@ struct EFSMNetworkDiagramLayout {
 
     bool isEmpty() const { return states.isEmpty() && transitions.isEmpty(); }
 };
+
+using EFSMNetworkDiagramLayoutsByModel =
+    QHash<Model*, QHash<unsigned long, EFSMNetworkDiagramLayout>>;
 
 #endif // EFSMNETWORKDIAGRAMLAYOUT_H

@@ -48,6 +48,7 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QFileDialog>
 #include <QLineEdit>
 #include <QTimer>
 #include <QTabWidget>
@@ -55,6 +56,8 @@
 #include <QMessageBox>
 #include <QGraphicsSceneMouseEvent>
 #include <QSpinBox>
+
+#include <algorithm>
 
 namespace {
 
@@ -1818,4 +1821,162 @@ TEST(EFSMNetworkEditor, AdapterBindingsCanBeEditedAndUndoneFromTheProcessCanvas)
     EXPECT_EQ(adapter->getOutputBinding(0), "InitialResult");
     EXPECT_EQ(source->getConnectionManager()->size(), 1u);
     EXPECT_EQ(adapter->getConnectionManager()->size(), 1u);
+}
+
+TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresEFSMLayoutAndDomain) {
+    MainWindow window;
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    Simulator* simulator = window.myScene()->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    simulator->getPluginManager()->autoInsertPlugins();
+    Model* originalModel = simulator->getModelManager()->current();
+    ASSERT_NE(originalModel, nullptr);
+
+    auto* network = new EFSMNetwork(originalModel, "PersistedGuiNetwork");
+    auto* idle = new FSMState(originalModel, "PersistedIdle");
+    auto* done = new FSMState(originalModel, "PersistedDone");
+    network->addState(idle);
+    network->addState(done);
+    network->setInitialState(idle);
+    network->addTransition(new EFSMTransition(idle, done, "Complete"));
+    auto* adapter = new ModalModelDefault(originalModel, "PersistedGuiAdapter");
+    adapter->setNetwork(network);
+    auto* source = new Create(originalModel, "PersistedGuiSource");
+    auto* sink = new Dispose(originalModel, "PersistedGuiSink");
+    source->getConnectionManager()->insert(adapter);
+    adapter->getConnectionManager()->insert(sink);
+    auto* rootView = window.findChild<ModelGraphicsView*>();
+    ASSERT_NE(rootView, nullptr);
+    std::map<std::string, QColor> colors;
+    GraphicalModelBuilder rootBuilder(simulator, rootView, window.myScene(), &colors, nullptr);
+    rootBuilder.generateGraphicalModelFromModel();
+
+    auto findAdapterItem = [&window, adapter]() {
+        for (QGraphicsItem* item : window.myScene()->items()) {
+            auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+            if (graphical != nullptr && graphical->getComponent() == adapter) return graphical;
+        }
+        return static_cast<GraphicalModelComponent*>(nullptr);
+    };
+    GraphicalModelComponent* graphicalAdapter = findAdapterItem();
+    ASSERT_NE(graphicalAdapter, nullptr);
+    QAction* openSubmodel = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->text() == QStringLiteral("Open Submodel")) openSubmodel = action;
+    }
+    ASSERT_NE(openSubmodel, nullptr);
+    graphicalAdapter->setSelected(true);
+    ASSERT_TRUE(openSubmodel->isEnabled());
+    openSubmodel->trigger();
+
+    auto* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
+    ASSERT_NE(tabs, nullptr);
+    auto* networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
+    ASSERT_NE(networkView, nullptr);
+    ASSERT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
+    GraphicalModelDataDefinition* idleItem = networkView->getScene()->findGraphicalModelDataDefinition(idle);
+    ASSERT_NE(idleItem, nullptr);
+    const QPointF savedPosition(431.25, -127.5);
+    idleItem->setPos(savedPosition);
+
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const QString filename = directory.filePath(QStringLiteral("efsm-editor-roundtrip.gui"));
+    bool saveDialogHandled = false;
+    bool saveConfirmationHandled = false;
+    QTimer saveDialogDriver;
+    QObject::connect(&saveDialogDriver, &QTimer::timeout, [&]() {
+        QWidget* active = QApplication::activeModalWidget();
+        if (auto* dialog = qobject_cast<QFileDialog*>(active)) {
+            if (!saveDialogHandled) {
+                saveDialogHandled = true;
+                dialog->selectFile(filename);
+                QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
+            }
+        } else if (auto* message = qobject_cast<QMessageBox*>(active)) {
+            saveConfirmationHandled = true;
+            message->accept();
+        }
+    });
+    saveDialogDriver.start(5);
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelSave_triggered", Qt::DirectConnection));
+    saveDialogDriver.stop();
+    ASSERT_TRUE(saveDialogHandled);
+    ASSERT_TRUE(saveConfirmationHandled);
+    ASSERT_TRUE(QFile::exists(filename));
+    QFile savedGuiFile(filename);
+    ASSERT_TRUE(savedGuiFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString savedGuiText = QString::fromUtf8(savedGuiFile.readAll());
+    EXPECT_TRUE(savedGuiText.contains(QStringLiteral("position=(431.2500,-127.5000)"))) << savedGuiText.toStdString();
+    savedGuiFile.close();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelClose_triggered", Qt::DirectConnection));
+    EXPECT_FALSE(simulator->getModelManager()->hasModel(originalModel));
+
+    bool openDialogHandled = false;
+    bool openConfirmationHandled = false;
+    QTimer openDialogDriver;
+    QObject::connect(&openDialogDriver, &QTimer::timeout, [&]() {
+        QWidget* active = QApplication::activeModalWidget();
+        if (auto* dialog = qobject_cast<QFileDialog*>(active)) {
+            if (!openDialogHandled) {
+                openDialogHandled = true;
+                dialog->selectFile(filename);
+                QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
+            }
+        } else if (auto* message = qobject_cast<QMessageBox*>(active)) {
+            openConfirmationHandled = true;
+            message->accept();
+        }
+    });
+    openDialogDriver.start(5);
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelOpen_triggered", Qt::DirectConnection));
+    openDialogDriver.stop();
+    ASSERT_TRUE(openDialogHandled);
+    ASSERT_TRUE(openConfirmationHandled);
+
+    Model* restoredModel = simulator->getModelManager()->current();
+    ASSERT_NE(restoredModel, nullptr);
+    ASSERT_NE(restoredModel, originalModel);
+    auto* restoredNetwork = findNetworkByName(restoredModel, "PersistedGuiNetwork");
+    ASSERT_NE(restoredNetwork, nullptr);
+    ASSERT_EQ(restoredNetwork->getStates()->size(), 2u);
+    ASSERT_EQ(restoredNetwork->getTransitions()->size(), 1u);
+    ASSERT_NE(restoredNetwork->getInitialState(), nullptr);
+    EXPECT_EQ(restoredNetwork->getInitialState()->getName(), "PersistedIdle");
+    EXPECT_EQ(restoredNetwork->getTransitions()->front()->getName(), "Complete");
+    EXPECT_EQ(restoredModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
+    const auto parsedLayouts = EFSMNetworkDiagramCodec::parseSection(savedGuiText.split(QLatin1Char('\n')), restoredModel);
+    ASSERT_TRUE(parsedLayouts.contains(static_cast<unsigned long>(restoredNetwork->getId())));
+    ASSERT_EQ(parsedLayouts.value(static_cast<unsigned long>(restoredNetwork->getId())).states.size(), 2);
+
+    graphicalAdapter = nullptr;
+    for (QGraphicsItem* item : window.myScene()->items()) {
+        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+        if (graphical != nullptr && graphical->getComponent()->getName() == "PersistedGuiAdapter") {
+            graphicalAdapter = graphical;
+            break;
+        }
+    }
+    ASSERT_NE(graphicalAdapter, nullptr);
+    graphicalAdapter->setSelected(true);
+    ASSERT_TRUE(openSubmodel->isEnabled());
+    openSubmodel->trigger();
+    networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
+    ASSERT_NE(networkView, nullptr);
+    ASSERT_TRUE(networkView->getScene()->hasModelLevelFilter());
+    ASSERT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(restoredNetwork->getId()));
+    auto* restoredIdle = findStateByName(restoredNetwork, "PersistedIdle");
+    ASSERT_NE(restoredIdle, nullptr);
+    idleItem = networkView->getScene()->findGraphicalModelDataDefinition(restoredIdle);
+    ASSERT_NE(idleItem, nullptr);
+    const auto restoredLayout = parsedLayouts.value(static_cast<unsigned long>(restoredNetwork->getId()));
+    const auto restoredIdlePosition = std::find_if(
+        restoredLayout.states.begin(), restoredLayout.states.end(), [](const auto& statePosition) {
+            return statePosition.stateName == QStringLiteral("PersistedIdle");
+        });
+    ASSERT_NE(restoredIdlePosition, restoredLayout.states.end());
+    EXPECT_EQ(restoredIdlePosition->position, savedPosition);
+    EXPECT_EQ(idleItem->pos(), savedPosition);
+    EXPECT_EQ(restoredModel->getComponentManager()->getAllComponents()->size(), 3u);
 }

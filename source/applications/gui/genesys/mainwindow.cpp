@@ -2179,7 +2179,8 @@ void MainWindow::_rebuildViewDependentControllers() {
                                                                             [this]() { _generateGraphicalModelFromModel(); },
                                                                             [this]() { on_actionShowInternalElements_triggered(); },
                                                                             [this]() { on_actionShowEditableElements_triggered(); },
-                                                                            [this]() { on_actionShowAttachedElements_triggered(); });
+                                                                            [this]() { on_actionShowAttachedElements_triggered(); },
+                                                                            _efsmNetworkDiagramLayouts);
     _propertyEditorController = std::make_unique<PropertyEditorController>(
         ui->treeViewPropertyEditor,
         ui->graphicsView,

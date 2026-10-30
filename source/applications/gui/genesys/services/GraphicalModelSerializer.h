@@ -6,6 +6,7 @@
 #include <QHash>
 
 #include <functional>
+#include <memory>
 #include <string>
 
 class Simulator;
@@ -59,7 +60,8 @@ public:
                              std::function<void()> rebuildGraphicalModelFromModel,
                              std::function<void()> applyShowInternalElements,
                              std::function<void()> applyShowEditableElements,
-                             std::function<void()> applyShowAttachedElements);
+                             std::function<void()> applyShowAttachedElements,
+                             std::shared_ptr<EFSMNetworkDiagramLayoutsByModel> efsmNetworkDiagramLayouts = nullptr);
 
     /**
      * @brief Saves textual model language using the established compatibility format.
@@ -121,10 +123,10 @@ private:
     std::function<void()> _applyShowAttachedElements;
 
     // GUI-only EFSM diagram layouts keyed by root model and EFSMNetwork id. Mutable because
-    // loadGraphicalModel() is const (it mutates the caller-provided scene/view,
-    // not this object's configured dependencies) yet must still refresh this
-    // cache from what was actually persisted in the loaded file.
-    mutable QHash<Model*, QHash<unsigned long, EFSMNetworkDiagramLayout>> _efsmNetworkDiagramLayouts;
+    // Shared with MainWindow because serializer instances are rebuilt when the
+    // active graphics view changes. loadGraphicalModel() refreshes this cache
+    // from the persisted GUI section without retaining widget state.
+    std::shared_ptr<EFSMNetworkDiagramLayoutsByModel> _efsmNetworkDiagramLayouts;
 };
 
 #endif // GRAPHICALMODELSERIALIZER_H

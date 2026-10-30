@@ -18,6 +18,7 @@
 #include "kernel/simulator/PropertyGenesys.h"
 #include "kernel/simulator/TraceManager.h"
 #include "graphicals/ModelGraphicsScene.h"
+#include "services/EFSMNetworkDiagramLayout.h"
 
 QT_BEGIN_NAMESPACE
 		namespace Ui {
@@ -548,6 +549,9 @@ private: // interface and model main elements to join
     std::map<Model*, bool> _modelTextHasChanged;
     // Tracks graphical dirty state per opened model while legacy flags mirror only the active model.
     std::map<Model*, bool> _modelGraphicalHasChanged;
+    // Serializer instances are rebuilt when the active graphical view changes.
+    std::shared_ptr<EFSMNetworkDiagramLayoutsByModel> _efsmNetworkDiagramLayouts =
+        std::make_shared<EFSMNetworkDiagramLayoutsByModel>();
     // Tracks tabs being changed programmatically to avoid re-entrant model switching.
     bool _changingModelTabProgrammatically = false;
     // Runtime menu actions for navigating the opened-model list.
