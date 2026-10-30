@@ -163,7 +163,7 @@ bool BioSimulate::_check(std::string& errorMessage) {
 //void BioSimulate::_createAttachedAttributes() {}
 
 void BioSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	(void)inputPortNumber;
+	if (_handleContinuousContinuation(entity, inputPortNumber)) return;
 
 	if (_bioNetwork == nullptr) {
 		_lastSucceeded = false;

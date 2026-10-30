@@ -20,6 +20,7 @@ public:
         Idle,
         Running,
         WaitingForSynchronization,
+        WaitingForContinuation,
         Completed,
         Failed,
         Cancelled
@@ -41,6 +42,8 @@ public:
 
     using CompletionId = std::uint64_t;
     using CompletionHandler = std::function<void(const ExecutionResult&)>;
+    using ContinuationId = std::uint64_t;
+    using ContinuationHandler = std::function<void(double)>;
     using InternalStateEventHandlerId = std::uint64_t;
     struct InternalStateEvent {
         const ContinuousModelDataDefinition* source = nullptr;
@@ -75,6 +78,10 @@ public:
     ExecutionState getExecutionState() const;
     CompletionId addCompletionHandler(CompletionHandler handler);
     void removeCompletionHandler(CompletionId id);
+    ContinuationId addContinuationHandler(ContinuationHandler handler);
+    void removeContinuationHandler(ContinuationId id);
+    bool resumeExecution();
+    void resumeExecutionFromEvent(void*);
     InternalStateEventHandlerId addInternalStateEventHandler(
         ModelDataDefinition* observer, InternalStateEventHandler handler, int priority = 0);
     template<class Observer>
@@ -138,8 +145,12 @@ private:
     bool _notifyInternalStateEvent(std::string& errorMessage);
     bool _continueEvolution(std::string& errorMessage);
     bool _scheduleSynchronization(std::string& errorMessage);
+    double _nextExternalCalendarEventTime() const;
+    bool _hasExternalCalendarEventBefore(double absoluteTime) const;
     bool _isExecutionActive() const;
     void _onSynchronization(void*);
+    void _onContinuation(void*);
+    void _startAutomaticExecution(void*);
     void _beginAtCurrentKernelTime();
     void _completeRun();
     void _failRun(const std::string& errorMessage);
@@ -154,6 +165,8 @@ private:
     unsigned int _stepsToSynchronize;
     unsigned int _stepsSinceSynchronization = 0;
     double _pendingSynchronizationTime = 0.0;
+    bool _pendingCalendarWake = false;
+    bool _calendarInterruptedBlock = false;
     ExecutionState _executionState = ExecutionState::Idle;
     double _activeStopTime = 0.0;
     double _activeStepSize = 0.0;
@@ -164,6 +177,8 @@ private:
     unsigned int _activeStepsToSynchronize = 0;
     CompletionId _nextCompletionId = 1;
     std::map<CompletionId, CompletionHandler> _completionHandlers;
+    ContinuationId _nextContinuationId = 1;
+    std::map<ContinuationId, ContinuationHandler> _continuationHandlers;
     struct InternalStateSubscription {
         InternalStateEventHandlerId id = 0;
         int priority = 0;

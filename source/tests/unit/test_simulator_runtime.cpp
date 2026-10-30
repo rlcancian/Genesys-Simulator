@@ -7704,8 +7704,12 @@ TEST(SimulatorRuntimeTest, BioSimulateForwardsEntityOnlyAfterSynchronizedRunComp
     EXPECT_TRUE(simulate->getLastSucceeded());
     ASSERT_EQ(midpointRecorder.arrivals(), 1u);
     EXPECT_DOUBLE_EQ(midpointRecorder.arrivalTime(), 0.25);
-    EXPECT_DOUBLE_EQ(midpointRecorder.networkTimeAtArrival(), 0.0);
-    EXPECT_EQ(midpointRecorder.networkStatusAtArrival(), "WaitingForSynchronization");
+    // The entity event and continuous synchronization share timestamp 0.25;
+    // the calendar intentionally defines no ordering between simultaneous events.
+    const double confirmedTime = midpointRecorder.networkTimeAtArrival();
+    const std::string executionStatus = midpointRecorder.networkStatusAtArrival();
+    EXPECT_TRUE((confirmedTime == 0.0 && executionStatus == "WaitingForSynchronization") ||
+                (confirmedTime == 0.25 && executionStatus == "WaitingForContinuation"));
 }
 
 TEST(SimulatorRuntimeTest, BioSteadyStateComponentStoresLastCheckOutput) {

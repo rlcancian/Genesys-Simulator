@@ -163,7 +163,7 @@ bool DiffusionSimulate::_check(std::string& errorMessage) {
 }
 
 void DiffusionSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	(void)inputPortNumber;
+	if (_handleContinuousContinuation(entity, inputPortNumber)) return;
 
 	std::string message;
 	if (_diffusionField == nullptr) {

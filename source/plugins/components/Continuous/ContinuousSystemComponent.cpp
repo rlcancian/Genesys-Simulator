@@ -110,7 +110,7 @@ std::string ContinuousSystemComponent::getOdeSolverName() const {
 // ---------------------------------------------------------------------------
 
 void ContinuousSystemComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	(void)inputPortNumber;
+	if (_handleContinuousContinuation(entity, inputPortNumber)) return;
 
 	if (_odeSolver == nullptr) {
 		const std::string error = "ContinuousSystemComponent \"" + getName() + "\": ODESolver not set.";

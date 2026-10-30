@@ -3,6 +3,7 @@
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/essentialPlugins/Entity.h"
+#include "kernel/simulator/Event.h"
 
 #include <algorithm>
 #include <iterator>
@@ -15,6 +16,9 @@ ContinuousModelComponent::ContinuousModelComponent(Model* model, std::string con
 ContinuousModelComponent::~ContinuousModelComponent() {
     for (auto& [definition, pending] : _pendingExecutions) {
         if (definition != nullptr) definition->removeCompletionHandler(pending.completionId);
+        if (definition != nullptr && pending.continuationId != 0)
+            definition->removeContinuationHandler(pending.continuationId);
+        _removeContinuationEvents(pending.entityIds);
         for (Util::identification id : pending.entityIds) {
             auto* entity = dynamic_cast<Entity*>(_parentModel->getDataManager()->getDataDefinition(
                 Util::TypeOf<Entity>(), id));
@@ -37,6 +41,10 @@ bool ContinuousModelComponent::_requestContinuousExecution(
         pending.completionId = definition->addCompletionHandler(
             [this, definition](const ContinuousModelDataDefinition::ExecutionResult& result) {
                 _onContinuousExecutionCompleted(definition, result);
+            });
+        pending.continuationId = definition->addContinuationHandler(
+            [this, definition](double absoluteTime) {
+                _scheduleContinuousContinuation(definition, absoluteTime);
             });
         it = _pendingExecutions.emplace(definition, std::move(pending)).first;
     }
@@ -63,10 +71,78 @@ void ContinuousModelComponent::_onContinuousExecutionCompleted(
     if (it == _pendingExecutions.end()) return;
     const auto ids = std::move(it->second.entityIds);
     definition->removeCompletionHandler(it->second.completionId);
+    if (it->second.continuationId != 0)
+        definition->removeContinuationHandler(it->second.continuationId);
+    _removeContinuationEvents(ids);
     _pendingExecutions.erase(it);
     _onContinuousExecutionResult(result);
 
     _dispatchCompletedEntities(ids, nullptr, result);
+}
+
+bool ContinuousModelComponent::_handleContinuousContinuation(Entity* entity,
+                                                               unsigned int inputPortNumber) {
+    if (inputPortNumber != CONTINUATION_INPUT_PORT || entity == nullptr) return false;
+    const Util::identification entityId = entity->getId();
+    auto continuation = _continuationsByEntity.find(entityId);
+    if (continuation == _continuationsByEntity.end()) {
+        traceSimulation(this, TraceManager::Level::L1_errorFatal,
+                        "Continuous continuation event has no active execution context.");
+        _parentModel->removeEntity(entity);
+        return true;
+    }
+    ContinuousModelDataDefinition* definition = continuation->second;
+    _continuationsByEntity.erase(continuation);
+    auto pending = _pendingExecutions.find(definition);
+    if (pending == _pendingExecutions.end()) {
+        _parentModel->removeEntity(entity);
+        return true;
+    }
+    pending->second.continuationEntityIds.erase(entityId);
+    if (!definition->resumeExecution() &&
+        _pendingExecutions.find(definition) != _pendingExecutions.end()) {
+        traceSimulation(this, TraceManager::Level::L1_errorFatal,
+                        "Continuous execution could not resume from its entity event.");
+    }
+    return true;
+}
+
+void ContinuousModelComponent::_scheduleContinuousContinuation(
+        ContinuousModelDataDefinition* definition, double absoluteTime) {
+    auto pending = _pendingExecutions.find(definition);
+    if (pending == _pendingExecutions.end() || !pending->second.continuationEntityIds.empty()) return;
+    for (Util::identification id : pending->second.entityIds) {
+        auto* entity = dynamic_cast<Entity*>(_parentModel->getDataManager()->getDataDefinition(
+            Util::TypeOf<Entity>(), id));
+        if (entity == nullptr) continue;
+        auto* event = new Event(absoluteTime, entity, this, CONTINUATION_INPUT_PORT);
+        pending->second.continuationEntityIds.insert(id);
+        _continuationsByEntity[id] = definition;
+        _parentModel->getFutureEvents()->insert(event);
+        return;
+    }
+    // No entity remains to carry the continuation. Resume through an internal
+    // event so that the data definition does not stay suspended forever.
+    auto* event = new InternalEvent(absoluteTime, "ContinuousComponentContinuation");
+    event->setEventHandler(definition, &ContinuousModelDataDefinition::resumeExecutionFromEvent, nullptr);
+    _parentModel->getFutureEvents()->insert(event);
+}
+
+void ContinuousModelComponent::_removeContinuationEvents(
+        const std::vector<Util::identification>& entityIds) {
+    if (_parentModel == nullptr || _parentModel->getFutureEvents() == nullptr) return;
+    const std::set<Util::identification> ids(entityIds.begin(), entityIds.end());
+    auto* events = _parentModel->getFutureEvents()->list();
+    for (auto event = events->begin(); event != events->end();) {
+        Event* candidate = *event;
+        if (candidate != nullptr && candidate->getComponent() == this &&
+            candidate->getComponentinputPortNumber() == CONTINUATION_INPUT_PORT &&
+            candidate->getEntity() != nullptr && ids.contains(candidate->getEntity()->getId())) {
+            _continuationsByEntity.erase(candidate->getEntity()->getId());
+            event = events->erase(event);
+            delete candidate;
+        } else ++event;
+    }
 }
 
 void ContinuousModelComponent::_completeEntityImmediately(

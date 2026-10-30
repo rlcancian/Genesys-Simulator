@@ -58,7 +58,19 @@ public:
 	bool LoadInstanceProbe(PersistenceRecord* fields) { return _loadInstance(fields); }
 	// Triggers the kernel's between-replications hook, which (with stepsToSynchronize > 0)
 	// posts the first InternalEvent onto the model's future-event queue.
-	void InitBetweenReplicationsProbe() { _initBetweenReplications(); }
+	void InitBetweenReplicationsProbe() {
+		_initBetweenReplications();
+		// The production path defers autonomous evolution to a zero-time kernel
+		// event so replication-start handlers can populate the calendar first.
+		if (! _parentModel->getFutureEvents()->empty()) {
+			auto* event = dynamic_cast<InternalEvent*>(_parentModel->getFutureEvents()->front());
+			if (event != nullptr && event->description() == "ContinuousModelAutomaticStart") {
+				_parentModel->getFutureEvents()->pop_front();
+				event->dispatchEvent();
+				delete event;
+			}
+		}
+	}
 	void startAtNonzeroGlobalTime(void*) {
 		setStepsToSynchronize(2u);
 		_startSucceeded = simulate(_startErrorMessage);
@@ -82,6 +94,61 @@ public:
 	DiffusionSimulateProbe(Model* model, const std::string& name = "") : DiffusionSimulate(model, name) {}
 	bool CheckProbe(std::string& errorMessage) { return _check(errorMessage); }
 	void DispatchEventProbe(Entity* entity) { _onDispatchEvent(entity, 0u); }
+};
+
+class CalendarBoundContinuousComponentProbe : public ContinuousModelComponent {
+public:
+	CalendarBoundContinuousComponentProbe(Model* model, DiffusionField* field)
+		: ContinuousModelComponent(model, "CalendarBoundContinuousComponentProbe", "CalendarBoundContinuous"),
+		  _field(field) {}
+	std::vector<Entity*> dispatchedEntities;
+	unsigned int continuationDispatches = 0;
+	bool completed = false;
+protected:
+	void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override {
+		dispatchedEntities.push_back(entity);
+		if (inputPortNumber == CONTINUATION_INPUT_PORT) {
+			++continuationDispatches;
+			EXPECT_TRUE(_handleContinuousContinuation(entity, inputPortNumber));
+			return;
+		}
+		ContinuousModelDataDefinition::ExecutionRequest request;
+		std::string error;
+		EXPECT_TRUE(_requestContinuousExecution(_field, request, entity, error)) << error;
+	}
+	void _onContinuousExecutionResult(const ContinuousModelDataDefinition::ExecutionResult& result) override {
+		completed = result.succeeded();
+	}
+private:
+	DiffusionField* _field;
+};
+
+class CalendarDiscreteObserverProbe : public ModelComponent {
+public:
+	CalendarDiscreteObserverProbe(Model* model, DiffusionField* field)
+		: ModelComponent(model, "CalendarDiscreteObserverProbe", "CalendarDiscreteObserver"), _field(field) {}
+	double observedConfirmedTime = -1.0;
+protected:
+	void _onDispatchEvent(Entity* entity, unsigned int) override {
+		observedConfirmedTime = _field->getCurrentTime();
+		_parentModel->removeEntity(entity);
+	}
+private:
+	DiffusionField* _field;
+};
+
+struct ScheduleCalendarBoundComponentScenario {
+	DiffusionField* field;
+	CalendarBoundContinuousComponentProbe* component;
+	CalendarDiscreteObserverProbe* observer;
+	Model* model;
+	double activationDelay = 0.0;
+	double discreteDelay = 5.5;
+	void schedule(SimulationEvent*) {
+		field->setStepsToSynchronize(10u);
+		model->sendEntityToComponent(model->createEntity("ContinuousRequester"), component, activationDelay);
+		model->sendEntityToComponent(model->createEntity("DiscreteAt5_5"), observer, discreteDelay);
+	}
 };
 
 class ObservableDefinitionProbe : public ModelDataDefinition {
@@ -159,7 +226,7 @@ public:
 		if (std::abs(event.localTime - 3.0) < 1e-12) {
 			Entity* entity = _parentModel->createEntity("ObserverGeneratedEvent");
 			_parentModel->sendEntityToComponent(entity, this, event.absoluteTime -
-				_parentModel->getSimulation()->getSimulatedTime());
+				_parentModel->getSimulation()->getSimulatedTime() + generatedEventOffset);
 		}
 	}
 	std::vector<double> observedLocalTimes;
@@ -169,6 +236,7 @@ public:
 	std::vector<double> arrivalTimes;
 	std::vector<double> confirmedLocalTimes;
 	std::vector<double> confirmedValues;
+	double generatedEventOffset = 0.0;
 protected:
 	void _onDispatchEvent(Entity* entity, unsigned int) override {
 		arrivalTimes.push_back(_parentModel->getSimulation()->getSimulatedTime());
@@ -201,7 +269,7 @@ struct ScheduleObservableCalendarScenario {
 		start->setEventHandler(field, &DiffusionFieldProbe::startObservableRun, nullptr);
 		model->getFutureEvents()->insert(start);
 		Entity* entity = model->createEntity("DiscreteAt102");
-		model->sendEntityToComponent(entity, component, 102.0);
+		model->sendEntityToComponent(entity, component, 102.5);
 	}
 };
 
@@ -613,6 +681,24 @@ TEST(DiffusionFieldPluginTest, ZeroStopTimeCompletesWithoutSchedulingAndInvalidS
 	EXPECT_NE(errorMessage.find("StepSize"), std::string::npos);
 }
 
+TEST(DiffusionFieldPluginTest, RejectedComponentWindowDoesNotMutateDefinitionConfiguration) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	DiffusionFieldProbe field(model, "RejectedWindowIsAtomic");
+	field.setDimensions(0u); // Force the full subclass validation to reject the request.
+	field.setStopTime(2.0);
+	field.setStepSize(0.5);
+	ContinuousModelDataDefinition::ExecutionRequest request;
+	request.useDefinitionTimeWindow = false;
+	request.stopTime = 5.0;
+	request.stepSize = 0.25;
+	std::string errorMessage;
+	EXPECT_FALSE(field.requestSimulation(0u, request, errorMessage));
+	EXPECT_DOUBLE_EQ(field.getStopTime(), 2.0);
+	EXPECT_DOUBLE_EQ(field.getStepSize(), 0.5);
+}
+
 TEST(DiffusionFieldPluginTest, DestroyingFieldCancelsItsPendingSynchronizationEvent) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -915,6 +1001,7 @@ TEST(ContinuousObservableTest, ComponentObserverSchedulesIntermediateCalendarEve
 	model->getComponentManager()->remove(&component); // Test callback target, not a graph node in this fixture.
 	auto id = field.addInternalStateEventHandler(&component, &ObservableComponentProbe::onInternalState);
 	ASSERT_NE(id, 0u);
+	component.generatedEventOffset = 0.5;
 	ScheduleObservableCalendarScenario schedule{&field, &component, model};
 	model->getOnEventManager()->addOnReplicationStartHandler(
 		&schedule, &ScheduleObservableCalendarScenario::schedule);
@@ -926,18 +1013,118 @@ TEST(ContinuousObservableTest, ComponentObserverSchedulesIntermediateCalendarEve
 	model->getSimulation()->start();
 	ASSERT_TRUE(field.startSucceeded()) << field.startErrorMessage();
 	ASSERT_EQ(component.arrivalTimes.size(), 2u);
-	EXPECT_DOUBLE_EQ(component.arrivalTimes[0], 102.0);
-	EXPECT_DOUBLE_EQ(component.arrivalTimes[1], 103.0);
-	EXPECT_DOUBLE_EQ(component.confirmedLocalTimes[0], 0.0);
-	EXPECT_DOUBLE_EQ(component.confirmedLocalTimes[1], 0.0);
-	EXPECT_DOUBLE_EQ(component.confirmedValues[0], 1.0);
-	EXPECT_DOUBLE_EQ(component.confirmedValues[1], 1.0);
+	EXPECT_DOUBLE_EQ(component.arrivalTimes[0], 102.5);
+	EXPECT_DOUBLE_EQ(component.arrivalTimes[1], 103.5);
+	EXPECT_DOUBLE_EQ(component.confirmedLocalTimes[0], 2.0);
+	EXPECT_DOUBLE_EQ(component.confirmedLocalTimes[1], 2.0);
+	EXPECT_LT(component.confirmedValues[0], 1.0);
 	ASSERT_EQ(component.observedLocalTimes.size(), 10u);
 	EXPECT_DOUBLE_EQ(component.observedLocalTimes[2], 3.0);
 	EXPECT_DOUBLE_EQ(component.observedAbsoluteTimes[2], 103.0);
-	EXPECT_DOUBLE_EQ(component.observedGlobalTimes[2], 100.0);
-	EXPECT_DOUBLE_EQ(component.observedGlobalTimes[5], 105.0);
+	EXPECT_GE(component.observedGlobalTimes[2], 103.0);
+	EXPECT_GE(component.observedGlobalTimes[5], 103.0);
 	EXPECT_LT(component.observedWorkingValues[2], 1.0);
 	EXPECT_NEAR(field.getCurrentTime(), 10.0, 1e-12);
 	field.removeInternalStateEventHandler(id);
+}
+
+TEST(ContinuousCalendarTest, ComponentEntityReturnsAtNextGridPointAfterDiscreteEvent) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	DiffusionFieldProbe field(model, "CalendarBoundField");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStepSize(1.0);
+	field.setStopTime(10.0);
+	field.setStepsToSynchronize(10u); // Auto-start is deferred until replication-start events exist.
+	CalendarBoundContinuousComponentProbe component(model, &field);
+	CalendarDiscreteObserverProbe observer(model, &field);
+	model->getComponentManager()->remove(&component);
+	model->getComponentManager()->remove(&observer);
+	ScheduleCalendarBoundComponentScenario setup{&field, &component, &observer, model};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&setup, &ScheduleCalendarBoundComponentScenario::schedule);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(20.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check());
+	model->getSimulation()->start();
+	ASSERT_TRUE(component.completed);
+	EXPECT_EQ(component.dispatchedEntities.size(), 2u);
+	EXPECT_EQ(component.dispatchedEntities[0], component.dispatchedEntities[1]);
+	EXPECT_EQ(component.continuationDispatches, 1u);
+	EXPECT_DOUBLE_EQ(observer.observedConfirmedTime, 5.0);
+	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 10.0);
+}
+
+TEST(ContinuousCalendarTest, NonzeroOriginPreservesLocalGridAcrossCalendarContinuation) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	DiffusionFieldProbe field(model, "CalendarBoundFieldAt100");
+	field.setDimensions(1u);
+	field.setPointsPerDimension(3u);
+	field.setStepSize(1.0);
+	field.setStopTime(10.0);
+	field.setStepsToSynchronize(0u); // Prevent automatic start before calendar setup.
+	CalendarBoundContinuousComponentProbe component(model, &field);
+	CalendarDiscreteObserverProbe observer(model, &field);
+	model->getComponentManager()->remove(&component);
+	model->getComponentManager()->remove(&observer);
+	ScheduleCalendarBoundComponentScenario setup{&field, &component, &observer, model, 100.0, 105.5};
+	model->getOnEventManager()->addOnReplicationStartHandler(
+		&setup, &ScheduleCalendarBoundComponentScenario::schedule);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(120.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check());
+	model->getSimulation()->start();
+	ASSERT_TRUE(component.completed);
+	EXPECT_EQ(component.dispatchedEntities.size(), 2u);
+	EXPECT_EQ(component.dispatchedEntities[0], component.dispatchedEntities[1]);
+	EXPECT_EQ(component.continuationDispatches, 1u);
+	EXPECT_DOUBLE_EQ(observer.observedConfirmedTime, 5.0);
+	EXPECT_DOUBLE_EQ(field.getCurrentTime(), 10.0);
+	EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 110.0);
+}
+
+TEST(ContinuousCalendarTest, InitialLookaheadUsesLastGridPointBeforeCalendarEvent) {
+	struct Case { double discreteTime; double expectedSyncTime; std::uint64_t expectedSteps; };
+	const std::vector<Case> cases = {
+		{0.5, 1.0, 0u},
+		{5.5, 5.0, 5u},
+		{9.9, 9.0, 9u},
+		{10.0, 10.0, 10u}
+	};
+	for (const Case& testCase : cases) {
+		Simulator simulator;
+		Model* model = simulator.getModelManager()->newModel();
+		ASSERT_NE(model, nullptr);
+		DiffusionFieldProbe field(model, "CalendarGridBoundary");
+		field.setDimensions(1u);
+		field.setPointsPerDimension(3u);
+		field.setStepSize(1.0);
+		field.setStopTime(10.0);
+		field.setStepsToSynchronize(10u);
+		ObservableComponentProbe discrete(model, &field);
+		model->getComponentManager()->remove(&discrete);
+		ObservableDefinitionProbe observer(model, "CalendarGridObserver");
+		field.addInternalStateEventHandler(&observer, &ObservableDefinitionProbe::onInternalState);
+		Entity* entity = model->createEntity("CalendarBoundaryEvent");
+		model->sendEntityToComponent(entity, &discrete, testCase.discreteTime);
+		std::string errorMessage;
+		ASSERT_TRUE(field.simulate(errorMessage)) << errorMessage;
+		EXPECT_EQ(observer.steps.size(), testCase.expectedSteps);
+		const auto* events = model->getFutureEvents()->list();
+		const InternalEvent* sync = nullptr;
+		for (const Event* event : *events) {
+			auto* candidate = dynamic_cast<const InternalEvent*>(event);
+			if (candidate != nullptr && candidate->object() == &field) sync = candidate;
+		}
+		ASSERT_NE(sync, nullptr);
+		EXPECT_DOUBLE_EQ(sync->getTime(), testCase.expectedSyncTime);
+	}
 }
