@@ -129,7 +129,7 @@ registration: rejected edges/arcs remain unchanged. Match the load-time contract
 without modifying mathematical transitions that are **not** data definitions.
 Four focused Google Test cases cover EFSM, Markov, Graph and CPN.
 **Validation update (2026-10-29):** CMake/Ninja/CTest passed at source SHA
-`5a37c7ae` on [GitHub Actions run 40961067698](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40961067698), including all ten new tests (1920 executed, zero failed, four legacy disabled). These tests alone did not close G0.1b; the later local GUI/manual verification was reviewed and accepted on 2026-10-29. G0.2 persistence still remains to be implemented.
+`5a37c7ae` on [GitHub Actions run 40961067698](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40961067698), including all ten new tests (1920 executed, zero failed, four legacy disabled). These tests alone did not close G0.1b; the later local GUI/manual verification was reviewed and accepted on 2026-10-29. G0.2 was subsequently implemented and accepted on 2026-10-30 with the precisely documented legacy empty-name `.gen` deviation.
 
 **Identity/persistence limitation:** `ModelDataDefinition::_saveInstance()`
 persists `id`, `name` and other data but not `_modelLevel`; current Network
@@ -196,11 +196,13 @@ The Developer Manual's `chapter_gui_architecture.tex` has been updated; LaTeX co
 from `ModalModelDefault` is wired to a tab, no `.gui` Network layout schema
 is introduced, and no generic Entity-flow or domain ownership rule changes.
 
-## 3. G0.2 — Network diagram persistence contract (proposed; not implemented)
+## 3. G0.2 — Network diagram persistence contract (implemented; accepted with explicit exception)
 
-A `NetworkDiagramRecord` is a **planned GUI value object**, not an existing
-C++ class. Its exact implementation API, overlay syntax and integration point
-must be confirmed against the current serializer and tests before coding.
+The logical `NetworkDiagramRecord` outlined below was implemented for EFSM
+as `EFSMNetworkDiagramLayout` plus `EFSMNetworkDiagramCodec`, integrated with
+`GraphicalModelSerializer` in the versioned `.gui` section
+`Graphical EFSM Network Diagrams`. The general record remains a conceptual
+contract, not a generic C++ class or a codec for other formalisms.
 
 The **logical** version-1 record is:
 
@@ -268,8 +270,8 @@ milestones or automatic scope expansion.
 |---|---|---|---|---|
 | **1** | **G0.1** | Approve Alternative A and owner-ID `level` context contract; inspect existing code and record plan | Maintainer decision + architecture/backlog source links committed | **DONE** |
 | **2** | **G0.1b** | Finish verification of Network-level registration and direct level-only GUI data-definition projection, including mandatory manual | Final-head CMake/Ninja/CTest, six GUI and four domain regressions, `gui-app` build, short interaction check, LaTeX compile, regenerated `docs/ManualGenESyS.pdf`, dated evidence | **ACCEPTED — 2026-10-29** |
-| **3** | **G0.2** | Persist only **EFSM** diagram layout/identity as versioned GUI overlay | Deterministic save/reload including unnamed/parallel EFSM transitions; invalid/unknown records safe; preexisting `.gui` loads; `.gen` semantics unchanged; focused tests green | **AUTHORIZED NEXT; NOT IMPLEMENTED** |
-| **4** | **G1.1** | Draw read-only EFSM states and formal transitions in existing `ModelGraphicsScene` | Empty/normal/parallel EFSM cases; no fake `ModelComponent` or process `Connection`; layout clear; GUI tests green | **NOT STARTED** |
+| **3** | **G0.2** | Persist only **EFSM** diagram layout/identity as versioned GUI overlay | Deterministic save/reload including unnamed/parallel EFSM transitions; invalid/unknown records safe; preexisting `.gui` loads; `.gen` semantics unchanged; focused tests green | **ACCEPTED WITH EXPLICIT DEVIATION — 2026-10-30**: `EFSMNetworkDiagramCodec` distinguishes unnamed parallel transitions directly; pre-existing `.gen` omission of empty `transitionName` restores it as `T<ordinal>`, so **integrated unnamed-name round-trip is NOT achieved**. Codec refuses a mismatched layout. This is a tracked G1.1 prerequisite, not evidence of complete compatibility. |
+| **4** | **G1.1** | Draw read-only EFSM states and formal transitions in existing `ModelGraphicsScene` | Empty/normal/parallel EFSM cases; no fake `ModelComponent` or process `Connection`; layout clear; GUI tests green; **close the documented empty-name `.gen` round-trip incompatibility before G1.1 acceptance** | **AUTHORIZED NEXT; NOT STARTED** |
 | **5** | **G1.2** | Open attached EFSM Network through the existing submodel tabs at `Network.getId()` | Open/switch/close/reopen and no-Network handling; multiple adapters share one Network; root GUI unaffected | **NOT STARTED** |
 | **6** | **G2** | Create/select/attach an EFSM Network using existing GUI/Property Editor patterns | New and existing Network attachment, correct references and `.gen` save/reload; no duplicate domain objects | **NOT STARTED** |
 | **7** | **G3/G4** | Edit EFSM states/transitions and essential guard/action/properties through domain APIs; undo/redo | Create/change/delete, invalid-operation rejection, undo/redo, backend checks and persistence; targeted ownership sanitizer if appropriate | **NOT STARTED** |
@@ -278,7 +280,7 @@ milestones or automatic scope expansion.
 **Progress definition:** each accepted milestone contributes **12.5 percentage
 points**. Report `N/8 = NN.N%` on every subsequent iteration. Implementation
 in progress, green CI for an *earlier* head or a checked-in test that has not
-run **does not** count as a completed milestone. Current progress: **2/8 = 25% accepted** after coordinator audit of local Codex deliverable `de5f8ed3` and the matching [final-head unit/GUI CI run 40970233832](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40970233832), [kernel/smoke CI run 40970233761](https://github.com/rlcancian/Genesys-Simulator/actions/runs/40970233761) and local evidence `history/evidence/2026/10/2026-10-29_modal_g0_1b_local.md`. Next acceptance target: G0.2 at **37.5%**.
+run **does not** count as a completed milestone. Current progress: **3/8 = 37.5% accepted with one explicitly recorded compatibility deviation** as of the 2026-10-30 coordinator process review. The G0.2 code and tests are published through `df0f0a03848ba1798f7a0fe85d389ae19cf67766`. Local evidence reports 26/26 focused, 1938/1938 unit and kernel tests (four disabled), smoke 3/3, `gui-app` built and regenerated 388-page manual; final-head hosted [unit and GMDD CI 41003044960](https://github.com/rlcancian/Genesys-Simulator/actions/runs/41003044960), [smoke CI 41003045027](https://github.com/rlcancian/Genesys-Simulator/actions/runs/41003045027), and [governance CI 41003044983](https://github.com/rlcancian/Genesys-Simulator/actions/runs/41003044983) passed at review. The `tests-kernel-unit` hosted job was still running at that review; do not represent it as green without a later check. **Acceptance is an explicit coordinator exception, not a claim that unnamed `.gen` transitions round-trip.** The codec handles parallel/unnamed records and fails closed, but the existing `.gen` loader materializes missing names as `T<ordinal>`. Resolve and regression-test this in the *next single G1.1 execution*, before G1.1 is accepted; do not create a new stage or require another handoff just for this repair. Next target: G1.1 = **4/8 = 50%**.
 Percentage measures agreed deliverables, **not effort or elapsed time**.
 
 **Rule for scope control:** a newly discovered defect is resolved *inside*
@@ -365,7 +367,7 @@ Modal/Network documents referenced in Section 1.
 
 ## 6. Current delivery and remaining risks
 
-This 2026-10-29 GitHub delivery contains **architecture and bounded G0.1b C++/Qt6 code with test coverage**. GitHub Actions run `40961067698` at commit `5a37c7ae` passed the ordinary unit/GUI GMDD tests (1920 executed, 4 legacy disabled); this is executed evidence, not a manual PDF or live-GUI interaction result. The frozen eight-milestone MVP is **25% accepted (2/8)** after verification of the locally rebuilt PDF and GUI interaction evidence, plus final-head hosted CI. G0.2 is the sole authorized next implementation.
+This 2026-10-29 GitHub delivery contains **architecture and bounded G0.1b C++/Qt6 code with test coverage**. GitHub Actions run `40961067698` at commit `5a37c7ae` passed the ordinary unit/GUI GMDD tests (1920 executed, 4 legacy disabled); this is executed evidence, not a manual PDF or live-GUI interaction result. The frozen eight-milestone MVP is **37.5% accepted (3/8)** after the bounded G0.2 codec delivery and subsequent exact-identity audit. This acceptance carries the explicit empty-transition-name `.gen` round-trip exception recorded above; it must be closed inside G1.1. G1.1 is the sole authorized next milestone.
 
 **Manual impact gate:** the edited Developer Manual source chapter already documents editing-context semantics and level-only graphical reconstruction. It was compiled, visually inspected (section 26.7) and used to regenerate the committed `docs/ManualGenESyS.pdf`; this gate was accepted on 2026-10-29. No new interactive Network viewer exists yet, so do **not** document one as an operational User Manual feature. At G1/G2/G3 the User Manual impact is reassessed for actual user-visible behavior.
 
@@ -376,3 +378,14 @@ shared scene, multi-view reference invalidation, switching/restoring active tabs
 Qt QObject/GraphicsItem versus kernel object ownership, `.gui` compatibility,
 editing command rollback, and regression against existing GUI/property-editor
 behavior. Do not start G2+ until those prerequisites are demonstrated.
+
+### Coordinator operating clarification — 2026-10-30
+
+The goal is eight *deliverables*, not dozens of manual prompt/review loops. The
+local agent must self-review, fix all in-scope defects, run focused and relevant
+full tests, document, commit and push within **one execution per milestone**.
+Coordinator review must distinguish a genuine safety/semantic blocker from
+nonblocking debt and must not add new acceptance criteria after implementation.
+The accepted G0.2 exception above is explicit, does not excuse silent
+misassociation, and has a fixed closeout in G1.1. Stop only for reproducible
+architectural blockers, destructive operations, or irreconcilable test failures.
