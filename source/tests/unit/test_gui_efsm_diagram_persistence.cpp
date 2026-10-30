@@ -1754,6 +1754,25 @@ TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete)
     EXPECT_EQ(transition->getSource(), idle);
     EXPECT_EQ(transition->getDestination(), done);
     EXPECT_TRUE(transition->getName().empty());
+
+    scene->clearSelection();
+    scene->findGraphicalModelDataDefinition(idle)->setSelected(true);
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        const auto combos = dialog->findChildren<QComboBox*>();
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        if (combos.size() == 2 && buttons.size() == 1) {
+            EXPECT_FALSE(combos.at(0)->isEnabled());
+            EXPECT_FALSE(combos.at(1)->isEnabled());
+            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
+        }
+    });
+    createTransition->trigger();
+    ASSERT_EQ(network->getTransitions()->size(), 2u);
+    EFSMTransition* selfLoop = network->getTransitions()->list()->back();
+    EXPECT_EQ(selfLoop->getSource(), idle);
+    EXPECT_EQ(selfLoop->getDestination(), idle);
     EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), network->getId()), network);
 }
 

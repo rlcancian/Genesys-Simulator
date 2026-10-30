@@ -1185,7 +1185,8 @@ void MainWindow::_createEfsmTransition() {
                                                           Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
                                                     : nullptr);
     if (network == nullptr || network->getStates()->find(selectedStates.at(0)) == network->getStates()->list()->end()
-        || network->getStates()->find(selectedStates.at(1)) == network->getStates()->list()->end()) {
+        || (!selfLoopOnly
+            && network->getStates()->find(selectedStates.at(1)) == network->getStates()->list()->end())) {
         return;
     }
     QDialog dialog(this);
