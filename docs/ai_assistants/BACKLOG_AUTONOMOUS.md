@@ -203,8 +203,9 @@ This is the only approved source for work an AI agent may execute without a new 
 - Status: `running`
 - Environment: local Ubuntu 24.04/C++23/CMake/Ninja/Qt6 and GitHub PR checks.
 - Branch: `WiP20261016/ContinuousModels`; PR #550 to `WorkInProgress`.
-- Current source/test checkpoint: `419d8287f`; final validation and evidence
-  are being added in the same bounded PR.
+- Current source/test checkpoint: `419d8287f`; current branch HEAD:
+  `6d0c0f68052f6ada1128dddc709cdb3ce0fad6ff` (documentation/evidence commit).
+  GitHub checks for the current HEAD were pending on 2026-10-30.
 - Authorization: direct maintainer mission dated 2026-10-30 continues the
   existing PR #550 scope; it does not authorize bypassing review, failed CI,
   human scientific decisions, or the PR draft gate.

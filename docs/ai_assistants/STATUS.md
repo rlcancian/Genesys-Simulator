@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-10-08
+last_updated: 2026-10-30
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -334,3 +334,30 @@ Next maintainer-selected backend research phase:
 
 The authoritative completed-backend guide remains `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. The next backend research plan is `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`.
 Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
+
+## 16. Continuous Models / PR #550 checkpoint
+
+As of 2026-10-30, `WiP20261016/ContinuousModels` is at
+`6d0c0f68052f6ada1128dddc709cdb3ce0fad6ff`, matching the remote branch.
+PR #550 remains open and draft against `WorkInProgress`; `reviewDecision` is
+empty. The checks for this HEAD were pending at the time of this checkpoint.
+The PR is mergeable according to GitHub metadata, which does not satisfy the
+review or validation gates.
+
+Local verification on the source/test commit `419d8287f` passed the focused
+continuous/calendar tests (37/37), `tests-unit` (1,940 passed, 4 disabled),
+`tests-kernel-unit` (1,940 passed, 4 disabled), `tests-smoke` (3/3), Qt6 GUI
+build and Developer Manual generation. Focused ASan/UBSan passed 19/19 with
+LeakSanitizer disabled. A separate LSan run reports 4,910 bytes in 161
+allocations; no equivalent `WorkInProgress` baseline has yet established
+whether this is pre-existing. These results do not close the broader ODE,
+diffusion, BioNetwork, lifecycle, persistence or performance matrices.
+
+The calendar regression fix ignores events at or behind the global time when
+checking whether an event lies before already-computed work. It does not alter
+the calendar comparator or simultaneous-event behavior. Full status and
+limitations: [`history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md`](history/evidence/2026/10/2026-10-30_ContinuousModels_Final_Validation.md).
+
+**Continuous Models maturity: `running` / `PARTIALLY_VALIDATED`.** Do not mark
+`done_confirmed`, change the PR from draft, or merge until the documented
+acceptance gaps, final-HEAD checks and required independent review are closed.
