@@ -1757,6 +1757,29 @@ TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete)
 
     scene->clearSelection();
     scene->findGraphicalModelDataDefinition(idle)->setSelected(true);
+    scene->findGraphicalModelDataDefinition(done)->setSelected(true);
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        const auto combos = dialog->findChildren<QComboBox*>();
+        const auto edits = dialog->findChildren<QLineEdit*>();
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        if (combos.size() == 2 && edits.size() == 1 && buttons.size() == 1) {
+            combos.at(0)->setCurrentIndex(combos.at(0)->findText(QStringLiteral("Idle")));
+            combos.at(1)->setCurrentIndex(combos.at(1)->findText(QStringLiteral("Done")));
+            edits.at(0)->setText(QStringLiteral("Parallel"));
+            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
+        }
+    });
+    createTransition->trigger();
+    ASSERT_EQ(network->getTransitions()->size(), 2u);
+    EFSMTransition* parallel = network->getTransitions()->list()->back();
+    EXPECT_EQ(parallel->getSource(), idle);
+    EXPECT_EQ(parallel->getDestination(), done);
+    EXPECT_EQ(parallel->getName(), "Parallel");
+
+    scene->clearSelection();
+    scene->findGraphicalModelDataDefinition(idle)->setSelected(true);
     QTimer::singleShot(0, []() {
         auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
         if (dialog == nullptr) return;
@@ -1769,7 +1792,7 @@ TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete)
         }
     });
     createTransition->trigger();
-    ASSERT_EQ(network->getTransitions()->size(), 2u);
+    ASSERT_EQ(network->getTransitions()->size(), 3u);
     EFSMTransition* selfLoop = network->getTransitions()->list()->back();
     EXPECT_EQ(selfLoop->getSource(), idle);
     EXPECT_EQ(selfLoop->getDestination(), idle);
