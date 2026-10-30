@@ -93,6 +93,7 @@
 #include <QLineEdit>
 #include <QSpinBox>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QTextStream>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -1000,7 +1001,8 @@ void MainWindow::_selectNetworkForSelectedModalModel() {
     QList<EFSMNetwork*> networks;
     for (ModelDataDefinition* definition : *definitions->list()) {
         if (auto* network = dynamic_cast<EFSMNetwork*>(definition)) {
-            names.append(QString::fromStdString(network->getName()));
+            names.append(QStringLiteral("%1 [#%2]").arg(QString::fromStdString(network->getName()))
+                             .arg(network->getId()));
             networks.append(network);
         }
     }
@@ -1017,10 +1019,15 @@ void MainWindow::_selectNetworkForSelectedModalModel() {
     if (index < 0 || index >= networks.size()) {
         return;
     }
+    DefaultNetwork* previousNetwork = adapter->getNetwork();
     adapter->setNetwork(networks.at(index));
-    if (!model->check()) {
+    const bool associationIsConsistent = adapter->getNetwork() == networks.at(index)
+        && model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), networks.at(index)->getId())
+            == networks.at(index);
+    if (!associationIsConsistent) {
+        adapter->setNetwork(previousNetwork);
         QMessageBox::warning(this, tr("Select EFSM Network"),
-                             tr("The association failed model validation."));
+                             tr("The EFSM Network association could not be verified."));
         return;
     }
     _graphicalModelHasChanged = true;
@@ -1064,7 +1071,10 @@ void MainWindow::_createEfsmState() {
     } else {
         network->addState(state.release());
     }
-    if (!model->check()) {
+    const bool stateIsRegistered = model->getDataManager()->getDataDefinition(
+        Util::TypeOf<FSMState>(), statePointer->getId()) == statePointer;
+    const bool stateIsInNetwork = network->getStates()->find(statePointer) != network->getStates()->list()->end();
+    if (!stateIsRegistered || !stateIsInNetwork) {
         if (undoStack != nullptr && command != nullptr) {
             command->setObsolete(true);
             undoStack->undo();
@@ -1073,7 +1083,7 @@ void MainWindow::_createEfsmState() {
             model->getDataManager()->remove(statePointer);
             delete statePointer;
         }
-        QMessageBox::warning(this, tr("Create EFSM State"), tr("The state failed model validation."));
+        QMessageBox::warning(this, tr("Create EFSM State"), tr("The state could not be registered in this Network."));
         return;
     }
     _graphicalModelHasChanged = true;
@@ -1104,9 +1114,7 @@ void MainWindow::_createEfsmTransition() {
                                  tr("Select one state for a self-loop or two states for a directed transition."));
         return;
     }
-    if (selectedStates.size() == 1) {
-        selectedStates.append(selectedStates.first());
-    }
+    const bool selfLoopOnly = selectedStates.size() == 1;
     Model* model = simulator->getModelManager()->current();
     auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
                                                     ? model->getDataManager()->getDataDefinition(
@@ -1116,13 +1124,38 @@ void MainWindow::_createEfsmTransition() {
         || network->getStates()->find(selectedStates.at(1)) == network->getStates()->list()->end()) {
         return;
     }
-    bool accepted = false;
-    const QString name = QInputDialog::getText(this, tr("Create EFSM Transition"), tr("Transition name:"),
-                                               QLineEdit::Normal, QString(), &accepted);
-    if (!accepted) {
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Create EFSM Transition"));
+    auto* form = new QFormLayout(&dialog);
+    auto* source = new QComboBox(&dialog);
+    auto* destination = new QComboBox(&dialog);
+    for (FSMState* state : selectedStates) {
+        const QString stateName = QString::fromStdString(state->getName());
+        source->addItem(stateName);
+        destination->addItem(stateName);
+    }
+    source->setEnabled(!selfLoopOnly);
+    destination->setEnabled(!selfLoopOnly);
+    auto* name = new QLineEdit(&dialog);
+    form->addRow(tr("Source"), source);
+    form->addRow(tr("Destination"), destination);
+    form->addRow(tr("Name"), name);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    if (dialog.exec() != QDialog::Accepted) {
         return;
     }
-    auto transition = std::make_unique<EFSMTransition>(selectedStates.at(0), selectedStates.at(1), name.toStdString());
+    const int sourceIndex = source->currentIndex();
+    const int destinationIndex = destination->currentIndex();
+    if (sourceIndex < 0 || sourceIndex >= selectedStates.size()
+        || destinationIndex < 0 || destinationIndex >= selectedStates.size()) {
+        return;
+    }
+    auto transition = std::make_unique<EFSMTransition>(selectedStates.at(sourceIndex),
+                                                       selectedStates.at(destinationIndex),
+                                                       name->text().toStdString());
     EFSMTransition* transitionPointer = transition.get();
     QUndoStack* undoStack = scene->getUndoStack();
     EFSMTransitionUndoCommand* undoCommand = nullptr;
@@ -1132,14 +1165,17 @@ void MainWindow::_createEfsmTransition() {
         undoCommand = new EFSMTransitionUndoCommand(network, std::move(transition));
         undoStack->push(undoCommand);
     }
-    if (!model->check()) {
+    const bool transitionIsRegistered = network->getTransitions()->find(transitionPointer)
+        != network->getTransitions()->list()->end();
+    if (!transitionIsRegistered) {
         if (undoStack != nullptr && undoCommand != nullptr) {
             undoCommand->setObsolete(true);
             undoStack->undo();
         } else {
             network->removeTransition(transitionPointer);
         }
-        QMessageBox::warning(this, tr("Create EFSM Transition"), tr("The transition failed model validation."));
+        QMessageBox::warning(this, tr("Create EFSM Transition"),
+                             tr("The transition could not be registered in this Network."));
         return;
     }
     _graphicalModelHasChanged = true;
