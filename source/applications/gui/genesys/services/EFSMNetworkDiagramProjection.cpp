@@ -83,12 +83,15 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
         scene->addEFSMNetworkDiagramItem(item);
     }
 
-    // Highlight the initial state without changing any mathematical property.
+    // Highlight initial and final states in the projection only; no domain property is changed.
     for (FSMState* state : *network->getStates()->list()) {
         if (GraphicalModelDataDefinition* item = scene->findGraphicalModelDataDefinition(state)) {
-            item->setColor(state == network->getInitialState()
-                               ? QColor(135, 210, 155)
-                               : QColor(220, 220, 220));
+            const bool initial = state == network->getInitialState();
+            const bool final = state->isFinalNode();
+            item->setColor(initial && final ? QColor(111, 190, 188)
+                              : initial ? QColor(135, 210, 155)
+                              : final ? QColor(245, 195, 125)
+                                       : QColor(220, 220, 220));
         }
     }
 }
