@@ -24,6 +24,7 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"// GUI
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
@@ -77,6 +78,7 @@
 //#include <streambuf>
 // QT
 #include <QMessageBox>
+#include <QInputDialog>
 #include <QTextStream>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -317,10 +319,20 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _actionOpenSelectedSubmodel = new QAction(tr("Open Submodel"), this);
     _actionOpenSelectedSubmodel->setToolTip(tr("Open a graphical tab scoped to the selected item's internal model level."));
     connect(_actionOpenSelectedSubmodel, &QAction::triggered, this, [this]() { _openSelectedSubmodel(); });
+    _actionCreateModalNetwork = new QAction(tr("Create EFSM Network"), this);
+    _actionCreateModalNetwork->setToolTip(tr("Create and attach an EFSM Network to the selected ModalModelDefault."));
+    connect(_actionCreateModalNetwork, &QAction::triggered, this,
+            [this]() { _createNetworkForSelectedModalModel(); });
+    _actionSelectModalNetwork = new QAction(tr("Select EFSM Network"), this);
+    _actionSelectModalNetwork->setToolTip(tr("Attach an existing EFSM Network to the selected ModalModelDefault."));
+    connect(_actionSelectModalNetwork, &QAction::triggered, this,
+            [this]() { _selectNetworkForSelectedModalModel(); });
     _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionOpenSelectedSubmodel);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateModalNetwork);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionSelectModalNetwork);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
     ui->menuModel->insertMenu(ui->actionModelOpen, _menuOpenRecent);
 
@@ -873,6 +885,114 @@ ModelDataDefinition* MainWindow::_selectedSubmodelOwner() const {
         return graphicalDataDefinition->getDataDefinition();
     }
     return nullptr;
+}
+
+ModalModelDefault* MainWindow::_selectedModalModelDefault() const {
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr) {
+        return nullptr;
+    }
+    const QList<QGraphicsItem*> selectedItems = ui->graphicsView->getScene()->selectedItems();
+    if (selectedItems.size() != 1) {
+        return nullptr;
+    }
+    auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(selectedItems.first());
+    return graphicalComponent != nullptr
+               ? dynamic_cast<ModalModelDefault*>(graphicalComponent->getComponent())
+               : nullptr;
+}
+
+void MainWindow::_createNetworkForSelectedModalModel() {
+    ModalModelDefault* adapter = _selectedModalModelDefault();
+    if (adapter == nullptr || adapter->getNetwork() != nullptr || simulator == nullptr
+        || simulator->getModelManager() == nullptr || simulator->getPluginManager() == nullptr) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->current();
+    Plugin* plugin = simulator->getPluginManager()->find(Util::TypeOf<EFSMNetwork>());
+    if (model == nullptr || plugin == nullptr) {
+        QMessageBox::warning(this, tr("Create EFSM Network"),
+                             tr("The EFSMNetwork plugin is not available in this simulator."));
+        return;
+    }
+
+    QString suggestedName = QString::fromStdString(adapter->getName()) + tr("Network");
+    if (suggestedName.trimmed().isEmpty()) {
+        suggestedName = tr("EFSMNetwork");
+    }
+    const QString name = QInputDialog::getText(this, tr("Create EFSM Network"), tr("Network name:"),
+                                               QLineEdit::Normal, suggestedName);
+    if (name.trimmed().isEmpty()) {
+        return;
+    }
+    const std::string networkName = name.toStdString();
+    if (model->getDataManager() != nullptr
+        && model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), networkName) != nullptr) {
+        QMessageBox::warning(this, tr("Create EFSM Network"),
+                             tr("An EFSM Network with that name already exists."));
+        return;
+    }
+
+    auto* network = dynamic_cast<EFSMNetwork*>(plugin->newInstance(model, networkName));
+    if (network == nullptr) {
+        QMessageBox::warning(this, tr("Create EFSM Network"), tr("The EFSM Network could not be created."));
+        return;
+    }
+    adapter->setNetwork(network);
+    if (!model->check()) {
+        adapter->setNetwork(nullptr);
+        QMessageBox::warning(this, tr("Create EFSM Network"),
+                             tr("The association failed model validation."));
+        return;
+    }
+    _graphicalModelHasChanged = true;
+    _actualizeActions();
+    _generateGraphicalModelFromModel();
+}
+
+void MainWindow::_selectNetworkForSelectedModalModel() {
+    ModalModelDefault* adapter = _selectedModalModelDefault();
+    if (adapter == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr || model->getDataManager() == nullptr) {
+        return;
+    }
+    List<ModelDataDefinition*>* definitions =
+        model->getDataManager()->getDataDefinitionList(Util::TypeOf<EFSMNetwork>());
+    if (definitions == nullptr || definitions->list()->empty()) {
+        QMessageBox::information(this, tr("Select EFSM Network"), tr("No EFSM Networks exist in this model."));
+        return;
+    }
+    QStringList names;
+    QList<EFSMNetwork*> networks;
+    for (ModelDataDefinition* definition : *definitions->list()) {
+        if (auto* network = dynamic_cast<EFSMNetwork*>(definition)) {
+            names.append(QString::fromStdString(network->getName()));
+            networks.append(network);
+        }
+    }
+    if (networks.isEmpty()) {
+        return;
+    }
+    bool accepted = false;
+    const QString selected = QInputDialog::getItem(this, tr("Select EFSM Network"), tr("Network:"), names,
+                                                    0, false, &accepted);
+    if (!accepted) {
+        return;
+    }
+    const int index = names.indexOf(selected);
+    if (index < 0 || index >= networks.size()) {
+        return;
+    }
+    adapter->setNetwork(networks.at(index));
+    if (!model->check()) {
+        QMessageBox::warning(this, tr("Select EFSM Network"),
+                             tr("The association failed model validation."));
+        return;
+    }
+    _graphicalModelHasChanged = true;
+    _actualizeActions();
 }
 
 bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
@@ -1862,6 +1982,16 @@ void MainWindow::_actualizeActions() {
         _actionOpenSelectedSubmodel->setEnabled(opened
                                                 && !simulationInteractionLocked
                                                 && _canOpenSubmodelFor(_selectedSubmodelOwner()));
+    }
+    if (_actionCreateModalNetwork != nullptr || _actionSelectModalNetwork != nullptr) {
+        ModalModelDefault* adapter = _selectedModalModelDefault();
+        if (_actionCreateModalNetwork != nullptr) {
+            _actionCreateModalNetwork->setEnabled(opened && !simulationInteractionLocked && adapter != nullptr
+                                                  && adapter->getNetwork() == nullptr);
+        }
+        if (_actionSelectModalNetwork != nullptr) {
+            _actionSelectModalNetwork->setEnabled(opened && !simulationInteractionLocked && adapter != nullptr);
+        }
     }
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.

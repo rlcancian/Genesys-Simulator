@@ -49,6 +49,7 @@ class QTabWidget;
 class ModelGraphicsView;
 class ModelComponent;
 class ModelDataDefinition;
+class ModalModelDefault;
 
 // Document MainWindow as composition root and incremental compatibility façade.
 /**
@@ -477,6 +478,12 @@ private: // opened-model document state
     bool _canOpenSubmodelFor(ModelDataDefinition* owner) const;
     /** @brief Slot target for the context-menu/model-menu submodel-opening command. */
     void _openSelectedSubmodel();
+    /** @brief Returns the selected ModalModelDefault adapter, if any. */
+    ModalModelDefault* _selectedModalModelDefault() const;
+    /** @brief Creates and attaches an EFSMNetwork through the real GUI action path. */
+    void _createNetworkForSelectedModalModel();
+    /** @brief Selects an existing EFSMNetwork and attaches it to the selected adapter. */
+    void _selectNetworkForSelectedModalModel();
     void _refreshRecentModelsMenu();
     bool _openRecentModelFile(const QString& fileName);
     /** @brief Stores the active editor/dirty state before switching away from the current model. */
@@ -537,6 +544,8 @@ private: // interface and model main elements to join
     QAction* _actionModelNext = nullptr;
     // Runtime action that opens a level-scoped graphical tab from the selected owner item.
     QAction* _actionOpenSelectedSubmodel = nullptr;
+    QAction* _actionCreateModalNetwork = nullptr;
+    QAction* _actionSelectModalNetwork = nullptr;
     QMenu* _menuOpenRecent = nullptr;
     QList<QAction*> _recentModelActions;
     // Keep core simulation command gateway owned by MainWindow composition root.
