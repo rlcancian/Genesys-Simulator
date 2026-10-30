@@ -503,6 +503,7 @@ bool ContinuousModelDataDefinition::_continueEvolution(std::string& errorMessage
         errorMessage = "Continuous evolution is awaiting a scheduled synchronization.";
         return false;
     }
+    onContinuousEvolutionBatchStarted();
     if (_executionState == ExecutionState::Running && _currentTime < _activeStopTime && _activeStepsToSynchronize > 0u) {
         if (!_scheduleSynchronization(errorMessage)) return false;
         while (!_pendingCalendarWake && _executionState == ExecutionState::Running &&

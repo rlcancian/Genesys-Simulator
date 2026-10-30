@@ -252,6 +252,13 @@ bool ODESolver::evolveState(double currentTime, double dt, std::string& errorMes
     return true;
 }
 
+void ODESolver::onContinuousEvolutionBatchStarted() {
+    // MaxSteps limits one integration batch. Autonomous execution divides a
+    // trajectory into synchronization batches, so each batch receives the same
+    // budget that integrate(targetTime) gives a direct integration request.
+    _stepsPerformed = 0;
+}
+
 void ODESolver::onContinuousStepCompleted() {
     writeStateToVariables(); // Keep ordinary model variables at the confirmed state during lookahead.
     if (!_outputFile.empty()) _appendOutputRow();

@@ -430,6 +430,14 @@ void BioNetwork::onContinuousStepCompleted() {
     }
 }
 
+void BioNetwork::onContinuousRunCompleted() {
+	std::vector<BioSpecies*> species;
+	std::string errorMessage;
+	if (!collectSpecies(species, errorMessage)) return;
+	updatePayload(species);
+	_lastResponsePayload = _workingResponsePayload;
+}
+
 std::any BioNetwork::internalStateView() const {
     return StateView{_workingSpeciesNames, _workingAmounts};
 }

@@ -123,6 +123,7 @@ protected:
                              std::string& errorMessage) = 0;
     virtual void initializeContinuousState() {}
     virtual void onContinuousReplicationStart() {}
+    virtual void onContinuousEvolutionBatchStarted() {}
     virtual void onContinuousStepCompleted() {}
     virtual void onContinuousRunCompleted() {}
     virtual std::any internalStateView() const { return {}; }

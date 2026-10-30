@@ -67,6 +67,7 @@ protected: // must be overriden
 protected: // could be overriden
 	virtual bool _check(std::string& errorMessage) override;
 	void initializeContinuousState() override;
+	void onContinuousEvolutionBatchStarted() override;
 	bool evolveState(double t, double dt, std::string& errorMessage) override;
 	void onContinuousStepCompleted() override;
 	std::any internalStateView() const override;

@@ -602,6 +602,23 @@ TEST(DiffusionFieldPluginTest, DiffusionSimulateRejectsMissingField) {
 	EXPECT_FALSE(component.getLastSucceeded());
 }
 
+TEST(DiffusionFieldPluginTest, DiffusionSimulateRejectsNonzeroLocalWindowStartExplicitly) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	DiffusionField field(model, "FieldForNonzeroWindow");
+	DiffusionSimulateProbe component(model, "DiffusionNonzeroWindow");
+	component.setDiffusionField(&field);
+	component.setUseFieldTimeWindow(false);
+	component.setStartTime(1.0);
+	component.setStopTime(2.0);
+	component.setStepSize(0.1);
+
+	std::string errorMessage;
+	EXPECT_FALSE(component.CheckProbe(errorMessage));
+	EXPECT_NE(errorMessage.find("requires StartTime=0"), std::string::npos);
+}
+
 // --- Event-clock synchronization (StepsToSynchronize) ---
 
 TEST(DiffusionFieldPluginTest, StepsToSynchronizeAdvancesWithEventClock) {
@@ -1329,6 +1346,45 @@ TEST(ContinuousCalendarTest, ODEReadsDiscreteParameterChangeAfterCalendarResumpt
 	EXPECT_EQ(solver.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed);
 }
 
+TEST(ContinuousCalendarTest, AutonomousOdeResetsMaxStepsForEachSynchronizationBatch) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+
+	Variable state(model, "OdeBatchBudgetState");
+	state.setValue(0.0);
+	ODESolver solver(model, "OdeBatchBudgetSolver");
+	solver.setStateVariableNames({"OdeBatchBudgetState"});
+	solver.setEquationExpressions({"1"});
+	solver.setInitialStateValues({0.0});
+	solver.setMaxSteps(2);
+	solver.setStepSize(0.1);
+	solver.setStopTime(1.0);
+	solver.setStepsToSynchronize(1u);
+	auto* component = new ContinuousSystemComponent(model, "OdeBatchBudgetComponent");
+	component->setOdeSolver(&solver);
+	auto* sink = new Dispose(model, "OdeBatchBudgetSink");
+	sink->setReportStatistics(false);
+	auto* source = new Create(model, "OdeBatchBudgetSource");
+	source->setEntitiesPerCreation(1u);
+	source->setMaxCreations(1ul);
+	source->connectTo(component);
+	component->connectTo(sink);
+	model->getSimulation()->setNumberOfReplications(1u);
+	model->getSimulation()->setReplicationLength(2.0, Util::TimeUnit::second);
+	model->getSimulation()->setShowReportsAfterReplication(false);
+	model->getSimulation()->setShowReportsAfterSimulation(false);
+	ASSERT_TRUE(model->check()) << model->getTracer()->errorMessages()->list()->front();
+
+	model->getSimulation()->start();
+
+	EXPECT_EQ(solver.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed)
+		<< solver.getLastErrorMessage();
+	EXPECT_NEAR(solver.getStateValue(0u), 1.0, 1e-10);
+	EXPECT_NEAR(solver.getCurrentTime(), 1.0, 1e-12);
+}
+
 TEST(ContinuousCalendarTest, BioSimulateResumesSharedRunForBothWaitingEntities) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();
@@ -1394,6 +1450,35 @@ TEST(ContinuousCalendarTest, BioSimulateResumesSharedRunForBothWaitingEntities) 
 	EXPECT_DOUBLE_EQ(arrivals.times[1], 10.0);
 	EXPECT_NE(arrivals.entityIds[0], arrivals.entityIds[1]);
 	EXPECT_EQ(network.getExecutionState(), ContinuousModelDataDefinition::ExecutionState::Completed);
+	EXPECT_NE(network.getLastResponsePayload().find("\"status\":\"Completed\""), std::string::npos);
 	EXPECT_NEAR(substrate.getAmount() + product.getAmount(), 10.0, 1e-12);
 	EXPECT_NEAR(substrate.getAmount(), 10.0 * std::pow(rk4Before, 5.0) * std::pow(rk4After, 5.0), 1e-11);
+}
+
+TEST(ContinuousCalendarTest, SynchronousBioRunPublishesCompletedStatusInPayload) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	BioSpecies substrate(model, "BioPayloadSubstrate");
+	substrate.setInitialAmount(2.0);
+	substrate.setAmount(2.0);
+	BioSpecies product(model, "BioPayloadProduct");
+	product.setInitialAmount(0.0);
+	product.setAmount(0.0);
+	BioReaction reaction(model, "BioPayloadReaction");
+	reaction.addReactant("BioPayloadSubstrate", 1.0);
+	reaction.addProduct("BioPayloadProduct", 1.0);
+	reaction.setRateConstant(0.1);
+	BioNetwork network(model, "BioPayloadNetwork");
+	network.addSpecies("BioPayloadSubstrate");
+	network.addSpecies("BioPayloadProduct");
+	network.addReaction("BioPayloadReaction");
+	network.setStopTime(1.0);
+	network.setStepSize(0.5);
+	network.setStepsToSynchronize(0u);
+
+	std::string errorMessage;
+	ASSERT_TRUE(network.simulate(errorMessage)) << errorMessage;
+	EXPECT_EQ(network.getLastStatus(), "Completed");
+	EXPECT_NE(network.getLastResponsePayload().find("\"status\":\"Completed\""), std::string::npos);
 }

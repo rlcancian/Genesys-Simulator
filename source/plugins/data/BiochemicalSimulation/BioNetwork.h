@@ -65,6 +65,7 @@ protected:
 	void initializeContinuousState() override;
 	void onContinuousReplicationStart() override;
 	void onContinuousStepCompleted() override;
+	void onContinuousRunCompleted() override;
 	std::any internalStateView() const override;
 	void confirmContinuousState() override;
 	void onInternalStateObserversCompleted() override;
