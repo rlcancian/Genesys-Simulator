@@ -1,4 +1,5 @@
 #include "GraphicalModelSerializer.h"
+#include "EFSMNetworkDiagramProjection.h"
 #include "EFSMNetworkDiagramCodec.h"
 #include "GraphicalModelBuilder.h"
 
@@ -2317,6 +2318,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         // Recompute diagram-arrow endpoints after all persisted positions and groups are restored.
         // Without this pass, arrows can remain anchored to pre-restore coordinates.
         scene->actualizeDiagramArrows();
+        EFSMNetworkDiagramProjection::synchronize(_simulator, scene);
 
         if (hasPersistedViewState) {
             QPointer<ModelGraphicsView> targetView(_graphicsView);

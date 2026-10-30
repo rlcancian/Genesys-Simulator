@@ -6,6 +6,7 @@
 
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
+#include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "services/EFSMNetworkDiagramCodec.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
@@ -150,6 +151,50 @@ TEST(EFSMNetworkDiagramPersistence, EmptyLayoutProducesNoEntriesAndLeavesOtherSe
     ASSERT_NE(loadedNetwork, nullptr);
     EXPECT_TRUE(harness.serializer->efsmNetworkDiagramLayout(
         static_cast<unsigned long>(loadedNetwork->getId())).isEmpty());
+}
+
+TEST(EFSMNetworkDiagramProjection, BuildsReadOnlyStatesAndFormalTransitions) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EFSMNetwork network(model, "ViewerNetwork");
+    FSMState idle(model, "Idle");
+    FSMState done(model, "Done");
+    network.setInitialState(&idle);
+    network.addState(&done);
+    network.addTransition(new EFSMTransition(&idle, &done, "First"));
+    network.addTransition(new EFSMTransition(&idle, &done, "Parallel"));
+    network.addTransition(new EFSMTransition(&done, &done, "Loop"));
+
+    SerializerHarness harness(&simulator);
+    ModelGraphicsScene* scene = harness.graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    ASSERT_EQ(scene->getGraphicalModelDataDefinitions()->size(), 2);
+    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 3);
+
+    auto* first = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(0));
+    ASSERT_NE(first, nullptr);
+    EXPECT_EQ(first->ordinal(), 0);
+    EXPECT_FALSE(first->flags().testFlag(QGraphicsItem::ItemIsSelectable));
+    EXPECT_EQ(scene->getGraphicalConnections()->size(), 0);
+    EXPECT_EQ(network.getStates()->size(), 2u);
+    EXPECT_EQ(network.getTransitions()->size(), 3u);
+
+    // Rebuilding the same context replaces only the projection layer.
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 3);
+    EXPECT_EQ(scene->getGraphicalModelDataDefinitions()->size(), 2);
+
+    EFSMNetwork empty(model, "EmptyViewerNetwork");
+    scene->setModelLevelFilter(static_cast<unsigned int>(empty.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
+    EXPECT_TRUE(scene->getGraphicalModelDataDefinitions()->isEmpty());
 }
 
 TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTransitionOrdinals) {
