@@ -17,6 +17,8 @@ tracks: HUM-MODAL-002,AUTO-MODAL-003,AUTO-MODAL-004
 - MainWindow integration regression commit: `5d4ae61eb2ebdb565706b36189929434fc4cb747`.
 - Self-loop correction and regression: `64644b2c78a403c9613d286390c04fc7cb34bf92`.
 - GUI parallel-transition regression: `fc815a597dd58c48cfe481317f779cf54bf2fccb`.
+- Process-flow preservation assertion: `ffafc5ade794a927fbb373fad0a7f805cf620249`.
+- Network create/select negative-path regressions: `2bffa8a87698ab95ce8d10054e5b105df38dc559`.
 - PR #551 remains draft. No merge or push to `WorkInProgress` was performed.
 
 ## Discovered cache-lifecycle defect and fix
@@ -41,7 +43,14 @@ shared hierarchical Network tab, creates two states, sets the initial state,
 creates a directed transition, edits its guard/output/priority, performs
 undo/redo, moves a state, saves through the real file dialog, closes the model,
 and reloads through the real open dialog. It checks restored topology,
-properties, Network identity, and graphical coordinates.
+properties, Network identity, and graphical coordinates. It also checks that
+the loaded Create-to-adapter and adapter-to-Dispose process connections remain
+unchanged; no process connections represent EFSM transitions.
+
+The GUI action regressions also cancel Network creation, reject a conflicting
+Network name without attaching or adding an object, then create a valid
+Network. The selection action replaces an existing adapter association while
+leaving the previously registered Network intact.
 
 The test uses Qt offscreen automation for modal dialogs and selection; it is
 not a claim of a separate manual mouse/keyboard session. Prior focused tests
@@ -52,7 +61,8 @@ root model switching and root model teardown.
 
 - Focused EFSM GUI selection:
   `EFSMNetworkDiagramPersistence.*:EFSMNetworkEditor.*:EFSMNetworkUndo.*:EFSMNetworkDiagramProjection.*`
-  — **37/37 passed**, including the expanded MainWindow workflow.
+  — **37/37 passed** after the integrated workflow, self-loop/parallel actions,
+  Network creation cancellation/conflict and association-replacement checks.
 - The expanded MainWindow test alone — **1/1 passed**.
 - Adversarial review found that the Create EFSM Transition handler validated
   `selectedStates[1]` even for the one-state self-loop path. The handler now
@@ -81,9 +91,12 @@ root model switching and root model teardown.
   job was still pending; these checks do not apply to the later local test
   change until that change is pushed and its own checks complete.
 - The focused suite after the parallel/self-loop corrections at local HEAD
-  `fc815a597` passes **37/37**.
-  Full unit/kernel/smoke tests and hosted checks for this latest source commit
-  are pending.
+  `2bffa8a87` passes **37/37**, including the process-flow assertions.
+- At commit `1a1e973dd` (same production code as `2bffa8a87`), the required
+  local baselines passed: tests-unit **1,963/1,963** and tests-kernel-unit
+  **1,963/1,963** with four existing disabled tests each; smoke **3/3**; GUI
+  application build passed. The later changes are test-only; exact latest-head
+  hosted CI remains pending.
 
 ## Bounded direct GUI inspection
 
