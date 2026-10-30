@@ -17,6 +17,10 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
+namespace {
+constexpr const char* kNetworkAssociationKey = "ModalModelDefault.Network";
+}
+
 ModalModelDefault::ModalModelDefault(Model* model, std::string name)
 	: ModelComponent(model, Util::TypeOf<ModalModelDefault>(), name) {
 }
@@ -70,8 +74,13 @@ DefaultNetwork* ModalModelDefault::getNetwork() const {
 
 void ModalModelDefault::setNetwork(DefaultNetwork* network) {
 	_mandatoryAttachedAttributesClear();
+	_attachedDataRemove(kNetworkAssociationKey);
 	_network = network;
 	_networkName = network != nullptr ? network->getName() : "";
+	if (_network != nullptr) {
+		// The adapter references a model-managed Network without owning it.
+		_attachedDataInsert(kNetworkAssociationKey, _network);
+	}
 	_syncBindingsToNetwork();
 }
 
@@ -81,6 +90,7 @@ std::string ModalModelDefault::getNetworkName() const {
 
 void ModalModelDefault::setNetworkName(const std::string& networkName) {
 	_mandatoryAttachedAttributesClear();
+	_attachedDataRemove(kNetworkAssociationKey);
 	_networkName = networkName;
 	_network = nullptr;
 	_resolveNetworkReference();
@@ -239,6 +249,7 @@ DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
 			DefaultNetwork* candidate = dynamic_cast<DefaultNetwork*>(definition);
 			if (candidate != nullptr && candidate->getName() == _networkName) {
 				_network = candidate;
+				_attachedDataInsert(kNetworkAssociationKey, _network);
 				return _network;
 			}
 		}

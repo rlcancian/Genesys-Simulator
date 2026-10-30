@@ -18,6 +18,12 @@
 #include <memory>
 #include <vector>
 
+namespace {
+std::string stateAssociationKey(const FSMState* state) {
+	return "EFSMNetwork.State." + std::to_string(state != nullptr ? state->getId() : 0);
+}
+}
+
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
 	return &EFSMNetwork::GetPluginInformation;
@@ -65,6 +71,9 @@ ModelDataDefinition* EFSMNetwork::LoadInstance(Model* model, PersistenceRecord* 
 void EFSMNetwork::addState(FSMState* state) {
 	if (state != nullptr && _states->find(state) == _states->list()->end()) {
 		_states->insert(state);
+		// States remain owned by ModelDataManager; this is a non-owning
+		// association used by orphan detection and model validation.
+		_attachedDataInsert(stateAssociationKey(state), state);
 		// The containing Network is also this state's hierarchical editing context.
 		state->setModelLevel(static_cast<unsigned int>(getId()));
 		if (_initialState == nullptr || state->isInitialNode()) {
@@ -75,6 +84,9 @@ void EFSMNetwork::addState(FSMState* state) {
 }
 
 void EFSMNetwork::removeState(FSMState* state) {
+	if (state != nullptr) {
+		_attachedDataRemove(stateAssociationKey(state));
+	}
 	_states->remove(state);
 	if (_initialState == state) {
 		_initialState = nullptr;
