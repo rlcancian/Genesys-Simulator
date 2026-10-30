@@ -19,6 +19,7 @@ tracks: HUM-MODAL-002,AUTO-MODAL-003,AUTO-MODAL-004
 - GUI parallel-transition regression: `fc815a597dd58c48cfe481317f779cf54bf2fccb`.
 - Process-flow preservation assertion: `ffafc5ade794a927fbb373fad0a7f805cf620249`.
 - Network create/select negative-path regressions: `2bffa8a87698ab95ce8d10054e5b105df38dc559`.
+- MainWindow delete/undo/redo integration regression: `72dcbaf51`.
 - PR #551 remains draft. No merge or push to `WorkInProgress` was performed.
 
 ## Discovered cache-lifecycle defect and fix
@@ -52,6 +53,11 @@ Network name without attaching or adding an object, then create a valid
 Network. The selection action replaces an existing adapter association while
 leaving the previously registered Network intact.
 
+The integrated MainWindow save/reopen workflow now also invokes the real Edit
+Delete action for a transition and for a state with an incident transition.
+Undo restores the same mathematical objects and manager registration; redo
+removes them again, and a final undo restores the saved graph.
+
 The test uses Qt offscreen automation for modal dialogs and selection; it is
 not a claim of a separate manual mouse/keyboard session. Prior focused tests
 cover multiple adapters sharing one tab, missing Network, tab close/reopen,
@@ -63,6 +69,11 @@ root model switching and root model teardown.
   `EFSMNetworkDiagramPersistence.*:EFSMNetworkEditor.*:EFSMNetworkUndo.*:EFSMNetworkDiagramProjection.*`
   — **37/37 passed** after the integrated workflow, self-loop/parallel actions,
   Network creation cancellation/conflict and association-replacement checks.
+- Targeted ASan/UBSan for transition deletion, state deletion, and the integrated
+  MainWindow delete/undo/redo/save/reopen workflow: **3/3 passed** with
+  `ASAN_OPTIONS=detect_leaks=0:halt_on_error=1` and
+  `UBSAN_OPTIONS=halt_on_error=1`. Leak detection was disabled; this is bounded
+  evidence for those exercised paths, not repository-wide leak validation.
 - The expanded MainWindow test alone — **1/1 passed**.
 - Adversarial review found that the Create EFSM Transition handler validated
   `selectedStates[1]` even for the one-state self-loop path. The handler now
