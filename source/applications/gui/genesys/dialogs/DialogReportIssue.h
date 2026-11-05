@@ -2,6 +2,7 @@
 #define DIALOGREPORTISSUE_H
 
 #include <QDialog>
+#include <functional>
 #include "../services/IssueReportRelayService.h"
 
 class QCloseEvent;
@@ -9,13 +10,16 @@ class QComboBox;
 class QLabel;
 class QLineEdit;
 class QNetworkAccessManager;
+class QUrl;
 class QPlainTextEdit;
 class QPushButton;
 
 /** Compact, privacy-first issue form. Transport stays asynchronous. */
 class DialogReportIssue : public QDialog {
 public:
-    explicit DialogReportIssue(QWidget* parent = nullptr);
+    explicit DialogReportIssue(QWidget* parent = nullptr,
+                               QNetworkAccessManager* networkManager = nullptr,
+                               std::function<bool(const QUrl&)> browserOpener = {});
 
     IssueReportDraft draft() const;
     void setRelayAvailable(bool configured);
@@ -37,6 +41,7 @@ private:
     QLabel* _validationLabel = nullptr;
     QPushButton* _submitButton = nullptr;
     QNetworkAccessManager* _networkManager = nullptr;
+    std::function<bool(const QUrl&)> _browserOpener;
     bool _relayAvailable = false;
     bool _submitting = false;
 };
