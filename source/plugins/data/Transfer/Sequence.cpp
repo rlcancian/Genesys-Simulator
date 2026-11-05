@@ -106,15 +106,15 @@ bool Sequence::_check(std::string& errorMessage) {
 			continue;
 		}
 		Station* station = step->getStation();
-		Label* label = step->getLabel();
+		LabelDefinition* label = step->getLabel();
 		const bool hasStation = station != nullptr;
 		const bool hasLabel = label != nullptr;
 		if (!hasStation && !hasLabel) {
-			errorMessage += stepPrefix + " must reference a Station or a Label. ";
+			errorMessage += stepPrefix + " must reference a Station or a LabelDefinition. ";
 			resultAll = false;
 		}
 		if (hasStation && hasLabel) {
-			errorMessage += stepPrefix + " cannot reference both Station and Label simultaneously. ";
+			errorMessage += stepPrefix + " cannot reference both Station and LabelDefinition simultaneously. ";
 			resultAll = false;
 		}
 		if (hasStation) {
@@ -125,7 +125,7 @@ bool Sequence::_check(std::string& errorMessage) {
 			resultAll &= stationOk;
 		}
 		if (hasLabel) {
-			bool labelOk = _parentModel->getDataManager()->check(Util::TypeOf<Label>(), label, stepPrefix + ".Label", errorMessage);
+			bool labelOk = _parentModel->getDataManager()->check(Util::TypeOf<LabelDefinition>(), label, stepPrefix + ".LabelDefinition", errorMessage);
 			if (labelOk) {
 				labelOk &= ModelDataDefinition::Check(label, errorMessage);
 			}
@@ -180,7 +180,7 @@ SequenceStep::SequenceStep(Station* station, std::list<Assignment*>* assignments
 		_assignments = new std::list<Assignment*>();
 }
 
-SequenceStep::SequenceStep(Label* label, std::list<Assignment*>* assignments) {
+SequenceStep::SequenceStep(LabelDefinition* label, std::list<Assignment*>* assignments) {
 	this->_label = label;
 	if (assignments != nullptr)
 		_assignments = assignments;
@@ -200,12 +200,12 @@ SequenceStep::SequenceStep(Model* model, std::string stationOrLabelName, bool is
 		}
 		this->_station = station;
 	} else {//isLabel
-		Label* label;
-		ModelDataDefinition* data = model->getDataManager()->getDataDefinition(Util::TypeOf<Label>(), stationOrLabelName);
+		LabelDefinition* label;
+		ModelDataDefinition* data = model->getDataManager()->getDataDefinition(Util::TypeOf<LabelDefinition>(), stationOrLabelName);
 		if (data != nullptr) {
-			label = dynamic_cast<Label*> (data);
+			label = dynamic_cast<LabelDefinition*> (data);
 		} else {
-			label = model->getParentSimulator()->getPluginManager()->newInstance<Label>(model, stationOrLabelName);
+			label = model->getParentSimulator()->getPluginManager()->newInstance<LabelDefinition>(model, stationOrLabelName);
 		}
 		this->_label = label;
 	}
@@ -237,7 +237,7 @@ bool SequenceStep::_loadInstance(PersistenceRecord *fields, unsigned int parentI
 		}
 		std::string labelName = fields->loadField("stepLabel" + num, "");
 		if (_modeldataManager != nullptr) {
-			_label = static_cast<Label*> (_modeldataManager->getDataDefinition(Util::TypeOf<Label>(), labelName));
+			_label = static_cast<LabelDefinition*> (_modeldataManager->getDataDefinition(Util::TypeOf<LabelDefinition>(), labelName));
 		}
 		unsigned int assignmentsSize = fields->loadField("stepAssignments" + num, DEFAULT.assignmentsSize);
 		for (unsigned short i = 0; i < assignmentsSize; i++) {
@@ -301,11 +301,11 @@ void SequenceStep::setElementManager(ModelDataManager* _modeldataManager) {
 	this->_modeldataManager = _modeldataManager;
 }
 
-void SequenceStep::setLabel(Label* _label) {
+void SequenceStep::setLabel(LabelDefinition* _label) {
 	this->_label = _label;
 }
 
-Label* SequenceStep::getLabel() const {
+LabelDefinition* SequenceStep::getLabel() const {
 	return _label;
 }
 

@@ -122,7 +122,7 @@
 #include "data/Logic/Formula.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
-#include "data/Logic/Label.h"
+#include "data/Transfer/LabelDefinition.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 #include "plugins/data/Transfer/Distance.h"
 #include "plugins/data/Transfer/Conveyor.h"
@@ -213,7 +213,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("formula.so");
     filenames->insert("groprogram.so");
     filenames->insert("bacteriasignalgrid.so");
-    filenames->insert("label.so");
+    filenames->insert("labeldefinition.so");
     filenames->insert("queue.so");
     filenames->insert("resource.so");
     filenames->insert("variable.so");
@@ -413,8 +413,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &GroProgram::GetPluginInformation;
     else if (fn == "bacteriasignalgrid.so")
         GetInfo = &BacteriaSignalGrid::GetPluginInformation;
-    else if (fn == "label.so")
-        GetInfo = &Label::GetPluginInformation;
+    else if (fn == "labeldefinition.so")
+        GetInfo = &LabelDefinition::GetPluginInformation;
     else if (fn == "queue.so")
         GetInfo = &Queue::GetPluginInformation;
     else if (fn == "resource.so")

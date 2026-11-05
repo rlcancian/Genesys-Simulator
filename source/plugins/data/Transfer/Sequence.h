@@ -18,13 +18,13 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/PluginInformation.h"
 #include "Station.h"
-#include "../Logic/Label.h"
+#include "LabelDefinition.h"
 #include "../Logic/AssignmentItem.h"
 
 class SequenceStep : public PersistentObject_base {
 public:
 	SequenceStep(Station* station, std::list<Assignment*>* assignments = nullptr);
-	SequenceStep(Label* label, std::list<Assignment*>* assignments = nullptr);
+	SequenceStep(LabelDefinition* label, std::list<Assignment*>* assignments = nullptr);
 	SequenceStep(Model* model, std::string stationOrLabelName, bool isStation = true, std::list<Assignment*>* assignments = nullptr);
 	virtual ~SequenceStep() override;
 public: // virtual
@@ -40,8 +40,8 @@ public:
 	void setStation(Station* _station);
 	Station* getStation() const;
 	void setElementManager(ModelDataManager* _modeldataManager);
-    void setLabel(Label* _label);
-    Label* getLabel() const;
+    void setLabel(LabelDefinition* _label);
+    LabelDefinition* getLabel() const;
 
 protected:
 private:
@@ -50,7 +50,7 @@ private:
 		const unsigned int assignmentsSize = 0;
 	} DEFAULT;
 	Station* _station = nullptr;
-	Label* _label = nullptr;
+	LabelDefinition* _label = nullptr;
 	std::list<Assignment*>* _assignments = new std::list<Assignment*>();
 private:
 	ModelDataManager* _modeldataManager = nullptr;
@@ -58,7 +58,7 @@ private:
 
 /*!
  * \brief Data definition holding an ordered list of visitation steps
- * (\c SequenceStep), each naming a Station or Label an entity should reach
+ * (\c SequenceStep), each naming a Station or LabelDefinition an entity should reach
  * next, with optional attribute/variable assignments per step.
  *
  * Arena correspondence: the "Sequence module" (Rockwell Automation,
@@ -68,7 +68,7 @@ private:
  * through the special-purpose Entity.Sequence/Entity.Jobstep/
  * Entity.PlannedStation attributes.
  *
- * GenESyS extends the concept by letting a SequenceStep target a Label
+ * GenESyS extends the concept by letting a SequenceStep target a LabelDefinition
  * instead of a Station (useful outside pure station-to-station material
  * handling flows).
  *

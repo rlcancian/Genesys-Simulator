@@ -17,7 +17,7 @@
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/Transfer/Sequence.h"
-#include "../../data/Logic/Label.h"
+#include "../../data/Transfer/LabelDefinition.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -56,10 +56,10 @@ Route::Route(Model* model, std::string name) : ModelComponent(model, Util::TypeO
     SimulationControlGenericEnum<Route::DestinationType, Route>* propDestinationType = new SimulationControlGenericEnum<Route::DestinationType, Route>(
                                     std::bind(&Route::getRouteDestinationType, this), std::bind(&Route::setRouteDestinationType, this, std::placeholders::_1),
                                     Util::TypeOf<Route>(), getName(), "RouteDestinationType", "");
-	SimulationControlGenericClass<Label*, Model*, Label>* propLabel = new SimulationControlGenericClass<Label*, Model*, Label>(
+	SimulationControlGenericClass<LabelDefinition*, Model*, LabelDefinition>* propLabel = new SimulationControlGenericClass<LabelDefinition*, Model*, LabelDefinition>(
 									_parentModel,
 									std::bind(&Route::getLabel, this), std::bind(&Route::setLabel, this, std::placeholders::_1),
-									Util::TypeOf<Route>(), getName(), "Label", "");									
+									Util::TypeOf<Route>(), getName(), "LabelDefinition", "");									
 
 	_parentModel->getControls()->insert(propStation);
 	_parentModel->getControls()->insert(propStationExpression);
@@ -142,11 +142,11 @@ Route::DestinationType Route::getRouteDestinationType() const {
 	return _routeDestinationType;
 }
 
-void Route::setLabel(Label* _label) {
+void Route::setLabel(LabelDefinition* _label) {
 	this->_label = _label;
 }
 
-Label* Route::getLabel() const {
+LabelDefinition* Route::getLabel() const {
 	return _label;
 }
 
@@ -160,7 +160,7 @@ std::string Route::getStationExpression() const {
 
 void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	Station* destinyStation = _station;
-	Label* destinyLabel = _label;
+	LabelDefinition* destinyLabel = _label;
 	if (_routeDestinationType == Route::DestinationType::Sequence) {
 		unsigned int sequenceId = static_cast<unsigned int> (entity->getAttributeValue("Entity.Sequence"));
 		unsigned int step = static_cast<unsigned int> (entity->getAttributeValue("Entity.SequenceStep"));
@@ -204,7 +204,7 @@ void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		if (destinyStation != nullptr) {
 			newEvent = new Event(routeEndTime, entity, destinyStation->getEnterIntoStationComponent());
 			traceSimulation(this, "End of route of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " to the component \"" + destinyStation->getEnterIntoStationComponent()->getName() + "\" was scheduled to time " + std::to_string(routeEndTime));
-		} else {// destination is Label
+		} else {// destination is LabelDefinition
 			newEvent = new Event(routeEndTime, entity, destinyLabel->getEnterIntoLabelComponent());
 			traceSimulation(this, "End of route of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " to the component \"" + destinyLabel->getEnterIntoLabelComponent()->getName() + "\" was scheduled to time " + std::to_string(routeEndTime));
 		}
@@ -213,7 +213,7 @@ void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		// send without delay
 		if (destinyStation != nullptr) {
 			_parentModel->sendEntityToComponent(entity, destinyStation->getEnterIntoStationComponent(), 0.0);
-		} else {// destination is Label
+		} else {// destination is LabelDefinition
 			_parentModel->sendEntityToComponent(entity, destinyLabel->getEnterIntoLabelComponent(), 0.0);
 		}
 	}
@@ -242,10 +242,10 @@ bool Route::_loadInstance(PersistenceRecord *fields) {
 		}
 		if (_routeDestinationType == DestinationType::Label) {
 			std::string labelName = fields->loadField("label", "");
-			Label* label = dynamic_cast<Label*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Label>(), labelName));
+			LabelDefinition* label = dynamic_cast<LabelDefinition*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<LabelDefinition>(), labelName));
 			this->_label = label;
 			if (label == nullptr && !labelName.empty()) {
-				this->traceError("Route could not resolve referenced Label named '" + labelName + "' on loading");
+				this->traceError("Route could not resolve referenced LabelDefinition named '" + labelName + "' on loading");
 				res = false;
 			}
 		}
@@ -273,7 +273,7 @@ PluginInformation* Route::GetPluginInformation() {
 	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("station.so");
 	info->insertDynamicLibFileDependence("sequence.so");
-	info->insertDynamicLibFileDependence("label.so");
+	info->insertDynamicLibFileDependence("labeldefinition.so");
 	std::string help = "The Route module transfers an entity to a specified station or the next station in the station visitation sequence defined for the entity.";
 	help += " A delay time to transfer to the next station may be defined.";
 	help += " When an entity enters the Route module, its Station attribute (Entity.Station) is set to the destination station.";
@@ -312,11 +312,11 @@ bool Route::_check(std::string& errorMessage) {
 		}
 	}
 	if (this->_routeDestinationType == Route::DestinationType::Label) {
-		resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Label>(), _label, "Label", errorMessage);
+		resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<LabelDefinition>(), _label, "LabelDefinition", errorMessage);
 		if (resultAll) {
 			resultAll &= _label->getEnterIntoLabelComponent() != nullptr;
 			if (!resultAll) {
-                errorMessage.append("Label has no component to enter into it");
+                errorMessage.append("LabelDefinition has no component to enter into it");
 			}
 		}
 	}
@@ -342,7 +342,7 @@ void Route::_createEditableDataDefinitions() {
 		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
 	}
 	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label) {
-		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Label>(_parentModel);
+		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<LabelDefinition>(_parentModel);
 	}
 	if (_station != nullptr) {
 		_optionalEditableDataDefinitionInsert("Station", _station);
@@ -350,9 +350,9 @@ void Route::_createEditableDataDefinitions() {
 		_optionalEditableDataDefinitionRemove("Station");
 	}
 	if (_label != nullptr) {
-		_optionalEditableDataDefinitionInsert("Label", _label);
+		_optionalEditableDataDefinitionInsert("LabelDefinition", _label);
 	} else {
-		_optionalEditableDataDefinitionRemove("Label");
+		_optionalEditableDataDefinitionRemove("LabelDefinition");
 	}
 
 }

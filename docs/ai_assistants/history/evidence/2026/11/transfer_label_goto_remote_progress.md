@@ -29,10 +29,21 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - State: `IMPLEMENTED`, static inspection only; compilation `UNKNOWN`.
 - Change: seven DataDefinitions / 14 .h/.cpp files moved to `data/Transfer`; their categories changed to `Transfer`.
 - Consumers: 13 source files updated (components, Smart examples, connector, teaching, Arena examples).
-- Commit SHA: recorded at next checkpoint.
+- Commit SHA: `234b36c8d40ad6a4d37004ffa607b2b330836a91`.
 - Behavior and typenames: intended unchanged; tests not yet executed.
 
-## E3–E9 — Pending
+## E3 — Rename old data Label to LabelDefinition
+
+- State: `IMPLEMENTED`; compile/test: `UNKNOWN`.
+- Moved `data/Logic/Label.{h,cpp}` to `data/Transfer/LabelDefinition.{h,cpp}`; classname, typename, metadata, factories and registry changed.
+- Consumers: `Route.{h,cpp}`, `Sequence.{h,cpp}`, `PluginConnectorDummyImpl1.cpp`; static identifier `labeldefinition.so`.
+- Receiver pointer remains non-owning, can be set once per live LabelDefinition and is checked against the model's component registry by identity (without dereferencing expired addresses).
+- Receiver name is no longer eagerly resolved while DataDefinitions load. New Label component will establish the association after its own load/check.
+- The old shadowing label field and duplicate editor control were eliminated; inherited ModelDataDefinition Label text remains available.
+- Commit SHA: backfill at next checkpoint.
+- Tests not yet executed. Outstanding: receiver registration/type and load-order validation in E4/E6/E7.
+
+## E4–E9 — Pending
 
 - State: `NOT_STARTED`.
-- E3 LabelDefinition, E4 Label, E5 Goto, E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.
+- E4 Label, E5 Goto, E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.

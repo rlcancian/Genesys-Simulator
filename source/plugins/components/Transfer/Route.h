@@ -18,7 +18,7 @@
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
 #include "../../data/Transfer/Station.h"
 #include "../../data/Transfer/Sequence.h"
-#include "../../data/Logic/Label.h"
+#include "../../data/Transfer/LabelDefinition.h"
 
 /*!
 Route module
@@ -56,7 +56,7 @@ class Route : public ModelComponent {
 public:
 
 	enum class DestinationType : int {
-		Station = 0, Sequence = 1, Label = 2, num_elements = 3
+		Station = 0, Sequence = 1, LabelDefinition = 2, num_elements = 3
 	};
 public:
 	static std::string convertEnumToStr(DestinationType type);
@@ -82,8 +82,8 @@ public:
 	Util::TimeUnit getRouteTimeTimeUnit() const;
 	void setRouteDestinationType(DestinationType _routeDestinationType);
 	Route::DestinationType getRouteDestinationType() const;
-	void setLabel(Label* _label);
-	Label* getLabel() const;
+	void setLabel(LabelDefinition* _label);
+	LabelDefinition* getLabel() const;
 protected:
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
@@ -115,7 +115,7 @@ private:
 	Route::DestinationType _routeDestinationType = DEFAULT.routeDestinationType;
 private: // association
 	Station* _station = nullptr;
-	Label* _label = nullptr;
+	LabelDefinition* _label = nullptr;
 private: // internal elements
 	Counter* _numberIn = nullptr;
 };
