@@ -178,6 +178,36 @@ TEST(DecideConditionsEditorTest, OutputStatisticsTrackTheCurrentConditionCount) 
 	EXPECT_EQ(decide->getInternalData()->size(), 1u);
 }
 
+TEST(DecideConditionsEditorTest, PositionalEditsPreserveUnaffectedKernelConnections) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* decide = new Decide(model, "ConnectedDecide");
+	auto* firstTarget = new Decide(model, "FirstTarget");
+	auto* secondTarget = new Decide(model, "SecondTarget");
+	auto* elseTarget = new Decide(model, "ElseTarget");
+	decide->addConditions("first");
+	decide->addConditions("second");
+	auto* first = new Connection{firstTarget, {0}};
+	auto* second = new Connection{secondTarget, {0}};
+	auto* otherwise = new Connection{elseTarget, {0}};
+	decide->getConnectionManager()->insertAtPort(0, first);
+	decide->getConnectionManager()->insertAtPort(1, second);
+	decide->getConnectionManager()->insertAtPort(2, otherwise);
+
+	decide->insertConditionAt(1, "inserted");
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), first);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), second);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(3), otherwise);
+	EXPECT_EQ(decide->getConnectionManager()->size(), 3u);
+
+	decide->removeConditionAt(2);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), first);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), otherwise);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+	EXPECT_EQ(decide->getConnectionManager()->size(), 2u);
+}
+
 TEST(PluginIdentityAndCodePersistenceTest, PickUpHasDistinctIdentityAndCppForGRoundTripsText) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();
