@@ -453,6 +453,20 @@ This is the only approved source for work an AI agent may execute without a new 
 
 ## 5. Active bounded work
 
+### AUTO-GUI-002 — Consolidate standalone GUI tools and installed launch paths
+
+- Priority: `P1`
+- Status: `running` (human-authorized 2026-11-05).
+- Issue: [#561](https://github.com/rlcancian/Genesys-Simulator/issues/561).
+- Branch: `WiP202611/standalone-tools-gui` from `WorkInProgress` SHA `987e145a36948cdf349840ab3350f576adfbd1fd`.
+- Scope: verify distinct Qt6/C++23 executables, independent `main()` and window lifecycle for Data Analyser, Optimizer and AI Assistant; audit Tools action wiring; fix executable discovery for installed GUI layouts; include optional tools in the Debian package when selected; preserve separate development presets and portable package behavior; add focused and end-to-end evidence where CI permits; inventory legacy window sources.
+- Acceptance: no in-process Tools windows, correct installed lookup, explicit missing-executable diagnostics, no unrelated executable launches, three independently testable targets, CI execution and honest unvalidated classifications, Draft PR only.
+- Non-goals: changing optimizer/statistical/AI algorithms, rewriting source-window architecture, adding IPC/model sharing, broad plugin changes, stable-branch promotion and merge.
+- Stop gates: unresolved trust boundary, incompatible installation policy, package branch conflict requiring scope decisions, or persistent required CI failures. Rollback: revert the bounded PR.
+- Parallel change warning: Draft PR #524 changes Debian packaging; reconcile its layout before integration. Draft PR #560 changes Report Issue UI.
+
+
+
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
 
 - Priority: `P1`
