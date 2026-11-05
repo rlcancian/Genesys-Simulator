@@ -49,10 +49,19 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - Files: new `components/Transfer/Label.{h,cpp}`; registered `label.so` in DummyPlugin connector.
 - Contract: receiving transfer, zero conventional inputs, one output; one internal owned LabelDefinition, mandatory editable property, persisted definition name, deterministic rebinding in check, no artificial delay.
 - Ownership: internalData owns target; pointer validated using registry identity before dereference; second receiver is rejected.
-- Commit SHA: backfill at next checkpoint.
+- Commit SHA: `9a68c1a4aa9473a9abc7424b0a19f949431fcf6b`.
 - Risks: replacing a definition may invalidate external Goto/Route/Sequence references; must be tested/mitigated before ready-to-merge.
 
-## E5–E9 — Pending
+## E5 — Goto sending ModelComponent
+
+- State: `IMPLEMENTED`; compile and end-to-end validation `UNKNOWN`.
+- Files: `components/Transfer/Goto.{h,cpp}`; DummyPlugin connector registration `goto.so`.
+- Contract: transfer sender; exactly one conventional input, zero outputs; attached non-owning LabelDefinition reference; TimeDelayExpression default 0.0; TimeDelayTimeUnit default second; parser and time-unit conversion; reject negative/nonfinite delays and undefined destination.
+- Persistence: name, expression and unit saved; name resolved after loading/check.
+- Commit SHA: backfill at next checkpoint.
+- Risk: unload/removed data pointer must be invalidated in attached maps; review E6.
+
+## E6–E9 — Pending
 
 - State: `NOT_STARTED`.
-- E5 Goto, E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.
+- E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.
