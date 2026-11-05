@@ -34,6 +34,21 @@ The stable entry mechanisms and Debian-provided system fallback are:
 /usr/libexec/genesys/system/bin/genesys-worker
 ```
 
+The \`genesys-gui\` package also installs the separate Qt desktop applications
+\`/usr/bin/genesys-dataanalyser-gui\`, \`/usr/bin/genesys-optimizer-gui\`, and
+\`/usr/bin/genesys-ai-assistant-gui\`. These have their own event loops and
+windows, and do not inherit the current model of the main editor.
+
+The main GUI resides under \`/usr/libexec/genesys/system/bin/\`. ToolLauncher
+resolves sibling executables or the documented installation-prefix \`bin/\`
+directory without searching user PATH. The portable distribution instead
+colocates all executable tools in \`libexec/genesys/system/bin/\`.
+
+The \`gui-app\` CMake preset intentionally builds only the main GUI. The
+\`gui-dataanalyser\`, \`gui-optimizer\`, and \`gui-ai-assistant\` presets remain
+independent; Debian builds enable all three. This does not imply full
+functional or scientific maturity for any of these front ends.
+
 `genesys-gui` invokes the Launcher and is the only public entry point allowed to perform an interactive update check. Shell, Worker, legacy Web and MCP invoke the Dispatcher and never perform update-network activity themselves.
 
 ## Administrative update policy
