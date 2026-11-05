@@ -1,85 +1,18 @@
 #include "IssueReportRelayService.h"
 
 #include <QDateTime>
-#include <QEventLoop>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
-#include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QTimer>
 #include <QUrl>
 
 namespace {
-static void insertIfNotEmpty(QJsonObject* object, const QString& key, const QString& value) {
-    if (object == nullptr) {
-        return;
+void insertIfNotEmpty(QJsonObject& object, const QString& key, const QString& value) {
+    if (!value.trimmed().isEmpty()) {
+        object.insert(key, value.trimmed());
     }
-    const QString trimmed = value.trimmed();
-    if (!trimmed.isEmpty()) {
-        object->insert(key, trimmed);
-    }
-}
-
-static QJsonObject buildPayload(const IssueReportDraft& draft,
-                                const IssueReportRuntimeContext& runtimeContext) {
-    QJsonObject reportObject;
-    reportObject.insert(QStringLiteral("repository"), QStringLiteral("rlcancian/Genesys-Simulator"));
-    reportObject.insert(QStringLiteral("category_key"), draft.categoryKey);
-    reportObject.insert(QStringLiteral("category_label"), draft.categoryLabel);
-    reportObject.insert(QStringLiteral("title"), draft.title);
-    reportObject.insert(QStringLiteral("summary"), draft.summary);
-    insertIfNotEmpty(&reportObject, QStringLiteral("reproduction_steps"), draft.reproductionSteps);
-    insertIfNotEmpty(&reportObject, QStringLiteral("expected_behavior"), draft.expectedBehavior);
-    insertIfNotEmpty(&reportObject, QStringLiteral("observed_behavior"), draft.observedBehavior);
-    insertIfNotEmpty(&reportObject, QStringLiteral("additional_context"), draft.additionalContext);
-    insertIfNotEmpty(&reportObject, QStringLiteral("contact_email"), draft.contactEmail);
-
-    QJsonObject clientObject;
-    insertIfNotEmpty(&clientObject, QStringLiteral("application_name"), runtimeContext.applicationName);
-    insertIfNotEmpty(&clientObject, QStringLiteral("application_version"), runtimeContext.applicationVersion);
-    insertIfNotEmpty(&clientObject, QStringLiteral("qt_version"), runtimeContext.qtVersion);
-    insertIfNotEmpty(&clientObject, QStringLiteral("operating_system"), runtimeContext.operatingSystem);
-    insertIfNotEmpty(&clientObject, QStringLiteral("current_model_name"), runtimeContext.currentModelName);
-    clientObject.insert(QStringLiteral("ui_surface"), QStringLiteral("GenesysQtGUI"));
-    clientObject.insert(QStringLiteral("entrypoint"), QStringLiteral("About/Report Issue"));
-    clientObject.insert(QStringLiteral("submitted_at_utc"),
-                        QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
-
-    QJsonObject diagnosticsObject;
-    insertIfNotEmpty(&diagnosticsObject, QStringLiteral("current_model_simulang"),
-                     runtimeContext.currentModelSimulanguage);
-    insertIfNotEmpty(&diagnosticsObject, QStringLiteral("console_tail"), runtimeContext.consoleTail);
-    insertIfNotEmpty(&diagnosticsObject, QStringLiteral("simulation_tail"), runtimeContext.simulationTail);
-    insertIfNotEmpty(&diagnosticsObject, QStringLiteral("reports_tail"), runtimeContext.reportsTail);
-    insertIfNotEmpty(&diagnosticsObject, QStringLiteral("process_log_tail"), runtimeContext.processLogTail);
-    if (!runtimeContext.screenshotPngBase64.isEmpty()) {
-        diagnosticsObject.insert(QStringLiteral("screenshot_png_base64"),
-                                 QString::fromLatin1(runtimeContext.screenshotPngBase64));
-    }
-
-    QJsonObject rootObject;
-    rootObject.insert(QStringLiteral("schema_version"), 1);
-    rootObject.insert(QStringLiteral("report"), reportObject);
-    rootObject.insert(QStringLiteral("client"), clientObject);
-    rootObject.insert(QStringLiteral("diagnostics"), diagnosticsObject);
-    return rootObject;
-}
-
-static QString extractRelayMessage(const QJsonObject& responseObject, const QString& rawBody) {
-    const QString message = responseObject.value(QStringLiteral("message")).toString().trimmed();
-    if (!message.isEmpty()) {
-        return message;
-    }
-    const QString error = responseObject.value(QStringLiteral("error")).toString().trimmed();
-    if (!error.isEmpty()) {
-        return error;
-    }
-    const QString trimmedBody = rawBody.trimmed();
-    if (trimmedBody.isEmpty()) {
-        return QStringLiteral("No additional details were returned by the relay.");
-    }
-    return trimmedBody.left(1000);
 }
 } // namespace
 
@@ -94,134 +27,174 @@ QString IssueReportRelayService::optionalClientKey() {
 int IssueReportRelayService::requestTimeoutMs() {
     bool ok = false;
     const int value = qEnvironmentVariableIntValue("GENESYS_REPORT_ISSUE_TIMEOUT_MS", &ok);
-    if (ok && value > 0) {
-        return value;
-    }
-    return 15000;
+    return ok && value > 0 ? value : 15000;
 }
 
 bool IssueReportRelayService::isEndpointConfigured(QString* reason) {
     const QString endpoint = configuredEndpoint();
-    if (endpoint.isEmpty()) {
-        if (reason != nullptr) {
-            *reason = QStringLiteral(
-                "Set GENESYS_REPORT_ISSUE_RELAY_URL to an HTTPS relay endpoint before using Send Issue.");
-        }
-        return false;
-    }
-
     const QUrl url(endpoint);
-    if (!url.isValid() || url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) != 0) {
-        if (reason != nullptr) {
-            *reason = QStringLiteral(
-                "GENESYS_REPORT_ISSUE_RELAY_URL must be a valid HTTPS URL.");
-        }
-        return false;
-    }
-
+    const bool valid = !endpoint.isEmpty() && url.isValid() && !url.host().isEmpty()
+                       && url.scheme() == QStringLiteral("https")
+                       && url.userInfo().isEmpty() && url.fragment().isEmpty();
     if (reason != nullptr) {
-        *reason = QString();
+        *reason = valid ? QString()
+                        : QStringLiteral("A valid HTTPS report relay is not configured.");
     }
-    return true;
+    return valid;
 }
 
-IssueReportSubmissionResult IssueReportRelayService::submit(const IssueReportDraft& draft,
-                                                            const IssueReportRuntimeContext& runtimeContext) {
-    IssueReportSubmissionResult result;
+QByteArray IssueReportRelayService::serializePayload(
+    const IssueReportDraft& draft, const IssueReportRuntimeContext& context) {
+    QJsonObject report;
+    report.insert(QStringLiteral("repository"), QStringLiteral("rlcancian/Genesys-Simulator"));
+    report.insert(QStringLiteral("category_key"), draft.categoryKey);
+    report.insert(QStringLiteral("category_label"), draft.categoryLabel);
+    report.insert(QStringLiteral("title"), draft.title);
+    report.insert(QStringLiteral("summary"), draft.summary);
 
-    QString endpointReason;
-    if (!isEndpointConfigured(&endpointReason)) {
-        result.errorMessage = endpointReason;
+    // Legacy optional schema-v1 fields remain accepted. The GUI does not collect them.
+    insertIfNotEmpty(report, QStringLiteral("reproduction_steps"), draft.reproductionSteps);
+    insertIfNotEmpty(report, QStringLiteral("expected_behavior"), draft.expectedBehavior);
+    insertIfNotEmpty(report, QStringLiteral("observed_behavior"), draft.observedBehavior);
+    insertIfNotEmpty(report, QStringLiteral("additional_context"), draft.additionalContext);
+    insertIfNotEmpty(report, QStringLiteral("contact_email"), draft.contactEmail);
+
+    QJsonObject client;
+    insertIfNotEmpty(client, QStringLiteral("application_name"), context.applicationName);
+    insertIfNotEmpty(client, QStringLiteral("application_version"), context.applicationVersion);
+    insertIfNotEmpty(client, QStringLiteral("qt_version"), context.qtVersion);
+    client.insert(QStringLiteral("ui_surface"), QStringLiteral("GenesysQtGUI"));
+    client.insert(QStringLiteral("entrypoint"), QStringLiteral("About/Report Issue"));
+    client.insert(QStringLiteral("submitted_at_utc"),
+                  QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+
+    QJsonObject payload;
+    payload.insert(QStringLiteral("schema_version"), 1);
+    payload.insert(QStringLiteral("report"), report);
+    payload.insert(QStringLiteral("client"), client);
+    payload.insert(QStringLiteral("diagnostics"), QJsonObject()); // schema-v1 compatibility
+    return QJsonDocument(payload).toJson(QJsonDocument::Compact);
+}
+
+bool IssueReportRelayService::isCanonicalIssueUrl(const QString& rawUrl, int number) {
+    if (number <= 0) {
+        return false;
+    }
+    const QUrl url(rawUrl);
+    return url.isValid()
+           && url.scheme() == QStringLiteral("https")
+           && url.host() == QStringLiteral("github.com")
+           && url.userInfo().isEmpty()
+           && (url.port(-1) == -1 || url.port(-1) == 443)
+           && url.query().isEmpty() && url.fragment().isEmpty()
+           && url.path() == QStringLiteral("/rlcancian/Genesys-Simulator/issues/%1")
+                                .arg(number);
+}
+
+IssueReportSubmissionResult IssueReportRelayService::parseResponse(
+    int httpStatus, const QByteArray& response, QNetworkReply::NetworkError error, bool timedOut) {
+    IssueReportSubmissionResult result;
+    result.httpStatus = httpStatus;
+    result.responseBody = QString::fromUtf8(response.left(65536));
+
+    if (timedOut) {
+        result.errorMessage = QStringLiteral(
+            "The relay timed out. Issue creation is unconfirmed; check GitHub before retrying.");
+        return result;
+    }
+    if (httpStatus == 0 && error != QNetworkReply::NoError) {
+        result.errorMessage = QStringLiteral("Could not connect to the report service.");
+        return result;
+    }
+    if (httpStatus == 401 || httpStatus == 403) {
+        result.errorMessage = QStringLiteral("The report service rejected authorization.");
+        return result;
+    }
+    if (httpStatus == 429) {
+        result.errorMessage = QStringLiteral("The report service is busy. Please retry later.");
+        return result;
+    }
+    if (httpStatus >= 500) {
+        result.errorMessage = QStringLiteral("The report service encountered an error.");
+        return result;
+    }
+    if (httpStatus < 200 || httpStatus >= 300) {
+        result.errorMessage = QStringLiteral("The report service rejected the report (HTTP %1).")
+                                  .arg(httpStatus);
+        return result;
+    }
+    if (error != QNetworkReply::NoError) {
+        result.errorMessage = QStringLiteral(
+            "The report service connection ended unexpectedly; creation is unconfirmed.");
         return result;
     }
 
-    const QUrl endpoint(configuredEndpoint());
-    QNetworkRequest request(endpoint);
+    QJsonParseError parseError{};
+    const QJsonDocument parsed = QJsonDocument::fromJson(response, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !parsed.isObject()) {
+        result.errorMessage = QStringLiteral("The report service returned an invalid response.");
+        return result;
+    }
+
+    const QJsonObject root = parsed.object();
+    const QJsonObject issue = root.value(QStringLiteral("issue")).toObject();
+    const QJsonObject record = issue.isEmpty() ? root : issue;
+    const int number = record.value(QStringLiteral("number")).toInt(
+        record.value(QStringLiteral("issue_number")).toInt());
+    QString url = record.value(QStringLiteral("html_url")).toString().trimmed();
+    if (url.isEmpty()) {
+        url = record.value(QStringLiteral("issue_url")).toString().trimmed();
+    }
+    if (!isCanonicalIssueUrl(url, number)) {
+        result.errorMessage = QStringLiteral(
+            "The relay answered, but did not confirm a valid GitHub issue.");
+        return result;
+    }
+    result.issueNumber = number;
+    result.issueUrl = url;
+    result.success = true;
+    return result;
+}
+
+void IssueReportRelayService::submitAsync(
+    const IssueReportDraft& draft, const IssueReportRuntimeContext& context,
+    QNetworkAccessManager* manager, QObject* receiver, Completion completion) {
+    QString reason;
+    if (!isEndpointConfigured(&reason) || manager == nullptr || receiver == nullptr) {
+        IssueReportSubmissionResult result;
+        result.errorMessage = reason.isEmpty() ? QStringLiteral("Report service unavailable.") : reason;
+        completion(result);
+        return;
+    }
+
+    QNetworkRequest request(QUrl(configuredEndpoint()));
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    request.setRawHeader("Accept", "application/json");
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       QStringLiteral("Genesys-Simulator/ReportIssueRelay"));
-
+    request.setRawHeader("Accept", "application/json");
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::ManualRedirectPolicy);
     const QString clientKey = optionalClientKey();
     if (!clientKey.isEmpty()) {
         request.setRawHeader("X-Genesys-Client-Key", clientKey.toUtf8());
     }
 
-    const QByteArray payload =
-            QJsonDocument(buildPayload(draft, runtimeContext)).toJson(QJsonDocument::Compact);
-
-    QNetworkAccessManager manager;
-    QNetworkReply* reply = manager.post(request, payload);
-
-    QEventLoop loop;
-    QTimer timeoutTimer;
-    timeoutTimer.setSingleShot(true);
-    bool timedOut = false;
-
-    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, [&]() {
-        timedOut = true;
-        if (reply != nullptr && reply->isRunning()) {
-            reply->abort();
-        }
-        loop.quit();
+    QNetworkReply* reply = manager->post(request, serializePayload(draft, context));
+    auto* timeout = new QTimer(reply);
+    timeout->setSingleShot(true);
+    QObject::connect(timeout, &QTimer::timeout, reply, [reply]() {
+        reply->setProperty("genesysIssueTimedOut", true);
+        reply->abort();
     });
-
-    timeoutTimer.start(requestTimeoutMs());
-    loop.exec();
-    timeoutTimer.stop();
-
-    const QByteArray rawResponse = reply->readAll();
-    result.responseBody = QString::fromUtf8(rawResponse);
-    result.httpStatus =
-            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-
-    QJsonParseError parseError{};
-    const QJsonDocument responseDocument = QJsonDocument::fromJson(rawResponse, &parseError);
-    const QJsonObject responseObject =
-            (parseError.error == QJsonParseError::NoError && responseDocument.isObject())
-            ? responseDocument.object()
-            : QJsonObject();
-
-    if (responseObject.contains(QStringLiteral("issue"))
-        && responseObject.value(QStringLiteral("issue")).isObject()) {
-        const QJsonObject issueObject = responseObject.value(QStringLiteral("issue")).toObject();
-        result.issueNumber = issueObject.value(QStringLiteral("number")).toInt();
-        result.issueUrl = issueObject.value(QStringLiteral("html_url")).toString().trimmed();
-    }
-    if (result.issueUrl.isEmpty()) {
-        result.issueUrl = responseObject.value(QStringLiteral("issue_url")).toString().trimmed();
-    }
-    if (result.issueUrl.isEmpty()) {
-        result.issueUrl = responseObject.value(QStringLiteral("html_url")).toString().trimmed();
-    }
-    if (result.issueNumber == 0) {
-        result.issueNumber = responseObject.value(QStringLiteral("issue_number")).toInt();
-    }
-
-    if (timedOut) {
-        result.errorMessage = QStringLiteral(
-            "The report relay did not answer within the configured timeout.");
+    QObject::connect(reply, &QNetworkReply::finished, receiver,
+                     [reply, timeout, completion = std::move(completion)]() {
+        timeout->stop();
+        const auto result = parseResponse(
+            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(),
+            reply->readAll(), reply->error(),
+            reply->property("genesysIssueTimedOut").toBool());
         reply->deleteLater();
-        return result;
-    }
-
-    if (reply->error() != QNetworkReply::NoError && result.httpStatus == 0) {
-        result.errorMessage = QStringLiteral("Relay request failed: %1")
-                                  .arg(reply->errorString());
-        reply->deleteLater();
-        return result;
-    }
-
-    if (result.httpStatus < 200 || result.httpStatus >= 300) {
-        result.errorMessage = QStringLiteral("Relay rejected the report (HTTP %1). %2")
-                                  .arg(result.httpStatus)
-                                  .arg(extractRelayMessage(responseObject, result.responseBody));
-        reply->deleteLater();
-        return result;
-    }
-
-    result.success = true;
-    reply->deleteLater();
-    return result;
+        completion(result);
+    });
+    timeout->start(requestTimeoutMs());
 }
