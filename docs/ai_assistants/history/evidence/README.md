@@ -2,7 +2,7 @@
 document_type: evidence-index
 authority: informative
 owner: project-maintainer
-last_reviewed: 2026-07-22
+last_reviewed: 2026-11-05
 status: active
 tracks: 511
 ---
@@ -28,6 +28,7 @@ history/evidence/
 
 Current ledger:
 
+- [`2026/11/VALIDATION_LEDGER.md`](2026/11/VALIDATION_LEDGER.md)
 - [`2026/07/VALIDATION_LEDGER.md`](2026/07/VALIDATION_LEDGER.md)
 
 A separate document may be added inside the same month only when its technical detail cannot be represented responsibly in the ledger. It must still be linked from that month's ledger.
