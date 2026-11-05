@@ -40,10 +40,19 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - Receiver pointer remains non-owning, can be set once per live LabelDefinition and is checked against the model's component registry by identity (without dereferencing expired addresses).
 - Receiver name is no longer eagerly resolved while DataDefinitions load. New Label component will establish the association after its own load/check.
 - The old shadowing label field and duplicate editor control were eliminated; inherited ModelDataDefinition Label text remains available.
-- Commit SHA: backfill at next checkpoint.
+- Commit SHA: `ad81f471e1c09a429867d99f55b22a85dedfe039`.
 - Tests not yet executed. Outstanding: receiver registration/type and load-order validation in E4/E6/E7.
 
-## E4–E9 — Pending
+## E4 — Label receiving ModelComponent
+
+- State: `IMPLEMENTED`; compilation and runtime tests: `UNKNOWN`.
+- Files: new `components/Transfer/Label.{h,cpp}`; registered `label.so` in DummyPlugin connector.
+- Contract: receiving transfer, zero conventional inputs, one output; one internal owned LabelDefinition, mandatory editable property, persisted definition name, deterministic rebinding in check, no artificial delay.
+- Ownership: internalData owns target; pointer validated using registry identity before dereference; second receiver is rejected.
+- Commit SHA: backfill at next checkpoint.
+- Risks: replacing a definition may invalidate external Goto/Route/Sequence references; must be tested/mitigated before ready-to-merge.
+
+## E5–E9 — Pending
 
 - State: `NOT_STARTED`.
-- E4 Label, E5 Goto, E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.
+- E5 Goto, E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.

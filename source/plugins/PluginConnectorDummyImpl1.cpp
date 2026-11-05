@@ -53,6 +53,7 @@
 #include "plugins/components/Transfer/Enter.h"
 #include "plugins/components/Transfer/Exit.h"
 #include "plugins/components/Transfer/Leave.h"
+#include "plugins/components/Transfer/Label.h"
 #include "plugins/components/Transfer/Move.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
@@ -214,6 +215,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("groprogram.so");
     filenames->insert("bacteriasignalgrid.so");
     filenames->insert("labeldefinition.so");
+    filenames->insert("label.so");
     filenames->insert("queue.so");
     filenames->insert("resource.so");
     filenames->insert("variable.so");
@@ -415,6 +417,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &BacteriaSignalGrid::GetPluginInformation;
     else if (fn == "labeldefinition.so")
         GetInfo = &LabelDefinition::GetPluginInformation;
+    else if (fn == "label.so")
+        GetInfo = &Label::GetPluginInformation;
     else if (fn == "queue.so")
         GetInfo = &Queue::GetPluginInformation;
     else if (fn == "resource.so")
