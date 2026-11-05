@@ -1,5 +1,8 @@
 # Developer documentation
 
+The GUI issue reporting implementation, relay contract and QtTest suite are
+documented in [ReportIssue.md](ReportIssue.md).
+
 This directory contains developer-facing documentation configuration for GenESyS.
 
 Current Doxygen entrypoint:
