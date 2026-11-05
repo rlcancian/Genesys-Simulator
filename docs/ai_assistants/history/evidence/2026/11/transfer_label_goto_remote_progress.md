@@ -109,3 +109,11 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - Root cause: pre-existing relative include omitted from earlier exact-prefix replacement. Fixed to `components/Transfer/PickStation.h`.
 - Regression audit found existing `source/tests/unit/test_simulator_runtime.cpp` still exercised obsolete LabelDefinition→arbitrary sink association and asserted `MaterialHandling` categories. Updated to the new required owning `Label` receiver and `Transfer` metadata, retaining Route/Sequence behavioral coverage.
 - State: source corrected and committed at next checkpoint; follow-up CI required. Original failure remains FAIL.
+
+## CI findings — PR #564, third attempt and corrective commit
+
+- Run `42082527441`, job `127439171086`, `tests-kernel-unit`: **FAIL** at compilation of `source/tests/unit/test_station_statistics_lifecycle.cpp` due to obsolete include `plugins/data/MaterialHandling/Station.h`; no CTest execution took place in this job.
+- The companion `tests-smoke` job completed successfully for this run. This does **not** establish success of kernel/unit tests.
+- Corrective commit: `a1c318f70020faf36ee56d2daec2b49803780d1f` — changed that test include to `plugins/data/Transfer/Station.h` without modifying runtime behavior.
+- Validation of the corrective head: `UNKNOWN` pending a new workflow run. GUI interaction, `.gui` roundtrip and sanitizers remain `REQUIRES_LOCAL_VALIDATION`.
+- The PR remains **draft and unmerged**. E8 is still `IN_PROGRESS`; E9 handoff is not acceptance or merge authorization.
