@@ -74,6 +74,24 @@ jobs:
             echo "Canonical PDF is already up to date" | tee manual-tools-evidence/publish.txt
             exit 0
           fi
+          # Keep the validated PDF while advancing to the current feature-branch
+          # HEAD. Only do this if no manual source or existing PDF changed since
+          # the checked-out source commit. Never force-push or discard remote work.
+          original_sha=$(git rev-parse HEAD)
+          git fetch --no-tags origin refs/heads/WiP202611/standalone-tools-gui
+          remote_sha=$(git rev-parse FETCH_HEAD)
+          if [[ "$original_sha" != "$remote_sha" ]]; then
+            if ! git diff --quiet "$original_sha" "$remote_sha" -- \
+                   docs/developers/ManualGenESyS_subrepo docs/ManualGenESyS.pdf; then
+              echo 'Manual sources or canonical PDF changed during generation; refusing to publish stale output.' >&2
+              exit 1
+            fi
+            generated_pdf=$(mktemp "$RUNNER_TEMP/genesys-manual.XXXXXX.pdf")
+            cp -- docs/ManualGenESyS.pdf "$generated_pdf"
+            git reset --hard "$remote_sha"
+            cp -- "$generated_pdf" docs/ManualGenESyS.pdf
+            rm -f -- "$generated_pdf"
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- docs/ManualGenESyS.pdf
