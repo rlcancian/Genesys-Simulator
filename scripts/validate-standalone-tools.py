@@ -30,10 +30,12 @@ def require(condition: bool, message: str) -> None:
 
 
 def slot_body(source: str, signature: str) -> str:
-    match = re.search(r"void\s+" + re.escape(signature) + r"\s*\(\s*\)\s*\{([^{}]*)\}",
+    match = re.search(r"void\s+" + re.escape(signature) + r"\s*\(\s*\)\s*\{",
                       source, re.DOTALL)
-    require(match is not None, f"missing or unexpected wrapper body: {signature}")
-    return match.group(1)
+    require(match is not None, f"missing wrapper or handler: {signature}")
+    end = source.find("\n}", match.end())
+    require(end != -1, f"missing function end: {signature}")
+    return source[match.end():end]
 
 
 def main() -> int:
