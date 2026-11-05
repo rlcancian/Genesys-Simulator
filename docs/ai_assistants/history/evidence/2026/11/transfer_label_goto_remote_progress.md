@@ -76,11 +76,21 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - Files: `source/tests/unit/test_transfer_label_goto.cpp`; `source/tests/unit/CMakeLists.txt` new GTest executable `genesys_test_transfer_label_goto`.
 - Coverage authored: plugin metadata and ports; one internal definition; idempotent check; duplicate receiver; missing Goto destination; invalid expressions and units; zero, positive, negative delays; minute-to-second conversion; identity preservation across transfer and output; multiple Gotos; isolated destinations; `.gen` full check-save-load-check-simulate and no orphaned entities.
 - Existing `test_simulator_runtime.cpp` tests Route/Sequence and LabelDefinition renamed; `test_dangling_reference_load.cpp` paths updated.
-- Commit SHA: backfill at next checkpoint.
+- Commit SHA: `767c5b4f9371d7dcd969ea518a2e994743ef9894`.
 - No CI or local testing has run. All test outcomes `UNKNOWN`, not PASS.
 - Missing: explicit `.gui` round-trip and manual GUI Property Editor port/layout validation.
 
-## E8–E9 — Pending
+## E8 — Remote validation (pre-PR checkpoint)
+
+- State: `REQUIRES_LOCAL_VALIDATION` for desktop GUI/sanitizers; `BLOCKED` for hosted CI until the Draft PR opens.
+- GitHub diff compare: base `3ae85774949ebc87e521a2409eecf8f086bcc43b` to E7 head `767c5b4f9371d7dcd969ea518a2e994743ef9894`: ahead=7, behind=0, 65 changed paths. This is a source/diff check, NOT a compilation/test result.
+- Commit combined statuses on E7 SHA: empty; `fetch_commit_workflow_runs`: zero pull_request-triggered runs.
+- Why: `.github/workflows/genesys-ci.yml` explicitly triggers on `pull_request` against `WorkInProgress` (or manual workflow_dispatch); no push trigger. The available GitHub connector does not expose dispatch-workflow, and no CI run exists yet.
+- Action: open authorized Draft PR at E9 (CI trigger), revisit E8 in subsequent corrections; never claim pre-PR CI PASS.
+- Post-PR CI, GUI and sanitizer status: `UNKNOWN` until run IDs/logs are available.
+
+## E9 — Draft PR and Codex handoff
 
 - State: `NOT_STARTED`.
-- E8 remote CI/build and fixes, E9 Draft PR/handoff.
+- Draft PR to `WorkInProgress` must remain unmerged; local final validation required.
+
