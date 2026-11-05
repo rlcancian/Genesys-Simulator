@@ -37,6 +37,7 @@ PluginInformation* LabelDefinition::GetPluginInformation() {
 
 std::string LabelDefinition::show() {
     std::string result = ModelDataDefinition::show();
+    result += ",label=\"" + getLabel() + "\"";
     const auto* receiver = getEnterIntoLabelComponent();
     result += ",enteringComponent=" + (receiver ? receiver->getName() : std::string("NULL"));
     return result;
