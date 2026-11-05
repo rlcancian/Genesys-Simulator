@@ -85,6 +85,14 @@ target_compile_definitions(genesys_test_genesys_gro_fixtures
         GENESYS_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
+genesys_add_unit_test(genesys_test_transfer_label_goto
+    test_transfer_label_goto.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
 genesys_add_unit_test(genesys_test_runtime_pluginmanager
     test_runtime_pluginmanager.cpp
     genesys_kernel_simulator_runtime
