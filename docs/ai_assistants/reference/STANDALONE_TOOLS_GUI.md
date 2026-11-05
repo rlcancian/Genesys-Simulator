@@ -46,6 +46,8 @@ The standalone applications have their own `Simulator` and therefore do not rece
 - C++ focused tests: `genesys_tool_launcher_tests` use an isolated Qt6/GTest build and exercise portable, Debian-prefix and development lookup, missing executable, permission and path-traversal cases.
 - Integration workflow: `.github/workflows/genesys-standalone-tools-integration.yml` compiles four GUIs, installs into a disposable prefix containing spaces, runs CTest, starts the main GUI from arbitrary cwd under private Xvfb, invokes three Tools menu actions, checks PID/`/proc/<pid>/exe`, visible windows, main GUI liveness and child termination.
 - Existing individual GUIs already have dedicated bounded startup workflows; they are not substitutes for the combined menu/installation test.
-- Package lifecycle, all CI statuses and manual PDF regeneration remain `UNKNOWN` until reviewed at the final PR head.
+- Debian build/lifecycle: PASS on hosted workflow `42061976389` (PR head `04be9306`); later commits touch the launcher search policy and tests, so final-head regression remains required.
+- Manual PDF: XeLaTeX/latexmk generation, `pdfinfo` (390 pages), text content checks and branch publication passed on hosted workflow `42079684832`, artifact `13439414159`; canonical `docs/ManualGenESyS.pdf` blob SHA `b60efd1f3477019ffc2d859e568e760fbd13c916`. Visual inspection of affected pages remains unverified.
+- Real Tools menu PID/window/liveness integration and final-head CI remain `UNKNOWN` until their workflows and artifacts are reviewed.
 
 Follow-up: move the two window source pairs only after a separate, focused migration demonstrates equivalent CMake, Qt automoc, UI and runtime behavior. No broad legacy source deletion is warranted by this audit.
