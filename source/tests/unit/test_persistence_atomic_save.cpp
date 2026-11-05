@@ -14,9 +14,13 @@
 #include "kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
+#include "plugins/components/ExternalIntegration/PythonForG.h"
+#include "plugins/components/ExternalIntegration/RSimulator.h"
+#include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 
 TEST(PersistenceIntegrityTest, MissingConnectionTargetMakesLoadFail) {
 	Simulator simulator;
@@ -128,9 +132,21 @@ TEST(DecideConditionsEditorTest, SupportsOrderedDuplicateConditionsAndPositional
 	ASSERT_EQ(decide->getConditions()->size(), 3u);
 	EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
 	EXPECT_EQ(decide->getConditions()->getAtRank(1), "x == 0");
+	auto* keepTarget = new Dispose(model, "KeepTarget");
+	auto* removeTarget = new Dispose(model, "RemoveTarget");
+	auto* keepConnection = new Connection{keepTarget, {0, ""}};
+	auto* removeConnection = new Connection{removeTarget, {0, ""}};
+	decide->getConnectionManager()->insertAtPort(0, keepConnection);
+	decide->getConnectionManager()->insertAtPort(2, removeConnection);
+	conditions->insertListValueAt(1, "inserted");
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), keepConnection);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(3), removeConnection);
+	conditions->removeListValueAt(3);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), keepConnection);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(3), nullptr);
 	conditions->removeListValueAt(2);
 	ASSERT_EQ(decide->getConditions()->size(), 2u);
-	EXPECT_EQ(decide->getConditions()->getAtRank(1), "x == 0");
+	EXPECT_EQ(decide->getConditions()->getAtRank(1), "inserted");
 	std::unique_ptr<PluginInformation> info(Decide::GetPluginInformation());
 	EXPECT_EQ(info->getMinimumOutputs(), 1);
 }
@@ -167,6 +183,30 @@ const char* s = "quoted"; \\path
 	EXPECT_EQ(loadedCpp->getInitBetweenReplicationCode(), "if (x) {\n  x++;\n}");
 	EXPECT_EQ(loadedCpp->getIncludesCode(), "#include <vector>\n// include text");
 	::unlink(filename.c_str());
+}
+
+TEST(SourceCodePropertyTest, PythonAndRCodeFieldsUseTheExistingCodeEditorContract) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* python = new PythonForG(model, "PythonSource");
+	auto* rSimulator = new RSimulator(model, "RSource");
+	auto* runner = new RSimulatorRunner(model, "RRunnerSource");
+	auto findControl = [](ModelDataDefinition* object, const std::string& property) {
+		for (SimulationControl* control : *object->getSimulationControls()->list()) {
+			if (control->getName() == property) return control;
+		}
+		return static_cast<SimulationControl*>(nullptr);
+	};
+	for (const auto& [object, property] : std::vector<std::pair<ModelDataDefinition*, std::string>>{
+			{python, "OnDispatchEventCode"}, {rSimulator, "PreludeScript"},
+			{runner, "PreludeScript"}, {runner, "Command"}}) {
+		SimulationControl* control = findControl(object, property);
+		ASSERT_NE(control, nullptr) << property;
+		EXPECT_EQ(control->preferredEditorHint(), SimulationControlEditorHint::CodeEditor) << property;
+		control->setValue("# λ\nprint(\\\"text\\\")");
+		EXPECT_EQ(control->getValue(), "# λ\nprint(\\\"text\\\")");
+	}
 }
 
 TEST(PersistenceAtomicSaveTest, SaveFailsCleanlyAndPreservesExistingFileWhenDestinationDirIsMissing) {

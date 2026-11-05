@@ -22,6 +22,7 @@
 #include "../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/Decisions/Decide.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
@@ -79,6 +80,25 @@ TEST(PluginCatalogPresentation, MainPaletteContainsOnlyComponentsAndReloadIsStab
     catalog.reloadFromPluginManager();
     EXPECT_EQ(countLeafItems(), firstCount);
     EXPECT_NE(simulator.getPluginManager()->find(Util::TypeOf<Resource>()), nullptr);
+}
+
+TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    auto* decide = new Decide(model, "DynamicDecide");
+    auto countPorts = [&](Decide* value) {
+        GraphicalModelComponent graphical(plugin, value, QPointF(100, 100), QColor("#336699"));
+        return graphical.getGraphicalOutputPorts().size();
+    };
+    EXPECT_EQ(countPorts(decide), 1);
+    decide->addConditions("A > 0");
+    EXPECT_EQ(countPorts(decide), 2);
+    decide->addConditions("B > 0");
+    decide->addConditions("C > 0");
+    EXPECT_EQ(countPorts(decide), 4);
 }
 
 namespace {

@@ -13,6 +13,7 @@
 
 #include "plugins/components/Decisions/Decide.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/ConnectionManager.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
 #include <iterator>
 
@@ -40,6 +41,10 @@ public:
 		auto* values = _owner->getConditions()->list();
 		if (index < 0 || index > static_cast<int>(values->size())) throw std::out_of_range("condition index");
 		auto it = values->begin(); std::advance(it, index); values->insert(it, value);
+		auto* connections = _owner->getConnectionManager()->connections();
+		std::map<unsigned int, Connection*> shifted;
+		for (const auto& [port, connection] : *connections) shifted.emplace(port >= static_cast<unsigned int>(index) ? port + 1 : port, connection);
+		*connections = std::move(shifted);
 	}
 	void replaceListValueAt(int index, const std::string& value) override {
 		_owner->getConditions()->setAtRank(static_cast<unsigned int>(index), value);
@@ -48,6 +53,12 @@ public:
 		auto* values = _owner->getConditions()->list();
 		if (index < 0 || index >= static_cast<int>(values->size())) throw std::out_of_range("condition index");
 		auto it = values->begin(); std::advance(it, index); values->erase(it);
+		auto* manager = _owner->getConnectionManager();
+		manager->removeAtPort(static_cast<unsigned int>(index));
+		auto* connections = manager->connections();
+		std::map<unsigned int, Connection*> shifted;
+		for (const auto& [port, connection] : *connections) shifted.emplace(port > static_cast<unsigned int>(index) ? port - 1 : port, connection);
+		*connections = std::move(shifted);
 	}
 private:
 	Decide* _owner;
