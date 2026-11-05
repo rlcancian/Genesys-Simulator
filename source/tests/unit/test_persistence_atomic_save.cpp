@@ -263,6 +263,8 @@ TEST(SourceCodePropertyTest, RSimulatorAndRunnerPreserveScriptsAcrossGenRoundTri
 	const std::string filename = "/tmp/genesys_r_source_roundtrip_" + std::to_string(::getpid()) + ".gen";
 	::unlink(filename.c_str());
 	ASSERT_TRUE(model->save(filename));
+	EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<RSimulatorRunner>(),
+		"RCommands.RSimulatorRunner"), nullptr);
 	Model* loaded = simulator.getModelManager()->loadModel(filename);
 	ASSERT_NE(loaded, nullptr);
 	auto* loadedComponent = dynamic_cast<RSimulator*>(loaded->getComponentManager()->find("RCommands"));
