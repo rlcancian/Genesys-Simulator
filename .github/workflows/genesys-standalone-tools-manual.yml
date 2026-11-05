@@ -38,7 +38,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             latexmk texlive-xetex texlive-latex-extra texlive-bibtex-extra \
             texlive-science texlive-pictures texlive-fonts-recommended \
-            biber poppler-utils
+            texlive-plain-generic biber poppler-utils
+          kpsewhich ulem.sty | tee manual-tools-evidence/ulem-path.txt
           latexmk -v | head -n 4 | tee manual-tools-evidence/latexmk-version.txt
           xelatex --version | head -n 2 | tee manual-tools-evidence/xelatex-version.txt
 
