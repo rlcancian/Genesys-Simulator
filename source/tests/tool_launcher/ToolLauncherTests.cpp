@@ -73,6 +73,24 @@ TEST(ToolLauncherPaths, MissingOrNonExecutableToolDoesNotResolve) {
     EXPECT_TRUE(ToolLauncher::findExecutable(name, guiDir).isEmpty());
 }
 
+TEST(ToolLauncherPaths, InstalledRuntimeDoesNotSearchDevelopmentFallback) {
+    QTemporaryDir temporary;
+    ASSERT_TRUE(temporary.isValid());
+    const QString prefix = temporary.path() + QStringLiteral("/prefix with spaces");
+    const QString guiDir = prefix + QStringLiteral("/libexec/genesys/system/bin");
+    const QString outside = prefix + QStringLiteral("/libexec/genesys/system/optimizer/genesys-optimizer-gui");
+    ASSERT_TRUE(QDir().mkpath(guiDir));
+    createExecutable(outside);
+
+    const QStringList candidates = ToolLauncher::candidateExecutables(
+        QStringLiteral("genesys-optimizer-gui"), guiDir, {QStringLiteral("../optimizer")});
+    ASSERT_EQ(candidates.size(), 2);
+    EXPECT_EQ(candidates[0], guiDir + QStringLiteral("/genesys-optimizer-gui"));
+    EXPECT_EQ(candidates[1], prefix + QStringLiteral("/bin/genesys-optimizer-gui"));
+    EXPECT_TRUE(ToolLauncher::findExecutable(
+        QStringLiteral("genesys-optimizer-gui"), guiDir, {QStringLiteral("../optimizer")}).isEmpty());
+}
+
 TEST(ToolLauncherPaths, RejectsArbitraryProgramsAndPathTraversal) {
     QTemporaryDir temporary;
     ASSERT_TRUE(temporary.isValid());
