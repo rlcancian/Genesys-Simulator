@@ -1,4 +1,6 @@
 #include "plugins/components/Transfer/Label.h"
+#include "plugins/components/Transfer/Route.h"
+#include "plugins/data/Transfer/Sequence.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include <algorithm>
 
@@ -106,6 +108,12 @@ void Label::setLabelDefinition(LabelDefinition* candidate) {
     if (auto* old = getLabelDefinition()) {
         for (auto* component : *_parentModel->getComponentManager()->getAllComponents()) {
             if (component == this || !component) continue;
+            // Route holds a direct destination pointer, not always attached data.
+            if (auto* route = dynamic_cast<Route*>(component); route && route->getLabel() == old) {
+                traceError("Label '" + getName() + "': cannot replace LabelDefinition referenced by Route '" +
+                           route->getName() + "'.");
+                return;
+            }
             for (const auto& attached : *component->getAttachedData()) {
                 if (attached.second == old) {
                     traceError("Label '" + getName() + "': cannot replace LabelDefinition while referenced by '" +
@@ -117,6 +125,17 @@ void Label::setLabelDefinition(LabelDefinition* candidate) {
         for (const auto& dataType : _parentModel->getDataManager()->getDataDefinitionClassnames()) {
             for (auto* owner : *_parentModel->getDataManager()->getDataDefinitionList(dataType)->list()) {
                 if (!owner || owner == old) continue;
+                // SequenceStep also stores a direct non-owning destination pointer.
+                if (auto* sequence = dynamic_cast<Sequence*>(owner)) {
+                    for (auto* step : *sequence->getSteps()->list()) {
+                        if (step && step->getLabel() == old) {
+                            traceError("Label '" + getName() +
+                                       "': cannot replace LabelDefinition referenced by Sequence '" +
+                                       sequence->getName() + "'.");
+                            return;
+                        }
+                    }
+                }
                 for (const auto& attached : *owner->getAttachedData()) {
                     if (attached.second == old) {
                         traceError("Label '" + getName() + "': cannot replace referenced LabelDefinition '" +
