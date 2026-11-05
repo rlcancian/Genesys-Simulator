@@ -79,7 +79,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           ctest --test-dir build/standalone-tools \
-            -R '^StandaloneTools\\.' --output-on-failure \
+            -R '^StandaloneTools[.]' --output-on-failure \
             2>&1 | tee standalone-tools-evidence/ctest.log
 
       - name: Install into isolated prefix with spaces
@@ -113,7 +113,8 @@ jobs:
         run: |
           set +e
           ps -ef > standalone-tools-evidence/processes-after.txt
-          find build/standalone-tools -name CMakeError.log -o -name LastTest.log \
+          cp "$RUNNER_TEMP/genesys-main-gui.log" standalone-tools-evidence/ 2>/dev/null || true
+          find build/standalone-tools \( -name CMakeError.log -o -name LastTest.log \) \
             | while read -r item; do
                 cp --parents "$item" standalone-tools-evidence/ 2>/dev/null
               done
