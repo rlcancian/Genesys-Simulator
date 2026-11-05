@@ -12,6 +12,7 @@ done
 : "${DISPLAY:?A private Xvfb DISPLAY is required}"
 export QT_QPA_PLATFORM=xcb
 gui_pid=""
+wm_pid=""
 declare -a tool_pids=()
 
 cleanup() {
@@ -22,6 +23,10 @@ cleanup() {
     if [[ -n "$gui_pid" ]]; then
         kill -TERM "$gui_pid" 2>/dev/null || true
         wait "$gui_pid" 2>/dev/null || true
+    fi
+    if [[ -n "$wm_pid" ]]; then
+        kill -TERM "$wm_pid" 2>/dev/null || true
+        wait "$wm_pid" 2>/dev/null || true
     fi
 }
 trap cleanup EXIT
@@ -38,6 +43,29 @@ wait_for_window() {
     done
     return 1
 }
+
+# xdotool windowactivate uses the EWMH _NET_ACTIVE_WINDOW protocol. Xvfb
+# alone has no window manager and cannot honor activation requests.
+openbox --sm-disable >"$RUNNER_TEMP/genesys-openbox.log" 2>&1 &
+wm_pid=$!
+wm_ready=false
+for _ in $(seq 1 100); do
+    if ! kill -0 "$wm_pid" 2>/dev/null; then
+        cat "$RUNNER_TEMP/genesys-openbox.log" >&2
+        echo "Openbox exited before becoming ready" >&2
+        exit 1
+    fi
+    if xprop -root _NET_SUPPORTING_WM_CHECK 2>/dev/null | grep -q 'window id #'; then
+        wm_ready=true
+        break
+    fi
+    sleep 0.1
+done
+if [[ "$wm_ready" != true ]]; then
+    cat "$RUNNER_TEMP/genesys-openbox.log" >&2
+    echo "No EWMH window manager detected in the private Xvfb display" >&2
+    exit 1
+fi
 
 # Deliberately do not open a model: Tools must be available from an empty GUI.
 "$gui" >"$RUNNER_TEMP/genesys-main-gui.log" 2>&1 &
