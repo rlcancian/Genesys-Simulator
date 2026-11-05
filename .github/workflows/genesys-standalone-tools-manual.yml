@@ -1,0 +1,101 @@
+name: GenESyS Standalone Tools Manual PDF
+
+# Deliberately scoped to the human-authorized feature branch.
+# GitHub Actions commits only the generated canonical PDF to this branch.
+on:
+  push:
+    branches:
+      - WiP202611/standalone-tools-gui
+    paths:
+      - .github/workflows/genesys-standalone-tools-manual.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate-manual:
+    if: github.repository == 'rlcancian/Genesys-Simulator' && github.ref == 'refs/heads/WiP202611/standalone-tools-gui'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout exact working branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Record environment
+        run: |
+          set -Eeuo pipefail
+          mkdir -p manual-tools-evidence
+          git rev-parse HEAD | tee manual-tools-evidence/source-commit.txt
+          uname -a | tee manual-tools-evidence/uname.txt
+
+      - name: Install manual build and inspection dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            latexmk texlive-xetex texlive-latex-extra texlive-bibtex-extra \
+            texlive-science texlive-pictures texlive-fonts-recommended \
+            biber poppler-utils
+          latexmk -v | head -n 4 | tee manual-tools-evidence/latexmk-version.txt
+          xelatex --version | head -n 2 | tee manual-tools-evidence/xelatex-version.txt
+
+      - name: Regenerate canonical LaTeX manual
+        run: |
+          set -Eeuo pipefail
+          bash docs/developers/ManualGenESyS_subrepo/make.sh \
+            2>&1 | tee manual-tools-evidence/manual-build.log
+          test -s docs/ManualGenESyS.pdf
+
+      - name: Validate generated PDF and affected chapter
+        run: |
+          set -Eeuo pipefail
+          pdfinfo docs/ManualGenESyS.pdf | tee manual-tools-evidence/pdfinfo.txt
+          pages=$(pdfinfo docs/ManualGenESyS.pdf | awk '/^Pages:/ {print $2}')
+          [[ "$pages" =~ ^[0-9]+$ && "$pages" -gt 20 ]] || {
+            echo "Invalid or unexpectedly short generated manual" >&2
+            exit 1
+          }
+          pdftotext docs/ManualGenESyS.pdf manual-tools-evidence/manual-text.txt
+          grep -Fq 'Independent GUI processes and Tools menu' manual-tools-evidence/manual-text.txt
+          grep -Fq 'genesys-dataanalyser-gui' manual-tools-evidence/manual-text.txt
+          grep -Fq 'genesys-ai-assistant-gui' manual-tools-evidence/manual-text.txt
+          sha256sum docs/ManualGenESyS.pdf | tee manual-tools-evidence/pdf-sha256.txt
+          git diff --stat -- docs/ManualGenESyS.pdf | tee manual-tools-evidence/pdf-diff-stat.txt
+
+      - name: Publish only the verified PDF on the bounded feature branch
+        run: |
+          set -Eeuo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/WiP202611/standalone-tools-gui" ]]
+          if git diff --quiet -- docs/ManualGenESyS.pdf; then
+            echo "Canonical PDF is already up to date" | tee manual-tools-evidence/publish.txt
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- docs/ManualGenESyS.pdf
+          git diff --cached --name-only | grep -Fx 'docs/ManualGenESyS.pdf'
+          [[ "$(git diff --cached --name-only | wc -l)" -eq 1 ]]
+          git commit -m "docs(manual): regenerate canonical PDF for standalone Tools"
+          git push origin HEAD:refs/heads/WiP202611/standalone-tools-gui
+          git rev-parse HEAD | tee manual-tools-evidence/published-commit.txt
+
+      - name: Capture diagnostics
+        if: always()
+        run: |
+          set +e
+          cp docs/developers/ManualGenESyS_subrepo/ManualGenESyS.log manual-tools-evidence/ 2>/dev/null || true
+          git status --short > manual-tools-evidence/status-after.txt
+          df -h . > manual-tools-evidence/disk-after.txt
+
+      - name: Upload manual PDF and reproducibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-tools-manual-pdf
+          path: |
+            manual-tools-evidence/
+            docs/ManualGenESyS.pdf
+          if-no-files-found: warn
