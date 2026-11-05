@@ -1,3 +1,12 @@
+---
+document_type: reference
+authority: informative
+owner: project-maintainer
+last_reviewed: 2026-11-05
+status: draft
+tracks: 561
+---
+
 # Standalone Tools GUI: process, build and distribution contract
 
 Task: AUTO-GUI-002 / issue #561. Initial base: `WorkInProgress` SHA `987e145a36948cdf349840ab3350f576adfbd1fd`. This document describes inspected source contracts and proposed validation; the PR is **draft** until CI artifacts are reviewed.
