@@ -20,6 +20,7 @@
 #include <unistd.h>
 
 #include "../../../kernel/simulator/model/Model.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -124,11 +125,13 @@ OctaveRunner::OctaveRunner(Model* model, std::string name)
 	SimulationControlGeneric<std::string>* propWorkingDirectory = new SimulationControlGeneric<std::string>(
 			std::bind(&OctaveRunner::getWorkingDirectory, this), std::bind(&OctaveRunner::setWorkingDirectory, this, std::placeholders::_1),
 			Util::TypeOf<OctaveRunner>(), getName(), "WorkingDirectory", "");
-	SimulationControlGeneric<std::string>* propPreludeScript = new SimulationControlGeneric<std::string>(
-			std::bind(&OctaveRunner::getPreludeScript, this), std::bind(&OctaveRunner::setPreludeScript, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propPreludeScript = new SimulationControlSourceCodeString(
+			[this]() { return SourceCodeString(getPreludeScript()); },
+			[this](SourceCodeString value) { setPreludeScript(value.str()); },
 			Util::TypeOf<OctaveRunner>(), getName(), "PreludeScript", "");
-	SimulationControlGeneric<std::string>* propCommand = new SimulationControlGeneric<std::string>(
-			std::bind(&OctaveRunner::getCommand, this), std::bind(&OctaveRunner::setCommand, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propCommand = new SimulationControlSourceCodeString(
+			[this]() { return SourceCodeString(getCommand()); },
+			[this](SourceCodeString value) { setCommand(value.str()); },
 			Util::TypeOf<OctaveRunner>(), getName(), "Command", "");
 	SimulationControlGeneric<std::string>* propLastStatus = new SimulationControlGeneric<std::string>(
 			std::bind(&OctaveRunner::getLastStatus, this), std::bind(&OctaveRunner::setLastStatus, this, std::placeholders::_1),
