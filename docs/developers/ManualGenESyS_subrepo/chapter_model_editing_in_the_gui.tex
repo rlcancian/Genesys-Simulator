@@ -164,6 +164,21 @@ model as valid or invalid based on the result.
 The chapter does not invent a separate validation mechanism. It uses the same check action that the GUI
 already exposes.
 
+Checking is useful before simulation, but it is not a prerequisite for saving an editing session. An
+incomplete expression or an unfinished component can remain in the model file so the user can continue
+later. Saving prepares the component's declared internal data; it does not run the full model checker or
+remove independent data definitions.
+
+The \texttt{Decide} component keeps its conditions in order. With \(N\) conditions, the diagram has
+\(N+1\) output ports: one for each condition and a final \texttt{Else} port. In the property editor,
+conditions can be inserted, edited, and removed at a selected position; the other output routes move with
+their conditions. Source-code properties open the shared multiline code editor. \texttt{Apply} commits
+the displayed text, \texttt{OK} commits and closes, and \texttt{Cancel} discards unapplied text.
+
+The main plugin palette lists model components. Data definitions remain part of the model and continue to
+be available through the model data and specialized editing views; hiding them from the component palette
+does not unregister them from the simulator.
+
 \begin{figure}[htbp]
 \centering
 % FIGURE-SPEC-BEGIN
