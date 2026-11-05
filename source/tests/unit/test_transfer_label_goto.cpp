@@ -19,6 +19,8 @@
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Transfer/Label.h"
 #include "plugins/components/Transfer/Goto.h"
+#include "plugins/components/Transfer/Route.h"
+#include "plugins/data/Transfer/Sequence.h"
 #include "plugins/data/Transfer/LabelDefinition.h"
 
 namespace {
@@ -101,6 +103,39 @@ TEST_F(TransferFixture, TwoReceiversCannotShareDefinition) {
     EXPECT_EQ(destination->getEnterIntoLabelComponent(), first);
     EXPECT_NE(second->getLabelDefinition(), destination);
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<LabelDefinition>()), 2u);
+}
+
+TEST_F(TransferFixture, LabelDefinitionReplacementRejectsRouteDirectReference) {
+    auto* receiver = makeLabel("Owner");
+    LabelDefinition* original = receiver->getLabelDefinition();
+    ASSERT_NE(original, nullptr);
+    auto* route = new Route(model, "ReferencingRoute");
+    route->setLabel(original);
+    auto* replacement = new LabelDefinition(model, "Replacement");
+
+    receiver->setLabelDefinition(replacement);
+
+    EXPECT_EQ(receiver->getLabelDefinition(), original);
+    EXPECT_EQ(route->getLabel(), original);
+    EXPECT_EQ(original->getEnterIntoLabelComponent(), receiver);
+    delete replacement;
+}
+
+TEST_F(TransferFixture, LabelDefinitionReplacementRejectsSequenceStepDirectReference) {
+    auto* receiver = makeLabel("Owner");
+    LabelDefinition* original = receiver->getLabelDefinition();
+    ASSERT_NE(original, nullptr);
+    auto* sequence = new Sequence(model, "ReferencingSequence");
+    sequence->getSteps()->insert(new SequenceStep(original));
+    auto* replacement = new LabelDefinition(model, "Replacement");
+
+    receiver->setLabelDefinition(replacement);
+
+    EXPECT_EQ(receiver->getLabelDefinition(), original);
+    ASSERT_EQ(sequence->getSteps()->size(), 1u);
+    EXPECT_EQ(sequence->getSteps()->list()->front()->getLabel(), original);
+    EXPECT_EQ(original->getEnterIntoLabelComponent(), receiver);
+    delete replacement;
 }
 
 TEST_F(TransferFixture, GotoRequiresExistingReceiverAndHasZeroOutputs) {
