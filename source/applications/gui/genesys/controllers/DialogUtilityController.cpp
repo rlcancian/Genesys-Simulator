@@ -465,43 +465,6 @@ static void showRichAboutDialog(QWidget* owner,
     dialog.exec();
 }
 
-static QString trimmedTail(const QString& text, int maxCharacters = 12000) {
-    const QString normalized = text.trimmed();
-    if (normalized.size() <= maxCharacters) {
-        return normalized;
-    }
-    return QStringLiteral("...[truncated]...\n") + normalized.right(maxCharacters);
-}
-
-static QString readTextFileTail(const QString& absolutePath, int maxBytes = 32768) {
-    QFile file(absolutePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
-    }
-
-    if (file.size() <= maxBytes) {
-        return QString::fromUtf8(file.readAll()).trimmed();
-    }
-
-    file.seek(std::max<qint64>(0, file.size() - maxBytes));
-    return QStringLiteral("...[truncated]...\n") + QString::fromUtf8(file.readAll()).trimmed();
-}
-
-static QByteArray captureWidgetScreenshotPng(QWidget* widget) {
-    QByteArray bytes;
-    if (widget == nullptr) {
-        return bytes;
-    }
-
-    const QPixmap screenshot = widget->grab();
-    if (screenshot.isNull()) {
-        return bytes;
-    }
-    QBuffer buffer(&bytes);
-    buffer.open(QIODevice::WriteOnly);
-    screenshot.save(&buffer, "PNG");
-    return bytes;
-}
 } // namespace
 
 // Initialize the Phase 11 controller with narrow dependencies and persisted GUI state references.
