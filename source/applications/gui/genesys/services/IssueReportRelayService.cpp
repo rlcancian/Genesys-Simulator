@@ -167,7 +167,7 @@ void IssueReportRelayService::submitAsync(
         return;
     }
 
-    QNetworkRequest request(QUrl(configuredEndpoint()));
+    QNetworkRequest request{QUrl(configuredEndpoint())};
     request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       QStringLiteral("Genesys-Simulator/ReportIssueRelay"));
