@@ -59,7 +59,7 @@
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 //#include "../../plugins/components/Octave.h"
-#include "components/MaterialHandling/PickStation.h"
+#include "components/Transfer/PickStation.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 //#include "../../plugins/components/Read.h"

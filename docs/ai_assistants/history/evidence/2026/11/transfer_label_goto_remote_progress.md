@@ -102,3 +102,10 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - Corrective action: review all 22 moved/created Transfer headers; changed 9 headers with residual `MaterialHandling` include paths (Conveyor, Transporter; Access, Exit, Move, Start, Stop, Store, Unstore).
 - Evidence: https://github.com/rlcancian/Genesys-Simulator/actions/runs/42081180321 ; no tests executed in failed job.
 - The original CI attempt is not a PASS; re-run through new PR head to verify.
+
+## CI findings — PR #564, second attempt
+
+- Run `42081621236`, tests-kernel-unit job `127435858437`: `FAIL` at plugin connector compile, `PluginConnectorDummyImpl1.cpp:62:10: fatal error: components/MaterialHandling/PickStation.h: No such file or directory`.
+- Root cause: pre-existing relative include omitted from earlier exact-prefix replacement. Fixed to `components/Transfer/PickStation.h`.
+- Regression audit found existing `source/tests/unit/test_simulator_runtime.cpp` still exercised obsolete LabelDefinition→arbitrary sink association and asserted `MaterialHandling` categories. Updated to the new required owning `Label` receiver and `Transfer` metadata, retaining Route/Sequence behavioral coverage.
+- State: source corrected and committed at next checkpoint; follow-up CI required. Original failure remains FAIL.
