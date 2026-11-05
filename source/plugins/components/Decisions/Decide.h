@@ -42,7 +42,11 @@ public:
 public:
 	List<std::string>* getConditions() const;
 	void addConditions(std::string newCondition);
-    void removeConditions(std::string condition);
+	void insertConditionAt(unsigned int index, std::string condition);
+	void replaceConditionAt(unsigned int index, std::string condition);
+	void removeConditionAt(unsigned int index);
+	void removeConditions(std::string condition);
+	void synchronizeOutputStatistics();
 	bool takeConditionPortEdit(unsigned int& index, bool& inserted);
 	void markConditionPortEdit(unsigned int index, bool inserted);
 public:

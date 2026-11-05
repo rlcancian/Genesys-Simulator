@@ -97,6 +97,8 @@ TEST(PersistenceAtomicSaveTest, SaveWithoutCheckPreservesIndependentDataDefiniti
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
 	auto* resource = new Resource(model, "IndependentResource");
+	auto* incomplete = new Decide(model, "IncompleteDecide");
+	incomplete->addConditions("unfinished +");
 
 	const std::string filename = "/tmp/genesys_save_without_check_"
 		+ std::to_string(::getpid()) + ".gen";
@@ -111,6 +113,12 @@ TEST(PersistenceAtomicSaveTest, SaveWithoutCheckPreservesIndependentDataDefiniti
 	EXPECT_NE(contents.find("IndependentResource"), std::string::npos);
 	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(),
 		"IndependentResource"), resource);
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedIncomplete = dynamic_cast<Decide*>(loaded->getComponentManager()->find("IncompleteDecide"));
+	ASSERT_NE(loadedIncomplete, nullptr);
+	ASSERT_EQ(loadedIncomplete->getConditions()->size(), 1u);
+	EXPECT_EQ(loadedIncomplete->getConditions()->getAtRank(0), "unfinished +");
 
 	::unlink(filename.c_str());
 }
@@ -151,6 +159,24 @@ TEST(DecideConditionsEditorTest, SupportsOrderedDuplicateConditionsAndPositional
 	EXPECT_EQ(info->getMinimumOutputs(), 1);
 }
 
+TEST(DecideConditionsEditorTest, OutputStatisticsTrackTheCurrentConditionCount) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* decide = new Decide(model, "StatisticsDecide");
+	decide->setReportStatistics(true);
+	ModelDataDefinition::CreateInternalData(decide);
+	ASSERT_EQ(decide->getInternalData()->size(), 1u);
+	decide->insertConditionAt(0, "first");
+	ASSERT_EQ(decide->getInternalData()->size(), 2u);
+	decide->insertConditionAt(1, "second");
+	ASSERT_EQ(decide->getInternalData()->size(), 3u);
+	decide->removeConditionAt(0);
+	ASSERT_EQ(decide->getInternalData()->size(), 2u);
+	decide->removeConditionAt(0);
+	EXPECT_EQ(decide->getInternalData()->size(), 1u);
+}
+
 TEST(PluginIdentityAndCodePersistenceTest, PickUpHasDistinctIdentityAndCppForGRoundTripsText) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();
@@ -159,6 +185,9 @@ TEST(PluginIdentityAndCodePersistenceTest, PickUpHasDistinctIdentityAndCppForGRo
 	auto* removeA = new Remove(model, "RemoveA");
 	auto* removeB = new Remove(model, "RemoveB");
 	auto* pickUp = new PickUp(model, "PickUpA");
+	auto* python = new PythonForG(model, "PythonText");
+	python->setInitBetweenReplicationCode("# λ\nstate = {\"quote\": \"value\"}");
+	python->setOnDispatchEventCode("# arrival\nentity.setAttribute(\"label\", \"α\")");
 	EXPECT_EQ(removeA->getClassname(), Util::TypeOf<Remove>());
 	EXPECT_EQ(removeB->getClassname(), Util::TypeOf<Remove>());
 	EXPECT_EQ(pickUp->getClassname(), Util::TypeOf<PickUp>());
@@ -176,18 +205,23 @@ const char* s = "quoted"; \\path
 	ASSERT_NE(loaded, nullptr);
 	CppForG* loadedCpp = nullptr;
 	PickUp* loadedPickUp = nullptr;
+	PythonForG* loadedPython = nullptr;
 	unsigned int loadedRemoves = 0;
 	for (ModelComponent* component : *loaded->getComponentManager()) {
 		if (component->getName() == "CppText") loadedCpp = dynamic_cast<CppForG*>(component);
 		if (component->getClassname() == Util::TypeOf<PickUp>()) loadedPickUp = dynamic_cast<PickUp*>(component);
+		if (component->getName() == "PythonText") loadedPython = dynamic_cast<PythonForG*>(component);
 		if (component->getClassname() == Util::TypeOf<Remove>()) ++loadedRemoves;
 	}
 	ASSERT_NE(loadedCpp, nullptr);
 	ASSERT_NE(loadedPickUp, nullptr);
+	ASSERT_NE(loadedPython, nullptr);
 	EXPECT_EQ(loadedRemoves, 2u);
 	EXPECT_EQ(loadedCpp->getOnDispatchEventCode(), dispatch);
 	EXPECT_EQ(loadedCpp->getInitBetweenReplicationCode(), "if (x) {\n  x++;\n}");
 	EXPECT_EQ(loadedCpp->getIncludesCode(), "#include <vector>\n// include text");
+	EXPECT_EQ(loadedPython->getInitBetweenReplicationCode(), "# λ\nstate = {\"quote\": \"value\"}");
+	EXPECT_EQ(loadedPython->getOnDispatchEventCode(), "# arrival\nentity.setAttribute(\"label\", \"α\")");
 	::unlink(filename.c_str());
 }
 
@@ -205,14 +239,41 @@ TEST(SourceCodePropertyTest, PythonAndRCodeFieldsUseTheExistingCodeEditorContrac
 		return static_cast<SimulationControl*>(nullptr);
 	};
 	for (const auto& [object, property] : std::vector<std::pair<ModelDataDefinition*, std::string>>{
-			{python, "OnDispatchEventCode"}, {rSimulator, "PreludeScript"},
+			{python, "OnDispatchEventCode"}, {rSimulator, "PreludeScript"}, {rSimulator, "CommandList"},
 			{runner, "PreludeScript"}, {runner, "Command"}}) {
 		SimulationControl* control = findControl(object, property);
 		ASSERT_NE(control, nullptr) << property;
 		EXPECT_EQ(control->preferredEditorHint(), SimulationControlEditorHint::CodeEditor) << property;
-		control->setValue("# λ\nprint(\\\"text\\\")");
-		EXPECT_EQ(control->getValue(), "# λ\nprint(\\\"text\\\")");
+		control->setValue("# λ\nprint(\"text\")");
+		EXPECT_EQ(control->getValue(), "# λ\nprint(\"text\")");
 	}
+}
+
+TEST(SourceCodePropertyTest, RSimulatorAndRunnerPreserveScriptsAcrossGenRoundTrip) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* component = new RSimulator(model, "RCommands");
+	component->setPreludeScript("# λ prelude\noptions(stringsAsFactors = FALSE)");
+	component->setCommandList("x <- \"quoted\"\nprint(x)");
+	auto* runner = new RSimulatorRunner(model, "RRunner");
+	runner->setPreludeScript("# λ runner\nset.seed(1)");
+	runner->setCommand("message(\"done\")");
+	const std::string filename = "/tmp/genesys_r_source_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedComponent = dynamic_cast<RSimulator*>(loaded->getComponentManager()->find("RCommands"));
+	ASSERT_NE(loadedComponent, nullptr);
+	EXPECT_EQ(loadedComponent->getPreludeScript(), "# λ prelude\noptions(stringsAsFactors = FALSE)");
+	EXPECT_EQ(loadedComponent->getCommandList(), "x <- \"quoted\"\nprint(x)");
+	auto* loadedRunner = dynamic_cast<RSimulatorRunner*>(loaded->getDataManager()->getDataDefinition(
+		Util::TypeOf<RSimulatorRunner>(), "RRunner"));
+	ASSERT_NE(loadedRunner, nullptr);
+	EXPECT_EQ(loadedRunner->getPreludeScript(), "# λ runner\nset.seed(1)");
+	EXPECT_EQ(loadedRunner->getCommand(), "message(\"done\")");
+	::unlink(filename.c_str());
 }
 
 TEST(PersistenceAtomicSaveTest, SaveFailsCleanlyAndPreservesExistingFileWhenDestinationDirIsMissing) {

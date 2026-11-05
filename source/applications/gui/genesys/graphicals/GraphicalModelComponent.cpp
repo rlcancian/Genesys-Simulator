@@ -121,6 +121,11 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	}
 	unsigned int numOutputPorts = std::max<unsigned int>(
 		component->getConnectionManager()->getCurrentOutputConnectionsSize(), declaredOutputPorts);
+	if (dynamic_cast<Decide*>(component) != nullptr) {
+		// A Decide's semantic ports are defined by its ordered conditions, even if
+		// a malformed/stale connection map contains an out-of-range key.
+		numOutputPorts = declaredOutputPorts;
+	}
 	step = (double)_height / (double)(numOutputPorts + 1);
 	for (unsigned int i = 0; i < numOutputPorts; i++) {
 		port = new GraphicalComponentPort(this, false, i, parent);

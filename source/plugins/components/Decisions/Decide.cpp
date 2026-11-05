@@ -38,29 +38,16 @@ public:
 	}
 	bool supportsPositionalListEditing() const override { return true; }
 	void insertListValueAt(int index, const std::string& value) override {
-		auto* values = _owner->getConditions()->list();
-		if (index < 0 || index > static_cast<int>(values->size())) throw std::out_of_range("condition index");
-		auto it = values->begin(); std::advance(it, index); values->insert(it, value);
-		auto* connections = _owner->getConnectionManager()->connections();
-		std::map<unsigned int, Connection*> shifted;
-		for (const auto& [port, connection] : *connections) shifted.emplace(port >= static_cast<unsigned int>(index) ? port + 1 : port, connection);
-		*connections = std::move(shifted);
-		_owner->markConditionPortEdit(static_cast<unsigned int>(index), true);
+		if (index < 0) throw std::out_of_range("condition index");
+		_owner->insertConditionAt(static_cast<unsigned int>(index), value);
 	}
 	void replaceListValueAt(int index, const std::string& value) override {
-		_owner->getConditions()->setAtRank(static_cast<unsigned int>(index), value);
+		if (index < 0) throw std::out_of_range("condition index");
+		_owner->replaceConditionAt(static_cast<unsigned int>(index), value);
 	}
 	void removeListValueAt(int index) override {
-		auto* values = _owner->getConditions()->list();
-		if (index < 0 || index >= static_cast<int>(values->size())) throw std::out_of_range("condition index");
-		auto it = values->begin(); std::advance(it, index); values->erase(it);
-		auto* manager = _owner->getConnectionManager();
-		manager->removeAtPort(static_cast<unsigned int>(index));
-		auto* connections = manager->connections();
-		std::map<unsigned int, Connection*> shifted;
-		for (const auto& [port, connection] : *connections) shifted.emplace(port > static_cast<unsigned int>(index) ? port - 1 : port, connection);
-		*connections = std::move(shifted);
-		_owner->markConditionPortEdit(static_cast<unsigned int>(index), false);
+		if (index < 0) throw std::out_of_range("condition index");
+		_owner->removeConditionAt(static_cast<unsigned int>(index));
 	}
 private:
 	Decide* _owner;
@@ -112,11 +99,58 @@ List<std::string>* Decide::getConditions() const {
 }
 
 void Decide::addConditions(std::string newCondition) {
-	_conditions->insert(newCondition);
+	insertConditionAt(static_cast<unsigned int>(_conditions->size()), std::move(newCondition));
 }
 
 void Decide::removeConditions(std::string condition) {
-    _conditions->remove(condition);
+	for (unsigned int index = 0; index < _conditions->size(); ++index) {
+		if (_conditions->getAtRank(index) == condition) {
+			removeConditionAt(index);
+			return;
+		}
+	}
+}
+
+void Decide::insertConditionAt(unsigned int index, std::string condition) {
+	if (index > _conditions->size()) throw std::out_of_range("condition index");
+	auto* values = _conditions->list();
+	auto it = values->begin();
+	std::advance(it, index);
+	values->insert(it, std::move(condition));
+	auto* connections = _connections->connections();
+	std::map<unsigned int, Connection*> shifted;
+	for (const auto& [port, connection] : *connections) {
+		shifted.emplace(port >= index ? port + 1 : port, connection);
+	}
+	*connections = std::move(shifted);
+	markConditionPortEdit(index, true);
+	synchronizeOutputStatistics();
+}
+
+void Decide::replaceConditionAt(unsigned int index, std::string condition) {
+	if (index >= _conditions->size()) throw std::out_of_range("condition index");
+	_conditions->setAtRank(index, std::move(condition));
+}
+
+void Decide::removeConditionAt(unsigned int index) {
+	if (index >= _conditions->size()) throw std::out_of_range("condition index");
+	auto* values = _conditions->list();
+	auto it = values->begin();
+	std::advance(it, index);
+	values->erase(it);
+	_connections->removeAtPort(index);
+	auto* connections = _connections->connections();
+	std::map<unsigned int, Connection*> shifted;
+	for (const auto& [port, connection] : *connections) {
+		shifted.emplace(port > index ? port - 1 : port, connection);
+	}
+	*connections = std::move(shifted);
+	markConditionPortEdit(index, false);
+	synchronizeOutputStatistics();
+}
+
+void Decide::synchronizeOutputStatistics() {
+	_createInternalStatisticReporters();
 }
 
 std::string Decide::show() {
@@ -215,6 +249,11 @@ void Decide::_createInternalStatisticReporters() {
 			_numberOuts = new List<Counter*>();
 		}
 		const unsigned int outputCount = _conditions->size() + 1;
+		while (_numberOuts->size() > outputCount) {
+			const unsigned int index = static_cast<unsigned int>(_numberOuts->size() - 1);
+			_mandatoryNonEditableDataDefinitionRemove("CountNumberOut" + Util::StrIndex(index));
+			_numberOuts->list()->pop_back();
+		}
 		for (unsigned int i = _numberOuts->size(); i < outputCount; i++) {
 			Counter* counter = new Counter(_parentModel, getName() + "." + "CountNumberOut" + Util::StrIndex(i), this);
 			_numberOuts->insert(counter);
@@ -228,6 +267,11 @@ void Decide::_createInternalStatisticReporters() {
 		}
 	} else  {
 		this->_statisticReportersClear();
+		if (_numberOuts != nullptr) {
+			for (unsigned int i = 0; i < _numberOuts->size(); ++i) {
+				_mandatoryNonEditableDataDefinitionRemove("CountNumberOut" + Util::StrIndex(i));
+			}
+		}
 		delete _numberOuts;
 		_numberOuts = nullptr;
 	}

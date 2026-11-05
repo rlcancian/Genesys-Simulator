@@ -55,8 +55,9 @@ RSimulator::RSimulator(Model* model, std::string name)
 	SimulationControlSourceCodeString* propPreludeScript = new SimulationControlSourceCodeString(
 									[this]() { return SourceCodeString(getPreludeScript()); }, [this](SourceCodeString value) { setPreludeScript(value.str()); },
 			Util::TypeOf<RSimulator>(), getName(), "PreludeScript", "");
-	SimulationControlGeneric<std::string>* propCommandList = new SimulationControlGeneric<std::string>(
-			std::bind(&RSimulator::getCommandList, this), std::bind(&RSimulator::setCommandList, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propCommandList = new SimulationControlSourceCodeString(
+			[this]() { return SourceCodeString(getCommandList()); },
+			[this](SourceCodeString value) { setCommandList(value.str()); },
 			Util::TypeOf<RSimulator>(), getName(), "CommandList", "");
 
 	_parentModel->getControls()->insert(propRExecutable);
