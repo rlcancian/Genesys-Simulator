@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <fstream>
+#include <filesystem>
 #include <string>
 #include <unistd.h>
 
@@ -289,4 +290,31 @@ TEST(PersistenceAtomicSaveTest, SaveFailsCleanlyAndPreservesExistingFileWhenDest
 		+ std::to_string(::getpid()) + "/model.gen";
 
 	EXPECT_FALSE(model->save(filename));
+}
+
+TEST(PersistenceAtomicSaveTest, FailedTemporaryWritePreservesPreviousFileContents) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	new Resource(model, "PreservePriorSave");
+	const std::string filename = "/tmp/genesys_atomic_save_preserve_" + std::to_string(::getpid()) + ".gen";
+	const std::string tempFilename = filename + ".tmp";
+	::unlink(filename.c_str());
+	std::filesystem::remove_all(tempFilename);
+	{
+		std::ofstream previous(filename);
+		ASSERT_TRUE(previous.is_open());
+		previous << "previous valid model";
+	}
+	ASSERT_TRUE(std::filesystem::create_directory(tempFilename));
+	EXPECT_FALSE(model->save(filename));
+	std::ifstream previous(filename);
+	ASSERT_TRUE(previous.good());
+	const std::string contents((std::istreambuf_iterator<char>(previous)),
+		std::istreambuf_iterator<char>());
+	EXPECT_EQ(contents, "previous valid model");
+	previous.close();
+	std::filesystem::remove(tempFilename);
+	::unlink(filename.c_str());
 }
