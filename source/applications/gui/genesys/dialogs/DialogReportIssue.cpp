@@ -17,10 +17,15 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <utility>
 
-DialogReportIssue::DialogReportIssue(QWidget* parent)
+DialogReportIssue::DialogReportIssue(QWidget* parent,
+                                     QNetworkAccessManager* networkManager,
+                                     std::function<bool(const QUrl&)> browserOpener)
     : QDialog(parent),
-      _networkManager(new QNetworkAccessManager(this)) {
+      _networkManager(networkManager != nullptr ? networkManager : new QNetworkAccessManager(this)),
+      _browserOpener(browserOpener ? std::move(browserOpener)
+                                   : [](const QUrl& url) { return QDesktopServices::openUrl(url); }) {
     setWindowTitle(tr("Report Issue"));
     setModal(true);
     resize(540, 335);
@@ -146,7 +151,7 @@ void DialogReportIssue::continueOnGitHub() {
     }
 
     const auto link = IssueReportBrowserService::build(report);
-    if (!QDesktopServices::openUrl(link.url)) {
+    if (!_browserOpener(link.url)) {
         QMessageBox::warning(this, tr("Report Issue"),
                              tr("Could not open the browser. Your report is still in this form."));
         return;
@@ -202,7 +207,7 @@ void DialogReportIssue::handleRelayResult(const IssueReportSubmissionResult& res
     box.exec();
     if (box.clickedButton() == open) {
         // The service validated the canonical GitHub URL and its issue number.
-        QDesktopServices::openUrl(QUrl(result.issueUrl));
+        _browserOpener(QUrl(result.issueUrl));
     }
     QDialog::accept();
 }
