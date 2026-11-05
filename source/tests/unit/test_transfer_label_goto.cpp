@@ -203,6 +203,24 @@ TEST_F(TransferFixture, TwoGotosTargetSameDefinitionWithoutDuplication) {
     EXPECT_EQ((*it)->getComponent(), receiver);
 }
 
+TEST_F(TransferFixture, RemovingLabelInvalidatesAttachedGotoDestination) {
+    auto* receiver = makeLabel("TransientReceiver");
+    auto* sender = new GotoProbe(model, "ObservingSender");
+    auto* definition = receiver->getLabelDefinition();
+    ASSERT_NE(definition, nullptr);
+    sender->setLabelDefinition(definition);
+    ASSERT_EQ(sender->getLabelDefinition(), definition);
+
+    delete receiver; // Deletes the internally owned LabelDefinition once.
+
+    EXPECT_EQ(sender->getLabelDefinition(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<LabelDefinition>()), 0u);
+    std::string error;
+    EXPECT_FALSE(sender->check(error));
+    EXPECT_NE(error.find("LabelDefinition"), std::string::npos);
+    EXPECT_EQ(sender->getAttachedData()->count("LabelDefinition"), 0u);
+}
+
 TEST_F(TransferFixture, IndependentDefinitionsRemainIsolated) {
     auto* first = makeLabel("First");
     auto* second = makeLabel("Second");
