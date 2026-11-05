@@ -55,7 +55,7 @@ double Distance::getDistanceBetween(const std::string& fromStationName, const st
 
 PluginInformation* Distance::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Distance>(), &Distance::LoadInstance, &Distance::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->setDescriptionHelp("Defines a set of direct station-to-station distances used by free-path Transporter units to compute travel time.");
 	return info;
 }

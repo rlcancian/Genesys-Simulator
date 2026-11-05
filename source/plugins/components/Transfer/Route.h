@@ -16,8 +16,8 @@
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
-#include "../../data/MaterialHandling/Station.h"
-#include "../../data/MaterialHandling/Sequence.h"
+#include "../../data/Transfer/Station.h"
+#include "../../data/Transfer/Sequence.h"
 #include "../../data/Logic/Label.h"
 
 /*!

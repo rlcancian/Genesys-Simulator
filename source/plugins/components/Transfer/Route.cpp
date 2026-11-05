@@ -16,7 +16,7 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
-#include "../../data/MaterialHandling/Sequence.h"
+#include "../../data/Transfer/Sequence.h"
 #include "../../data/Logic/Label.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

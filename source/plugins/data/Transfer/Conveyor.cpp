@@ -1,4 +1,4 @@
-#include "plugins/data/MaterialHandling/Conveyor.h"
+#include "plugins/data/Transfer/Conveyor.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -118,7 +118,7 @@ double Conveyor::getDistanceBetween(const std::string& fromStationName, const st
 
 PluginInformation* Conveyor::GetPluginInformation() {
 	auto* info = new PluginInformation(Util::TypeOf<Conveyor>(), &Conveyor::LoadInstance, &Conveyor::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("segment.so");
 	info->setDescriptionHelp("Defines one minimal conveyor path backed by a Segment, with active state, velocity and simplified concurrent allocation capacity.");
 	return info;

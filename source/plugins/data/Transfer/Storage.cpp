@@ -101,7 +101,7 @@ bool Storage::unstore(unsigned int quantity) {
 
 PluginInformation* Storage::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Storage>(), &Storage::LoadInstance, &Storage::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	return info;
 }
 

@@ -20,11 +20,19 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - State: `IMPLEMENTED`, pending compilation/GUI verification.
 - Change: moved 12 component classes / 24 .h/.cpp files from `components/MaterialHandling` to `components/Transfer`; preserved C++ class names and behavior.
 - Dependencies: 13 source consumers updated, including DummyPlugin connector, Smart/teaching/arenaExamples applications and GUI category mapping.
-- Commit SHA: E1 commit in branch history (SHA backfilled at next checkpoint).
+- Commit SHA: `187725628cd919f0ac47232f858b1d31ad1dd949`.
 - Check: static source comparison and indexed reference inventory; tests not executed (`UNKNOWN`).
 - Risk: GitHub index may omit references; CI must verify linker/includes.
 
-## E2–E9 — Pending
+## E2 — DataDefinitions MaterialHandling → Transfer
+
+- State: `IMPLEMENTED`, static inspection only; compilation `UNKNOWN`.
+- Change: seven DataDefinitions / 14 .h/.cpp files moved to `data/Transfer`; their categories changed to `Transfer`.
+- Consumers: 13 source files updated (components, Smart examples, connector, teaching, Arena examples).
+- Commit SHA: recorded at next checkpoint.
+- Behavior and typenames: intended unchanged; tests not yet executed.
+
+## E3–E9 — Pending
 
 - State: `NOT_STARTED`.
-- E2 data move, E3 LabelDefinition, E4 Label, E5 Goto, E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.
+- E3 LabelDefinition, E4 Label, E5 Goto, E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.

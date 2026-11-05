@@ -62,7 +62,7 @@ double Segment::getDistanceBetween(const std::string& fromStationName, const std
 
 PluginInformation* Segment::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Segment>(), &Segment::LoadInstance, &Segment::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->setDescriptionHelp("Defines the ordered sequence of stations and inter-station lengths that make up one Conveyor's physical path.");
 	return info;
 }

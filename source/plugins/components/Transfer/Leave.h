@@ -15,7 +15,7 @@
 #define LEAVE_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
-#include "../../data/MaterialHandling/Station.h"
+#include "../../data/Transfer/Station.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
 /*!

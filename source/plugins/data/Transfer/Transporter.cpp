@@ -1,4 +1,4 @@
-#include "plugins/data/MaterialHandling/Transporter.h"
+#include "plugins/data/Transfer/Transporter.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -135,7 +135,7 @@ void Transporter::handleTravelCompletion(void* parameter) {
 
 PluginInformation* Transporter::GetPluginInformation() {
 	auto* info = new PluginInformation(Util::TypeOf<Transporter>(), &Transporter::LoadInstance, &Transporter::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("distance.so");
 	info->insertDynamicLibFileDependence("station.so");
 	info->setDescriptionHelp("Defines one minimal free-path transporter backed by a Distance set, current station, active state and single-unit reservation.");

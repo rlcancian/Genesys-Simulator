@@ -49,7 +49,7 @@ std::string Sequence::show() {
 
 PluginInformation* Sequence::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Sequence>(), &Sequence::LoadInstance, &Sequence::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	return info;
 }
 
