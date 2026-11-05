@@ -64,7 +64,8 @@ def main() -> int:
         require(f"/{window_source}" in cmake or window_source in cmake,
                 f"{exe}: window not in application target")
         if window != "AIAssistantWindow":
-            require(f'{window_source.replace(".", r"\\.")}' in gui_cmake or window_source in gui_cmake,
+            escaped_window_source = window_source.replace(".", r"\\.")
+            require(escaped_window_source in gui_cmake or window_source in gui_cmake,
                     f"{exe}: main GUI no longer excludes external window")
         else:
             require("AIAssistantWindow.cpp" not in gui_cmake,
