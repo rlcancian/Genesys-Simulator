@@ -175,10 +175,16 @@ const char* s = "quoted"; \\path
 	Model* loaded = simulator.getModelManager()->loadModel(filename);
 	ASSERT_NE(loaded, nullptr);
 	CppForG* loadedCpp = nullptr;
+	PickUp* loadedPickUp = nullptr;
+	unsigned int loadedRemoves = 0;
 	for (ModelComponent* component : *loaded->getComponentManager()) {
 		if (component->getName() == "CppText") loadedCpp = dynamic_cast<CppForG*>(component);
+		if (component->getClassname() == Util::TypeOf<PickUp>()) loadedPickUp = dynamic_cast<PickUp*>(component);
+		if (component->getClassname() == Util::TypeOf<Remove>()) ++loadedRemoves;
 	}
 	ASSERT_NE(loadedCpp, nullptr);
+	ASSERT_NE(loadedPickUp, nullptr);
+	EXPECT_EQ(loadedRemoves, 2u);
 	EXPECT_EQ(loadedCpp->getOnDispatchEventCode(), dispatch);
 	EXPECT_EQ(loadedCpp->getInitBetweenReplicationCode(), "if (x) {\n  x++;\n}");
 	EXPECT_EQ(loadedCpp->getIncludesCode(), "#include <vector>\n// include text");
