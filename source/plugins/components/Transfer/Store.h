@@ -15,7 +15,7 @@
 #define STORE_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
-#include "../../data/MaterialHandling/Storage.h"
+#include "../../data/Transfer/Storage.h"
 
 /*!
  * \brief Placeholder for adding an entity to a Storage (§5.11).

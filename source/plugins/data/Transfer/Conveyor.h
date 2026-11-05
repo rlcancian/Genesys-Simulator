@@ -3,7 +3,7 @@
 
 #include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
-#include "plugins/data/MaterialHandling/Segment.h"
+#include "plugins/data/Transfer/Segment.h"
 
 /*!
  * \brief Minimal conveyor data definition built on top of one Segment path.

@@ -15,7 +15,7 @@
 #define EXIT_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
-#include "../../data/MaterialHandling/Conveyor.h"
+#include "../../data/Transfer/Conveyor.h"
 
 /*!
 Exit module

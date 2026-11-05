@@ -94,3 +94,11 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - State: `NOT_STARTED`.
 - Draft PR to `WorkInProgress` must remain unmerged; local final validation required.
 
+
+## CI findings — PR #564, initial attempt
+
+- Date: 2026-11-05; PR: https://github.com/rlcancian/Genesys-Simulator/pull/564 (Draft, not merged).
+- GitHub Actions run `42081180321` (Phase 0) — job `127434302492`, `tests-smoke`: compile `FAIL`; emitted `Transfer/Conveyor.h:6:10: fatal error: plugins/data/MaterialHandling/Segment.h: No such file or directory`.
+- Corrective action: review all 22 moved/created Transfer headers; changed 9 headers with residual `MaterialHandling` include paths (Conveyor, Transporter; Access, Exit, Move, Start, Stop, Store, Unstore).
+- Evidence: https://github.com/rlcancian/Genesys-Simulator/actions/runs/42081180321 ; no tests executed in failed job.
+- The original CI attempt is not a PASS; re-run through new PR head to verify.

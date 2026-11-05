@@ -2,8 +2,8 @@
 #define MOVE_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
-#include "../../data/MaterialHandling/Station.h"
-#include "../../data/MaterialHandling/Transporter.h"
+#include "../../data/Transfer/Station.h"
+#include "../../data/Transfer/Transporter.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
 /*!

@@ -15,7 +15,7 @@
 #define UNSTORE_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
-#include "../../data/MaterialHandling/Storage.h"
+#include "../../data/Transfer/Storage.h"
 
 /*!
  * \brief Placeholder for removing an entity from a Storage (§5.11).

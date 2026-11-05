@@ -15,7 +15,7 @@
 #define ACCESS_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
-#include "../../data/MaterialHandling/Conveyor.h"
+#include "../../data/Transfer/Conveyor.h"
 
 /*!
 Access module

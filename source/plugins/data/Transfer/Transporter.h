@@ -4,8 +4,8 @@
 #include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/Event.h"
 #include "kernel/simulator/PluginInformation.h"
-#include "plugins/data/MaterialHandling/Distance.h"
-#include "plugins/data/MaterialHandling/Station.h"
+#include "plugins/data/Transfer/Distance.h"
+#include "plugins/data/Transfer/Station.h"
 
 class Transporter : public ModelDataDefinition {
 public:
