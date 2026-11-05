@@ -174,3 +174,8 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - Further source audit: `Route::_label` and `SequenceStep::_label` are direct pointers not necessarily present in the attached-data map. Previous `Label::setLabelDefinition` could delete a still-referenced owned definition during replacement. Fixed by checking those exact consumers before replacement in `817e14d7e27fcdc7d2e5274a73967c734405e6d5`; added two targeted regression cases in `6ff53222c066d6820fdb2ba80673e0ed36d16b19`.
 - All new/fixed tests on the subsequent head remain **UNKNOWN** until final-head CI completes. Direct external deletion of a still-internal `LabelDefinition` remains a deeper ownership risk that cannot be declared solved without a lifecycle-specific test and design clarification.
 - E1–E7 still `IMPLEMENTED`; E8 `IN_PROGRESS`, E9 Draft PR `IMPLEMENTED` with final acceptance `REQUIRES_LOCAL_VALIDATION`. Do not merge.
+
+## E7 additional GUI persistence coverage
+
+- Commit `60ddebab018d21a81b0d2217a804ce231c0cf919`: added `TransferGuiPersistence.NewGotoLabelModelSurvivesGraphicalRoundTrip` to the existing Qt-enabled `source/tests/unit/test_gui_efsm_diagram_persistence.cpp` test target. The test exercises the real `GraphicalModelSerializer` `.gui` save/load path for `Create -> Goto` and `Label -> Dispose`, then checks association, time-delay fields, port topology, `Model::check()`, simulation, errors and leftover entities.
+- This is a **test authored, not yet an execution PASS**. A focused graphical-editor interaction test and manual GUI inspection are separate acceptance gates.
