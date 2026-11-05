@@ -41,6 +41,11 @@ QStringList searchDirectories(const QString& applicationDir, const QStringList& 
         if (foundPrefix) {
             directories << QDir::cleanPath(prefix.filePath(QStringLiteral("bin")));
         }
+        // Installed applications never consult build-tree fallback paths.
+        // This also prevents a missing installed tool from resolving to an
+        // unrelated executable elsewhere in the filesystem.
+        directories.removeDuplicates();
+        return directories;
     }
 
     // Development-only fallback directories are provided by the GUI handlers.
