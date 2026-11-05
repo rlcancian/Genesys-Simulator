@@ -117,3 +117,50 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - Corrective commit: `a1c318f70020faf36ee56d2daec2b49803780d1f` — changed that test include to `plugins/data/Transfer/Station.h` without modifying runtime behavior.
 - Validation of the corrective head: `UNKNOWN` pending a new workflow run. GUI interaction, `.gui` roundtrip and sanitizers remain `REQUIRES_LOCAL_VALIDATION`.
 - The PR remains **draft and unmerged**. E8 is still `IN_PROGRESS`; E9 handoff is not acceptance or merge authorization.
+
+## HANDOFF — CODEX LOCAL VALIDATION AND MERGE
+
+### Provenance and scope
+
+- Repository: `rlcancian/Genesys-Simulator`.
+- Development branch: `WiP202611/transfer-label-goto`; initial base `WorkInProgress` SHA `3ae85774949ebc87e521a2409eecf8f086bcc43b`.
+- Draft PR: https://github.com/rlcancian/Genesys-Simulator/pull/564 ; **do not merge before maintainer acceptance**.
+- Current implementation source checkpoint: `a1c318f70020faf36ee56d2daec2b49803780d1f`, followed by documentation commits. Obtain authoritative final HEAD from `git rev-parse origin/WiP202611/transfer-label-goto` immediately before validating.
+- Original E1–E7 commits: `187725628`, `234b36c8`, `ad81f471`, `9a68c1a4`, `f4729535`, `b6b7225c`, `767c5b4f`; later CI diagnostics/corrections: `8ba7b59b`, `d0a0a1e1`, `055aa617`, `a1c318f7`; inspect exact history in PR, including later documentation updates.
+- Directories renamed: `source/plugins/components/MaterialHandling/` to `source/plugins/components/Transfer/`, and `source/plugins/data/MaterialHandling/` to `source/plugins/data/Transfer/`. Former `source/plugins/data/Logic/Label.{h,cpp}` replaced by `source/plugins/data/Transfer/LabelDefinition.{h,cpp}`.
+- Created: `source/plugins/components/Transfer/Label.{h,cpp}`, `Goto.{h,cpp}`, `source/tests/unit/test_transfer_label_goto.cpp`. Updated: static connector, GUI category mapping and graphical serializer, Route, Sequence, smart examples, unit CMake, existing test includes. Full file inventory: PR Files changed.
+- Contracts: `Goto` (1 conventional input, 0 output, `sendTransfer`) references an existing attached `LabelDefinition`, parses a delay, converts to replication base units, and schedules one event; `LabelDefinition` records one receiving `Label`; `Label` (0 input, 1 output, `receiveTransfer`) dispatches the same entity over conventional output. No historical old-type persistence migration is required.
+- Label currently owns its associated definition through `ModelDataDefinitionAssociations::_internalDataInsert` / internal-data deletion; Goto and Route/Sequence must remain observers and must not delete it. Confirm teardown when referenced objects are removed early or replaced.
+
+### Cloud evidence and limitations
+
+- Authored focused test target: `genesys_test_transfer_label_goto` in `source/tests/unit/CMakeLists.txt`, covering metadata, duplicate receiver, attached destination, delays, event identity, two Gotos, isolated destinations, and a `.gen` roundtrip.
+- Prior CI run `42081180321` failed due to old include in moved headers; corrected by `d0a0a1e1`. Subsequent run `42081621236` failed in plugin connector include; corrected by `055aa617`.
+- CI run `42082527441`: `tests-kernel-unit` compile **FAIL** in `test_station_statistics_lifecycle.cpp` due to obsolete Station include; `tests-smoke` job completed successfully. Fixed by `a1c318f7`; inspect subsequent CI *at final head* for actual outcome. No earlier failed job should be described as PASS.
+- Not yet demonstrated: fully successful final-head focused CTest, complete GUI property-editing and port rendering, `.gui` roundtrip, ASan/UBSan/LSan and deletion/replace stress; all **UNKNOWN** or **REQUIRES_LOCAL_VALIDATION**.
+- Because the canonical CI often tests a PR merge ref, record both PR head and merge SHA with each claim. `WorkInProgress` advanced at least two commits since the original base.
+
+### Required local validation (Ubuntu 24.04 / C++23 / Qt6)
+
+1. Read `docs/ai_assistants/README.md`, `GOVERNANCE.md`, `ARCHITECTURE.md`, `STATUS.md`, and applicable runbooks; fetch and check out the feature branch without altering `WorkInProgress`.
+2. Confirm `git status --short` is clean, exact `git rev-parse HEAD`, new upstream base, and final PR diff. Detect obsolete active include paths using `git grep -n 'plugins/.*MaterialHandling/' -- source`; distinguish legacy example *directory names* from actual moved-plugin paths.
+3. Run canonical presets from root `README.md` / `CMakePresets.json` (check their current definitions first):
+   `cmake --preset tests-unit && cmake --build --preset tests-unit --parallel "$(nproc)" && ctest --preset tests-unit --output-on-failure`;
+   `cmake --preset tests-kernel-unit && cmake --build --preset tests-kernel-unit --parallel "$(nproc)" && ctest --preset tests-kernel-unit --output-on-failure`;
+   `cmake --preset tests-smoke && cmake --build --preset tests-smoke --parallel "$(nproc)" && ctest --preset tests-smoke --output-on-failure`;
+   `cmake --preset gui-app && cmake --build --preset gui-app --parallel "$(nproc)"`.
+4. Execute the actual `genesys_test_transfer_label_goto` target and inspect **all** assertions. Add/fix regressions for nonfinite parsed delays, deletion of `LabelDefinition` while `Label` and `Goto` survive, removal of a `Label` with attached senders, repeated ModelCheck, failed replacement with external references, and model teardown. A skipped test or a process exit code with no assertions is insufficient evidence.
+5. Build/run GUI and confirm both plugins appear in `Transfer`, port counts and absence of a conventional edge between Goto and Label, Property Editor configuration of label destination/delay/time unit, and creation/association of a unique internal definition.
+6. Test `Create -> Goto` and separately `Label -> Dispose`, same definition, 0 and positive delays in equal and different units; inspect future-event timestamps, entity pointer/ID identity, counts, independent definitions, two senders, and duplicate-receiver rejection. Repeat after `save -> load -> check -> simulate`, in both `.gen` and `.gui` when supported. Verify Route and Sequence now refer to `LabelDefinition`.
+7. For memory/undefined behavior use a clean debug build with CMake's documented sanitizer options if present. If not, configure a **separate** build directory with the compiler/linker flags `-fsanitize=address,undefined -fno-omit-frame-pointer -g` where compatible; check ASan/LSan diagnostics and avoid claiming global leak freedom from one focused run.
+8. Inspect User/Developer Manual impact. Per `GOVERNANCE.md`, user-visible plugins and architecture require appropriate manual updates and, when possible, compilation/regeneration of `docs/ManualGenESyS.pdf` before final approval. Keep this work in same PR or an explicitly linked documentation PR.
+9. On any failure, make small commits on the *feature branch*, preserve regression tests, update this evidence and PR body, rerun final-head CI. Do not disable checks or weaken assertions to turn CI green.
+10. Merge only after final-head CI, local functional/GUI/lifetime tests, manual impacts, reviewer findings, ownership invariants, no critical regression and **explicit maintainer acceptance**. The remote phase does not authorize the merge.
+
+### Principal residual risks
+
+- **Ownership/lifetime:** a definition internally owned by Label is also registered with the model; deletion/replacement may leave the owner's pointer or attached references stale. The source uses registry membership guards, which prevent some dereferences but do not prove safety of reallocation/pointer reuse or destructor order.
+- **Persistence:** order-independent name binding is implemented in methods but must be demonstrated by actual `.gen` and `.gui` reload paths; confirm no temporary/default definition remains orphaned after load.
+- **Event semantics:** one Goto passage must produce exactly one Label event, then the Label conventional-output event, preserving entity identity and simulated time units.
+- **GUI:** metadata alone does not prove real port drawing, clickability or Property Editor usability.
+- **Build/CI:** residual old includes and transitive dependencies caused several verified failures; do not extrapolate from individual successful object compilations to the complete test suite.
