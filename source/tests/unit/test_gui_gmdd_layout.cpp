@@ -3,6 +3,7 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "controllers/PropertyEditorController.h"
+#include "controllers/PluginCatalogController.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
@@ -13,6 +14,7 @@
 #include "../../kernel/simulator/model/Model.h"
 #include "../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
@@ -41,9 +43,43 @@
 #include <QSlider>
 #include <QTemporaryDir>
 #include <QTextEdit>
+#include <QTreeWidget>
 #include <QUndoStack>
 
 #include <algorithm>
+#include <functional>
+#include <map>
+
+TEST(PluginCatalogPresentation, MainPaletteContainsOnlyComponentsAndReloadIsStable) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    const unsigned int registeredBefore = simulator.getPluginManager()->size();
+    QTreeWidget tree;
+    std::map<std::string, QColor> categoryColors;
+    PluginCatalogController catalog(&simulator, &tree, nullptr, &categoryColors);
+    catalog.reloadFromPluginManager();
+    auto countLeafItems = [&tree, &simulator]() {
+        unsigned int count = 0;
+        std::function<void(QTreeWidgetItem*)> visit = [&](QTreeWidgetItem* item) {
+            if (item->childCount() == 0) {
+                ++count;
+                Plugin* plugin = simulator.getPluginManager()->find(item->text(0).toStdString());
+                EXPECT_NE(plugin, nullptr);
+                if (plugin != nullptr) EXPECT_TRUE(plugin->getPluginInfo()->isComponent());
+            } else {
+                for (int i = 0; i < item->childCount(); ++i) visit(item->child(i));
+            }
+        };
+        for (int i = 0; i < tree.topLevelItemCount(); ++i) visit(tree.topLevelItem(i));
+        return count;
+    };
+    const unsigned int firstCount = countLeafItems();
+    EXPECT_GT(firstCount, 0u);
+    EXPECT_EQ(simulator.getPluginManager()->size(), registeredBefore);
+    catalog.reloadFromPluginManager();
+    EXPECT_EQ(countLeafItems(), firstCount);
+    EXPECT_NE(simulator.getPluginManager()->find(Util::TypeOf<Resource>()), nullptr);
+}
 
 namespace {
 

@@ -35,6 +35,7 @@
 #include "ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "UtilGUI.h"
+#include "plugins/components/Decisions/Decide.h"
 #include <QPainter>
 #include <QRgba64>
 #include <QSet>
@@ -114,9 +115,12 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 		this->_graphicalInputPorts.append(port);
 	}
 	py = 0;
+	unsigned int declaredOutputPorts = plugin->getPluginInfo()->getMinimumOutputs();
+	if (auto* decide = dynamic_cast<Decide*>(component); decide != nullptr) {
+		declaredOutputPorts = decide->getConditions()->size() + 1;
+	}
 	unsigned int numOutputPorts = std::max<unsigned int>(
-		component->getConnectionManager()->getCurrentOutputConnectionsSize(),
-		plugin->getPluginInfo()->getMinimumOutputs());
+		component->getConnectionManager()->getCurrentOutputConnectionsSize(), declaredOutputPorts);
 	step = (double)_height / (double)(numOutputPorts + 1);
 	for (unsigned int i = 0; i < numOutputPorts; i++) {
 		port = new GraphicalComponentPort(this, false, i, parent);

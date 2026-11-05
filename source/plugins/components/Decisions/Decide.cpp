@@ -14,6 +14,45 @@
 #include "plugins/components/Decisions/Decide.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
+#include <iterator>
+
+namespace {
+class DecideConditionsControl final : public SimulationControl {
+public:
+	DecideConditionsControl(Decide* owner)
+		: SimulationControl(Util::TypeOf<Decide>(), owner->getName(), "Conditions", "Ordered conditions; final output is Else", true),
+		  _owner(owner) {}
+	std::string getValue() const override {
+		return std::to_string(_owner->getConditions()->size()) + " Items";
+	}
+	List<std::string>* getStrValues() override {
+		return new List<std::string>(*_owner->getConditions());
+	}
+	void setValue(std::string value, bool remove = false) override {
+		if (remove) {
+			for (int i = static_cast<int>(_owner->getConditions()->size()) - 1; i >= 0; --i) {
+				if (_owner->getConditions()->getAtRank(i) == value) { removeListValueAt(i); break; }
+			}
+		} else insertListValueAt(static_cast<int>(_owner->getConditions()->size()), value);
+	}
+	bool supportsPositionalListEditing() const override { return true; }
+	void insertListValueAt(int index, const std::string& value) override {
+		auto* values = _owner->getConditions()->list();
+		if (index < 0 || index > static_cast<int>(values->size())) throw std::out_of_range("condition index");
+		auto it = values->begin(); std::advance(it, index); values->insert(it, value);
+	}
+	void replaceListValueAt(int index, const std::string& value) override {
+		_owner->getConditions()->setAtRank(static_cast<unsigned int>(index), value);
+	}
+	void removeListValueAt(int index) override {
+		auto* values = _owner->getConditions()->list();
+		if (index < 0 || index >= static_cast<int>(values->size())) throw std::out_of_range("condition index");
+		auto it = values->begin(); std::advance(it, index); values->erase(it);
+	}
+private:
+	Decide* _owner;
+};
+}
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -27,10 +66,7 @@ ModelDataDefinition* Decide::NewInstance(Model* model, std::string name) {
 }
 
 Decide::Decide(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Decide>(), name) {
-	SimulationControlGenericList<std::string, Model*, std::string>* propConditions = new SimulationControlGenericList<std::string, Model*, std::string> (
-									_parentModel,
-                                    std::bind(&Decide::getConditions, this), std::bind(&Decide::addConditions, this, std::placeholders::_1), std::bind(&Decide::removeConditions, this, std::placeholders::_1),
-									Util::TypeOf<Decide>(), getName(), "Conditions", "");
+	SimulationControl* propConditions = new DecideConditionsControl(this);
 
 	_parentModel->getControls()->insert(propConditions);
 
@@ -125,7 +161,7 @@ bool Decide::_check(std::string& errorMessage) {
 PluginInformation* Decide::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Decide>(), &Decide::LoadInstance, &Decide::NewInstance);
 	info->setCategory("Decisions");
-	info->setMinimumOutputs(2);
+	info->setMinimumOutputs(1);
 	info->setMaximumOutputs(999);
 	std::string help = "This module allows for decision-making processes in the system.";
 	help += " It includes options to make decisions based on one or more conditions(for example, if entity type is Gold Card) or based on one or more probabilities(for example, 75 %, true; 25 %, false).";

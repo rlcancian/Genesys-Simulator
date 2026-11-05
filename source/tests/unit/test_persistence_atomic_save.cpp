@@ -13,6 +13,10 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/Decisions/PickUp.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
 
 TEST(PersistenceIntegrityTest, MissingConnectionTargetMakesLoadFail) {
 	Simulator simulator;
@@ -104,6 +108,64 @@ TEST(PersistenceAtomicSaveTest, SaveWithoutCheckPreservesIndependentDataDefiniti
 	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(),
 		"IndependentResource"), resource);
 
+	::unlink(filename.c_str());
+}
+
+TEST(DecideConditionsEditorTest, SupportsOrderedDuplicateConditionsAndPositionalRemoval) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* decide = new Decide(model, "OrderedDecide");
+	SimulationControl* conditions = nullptr;
+	for (SimulationControl* control : *decide->getSimulationControls()->list()) {
+		if (control->getName() == "Conditions") conditions = control;
+	}
+	ASSERT_NE(conditions, nullptr);
+	ASSERT_TRUE(conditions->supportsPositionalListEditing());
+	conditions->insertListValueAt(0, "x > 0");
+	conditions->insertListValueAt(1, "x > 0");
+	conditions->insertListValueAt(1, "x == 0");
+	ASSERT_EQ(decide->getConditions()->size(), 3u);
+	EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
+	EXPECT_EQ(decide->getConditions()->getAtRank(1), "x == 0");
+	conditions->removeListValueAt(2);
+	ASSERT_EQ(decide->getConditions()->size(), 2u);
+	EXPECT_EQ(decide->getConditions()->getAtRank(1), "x == 0");
+	std::unique_ptr<PluginInformation> info(Decide::GetPluginInformation());
+	EXPECT_EQ(info->getMinimumOutputs(), 1);
+}
+
+TEST(PluginIdentityAndCodePersistenceTest, PickUpHasDistinctIdentityAndCppForGRoundTripsText) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	ASSERT_NE(simulator.getPluginManager()->find(Util::TypeOf<PickUp>()), nullptr);
+	Model* model = simulator.getModelManager()->newModel();
+	auto* removeA = new Remove(model, "RemoveA");
+	auto* removeB = new Remove(model, "RemoveB");
+	auto* pickUp = new PickUp(model, "PickUpA");
+	EXPECT_EQ(removeA->getClassname(), Util::TypeOf<Remove>());
+	EXPECT_EQ(removeB->getClassname(), Util::TypeOf<Remove>());
+	EXPECT_EQ(pickUp->getClassname(), Util::TypeOf<PickUp>());
+	auto* cpp = new CppForG(model, "CppText");
+	const std::string dispatch = R"(// λ
+const char* s = "quoted"; \\path
+)";
+	cpp->setOnDispatchEventCode(dispatch);
+	cpp->setInitBetweenReplicationCode("if (x) {\n  x++;\n}");
+	cpp->setIncludesCode("#include <vector>\n// include text");
+	const std::string filename = "/tmp/genesys_cppforg_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	CppForG* loadedCpp = nullptr;
+	for (ModelComponent* component : *loaded->getComponentManager()) {
+		if (component->getName() == "CppText") loadedCpp = dynamic_cast<CppForG*>(component);
+	}
+	ASSERT_NE(loadedCpp, nullptr);
+	EXPECT_EQ(loadedCpp->getOnDispatchEventCode(), dispatch);
+	EXPECT_EQ(loadedCpp->getInitBetweenReplicationCode(), "if (x) {\n  x++;\n}");
+	EXPECT_EQ(loadedCpp->getIncludesCode(), "#include <vector>\n// include text");
 	::unlink(filename.c_str());
 }
 

@@ -63,6 +63,11 @@ void PluginCatalogController::insertPluginUI(Plugin* plugin) const {
     if (plugin == nullptr || !plugin->isIsValidPlugin() || _pluginsTree == nullptr) {
         return;
     }
+    // The main model canvas palette creates process components. DataDefinitions
+    // stay registered in the kernel and are exposed by their specialized editors.
+    if (!plugin->getPluginInfo()->isComponent()) {
+        return;
+    }
 
     const QString categoryPath = canonicalCategoryPath(QString::fromStdString(plugin->getPluginInfo()->getCategory()));
     const QString topLevelCategoryName = topLevelCategory(categoryPath);
