@@ -83,6 +83,30 @@ TEST(PersistenceAtomicSaveTest, SuccessfulSaveLeavesNoTemporaryFileBehind) {
 	::unlink(tempFilename.c_str());
 }
 
+TEST(PersistenceAtomicSaveTest, SaveWithoutCheckPreservesIndependentDataDefinition) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* resource = new Resource(model, "IndependentResource");
+
+	const std::string filename = "/tmp/genesys_save_without_check_"
+		+ std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+
+	ASSERT_TRUE(model->save(filename));
+	ASSERT_TRUE(model->save(filename));
+	std::ifstream savedFile(filename);
+	ASSERT_TRUE(savedFile.good());
+	const std::string contents((std::istreambuf_iterator<char>(savedFile)),
+		std::istreambuf_iterator<char>());
+	EXPECT_NE(contents.find("IndependentResource"), std::string::npos);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(),
+		"IndependentResource"), resource);
+
+	::unlink(filename.c_str());
+}
+
 TEST(PersistenceAtomicSaveTest, SaveFailsCleanlyAndPreservesExistingFileWhenDestinationDirIsMissing) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();
