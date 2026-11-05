@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-10-30
+last_updated: 2026-11-05
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -734,3 +734,20 @@ Do not reopen without new evidence:
 A paused task becomes eligible only after the maintainer changes it to `ready` and confirms scope, validation and stop conditions.
 
 A task moves to `done` only after required validation is green, evidence is reviewed, the PR is merged, source-branch deletion is confirmed, issue/status/backlog/changelog are updated and remaining boundaries are explicit.
+
+
+## 9. Active bounded GUI work authorized by maintainer
+
+### AUTO-GUI-001 — Simplify and correct GUI Report Issue
+
+- Priority: P1
+- Status: running
+- Environment: github
+- Authorization: direct maintainer instruction dated 2026-11-05; implement in a bounded branch and open a draft PR, no merge.
+- Branch: WiP202611/report-issue-gui
+- Integration target: WorkInProgress
+- Scope: three-field issue report dialog, browser URL prefill without relay, optional secure asynchronous relay, strict issue confirmation, privacy, focused QtTest and CI, user/developer documentation.
+- Non-goals: no production relay deployment, GitHub secret/token provisioning, production test issue, new backend service, broad controller refactor, stable promotion or branch merge.
+- Acceptance: title/description validation; bug as default; no automatic sensitive diagnostics; encoded and bounded GitHub URL; clipboard path for oversize content; explicit browser handoff; error preservation; verified HTTPS issue identity for relay; mock HTTP status/timeout/security tests; gui-app build and QtTest evidence.
+- Mandatory evidence: GitHub Actions for focused QtTest and GUI build, diff review, optional independent GUI interaction; real relay-to-GitHub creation is UNKNOWN until separately authorized and evidenced.
+- Stop/rollback: preserve the branch and draft PR without merge if CI is red, semantics are ambiguous, or real service availability cannot be demonstrated. Revert the bounded PR to restore the original flow.
