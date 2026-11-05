@@ -346,6 +346,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_persistence
         genesys_test_gen_serializer_text
         genesys_test_genesys_gro_fixtures
+        genesys_test_transfer_label_goto
         genesys_test_runtime_pluginmanager
         genesys_test_support_oneventmanager
         genesys_test_support_parsermanager
@@ -431,6 +432,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_persistence>
     COMMAND $<TARGET_FILE:genesys_test_gen_serializer_text>
+    COMMAND $<TARGET_FILE:genesys_test_transfer_label_goto>
     COMMAND $<TARGET_FILE:genesys_test_runtime_pluginmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_oneventmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_parsermanager>
