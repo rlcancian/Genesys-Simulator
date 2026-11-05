@@ -1,4 +1,4 @@
-#include "plugins/components/MaterialHandling/Move.h"
+#include "plugins/components/Transfer/Move.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -223,7 +223,7 @@ void Move::_createAttachedAttributes() {
 
 PluginInformation* Move::GetPluginInformation() {
 	auto* info = new PluginInformation(Util::TypeOf<Move>(), &Move::LoadInstance, &Move::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->setSendTransfer(true);
 	info->insertDynamicLibFileDependence("transporter.so");
 	info->insertDynamicLibFileDependence("distance.so");

@@ -28,8 +28,8 @@
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Assign.h"
 #include "plugins/components/Decisions/Decide.h"
-#include "plugins/components/MaterialHandling/Enter.h"
-#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/Transfer/Enter.h"
+#include "plugins/components/Transfer/Route.h"
 
 OperatingSystem02::OperatingSystem02() {
 }

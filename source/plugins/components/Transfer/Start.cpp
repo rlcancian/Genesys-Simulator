@@ -11,7 +11,7 @@
  * Created on 11 de Setembro de 2019, 13:15
  */
 
-#include "plugins/components/MaterialHandling/Start.h"
+#include "plugins/components/Transfer/Start.h"
 
 #include "../../../kernel/simulator/model/Model.h"
 
@@ -120,7 +120,7 @@ bool Start::_check(std::string& errorMessage) {
 
 PluginInformation* Start::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Start>(), &Start::LoadInstance, &Start::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("conveyor.so");
 	info->setDescriptionHelp("Activates a Conveyor and optionally updates its velocity before forwarding the entity.");
 	return info;

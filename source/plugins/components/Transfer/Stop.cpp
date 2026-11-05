@@ -11,7 +11,7 @@
  * Created on 11 de Setembro de 2019, 13:15
  */
 
-#include "plugins/components/MaterialHandling/Stop.h"
+#include "plugins/components/Transfer/Stop.h"
 
 #include "../../../kernel/simulator/model/Model.h"
 
@@ -93,7 +93,7 @@ bool Stop::_check(std::string& errorMessage) {
 
 PluginInformation* Stop::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Stop>(), &Stop::LoadInstance, &Stop::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("conveyor.so");
 	info->setDescriptionHelp("Deactivates a Conveyor and forwards the entity.");
 	return info;

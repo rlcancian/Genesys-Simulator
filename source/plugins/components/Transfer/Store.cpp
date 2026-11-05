@@ -11,7 +11,7 @@
  * Created on 11 de Setembro de 2019, 13:07
  */
 
-#include "plugins/components/MaterialHandling/Store.h"
+#include "plugins/components/Transfer/Store.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -123,7 +123,7 @@ bool Store::_check(std::string& errorMessage) {
 
 PluginInformation* Store::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Store>(), &Store::LoadInstance, &Store::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("storage.so");
 	info->setDescriptionHelp("Adds a parsed quantity to a Storage's current occupation and forwards the entity when capacity allows.");
 	return info;

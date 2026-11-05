@@ -11,7 +11,7 @@
  * Created on 11 de Setembro de 2019, 13:08
  */
 
-#include "plugins/components/MaterialHandling/Unstore.h"
+#include "plugins/components/Transfer/Unstore.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -123,7 +123,7 @@ bool Unstore::_check(std::string& errorMessage) {
 
 PluginInformation* Unstore::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Unstore>(), &Unstore::LoadInstance, &Unstore::NewInstance);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("storage.so");
 	info->setDescriptionHelp("Subtracts a parsed quantity from a Storage's current occupation and forwards the entity when enough units are available.");
 	return info;

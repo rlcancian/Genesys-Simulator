@@ -12,7 +12,7 @@
  */
 
 #include <cassert>
-#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/Transfer/Route.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
@@ -270,7 +270,7 @@ void Route::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 PluginInformation* Route::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Route>(), &Route::LoadInstance, &Route::NewInstance);
 	info->setSendTransfer(true);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("station.so");
 	info->insertDynamicLibFileDependence("sequence.so");
 	info->insertDynamicLibFileDependence("label.so");

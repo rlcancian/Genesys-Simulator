@@ -11,7 +11,7 @@
  * Created on 03 de Junho de 2019, 15:14
  */
 
-#include "plugins/components/MaterialHandling/Leave.h"
+#include "plugins/components/Transfer/Leave.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -105,7 +105,7 @@ void Leave::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 PluginInformation* Leave::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Leave>(), &Leave::LoadInstance, &Leave::NewInstance);
 	info->insertDynamicLibFileDependence("station.so");
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	return info;
 }
 

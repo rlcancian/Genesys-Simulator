@@ -5,85 +5,84 @@
  */
 
 /* 
- * File:   Access.cpp
+ * File:   Exit.cpp
  * Author: rlcancian
  * 
- * Created on 11 de Setembro de 2019, 13:14
+ * Created on 11 de Setembro de 2019, 13:15
  */
 
-#include "plugins/components/MaterialHandling/Access.h"
+#include "plugins/components/Transfer/Exit.h"
 
 #include "../../../kernel/simulator/model/Model.h"
-#include "kernel/simulator/Simulator.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
 extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Access::GetPluginInformation;
+	return &Exit::GetPluginInformation;
 }
 #endif
 
-ModelDataDefinition* Access::NewInstance(Model* model, std::string name) {
-	return new Access(model, name);
+ModelDataDefinition* Exit::NewInstance(Model* model, std::string name) {
+	return new Exit(model, name);
 }
 
-Access::Access(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Access>(), name) {
+Exit::Exit(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Exit>(), name) {
 	auto* propConveyor = new SimulationControlGenericClass<Conveyor*, Model*, Conveyor>(
 			_parentModel,
-			std::bind(&Access::getConveyor, this),
-			std::bind(&Access::setConveyor, this, std::placeholders::_1),
-			Util::TypeOf<Access>(), getName(), "Conveyor", "");
+			std::bind(&Exit::getConveyor, this),
+			std::bind(&Exit::setConveyor, this, std::placeholders::_1),
+			Util::TypeOf<Exit>(), getName(), "Conveyor", "");
 	auto* propQuantityExpression = new SimulationControlGeneric<std::string>(
-			std::bind(&Access::getQuantityExpression, this),
-			std::bind(&Access::setQuantityExpression, this, std::placeholders::_1),
-			Util::TypeOf<Access>(), getName(), "QuantityExpression", "");
+			std::bind(&Exit::getQuantityExpression, this),
+			std::bind(&Exit::setQuantityExpression, this, std::placeholders::_1),
+			Util::TypeOf<Exit>(), getName(), "QuantityExpression", "");
 	_parentModel->getControls()->insert(propConveyor);
 	_parentModel->getControls()->insert(propQuantityExpression);
 	_addSimulationControl(propConveyor);
 	_addSimulationControl(propQuantityExpression);
 }
 
-std::string Access::show() {
+std::string Exit::show() {
 	return ModelComponent::show() + ", conveyor=\"" + (_conveyor != nullptr ? _conveyor->getName() : std::string()) + "\", quantityExpression=\"" + _quantityExpression + "\"";
 }
 
-void Access::setConveyor(Conveyor* conveyor) {
+void Exit::setConveyor(Conveyor* conveyor) {
 	_conveyor = conveyor;
 }
 
-Conveyor* Access::getConveyor() const {
+Conveyor* Exit::getConveyor() const {
 	return _conveyor;
 }
 
-void Access::setQuantityExpression(std::string quantityExpression) {
+void Exit::setQuantityExpression(std::string quantityExpression) {
 	_quantityExpression = quantityExpression;
 }
 
-std::string Access::getQuantityExpression() const {
+std::string Exit::getQuantityExpression() const {
 	return _quantityExpression;
 }
 
-ModelComponent* Access::LoadInstance(Model* model, PersistenceRecord *fields) {
-	Access* newComponent = new Access(model);
+ModelComponent* Exit::LoadInstance(Model* model, PersistenceRecord *fields) {
+	Exit* newComponent = new Exit(model);
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-		newComponent->traceError("Failed to load Access instance: " + std::string(e.what()));
+		newComponent->traceError("Failed to load Exit instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
 
-void Access::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+void Exit::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
 	const unsigned int quantity = static_cast<unsigned int>(_parentModel->parseExpression(_quantityExpression));
-	if (_conveyor == nullptr || quantity == 0 || !_conveyor->access(quantity)) {
-		traceError("Access \"" + getName() + "\" could not allocate Conveyor capacity");
+	if (_conveyor == nullptr || quantity == 0 || !_conveyor->exit(quantity)) {
+		traceError("Exit \"" + getName() + "\" could not release Conveyor capacity");
 		return;
 	}
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
-bool Access::_loadInstance(PersistenceRecord *fields) {
+bool Exit::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		_quantityExpression = fields->loadField("quantityExpression", std::string("1"));
@@ -92,41 +91,35 @@ bool Access::_loadInstance(PersistenceRecord *fields) {
 	return res;
 }
 
-//void Access::_initBetweenReplications() {}
-
-void Access::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+void Exit::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("quantityExpression", _quantityExpression, std::string("1"), saveDefaultValues);
 	fields->saveField("conveyor", _conveyor != nullptr ? _conveyor->getName() : std::string(""), std::string(""), saveDefaultValues);
 }
 
-bool Access::_check(std::string& errorMessage) {
+bool Exit::_check(std::string& errorMessage) {
 	bool resultAll = true;
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Conveyor>(), _conveyor, "Conveyor", errorMessage);
 	resultAll &= _parentModel->checkExpression(_quantityExpression, "QuantityExpression", errorMessage);
 	if (this->getConnectionManager()->size() == 0) {
-		errorMessage += "Access \"" + getName() + "\" must forward to a downstream component. ";
+		errorMessage += "Exit \"" + getName() + "\" must forward to a downstream component. ";
 		resultAll = false;
 	}
 	return resultAll;
 }
 
-PluginInformation* Access::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Access>(), &Access::LoadInstance, &Access::NewInstance);
-	info->setCategory("MaterialHandling");
+PluginInformation* Exit::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<Exit>(), &Exit::LoadInstance, &Exit::NewInstance);
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("conveyor.so");
-	info->setDescriptionHelp("Allocates simplified Conveyor capacity and forwards the entity only when the configured Conveyor is active and has enough free slots.");
+	info->setDescriptionHelp("Releases simplified Conveyor capacity and forwards the entity when the configured quantity was previously allocated.");
 	return info;
 }
 
 
 
-// void Access::_createInternalStatisticReporters() { }
+// void Exit::_createInternalStatisticReporters() { }
 
-// void Access::_createEditableDataDefinitions() {
-// 	if (_conveyor == nullptr) {
-// 		_conveyor = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Conveyor>(_parentModel);
-// 	}
-// }
+// void Exit::_createEditableDataDefinitions() { }
 
-// void Access::_createAttachedAttributes() { }
+// void Exit::_createAttachedAttributes() { }

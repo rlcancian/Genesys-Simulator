@@ -11,7 +11,7 @@
  * Created on 03 de Junho de 2019, 15:14
  */
 
-#include "plugins/components/MaterialHandling/Enter.h"
+#include "plugins/components/Transfer/Enter.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
@@ -112,7 +112,7 @@ void Enter::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 PluginInformation* Enter::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Enter>(), &Enter::LoadInstance, &Enter::NewInstance);
 	info->setReceiveTransfer(true);
-	info->setCategory("MaterialHandling");
+	info->setCategory("Transfer");
 	info->insertDynamicLibFileDependence("station.so");
 	info->setDescriptionHelp("//@TODO");
 	return info;
