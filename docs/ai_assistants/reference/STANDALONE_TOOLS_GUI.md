@@ -8,7 +8,7 @@ Task: AUTO-GUI-002 / issue #561. Initial base: `WorkInProgress` SHA `987e145a369
 | --- | --- | --- | --- |
 | Data Analyzer | `source/applications/gui/dataanalyser/main.cpp` / `genesys_dataanalyser_gui_application` | `genesys/tools/dataanalyzer/DataAnalyzerWindow.{h,cpp}` | Standalone Data Analyser target only; owns `HistogramPreview` and `DoePreviewPlot` nested widgets and local dialogs |
 | Optimization | `source/applications/gui/optimizer/main.cpp` / `genesys_optimizer_gui_application` | `genesys/tools/optimizer/OptimizerWindow.{h,cpp}` | Standalone Optimizer target only; owns `ProgressPlot` nested widget and local dialogs |
-| AI Assistant | `source/applications/gui/ai_assistant/main.cpp` / `genesys/gui/ai_assistant/AIAssistantWindow.{h,cpp}` (relative to `source/applications` for this description) | `ai_assistant/AIAssistantWindow.{h,cpp}` | Standalone AI Assistant target only |
+| AI Assistant | `source/applications/gui/ai_assistant/main.cpp` / `source/applications/gui/ai_assistant/AIAssistantWindow.{h,cpp}` | `ai_assistant/AIAssistantWindow.{h,cpp}` | Standalone AI Assistant target only |
 
 Each `main()` creates its own `QApplication`, local `Simulator`, `QMainWindow`, and event loop. The main editor target excludes the two historical window `.cpp` units explicitly; the AI Assistant window is not below the main editor source tree. The main GUI's `Tools` actions delegate through `mainwindow_controller.cpp` and `DialogUtilityController.cpp` to `ToolLauncher::launchDetached()`; they do not construct these windows.
 
