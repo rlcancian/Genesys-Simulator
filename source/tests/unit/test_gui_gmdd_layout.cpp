@@ -96,6 +96,11 @@ TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
     EXPECT_EQ(countPorts(decide), 1);
     decide->addConditions("A > 0");
     EXPECT_EQ(countPorts(decide), 2);
+    GraphicalModelComponent graphical(plugin, decide, QPointF(100, 100), QColor("#336699"));
+    graphical.applyDecideConditionPortEdit(1, true);
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 3);
+    graphical.applyDecideConditionPortEdit(1, false);
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 2);
     decide->addConditions("B > 0");
     decide->addConditions("C > 0");
     EXPECT_EQ(countPorts(decide), 4);

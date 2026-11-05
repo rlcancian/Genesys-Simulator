@@ -132,6 +132,45 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	}
 }
 
+void GraphicalModelComponent::applyDecideConditionPortEdit(unsigned int index, bool inserted) {
+	if (index > static_cast<unsigned int>(_graphicalOutputPorts.size())) return;
+	if (inserted) {
+		auto* port = new GraphicalComponentPort(this, false, index, nullptr);
+		port->setParentItem(this);
+		port->setX(_width - port->width());
+		_graphicalOutputPorts.insert(static_cast<int>(index), port);
+	} else {
+		if (index >= static_cast<unsigned int>(_graphicalOutputPorts.size())) return;
+		GraphicalComponentPort* port = _graphicalOutputPorts.at(static_cast<int>(index));
+		const QList<GraphicalConnection*> attached = *port->getConnections();
+		for (GraphicalConnection* connection : attached) {
+			if (connection == nullptr) continue;
+			if (auto* modelScene = dynamic_cast<ModelGraphicsScene*>(connection->scene())) {
+				modelScene->removeGraphicalConnectionVisual(connection);
+			} else {
+				if (connection->scene() != nullptr) connection->scene()->removeItem(connection);
+				delete connection;
+			}
+		}
+		_graphicalOutputPorts.removeAt(static_cast<int>(index));
+		delete port;
+	}
+
+	const unsigned int count = static_cast<unsigned int>(_graphicalOutputPorts.size());
+	const qreal step = static_cast<qreal>(_height) / static_cast<qreal>(count + 1);
+	for (unsigned int portIndex = 0; portIndex < count; ++portIndex) {
+		GraphicalComponentPort* port = _graphicalOutputPorts.at(static_cast<int>(portIndex));
+		port->setPortNum(portIndex);
+		port->setY(step * static_cast<qreal>(portIndex + 1) - port->height() / 2);
+		for (GraphicalConnection* connection : *port->getConnections()) {
+			if (connection != nullptr && connection->getSourceGraphicalPort() == port) {
+				connection->setSourcePortNumber(portIndex);
+				connection->updateDimensionsAndPosition();
+			}
+		}
+	}
+}
+
 GraphicalModelComponent::GraphicalModelComponent(const GraphicalModelComponent& orig) : GraphicalModelDataDefinition(
 	orig) {
 }

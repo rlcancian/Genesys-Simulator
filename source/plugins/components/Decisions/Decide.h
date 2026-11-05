@@ -43,6 +43,8 @@ public:
 	List<std::string>* getConditions() const;
 	void addConditions(std::string newCondition);
     void removeConditions(std::string condition);
+	bool takeConditionPortEdit(unsigned int& index, bool& inserted);
+	void markConditionPortEdit(unsigned int index, bool inserted);
 public:
 	virtual std::string show() override;
 public:
@@ -67,6 +69,9 @@ protected:
 private:
 	List<std::string>* _conditions = new List<std::string>();
 	List<Counter*>* _numberOuts = nullptr;
+	bool _hasPendingConditionPortEdit = false;
+	unsigned int _pendingConditionPortIndex = 0;
+	bool _pendingConditionPortInserted = false;
 private:
 
 };

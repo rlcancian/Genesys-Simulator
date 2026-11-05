@@ -45,6 +45,7 @@ public:
 		std::map<unsigned int, Connection*> shifted;
 		for (const auto& [port, connection] : *connections) shifted.emplace(port >= static_cast<unsigned int>(index) ? port + 1 : port, connection);
 		*connections = std::move(shifted);
+		_owner->markConditionPortEdit(static_cast<unsigned int>(index), true);
 	}
 	void replaceListValueAt(int index, const std::string& value) override {
 		_owner->getConditions()->setAtRank(static_cast<unsigned int>(index), value);
@@ -59,10 +60,25 @@ public:
 		std::map<unsigned int, Connection*> shifted;
 		for (const auto& [port, connection] : *connections) shifted.emplace(port > static_cast<unsigned int>(index) ? port - 1 : port, connection);
 		*connections = std::move(shifted);
+		_owner->markConditionPortEdit(static_cast<unsigned int>(index), false);
 	}
 private:
 	Decide* _owner;
 };
+}
+
+void Decide::markConditionPortEdit(unsigned int index, bool inserted) {
+	_hasPendingConditionPortEdit = true;
+	_pendingConditionPortIndex = index;
+	_pendingConditionPortInserted = inserted;
+}
+
+bool Decide::takeConditionPortEdit(unsigned int& index, bool& inserted) {
+	if (!_hasPendingConditionPortEdit) return false;
+	index = _pendingConditionPortIndex;
+	inserted = _pendingConditionPortInserted;
+	_hasPendingConditionPortEdit = false;
+	return true;
 }
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -198,7 +214,8 @@ void Decide::_createInternalStatisticReporters() {
 		if (_numberOuts == nullptr) {
 			_numberOuts = new List<Counter*>();
 		}
-		for (unsigned int i = _numberOuts->size(); i<this->_connections->size(); i++) {
+		const unsigned int outputCount = _conditions->size() + 1;
+		for (unsigned int i = _numberOuts->size(); i < outputCount; i++) {
 			Counter* counter = new Counter(_parentModel, getName() + "." + "CountNumberOut" + Util::StrIndex(i), this);
 			_numberOuts->insert(counter);
 			_mandatoryNonEditableDataDefinitionInsert("CountNumberOut" + Util::StrIndex(i), counter);
