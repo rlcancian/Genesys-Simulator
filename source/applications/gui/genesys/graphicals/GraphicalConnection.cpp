@@ -292,6 +292,11 @@ bool GraphicalConnection::sceneEvent(QEvent *event) {
 unsigned int GraphicalConnection::getPortSourceConnection() const {
     return _portSourceConnection;
 }
+
+void GraphicalConnection::setSourcePortNumber(unsigned int portNumber) {
+	_portSourceConnection = portNumber;
+	if (_sourceConnection != nullptr) _sourceConnection->channel.portNumber = portNumber;
+}
 unsigned int GraphicalConnection::getPortDestinationConnection() const {
     return _portDestinationConnection;
 }

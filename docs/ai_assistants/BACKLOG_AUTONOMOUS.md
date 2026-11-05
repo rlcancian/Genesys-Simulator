@@ -451,6 +451,76 @@ This is the only approved source for work an AI agent may execute without a new 
 - stochastic conflict resolution through the GenESyS sampler;
 - CPN reference fixtures from literature.
 
+### AUTO-GUIFIX-001 — Safe model save without ModelCheck
+
+- Priority: `P0`
+- Status: `running`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05; execute the five GenESyS GUI/model-editor fixes, including PRs and merge to `WorkInProgress` after required checks.
+- Branch/PR: `WiP202611/model-save-preparation` / PR #559
+- Scope: trace and correct save preparation for incomplete models while preserving independent DataDefinitions, `.gen`/`.gui` behavior and atomic file replacement. Never call `_clearOrphanedDataDefinitions()` from save.
+- Non-goals: ModelCheck as save precondition, simulation/script execution, persistence format redesign, stable branch promotion.
+- Dependencies: none.
+- Acceptance: incomplete models save/load without check; valid declared dependencies are materialized idempotently; invalid references diagnose; independent/internal/attached data survive; failed writes preserve prior file.
+- Validation: focused persistence regressions, `tests-unit`, `tests-kernel-unit`, `tests-smoke`; affected GUI preset and sanitizer where applicable.
+- Stop gates: evidence that safe preparation requires a compatibility or architecture decision; any data loss; required validation red.
+
+### AUTO-GUIFIX-002 — Positional Decide conditions and dynamic outputs
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05.
+- Branch/PR: `WiP202611/model-save-preparation` / PR #559
+- Scope: ordered positional condition editing, N+1 kernel/GUI output ports, preserving unaffected connections and Else through edit, persistence and undo/redo.
+- Non-goals: automatic connections, altered simulation routing semantics beyond the approved contract.
+- Dependencies: none; implemented in the shared bounded editor-fixes PR.
+- Acceptance: add/edit/remove by position, including duplicates, keeps logical/graphical ports, kernel connections, Else and save/load coherent.
+- Validation: focused kernel and Qt tests, routing regression, presets required for kernel/GUI changes.
+- Stop gates: connection ownership ambiguity or destination corruption; required validation red.
+
+### AUTO-GUIFIX-003 — Source-code property editor and persistence
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05.
+- Branch/PR: `WiP202611/model-save-preparation` / PR #559
+- Scope: reuse CodeEditor contracts for justified C++, Python, R and Gro properties; fix CppForG field persistence and add round-trip/cancel tests.
+- Non-goals: syntax highlighting, LSP, execution/compilation on save, changing structured command-list semantics.
+- Dependencies: none; implemented in the shared bounded editor-fixes PR.
+- Acceptance: selected code fields retain multiline/UTF-8/escaped content through edit/apply/cancel/save/load; no code executes on save.
+- Validation: focused plugin/editor/persistence tests; unit/kernel/GUI presets as affected.
+- Stop gates: serializer compatibility decision or script execution needed for textual validation; required validation red.
+
+### AUTO-GUIFIX-004 — Correct Remove and PickUp plugin identity
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05.
+- Branch/PR: `WiP202611/model-save-preparation` / PR #559
+- Scope: identify and correct registration metadata/factories causing apparent Remove duplication while retaining model compatibility.
+- Non-goals: generic plugin registry redesign or restricting multiple component instances.
+- Dependencies: none; implemented in the shared bounded editor-fixes PR.
+- Acceptance: one catalog entry per registered typename, correct PickUp identity where supported, idempotent registration/reload, Remove/PickUp create and round-trip.
+- Validation: focused plugin/catalog tests and unit/GUI presets as affected.
+- Stop gates: current model compatibility cannot be preserved; required validation red.
+
+### AUTO-GUIFIX-005 — ModelComponent-only main plugin palette
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05.
+- Branch/PR: `WiP202611/model-save-preparation` / PR #559
+- Scope: filter only main palette presentation to ModelComponents; keep all ModelDataDefinitions registered and usable in specialized contexts.
+- Non-goals: registry removal, changes to plugin type metadata, breaking submodel/network editors.
+- Dependencies: none; implemented in the shared bounded editor-fixes PR.
+- Acceptance: main palette shows components only and refresh is idempotent; data definitions remain constructible, loadable and available to specialized editors.
+- Validation: focused Qt tests, `gui-app`, unit/kernel presets as affected.
+- Stop gates: specialized editor regression or required validation red.
+
 ## 5. Active bounded work
 
 ### AUTO-GUI-002 — Consolidate standalone GUI tools and installed launch paths
@@ -464,7 +534,6 @@ This is the only approved source for work an AI agent may execute without a new 
 - Non-goals: changing optimizer/statistical/AI algorithms, rewriting source-window architecture, adding IPC/model sharing, broad plugin changes, stable-branch promotion and merge.
 - Stop gates: unresolved trust boundary, incompatible installation policy, package branch conflict requiring scope decisions, or persistent required CI failures. Rollback: revert the bounded PR.
 - Parallel change warning: Draft PR #524 changes Debian packaging; reconcile its layout before integration. Draft PR #560 changes Report Issue UI.
-
 
 
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture

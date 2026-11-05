@@ -124,11 +124,11 @@ RSimulatorRunner::RSimulatorRunner(Model* model, std::string name)
 	SimulationControlGeneric<std::string>* propWorkingDirectory = new SimulationControlGeneric<std::string>(
 			std::bind(&RSimulatorRunner::getWorkingDirectory, this), std::bind(&RSimulatorRunner::setWorkingDirectory, this, std::placeholders::_1),
 			Util::TypeOf<RSimulatorRunner>(), getName(), "WorkingDirectory", "");
-	SimulationControlGeneric<std::string>* propPreludeScript = new SimulationControlGeneric<std::string>(
-			std::bind(&RSimulatorRunner::getPreludeScript, this), std::bind(&RSimulatorRunner::setPreludeScript, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propPreludeScript = new SimulationControlSourceCodeString(
+									[this]() { return SourceCodeString(getPreludeScript()); }, [this](SourceCodeString value) { setPreludeScript(value.str()); },
 			Util::TypeOf<RSimulatorRunner>(), getName(), "PreludeScript", "");
-	SimulationControlGeneric<std::string>* propCommand = new SimulationControlGeneric<std::string>(
-			std::bind(&RSimulatorRunner::getCommand, this), std::bind(&RSimulatorRunner::setCommand, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propCommand = new SimulationControlSourceCodeString(
+									[this]() { return SourceCodeString(getCommand()); }, [this](SourceCodeString value) { setCommand(value.str()); },
 			Util::TypeOf<RSimulatorRunner>(), getName(), "Command", "");
 	SimulationControlGeneric<std::string>* propLastStatus = new SimulationControlGeneric<std::string>(
 			std::bind(&RSimulatorRunner::getLastStatus, this), std::bind(&RSimulatorRunner::setLastStatus, this, std::placeholders::_1),

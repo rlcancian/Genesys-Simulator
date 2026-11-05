@@ -35,6 +35,7 @@
 #include "ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "UtilGUI.h"
+#include "plugins/components/Decisions/Decide.h"
 #include <QPainter>
 #include <QRgba64>
 #include <QSet>
@@ -114,9 +115,17 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 		this->_graphicalInputPorts.append(port);
 	}
 	py = 0;
+	unsigned int declaredOutputPorts = plugin->getPluginInfo()->getMinimumOutputs();
+	if (auto* decide = dynamic_cast<Decide*>(component); decide != nullptr) {
+		declaredOutputPorts = decide->getConditions()->size() + 1;
+	}
 	unsigned int numOutputPorts = std::max<unsigned int>(
-		component->getConnectionManager()->getCurrentOutputConnectionsSize(),
-		plugin->getPluginInfo()->getMinimumOutputs());
+		component->getConnectionManager()->getCurrentOutputConnectionsSize(), declaredOutputPorts);
+	if (dynamic_cast<Decide*>(component) != nullptr) {
+		// A Decide's semantic ports are defined by its ordered conditions, even if
+		// a malformed/stale connection map contains an out-of-range key.
+		numOutputPorts = declaredOutputPorts;
+	}
 	step = (double)_height / (double)(numOutputPorts + 1);
 	for (unsigned int i = 0; i < numOutputPorts; i++) {
 		port = new GraphicalComponentPort(this, false, i, parent);
@@ -125,6 +134,45 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 		port->setY(py - port->height() / 2);
 		port->setParentItem(this);
 		this->_graphicalOutputPorts.append(port);
+	}
+}
+
+void GraphicalModelComponent::applyDecideConditionPortEdit(unsigned int index, bool inserted) {
+	if (index > static_cast<unsigned int>(_graphicalOutputPorts.size())) return;
+	if (inserted) {
+		auto* port = new GraphicalComponentPort(this, false, index, nullptr);
+		port->setParentItem(this);
+		port->setX(_width - port->width());
+		_graphicalOutputPorts.insert(static_cast<int>(index), port);
+	} else {
+		if (index >= static_cast<unsigned int>(_graphicalOutputPorts.size())) return;
+		GraphicalComponentPort* port = _graphicalOutputPorts.at(static_cast<int>(index));
+		const QList<GraphicalConnection*> attached = *port->getConnections();
+		for (GraphicalConnection* connection : attached) {
+			if (connection == nullptr) continue;
+			if (auto* modelScene = dynamic_cast<ModelGraphicsScene*>(connection->scene())) {
+				modelScene->removeGraphicalConnectionVisual(connection);
+			} else {
+				if (connection->scene() != nullptr) connection->scene()->removeItem(connection);
+				delete connection;
+			}
+		}
+		_graphicalOutputPorts.removeAt(static_cast<int>(index));
+		delete port;
+	}
+
+	const unsigned int count = static_cast<unsigned int>(_graphicalOutputPorts.size());
+	const qreal step = static_cast<qreal>(_height) / static_cast<qreal>(count + 1);
+	for (unsigned int portIndex = 0; portIndex < count; ++portIndex) {
+		GraphicalComponentPort* port = _graphicalOutputPorts.at(static_cast<int>(portIndex));
+		port->setPortNum(portIndex);
+		port->setY(step * static_cast<qreal>(portIndex + 1) - port->height() / 2);
+		for (GraphicalConnection* connection : *port->getConnections()) {
+			if (connection != nullptr && connection->getSourceGraphicalPort() == port) {
+				connection->setSourcePortNumber(portIndex);
+				connection->updateDimensionsAndPosition();
+			}
+		}
 	}
 }
 

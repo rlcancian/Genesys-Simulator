@@ -149,7 +149,13 @@ void DataComponentProperty::addElement() {
         return;
     }
 
-    if (!isInList(newValue.toStdString())) {
+    if (_property->supportsPositionalListEditing()) {
+        const int selected = _view->currentIndex().row();
+        _property->insertListValueAt(selected < 0 ? static_cast<int>(_view->topLevelItemCount()) : selected,
+            newValue.toStdString());
+        config_values();
+        _notifyChanged();
+    } else if (!isInList(newValue.toStdString())) {
         _editor->changeSimulationControl(_property, newValue.toStdString(), false);
         config_values();
         _notifyChanged();
@@ -168,8 +174,13 @@ void DataComponentProperty::removeElement() {
         return;
     }
 
-    const QString itemValue = selectedItem->text(0);
-    _editor->changeSimulationControl(_property, itemValue.toStdString(), true);
+    const int selectedIndex = _view->indexOfTopLevelItem(selectedItem);
+    if (_property->supportsPositionalListEditing()) {
+        _property->removeListValueAt(selectedIndex);
+    } else {
+        const QString itemValue = selectedItem->text(0);
+        _editor->changeSimulationControl(_property, itemValue.toStdString(), true);
+    }
     config_values();
     _notifyChanged();
     qInfo() << "[DataComponentProperty] removeElement exit";
@@ -177,12 +188,25 @@ void DataComponentProperty::removeElement() {
 
 void DataComponentProperty::editProperty() {
     qInfo() << "[DataComponentProperty] editProperty enter";
-    if (_property == nullptr || !_property->getIsClass()) {
+    if (_property == nullptr || (!_property->getIsClass() && !_property->supportsPositionalListEditing())) {
         return;
     }
 
     const int index = _view->currentIndex().row();
     if (index < 0) {
+        return;
+    }
+
+    if (_property->supportsPositionalListEditing()) {
+        const QString current = _view->currentItem()->text(0);
+        bool accepted = false;
+        const QString value = _confirmation->getText(_confirmation, "Edit Condition", "Condition:",
+            QLineEdit::Normal, current, &accepted);
+        if (accepted) {
+            _property->replaceListValueAt(index, value.toStdString());
+            config_values();
+            _notifyChanged();
+        }
         return;
     }
 

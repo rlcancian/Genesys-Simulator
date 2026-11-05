@@ -13,7 +13,60 @@
 
 #include "plugins/components/Decisions/Decide.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/ConnectionManager.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
+#include <iterator>
+
+namespace {
+class DecideConditionsControl final : public SimulationControl {
+public:
+	DecideConditionsControl(Decide* owner)
+		: SimulationControl(Util::TypeOf<Decide>(), owner->getName(), "Conditions", "Ordered conditions; final output is Else", true),
+		  _owner(owner) {}
+	std::string getValue() const override {
+		return std::to_string(_owner->getConditions()->size()) + " Items";
+	}
+	List<std::string>* getStrValues() override {
+		return new List<std::string>(*_owner->getConditions());
+	}
+	void setValue(std::string value, bool remove = false) override {
+		if (remove) {
+			for (int i = static_cast<int>(_owner->getConditions()->size()) - 1; i >= 0; --i) {
+				if (_owner->getConditions()->getAtRank(i) == value) { removeListValueAt(i); break; }
+			}
+		} else insertListValueAt(static_cast<int>(_owner->getConditions()->size()), value);
+	}
+	bool supportsPositionalListEditing() const override { return true; }
+	void insertListValueAt(int index, const std::string& value) override {
+		if (index < 0) throw std::out_of_range("condition index");
+		_owner->insertConditionAt(static_cast<unsigned int>(index), value);
+	}
+	void replaceListValueAt(int index, const std::string& value) override {
+		if (index < 0) throw std::out_of_range("condition index");
+		_owner->replaceConditionAt(static_cast<unsigned int>(index), value);
+	}
+	void removeListValueAt(int index) override {
+		if (index < 0) throw std::out_of_range("condition index");
+		_owner->removeConditionAt(static_cast<unsigned int>(index));
+	}
+private:
+	Decide* _owner;
+};
+}
+
+void Decide::markConditionPortEdit(unsigned int index, bool inserted) {
+	_hasPendingConditionPortEdit = true;
+	_pendingConditionPortIndex = index;
+	_pendingConditionPortInserted = inserted;
+}
+
+bool Decide::takeConditionPortEdit(unsigned int& index, bool& inserted) {
+	if (!_hasPendingConditionPortEdit) return false;
+	index = _pendingConditionPortIndex;
+	inserted = _pendingConditionPortInserted;
+	_hasPendingConditionPortEdit = false;
+	return true;
+}
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -27,10 +80,7 @@ ModelDataDefinition* Decide::NewInstance(Model* model, std::string name) {
 }
 
 Decide::Decide(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Decide>(), name) {
-	SimulationControlGenericList<std::string, Model*, std::string>* propConditions = new SimulationControlGenericList<std::string, Model*, std::string> (
-									_parentModel,
-                                    std::bind(&Decide::getConditions, this), std::bind(&Decide::addConditions, this, std::placeholders::_1), std::bind(&Decide::removeConditions, this, std::placeholders::_1),
-									Util::TypeOf<Decide>(), getName(), "Conditions", "");
+	SimulationControl* propConditions = new DecideConditionsControl(this);
 
 	_parentModel->getControls()->insert(propConditions);
 
@@ -49,11 +99,58 @@ List<std::string>* Decide::getConditions() const {
 }
 
 void Decide::addConditions(std::string newCondition) {
-	_conditions->insert(newCondition);
+	insertConditionAt(static_cast<unsigned int>(_conditions->size()), std::move(newCondition));
 }
 
 void Decide::removeConditions(std::string condition) {
-    _conditions->remove(condition);
+	for (unsigned int index = 0; index < _conditions->size(); ++index) {
+		if (_conditions->getAtRank(index) == condition) {
+			removeConditionAt(index);
+			return;
+		}
+	}
+}
+
+void Decide::insertConditionAt(unsigned int index, std::string condition) {
+	if (index > _conditions->size()) throw std::out_of_range("condition index");
+	auto* values = _conditions->list();
+	auto it = values->begin();
+	std::advance(it, index);
+	values->insert(it, std::move(condition));
+	auto* connections = _connections->connections();
+	std::map<unsigned int, Connection*> shifted;
+	for (const auto& [port, connection] : *connections) {
+		shifted.emplace(port >= index ? port + 1 : port, connection);
+	}
+	*connections = std::move(shifted);
+	markConditionPortEdit(index, true);
+	synchronizeOutputStatistics();
+}
+
+void Decide::replaceConditionAt(unsigned int index, std::string condition) {
+	if (index >= _conditions->size()) throw std::out_of_range("condition index");
+	_conditions->setAtRank(index, std::move(condition));
+}
+
+void Decide::removeConditionAt(unsigned int index) {
+	if (index >= _conditions->size()) throw std::out_of_range("condition index");
+	auto* values = _conditions->list();
+	auto it = values->begin();
+	std::advance(it, index);
+	values->erase(it);
+	_connections->removeAtPort(index);
+	auto* connections = _connections->connections();
+	std::map<unsigned int, Connection*> shifted;
+	for (const auto& [port, connection] : *connections) {
+		shifted.emplace(port > index ? port - 1 : port, connection);
+	}
+	*connections = std::move(shifted);
+	markConditionPortEdit(index, false);
+	synchronizeOutputStatistics();
+}
+
+void Decide::synchronizeOutputStatistics() {
+	_createInternalStatisticReporters();
 }
 
 std::string Decide::show() {
@@ -125,7 +222,7 @@ bool Decide::_check(std::string& errorMessage) {
 PluginInformation* Decide::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Decide>(), &Decide::LoadInstance, &Decide::NewInstance);
 	info->setCategory("Decisions");
-	info->setMinimumOutputs(2);
+	info->setMinimumOutputs(1);
 	info->setMaximumOutputs(999);
 	std::string help = "This module allows for decision-making processes in the system.";
 	help += " It includes options to make decisions based on one or more conditions(for example, if entity type is Gold Card) or based on one or more probabilities(for example, 75 %, true; 25 %, false).";
@@ -151,7 +248,13 @@ void Decide::_createInternalStatisticReporters() {
 		if (_numberOuts == nullptr) {
 			_numberOuts = new List<Counter*>();
 		}
-		for (unsigned int i = _numberOuts->size(); i<this->_connections->size(); i++) {
+		const unsigned int outputCount = _conditions->size() + 1;
+		while (_numberOuts->size() > outputCount) {
+			const unsigned int index = static_cast<unsigned int>(_numberOuts->size() - 1);
+			_mandatoryNonEditableDataDefinitionRemove("CountNumberOut" + Util::StrIndex(index));
+			_numberOuts->list()->pop_back();
+		}
+		for (unsigned int i = _numberOuts->size(); i < outputCount; i++) {
 			Counter* counter = new Counter(_parentModel, getName() + "." + "CountNumberOut" + Util::StrIndex(i), this);
 			_numberOuts->insert(counter);
 			_mandatoryNonEditableDataDefinitionInsert("CountNumberOut" + Util::StrIndex(i), counter);
@@ -164,6 +267,11 @@ void Decide::_createInternalStatisticReporters() {
 		}
 	} else  {
 		this->_statisticReportersClear();
+		if (_numberOuts != nullptr) {
+			for (unsigned int i = 0; i < _numberOuts->size(); ++i) {
+				_mandatoryNonEditableDataDefinitionRemove("CountNumberOut" + Util::StrIndex(i));
+			}
+		}
 		delete _numberOuts;
 		_numberOuts = nullptr;
 	}

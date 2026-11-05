@@ -7,8 +7,10 @@
 #include "../actions/DeleteUndoCommand.h"
 #include "../codeeditor/CodeEditor.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
+#include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../services/GraphicalModelBuilder.h"
+#include "plugins/components/Decisions/Decide.h"
 
 #include <map>
 #include <set>
@@ -2088,6 +2090,15 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     auto refresh = [this]() {
+        if (auto* decide = dynamic_cast<Decide*>(_modelObject)) {
+            unsigned int index = 0;
+            bool inserted = false;
+            if (decide->takeConditionPortEdit(index, inserted)) {
+                if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data())) {
+                    graphical->applyDecideConditionPortEdit(index, inserted);
+                }
+            }
+        }
         this->_notifyModelChangeApplied();
     };
 

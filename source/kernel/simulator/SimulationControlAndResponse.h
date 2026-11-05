@@ -211,6 +211,19 @@ public:
     virtual bool supportsInlineExpansion() const { return getIsClass() && !getIsList(); }
     // This method exposes whether the property should be edited by the dedicated list editor.
     virtual bool supportsListEditor() const { return getIsList(); }
+    virtual bool supportsPositionalListEditing() const { return false; }
+    virtual void insertListValueAt(int index, const std::string& value) {
+        (void)index; (void)value;
+        throw std::logic_error("Positional list insertion is not supported");
+    }
+    virtual void replaceListValueAt(int index, const std::string& value) {
+        (void)index; (void)value;
+        throw std::logic_error("Positional list editing is not supported");
+    }
+    virtual void removeListValueAt(int index) {
+        (void)index;
+        throw std::logic_error("Positional list removal is not supported");
+    }
     // This method exposes whether the property supports choosing an existing object instance.
     virtual bool supportsExistingObjectSelection() const { return false; }
     // This method exposes whether the property supports creating a new object instance.

@@ -19,6 +19,7 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include <algorithm>
 #include <cstdlib>
+#include <utility>
 #include <vector>
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -72,7 +73,11 @@ std::string Remove::convertEnumToStr(RemoveFromType type) {
 	return "Unknown";
 }
 
-Remove::Remove(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Remove>(), name) {
+Remove::Remove(Model* model, std::string name) : Remove(model, std::move(name), Util::TypeOf<Remove>()) {
+}
+
+Remove::Remove(Model* model, std::string name, std::string pluginTypeName)
+	: ModelComponent(model, std::move(pluginTypeName), std::move(name)) {
 	SimulationControlGeneric<std::string>* propRemoveStart = new SimulationControlGeneric<std::string>(
 									std::bind(&Remove::getRemoveStartRank, this), std::bind(&Remove::setRemoveStartRank,  this, std::placeholders::_1),
 									Util::TypeOf<Remove>(), getName(), "RemoveStartRank", "");

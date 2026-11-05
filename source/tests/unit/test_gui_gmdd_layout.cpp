@@ -3,7 +3,9 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "controllers/PropertyEditorController.h"
+#include "controllers/PluginCatalogController.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "codeeditor/CodeEditor.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
 #include "cellular_automata/CellularAutomataViewerWindow.h"
@@ -13,6 +15,7 @@
 #include "../../kernel/simulator/model/Model.h"
 #include "../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
@@ -20,6 +23,8 @@
 #include "../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
@@ -30,6 +35,8 @@
 #include <QByteArray>
 #include <QColor>
 #include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QFile>
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
@@ -41,9 +48,150 @@
 #include <QSlider>
 #include <QTemporaryDir>
 #include <QTextEdit>
+#include <QTimer>
+#include <QTreeWidget>
 #include <QUndoStack>
+#include <QPushButton>
+#include <QKeyEvent>
 
 #include <algorithm>
+#include <functional>
+#include <map>
+
+TEST(PluginCatalogPresentation, MainPaletteContainsOnlyComponentsAndReloadIsStable) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    const unsigned int registeredBefore = simulator.getPluginManager()->size();
+    QTreeWidget tree;
+    std::map<std::string, QColor> categoryColors;
+    PluginCatalogController catalog(&simulator, &tree, nullptr, &categoryColors);
+    catalog.reloadFromPluginManager();
+    auto countLeafItems = [&tree, &simulator]() {
+        unsigned int count = 0;
+        std::function<void(QTreeWidgetItem*)> visit = [&](QTreeWidgetItem* item) {
+            if (item->childCount() == 0) {
+                ++count;
+                Plugin* plugin = simulator.getPluginManager()->find(item->text(0).toStdString());
+                EXPECT_NE(plugin, nullptr);
+                if (plugin != nullptr) EXPECT_TRUE(plugin->getPluginInfo()->isComponent());
+            } else {
+                for (int i = 0; i < item->childCount(); ++i) visit(item->child(i));
+            }
+        };
+        for (int i = 0; i < tree.topLevelItemCount(); ++i) visit(tree.topLevelItem(i));
+        return count;
+    };
+    const unsigned int firstCount = countLeafItems();
+    EXPECT_GT(firstCount, 0u);
+    EXPECT_EQ(simulator.getPluginManager()->size(), registeredBefore);
+    catalog.reloadFromPluginManager();
+    EXPECT_EQ(countLeafItems(), firstCount);
+    EXPECT_NE(simulator.getPluginManager()->find(Util::TypeOf<Resource>()), nullptr);
+}
+
+TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    auto* decide = new Decide(model, "DynamicDecide");
+    auto countPorts = [&](Decide* value) {
+        GraphicalModelComponent graphical(plugin, value, QPointF(100, 100), QColor("#336699"));
+        return graphical.getGraphicalOutputPorts().size();
+    };
+    EXPECT_EQ(countPorts(decide), 1);
+    decide->addConditions("A > 0");
+    EXPECT_EQ(countPorts(decide), 2);
+    GraphicalModelComponent graphical(plugin, decide, QPointF(100, 100), QColor("#336699"));
+    graphical.applyDecideConditionPortEdit(1, true);
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 3);
+    graphical.applyDecideConditionPortEdit(1, false);
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 2);
+    decide->addConditions("B > 0");
+    decide->addConditions("C > 0");
+    EXPECT_EQ(countPorts(decide), 4);
+}
+
+namespace {
+QtProperty* findPropertyByName(QtProperty* property, const QString& name) {
+    if (property == nullptr) return nullptr;
+    if (property->propertyName() == name) return property;
+    for (QtProperty* child : property->subProperties()) {
+        if (QtProperty* found = findPropertyByName(child, name)) return found;
+    }
+    return nullptr;
+}
+
+void openCodeEditor(ObjectPropertyBrowser* browser, const QString& propertyName,
+                    const std::function<void(QDialog*)>& interactWithDialog) {
+    QtProperty* property = nullptr;
+    for (QtProperty* root : browser->properties()) {
+        if ((property = findPropertyByName(root, propertyName)) != nullptr) break;
+    }
+    ASSERT_NE(property, nullptr);
+    const QList<QtBrowserItem*> items = browser->items(property);
+    ASSERT_FALSE(items.isEmpty());
+    browser->setCurrentItem(items.front());
+    QTimer::singleShot(0, browser, [interactWithDialog]() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        interactWithDialog(dialog);
+    });
+    QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(browser, &enter);
+}
+}
+
+TEST(SourceCodePropertyEditor, CancelLeavesTheOriginalCodeUntouched) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* cpp = new CppForG(model, "CancelableCpp");
+    cpp->setOnDispatchEventCode("original\nline");
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, cpp);
+    QApplication::processEvents();
+
+    openCodeEditor(&browser, "OnDispatchEventCode", [](QDialog* dialog) {
+        auto* editor = dialog->findChild<CodeEditor*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        ASSERT_NE(editor, nullptr);
+        ASSERT_NE(buttons, nullptr);
+        editor->setPlainText("discard this");
+        buttons->button(QDialogButtonBox::Cancel)->click();
+    });
+    EXPECT_EQ(cpp->getOnDispatchEventCode(), "original\nline");
+}
+
+TEST(SourceCodePropertyEditor, ApplyCommitsCodeWithoutClosingTheEditor) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* cpp = new CppForG(model, "ApplicableCpp");
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, cpp);
+    QApplication::processEvents();
+
+    openCodeEditor(&browser, "OnDispatchEventCode", [](QDialog* dialog) {
+        auto* editor = dialog->findChild<CodeEditor*>();
+        auto* apply = dialog->findChild<QPushButton*>(QString(), Qt::FindDirectChildrenOnly);
+        if (apply == nullptr) {
+            for (QPushButton* button : dialog->findChildren<QPushButton*>()) {
+                if (button->text() == "Apply") { apply = button; break; }
+            }
+        }
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        ASSERT_NE(editor, nullptr);
+        ASSERT_NE(apply, nullptr);
+        ASSERT_NE(buttons, nullptr);
+        editor->setPlainText("applied\nλ");
+        apply->click();
+        EXPECT_EQ(dialog->result(), 0);
+        buttons->button(QDialogButtonBox::Cancel)->click();
+    });
+    EXPECT_EQ(cpp->getOnDispatchEventCode(), "applied\nλ");
+}
 
 namespace {
 
