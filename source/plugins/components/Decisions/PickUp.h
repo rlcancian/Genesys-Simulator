@@ -31,7 +31,7 @@ public: // constructors
 	virtual ~PickUp() = default;
 public: // static
 	static PluginInformation* GetPluginInformation();
-	//static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
+	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 };
 

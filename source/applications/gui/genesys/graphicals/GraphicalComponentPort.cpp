@@ -251,6 +251,14 @@ unsigned int GraphicalComponentPort::portNum() const {
 	return _portNum;
 }
 
+void GraphicalComponentPort::setPortNum(unsigned int portNumber) {
+	_portNum = portNumber;
+	QString text = QString::fromStdString(_componentGraph->getComponent()->getName()) + "\n";
+	text += _isInputPort ? "Input Port " : "Output Port ";
+	text += QString::number(_portNum);
+	setToolTip(text);
+}
+
 bool GraphicalComponentPort::isInputPort() const {
 	return _isInputPort;
 }

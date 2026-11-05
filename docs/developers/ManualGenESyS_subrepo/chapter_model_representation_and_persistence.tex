@@ -93,9 +93,11 @@ load pipeline will also be interpreted incorrectly.
 \section{How saving works}
 \label{sec:model-persistence-saving}
 
-The public entry point for saving is \texttt{Model::save(std::string)}. That
-method delegates to the configured persistence service and only adds a trace
-message around the result. The real formatting and file writing happen inside
+The public entry point for saving is \texttt{Model::save(std::string)}. Before
+delegating to the configured persistence service, it materializes component
+and data-definition internals declared by the current object graph. This
+preparation does not invoke the model checker and does not prune independent
+data definitions. Formatting and file writing happen inside
 \texttt{PersistenceDefaultImpl2::save}.
 
 The save pipeline is straightforward but important:
@@ -115,9 +117,11 @@ components. The current implementation also skips internal statistical helper
 objects such as \texttt{Counter} and \texttt{StatisticsCollector}, because they
 are runtime support artifacts rather than user-authored model content.
 
-The save code serializes only top-level components at level zero. That keeps the
-saved graph focused on the actual model structure instead of duplicating nested
-runtime helpers that are recreated by the owning objects themselves.
+The serializer writes the component records present in the component manager;
+internal statistical helper objects such as counters are reconstructed from
+their owning model elements. It first writes to a temporary sibling file and
+replaces the destination only after serialization and stream flushing succeed,
+so a failed write leaves the previous destination intact.
 
 \begin{figure}[htbp]
 \centering

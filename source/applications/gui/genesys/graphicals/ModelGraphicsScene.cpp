@@ -1160,6 +1160,24 @@ void ModelGraphicsScene::removeGraphicalConnection(GraphicalConnection* graphica
     }
 }
 
+void ModelGraphicsScene::removeGraphicalConnectionVisual(GraphicalConnection* connection) {
+	if (connection == nullptr) return;
+	auto* source = connection->getSourceGraphicalComponent();
+	auto* destination = connection->getDestinationGraphicalComponent();
+	if (auto* port = connection->getSourceGraphicalPort()) {
+		port->removeGraphicalConnection(connection);
+		if (source != nullptr && source->getOcupiedOutputPorts() > 0) source->setOcupiedOutputPorts(source->getOcupiedOutputPorts() - 1);
+	}
+	if (auto* port = connection->getDestinationGraphicalPort()) {
+		port->removeGraphicalConnection(connection);
+		if (destination != nullptr && destination->getOcupiedInputPorts() > 0) destination->setOcupiedInputPorts(destination->getOcupiedInputPorts() - 1);
+	}
+	_graphicalConnections->removeOne(connection);
+	_allGraphicalConnections.removeOne(connection);
+	if (connection->scene() == this) removeItem(connection);
+	delete connection;
+}
+
 // remove uma conexao do modelo
 void ModelGraphicsScene::removeConnectionInModel(GraphicalConnection* graphicalConnection,
                                                  GraphicalModelComponent* source) {
