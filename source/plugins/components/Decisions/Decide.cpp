@@ -39,15 +39,15 @@ public:
 	bool supportsPositionalListEditing() const override { return true; }
 	void insertListValueAt(int index, const std::string& value) override {
 		if (index < 0) throw std::out_of_range("condition index");
-		_owner->insertConditionAt(static_cast<unsigned int>(index), value);
+		_owner->editConditionInsertAt(static_cast<unsigned int>(index), value);
 	}
 	void replaceListValueAt(int index, const std::string& value) override {
 		if (index < 0) throw std::out_of_range("condition index");
-		_owner->replaceConditionAt(static_cast<unsigned int>(index), value);
+		_owner->editConditionReplaceAt(static_cast<unsigned int>(index), value);
 	}
 	void removeListValueAt(int index) override {
 		if (index < 0) throw std::out_of_range("condition index");
-		_owner->removeConditionAt(static_cast<unsigned int>(index));
+		_owner->editConditionRemoveAt(static_cast<unsigned int>(index));
 	}
 private:
 	Decide* _owner;
@@ -55,16 +55,21 @@ private:
 }
 
 void Decide::markConditionPortEdit(unsigned int index, bool inserted) {
-	_hasPendingConditionPortEdit = true;
-	_pendingConditionPortIndex = index;
-	_pendingConditionPortInserted = inserted;
+	_pendingConditionPortEdits.emplace_back(index, inserted);
 }
 
 bool Decide::takeConditionPortEdit(unsigned int& index, bool& inserted) {
-	if (!_hasPendingConditionPortEdit) return false;
-	index = _pendingConditionPortIndex;
-	inserted = _pendingConditionPortInserted;
-	_hasPendingConditionPortEdit = false;
+	if (_pendingConditionPortEdits.empty()) return false;
+	index = _pendingConditionPortEdits.front().first;
+	inserted = _pendingConditionPortEdits.front().second;
+	_pendingConditionPortEdits.pop_front();
+	return true;
+}
+
+bool Decide::takeConditionEdit(ConditionEdit& edit) {
+	if (_pendingConditionEdits.empty()) return false;
+	edit = std::move(_pendingConditionEdits.front());
+	_pendingConditionEdits.pop_front();
 	return true;
 }
 
@@ -123,7 +128,6 @@ void Decide::insertConditionAt(unsigned int index, std::string condition) {
 		shifted.emplace(port >= index ? port + 1 : port, connection);
 	}
 	*connections = std::move(shifted);
-	markConditionPortEdit(index, true);
 	synchronizeOutputStatistics();
 }
 
@@ -145,8 +149,33 @@ void Decide::removeConditionAt(unsigned int index) {
 		shifted.emplace(port > index ? port - 1 : port, connection);
 	}
 	*connections = std::move(shifted);
-	markConditionPortEdit(index, false);
 	synchronizeOutputStatistics();
+}
+
+void Decide::editConditionInsertAt(unsigned int index, std::string condition) {
+	if (index > _conditions->size()) throw std::out_of_range("condition index");
+	_pendingConditionEdits.push_back(ConditionEdit{ConditionEdit::Kind::Insert, index, {}, condition});
+	insertConditionAt(index, std::move(condition));
+	markConditionPortEdit(index, true);
+}
+
+void Decide::editConditionReplaceAt(unsigned int index, std::string condition) {
+	if (index >= _conditions->size()) throw std::out_of_range("condition index");
+	_pendingConditionEdits.push_back(ConditionEdit{ConditionEdit::Kind::Replace, index,
+		_conditions->getAtRank(index), condition});
+	replaceConditionAt(index, std::move(condition));
+}
+
+void Decide::editConditionRemoveAt(unsigned int index) {
+	if (index >= _conditions->size()) throw std::out_of_range("condition index");
+	ConditionEdit edit{ConditionEdit::Kind::Remove, index, _conditions->getAtRank(index), {}};
+	if (Connection* connection = getConnectionManager()->getConnectionAtPort(index)) {
+		edit.removedTarget = connection->component;
+		edit.removedTargetPort = connection->channel.portNumber;
+	}
+	_pendingConditionEdits.push_back(std::move(edit));
+	removeConditionAt(index);
+	markConditionPortEdit(index, false);
 }
 
 void Decide::synchronizeOutputStatistics() {
