@@ -1,1 +1,4 @@
 packaging/linux/man/genesys-gui.1
+packaging/linux/man/genesys-dataanalyser-gui.1
+packaging/linux/man/genesys-optimizer-gui.1
+packaging/linux/man/genesys-ai-assistant-gui.1
