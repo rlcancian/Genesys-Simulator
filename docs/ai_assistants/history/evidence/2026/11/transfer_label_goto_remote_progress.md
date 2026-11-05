@@ -164,3 +164,13 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - **Event semantics:** one Goto passage must produce exactly one Label event, then the Label conventional-output event, preserving entity identity and simulated time units.
 - **GUI:** metadata alone does not prove real port drawing, clickability or Property Editor usability.
 - **Build/CI:** residual old includes and transitive dependencies caused several verified failures; do not extrapolate from individual successful object compilations to the complete test suite.
+
+## E8 continuation — independent audit and further corrections (2026-11-05)
+
+- CI baseline at commit `e35048adb9c591e85b5031f6c690cdbbacd04669`: workflow `42087770050` completed `tests-unit` with **1 failed** of 1985 executed tests, namely `SimulatorRuntimeTest.LabelShowIncludesLabelAndEnteringComponent`; `42087770220` kernel build test target likewise reported a failure because this assertion failed. Other observed jobs for that head (smoke, plugin introspection/link, application GUI, shell/worker and Debian packaging) succeeded.
+- Root cause: `LabelDefinition::show()` lost the legacy `label` field during the rename, though `ModelDataDefinition` still maintains that field. Corrected without relaxing its regression in commit `38b4445d60d6875de5f1d6b6e67b503d4382e647`.
+- User and developer manual source updated for the Transfer/Label/Goto distinction and ownership/transfer contract in commits `c1d9d16418a5450de047e424624d8323f7b2fde6`, `2076eb9e7d6f4519b1b6c7f6f2756968cc9ccab2`. LaTeX compilation and regeneration of `docs/ManualGenESyS.pdf` remain **REQUIRES_LOCAL_VALIDATION** (no approved manual PDF workflow was identified).
+- Added regression for deletion of the owning `Label` while a `Goto` still references its now-removed definition in `496f028b2f1c58c8e1566336e0ecbc79a6a46342`.
+- Further source audit: `Route::_label` and `SequenceStep::_label` are direct pointers not necessarily present in the attached-data map. Previous `Label::setLabelDefinition` could delete a still-referenced owned definition during replacement. Fixed by checking those exact consumers before replacement in `817e14d7e27fcdc7d2e5274a73967c734405e6d5`; added two targeted regression cases in `6ff53222c066d6820fdb2ba80673e0ed36d16b19`.
+- All new/fixed tests on the subsequent head remain **UNKNOWN** until final-head CI completes. Direct external deletion of a still-internal `LabelDefinition` remains a deeper ownership risk that cannot be declared solved without a lifecycle-specific test and design clarification.
+- E1–E7 still `IMPLEMENTED`; E8 `IN_PROGRESS`, E9 Draft PR `IMPLEMENTED` with final acceptance `REQUIRES_LOCAL_VALIDATION`. Do not merge.
