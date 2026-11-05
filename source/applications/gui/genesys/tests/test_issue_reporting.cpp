@@ -249,10 +249,19 @@ private slots:
 
         QVERIFY(!S::parseResponse(200, QByteArray("{}")).success);
         QVERIFY(!S::parseResponse(200, QByteArray("not json")).success);
-        QVERIFY(!S::parseResponse(200, QByteArray(R"({"issue":{"number":42,"html_url":"https://evil.example/issues/42"}})")).success);
-        QVERIFY(!S::parseResponse(200, QByteArray(R"({"issue":{"number":43,"html_url":"https://github.com/rlcancian/Genesys-Simulator/issues/42"}})")).success);
-        QVERIFY(!S::parseResponse(200, QByteArray(R"({"issue":{"number":42,"html_url":"https://github.com/rlcancian/Genesys-Simulator/issues/42?steal=yes"}})")).success);
-        QVERIFY(!S::parseResponse(200, QByteArray(R"({"issue":{"number":42,"html_url":"http://github.com/rlcancian/Genesys-Simulator/issues/42"}})")).success);
+        const QByteArray evilUrl = QByteArray(kCreated).replace(
+            "https://github.com/rlcancian/Genesys-Simulator/issues/42",
+            "https://evil.example/issues/42");
+        const QByteArray mismatchedNumber = QByteArray(kCreated).replace(
+            "\"number\":42", "\"number\":43");
+        const QByteArray issueQuery = QByteArray(kCreated).replace(
+            "/issues/42", "/issues/42?steal=yes");
+        const QByteArray insecureUrl = QByteArray(kCreated).replace(
+            "https://github.com", "http://github.com");
+        QVERIFY(!S::parseResponse(200, evilUrl).success);
+        QVERIFY(!S::parseResponse(200, mismatchedNumber).success);
+        QVERIFY(!S::parseResponse(200, issueQuery).success);
+        QVERIFY(!S::parseResponse(200, insecureUrl).success);
         for (const int status : {400, 401, 403, 429, 500, 503, 302}) {
             QVERIFY2(!S::parseResponse(status, kCreated).success, "HTTP failure reported as success");
         }
