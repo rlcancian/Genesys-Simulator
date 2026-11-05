@@ -1,0 +1,127 @@
+name: GenESyS Standalone Tools Integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [WorkInProgress]
+    paths:
+      - 'CMakeLists.txt'
+      - 'source/applications/gui/**'
+      - 'source/tests/tool_launcher/**'
+      - 'scripts/validate-standalone-tools.py'
+      - 'scripts/test-standalone-tools-xvfb.sh'
+      - 'debian/rules'
+      - 'debian/genesys-gui.install'
+      - '.github/workflows/genesys-standalone-tools-integration.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: standalone-tools-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integrated-tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt6 / C++23 / Xvfb dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build python3 python3-dev \
+            qt6-base-dev qt6-base-dev-tools \
+            libsbml5-dev libglpk-dev ngspice r-base octave \
+            xvfb xdotool x11-utils libxkbcommon-x11-0 libxcb-cursor0
+
+      - name: Record environment and source invariants
+        run: |
+          set -Eeuo pipefail
+          mkdir -p standalone-tools-evidence
+          git rev-parse HEAD | tee standalone-tools-evidence/commit.txt
+          cmake --version | tee standalone-tools-evidence/cmake.txt
+          g++ --version | tee standalone-tools-evidence/gxx.txt
+          qmake6 -query QT_VERSION | tee standalone-tools-evidence/qt.txt
+          python3 scripts/validate-standalone-tools.py \
+            2>&1 | tee standalone-tools-evidence/source-invariants.log
+
+      - name: Configure independent tools and main GUI together
+        run: |
+          set -Eeuo pipefail
+          cmake -S . -B build/standalone-tools -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DGENESYS_BUILD_TESTS=OFF \
+            -DGENESYS_BUILD_TOOL_LAUNCHER_TESTS=ON \
+            -DGENESYS_BUILD_GUI_APPLICATION=ON \
+            -DGENESYS_BUILD_GUI_GENESYS=ON \
+            -DGENESYS_BUILD_GUI_DATAANALYSER=ON \
+            -DGENESYS_BUILD_GUI_OPTIMIZER=ON \
+            -DGENESYS_BUILD_GUI_AI_ASSISTANT=ON \
+            -DGENESYS_BUILD_WORKER_APPLICATION=ON \
+            -DGENESYS_BUILD_TERMINAL_APPLICATION=OFF \
+            -DGENESYS_ENABLE_PYTHON_INTEGRATION=OFF \
+            2>&1 | tee standalone-tools-evidence/configure.log
+
+      - name: Build executable graph and focused test
+        run: |
+          set -Eeuo pipefail
+          cmake --build build/standalone-tools --parallel 3 \
+            2>&1 | tee standalone-tools-evidence/build.log
+          cmake --build build/standalone-tools --target help \
+            > standalone-tools-evidence/target-help.txt
+
+      - name: Run CTest executable lookup regression
+        run: |
+          set -Eeuo pipefail
+          ctest --test-dir build/standalone-tools \
+            -R '^StandaloneTools\\.' --output-on-failure \
+            2>&1 | tee standalone-tools-evidence/ctest.log
+
+      - name: Install into isolated prefix with spaces
+        run: |
+          set -Eeuo pipefail
+          prefix="$RUNNER_TEMP/genesys prefix with spaces"
+          cmake --install build/standalone-tools --prefix "$prefix" \
+            2>&1 | tee standalone-tools-evidence/install.log
+          for binary in \
+            "$prefix/libexec/genesys/system/bin/genesys-gui" \
+            "$prefix/bin/genesys-dataanalyser-gui" \
+            "$prefix/bin/genesys-optimizer-gui" \
+            "$prefix/bin/genesys-ai-assistant-gui"; do
+            test -x "$binary"
+            file "$binary"
+          done
+          (cd / && find "$prefix" -type f -name 'genesys-*-gui' -print) \
+            | tee standalone-tools-evidence/installed-binaries.txt
+
+      - name: Exercise real Tools menu under private Xvfb from arbitrary cwd
+        run: |
+          set -Eeuo pipefail
+          prefix="$RUNNER_TEMP/genesys prefix with spaces"
+          cd /tmp
+          xvfb-run -a -s '-screen 0 1280x1024x24 -nolisten tcp' \
+            timeout 150s bash "$GITHUB_WORKSPACE/scripts/test-standalone-tools-xvfb.sh" "$prefix" \
+            2>&1 | tee "$GITHUB_WORKSPACE/standalone-tools-evidence/xvfb-integration.log"
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          set +e
+          ps -ef > standalone-tools-evidence/processes-after.txt
+          find build/standalone-tools -name CMakeError.log -o -name LastTest.log \
+            | while read -r item; do
+                cp --parents "$item" standalone-tools-evidence/ 2>/dev/null
+              done
+
+      - name: Upload standalone Tools evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-tools-integration
+          path: standalone-tools-evidence/
+          if-no-files-found: error
