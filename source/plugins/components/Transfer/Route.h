@@ -56,7 +56,7 @@ class Route : public ModelComponent {
 public:
 
 	enum class DestinationType : int {
-		Station = 0, Sequence = 1, LabelDefinition = 2, num_elements = 3
+		Station = 0, Sequence = 1, Label = 2, num_elements = 3
 	};
 public:
 	static std::string convertEnumToStr(DestinationType type);

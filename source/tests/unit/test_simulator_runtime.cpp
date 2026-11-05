@@ -26,16 +26,16 @@
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
-#include "plugins/data/MaterialHandling/Conveyor.h"
-#include "plugins/data/MaterialHandling/Distance.h"
-#include "plugins/data/MaterialHandling/Sequence.h"
-#include "plugins/data/MaterialHandling/Segment.h"
-#include "plugins/data/MaterialHandling/Transporter.h"
+#include "plugins/data/Transfer/Conveyor.h"
+#include "plugins/data/Transfer/Distance.h"
+#include "plugins/data/Transfer/Sequence.h"
+#include "plugins/data/Transfer/Segment.h"
+#include "plugins/data/Transfer/Transporter.h"
 #include "../../plugins/data/Synchronization/SignalData.h"
-#include "../../plugins/data/MaterialHandling/Station.h"
+#include "../../plugins/data/Transfer/Station.h"
 #include "../../plugins/data/Logic/Set.h"
-#include "plugins/data/Logic/Label.h"
-#include "../../plugins/data/MaterialHandling/Storage.h"
+#include "plugins/data/Transfer/LabelDefinition.h"
+#include "../../plugins/data/Transfer/Storage.h"
 #include "../../plugins/data/InputOutput/File.h"
 #include "../../plugins/data/ExternalIntegration/CppCompiler.h"
 #include "../../plugins/data/ExternalIntegration/PythonRuntime.h"
@@ -94,22 +94,22 @@
 #include "../../plugins/components/Logic/Assign.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
-#include "../../plugins/components/MaterialHandling/Access.h"
-#include "../../plugins/components/MaterialHandling/Exit.h"
-#include "../../plugins/components/MaterialHandling/Move.h"
-#include "../../plugins/components/MaterialHandling/Start.h"
-#include "../../plugins/components/MaterialHandling/Store.h"
-#include "../../plugins/components/MaterialHandling/Stop.h"
-#include "../../plugins/components/MaterialHandling/Unstore.h"
+#include "../../plugins/components/Transfer/Access.h"
+#include "../../plugins/components/Transfer/Exit.h"
+#include "../../plugins/components/Transfer/Move.h"
+#include "../../plugins/components/Transfer/Start.h"
+#include "../../plugins/components/Transfer/Store.h"
+#include "../../plugins/components/Transfer/Stop.h"
+#include "../../plugins/components/Transfer/Unstore.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "../../plugins/components/MaterialHandling/Enter.h"
-#include "../../plugins/components/MaterialHandling/PickStation.h"
-#include "../../plugins/components/MaterialHandling/Route.h"
+#include "../../plugins/components/Transfer/Enter.h"
+#include "../../plugins/components/Transfer/PickStation.h"
+#include "../../plugins/components/Transfer/Route.h"
 #undef protected
 #undef private
 #define private public
@@ -1009,9 +1009,9 @@ public:
     }
 };
 
-class LabelProbe : public Label {
+class LabelProbe : public LabelDefinition {
 public:
-    LabelProbe(Model* model, const std::string& name = "") : Label(model, name) {}
+    LabelProbe(Model* model, const std::string& name = "") : LabelDefinition(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -3298,7 +3298,7 @@ TEST(SimulatorRuntimeTest, SequenceSaveAndLoadPreservesStationAndLabelPerStep) {
     ASSERT_NE(model, nullptr);
 
     Station station(model, "SequencePersistStation");
-    Label label(model, "SequencePersistLabel");
+    LabelDefinition label(model, "SequencePersistLabel");
     SequenceProbe source(model, "SequencePersistRoutingSource");
     source.getSteps()->insert(new SequenceStep(&station));
     source.getSteps()->insert(new SequenceStep(&label));
@@ -3328,7 +3328,7 @@ TEST(SimulatorRuntimeTest, SequenceRecheckRemovesObsoleteAttachedData) {
 
     Station stationA(model, "SequenceRecheckStationA");
     Station stationB(model, "SequenceRecheckStationB");
-    Label labelA(model, "SequenceRecheckLabelA");
+    LabelDefinition labelA(model, "SequenceRecheckLabelA");
     SequenceProbe sequence(model, "SequenceRecheck");
     sequence.getSteps()->insert(new SequenceStep(&stationA));
     sequence.getSteps()->insert(new SequenceStep(&stationB));
@@ -3364,7 +3364,7 @@ TEST(SimulatorRuntimeTest, SequenceCheckFailsForEmptyStep) {
 
     std::string errorMessage;
     EXPECT_FALSE(sequence.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("must reference a Station or a Label"), std::string::npos);
+    EXPECT_NE(errorMessage.find("must reference a Station or a LabelDefinition"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
@@ -3569,7 +3569,7 @@ TEST(SimulatorRuntimeTest, LabelLoadWithMissingEnteringComponentRemainsTraceable
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
-    fields.saveField("typename", Util::TypeOf<Label>());
+    fields.saveField("typename", Util::TypeOf<LabelDefinition>());
     fields.saveField("id", 1u);
     fields.saveField("name", "LabelLoadMissingDestination");
     fields.saveField("reportStatistics", true);
@@ -5079,7 +5079,7 @@ TEST(SimulatorRuntimeTest, RouteCheckAcceptsLabelDestinationWithoutStation) {
     ASSERT_NE(model, nullptr);
 
     CollectorSinkComponentProbe sink(model, "RouteLabelCheckSink");
-    Label label(model, "RouteLabelCheck");
+    LabelDefinition label(model, "RouteLabelCheck");
     label.setEnterIntoLabelComponent(&sink);
 
     RouteProbe route(model, "RouteToLabel");
@@ -5152,7 +5152,7 @@ TEST(SimulatorRuntimeTest, RouteDispatchUsesLabelEnterComponentWhenDelayExpires)
     ASSERT_NE(model, nullptr);
 
     CollectorSinkComponentProbe sink(model, "RouteLabelSink");
-    Label label(model, "RouteLabel");
+    LabelDefinition label(model, "RouteLabel");
     EntityType routeEntityType(model, "RouteLabelType");
     label.setEnterIntoLabelComponent(&sink);
 

@@ -147,9 +147,12 @@ bool Goto::_check(std::string& errorMessage) {
     if (!_parentModel->checkExpression(_timeDelayExpression,
                                       getName() + ".TimeDelayExpression", errorMessage))
         valid = false;
-    if (_timeDelayTimeUnit == Util::TimeUnit::unknown ||
-        !std::isfinite(Util::TimeUnitConvert(_timeDelayTimeUnit,
-                     _parentModel->getSimulation()->getReplicationBaseTimeUnit()))) {
+    const auto baseUnit = _parentModel->getSimulation()->getReplicationBaseTimeUnit();
+    const auto supported = [](Util::TimeUnit unit) {
+        return static_cast<int>(unit) >= static_cast<int>(Util::TimeUnit::picosecond) &&
+               static_cast<int>(unit) <= static_cast<int>(Util::TimeUnit::week);
+    };
+    if (!supported(_timeDelayTimeUnit) || !supported(baseUnit)) {
         errorMessage += "Goto '" + getName() + "': TimeDelayTimeUnit is invalid. ";
         valid = false;
     }
@@ -166,9 +169,17 @@ void Goto::_onDispatchEvent(Entity* entity, unsigned int) {
         traceError("Goto '" + getName() + "': no valid LabelDefinition/Label receiver.");
         return;
     }
+    const auto baseUnit = _parentModel->getSimulation()->getReplicationBaseTimeUnit();
+    const auto supported = [](Util::TimeUnit unit) {
+        return static_cast<int>(unit) >= static_cast<int>(Util::TimeUnit::picosecond) &&
+               static_cast<int>(unit) <= static_cast<int>(Util::TimeUnit::week);
+    };
+    if (!supported(_timeDelayTimeUnit) || !supported(baseUnit)) {
+        traceError("Goto '" + getName() + "': invalid time unit.");
+        return;
+    }
     const double parsed = _parentModel->parseExpression(_timeDelayExpression);
-    const double scale = Util::TimeUnitConvert(_timeDelayTimeUnit,
-                     _parentModel->getSimulation()->getReplicationBaseTimeUnit());
+    const double scale = Util::TimeUnitConvert(_timeDelayTimeUnit, baseUnit);
     const double delay = parsed * scale;
     if (!std::isfinite(parsed) || !std::isfinite(scale) || !std::isfinite(delay) || delay < 0.0) {
         traceError("Goto '" + getName() + "': TimeDelayExpression produced a negative or non-finite delay.");

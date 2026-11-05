@@ -100,7 +100,34 @@ void Label::setLabelDefinition(LabelDefinition* candidate) {
         _mandatoryEditableDataDefinitionInsert("LabelDefinition", candidate);
         return;
     }
-    // Data association owns the old target and releases it on replacement.
+    // Do not destroy the former owned definition while some other model
+    // element still holds an attached pointer to it. A rejected replacement
+    // leaves the original association untouched.
+    if (auto* old = getLabelDefinition()) {
+        for (auto* component : *_parentModel->getComponentManager()->getAllComponents()) {
+            if (component == this || !component) continue;
+            for (const auto& attached : *component->getAttachedData()) {
+                if (attached.second == old) {
+                    traceError("Label '" + getName() + "': cannot replace LabelDefinition while referenced by '" +
+                               component->getName() + "'.");
+                    return;
+                }
+            }
+        }
+        for (const auto& dataType : _parentModel->getDataManager()->getDataDefinitionClassnames()) {
+            for (auto* owner : *_parentModel->getDataManager()->getDataDefinitionList(dataType)->list()) {
+                if (!owner || owner == old) continue;
+                for (const auto& attached : *owner->getAttachedData()) {
+                    if (attached.second == old) {
+                        traceError("Label '" + getName() + "': cannot replace referenced LabelDefinition '" +
+                                   old->getName() + "'.");
+                        return;
+                    }
+                }
+            }
+        }
+    }
+    // Internal association is the sole owner; it deletes the old target.
     _internalDataInsert("LabelDefinition", candidate);
     _labelDefinition = candidate;
     _labelDefinitionName = candidate->getName();
@@ -152,7 +179,7 @@ bool Label::_check(std::string& errorMessage) {
         errorMessage += "Label '" + getName() + "': receiver association is invalid or conflicting. ";
         return false;
     }
-    const auto* connections = getConnectionManager();
+    auto* connections = getConnectionManager();
     if (!connections || connections->size() != 1 || !connections->getFrontConnection() ||
         !connections->getFrontConnection()->component) {
         errorMessage += "Label '" + getName() + "': exactly one valid output connection is required. ";
@@ -162,7 +189,7 @@ bool Label::_check(std::string& errorMessage) {
 }
 
 void Label::_onDispatchEvent(Entity* entity, unsigned int) {
-    const auto* connections = getConnectionManager();
+    auto* connections = getConnectionManager();
     Connection* outgoing = connections ? connections->getFrontConnection() : nullptr;
     if (!entity || !outgoing || !outgoing->component) {
         traceError("Label '" + getName() + "': unable to forward entity without an output connection.");

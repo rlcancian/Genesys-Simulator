@@ -58,10 +58,19 @@ scope: Transfer category and LabelDefinition/Label/Goto implementation
 - Files: `components/Transfer/Goto.{h,cpp}`; DummyPlugin connector registration `goto.so`.
 - Contract: transfer sender; exactly one conventional input, zero outputs; attached non-owning LabelDefinition reference; TimeDelayExpression default 0.0; TimeDelayTimeUnit default second; parser and time-unit conversion; reject negative/nonfinite delays and undefined destination.
 - Persistence: name, expression and unit saved; name resolved after loading/check.
-- Commit SHA: backfill at next checkpoint.
+- Commit SHA: `f47295355b6f3138bd4e2981d13cfeeec72eaa72`.
 - Risk: unload/removed data pointer must be invalidated in attached maps; review E6.
 
-## E6–E9 — Pending
+## E6 — Integration and ownership audit
+
+- State: `IMPLEMENTED` (static source audit; build/UI `UNKNOWN`).
+- Corrections: restored `Route::DestinationType::Label` public enum while keeping the new `LabelDefinition` C++ type; corrected constness for mutable ConnectionManager methods; rejected non-Label/foreign receiver and guarded shared-definition replacement; prevented out-of-bounds `TimeUnitConvert` for invalid time enums; updated legacy runtime and dangling-reference test includes and old DataDefinition type uses.
+- Static registration: connector has distinct `labeldefinition.so`, `label.so`, `goto.so`; CMake source discovery remains `GLOB_RECURSE CONFIGURE_DEPENDS`.
+- GUI: existing category coloring changed to Transfer. Port metadata provided; actual graphical/layout/Property Editor activation `REQUIRES_LOCAL_VALIDATION`.
+- Commit SHA: backfill at next checkpoint.
+- Limitations: no remote compile, GUI or test evidence yet; deletion of an internally owned LabelDefinition while its owner is alive remains a high-risk scenario requiring targeted testing.
+
+## E7–E9 — Pending
 
 - State: `NOT_STARTED`.
-- E6 integration, E7 tests, E8 remote validation, E9 Draft PR/handoff.
+- E7 tests, E8 remote validation, E9 Draft PR/handoff.

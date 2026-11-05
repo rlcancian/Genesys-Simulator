@@ -62,6 +62,12 @@ void LabelDefinition::setEnterIntoLabelComponent(ModelComponent* candidate) {
         traceError("LabelDefinition '" + getName() + "': receiver is not registered in this model.");
         return;
     }
+    if (candidate->getClassname() != "Label" ||
+        candidate->getParentModel() != _parentModel ||
+        candidate->getInternalData("LabelDefinition") != this) {
+        traceError("LabelDefinition '" + getName() + "': receiver must be its owning Label component.");
+        return;
+    }
     const auto* previous = getEnterIntoLabelComponent();
     if (previous && previous != candidate) {
         traceError("LabelDefinition '" + getName() + "' already has receiver '" + previous->getName() + "'.");
@@ -93,7 +99,10 @@ void LabelDefinition::_saveInstance(PersistenceRecord* fields, bool saveDefaultV
 }
 
 bool LabelDefinition::_check(std::string& errorMessage) {
-    if (getEnterIntoLabelComponent()) return true;
-    errorMessage += "LabelDefinition '" + getName() + "' has no registered Label receiver. ";
+    auto* receiver = getEnterIntoLabelComponent();
+    if (receiver && receiver->getClassname() == "Label" &&
+        receiver->getInternalData("LabelDefinition") == this &&
+        receiver->getParentModel() == _parentModel) return true;
+    errorMessage += "LabelDefinition '" + getName() + "' has no valid owning Label receiver. ";
     return false;
 }
