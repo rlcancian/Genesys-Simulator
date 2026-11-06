@@ -158,9 +158,6 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 					failureCode = "FILE_CLOSE_FAILED";
 					failureDetail = "stage=close stream_state=" + std::to_string(file.rdstate());
 					systemError = closeError;
-				} else {
-					_model->getTracer()->traceError("SAVE_DIAGNOSTIC code=FILE_CLOSE_FAILED"
-						" stage=close secondary=true stream_state=" + std::to_string(file.rdstate()));
 				}
 			}
 		}
@@ -179,7 +176,11 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 			+ " temporary=\"" + tempFilename + "\""
 			+ " dump_result=" + (dumpSucceeded ? "true" : "false")
 			+ (systemError != 0 ? " errno=" + std::to_string(systemError) : ""));
-		std::remove(tempFilename.c_str());
+		// An unsuccessful open did not create this temp file: do not remove a
+		// preexisting file/directory belonging to another operation.
+		if (failureCode != "FILE_OPEN_FAILED") {
+			std::remove(tempFilename.c_str());
+		}
 	}
 	Util::DecIndent();
 
