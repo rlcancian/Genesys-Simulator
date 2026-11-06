@@ -5,7 +5,7 @@
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/essentialPlugins/Entity.h"
 #include "kernel/simulator/essentialPlugins/EntityType.h"
-#include "plugins/data/MaterialHandling/Station.h"
+#include "plugins/data/Transfer/Station.h"
 
 namespace {
 

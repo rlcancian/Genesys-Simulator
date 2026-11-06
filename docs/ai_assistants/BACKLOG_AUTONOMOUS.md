@@ -528,6 +528,19 @@ This is the only approved source for work an AI agent may execute without a new 
 
 ## 5. Active bounded work
 
+### AUTO-TRANSFER-001 — Transfer and LabelDefinition/Label/Goto implementation
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `github` for implementation/CI, `local` for final validation.
+- Authorization: direct maintainer instruction (2026-11-05).
+- Branch: `WiP202611/transfer-label-goto` from `3ae85774949ebc87e521a2409eecf8f086bcc43b`.
+- Scope: E1–E9 as specified by maintainer; rename plugin categories and classes, implement transfer components, registration, GUI/property/persistence contracts, testing and draft PR.
+- Non-goals: compatibility with historic .gen/.gui types, dynamic plugin architecture, unrelated modernization, direct merge into WorkInProgress.
+- Acceptance: verified behavior, 1:1 destination cardinality, remote evidence and local handoff; local acceptance required before merge.
+- Evidence: [transfer_label_goto_remote_progress.md](history/evidence/2026/11/transfer_label_goto_remote_progress.md).
+
+
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
 
 - Priority: `P1`

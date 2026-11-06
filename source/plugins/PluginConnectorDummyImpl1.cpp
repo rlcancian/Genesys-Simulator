@@ -33,7 +33,7 @@
 #include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
 #include "plugins/components/WholeCellModeling/StochasticTranscription.h"
 #include "plugins/components/WholeCellModeling/StochasticTranslation.h"
-#include "plugins/components/MaterialHandling/Access.h"
+#include "plugins/components/Transfer/Access.h"
 #include "components/Logic/Assign.h"
 #include "plugins/components/Grouping/Batch.h"
 #include "plugins/components/DiscreteProcessing/Buffer.h"
@@ -50,14 +50,16 @@
 #include "components/Logic/Dispose.h"
 #include "plugins/components/Decisions/DropOff.h"
 #include "plugins/components/Template/DummyComponent.h"
-#include "plugins/components/MaterialHandling/Enter.h"
-#include "plugins/components/MaterialHandling/Exit.h"
-#include "plugins/components/MaterialHandling/Leave.h"
-#include "plugins/components/MaterialHandling/Move.h"
+#include "plugins/components/Transfer/Enter.h"
+#include "plugins/components/Transfer/Exit.h"
+#include "plugins/components/Transfer/Leave.h"
+#include "plugins/components/Transfer/Label.h"
+#include "plugins/components/Transfer/Goto.h"
+#include "plugins/components/Transfer/Move.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 //#include "../../plugins/components/Octave.h"
-#include "components/MaterialHandling/PickStation.h"
+#include "components/Transfer/PickStation.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 //#include "../../plugins/components/Read.h"
@@ -65,18 +67,18 @@
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
 #include "plugins/components/InputOutput/Record.h"
-#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/Transfer/Route.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
-#include "plugins/components/MaterialHandling/Start.h"
+#include "plugins/components/Transfer/Start.h"
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Synchronization/Signal.h"
 #include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
-#include "plugins/components/MaterialHandling/Stop.h"
-#include "plugins/components/MaterialHandling/Store.h"
+#include "plugins/components/Transfer/Stop.h"
+#include "plugins/components/Transfer/Store.h"
 #include "plugins/components/Grouping/Separate.h"
 #include "components/ModalModel/Submodel.h"
-#include "plugins/components/MaterialHandling/Unstore.h"
+#include "plugins/components/Transfer/Unstore.h"
 #include "plugins/components/Synchronization/Wait.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/Continuous/LSODE.h"
@@ -122,20 +124,20 @@
 #include "data/Logic/Formula.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
-#include "data/Logic/Label.h"
+#include "data/Transfer/LabelDefinition.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
-#include "plugins/data/MaterialHandling/Distance.h"
-#include "plugins/data/MaterialHandling/Conveyor.h"
-#include "plugins/data/MaterialHandling/Sequence.h"
-#include "plugins/data/MaterialHandling/Segment.h"
+#include "plugins/data/Transfer/Distance.h"
+#include "plugins/data/Transfer/Conveyor.h"
+#include "plugins/data/Transfer/Sequence.h"
+#include "plugins/data/Transfer/Segment.h"
 #include "data/Logic/Set.h"
 #include "plugins/data/Synchronization/SignalData.h"
 #include "data/ExternalIntegration/SPICERunner.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "plugins/data/ExternalIntegration/OctaveRunner.h"
-#include "plugins/data/MaterialHandling/Station.h"
-#include "plugins/data/MaterialHandling/Storage.h"
-#include "plugins/data/MaterialHandling/Transporter.h"
+#include "plugins/data/Transfer/Station.h"
+#include "plugins/data/Transfer/Storage.h"
+#include "plugins/data/Transfer/Transporter.h"
 #include "data/Logic/Variable.h"
 //#include "../../plugins/data/Expression.h"
 //#include "../../plugins/data/Conveyor.h"
@@ -213,7 +215,9 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("formula.so");
     filenames->insert("groprogram.so");
     filenames->insert("bacteriasignalgrid.so");
+    filenames->insert("labeldefinition.so");
     filenames->insert("label.so");
+    filenames->insert("goto.so");
     filenames->insert("queue.so");
     filenames->insert("resource.so");
     filenames->insert("variable.so");
@@ -413,8 +417,12 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &GroProgram::GetPluginInformation;
     else if (fn == "bacteriasignalgrid.so")
         GetInfo = &BacteriaSignalGrid::GetPluginInformation;
+    else if (fn == "labeldefinition.so")
+        GetInfo = &LabelDefinition::GetPluginInformation;
     else if (fn == "label.so")
         GetInfo = &Label::GetPluginInformation;
+    else if (fn == "goto.so")
+        GetInfo = &Goto::GetPluginInformation;
     else if (fn == "queue.so")
         GetInfo = &Queue::GetPluginInformation;
     else if (fn == "resource.so")

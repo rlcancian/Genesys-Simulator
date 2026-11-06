@@ -19,7 +19,7 @@
 
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/MaterialHandling/Station.h"
+#include "plugins/data/Transfer/Station.h"
 
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
@@ -28,8 +28,8 @@
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Assign.h"
 #include "plugins/components/Decisions/Decide.h"
-#include "plugins/components/MaterialHandling/Enter.h"
-#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/Transfer/Enter.h"
+#include "plugins/components/Transfer/Route.h"
 
 #include <iostream>
 
