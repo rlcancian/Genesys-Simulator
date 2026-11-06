@@ -162,7 +162,7 @@ PersistenceRecord* GenSerializer::newPersistenceRecord() {
 
 bool GenSerializer::dump(std::ostream& output) {
 	auto fields = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
-	bool found, err;
+	bool found;
 
 	output << "# Genesys Simulation Model\n";
 	output << "# Simulator, Model and Simulation infos\n";
@@ -190,7 +190,7 @@ bool GenSerializer::dump(std::ostream& output) {
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
 		Plugin* plugin = _model->getParentSimulator()->getPluginManager()->find(type);
 		if (plugin == nullptr) {
-			_model->getTracer()->traceError("SERIALIZER_PLUGIN_NOT_FOUND category=ModelDataDefinition"
+			_model->getTracer()->traceError("SERIALIZER_PLUGIN_NOT_FOUND category=unresolved pass=DataDefinitions"
 				" stage=plugin_lookup typename=\"" + type + "\" id="
 				+ std::to_string(fields->loadField("id", 0u)));
 			return 1;
@@ -216,7 +216,7 @@ bool GenSerializer::dump(std::ostream& output) {
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
 		Plugin* plugin = _model->getParentSimulator()->getPluginManager()->find(type);
 		if (plugin == nullptr) {
-			_model->getTracer()->traceError("SERIALIZER_PLUGIN_NOT_FOUND category=ModelComponent"
+			_model->getTracer()->traceError("SERIALIZER_PLUGIN_NOT_FOUND category=unresolved pass=ModelComponents"
 				" stage=plugin_lookup typename=\"" + type + "\" id="
 				+ std::to_string(fields->loadField("id", 0u)));
 			return 1;
