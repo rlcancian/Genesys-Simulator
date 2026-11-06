@@ -3,7 +3,7 @@
 In the main GenESyS GUI, select **About → Report Issue**.
 
 1. Choose **Bug** (default), **Suggestion / Enhancement**, or **Question**.
-2. Enter a **Title** and **Description**. Both are required.
+2. Enter a **Title** (up to 256 characters) and **Description**. Both are required.
 3. Select **Continue on GitHub** if the application is using its normal browser workflow. Your browser opens the GenESyS GitHub issue form with those fields filled in. You may need to sign in, and **you must submit the issue on GitHub**. Opening the browser does not create an issue.
 4. Some maintained installations have a configured report service and show **Send Issue** instead. Successful creation is displayed only when the service returns a verified issue number and GitHub URL.
 

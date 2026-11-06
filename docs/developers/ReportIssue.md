@@ -5,7 +5,7 @@ The DialogReportIssue widget owns the transient form and asynchronous submission
 
 ## UI and browser mode
 
-The form contains type, title, and description only. The relay is optional: if no valid HTTPS relay endpoint is configured, the primary action is **Continue on GitHub**. IssueReportBrowserService builds the official https://github.com/rlcancian/Genesys-Simulator/issues/new URL using QUrlQuery with title and body parameters. It includes the selected report type as ordinary body text, not a privileged label query. It does not include automatically collected data.
+The form contains type, title (limited to 256 characters), and description only. The relay is optional: if no valid HTTPS relay endpoint is configured, the primary action is **Continue on GitHub**. IssueReportBrowserService builds the official https://github.com/rlcancian/Genesys-Simulator/issues/new URL using QUrlQuery with title and body parameters. It includes the selected report type as ordinary body text, not a privileged label query. It does not include automatically collected data.
 
 The encoded URL limit is 1800 bytes; on overflow the body, or if necessary the whole draft, is offered through the clipboard instead of being truncated. Browser handoff is never described as confirmed issue creation. QDesktopServices::openUrl only confirms handoff, not successful loading, authentication, or submission.
 
@@ -36,4 +36,4 @@ cmake --build --preset gui-app --parallel 2
 
 The tests use QtTest widgets and a fake QNetworkAccessManager; they never create production issues or contact external relay servers. GitHub Actions workflow genesys-gui-report-issue.yml runs this suite and the real main GUI build. An actual relay-to-GitHub end-to-end check requires an independently authorized server and test repository.
 
-Manual impact: this workflow needs incorporation into the LaTeX User and Developer manuals and a regenerated PDF under the documented manual workflow; no PDF regeneration is claimed from GitHub-only code editing.
+Manual impact: the workflow is incorporated into both LaTeX manuals. The canonical `docs/ManualGenESyS.pdf` was regenerated locally from those sources; build and inspection evidence is recorded in `docs/ai_assistants/history/evidence/2026/11/2026-11-06_report_issue_pr560_validation.md`.

@@ -38,10 +38,16 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             latexmk texlive-xetex texlive-latex-extra texlive-bibtex-extra \
             texlive-fonts-recommended texlive-science texlive-pictures \
+            texlive-plain-generic \
             biber poppler-utils
 
       - name: Build canonical manual from maintained LaTeX sources
-        run: bash docs/developers/ManualGenESyS_subrepo/make.sh
+        run: |
+          set -Eeuo pipefail
+          # Ensure neither canonical nor source-tree output can mask a failed build.
+          rm -f docs/ManualGenESyS.pdf
+          rm -f docs/developers/ManualGenESyS_subrepo/ManualGenESyS.pdf
+          bash docs/developers/ManualGenESyS_subrepo/make.sh
 
       - name: Verify PDF structure and updated chapters
         run: |
@@ -51,6 +57,7 @@ jobs:
           pdfinfo "$pdf" | grep -E '^(Pages|Page size|PDF version):'
           pages="$(pdfinfo "$pdf" | awk '/^Pages:/ {print $2}')"
           test "$pages" -gt 20
+          test -s docs/developers/ManualGenESyS_subrepo/ManualGenESyS.log
           pdftotext -layout "$pdf" "$RUNNER_TEMP/manual-text.txt"
           grep -Fq "Reporting an Issue" "$RUNNER_TEMP/manual-text.txt"
           grep -Fq "GUI Issue Reporting Boundary" "$RUNNER_TEMP/manual-text.txt"

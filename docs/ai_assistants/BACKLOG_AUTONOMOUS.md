@@ -817,12 +817,12 @@ A task moves to `done` only after required validation is green, evidence is revi
 
 - Priority: P1
 - Status: running
-- Environment: github
-- Authorization: direct maintainer instruction dated 2026-11-05; implement in a bounded branch and open a draft PR, no merge.
+- Environment: local + github
+- Authorization: direct maintainer instruction dated 2026-11-06 authorizes local audit, required validation, PR completion, and merge into WorkInProgress after all gates pass; this supersedes the 2026-11-05 no-merge limit.
 - Branch: WiP202611/report-issue-gui
 - Integration target: WorkInProgress
-- Scope: three-field issue report dialog, browser URL prefill without relay, optional secure asynchronous relay, strict issue confirmation, privacy, focused QtTest and CI, user/developer documentation.
-- Non-goals: no production relay deployment, GitHub secret/token provisioning, production test issue, new backend service, broad controller refactor, stable promotion or branch merge.
-- Acceptance: title/description validation; bug as default; no automatic sensitive diagnostics; encoded and bounded GitHub URL; clipboard path for oversize content; explicit browser handoff; error preservation; verified HTTPS issue identity for relay; mock HTTP status/timeout/security tests; gui-app build and QtTest evidence.
-- Mandatory evidence: GitHub Actions for focused QtTest and GUI build, diff review, optional independent GUI interaction; real relay-to-GitHub creation is UNKNOWN until separately authorized and evidenced.
-- Stop/rollback: preserve the branch and draft PR without merge if CI is red, semantics are ambiguous, or real service availability cannot be demonstrated. Revert the bounded PR to restore the original flow.
+- Scope: three-field issue report dialog, browser URL prefill without relay, optional secure asynchronous relay, strict issue confirmation, privacy, focused QtTest and CI, user/developer documentation, regenerated canonical manual PDF, and local/hosted validation.
+- Non-goals: no production relay deployment, GitHub secret/token provisioning, production test issue, new backend service, broad controller refactor, or promotion to stable branches.
+- Acceptance: title/description validation; bug as default; no automatic sensitive diagnostics; encoded and bounded GitHub URL; clipboard path for oversize content; explicit browser handoff; error preservation; verified HTTPS issue identity for relay; bounded asynchronous response handling/cancellation; mock HTTP status/timeout/security tests; GUI build and QtTest evidence; successful manual PDF regeneration and review; final-head required checks green.
+- Mandatory evidence: focused and general local tests, GUI startup/Report Issue interaction, PDF build/log/text/visual inspection, GitHub Actions for final PR head, diff review; real relay-to-GitHub creation remains UNKNOWN absent an authorized live service.
+- Stop/rollback: preserve the branch and draft PR without merge if required checks are red, semantics are ambiguous, or a security/data-loss issue remains. Revert the bounded PR to restore the original flow.
