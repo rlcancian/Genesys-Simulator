@@ -2,7 +2,7 @@
 document_type: status
 authority: current-state
 owner: project-maintainer
-last_updated: 2026-11-05
+last_updated: 2026-11-06
 update_on: merged-change-or-material-status-change
 status: active
 tracks: 511
@@ -19,7 +19,7 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 ## 2. Repository state
 
 - Active integration branch: `WorkInProgress`.
-- Latest inspected integration base, `WorkInProgress` after PR #556: `5cd3e08548839490c8880e74a6a1ff1493dd7b5e` (2026-10-30). PR #556 corrects empty Submodel/EFSM graphical contexts, context-menu action availability, and persistence of editing levels; its detailed evidence is [`history/evidence/2026/10/2026-10-30_empty_submodel_efsm_contexts.md`](history/evidence/2026/10/2026-10-30_empty_submodel_efsm_contexts.md).
+- Current `WorkInProgress` HEAD: `c1099e3e7eef781c90cece1110bc7b1b0b82c3fc` (2026-11-06), merge commit for PR #564. Transfer/LabelDefinition/Label/Goto is integrated; full local and hosted evidence is in [`history/evidence/2026/11/transfer_label_goto_remote_progress.md`](history/evidence/2026/11/transfer_label_goto_remote_progress.md). Post-merge Debian package validation was still in progress when this status entry was prepared.
 - **ModalModel GUI frozen MVP:** all **8/8 milestones (100%)** are implemented and accepted under the 2026-10-30 maintainer mandate. PR #551 merged at `17338f8e566f87fc3b06eb422a5dd354e6d57b02`; PR #552 merged at `51851415fb8abe33f08a67d1d571ad233ab081a5`; documentation reconciliations followed in PRs #553/#554. At PR #551 head `a9d718b5b085c47a5a9aeee4b41a25a98716b7d7`, `tests-unit` and `tests-kernel-unit` each passed 1,963 tests with four disabled; smoke passed 3/3; `gui-app` built; 37 focused EFSM tests passed; targeted ASan/UBSan covered deletion and mixed undo/redo (LSan disabled); hosted checks passed, including Debian package lifecycle and documentation governance. PR #552's integrated save/reopen-to-kernel-activation regression passed and all eight hosted checks were green. Developer Manual (390 pages) and User Manual (3,981 pages, EFSM guide page 177) were regenerated and inspected; User Manual wording/PDF were refreshed in PR #555. Full evidence: [`history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md`](history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md) and [`history/evidence/2026/10/2026-10-30_modal_efsm_user_manual_final.md`](history/evidence/2026/10/2026-10-30_modal_efsm_user_manual_final.md).
 - Model-editor code integration checkpoint: `WorkInProgress` at `957c66503c8966de95b4d34b047ff03dc256efcb` (PR #565 merge, verified 2026-11-05); subsequent evidence/documentation commits may advance the branch without changing this source checkpoint.
 - GenESyS model-editor fixes are integrated: PR #559 (`3ae85774949ebc87e521a2409eecf8f086bcc43b`) covers save preparation, Decide positional ports, code-source properties, Remove/PickUp identity and the component-only main palette; PR #563 (`185b03c70d932f010beed2f30ba6b17ef328087f`) adds Octave source fields; PR #565 (`957c66503c8966de95b4d34b047ff03dc256efcb`) completes Decide condition undo/redo. Validation details are in [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
