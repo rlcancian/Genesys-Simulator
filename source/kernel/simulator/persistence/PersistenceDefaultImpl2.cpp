@@ -55,17 +55,23 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	fields->saveField("typename", "Simulator");
 	fields->saveField("name", _model->getParentSimulator()->getName());
 	fields->saveField("versionNumber", _model->getParentSimulator()->getVersionNumber());
-	serializer->put("SimulatorInfo", "Simulator", 0, fields.get());
+	if (!serializer->put("SimulatorInfo", "Simulator", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=SimulatorInfo stage=put");
+	}
 
 	// grab model metadata
 	fields->clear();
 	_model->getInfos()->saveInstance(fields.get());
-	serializer->put("ModelInfo", "ModelInfo", 0, fields.get());
+	if (!serializer->put("ModelInfo", "ModelInfo", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelInfo stage=put");
+	}
 
 	// grab simulation params
 	fields->clear();
 	_model->getSimulation()->saveInstance(fields.get(), saveDefaults);
-	serializer->put("ModelSimulation", "ModelSimulation", 0, fields.get());
+	if (!serializer->put("ModelSimulation", "ModelSimulation", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelSimulation stage=put");
+	}
 
 	// gather data definitions
 	const std::string counter = Util::TypeOf<Counter>();
@@ -79,11 +85,19 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 		for (ModelDataDefinition *data : *_model->getDataManager()->getDataDefinitionList(type)->list()) {
 			_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing " + type + " \"" + data->getName() + "\"");
 			fields->clear();
+			const auto errorsBefore = _model->getTracer()->errorMessages()->size();
 			data->SaveInstance(fields.get(), data);
+			if (_model->getTracer()->errorMessages()->size() > errorsBefore) {
+				_model->getTracer()->traceError("SERIALIZER_RECORD_SAVE_REPORTED_ERROR category=ModelDataDefinition stage=SaveInstance id="
+					+ std::to_string(data->getId()) + " typename=" + data->getClassname());
+			}
 			auto name = data->getName();
 			auto id = data->getId();
 			auto type = data->getClassname();
-			serializer->put(name, type, id, fields.get());
+			if (!serializer->put(name, type, id, fields.get())) {
+				_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelDataDefinition stage=put id="
+					+ std::to_string(id) + " typename=" + type);
+			}
 		}
 		Util::DecIndent();
 	}
@@ -93,11 +107,19 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	Util::IncIndent();
 	for (ModelComponent* component : *_model->getComponentManager()) {
 		fields->clear();
+		const auto errorsBefore = _model->getTracer()->errorMessages()->size();
 		component->SaveInstance(fields.get(), component);
+		if (_model->getTracer()->errorMessages()->size() > errorsBefore) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_SAVE_REPORTED_ERROR category=ModelComponent stage=SaveInstance id="
+				+ std::to_string(component->getId()) + " typename=" + component->getClassname());
+		}
 		auto name = component->getName();
 		auto id = component->getId();
 		auto type = component->getClassname();
-		serializer->put(name, type, id, fields.get());
+		if (!serializer->put(name, type, id, fields.get())) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelComponent stage=put id="
+				+ std::to_string(id) + " typename=" + type);
+		}
 	}
 	Util::DecIndent();
 
@@ -153,11 +175,9 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 			file.close();
 			if (!file.good()) {
 				// errno is meaningful here only when the underlying close reports failure.
-				const int closeError = errno;
 				if (failureCode.empty()) {
 					failureCode = "FILE_CLOSE_FAILED";
 					failureDetail = "stage=close stream_state=" + std::to_string(file.rdstate());
-					systemError = closeError;
 				}
 			}
 		}
