@@ -16,6 +16,8 @@
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
+#include <deque>
+#include <utility>
 
 /*!
  * \brief Routes an entity to the first output port whose parser expression
@@ -37,12 +39,32 @@
  */
 class Decide : public ModelComponent {
 public:
+	struct ConditionEdit {
+		enum class Kind { Insert, Replace, Remove };
+		Kind kind;
+		unsigned int index = 0;
+		std::string before;
+		std::string after;
+		ModelComponent* removedTarget = nullptr;
+		unsigned int removedTargetPort = 0;
+	};
+
 	Decide(Model* model, std::string name = "");
 	virtual ~Decide() override;
 public:
 	List<std::string>* getConditions() const;
 	void addConditions(std::string newCondition);
-    void removeConditions(std::string condition);
+	void insertConditionAt(unsigned int index, std::string condition);
+	void replaceConditionAt(unsigned int index, std::string condition);
+	void removeConditionAt(unsigned int index);
+	void editConditionInsertAt(unsigned int index, std::string condition);
+	void editConditionReplaceAt(unsigned int index, std::string condition);
+	void editConditionRemoveAt(unsigned int index);
+	void removeConditions(std::string condition);
+	void synchronizeOutputStatistics();
+	bool takeConditionPortEdit(unsigned int& index, bool& inserted);
+	bool takeConditionEdit(ConditionEdit& edit);
+	void markConditionPortEdit(unsigned int index, bool inserted);
 public:
 	virtual std::string show() override;
 public:
@@ -67,6 +89,8 @@ protected:
 private:
 	List<std::string>* _conditions = new List<std::string>();
 	List<Counter*>* _numberOuts = nullptr;
+	std::deque<std::pair<unsigned int, bool>> _pendingConditionPortEdits;
+	std::deque<ConditionEdit> _pendingConditionEdits;
 private:
 
 };

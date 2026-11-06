@@ -33,14 +33,14 @@ ModelDataDefinition* CppForG::NewInstance(Model* model, std::string name) {
 CppForG::CppForG(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<CppForG>(), name) {
 	_createNonEditableDataDefinitions();
 
-	SimulationControlGeneric<std::string>* propDispatchEvent = new SimulationControlGeneric<std::string>(
-									std::bind(&CppForG::getOnDispatchEventCode, this), std::bind(&CppForG::setOnDispatchEventCode, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propDispatchEvent = new SimulationControlSourceCodeString(
+									[this]() { return SourceCodeString(getOnDispatchEventCode()); }, [this](SourceCodeString value) { setOnDispatchEventCode(value.str()); },
 									Util::TypeOf<CppForG>(), getName(), "OnDispatchEventCode", "");
-	SimulationControlGeneric<std::string>* propBetweenRep = new SimulationControlGeneric<std::string>(
-									std::bind(&CppForG::getInitBetweenReplicationCode, this), std::bind(&CppForG::setInitBetweenReplicationCode, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propBetweenRep = new SimulationControlSourceCodeString(
+									[this]() { return SourceCodeString(getInitBetweenReplicationCode()); }, [this](SourceCodeString value) { setInitBetweenReplicationCode(value.str()); },
 									Util::TypeOf<CppForG>(), getName(), "InitBetweenReplicationCode", "");
-	SimulationControlGeneric<std::string>* propIncludes = new SimulationControlGeneric<std::string>(
-									std::bind(&CppForG::getIncludesCode, this), std::bind(&CppForG::setIncludesCode, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propIncludes = new SimulationControlSourceCodeString(
+									[this]() { return SourceCodeString(getIncludesCode()); }, [this](SourceCodeString value) { setIncludesCode(value.str()); },
 									Util::TypeOf<CppForG>(), getName(), "IncludesCode", "");
 	SimulationControlGenericClass<CppCompiler*, Model*, CppCompiler>* propCppCompiler = new SimulationControlGenericClass<CppCompiler*, Model*, CppCompiler>(
 									_parentModel,
@@ -119,7 +119,9 @@ void CppForG::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool CppForG::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_onDispatchEventCode = fields->loadField("onDispatchEventCode", "");
+		_initBetweenReplicationCode = fields->loadField("initBetweenReplicationCode", "");
+		_includesCode = fields->loadField("includesCode", "");
 	}
 	return res;
 }
@@ -128,7 +130,9 @@ bool CppForG::_loadInstance(PersistenceRecord *fields) {
 
 void CppForG::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("onDispatchEventCode", _onDispatchEventCode, "", saveDefaultValues);
+	fields->saveField("initBetweenReplicationCode", _initBetweenReplicationCode, "", saveDefaultValues);
+	fields->saveField("includesCode", _includesCode, "", saveDefaultValues);
 }
 
 bool CppForG::_check(std::string& errorMessage) {

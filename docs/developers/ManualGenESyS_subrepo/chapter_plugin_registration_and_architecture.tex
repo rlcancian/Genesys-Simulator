@@ -121,6 +121,11 @@ lifecycles are controlled by the normal build and object-graph rules of the
 current code base. In other words, the plugin layer is an extensibility
 mechanism, yet it is still embedded in the build graph.
 
+Each plugin metadata record must use the concrete plugin typename and its matching load and new-instance
+factories. This identity controls both catalog presentation and persistence dispatch. \texttt{PickUp}
+shares implementation with \texttt{Remove}, but remains a distinct registered component type; multiple
+instances of either component remain valid model objects.
+
 \section{Current lifecycle}
 \label{sec:plugin-current-lifecycle}
 

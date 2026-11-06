@@ -158,6 +158,7 @@ public: // editing graphic model
     void insertComponent(GraphicalModelComponent* gmc, QList<GraphicalConnection *> *inputConnections, QList<GraphicalConnection *> *outputConnections, bool addGMC = true, bool addAllGMC = true, bool notify = false);
     /** @brief Removes a graphical connection and updates the source/destination items. */
     void removeGraphicalConnection(GraphicalConnection* graphicalConnection, GraphicalModelComponent *source, GraphicalModelComponent *destination, bool notify = false);
+    void removeGraphicalConnectionVisual(GraphicalConnection* graphicalConnection);
     /** @brief Removes the connection from the kernel model while keeping scene state consistent. */
     void removeConnectionInModel(GraphicalConnection* graphicalConnection, GraphicalModelComponent *source);
     /** @brief Adds one freeform drawing geometry item to the scene. */

@@ -1,9 +1,12 @@
 #include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "controllers/PropertyEditorController.h"
+#include "controllers/PluginCatalogController.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "codeeditor/CodeEditor.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
 #include "cellular_automata/CellularAutomataViewerWindow.h"
@@ -13,6 +16,7 @@
 #include "../../kernel/simulator/model/Model.h"
 #include "../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
@@ -20,6 +24,10 @@
 #include "../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "applications/gui/genesys/actions/DecideConditionUndoCommand.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
@@ -30,6 +38,8 @@
 #include <QByteArray>
 #include <QColor>
 #include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QFile>
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
@@ -41,9 +51,263 @@
 #include <QSlider>
 #include <QTemporaryDir>
 #include <QTextEdit>
+#include <QTimer>
+#include <QTreeWidget>
 #include <QUndoStack>
+#include <QPushButton>
+#include <QKeyEvent>
 
 #include <algorithm>
+#include <functional>
+#include <map>
+
+TEST(PluginCatalogPresentation, MainPaletteContainsOnlyComponentsAndReloadIsStable) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    const unsigned int registeredBefore = simulator.getPluginManager()->size();
+    QTreeWidget tree;
+    std::map<std::string, QColor> categoryColors;
+    PluginCatalogController catalog(&simulator, &tree, nullptr, &categoryColors);
+    catalog.reloadFromPluginManager();
+    auto countLeafItems = [&tree, &simulator]() {
+        unsigned int count = 0;
+        std::function<void(QTreeWidgetItem*)> visit = [&](QTreeWidgetItem* item) {
+            if (item->childCount() == 0) {
+                ++count;
+                Plugin* plugin = simulator.getPluginManager()->find(item->text(0).toStdString());
+                EXPECT_NE(plugin, nullptr);
+                if (plugin != nullptr) EXPECT_TRUE(plugin->getPluginInfo()->isComponent());
+            } else {
+                for (int i = 0; i < item->childCount(); ++i) visit(item->child(i));
+            }
+        };
+        for (int i = 0; i < tree.topLevelItemCount(); ++i) visit(tree.topLevelItem(i));
+        return count;
+    };
+    const unsigned int firstCount = countLeafItems();
+    EXPECT_GT(firstCount, 0u);
+    EXPECT_EQ(simulator.getPluginManager()->size(), registeredBefore);
+    catalog.reloadFromPluginManager();
+    EXPECT_EQ(countLeafItems(), firstCount);
+    EXPECT_NE(simulator.getPluginManager()->find(Util::TypeOf<Resource>()), nullptr);
+}
+
+TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    auto* decide = new Decide(model, "DynamicDecide");
+    auto countPorts = [&](Decide* value) {
+        GraphicalModelComponent graphical(plugin, value, QPointF(100, 100), QColor("#336699"));
+        return graphical.getGraphicalOutputPorts().size();
+    };
+    EXPECT_EQ(countPorts(decide), 1);
+    decide->addConditions("A > 0");
+    EXPECT_EQ(countPorts(decide), 2);
+    GraphicalModelComponent graphical(plugin, decide, QPointF(100, 100), QColor("#336699"));
+    graphical.applyDecideConditionPortEdit(1, true);
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 3);
+    graphical.applyDecideConditionPortEdit(1, false);
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 2);
+    decide->addConditions("B > 0");
+    decide->addConditions("C > 0");
+    EXPECT_EQ(countPorts(decide), 4);
+}
+
+TEST(DecideConditionUndo, RemoveUndoRedoRestoresOnlyTheRemovedConnectionAndElse) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* decide = new Decide(model, "UndoDecide");
+    decide->addConditions("first");
+    decide->addConditions("second");
+    auto* removedTarget = new Dispose(model, "RemovedTarget");
+    auto* elseTarget = new Dispose(model, "ElseTarget");
+    Plugin* decidePlugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    Plugin* disposePlugin = simulator.getPluginManager()->find(Util::TypeOf<Dispose>());
+    ASSERT_NE(decidePlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphicalDecide = new GraphicalModelComponent(decidePlugin, decide, QPointF(100, 100), Qt::blue);
+    auto* graphicalRemovedTarget = new GraphicalModelComponent(disposePlugin, removedTarget, QPointF(400, 100), Qt::blue);
+    auto* graphicalElseTarget = new GraphicalModelComponent(disposePlugin, elseTarget, QPointF(400, 300), Qt::blue);
+    scene.addItem(graphicalDecide);
+    scene.addItem(graphicalRemovedTarget);
+    scene.addItem(graphicalElseTarget);
+    scene.getGraphicalModelComponents()->append(graphicalDecide);
+    scene.getGraphicalModelComponents()->append(graphicalRemovedTarget);
+    scene.getGraphicalModelComponents()->append(graphicalElseTarget);
+
+    auto* removedConnection = new Connection{removedTarget, {0}};
+    auto* elseConnection = new Connection{elseTarget, {0}};
+    decide->getConnectionManager()->insertAtPort(0, removedConnection);
+    decide->getConnectionManager()->insertAtPort(2, elseConnection);
+    scene.addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(0),
+        graphicalRemovedTarget->getGraphicalInputPorts().at(0), 0, 0);
+    scene.addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(2),
+        graphicalElseTarget->getGraphicalInputPorts().at(0), 0, 0);
+
+    decide->editConditionRemoveAt(0);
+    unsigned int changedIndex = 0;
+    bool inserted = true;
+    ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
+    EXPECT_EQ(changedIndex, 0u);
+    EXPECT_FALSE(inserted);
+    graphicalDecide->applyDecideConditionPortEdit(changedIndex, inserted);
+    Decide::ConditionEdit edit;
+    ASSERT_TRUE(decide->takeConditionEdit(edit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphicalDecide, edit));
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 2);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), elseConnection);
+    EXPECT_EQ(scene.getGraphicalConnections()->size(), 1);
+
+    undoStack.undo();
+    ASSERT_EQ(decide->getConditions()->size(), 2u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 3);
+    ASSERT_NE(decide->getConnectionManager()->getConnectionAtPort(0), nullptr);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0)->component, removedTarget);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), elseConnection);
+    ASSERT_EQ(scene.getGraphicalConnections()->size(), 2);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->at(0))->getDestinationGraphicalComponent(), graphicalElseTarget);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->at(1))->getDestinationGraphicalComponent(), graphicalRemovedTarget);
+
+    undoStack.redo();
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 2);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), elseConnection);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), nullptr);
+    ASSERT_EQ(scene.getGraphicalConnections()->size(), 1);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->front())->getDestinationGraphicalComponent(), graphicalElseTarget);
+}
+
+TEST(DecideConditionUndo, InsertAndReplaceUndoRedoRestoreOrderedConditionTextAndPorts) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* decide = new Decide(model, "UndoInsertDecide");
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 800, 600);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(plugin, decide, QPointF(100, 100), Qt::blue);
+    scene.addItem(graphical);
+    scene.getGraphicalModelComponents()->append(graphical);
+
+    decide->editConditionInsertAt(0, "x > 0");
+    unsigned int changedIndex = 0;
+    bool inserted = false;
+    ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
+    graphical->applyDecideConditionPortEdit(changedIndex, inserted);
+    Decide::ConditionEdit insertEdit;
+    ASSERT_TRUE(decide->takeConditionEdit(insertEdit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphical, insertEdit));
+    ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+    undoStack.undo();
+    EXPECT_TRUE(decide->getConditions()->empty());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), 1);
+    undoStack.redo();
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+
+    decide->editConditionReplaceAt(0, "x >= 0");
+    Decide::ConditionEdit replaceEdit;
+    ASSERT_TRUE(decide->takeConditionEdit(replaceEdit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphical, replaceEdit));
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x >= 0");
+    undoStack.undo();
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
+    undoStack.redo();
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x >= 0");
+}
+
+namespace {
+QtProperty* findPropertyByName(QtProperty* property, const QString& name) {
+    if (property == nullptr) return nullptr;
+    if (property->propertyName() == name) return property;
+    for (QtProperty* child : property->subProperties()) {
+        if (QtProperty* found = findPropertyByName(child, name)) return found;
+    }
+    return nullptr;
+}
+
+void openCodeEditor(ObjectPropertyBrowser* browser, const QString& propertyName,
+                    const std::function<void(QDialog*)>& interactWithDialog) {
+    QtProperty* property = nullptr;
+    for (QtProperty* root : browser->properties()) {
+        if ((property = findPropertyByName(root, propertyName)) != nullptr) break;
+    }
+    ASSERT_NE(property, nullptr);
+    const QList<QtBrowserItem*> items = browser->items(property);
+    ASSERT_FALSE(items.isEmpty());
+    browser->setCurrentItem(items.front());
+    QTimer::singleShot(0, browser, [interactWithDialog]() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        interactWithDialog(dialog);
+    });
+    QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(browser, &enter);
+}
+}
+
+TEST(SourceCodePropertyEditor, CancelLeavesTheOriginalCodeUntouched) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* cpp = new CppForG(model, "CancelableCpp");
+    cpp->setOnDispatchEventCode("original\nline");
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, cpp);
+    QApplication::processEvents();
+
+    openCodeEditor(&browser, "OnDispatchEventCode", [](QDialog* dialog) {
+        auto* editor = dialog->findChild<CodeEditor*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        ASSERT_NE(editor, nullptr);
+        ASSERT_NE(buttons, nullptr);
+        editor->setPlainText("discard this");
+        buttons->button(QDialogButtonBox::Cancel)->click();
+    });
+    EXPECT_EQ(cpp->getOnDispatchEventCode(), "original\nline");
+}
+
+TEST(SourceCodePropertyEditor, ApplyCommitsCodeWithoutClosingTheEditor) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* cpp = new CppForG(model, "ApplicableCpp");
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, cpp);
+    QApplication::processEvents();
+
+    openCodeEditor(&browser, "OnDispatchEventCode", [](QDialog* dialog) {
+        auto* editor = dialog->findChild<CodeEditor*>();
+        auto* apply = dialog->findChild<QPushButton*>(QString(), Qt::FindDirectChildrenOnly);
+        if (apply == nullptr) {
+            for (QPushButton* button : dialog->findChildren<QPushButton*>()) {
+                if (button->text() == "Apply") { apply = button; break; }
+            }
+        }
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        ASSERT_NE(editor, nullptr);
+        ASSERT_NE(apply, nullptr);
+        ASSERT_NE(buttons, nullptr);
+        editor->setPlainText("applied\nλ");
+        apply->click();
+        EXPECT_EQ(dialog->result(), 0);
+        buttons->button(QDialogButtonBox::Cancel)->click();
+    });
+    EXPECT_EQ(cpp->getOnDispatchEventCode(), "applied\nλ");
+}
 
 namespace {
 

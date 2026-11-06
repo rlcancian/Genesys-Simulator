@@ -253,6 +253,10 @@ void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, dou
 }
 
 bool Model::save(std::string filename) {
+	// Materialize declared internal/attached data before serialization. ModelCheck
+	// also prunes orphaned definitions, which is deliberately not part of save:
+	// an incomplete model and independent user-created data must remain savable.
+	_createInternalDataDefinitions();
     bool res = this->_modelPersistence->save(filename);
     if (res) {
         this->_traceManager->trace("Model successfully saved", TraceManager::Level::L2_results);

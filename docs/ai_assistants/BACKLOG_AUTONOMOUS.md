@@ -451,6 +451,81 @@ This is the only approved source for work an AI agent may execute without a new 
 - stochastic conflict resolution through the GenESyS sampler;
 - CPN reference fixtures from literature.
 
+### AUTO-GUIFIX-001 — Safe model save without ModelCheck
+
+- Priority: `P0`
+- Status: `done_confirmed`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05; execute the five GenESyS GUI/model-editor fixes, including PRs and merge to `WorkInProgress` after required checks.
+- Branch/PR: `WiP202611/model-save-preparation` / PR #559; merge `3ae85774949ebc87e521a2409eecf8f086bcc43b`
+- Scope: trace and correct save preparation for incomplete models while preserving independent DataDefinitions, `.gen`/`.gui` behavior and atomic file replacement. Never call `_clearOrphanedDataDefinitions()` from save.
+- Non-goals: ModelCheck as save precondition, simulation/script execution, persistence format redesign, stable branch promotion.
+- Dependencies: none.
+- Acceptance: incomplete models save/load without check; valid declared dependencies are materialized idempotently; invalid references diagnose; independent/internal/attached data survive; failed writes preserve prior file.
+- Validation: focused persistence regressions, `tests-unit`, `tests-kernel-unit`, `tests-smoke`; affected GUI preset and sanitizer where applicable.
+- Stop gates: evidence that safe preparation requires a compatibility or architecture decision; any data loss; required validation red.
+- Completion evidence: save materializes existing internal dependencies without ModelCheck or orphan cleanup; persistence regressions and final integration validation passed. See [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
+
+### AUTO-GUIFIX-002 — Positional Decide conditions and dynamic outputs
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05.
+- Branch/PR: PR #559 plus `WiP202611/decide-condition-undo` / PR #565; final merge `957c66503c8966de95b4d34b047ff03dc256efcb`
+- Scope: ordered positional condition editing, N+1 kernel/GUI output ports, preserving unaffected connections and Else through edit, persistence and undo/redo.
+- Non-goals: automatic connections, altered simulation routing semantics beyond the approved contract.
+- Dependencies: none; implemented in the shared bounded editor-fixes PR.
+- Acceptance: add/edit/remove by position, including duplicates, keeps logical/graphical ports, kernel connections, Else and save/load coherent.
+- Validation: focused kernel and Qt tests, routing regression, presets required for kernel/GUI changes.
+- Stop gates: connection ownership ambiguity or destination corruption; required validation red.
+- Completion evidence: positional insert/replace/remove, N+1 outputs, Else, connection preservation and QUndoStack restore/remove behavior passed unit, kernel, smoke, focused GUI and ASan/UBSan tests. See [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
+
+### AUTO-GUIFIX-003 — Source-code property editor and persistence
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05.
+- Branch/PR: PR #559 and #563; integrated by `957c66503c8966de95b4d34b047ff03dc256efcb`
+- Scope: reuse CodeEditor contracts for justified C++, Python, R and Gro properties; fix CppForG field persistence and add round-trip/cancel tests.
+- Non-goals: syntax highlighting, LSP, execution/compilation on save, changing structured command-list semantics.
+- Dependencies: none; implemented in the shared bounded editor-fixes PR.
+- Acceptance: selected code fields retain multiline/UTF-8/escaped content through edit/apply/cancel/save/load; no code executes on save.
+- Validation: focused plugin/editor/persistence tests; unit/kernel/GUI presets as affected.
+- Stop gates: serializer compatibility decision or script execution needed for textual validation; required validation red.
+- Completion evidence: C++, Python, R, Gro and Octave source fields use the existing editor contract and round-trip tests; CppForG persistence is complete; save does not execute source. See the property matrix in [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
+
+### AUTO-GUIFIX-004 — Correct Remove and PickUp plugin identity
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05.
+- Branch/PR: `WiP202611/model-save-preparation` / PR #559; merge `3ae85774949ebc87e521a2409eecf8f086bcc43b`
+- Scope: identify and correct registration metadata/factories causing apparent Remove duplication while retaining model compatibility.
+- Non-goals: generic plugin registry redesign or restricting multiple component instances.
+- Dependencies: none; implemented in the shared bounded editor-fixes PR.
+- Acceptance: one catalog entry per registered typename, correct PickUp identity where supported, idempotent registration/reload, Remove/PickUp create and round-trip.
+- Validation: focused plugin/catalog tests and unit/GUI presets as affected.
+- Stop gates: current model compatibility cannot be preserved; required validation red.
+- Completion evidence: PickUp has distinct metadata and factories; catalog uniqueness, repeat registration/reload and component persistence regressions pass. See [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
+
+### AUTO-GUIFIX-005 — ModelComponent-only main plugin palette
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Environment: `local`
+- Authorization: explicit maintainer determination dated 2026-11-05.
+- Branch/PR: `WiP202611/model-save-preparation` / PR #559; merge `3ae85774949ebc87e521a2409eecf8f086bcc43b`
+- Scope: filter only main palette presentation to ModelComponents; keep all ModelDataDefinitions registered and usable in specialized contexts.
+- Non-goals: registry removal, changes to plugin type metadata, breaking submodel/network editors.
+- Dependencies: none; implemented in the shared bounded editor-fixes PR.
+- Acceptance: main palette shows components only and refresh is idempotent; data definitions remain constructible, loadable and available to specialized editors.
+- Validation: focused Qt tests, `gui-app`, unit/kernel presets as affected.
+- Stop gates: specialized editor regression or required validation red.
+- Completion evidence: the main palette filters presentation only; ModelDataDefinitions remain registered and available to model and specialized-editor flows. Catalog and GUI regressions pass. See [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
+
 ## 5. Active bounded work
 
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture

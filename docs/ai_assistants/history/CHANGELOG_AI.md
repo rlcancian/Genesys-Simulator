@@ -2,7 +2,7 @@
 document_type: history-index
 authority: informative
 owner: project-maintainer
-last_updated: 2026-10-30
+last_updated: 2026-11-05
 status: active
 tracks: 511
 ---
@@ -17,6 +17,7 @@ This is a concise index of material AI-assisted development and governance chang
 
 | Date | Scope | Environment | PR/issue | Merge/checkpoint | Validation/evidence | Remaining boundary |
 |---|---|---|---|---|---|---|
+| 2026-11-05 | Integrate five model-editor fixes and Decide condition undo/redo | local + GitHub | PRs #559, #563, #565 | WorkInProgress merge HEAD `957c66503c8966de95b4d34b047ff03dc256efcb` | save without ModelCheck/orphan cleanup; positional Decide ports/connections and undo; C++/Python/R/Gro/Octave editor persistence; PickUp identity; component-only main palette; unit/kernel 1,981 passed + 4 disabled each, smoke 3/3, GUI build, focused ASan/UBSan 5/5 and all hosted checks green; evidence `history/evidence/2026/11/VALIDATION_LEDGER.md` | LSan and interactive human GUI session not covered; no stable promotion |
 | 2026-10-30 | Correct integrated-branch wording in EFSM User Manual and regenerate the official PDF | local | PR #555 | Base `WorkInProgress` `1d31cf7e6021c246f55713144b1014c5b841ec6c` | Doxygen 1.9.8 and `latexmk` succeeded; 3,981 pages; guide page 177 visually checked; evidence `history/evidence/2026/10/2026-10-30_modal_efsm_user_manual_final.md` | Documentation only; no implementation behavior change |
 | 2026-10-30 | Reconcile current EFSM status after post-merge documentation updates | local + GitHub | PR #554 (draft) | Base `WorkInProgress` `e74e477f2eeeddd089df52c41547442171a513fd` | Active architecture and completion-plan statements updated; focused CTest 45/45; governance validator passed; evidence `history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md` | Documentation only; no GUI or kernel behavior changes |
 | 2026-10-30 | Record PR #552 integration and exact current status | local + GitHub | PR #553 | merge commit `e74e477f2eeeddd089df52c41547442171a513fd` | Status and evidence reconciled after eight green PR #552 checks | Documentation only |
