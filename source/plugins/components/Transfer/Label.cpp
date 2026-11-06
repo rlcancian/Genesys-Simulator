@@ -38,11 +38,17 @@ Label::~Label() {
     // Detach all known non-owning consumers while the model registries still
     // contain them. Otherwise Route/SequenceStep can retain dangling pointers
     // after an interactive Label deletion.
-    if (auto* definition = getLabelDefinition()) {
+    // Do not use getLabelDefinition() here: it intentionally hides definitions
+    // that have been deregistered during an undoable GUI deletion. The internal
+    // association still owns the object until the base-class destructor runs.
+    auto* definition = _labelDefinition;
+    if (definition) {
         for (auto* component : *_parentModel->getComponentManager()->getAllComponents()) {
             if (!component || component == this) continue;
             if (auto* sender = dynamic_cast<Goto*>(component)) {
-                if (sender->getLabelDefinition() == definition)
+                const auto* attached = sender->getAttachedData();
+                const auto destination = attached->find("LabelDefinition");
+                if (destination != attached->end() && destination->second == definition)
                     sender->setLabelDefinition(nullptr);
             }
             if (auto* route = dynamic_cast<Route*>(component)) {
@@ -61,8 +67,7 @@ Label::~Label() {
                 }
             }
         }
-        if (definition->getEnterIntoLabelComponent() == this)
-            definition->setEnterIntoLabelComponent(nullptr);
+        definition->setEnterIntoLabelComponent(nullptr);
     }
     // ModelDataDefinitionAssociations deletes our internal definition once.
 }

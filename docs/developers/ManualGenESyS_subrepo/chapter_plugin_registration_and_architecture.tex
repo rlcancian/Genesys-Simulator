@@ -295,7 +295,7 @@ components and data definitions appear in the persistence file.
 On dispatch, \texttt{Goto} evaluates its delay expression through the
 existing parser, validates the time unit, converts the finite nonnegative
 delay to the replication base time unit, and calls
-\texttt{LabelDefinition::sendEntityToLabelComponent}. That method schedules
+\texttt{LabelDefinition::sendEntity\allowbreak ToLabelComponent}. That method schedules
 the destination component event through the kernel. The receiving
 \texttt{Label} then forwards the unchanged entity over its sole conventional
 output. There is no direct \texttt{Goto}-to-\texttt{Label} graph edge and no

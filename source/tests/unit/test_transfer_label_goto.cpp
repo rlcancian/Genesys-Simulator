@@ -277,6 +277,30 @@ TEST_F(TransferFixture, RemovingLabelDetachesRouteAndSequenceDirectReferences) {
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<LabelDefinition>()), 0u);
 }
 
+TEST_F(TransferFixture, RemovingLabelAfterDefinitionDeregistrationDetachesConsumers) {
+    auto* receiver = makeLabel("DeregisteredReceiver");
+    auto* definition = receiver->getLabelDefinition();
+    ASSERT_NE(definition, nullptr);
+    auto* sender = new GotoProbe(model, "DeregisteredGoto");
+    sender->setLabelDefinition(definition);
+    auto* route = new Route(model, "DeregisteredRoute");
+    route->setLabel(definition);
+    auto* sequence = new Sequence(model, "DeregisteredSequence");
+    sequence->getSteps()->insert(new SequenceStep(definition));
+
+    // GUI undo removes a data definition from the manager before the owner is
+    // eventually destroyed. Registry-validating getters must not hide this
+    // still-owned object from Label's teardown.
+    model->getDataManager()->remove(definition);
+    delete receiver;
+
+    EXPECT_EQ(sender->getLabelDefinition(), nullptr);
+    EXPECT_EQ(sender->getAttachedData()->count("LabelDefinition"), 0u);
+    EXPECT_EQ(route->getLabel(), nullptr);
+    ASSERT_EQ(sequence->getSteps()->size(), 1u);
+    EXPECT_EQ(sequence->getSteps()->list()->front()->getLabel(), nullptr);
+}
+
 TEST_F(TransferFixture, IndependentDefinitionsRemainIsolated) {
     auto* first = makeLabel("First");
     auto* second = makeLabel("Second");
