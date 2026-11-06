@@ -22,6 +22,7 @@
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
+#include "plugins/data/ExternalIntegration/OctaveRunner.h"
 
 TEST(PersistenceIntegrityTest, MissingConnectionTargetMakesLoadFail) {
 	Simulator simulator;
@@ -278,6 +279,41 @@ TEST(SourceCodePropertyTest, PythonAndRCodeFieldsUseTheExistingCodeEditorContrac
 		control->setValue("# λ\nprint(\"text\")");
 		EXPECT_EQ(control->getValue(), "# λ\nprint(\"text\")");
 	}
+}
+
+TEST(SourceCodePropertyTest, OctaveRunnerCodeFieldsUseEditorAndRoundTripWithoutExecution) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* runner = new OctaveRunner(model, "OctaveCode");
+	const std::string prelude = "% λ prelude\nvalue = \"quoted\"; % keep this comment";
+	const std::string command = "if value > 0\n  disp(value);\nend";
+	runner->setPreludeScript(prelude);
+	runner->setCommand(command);
+	auto findControl = [runner](const std::string& property) {
+		for (SimulationControl* control : *runner->getSimulationControls()->list()) {
+			if (control->getName() == property) return control;
+		}
+		return static_cast<SimulationControl*>(nullptr);
+	};
+	for (const char* property : {"PreludeScript", "Command"}) {
+		SimulationControl* control = findControl(property);
+		ASSERT_NE(control, nullptr) << property;
+		EXPECT_EQ(control->preferredEditorHint(), SimulationControlEditorHint::CodeEditor) << property;
+	}
+
+	const std::string filename = "/tmp/genesys_octave_source_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedRunner = dynamic_cast<OctaveRunner*>(loaded->getDataManager()->getDataDefinition(
+		Util::TypeOf<OctaveRunner>(), "OctaveCode"));
+	ASSERT_NE(loadedRunner, nullptr);
+	EXPECT_EQ(loadedRunner->getPreludeScript(), prelude);
+	EXPECT_EQ(loadedRunner->getCommand(), command);
+	EXPECT_EQ(loadedRunner->getLastScriptFilename(), "");
+	::unlink(filename.c_str());
 }
 
 TEST(SourceCodePropertyTest, RSimulatorAndRunnerPreserveScriptsAcrossGenRoundTrip) {

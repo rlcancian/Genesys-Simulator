@@ -5,6 +5,7 @@
 #include "../animations/AnimationTimer.h"
 #include "../animations/AnimationVariable.h"
 #include "../actions/DeleteUndoCommand.h"
+#include "../actions/DecideConditionUndoCommand.h"
 #include "../codeeditor/CodeEditor.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/GraphicalModelComponent.h"
@@ -2090,16 +2091,30 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     auto refresh = [this]() {
+        Decide* editedDecide = nullptr;
+        GraphicalModelComponent* editedGraphical = nullptr;
+        ModelGraphicsScene* editedScene = nullptr;
+        Decide::ConditionEdit conditionEdit;
+        bool hasConditionEdit = false;
         if (auto* decide = dynamic_cast<Decide*>(_modelObject)) {
+            editedDecide = decide;
+            editedGraphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+            editedScene = editedGraphical == nullptr ? nullptr
+                : dynamic_cast<ModelGraphicsScene*>(editedGraphical->scene());
             unsigned int index = 0;
             bool inserted = false;
             if (decide->takeConditionPortEdit(index, inserted)) {
-                if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data())) {
-                    graphical->applyDecideConditionPortEdit(index, inserted);
+                if (editedGraphical != nullptr) {
+                    editedGraphical->applyDecideConditionPortEdit(index, inserted);
                 }
             }
+            hasConditionEdit = decide->takeConditionEdit(conditionEdit);
         }
         this->_notifyModelChangeApplied();
+        if (hasConditionEdit && editedScene != nullptr && editedScene->getUndoStack() != nullptr) {
+            editedScene->getUndoStack()->push(
+                new DecideConditionUndoCommand(editedDecide, editedGraphical, std::move(conditionEdit)));
+        }
     };
 
     // This block opens the specialized list editor only when the explicit list-editor contract is enabled.
