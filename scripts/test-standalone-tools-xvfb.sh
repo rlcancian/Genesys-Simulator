@@ -147,6 +147,16 @@ tools_menu_x=${GENESYS_TEST_TOOLS_MENU_X:-370}
 }
 echo "Using $wm_name; Tools menu x=$tools_menu_x on the 1280px virtual display"
 
+# Give the GUI an isolated first-run profile with plugin autoload disabled.
+# Missing optional system plugins can otherwise open a diagnostic window on
+# startup and steal focus from the Tools menu test. This test is about process
+# launching, not plugin discovery.
+export XDG_CONFIG_HOME="$RUNNER_TEMP/genesys-standalone-tools-config"
+mkdir -p "$XDG_CONFIG_HOME/GenESyS/Genesys-Simulator"
+cat >"$XDG_CONFIG_HOME/GenESyS/Genesys-Simulator/preferences.json" <<'JSON'
+{"plugins":{"autoLoad":false},"startup":{"startMaximized":false}}
+JSON
+
 # Deliberately do not open a model: Tools must be available from an empty GUI.
 "$gui" >"$RUNNER_TEMP/genesys-main-gui.log" 2>&1 &
 gui_pid=$!
@@ -163,43 +173,7 @@ actual_gui=$(readlink -f -- "/proc/$gui_pid/exe")
 }
 echo "Main GUI PID=$gui_pid window=$gui_window exe=$actual_gui"
 
-# A fresh CI profile may display the modal Plugin Manager immediately when
-# startup discovers blocked optional plugins. Dismiss that diagnostic before
-# testing the unrelated Tools menu, and retain the actual main-window XID above.
-mapfile -t startup_plugin_dialogs < <(
-    timeout 5s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null || true
-)
-for dialog in "${startup_plugin_dialogs[@]}"; do
-    xdotool_bounded windowactivate --sync "$dialog"
-    geometry=$(xdotool getwindowgeometry --shell "$dialog")
-    dialog_width=$(sed -n 's/^WIDTH=//p' <<<"$geometry")
-    dialog_height=$(sed -n 's/^HEIGHT=//p' <<<"$geometry")
-    [[ "$dialog_width" =~ ^[0-9]+$ && "$dialog_height" =~ ^[0-9]+$ ]] || {
-        echo "Could not determine startup Plugin Manager dialog geometry" >&2
-        exit 1
-    }
-    # QDialogButtonBox's Close button is right-aligned at the bottom.
-    xdotool_bounded mousemove --window "$dialog" "$((dialog_width - 48))" "$((dialog_height - 24))" click 1
-    sleep 0.2
-    remaining_dialog=$(timeout 3s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null | head -n 1 || true)
-    [[ -n "$remaining_dialog" ]] || continue
-    xdotool_bounded windowactivate --sync "$dialog"
-    xdotool_bounded key --clearmodifiers alt+F4
-    sleep 0.2
-    remaining_dialog=$(timeout 3s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null | head -n 1 || true)
-    [[ -n "$remaining_dialog" ]] || continue
-    xdotool_bounded windowclose "$dialog"
-done
-for _ in $(seq 1 50); do
-    remaining_dialog=$(timeout 3s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null | head -n 1 || true)
-    [[ -n "$remaining_dialog" ]] || break
-    sleep 0.1
-done
-[[ -z "${remaining_dialog:-}" ]] || {
-    echo "Startup Plugin Manager dialog did not close" >&2
-    exit 1
-}
-xdotool_bounded windowfocus "$gui_window"
+xdotool_bounded windowactivate --sync "$gui_window"
 
 # Invoke each real QAction through the Tools menu -> controller -> ToolLauncher path.
 tools=(
@@ -217,7 +191,7 @@ for index in "${!tools[@]}"; do
         exit 1
     }
 
-    xdotool_bounded windowfocus "$gui_window"
+    xdotool_bounded windowactivate --sync "$gui_window"
     # F10 does not activate QMenuBar reliably in the Qt6/Xfwm4 combination.
     # The virtual display is fixed at 1280px and the English Tools label is at
     # x=370 in the current QMenuBar. Derive y from X11 so WM decorations remain
@@ -268,7 +242,7 @@ for index in "${!tools[@]}"; do
 
     # Exercise the normal window close shortcut; windowclose's synthetic ICCCM
     # message hides this Qt window without ending its event loop in this setup.
-    xdotool_bounded windowfocus "$tool_window"
+    xdotool_bounded windowactivate --sync "$tool_window"
     xdotool_bounded key --clearmodifiers alt+F4
     tool_closed=false
     for _ in $(seq 1 100); do
