@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 #include <streambuf>
 #include <string>
 #include <system_error>
@@ -68,6 +69,17 @@ bool hasDiagnostic(Model* model, const std::string& code) {
     }
     return false;
 }
+
+// Fault-injection probe: a Resource subtype that fails inside the existing
+// ModelDataDefinition::SaveInstance exception-catching boundary.
+class ThrowingResource final : public Resource {
+public:
+    using Resource::Resource;
+protected:
+    void _saveInstance(PersistenceRecord*, bool) override {
+        throw std::runtime_error("injected SaveInstance failure");
+    }
+};
 
 class RejectingStreamBuf final : public std::streambuf {
 protected:
@@ -276,4 +288,28 @@ TEST(ModelSaveDiagnostics, ConsolePluginInsertRemoveReinsertAcrossMultipleSaves)
     EXPECT_NE(recreated.find("SignalRecreated"), std::string::npos);
     EXPECT_NE(recreated.find("CppForGRecreated"), std::string::npos);
     EXPECT_FALSE(fs::exists(destination.string() + ".tmp"));
+}
+
+
+TEST(ModelSaveDiagnostics, CharacterizesSwallowedSaveInstanceErrorWithoutMaskingIt) {
+    SaveSandbox sandbox;
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    new ThrowingResource(model, "InjectedFailingResource");
+    const fs::path destination = sandbox.root / "prior.gen";
+    writeFile(destination, "PREVIOUS_VALID_SAVE");
+
+    // CHARACTERIZATION OF KNOWN DEFECT, not a successful-save contract:
+    // SaveInstance catches the injected exception and returns void. Existing
+    // persistence historically treats the resulting partial record as valid.
+    const bool returnedSuccess = model->save(destination.string());
+    EXPECT_TRUE(hasDiagnostic(model, "SERIALIZER_RECORD_SAVE_REPORTED_ERROR"));
+    EXPECT_TRUE(returnedSuccess) << "The bug is that a swallowed field-save error "
+                                  "can be reported as successful persistence.";
+    EXPECT_NE(readFile(destination), "PREVIOUS_VALID_SAVE")
+        << "Current code replaces a prior save after a swallowed record error.";
+    // Phase 2 must invert this contract, preserve the destination, and revise
+    // this characterization into a normal regression test.
 }
