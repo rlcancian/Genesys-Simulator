@@ -207,6 +207,8 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
         "${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/*.cpp"
     )
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/build/")
+    # Keep standalone QtTest executables out of the existing GTest/GMDD bundle.
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/tests/")
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/main\.cpp$")
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/qcustomplot\.cpp$")
 

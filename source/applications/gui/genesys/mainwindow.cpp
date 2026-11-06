@@ -603,7 +603,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Add a runtime About action instead of extending the generated .ui file.
     QAction* actionAboutReportIssue = new QAction(tr("Report Issue"), this);
     actionAboutReportIssue->setObjectName(QStringLiteral("actionAboutReportIssue"));
-    actionAboutReportIssue->setToolTip(tr("Report a bug, problem, or suggestion using the configured secure relay."));
+    actionAboutReportIssue->setToolTip(tr("Report a bug, problem, or suggestion to the GenESyS project."));
     actionAboutReportIssue->setIcon(QIcon(":/icons2/resources/icons/pack2/ico/90.ico"));
     connect(actionAboutReportIssue, &QAction::triggered, this, [this]() {
         if (_dialogUtilityController != nullptr) {

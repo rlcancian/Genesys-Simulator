@@ -465,43 +465,6 @@ static void showRichAboutDialog(QWidget* owner,
     dialog.exec();
 }
 
-static QString trimmedTail(const QString& text, int maxCharacters = 12000) {
-    const QString normalized = text.trimmed();
-    if (normalized.size() <= maxCharacters) {
-        return normalized;
-    }
-    return QStringLiteral("...[truncated]...\n") + normalized.right(maxCharacters);
-}
-
-static QString readTextFileTail(const QString& absolutePath, int maxBytes = 32768) {
-    QFile file(absolutePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
-    }
-
-    if (file.size() <= maxBytes) {
-        return QString::fromUtf8(file.readAll()).trimmed();
-    }
-
-    file.seek(std::max<qint64>(0, file.size() - maxBytes));
-    return QStringLiteral("...[truncated]...\n") + QString::fromUtf8(file.readAll()).trimmed();
-}
-
-static QByteArray captureWidgetScreenshotPng(QWidget* widget) {
-    QByteArray bytes;
-    if (widget == nullptr) {
-        return bytes;
-    }
-
-    const QPixmap screenshot = widget->grab();
-    if (screenshot.isNull()) {
-        return bytes;
-    }
-    QBuffer buffer(&bytes);
-    buffer.open(QIODevice::WriteOnly);
-    screenshot.save(&buffer, "PNG");
-    return bytes;
-}
 } // namespace
 
 // Initialize the Phase 11 controller with narrow dependencies and persisted GUI state references.
@@ -612,94 +575,15 @@ void DialogUtilityController::onActionAboutGetInvolvedTriggered() {
                         html);
 }
 
-/*! \brief Opens the GUI issue-report flow, captures runtime context, and submits the payload to the configured relay.
+/*! \brief Opens the privacy-first issue form without collecting model or diagnostic data.
  *
- * The report draft can include the current model text, console tail, simulation and report logs,
- * the latest process log, and an optional screenshot. The submission result is then surfaced back
- * to the user, including a browser link when the relay returns a created GitHub issue URL.
+ * The dialogue selects a configured HTTPS relay or the standard GitHub browser
+ * flow. It owns its asynchronous request so a failed submission preserves fields.
  */
 void DialogUtilityController::onActionAboutReportIssueTriggered() {
     DialogReportIssue dialog(_ownerWidget);
-    QString relayStatusMessage;
-    const bool relayConfigured = IssueReportRelayService::isEndpointConfigured(&relayStatusMessage);
-    dialog.setRelayConfigurationStatus(IssueReportRelayService::configuredEndpoint(),
-                                       relayConfigured,
-                                       relayStatusMessage);
-
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
-
-    const IssueReportDraft draft = dialog.draft();
-
-    IssueReportRuntimeContext runtimeContext;
-    runtimeContext.applicationName = QCoreApplication::applicationName().trimmed();
-    runtimeContext.applicationVersion = QCoreApplication::applicationVersion().trimmed();
-    if (runtimeContext.applicationVersion.isEmpty()) {
-        runtimeContext.applicationVersion = QObject::tr("unknown");
-    }
-    runtimeContext.qtVersion = QString::fromLatin1(QT_VERSION_STR);
-    runtimeContext.operatingSystem = QSysInfo::prettyProductName();
-
-    if (_simulator != nullptr && _simulator->getModelManager() != nullptr
-        && _simulator->getModelManager()->current() != nullptr) {
-        runtimeContext.currentModelName =
-                QString::fromStdString(_simulator->getModelManager()->current()->getInfos()->getName());
-    } else {
-        runtimeContext.currentModelName = QObject::tr("none");
-    }
-
-    if (draft.includeModelText && _ui != nullptr && _ui->TextCodeEditor != nullptr) {
-        runtimeContext.currentModelSimulanguage = trimmedTail(_ui->TextCodeEditor->toPlainText(), 64000);
-    }
-    if (_ui != nullptr && _ui->textEdit_Console != nullptr) {
-        runtimeContext.consoleTail = trimmedTail(_ui->textEdit_Console->toPlainText());
-    }
-    if (_ui != nullptr && _ui->textEdit_Simulation != nullptr) {
-        runtimeContext.simulationTail = trimmedTail(_ui->textEdit_Simulation->toPlainText());
-    }
-    if (_ui != nullptr && _ui->textEdit_Reports != nullptr) {
-        runtimeContext.reportsTail = trimmedTail(_ui->textEdit_Reports->toPlainText());
-    }
-    if (draft.includeLogTail) {
-        runtimeContext.processLogTail =
-                readTextFileTail(QDir::current().absoluteFilePath(QStringLiteral("crashesAndLogs.log")));
-    }
-    if (draft.includeScreenshot) {
-        runtimeContext.screenshotPngBase64 = captureWidgetScreenshotPng(_ownerWidget).toBase64();
-    }
-
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    const IssueReportSubmissionResult result = IssueReportRelayService::submit(draft, runtimeContext);
-    QApplication::restoreOverrideCursor();
-
-    if (!result.success) {
-        QMessageBox::warning(_ownerWidget,
-                             QObject::tr("Report Issue"),
-                             QObject::tr("The report could not be submitted.\n\n%1")
-                                 .arg(result.errorMessage));
-        return;
-    }
-
-    QMessageBox box(_ownerWidget);
-    box.setIcon(QMessageBox::Information);
-    box.setWindowTitle(QObject::tr("Issue submitted"));
-    box.setText(QObject::tr("The report was delivered to the configured relay and a GitHub issue was created."));
-    if (!result.issueUrl.isEmpty()) {
-        box.setInformativeText(QObject::tr("Issue #%1 created.\n\nOpen the issue in your browser?")
-                                   .arg(result.issueNumber > 0 ? QString::number(result.issueNumber)
-                                                               : QObject::tr("unknown")));
-        QPushButton* openButton = box.addButton(QObject::tr("Open Issue"), QMessageBox::AcceptRole);
-        box.addButton(QMessageBox::Close);
-        box.exec();
-        if (box.clickedButton() == openButton) {
-            QDesktopServices::openUrl(QUrl(result.issueUrl));
-        }
-    } else {
-        box.setInformativeText(QObject::tr("The relay did not return a browseable issue URL."));
-        box.addButton(QMessageBox::Close);
-        box.exec();
-    }
+    dialog.setRelayAvailable(IssueReportRelayService::isEndpointConfigured());
+    dialog.exec();
 }
 
 // Preserve the existing find dialog workflow using the current scene.

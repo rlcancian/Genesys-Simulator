@@ -1,5 +1,8 @@
 # User documentation
 
+The GUI issue reporting workflow and privacy protections are documented in
+[ReportIssue.md](ReportIssue.md).
+
 This directory contains user-facing documentation configuration for GenESyS.
 
 The current EFSM Network editor workflow is documented in

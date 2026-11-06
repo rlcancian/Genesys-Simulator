@@ -17,6 +17,7 @@ file(GLOB_RECURSE GENESYS_QT_GUI_SOURCES CONFIGURE_DEPENDS
 )
 
 list(FILTER GENESYS_QT_GUI_SOURCES EXCLUDE REGEX "/build/")
+list(FILTER GENESYS_QT_GUI_SOURCES EXCLUDE REGEX "/tests/")
 list(FILTER GENESYS_QT_GUI_SOURCES EXCLUDE REGEX "/qcustomplot\\.cpp$")
 list(FILTER GENESYS_QT_GUI_SOURCES EXCLUDE REGEX "/tools/dataanalyzer/DataAnalyzerWindow\\.cpp$")
 list(FILTER GENESYS_QT_GUI_SOURCES EXCLUDE REGEX "/tools/optimizer/OptimizerWindow\\.cpp$")
@@ -89,3 +90,27 @@ install(FILES ${CMAKE_SOURCE_DIR}/packaging/linux/icons/hicolor/scalable/apps/io
 )
 
 add_custom_target(genesys_gui DEPENDS genesys_gui_application)
+
+
+# Focused QtTest suite without the full simulation kernel or application main().
+option(GENESYS_BUILD_GUI_ISSUE_TESTS "Build focused GUI issue reporting tests" OFF)
+if(GENESYS_BUILD_GUI_ISSUE_TESTS)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+
+    add_executable(genesys_gui_issue_tests
+        tests/test_issue_reporting.cpp
+        dialogs/DialogReportIssue.cpp
+        services/IssueReportRelayService.cpp
+    )
+    set_target_properties(genesys_gui_issue_tests PROPERTIES AUTOMOC ON)
+    target_compile_features(genesys_gui_issue_tests PRIVATE cxx_std_23)
+    target_link_libraries(genesys_gui_issue_tests PRIVATE
+        Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::Test
+    )
+    add_test(NAME genesys_gui_issue_tests COMMAND genesys_gui_issue_tests)
+    set_tests_properties(genesys_gui_issue_tests PROPERTIES
+        LABELS "gui;report-issue"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        TIMEOUT 30
+    )
+endif()
