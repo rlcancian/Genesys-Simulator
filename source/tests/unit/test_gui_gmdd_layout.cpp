@@ -1,4 +1,5 @@
 #include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
@@ -24,6 +25,8 @@
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "applications/gui/genesys/actions/DecideConditionUndoCommand.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
@@ -111,6 +114,119 @@ TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
     decide->addConditions("B > 0");
     decide->addConditions("C > 0");
     EXPECT_EQ(countPorts(decide), 4);
+}
+
+TEST(DecideConditionUndo, RemoveUndoRedoRestoresOnlyTheRemovedConnectionAndElse) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* decide = new Decide(model, "UndoDecide");
+    decide->addConditions("first");
+    decide->addConditions("second");
+    auto* removedTarget = new Dispose(model, "RemovedTarget");
+    auto* elseTarget = new Dispose(model, "ElseTarget");
+    Plugin* decidePlugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    Plugin* disposePlugin = simulator.getPluginManager()->find(Util::TypeOf<Dispose>());
+    ASSERT_NE(decidePlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphicalDecide = new GraphicalModelComponent(decidePlugin, decide, QPointF(100, 100), Qt::blue);
+    auto* graphicalRemovedTarget = new GraphicalModelComponent(disposePlugin, removedTarget, QPointF(400, 100), Qt::blue);
+    auto* graphicalElseTarget = new GraphicalModelComponent(disposePlugin, elseTarget, QPointF(400, 300), Qt::blue);
+    scene.addItem(graphicalDecide);
+    scene.addItem(graphicalRemovedTarget);
+    scene.addItem(graphicalElseTarget);
+    scene.getGraphicalModelComponents()->append(graphicalDecide);
+    scene.getGraphicalModelComponents()->append(graphicalRemovedTarget);
+    scene.getGraphicalModelComponents()->append(graphicalElseTarget);
+
+    auto* removedConnection = new Connection{removedTarget, {0}};
+    auto* elseConnection = new Connection{elseTarget, {0}};
+    decide->getConnectionManager()->insertAtPort(0, removedConnection);
+    decide->getConnectionManager()->insertAtPort(2, elseConnection);
+    scene.addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(0),
+        graphicalRemovedTarget->getGraphicalInputPorts().at(0), 0, 0);
+    scene.addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(2),
+        graphicalElseTarget->getGraphicalInputPorts().at(0), 0, 0);
+
+    decide->editConditionRemoveAt(0);
+    unsigned int changedIndex = 0;
+    bool inserted = true;
+    ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
+    EXPECT_EQ(changedIndex, 0u);
+    EXPECT_FALSE(inserted);
+    graphicalDecide->applyDecideConditionPortEdit(changedIndex, inserted);
+    Decide::ConditionEdit edit;
+    ASSERT_TRUE(decide->takeConditionEdit(edit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphicalDecide, edit));
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 2);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), elseConnection);
+    EXPECT_EQ(scene.getGraphicalConnections()->size(), 1);
+
+    undoStack.undo();
+    ASSERT_EQ(decide->getConditions()->size(), 2u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 3);
+    ASSERT_NE(decide->getConnectionManager()->getConnectionAtPort(0), nullptr);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0)->component, removedTarget);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), elseConnection);
+    ASSERT_EQ(scene.getGraphicalConnections()->size(), 2);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->at(0))->getDestinationGraphicalComponent(), graphicalElseTarget);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->at(1))->getDestinationGraphicalComponent(), graphicalRemovedTarget);
+
+    undoStack.redo();
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 2);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), elseConnection);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), nullptr);
+    ASSERT_EQ(scene.getGraphicalConnections()->size(), 1);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->front())->getDestinationGraphicalComponent(), graphicalElseTarget);
+}
+
+TEST(DecideConditionUndo, InsertAndReplaceUndoRedoRestoreOrderedConditionTextAndPorts) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* decide = new Decide(model, "UndoInsertDecide");
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 800, 600);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(plugin, decide, QPointF(100, 100), Qt::blue);
+    scene.addItem(graphical);
+    scene.getGraphicalModelComponents()->append(graphical);
+
+    decide->editConditionInsertAt(0, "x > 0");
+    unsigned int changedIndex = 0;
+    bool inserted = false;
+    ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
+    graphical->applyDecideConditionPortEdit(changedIndex, inserted);
+    Decide::ConditionEdit insertEdit;
+    ASSERT_TRUE(decide->takeConditionEdit(insertEdit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphical, insertEdit));
+    ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+    undoStack.undo();
+    EXPECT_TRUE(decide->getConditions()->empty());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), 1);
+    undoStack.redo();
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+
+    decide->editConditionReplaceAt(0, "x >= 0");
+    Decide::ConditionEdit replaceEdit;
+    ASSERT_TRUE(decide->takeConditionEdit(replaceEdit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphical, replaceEdit));
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x >= 0");
+    undoStack.undo();
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
+    undoStack.redo();
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x >= 0");
 }
 
 namespace {
