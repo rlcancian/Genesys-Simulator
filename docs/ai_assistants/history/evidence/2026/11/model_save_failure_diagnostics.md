@@ -31,7 +31,7 @@ status: provisional
 
 | Operation | Method | Precondition | Failure | Historical observability | New signal |
 |---|---|---|---|---|---|
-| Record collection | PersistenceDefaultImpl2::save | valid objects and fields | put=false, exception, collision | ignored put return; collision traced only | SERlALIZER_DUPLICATE_NAME (GEN only); others still gaps |
+| Record collection | PersistenceDefaultImpl2::save | valid objects and fields | put=false, exception, collision | ignored put return; collision traced only | SERIALIZER_DUPLICATE_NAME (GEN only); others still gaps |
 | Open temporary | PersistenceDefaultImpl2::save | parent exists, destination accessible | open fails | generic temporary-file error | FILE_OPEN_FAILED; errno |
 | GEN classification | GenSerializer::dump | registered plugin/valid type | missing plugin/record | false without typename context | SERIALIZER_PLUGIN_NOT_FOUND / SERIALIZER_RECORD_MISSING |
 | GEN stream writes | GenSerializer::dump | valid stream | bad/fail bit | logical false or success depending pass | SERIALIZER_STREAM_WRITE_FAILED |
@@ -44,7 +44,7 @@ status: provisional
 | GUI overlay | GraphicalModelSerializer | valid scene items | missing drawing/group entry, bad stream | heterogeneous generic text | GUI_SAVE_OVERLAY_SERIALIZATION_FAILED / WRITE_FAILED |
 | GUI flush/close/rename | GraphicalModelSerializer | overlay complete | filesystem/Qt failure | generic UI message | GUI_SAVE_OVERLAY_FLUSH_FAILED / CLOSE_FAILED / GUI_SAVE_RENAME_FAILED |
 
-Current blind spots: prepare-time exceptions; non-GEN put failures; unhandled GUI precondition failure; overlapping calls to save; controlled close-only failure; coverage of all graphical object categories.
+Current blind spots: prepare-time exceptions; swallowed SaveInstance errors without fail propagation; non-GEN put failures are now logged but their return does not block save; unhandled GUI precondition failure; overlapping calls to save; controlled close-only failure; coverage of all graphical object categories.
 
 ## 4. Confirmed code defects versus field symptoms
 
@@ -52,7 +52,8 @@ Current blind spots: prepare-time exceptions; non-GEN put failures; unhandled GU
 2. **Confirmed, code correctness:** GenSerializer::dump() overwrote the result of the DataDefinition pass with the ModelComponent pass. This could hide an earlier error if the second pass succeeds. A missing plugin often causes both passes to fail, so the bug's responsibility for observed incidents is unproven.
 3. **Confirmed, data-loss risk:** GenSerializer::put() stores records in a name-keyed map. A duplicate name emits traceError but replaces the first record. Previously covered in test_save_name_collision.cpp; occurrence in private failing models unknown.
 4. **Confirmed, design risk:** both kernel and GUI use deterministic filename+".tmp" and have no visible per-destination serialization lock. Concurrent or reentrant collision is plausible, but no real overlapping save has been observed.
-5. **Confirmed, save preparation:** _createInternalDataDefinitions() runs for each save; its iteration restarts when DataDefinition classnames grow. Idempotence was previously tested in limited configurations, not all remove/reinsert/recreate paths.
+5. **Confirmed, silent record-save exception:** ModelComponent::SaveInstance and ModelDataDefinition::SaveInstance catch std::exception thrown from _saveInstance, trace an error, but cannot return failure to PersistenceDefaultImpl2. The latter may put a partial record and still return success. The new stage trace SERIALIZER_RECORD_SAVE_REPORTED_ERROR tracks the per-object error counter but does not change this historical semantic contract; direct causal link to maintainer incidents remains unknown.
+6. **Confirmed, save preparation:** _createInternalDataDefinitions() runs for each save; its iteration restarts when DataDefinition classnames grow. Idempotence was previously tested in limited configurations, not all remove/reinsert/recreate paths.
 
 No actual instance of the maintainer's recurrent save error has yet been independently reproduced.
 
@@ -61,6 +62,7 @@ No actual instance of the maintainer's recurrent save error has yet been indepen
 - Kernel stages produce SAVE_DIAGNOSTIC with code, stage, format, destination, temp path, dump result, stream state and errno when attributable to open/rename/close. The code differentiates healthy-stream serializer false from an I/O failure.
 - GenSerializer emits category, typename, ID and lookup stage for unknown plugins. The first pass no longer loses its result; stream errors and duplicate-name collisions receive stable identifiers.
 - GUI reports GUI_SAVE_KERNEL_FAILED without obscuring earlier kernel/serializer errors, and stages GUI overlay failures separately.
+- During data/component collection, a before/after count of TraceManager error messages identifies SaveInstance-reported failures by category, typename, ID and stage. Rejected Serializer::put results are now labelled SERIALIZER_RECORD_REGISTRATION_FAILED; to avoid changing production semantics in this observational phase, these logs do not force a failed save. This remains a data-integrity limitation.
 - On failed opening of an existing temporary *directory*, the kernel does not attempt to remove a path it did not successfully open. No new logging library or persisted format.
 - No general persistence redesign, ModelCheck gate or DataDefinition pruning.
 
@@ -75,6 +77,8 @@ Kernel target genesys_test_persistence_atomic_save now includes source/tests/uni
 - RejectedOutputStreamIsReportedAsWriteFailure: direct streambuf failure;
 - RepeatedIncompleteSaveAndGuiKernelIntermediateWork: no ModelCheck, repeated .gui.tmp kernel path with nested temp;
 - DeviceFullInducesStreamFailureWithoutFillingDisk: private test symlink to Linux /dev/full, no real disk filling.
+- TransferGraphDeletionAndRecreationRemainsSavableWithoutModelCheck: LabelDefinition ownership, Goto detachment, deleted receiver, recreated receiver and consecutive saves.
+- ConsolePluginInsertRemoveReinsertAcrossMultipleSaves: Create→Dispose connected flow, isolated Wait, Signal and CppForG insertion/deletion/recreation, saving between every step without executing model.
 
 Qt target genesys_test_gui_gmdd_layout now includes source/tests/unit/test_gui_model_save_diagnostics.cpp, with:
 - RepeatedIncompleteGuiSaveUsesTwoCleanTemporaryLevels: real .gui save, both temp levels disappear, model remains incomplete;
