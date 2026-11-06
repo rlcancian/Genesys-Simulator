@@ -3,13 +3,17 @@
 #include "../services/IssueReportRelayService.h"
 
 #include <QApplication>
+#include <QClipboard>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
+#include <QPointer>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSignalSpy>
@@ -80,6 +84,7 @@ public:
     int postCount = 0;
     QNetworkReply::NetworkError failure = QNetworkReply::NoError;
     QNetworkRequest lastRequest;
+    QPointer<QNetworkReply> lastReply;
 
 protected:
     QNetworkReply* createRequest(Operation op, const QNetworkRequest& request,
@@ -87,7 +92,8 @@ protected:
         ++postCount;
         lastRequest = request;
         if (outgoing != nullptr) payload = outgoing->readAll();
-        return new FakeReply(request, op, response, status, delayMs, failure, this);
+        lastReply = new FakeReply(request, op, response, status, delayMs, failure, this);
+        return lastReply;
     }
 };
 
@@ -160,6 +166,19 @@ private slots:
         QVERIFY(report.reproductionSteps.isEmpty());
     }
 
+    void formValidationDoesNotOverlapDescription() {
+        DialogReportIssue dialog;
+        dialog.show();
+        QCoreApplication::processEvents();
+
+        auto* validation = dialog.findChild<QLabel*>(QStringLiteral("issueValidation"));
+        auto* buttons = dialog.findChild<QDialogButtonBox*>();
+        QVERIFY(validation != nullptr);
+        QVERIFY(buttons != nullptr);
+        QVERIFY(description(dialog)->geometry().bottom() < validation->geometry().top());
+        QVERIFY(validation->geometry().bottom() < buttons->geometry().top());
+    }
+
     void cancelDoesNotSubmit() {
         FakeNetworkManager manager;
         bool opened = false;
@@ -206,6 +225,25 @@ private slots:
         const auto empty = IssueReportBrowserService::build(d);
         QVERIFY(empty.prefill == IssueReportBrowserService::Prefill::AllRequiresPaste);
         QVERIFY(empty.url.query().isEmpty());
+    }
+
+    void oversizedBrowserReportCopiesDescriptionForManualPaste() {
+        QUrl opened;
+        DialogReportIssue dialog(nullptr, nullptr, [&opened](const QUrl& url) {
+            opened = url;
+            return true;
+        });
+        title(dialog)->setText(QStringLiteral("Long report"));
+        const QString longDescription(5000, QChar('x'));
+        description(dialog)->setPlainText(longDescription);
+        QTimer::singleShot(0, &closeMessageBox);
+
+        submit(dialog)->click();
+
+        QCOMPARE(opened.path(), QStringLiteral("/rlcancian/Genesys-Simulator/issues/new"));
+        QVERIFY(!QUrlQuery(opened).hasQueryItem(QStringLiteral("body")));
+        QVERIFY(QApplication::clipboard()->text().endsWith(longDescription));
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
     }
 
     void browserFailureKeepsDraft() {
@@ -276,6 +314,7 @@ private slots:
         for (const QByteArray bad : {
                 QByteArray("http://relay.example.test/api"),
                 QByteArray("https://relay.example.test/path#fragment"),
+                QByteArray("https://relay.example.test/api?token=secret"),
                 QByteArray("https://user:password@relay.example.test/api"),
                 QByteArray("https://")}) {
             qputenv("GENESYS_REPORT_ISSUE_RELAY_URL", bad);
@@ -335,6 +374,121 @@ private slots:
         QTimer::singleShot(110, &closeMessageBox);
         QTRY_VERIFY_WITH_TIMEOUT(submit(dialog)->isEnabled(), 2000);
         QCOMPARE(dialog.draft().summary, QStringLiteral("Test Body"));
+    }
+
+    void cancelDuringRelayAbortsAndClosesForm() {
+        qputenv("GENESYS_REPORT_ISSUE_RELAY_URL",
+                "https://relay.example.test/api/report");
+        qputenv("GENESYS_REPORT_ISSUE_TIMEOUT_MS", "10000");
+        FakeNetworkManager manager;
+        manager.delayMs = -1;
+
+        DialogReportIssue dialog(nullptr, &manager);
+        dialog.setRelayAvailable(true);
+        title(dialog)->setText(QStringLiteral("Keep title"));
+        description(dialog)->setPlainText(QStringLiteral("Keep description"));
+        submit(dialog)->click();
+        QCOMPARE(manager.postCount, 1);
+        auto* buttons = dialog.findChild<QDialogButtonBox*>();
+        QVERIFY(buttons != nullptr);
+        auto* cancel = buttons->button(QDialogButtonBox::Cancel);
+        QVERIFY(cancel != nullptr);
+
+        cancel->click();
+
+        QCOMPARE(dialog.result(), int(QDialog::Rejected));
+        QTRY_VERIFY_WITH_TIMEOUT(manager.lastReply.isNull(), 1000);
+        QCOMPARE(manager.postCount, 1);
+        QCOMPARE(dialog.draft().title, QStringLiteral("Keep title"));
+        QCOMPARE(dialog.draft().summary, QStringLiteral("Keep description"));
+        for (QWidget* widget : QApplication::topLevelWidgets()) {
+            QVERIFY(qobject_cast<QMessageBox*>(widget) == nullptr);
+        }
+    }
+
+    void windowCloseDuringRelayAbortsAndClosesForm() {
+        qputenv("GENESYS_REPORT_ISSUE_RELAY_URL",
+                "https://relay.example.test/api/report");
+        qputenv("GENESYS_REPORT_ISSUE_TIMEOUT_MS", "10000");
+        FakeNetworkManager manager;
+        manager.delayMs = -1;
+
+        DialogReportIssue dialog(nullptr, &manager);
+        dialog.setRelayAvailable(true);
+        title(dialog)->setText(QStringLiteral("Keep title"));
+        description(dialog)->setPlainText(QStringLiteral("Keep description"));
+        submit(dialog)->click();
+        QCOMPARE(manager.postCount, 1);
+        QVERIFY(manager.lastReply != nullptr);
+
+        dialog.close();
+
+        QVERIFY(!dialog.isVisible());
+        QCOMPARE(dialog.result(), int(QDialog::Rejected));
+        QTRY_VERIFY_WITH_TIMEOUT(manager.lastReply.isNull(), 1000);
+        QCOMPARE(dialog.draft().title, QStringLiteral("Keep title"));
+        QCOMPARE(dialog.draft().summary, QStringLiteral("Keep description"));
+        for (QWidget* widget : QApplication::topLevelWidgets()) {
+            QVERIFY(qobject_cast<QMessageBox*>(widget) == nullptr);
+        }
+    }
+
+    void receiverDestructionAbortsAndCleansUpReplyWithoutCallback() {
+        qputenv("GENESYS_REPORT_ISSUE_RELAY_URL",
+                "https://relay.example.test/api/report");
+        qputenv("GENESYS_REPORT_ISSUE_TIMEOUT_MS", "10000");
+        FakeNetworkManager manager;
+        manager.delayMs = -1;
+        auto* receiver = new QObject();
+        bool called = false;
+
+        IssueReportRelayService::submitAsync(
+            sample(), {}, &manager, receiver,
+            [&](const auto&) { called = true; });
+        QVERIFY(manager.lastReply != nullptr);
+        delete receiver;
+
+        QTRY_VERIFY_WITH_TIMEOUT(manager.lastReply.isNull(), 1000);
+        QVERIFY(!called);
+    }
+
+    void oversizedRelayResponseIsRejected() {
+        const QByteArray paddedResponse = kCreated + QByteArray(70 * 1024, ' ');
+        const auto result = IssueReportRelayService::parseResponse(200, paddedResponse);
+        QVERIFY(!result.success);
+        QVERIFY(result.errorMessage.contains(QStringLiteral("too large"), Qt::CaseInsensitive));
+
+        qputenv("GENESYS_REPORT_ISSUE_RELAY_URL",
+                "https://relay.example.test/api/report");
+        FakeNetworkManager manager;
+        manager.response = paddedResponse;
+        bool called = false;
+        IssueReportSubmissionResult transportResult;
+        IssueReportRelayService::submitAsync(
+            sample(), {}, &manager, this,
+            [&](const auto& value) { transportResult = value; called = true; });
+        QTRY_VERIFY_WITH_TIMEOUT(called, 1000);
+        QVERIFY(!transportResult.success);
+        QVERIFY(transportResult.errorMessage.contains(QStringLiteral("too large"), Qt::CaseInsensitive));
+    }
+
+    void oversizedRelayDraftIsNotSent() {
+        qputenv("GENESYS_REPORT_ISSUE_RELAY_URL",
+                "https://relay.example.test/api/report");
+        FakeNetworkManager manager;
+        auto draft = sample();
+        draft.summary = QString(70000, QChar('x'));
+        bool called = false;
+        IssueReportSubmissionResult result;
+
+        IssueReportRelayService::submitAsync(
+            draft, {}, &manager, this,
+            [&](const auto& value) { result = value; called = true; });
+
+        QVERIFY(called);
+        QCOMPARE(manager.postCount, 0);
+        QVERIFY(!result.success);
+        QVERIFY(result.errorMessage.contains(QStringLiteral("too large"), Qt::CaseInsensitive));
     }
 
     void relayMockSuccessfulResponse() {

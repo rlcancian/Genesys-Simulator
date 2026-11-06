@@ -57,6 +57,8 @@ struct IssueReportSubmissionResult {
 class IssueReportRelayService {
 public:
     using Completion = std::function<void(const IssueReportSubmissionResult&)>;
+    static constexpr qsizetype MaxSubmissionTextCharacters = 65536;
+    static constexpr qsizetype MaxResponseBytes = 64 * 1024;
 
     static QString configuredEndpoint();
     static QString optionalClientKey();
@@ -64,11 +66,11 @@ public:
     static bool isEndpointConfigured(QString* reason = nullptr);
 
     /** The caller owns manager and receiver; callback is suppressed if receiver dies. */
-    static void submitAsync(const IssueReportDraft& draft,
-                            const IssueReportRuntimeContext& runtimeContext,
-                            QNetworkAccessManager* manager,
-                            QObject* receiver,
-                            Completion completion);
+    static QNetworkReply* submitAsync(const IssueReportDraft& draft,
+                                      const IssueReportRuntimeContext& runtimeContext,
+                                      QNetworkAccessManager* manager,
+                                      QObject* receiver,
+                                      Completion completion);
 
     /** Pure response verification, also used by network-mock tests. */
     static IssueReportSubmissionResult parseResponse(int httpStatus,

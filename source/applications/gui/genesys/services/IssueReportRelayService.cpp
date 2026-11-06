@@ -7,6 +7,8 @@
 #include <QNetworkRequest>
 #include <QTimer>
 #include <QUrl>
+#include <algorithm>
+#include <memory>
 
 namespace {
 void insertIfNotEmpty(QJsonObject& object, const QString& key, const QString& value) {
@@ -32,10 +34,11 @@ int IssueReportRelayService::requestTimeoutMs() {
 
 bool IssueReportRelayService::isEndpointConfigured(QString* reason) {
     const QString endpoint = configuredEndpoint();
-    const QUrl url(endpoint);
+    const QUrl url(endpoint, QUrl::StrictMode);
     const bool valid = !endpoint.isEmpty() && url.isValid() && !url.host().isEmpty()
                        && url.scheme() == QStringLiteral("https")
-                       && url.userInfo().isEmpty() && url.fragment().isEmpty();
+                       && url.userInfo().isEmpty() && !url.hasQuery()
+                       && url.fragment().isEmpty();
     if (reason != nullptr) {
         *reason = valid ? QString()
                         : QStringLiteral("A valid HTTPS report relay is not configured.");
@@ -95,7 +98,12 @@ IssueReportSubmissionResult IssueReportRelayService::parseResponse(
     int httpStatus, const QByteArray& response, QNetworkReply::NetworkError error, bool timedOut) {
     IssueReportSubmissionResult result;
     result.httpStatus = httpStatus;
-    result.responseBody = QString::fromUtf8(response.left(65536));
+    result.responseBody = QString::fromUtf8(response.left(MaxResponseBytes));
+
+    if (response.size() > MaxResponseBytes) {
+        result.errorMessage = QStringLiteral("The report service response was too large.");
+        return result;
+    }
 
     if (timedOut) {
         result.errorMessage = QStringLiteral(
@@ -156,15 +164,24 @@ IssueReportSubmissionResult IssueReportRelayService::parseResponse(
     return result;
 }
 
-void IssueReportRelayService::submitAsync(
+QNetworkReply* IssueReportRelayService::submitAsync(
     const IssueReportDraft& draft, const IssueReportRuntimeContext& context,
     QNetworkAccessManager* manager, QObject* receiver, Completion completion) {
     QString reason;
+    if (!completion) {
+        return nullptr;
+    }
+    if (draft.title.size() + draft.summary.size() > MaxSubmissionTextCharacters) {
+        IssueReportSubmissionResult result;
+        result.errorMessage = QStringLiteral("The report text is too large for the configured service.");
+        completion(result);
+        return nullptr;
+    }
     if (!isEndpointConfigured(&reason) || manager == nullptr || receiver == nullptr) {
         IssueReportSubmissionResult result;
         result.errorMessage = reason.isEmpty() ? QStringLiteral("Report service unavailable.") : reason;
         completion(result);
-        return;
+        return nullptr;
     }
 
     QNetworkRequest request{QUrl(configuredEndpoint())};
@@ -180,6 +197,24 @@ void IssueReportRelayService::submitAsync(
     }
 
     QNetworkReply* reply = manager->post(request, serializePayload(draft, context));
+    auto response = std::make_shared<QByteArray>();
+    auto responseTooLarge = std::make_shared<bool>(false);
+    const auto drainResponse = [reply, response, responseTooLarge]() {
+        while (reply->bytesAvailable() > 0 && !*responseTooLarge) {
+            const qint64 remaining = MaxResponseBytes - response->size();
+            const QByteArray chunk = reply->read(std::min<qint64>(remaining + 1, 8192));
+            if (chunk.isEmpty()) {
+                break;
+            }
+            if (chunk.size() > remaining) {
+                *responseTooLarge = true;
+                reply->abort();
+                break;
+            }
+            response->append(chunk);
+        }
+    };
+    QObject::connect(reply, &QIODevice::readyRead, reply, drainResponse);
     auto* timeout = new QTimer(reply);
     timeout->setSingleShot(true);
     QObject::connect(timeout, &QTimer::timeout, reply, [reply]() {
@@ -187,14 +222,33 @@ void IssueReportRelayService::submitAsync(
         reply->abort();
     });
     QObject::connect(reply, &QNetworkReply::finished, receiver,
-                     [reply, timeout, completion = std::move(completion)]() {
+                     [reply, timeout, response, responseTooLarge, drainResponse,
+                      completion = std::move(completion)]() {
         timeout->stop();
-        const auto result = parseResponse(
-            reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(),
-            reply->readAll(), reply->error(),
-            reply->property("genesysIssueTimedOut").toBool());
+        drainResponse();
+        if (reply->property("genesysIssueReceiverGone").toBool()) {
+            reply->deleteLater();
+            return;
+        }
+        IssueReportSubmissionResult result;
+        if (*responseTooLarge) {
+            result.errorMessage = QStringLiteral("The report service response was too large.");
+        } else {
+            result = parseResponse(
+                reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt(),
+                *response, reply->error(),
+                reply->property("genesysIssueTimedOut").toBool());
+        }
         reply->deleteLater();
         completion(result);
     });
+    QObject::connect(receiver, &QObject::destroyed, reply, [reply]() {
+        reply->setProperty("genesysIssueReceiverGone", true);
+        if (!reply->isFinished()) {
+            reply->abort();
+        }
+        reply->deleteLater();
+    });
     timeout->start(requestTimeoutMs());
+    return reply;
 }

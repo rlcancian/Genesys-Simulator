@@ -2,6 +2,7 @@
 #define DIALOGREPORTISSUE_H
 
 #include <QDialog>
+#include <QPointer>
 #include <functional>
 #include "../services/IssueReportRelayService.h"
 
@@ -33,6 +34,7 @@ private:
     void submit();
     void continueOnGitHub();
     void handleRelayResult(const IssueReportSubmissionResult& result);
+    void cancelSubmission();
 
     QComboBox* _categoryCombo = nullptr;
     QLineEdit* _titleEdit = nullptr;
@@ -41,9 +43,11 @@ private:
     QLabel* _validationLabel = nullptr;
     QPushButton* _submitButton = nullptr;
     QNetworkAccessManager* _networkManager = nullptr;
+    QPointer<QNetworkReply> _activeReply;
     std::function<bool(const QUrl&)> _browserOpener;
     bool _relayAvailable = false;
     bool _submitting = false;
+    bool _cancelRequested = false;
 };
 
 #endif // DIALOGREPORTISSUE_H

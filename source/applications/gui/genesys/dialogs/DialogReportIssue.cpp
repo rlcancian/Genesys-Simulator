@@ -28,8 +28,8 @@ DialogReportIssue::DialogReportIssue(QWidget* parent,
                                    : [](const QUrl& url) { return QDesktopServices::openUrl(url); }) {
     setWindowTitle(tr("Report Issue"));
     setModal(true);
-    resize(540, 335);
-    setMinimumWidth(440);
+    resize(540, 420);
+    setMinimumSize(440, 390);
 
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(14, 14, 14, 14);
@@ -127,6 +127,7 @@ void DialogReportIssue::submit() {
     }
 
     _submitting = true;
+    _cancelRequested = false;
     updateSubmitButton();
 
     IssueReportRuntimeContext context;
@@ -134,9 +135,13 @@ void DialogReportIssue::submit() {
     context.applicationVersion = QCoreApplication::applicationVersion();
     context.qtVersion = QString::fromLatin1(qVersion());
 
-    IssueReportRelayService::submitAsync(
+    _activeReply = IssueReportRelayService::submitAsync(
         draft(), context, _networkManager, this,
         [this](const IssueReportSubmissionResult& result) {
+            _activeReply = nullptr;
+            if (_cancelRequested) {
+                return;
+            }
             _submitting = false;
             updateSubmitButton();
             handleRelayResult(result);
@@ -213,15 +218,24 @@ void DialogReportIssue::handleRelayResult(const IssueReportSubmissionResult& res
 }
 
 void DialogReportIssue::reject() {
-    if (!_submitting) {
-        QDialog::reject();
-    }
+    cancelSubmission();
+    QDialog::reject();
 }
 
 void DialogReportIssue::closeEvent(QCloseEvent* event) {
-    if (_submitting) {
-        event->ignore();
+    cancelSubmission();
+    QDialog::closeEvent(event);
+}
+
+void DialogReportIssue::cancelSubmission() {
+    if (!_submitting) {
         return;
     }
-    QDialog::closeEvent(event);
+    _cancelRequested = true;
+    _submitting = false;
+    QNetworkReply* reply = _activeReply.data();
+    updateSubmitButton();
+    if (reply != nullptr && !reply->isFinished()) {
+        reply->abort();
+    }
 }
