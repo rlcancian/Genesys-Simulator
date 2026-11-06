@@ -223,6 +223,7 @@ endif()
 # previous good file.
 add_executable(genesys_test_persistence_atomic_save
     unit/test_persistence_atomic_save.cpp
+    unit/test_model_save_diagnostics.cpp
 )
 
 target_include_directories(genesys_test_persistence_atomic_save
