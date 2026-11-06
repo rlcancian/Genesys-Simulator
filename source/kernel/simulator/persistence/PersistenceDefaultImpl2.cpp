@@ -174,7 +174,7 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 			}
 			file.close();
 			if (!file.good()) {
-				// errno is meaningful here only when the underlying close reports failure.
+				// iostream close failure is represented by stream flags; no POSIX errno is fabricated.
 				if (failureCode.empty()) {
 					failureCode = "FILE_CLOSE_FAILED";
 					failureDetail = "stage=close stream_state=" + std::to_string(file.rdstate());
