@@ -350,3 +350,46 @@ Taken together, those examples show the current design intent:
 Figure~\ref{fig:model-component-concrete-example} is the practical bridge
 between the shared abstractions and the plugin classes that developers usually
 touch first.
+
+
+\section{Transfer endpoints: \texttt{LabelDefinition}, \texttt{Label}, and \texttt{Goto}}
+\label{sec:transfer-label-goto-user}
+
+The \texttt{Transfer} category groups the former \texttt{MaterialHandling}
+plugins and the new logical-address transfer mechanism. A
+\texttt{LabelDefinition} is the named logical destination, while the
+\texttt{Label} model component is its receiving endpoint. These are distinct
+plugin types: the former is a \texttt{ModelDataDefinition} and the latter a
+\texttt{ModelComponent}. Existing \texttt{Route} and \texttt{Sequence}
+destinations use \texttt{LabelDefinition} rather than the receiving component
+class.
+
+A \texttt{Label} has no conventional input connections and exactly one
+conventional output to its next component. It owns exactly one internal
+\texttt{LabelDefinition}, which records that \texttt{Label} as its sole
+receiver. A \texttt{Goto} has one conventional input, no conventional
+output, and an attached (non-owning) reference to the destination
+\texttt{LabelDefinition}. Multiple \texttt{Goto} components may address the
+same definition, but two \texttt{Label} receivers must not share one
+definition. Connect an ordinary upstream component to \texttt{Goto} and the
+receiving \texttt{Label} to its ordinary downstream component; do not draw a
+conventional connection between \texttt{Goto} and \texttt{Label}.
+
+For example, create \texttt{Create -> Goto} and, separately,
+\texttt{Label -> Dispose}, then choose the \texttt{Label}'s
+\texttt{LabelDefinition} in the \texttt{Goto} properties. Set
+\texttt{TimeDelayExpression} (default \texttt{0.0}) and
+\texttt{TimeDelayTimeUnit}. The expression is evaluated when the entity
+arrives at \texttt{Goto}; its nonnegative finite result is converted to
+the replication base time unit. The resulting transfer schedules an event
+for \texttt{Label}, which forwards the \emph{same} entity through its normal
+output connection. A negative or nonfinite delay is invalid and is not
+scheduled.
+
+Save and reload a newly created model before relying on it in an important
+simulation; the receiving association and attached destination must survive
+the round-trip. The superseded persisted data-definition type
+\texttt{Label} is not a supported backward-compatibility alias.
+The GUI port drawing, interactive property editing, and \texttt{.gui}
+round-trip for this newly implemented feature require explicit end-to-end
+validation before this feature is classified as supported.

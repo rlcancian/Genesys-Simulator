@@ -267,3 +267,43 @@ Those are future decisions. The current code base documents a static plugin
 architecture with build-time aggregation and a kernel-facing metadata layer.
 That is enough to support the repository as it exists today, and it is the
 correct foundation for the next phase of the work.
+
+
+\section{Transfer plugin identity and association contracts}
+\label{sec:plugin-transfer-label-goto}
+
+The \texttt{Transfer} category replaces \texttt{MaterialHandling} for both
+component and data-definition metadata. The static connector associates
+\texttt{labeldefinition.so}, \texttt{label.so}, and \texttt{goto.so} with
+three distinct plugin factories. Those \texttt{.so} strings are current
+registration identifiers; they do not establish standalone dynamically
+deployable shared libraries. The new data-definition typename is
+\texttt{LabelDefinition}; the old data-definition typename \texttt{Label}
+is intentionally not retained as a persistence alias. The \texttt{Label}
+typename now refers exclusively to the receiving model component.
+
+A receiving \texttt{Label} inserts its \texttt{LabelDefinition} into the
+internal-data association and therefore owns its lifetime. The definition's
+receiver pointer is a non-owning reference to this particular component.
+\texttt{Goto} uses an attached-data association, without ownership. The
+model registries and validation must enforce a unique receiving component,
+a registered destination, and no accidental references to a deleted
+definition. In addition, the receiver association must be reconstructed
+deterministically after loading rather than depending on the order in which
+components and data definitions appear in the persistence file.
+
+On dispatch, \texttt{Goto} evaluates its delay expression through the
+existing parser, validates the time unit, converts the finite nonnegative
+delay to the replication base time unit, and calls
+\texttt{LabelDefinition::sendEntity\allowbreak ToLabelComponent}. That method schedules
+the destination component event through the kernel. The receiving
+\texttt{Label} then forwards the unchanged entity over its sole conventional
+output. There is no direct \texttt{Goto}-to-\texttt{Label} graph edge and no
+new entity allocation in the transfer operation.
+
+The current focused Google Test target is
+\texttt{genesys\_test\_transfer\_label\_goto}. End-to-end validation must
+exercise the actual event calendar, \texttt{.gen} and \texttt{.gui}
+round-trips, removal/replacement of referenced definitions, and sanitizer
+diagnostics for ownership and lifetime. Source inspection or plugin metadata
+alone does not establish those properties.

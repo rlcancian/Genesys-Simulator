@@ -84,6 +84,31 @@ In this chapter, the reader must only recognize the existence and location of th
 
 In addition to the previous groups, the interface also offers inspection and support mechanisms: property panels, component trees and \textit{data definitions}, debug areas, report tabs and other auxiliary views. The presence of these resources reinforces an essential point: \textit{GenESyS} was not designed just to design models, but to study them in execution.
 
+\subsection{Reporting an Issue}
+\label{subsec:cap3_report_issue}
+
+The \textit{About} menu provides \textit{Report Issue}, a compact form for
+reporting bugs, suggestions, and questions to the GenESyS project. The user
+selects a report type (initially \textit{Bug}) and enters a required title
+(up to 256 characters) and description. Reproduction steps, expected behavior,
+and other relevant context may be written directly in the description rather
+than in separate fields.
+
+On ordinary installations, \textit{Continue on GitHub} opens the official
+issue form with the supplied title and description. The user must review the
+report, sign in if necessary, and submit it on GitHub; opening the browser
+does not create an issue. If the text exceeds a safe URL length, the GUI
+offers the full text through the clipboard and explains which fields must be
+pasted manually. The title and description may appear in browser history;
+the user should therefore avoid confidential information.
+
+Some managed installations provide a configured HTTPS report service and
+display \textit{Send Issue}. Only a positive confirmation with a GitHub issue
+identifier and the corresponding repository URL is presented as creation.
+No model content, SimulLang source, console logs, screenshots, file paths,
+or personal contact information are collected automatically. A failed
+attempt preserves the form and offers recovery without assuming success.
+
 \begin{table}[htbp]
 \centering
 \caption{Main Functional Groups of the GenESyS GUI.}

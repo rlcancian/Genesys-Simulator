@@ -16,15 +16,15 @@
 #include "kernel/simulator/Simulator.h"
 
 #include "plugins/components/Logic/Create.h"
-#include "plugins/components/MaterialHandling/Route.h"
-#include "plugins/components/MaterialHandling/Enter.h"
-#include "plugins/components/MaterialHandling/Leave.h"
+#include "plugins/components/Transfer/Route.h"
+#include "plugins/components/Transfer/Enter.h"
+#include "plugins/components/Transfer/Leave.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/Logic/Assign.h"
 
-#include "plugins/data/MaterialHandling/Sequence.h"
-#include "plugins/data/MaterialHandling/Station.h"
+#include "plugins/data/Transfer/Sequence.h"
+#include "plugins/data/Transfer/Station.h"
 
 Smart_Sequence::Smart_Sequence() {
 }

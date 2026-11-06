@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-11-05
+last_updated: 2026-11-06
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -526,19 +526,32 @@ This is the only approved source for work an AI agent may execute without a new 
 - Stop gates: specialized editor regression or required validation red.
 - Completion evidence: the main palette filters presentation only; ModelDataDefinitions remain registered and available to model and specialized-editor flows. Catalog and GUI regressions pass. See [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
 
+### AUTO-TRANSFER-001 — Transfer and LabelDefinition/Label/Goto implementation
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Environment: `github` and `local`
+- Authorization: direct maintainer instruction (2026-11-05); explicit handoff to validate and integrate into `WorkInProgress` (2026-11-06).
+- Branch/PR: `WiP202611/transfer-label-goto` / PR #564; merge commit `c1099e3e7eef781c90cece1110bc7b1b0b82c3fc`.
+- Scope: E1–E9 as specified by the maintainer; rename plugin categories and data identity, implement transfer components, static registration, GUI/property/persistence contracts, tests and manuals.
+- Non-goals: historic `.gen`/`.gui` type compatibility, dynamic plugin architecture, unrelated modernization, stable-branch promotion.
+- Acceptance: category migration preserves existing behavior; LabelDefinition has one owning Label; Goto schedules one entity-preserving transfer; Route/Sequence references remain coherent; GUI metadata/persistence, `.gen`/`.gui` roundtrips, documentation and current-head CI pass.
+- Validation: local Ubuntu 24.04 `gui-app`, `tests-unit` (2,004 passed; 4 disabled), `tests-kernel-unit` (2,004 passed; 4 disabled), `tests-smoke` (3/3), focused ASan/UBSan Transfer tests (16/16 with LSan disabled); all PR checks passed on head `020279a55db3f287bb900225d43f15e01add252b`.
+- Evidence: [transfer_label_goto_remote_progress.md](history/evidence/2026/11/transfer_label_goto_remote_progress.md), including the sanitizer leak limitation and distinction between automated GUI persistence validation and manual interaction.
+
 ## 5. Active bounded work
 
 ### AUTO-GUI-002 — Consolidate standalone GUI tools and installed launch paths
 
 - Priority: `P1`
-- Status: `running` (human-authorized 2026-11-05).
+- Status: `running` (human-authorized 2026-11-05; integration explicitly authorized 2026-11-06).
 - Issue: [#561](https://github.com/rlcancian/Genesys-Simulator/issues/561).
-- Branch: `WiP202611/standalone-tools-gui` from `WorkInProgress` SHA `987e145a36948cdf349840ab3350f576adfbd1fd`.
+- Branch/PR: `WiP202611/standalone-tools-gui` / PR #562; rebased by merge commit onto WorkInProgress `82cb4bdb28d698daea14dc01914797cb59f6d1ed`.
 - Scope: verify distinct Qt6/C++23 executables, independent `main()` and window lifecycle for Data Analyser, Optimizer and AI Assistant; audit Tools action wiring; fix executable discovery for installed GUI layouts; include optional tools in the Debian package when selected; preserve separate development presets and portable package behavior; add focused and end-to-end evidence where CI permits; inventory legacy window sources.
-- Acceptance: no in-process Tools windows, correct installed lookup, explicit missing-executable diagnostics, no unrelated executable launches, three independently testable targets, CI execution and honest unvalidated classifications, Draft PR only.
-- Non-goals: changing optimizer/statistical/AI algorithms, rewriting source-window architecture, adding IPC/model sharing, broad plugin changes, stable-branch promotion and merge.
+- Acceptance: no in-process Tools windows, correct installed lookup, explicit missing-executable diagnostics, no unrelated executable launches, three independently testable targets; installed menu launches verified by PID/window/close lifecycle; Debian package and required final-head checks pass.
+- Non-goals: changing optimizer/statistical/AI algorithms, rewriting source-window architecture, adding IPC/model sharing, broad plugin changes, stable-branch promotion.
 - Stop gates: unresolved trust boundary, incompatible installation policy, package branch conflict requiring scope decisions, or persistent required CI failures. Rollback: revert the bounded PR.
-- Parallel change warning: Draft PR #524 changes Debian packaging; reconcile its layout before integration. Draft PR #560 changes Report Issue UI.
+- Parallel change warning: PR #524 proposes a separate Debian packaging consolidation and remains outside this task.
 
 
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
@@ -822,3 +835,19 @@ Do not reopen without new evidence:
 A paused task becomes eligible only after the maintainer changes it to `ready` and confirms scope, validation and stop conditions.
 
 A task moves to `done` only after required validation is green, evidence is reviewed, the PR is merged, source-branch deletion is confirmed, issue/status/backlog/changelog are updated and remaining boundaries are explicit.
+
+
+## 9. Active bounded GUI work authorized by maintainer
+
+### AUTO-GUI-001 — Simplify and correct GUI Report Issue
+
+- Priority: P1
+- Status: done_confirmed
+- Environment: local + github
+- Authorization: direct maintainer instruction dated 2026-11-06 authorizes local audit, required validation, PR completion, and merge into WorkInProgress after all gates pass; this supersedes the 2026-11-05 no-merge limit.
+- Branch/PR: `WiP202611/report-issue-gui` / PR #560; merge commit `82cb4bdb28d698daea14dc01914797cb59f6d1ed`.
+- Scope: three-field issue report dialog, browser URL prefill without relay, optional secure asynchronous relay, strict issue confirmation, privacy, focused QtTest and CI, user/developer documentation, regenerated canonical manual PDF, and local/hosted validation.
+- Non-goals: no production relay deployment, GitHub secret/token provisioning, production test issue, new backend service, broad controller refactor, or promotion to stable branches.
+- Acceptance: title/description validation; bug as default; no automatic sensitive diagnostics; encoded and bounded GitHub URL; clipboard path for oversize content; explicit browser handoff; error preservation; verified HTTPS issue identity for relay; bounded asynchronous response handling/cancellation; mock HTTP status/timeout/security tests; GUI build and QtTest evidence; successful manual PDF regeneration and review; final-head required checks green.
+- Validation: 21 focused QtTests; local GUI build; unit/kernel (1,998 passed, 4 disabled each), smoke (3/3), canonical PDF build and page inspection; final PR-head required checks passed.
+- Evidence: `history/evidence/2026/11/2026-11-06_report_issue_pr560_validation.md`. A live relay-to-GitHub transaction remains unverified because no operational relay was available.

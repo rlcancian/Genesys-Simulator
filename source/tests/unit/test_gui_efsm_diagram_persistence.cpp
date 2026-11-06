@@ -31,6 +31,11 @@
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Create.h"
+#include "plugins/components/Transfer/Goto.h"
+#include "plugins/components/Transfer/Label.h"
+#include "plugins/data/Transfer/LabelDefinition.h"
+#include "kernel/simulator/essentialPlugins/EntityType.h"
+#include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 
 #include <gtest/gtest.h>
@@ -2311,4 +2316,54 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     EXPECT_DOUBLE_EQ(activation.getValue(0), 91.0);
     ASSERT_NE(restoredNetwork->getCurrentState(), nullptr);
     EXPECT_EQ(restoredNetwork->getCurrentState()->getName(), "PersistedDone");
+}
+
+TEST(TransferGuiPersistence, NewGotoLabelModelSurvivesGraphicalRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    model->getSimulation()->setReplicationLength(30.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+    model->getSimulation()->setNumberOfReplications(1);
+
+    auto* create = new Create(model, "CreateTransferGui");
+    auto* sender = new Goto(model, "GotoTransferGui");
+    auto* receiver = new Label(model, "LabelTransferGui");
+    auto* sink = new Dispose(model, "DisposeTransferGui");
+    auto* type = new EntityType(model, "TransferGuiType");
+    create->setEntityType(type);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1.0");
+    create->setMaxCreations(2);
+    create->connectTo(sender);
+    receiver->connectTo(sink);
+    sender->setLabelDefinition(receiver->getLabelDefinition());
+    sender->setTimeDelayExpression("3.0");
+    sender->setTimeDelayTimeUnit(Util::TimeUnit::second);
+    ASSERT_TRUE(model->check());
+
+    SerializerHarness harness(&simulator);
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString filename = dir.filePath("transfer.gui");
+    ASSERT_TRUE(harness.serializer->saveGraphicalModel(filename));
+    Model* restored = harness.serializer->loadGraphicalModel(filename.toStdString());
+    ASSERT_NE(restored, nullptr);
+
+    auto* loadedGoto = dynamic_cast<Goto*>(restored->getComponentManager()->find("GotoTransferGui"));
+    auto* loadedLabel = dynamic_cast<Label*>(restored->getComponentManager()->find("LabelTransferGui"));
+    ASSERT_NE(loadedGoto, nullptr);
+    ASSERT_NE(loadedLabel, nullptr);
+    ASSERT_NE(loadedLabel->getLabelDefinition(), nullptr);
+    EXPECT_EQ(loadedGoto->getLabelDefinition(), loadedLabel->getLabelDefinition());
+    EXPECT_EQ(loadedLabel->getLabelDefinition()->getEnterIntoLabelComponent(), loadedLabel);
+    EXPECT_EQ(loadedGoto->getTimeDelayExpression(), "3.0");
+    EXPECT_EQ(loadedGoto->getTimeDelayTimeUnit(), Util::TimeUnit::second);
+    EXPECT_EQ(loadedGoto->getConnectionManager()->size(), 0u);
+    EXPECT_EQ(loadedLabel->getConnectionManager()->size(), 1u);
+    ASSERT_TRUE(restored->check());
+    restored->getSimulation()->start();
+    EXPECT_TRUE(restored->getTracer()->errorMessages()->empty());
+    EXPECT_EQ(restored->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>()), 0u);
 }

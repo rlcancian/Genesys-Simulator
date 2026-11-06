@@ -14,12 +14,12 @@
 #include "kernel/simulator/persistence/GenSerializer.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
-#include "plugins/components/MaterialHandling/Route.h"
-#include "plugins/components/MaterialHandling/Enter.h"
-#include "plugins/components/MaterialHandling/Leave.h"
+#include "plugins/components/Transfer/Route.h"
+#include "plugins/components/Transfer/Enter.h"
+#include "plugins/components/Transfer/Leave.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/MaterialHandling/Station.h"
+#include "plugins/data/Transfer/Station.h"
 
 namespace {
 

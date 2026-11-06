@@ -2,11 +2,14 @@
 #define ISSUEREPORTRELAYSERVICE_H
 
 #include <QByteArray>
+#include <QNetworkReply>
 #include <QString>
+#include <functional>
 
-/**
- * @brief User-authored issue report collected by the GUI form before transport.
- */
+class QObject;
+class QNetworkAccessManager;
+
+/** Schema v1 report. Optional legacy fields remain for relay compatibility. */
 struct IssueReportDraft {
     QString categoryKey;
     QString categoryLabel;
@@ -18,13 +21,11 @@ struct IssueReportDraft {
     QString additionalContext;
     QString contactEmail;
     bool includeScreenshot = false;
-    bool includeLogTail = true;
+    bool includeLogTail = false;
     bool includeModelText = false;
 };
 
-/**
- * @brief Runtime diagnostics captured by the GUI after the user approves submission.
- */
+/** Only non-sensitive fields are populated by the simplified GUI. */
 struct IssueReportRuntimeContext {
     QString applicationName;
     QString applicationVersion;
@@ -39,9 +40,6 @@ struct IssueReportRuntimeContext {
     QByteArray screenshotPngBase64;
 };
 
-/**
- * @brief Relay submission outcome returned to the controller layer.
- */
 struct IssueReportSubmissionResult {
     bool success = false;
     int httpStatus = 0;
@@ -52,26 +50,37 @@ struct IssueReportSubmissionResult {
 };
 
 /**
- * @brief HTTPS client service that sends issue reports to a secure relay endpoint.
- *
- * Responsibilities:
- * - validate relay configuration from environment;
- * - serialize the GUI report and runtime diagnostics into JSON;
- * - submit the payload via HTTPS and normalize the relay response.
- *
- * Boundaries:
- * - it does not talk directly to GitHub with a secret embedded in the client;
- * - it does not own UI widgets or present dialogs;
- * - it assumes an external relay exists and enforces server-side policy.
+ * HTTPS relay client. A 2xx alone is not proof of GitHub issue creation:
+ * success requires a valid issue number and canonical GitHub issue URL.
+ * Requests are asynchronous and do not run a nested GUI event loop.
  */
 class IssueReportRelayService {
 public:
+    using Completion = std::function<void(const IssueReportSubmissionResult&)>;
+    static constexpr qsizetype MaxSubmissionTextCharacters = 65536;
+    static constexpr qsizetype MaxResponseBytes = 64 * 1024;
+
     static QString configuredEndpoint();
     static QString optionalClientKey();
     static int requestTimeoutMs();
     static bool isEndpointConfigured(QString* reason = nullptr);
-    static IssueReportSubmissionResult submit(const IssueReportDraft& draft,
-                                              const IssueReportRuntimeContext& runtimeContext);
+
+    /** The caller owns manager and receiver; callback is suppressed if receiver dies. */
+    static QNetworkReply* submitAsync(const IssueReportDraft& draft,
+                                      const IssueReportRuntimeContext& runtimeContext,
+                                      QNetworkAccessManager* manager,
+                                      QObject* receiver,
+                                      Completion completion);
+
+    /** Pure response verification, also used by network-mock tests. */
+    static IssueReportSubmissionResult parseResponse(int httpStatus,
+                                                      const QByteArray& response,
+                                                      QNetworkReply::NetworkError networkError =
+                                                          QNetworkReply::NoError,
+                                                      bool timedOut = false);
+    static bool isCanonicalIssueUrl(const QString& url, int issueNumber);
+    static QByteArray serializePayload(const IssueReportDraft& draft,
+                                       const IssueReportRuntimeContext& runtimeContext);
 };
 
 #endif // ISSUEREPORTRELAYSERVICE_H

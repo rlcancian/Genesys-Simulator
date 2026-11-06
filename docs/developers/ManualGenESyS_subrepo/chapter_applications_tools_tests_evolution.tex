@@ -47,6 +47,35 @@ The GUI is not the core. It is an application that:
 
 This separation is architecturally correct and explains why the system can, in principle, support other applications in addition to the graphical interface.
 
+\subsection{GUI Issue Reporting Boundary}
+\label{subsec:cap10_issue_reporting}
+
+The GUI's \texttt{DialogReportIssue} collects the report type, title, and
+description; \texttt{DialogUtilityController} only opens the dialog and
+selects the transport mode. The normal mode requires no configured server:
+\texttt{IssueReportBrowserService} uses Qt's \texttt{QUrl} and
+\texttt{QUrlQuery} to create a bounded GitHub issue-form URL. Opening that
+URL is a handoff to the user, not evidence of issue creation. Excessively
+long content is preserved for explicit clipboard transfer rather than
+truncated without notice.
+
+An optional HTTPS relay is accessed asynchronously through
+\texttt{IssueReportRelayService}, without a nested Qt event loop or an
+embedded GitHub credential. The versioned JSON request retains the minimal
+schema-v1 structure; the simplified GUI does not collect model data, logs,
+screenshots, or contact information. HTTP status 2xx alone is insufficient
+for success: a valid issue number and matching canonical GitHub repository
+issue URL are required. Timeouts and ambiguous responses do not establish
+whether the issue was created and must be treated as unconfirmed.
+
+The focused Qt Test executable \texttt{genesys\_gui\_issue\_tests}
+is independently controlled by
+\texttt{GENESYS\_BUILD\_GUI\_ISSUE\_TESTS}. It uses a fake network
+manager and injectable browser opener so tests do not create real issues.
+The GitHub-only CI validates compilation and these bounded contracts, but
+a real relay-to-GitHub integration claim requires separate authorized
+end-to-end evidence.
+
 \subsection{The Shell and Model-Specific Applications as Alternative Forms of Use}
 \label{subsec:cap10_shell_modelspecific_forma_alternativa}
 

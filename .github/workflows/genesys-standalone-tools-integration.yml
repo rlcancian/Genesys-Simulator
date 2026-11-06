@@ -35,7 +35,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential cmake ninja-build python3 python3-dev \
             qt6-base-dev qt6-base-dev-tools \
-            libsbml5-dev libglpk-dev ngspice r-base octave \
+            libsbml5-dev libglpk-dev \
             xvfb openbox xdotool x11-utils libxkbcommon-x11-0 libxcb-cursor0
 
       - name: Record environment and source invariants
