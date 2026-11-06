@@ -2,12 +2,15 @@
 // All filesystem mutations are confined to a private temporary directory.
 #include <gtest/gtest.h>
 
+#include <cerrno>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <streambuf>
 #include <string>
 #include <system_error>
+#include <vector>
 #include <unistd.h>
 
 #include "kernel/simulator/Simulator.h"
@@ -30,11 +33,16 @@ namespace fs = std::filesystem;
 struct SaveSandbox {
     fs::path root;
     SaveSandbox() {
-        static unsigned counter = 0;
-        root = fs::temp_directory_path() /
-            ("genesys-save-diagnostic-" + std::to_string(::getpid()) +
-             "-" + std::to_string(++counter));
-        fs::create_directories(root);
+        // mkdtemp creates a private directory atomically (0700); do not use
+        // predictable PID-only paths under a shared temporary directory.
+        std::string pattern = (fs::temp_directory_path() / "genesys-save-diagnostic-XXXXXX").string();
+        std::vector<char> buffer(pattern.begin(), pattern.end());
+        buffer.push_back('\0');
+        const char* created = ::mkdtemp(buffer.data());
+        if (created == nullptr) {
+            throw std::system_error(errno, std::generic_category(), "mkdtemp");
+        }
+        root = created;
     }
     ~SaveSandbox() {
         std::error_code ec;
