@@ -171,6 +171,23 @@ mapfile -t startup_plugin_dialogs < <(
 )
 for dialog in "${startup_plugin_dialogs[@]}"; do
     xdotool_bounded windowactivate --sync "$dialog"
+    geometry=$(xdotool getwindowgeometry --shell "$dialog")
+    dialog_width=$(sed -n 's/^WIDTH=//p' <<<"$geometry")
+    dialog_height=$(sed -n 's/^HEIGHT=//p' <<<"$geometry")
+    [[ "$dialog_width" =~ ^[0-9]+$ && "$dialog_height" =~ ^[0-9]+$ ]] || {
+        echo "Could not determine startup Plugin Manager dialog geometry" >&2
+        exit 1
+    }
+    # QDialogButtonBox's Close button is right-aligned at the bottom.
+    xdotool_bounded mousemove --window "$dialog" "$((dialog_width - 48))" "$((dialog_height - 24))" click 1
+    sleep 0.2
+    remaining_dialog=$(timeout 3s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null | head -n 1 || true)
+    [[ -n "$remaining_dialog" ]] || continue
+    xdotool_bounded windowactivate --sync "$dialog"
+    xdotool_bounded key --clearmodifiers alt+F4
+    sleep 0.2
+    remaining_dialog=$(timeout 3s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null | head -n 1 || true)
+    [[ -n "$remaining_dialog" ]] || continue
     xdotool_bounded windowclose "$dialog"
 done
 for _ in $(seq 1 50); do
