@@ -180,34 +180,62 @@ bool GenSerializer::dump(std::ostream& output) {
 	if (found) output << linearize(fields.get());
 
 	output << "\n# Model Data Definitions\n";
-	err = for_each([&](auto& key) {
+	const int dataErrors = for_each([&](const std::string& key) {
 		fields->clear();
-		get(key, fields.get());
-		auto type = fields->loadField("typename");
+		if (!get(key, fields.get())) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_MISSING category=ModelDataDefinition stage=lookup");
+			return 1;
+		}
+		const auto type = fields->loadField("typename");
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
-				Plugin * plugin = _model->getParentSimulator()->getPluginManager()->find(type);
-			if (plugin == nullptr) return 1;
-				if (plugin->getPluginInfo()->isComponent()) return 0;
-						_model->getTracer()->trace(linearize(fields.get()));
-						output << linearize(fields.get());
-					return 0;
-				});
+		Plugin* plugin = _model->getParentSimulator()->getPluginManager()->find(type);
+		if (plugin == nullptr) {
+			_model->getTracer()->traceError("SERIALIZER_PLUGIN_NOT_FOUND category=ModelDataDefinition"
+				" stage=plugin_lookup typename=\"" + type + "\" id="
+				+ std::to_string(fields->loadField("id", 0u)));
+			return 1;
+		}
+		if (plugin->getPluginInfo()->isComponent()) return 0;
+		_model->getTracer()->trace(linearize(fields.get()));
+		output << linearize(fields.get());
+		if (!output.good()) {
+			_model->getTracer()->traceError("SERIALIZER_STREAM_WRITE_FAILED category=ModelDataDefinition stage=dump");
+			return 1;
+		}
+		return 0;
+	});
 
 	output << "\n# Model Components\n";
-	err = for_each([&](auto& key) {
+	const int componentErrors = for_each([&](const std::string& key) {
 		fields->clear();
-		get(key, fields.get());
-		auto type = fields->loadField("typename");
+		if (!get(key, fields.get())) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_MISSING category=ModelComponent stage=lookup");
+			return 1;
+		}
+		const auto type = fields->loadField("typename");
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
-				Plugin * plugin = _model->getParentSimulator()->getPluginManager()->find(type);
-			if (plugin == nullptr) return 1;
-				if (!plugin->getPluginInfo()->isComponent()) return 0;
-						_model->getTracer()->trace(linearize(fields.get()));
-						output << linearize(fields.get());
-					return 0;
-				});
+		Plugin* plugin = _model->getParentSimulator()->getPluginManager()->find(type);
+		if (plugin == nullptr) {
+			_model->getTracer()->traceError("SERIALIZER_PLUGIN_NOT_FOUND category=ModelComponent"
+				" stage=plugin_lookup typename=\"" + type + "\" id="
+				+ std::to_string(fields->loadField("id", 0u)));
+			return 1;
+		}
+		if (!plugin->getPluginInfo()->isComponent()) return 0;
+		_model->getTracer()->trace(linearize(fields.get()));
+		output << linearize(fields.get());
+		if (!output.good()) {
+			_model->getTracer()->traceError("SERIALIZER_STREAM_WRITE_FAILED category=ModelComponent stage=dump");
+			return 1;
+		}
+		return 0;
+	});
 
-	return !err;
+	if (!output.good()) {
+		_model->getTracer()->traceError("SERIALIZER_STREAM_WRITE_FAILED category=Model stage=dump");
+	}
+	// Both passes contribute to the result; the second must never erase the first.
+	return dataErrors == 0 && componentErrors == 0 && output.good();
 }
 
 std::string GenSerializer::linearize(PersistenceRecord *fields) {
@@ -363,7 +391,7 @@ bool GenSerializer::put(const std::string name, const std::string type, const Ut
 		// ModelDataDefinition::setName(), so this is a defense-in-depth diagnostic for any
 		// residual/legacy case that bypassed it.
 		_model->getTracer()->traceError(
-			"Saved model has two objects named \"" + name + "\" (typename \"" + type
+			"SERIALIZER_DUPLICATE_NAME Saved model has two objects named \"" + name + "\" (typename \"" + type
 			+ "\"); the earlier entry will be overwritten and lost.");
 	}
 	_components[name] = std::move(saved);
