@@ -256,6 +256,27 @@ TEST_F(TransferFixture, RemovingLabelInvalidatesAttachedGotoDestination) {
     EXPECT_EQ(sender->getAttachedData()->count("LabelDefinition"), 0u);
 }
 
+TEST_F(TransferFixture, RemovingLabelDetachesRouteAndSequenceDirectReferences) {
+    auto* receiver = makeLabel("DisappearingReceiver");
+    auto* definition = receiver->getLabelDefinition();
+    ASSERT_NE(definition, nullptr);
+    auto* sender = new GotoProbe(model, "GotoObserver");
+    sender->setLabelDefinition(definition);
+    auto* route = new Route(model, "RouteObserver");
+    route->setLabel(definition);
+    auto* sequence = new Sequence(model, "SequenceObserver");
+    sequence->getSteps()->insert(new SequenceStep(definition));
+
+    delete receiver;
+
+    EXPECT_EQ(sender->getLabelDefinition(), nullptr);
+    EXPECT_EQ(sender->getAttachedData()->count("LabelDefinition"), 0u);
+    EXPECT_EQ(route->getLabel(), nullptr);
+    ASSERT_EQ(sequence->getSteps()->size(), 1u);
+    EXPECT_EQ(sequence->getSteps()->list()->front()->getLabel(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<LabelDefinition>()), 0u);
+}
+
 TEST_F(TransferFixture, IndependentDefinitionsRemainIsolated) {
     auto* first = makeLabel("First");
     auto* second = makeLabel("Second");
