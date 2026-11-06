@@ -16,6 +16,11 @@
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Transfer/Label.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Synchronization/Wait.h"
+#include "plugins/components/Synchronization/Signal.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/components/Transfer/Goto.h"
 #include "plugins/data/Transfer/LabelDefinition.h"
 
@@ -217,5 +222,50 @@ TEST(ModelSaveDiagnostics, TransferGraphDeletionAndRecreationRemainsSavableWitho
     ASSERT_TRUE(model->save(destination.string()));
     ASSERT_TRUE(model->save(destination.string()));
     EXPECT_NE(readFile(destination).find("ReceiverRecreated"), std::string::npos);
+    EXPECT_FALSE(fs::exists(destination.string() + ".tmp"));
+}
+
+
+TEST(ModelSaveDiagnostics, ConsolePluginInsertRemoveReinsertAcrossMultipleSaves) {
+    SaveSandbox sandbox;
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    const fs::path destination = sandbox.root / "console-sequence.gen";
+
+    auto* source = new Create(model, "CreateSource");
+    auto* sink = new Dispose(model, "DisposeSink");
+    source->connectTo(sink);
+    ASSERT_TRUE(model->save(destination.string()));
+    EXPECT_NE(readFile(destination).find("CreateSource"), std::string::npos);
+
+    auto* wait = new Wait(model, "WaitTemporary");
+    auto* signal = new Signal(model, "SignalTemporary");
+    auto* cpp = new CppForG(model, "CppForGTemporary");
+    cpp->setOnDispatchEventCode("// source is not executed on save\nint unused = 1;");
+    ASSERT_TRUE(model->save(destination.string()));
+    EXPECT_NE(readFile(destination).find("WaitTemporary"), std::string::npos);
+    EXPECT_NE(readFile(destination).find("SignalTemporary"), std::string::npos);
+
+    // Remove only standalone elements, without deliberately leaving a kernel
+    // connection dangling (that is a different, ownership-sensitive test).
+    delete cpp;
+    delete wait;
+    delete signal;
+    ASSERT_TRUE(model->save(destination.string()));
+    const std::string withoutRemoved = readFile(destination);
+    EXPECT_EQ(withoutRemoved.find("\"WaitTemporary\""), std::string::npos);
+    EXPECT_EQ(withoutRemoved.find("\"SignalTemporary\""), std::string::npos);
+    EXPECT_EQ(withoutRemoved.find("\"CppForGTemporary\""), std::string::npos);
+
+    wait = new Wait(model, "WaitRecreated");
+    signal = new Signal(model, "SignalRecreated");
+    cpp = new CppForG(model, "CppForGRecreated");
+    ASSERT_TRUE(model->save(destination.string()));
+    const std::string recreated = readFile(destination);
+    EXPECT_NE(recreated.find("WaitRecreated"), std::string::npos);
+    EXPECT_NE(recreated.find("SignalRecreated"), std::string::npos);
+    EXPECT_NE(recreated.find("CppForGRecreated"), std::string::npos);
     EXPECT_FALSE(fs::exists(destination.string() + ".tmp"));
 }
