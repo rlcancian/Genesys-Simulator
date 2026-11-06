@@ -1,5 +1,6 @@
 #include "plugins/components/Transfer/Label.h"
 #include "plugins/components/Transfer/Route.h"
+#include "plugins/components/Transfer/Goto.h"
 #include "plugins/data/Transfer/Sequence.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include <algorithm>
@@ -33,7 +34,33 @@ Label::Label(Model* model, std::string name)
 }
 
 Label::~Label() {
+    // The definition is about to be destroyed with our internal-data map.
+    // Detach all known non-owning consumers while the model registries still
+    // contain them. Otherwise Route/SequenceStep can retain dangling pointers
+    // after an interactive Label deletion.
     if (auto* definition = getLabelDefinition()) {
+        for (auto* component : *_parentModel->getComponentManager()->getAllComponents()) {
+            if (!component || component == this) continue;
+            if (auto* sender = dynamic_cast<Goto*>(component)) {
+                if (sender->getLabelDefinition() == definition)
+                    sender->setLabelDefinition(nullptr);
+            }
+            if (auto* route = dynamic_cast<Route*>(component)) {
+                if (route->getLabel() == definition)
+                    route->setLabel(nullptr);
+            }
+        }
+        for (const auto& type : _parentModel->getDataManager()->getDataDefinitionClassnames()) {
+            if (type != Util::TypeOf<Sequence>()) continue;
+            for (auto* item : *_parentModel->getDataManager()->getDataDefinitionList(type)->list()) {
+                auto* sequence = dynamic_cast<Sequence*>(item);
+                if (!sequence) continue;
+                for (auto* step : *sequence->getSteps()->list()) {
+                    if (step && step->getLabel() == definition)
+                        step->setLabel(nullptr);
+                }
+            }
+        }
         if (definition->getEnterIntoLabelComponent() == this)
             definition->setEnterIntoLabelComponent(nullptr);
     }
