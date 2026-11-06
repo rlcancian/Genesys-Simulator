@@ -2,6 +2,8 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cerrno>
+#include <exception>
 #include <memory>
 #include <fstream>
 #include <vector>
@@ -53,17 +55,23 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	fields->saveField("typename", "Simulator");
 	fields->saveField("name", _model->getParentSimulator()->getName());
 	fields->saveField("versionNumber", _model->getParentSimulator()->getVersionNumber());
-	serializer->put("SimulatorInfo", "Simulator", 0, fields.get());
+	if (!serializer->put("SimulatorInfo", "Simulator", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=SimulatorInfo stage=put");
+	}
 
 	// grab model metadata
 	fields->clear();
 	_model->getInfos()->saveInstance(fields.get());
-	serializer->put("ModelInfo", "ModelInfo", 0, fields.get());
+	if (!serializer->put("ModelInfo", "ModelInfo", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelInfo stage=put");
+	}
 
 	// grab simulation params
 	fields->clear();
 	_model->getSimulation()->saveInstance(fields.get(), saveDefaults);
-	serializer->put("ModelSimulation", "ModelSimulation", 0, fields.get());
+	if (!serializer->put("ModelSimulation", "ModelSimulation", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelSimulation stage=put");
+	}
 
 	// gather data definitions
 	const std::string counter = Util::TypeOf<Counter>();
@@ -77,11 +85,19 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 		for (ModelDataDefinition *data : *_model->getDataManager()->getDataDefinitionList(type)->list()) {
 			_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing " + type + " \"" + data->getName() + "\"");
 			fields->clear();
+			const auto errorsBefore = _model->getTracer()->errorMessages()->size();
 			data->SaveInstance(fields.get(), data);
+			if (_model->getTracer()->errorMessages()->size() > errorsBefore) {
+				_model->getTracer()->traceError("SERIALIZER_RECORD_SAVE_REPORTED_ERROR category=ModelDataDefinition stage=SaveInstance id="
+					+ std::to_string(data->getId()) + " typename=" + data->getClassname());
+			}
 			auto name = data->getName();
 			auto id = data->getId();
 			auto type = data->getClassname();
-			serializer->put(name, type, id, fields.get());
+			if (!serializer->put(name, type, id, fields.get())) {
+				_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelDataDefinition stage=put id="
+					+ std::to_string(id) + " typename=" + type);
+			}
 		}
 		Util::DecIndent();
 	}
@@ -91,11 +107,19 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	Util::IncIndent();
 	for (ModelComponent* component : *_model->getComponentManager()) {
 		fields->clear();
+		const auto errorsBefore = _model->getTracer()->errorMessages()->size();
 		component->SaveInstance(fields.get(), component);
+		if (_model->getTracer()->errorMessages()->size() > errorsBefore) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_SAVE_REPORTED_ERROR category=ModelComponent stage=SaveInstance id="
+				+ std::to_string(component->getId()) + " typename=" + component->getClassname());
+		}
 		auto name = component->getName();
 		auto id = component->getId();
 		auto type = component->getClassname();
-		serializer->put(name, type, id, fields.get());
+		if (!serializer->put(name, type, id, fields.get())) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelComponent stage=put id="
+				+ std::to_string(id) + " typename=" + type);
+		}
 	}
 	Util::DecIndent();
 
@@ -106,26 +130,77 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file");
 	Util::IncIndent();
 	const std::string tempFilename = filename + ".tmp";
-	bool ok;
+	const auto dot = filename.find_last_of('.');
+	const std::string requestedExtension = dot == std::string::npos ? "" : filename.substr(dot + 1);
+	const std::string format = requestedExtension == "xml" || requestedExtension == "json"
+			|| requestedExtension == "cpp" ? requestedExtension : "gen";
+	std::string failureCode;
+	std::string failureDetail;
+	bool dumpSucceeded = false;
+	int systemError = 0;
 	{
 		std::ofstream file{tempFilename};
-		ok = file.is_open() && serializer->dump(file);
-		if (ok) {
-			file.flush();
-			ok = file.good();
+		if (!file.is_open()) {
+			// Capture errno immediately after the failed open, before logging or cleanup.
+			systemError = errno;
+			failureCode = "FILE_OPEN_FAILED";
+			failureDetail = "stage=open";
+		} else {
+			try {
+				dumpSucceeded = serializer->dump(file);
+			} catch (const std::exception&) {
+				failureCode = "SERIALIZER_EXCEPTION";
+				failureDetail = "stage=dump exception=std::exception";
+			} catch (...) {
+				failureCode = "SERIALIZER_EXCEPTION";
+				failureDetail = "stage=dump exception=unknown";
+			}
+
+			// A serializer can return false with a healthy stream (logical error), or
+			// return false because the stream failed. Never conflate these cases.
+			if (failureCode.empty() && !file.good()) {
+				failureCode = "FILE_WRITE_FAILED";
+				failureDetail = "stage=dump stream_state=" + std::to_string(file.rdstate());
+			} else if (failureCode.empty() && !dumpSucceeded) {
+				failureCode = "SERIALIZER_DUMP_FAILED";
+				failureDetail = "stage=dump stream_state=" + std::to_string(file.rdstate());
+			}
+			if (failureCode.empty()) {
+				file.flush();
+				if (!file.good()) {
+					failureCode = "FILE_FLUSH_FAILED";
+					failureDetail = "stage=flush stream_state=" + std::to_string(file.rdstate());
+				}
+			}
+			file.close();
+			if (!file.good()) {
+				// iostream close failure is represented by stream flags; no POSIX errno is fabricated.
+				if (failureCode.empty()) {
+					failureCode = "FILE_CLOSE_FAILED";
+					failureDetail = "stage=close stream_state=" + std::to_string(file.rdstate());
+				}
+			}
 		}
-		file.close();
-		ok = ok && file.good();
 	}
-	if (ok) {
-		ok = std::rename(tempFilename.c_str(), filename.c_str()) == 0;
-		if (!ok) {
-			_model->getTracer()->traceError("Error saving file \"" + filename + "\": could not replace destination with \"" + tempFilename + "\"");
+	if (failureCode.empty() && std::rename(tempFilename.c_str(), filename.c_str()) != 0) {
+		systemError = errno; // POSIX rename: capture before any logging or cleanup.
+		failureCode = "FILE_RENAME_FAILED";
+		failureDetail = "stage=rename";
+	}
+	const bool ok = failureCode.empty();
+	if (!ok) {
+		_model->getTracer()->traceError("SAVE_DIAGNOSTIC code=" + failureCode
+			+ " " + failureDetail
+			+ " format=" + format
+			+ " destination=\"" + filename + "\""
+			+ " temporary=\"" + tempFilename + "\""
+			+ " dump_result=" + (dumpSucceeded ? "true" : "false")
+			+ (systemError != 0 ? " errno=" + std::to_string(systemError) : ""));
+		// An unsuccessful open did not create this temp file: do not remove a
+		// preexisting file/directory belonging to another operation.
+		if (failureCode != "FILE_OPEN_FAILED") {
 			std::remove(tempFilename.c_str());
 		}
-	} else {
-		_model->getTracer()->traceError("Error saving file \"" + filename + "\": could not write temporary file \"" + tempFilename + "\"");
-		std::remove(tempFilename.c_str());
 	}
 	Util::DecIndent();
 

@@ -539,6 +539,19 @@ This is the only approved source for work an AI agent may execute without a new 
 - Validation: local Ubuntu 24.04 `gui-app`, `tests-unit` (2,004 passed; 4 disabled), `tests-kernel-unit` (2,004 passed; 4 disabled), `tests-smoke` (3/3), focused ASan/UBSan Transfer tests (16/16 with LSan disabled); all PR checks passed on head `020279a55db3f287bb900225d43f15e01add252b`.
 - Evidence: [transfer_label_goto_remote_progress.md](history/evidence/2026/11/transfer_label_goto_remote_progress.md), including the sanitizer leak limitation and distinction between automated GUI persistence validation and manual interaction.
 
+### AUTO-PERSIST-001 — Investigate recurrent model-save failures (diagnostic phase)
+
+- Priority: P0.
+- Status: running.
+- Environment: github (instrumentation, CI evidence) then local (root-cause reproduction).
+- Authorization: direct maintainer instruction dated 2026-11-06, limited to Phase 1 diagnosis, trace classification, reproducible tests and one Draft PR.
+- Branch: WiP202611/save-failure-diagnostics; target WorkInProgress, no merge authorized in Phase 1.
+- Scope: map kernel/GUI persistence, classify failures of temporary open/write/dump/flush/close/rename, observe plugin/name/registration issues, characterize filesystem/serializer/model/overlay scenarios, preserve previous saves and record evidence.
+- Non-goals: persistence redesign, changing ModelCheck, deleting independent data, comprehensive plugin refactoring or merging the PR.
+- Acceptance: a complete evidence record with baseline SHA and CI provenance; separate logical/I/O/GUI diagnostics; repeatable isolated kernel and GUI regression fixtures; unresolved hypotheses explicitly labelled.
+- Stop gates: unsafe large-file change, data-loss risk, current-head CI failure that cannot be diagnosed remotely, local-only interaction or filesystem evidence, or any human architectural decision.
+- Evidence: history/evidence/2026/11/model_save_failure_diagnostics.md.
+
 ## 5. Active bounded work
 
 

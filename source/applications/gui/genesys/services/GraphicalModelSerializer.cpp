@@ -49,6 +49,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cerrno>
 #include <set>
 #include <vector>
 
@@ -619,6 +620,8 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
 
         // Persist the canonical kernel state into the temp file before appending GUI overlays.
         if (!_simulator->getModelManager()->saveModel(tempFilename.toStdString())) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_KERNEL_FAILED stage=kernel_save; inspect preceding SAVE_DIAGNOSTIC/SERIALIZER_* errors");
             QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"), QObject::tr("Could not save kernel model to file."));
             QFile::remove(tempFilename);
             return false;
@@ -626,6 +629,8 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
 
         QFile saveFile(tempFilename);
         if (!saveFile.open(QIODevice::Append | QIODevice::Text)) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_OVERLAY_OPEN_FAILED stage=overlay_open error=" + saveFile.errorString().toStdString());
             QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
                                      saveFile.errorString());
             QFile::remove(tempFilename);
@@ -669,7 +674,7 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                 for (QGraphicsItem* item : *geometries) {
                     if (item == nullptr) {
                         _simulator->getModelManager()->current()->getTracer()->traceError(
-                            "Unable to save graphical model: null drawing item encountered");
+                            "GUI_SAVE_OVERLAY_SERIALIZATION_FAILED stage=draws reason=null_drawing");
                         saveFile.close();
                         QFile::remove(tempFilename);
                         return false;
@@ -935,7 +940,7 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                             members << QString::number(persistedItemIds.value(child));
                         } else {
                             _simulator->getModelManager()->current()->getTracer()->traceError(
-                                "Unable to save graphical model: group contains an item that cannot be persisted");
+                                "GUI_SAVE_OVERLAY_SERIALIZATION_FAILED stage=groups reason=unregistered_item");
                             saveFile.close();
                             QFile::remove(tempFilename);
                             return false;
@@ -957,9 +962,16 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
 
         }
 
-        if (out.status() != QTextStream::Status::Ok || !saveFile.flush()) {
+        if (out.status() != QTextStream::Status::Ok) {
             _simulator->getModelManager()->current()->getTracer()->traceError(
-                "Unable to save graphical model: failed while flushing GUI overlay");
+                "GUI_SAVE_OVERLAY_WRITE_FAILED stage=overlay_stream");
+            saveFile.close();
+            QFile::remove(tempFilename);
+            return false;
+        }
+        if (!saveFile.flush()) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_OVERLAY_FLUSH_FAILED stage=overlay_flush error=" + saveFile.errorString().toStdString());
             saveFile.close();
             QFile::remove(tempFilename);
             return false;
@@ -967,12 +979,15 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
         saveFile.close();
         if (saveFile.error() != QFile::NoError) {
             _simulator->getModelManager()->current()->getTracer()->traceError(
-                "Unable to save graphical model: " + saveFile.errorString().toStdString());
+                "GUI_SAVE_OVERLAY_CLOSE_FAILED stage=overlay_close error=" + saveFile.errorString().toStdString());
             QFile::remove(tempFilename);
             return false;
         }
 
         if (std::rename(tempFilename.toStdString().c_str(), filename.toStdString().c_str()) != 0) {
+            const int renameError = errno;
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_RENAME_FAILED stage=overlay_rename errno=" + std::to_string(renameError));
             QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"),
                                  QObject::tr("Could not replace destination file with the newly saved content."));
             QFile::remove(tempFilename);
@@ -980,6 +995,11 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
         }
         return true;
     } catch (const std::exception&) {
+        if (_simulator != nullptr && _simulator->getModelManager() != nullptr
+            && _simulator->getModelManager()->current() != nullptr) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_OVERLAY_EXCEPTION stage=overlay_serialization exception=std::exception");
+        }
         return false;
     }
 }
