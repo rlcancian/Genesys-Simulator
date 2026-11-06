@@ -15,6 +15,9 @@
 #include "kernel/simulator/persistence/GenSerializer.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Transfer/Label.h"
+#include "plugins/components/Transfer/Goto.h"
+#include "plugins/data/Transfer/LabelDefinition.h"
 
 namespace {
 namespace fs = std::filesystem;
@@ -183,4 +186,36 @@ TEST(ModelSaveDiagnostics, DeviceFullInducesStreamFailureWithoutFillingDisk) {
     EXPECT_TRUE(hasDiagnostic(model, "SAVE_DIAGNOSTIC code=FILE_WRITE_FAILED") ||
                 hasDiagnostic(model, "SAVE_DIAGNOSTIC code=FILE_FLUSH_FAILED"));
     EXPECT_EQ(readFile(destination), "PREVIOUS_VALID_SAVE");
+}
+
+
+TEST(ModelSaveDiagnostics, TransferGraphDeletionAndRecreationRemainsSavableWithoutModelCheck) {
+    SaveSandbox sandbox;
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    const fs::path destination = sandbox.root / "transfer-graph.gen";
+
+    auto* receiver = new Label(model, "Receiver");
+    auto* sender = new Goto(model, "Sender");
+    auto* definition = receiver->getLabelDefinition();
+    ASSERT_NE(definition, nullptr);
+    sender->setLabelDefinition(definition);
+    ASSERT_TRUE(model->save(destination.string()));
+    EXPECT_NE(readFile(destination).find("Receiver"), std::string::npos);
+
+    delete receiver;
+    ASSERT_EQ(sender->getLabelDefinition(), nullptr);
+    // The model is intentionally incomplete, not invalid for persistence.
+    ASSERT_TRUE(model->save(destination.string()));
+    EXPECT_EQ(readFile(destination).find("\"Receiver\""), std::string::npos);
+
+    auto* recreated = new Label(model, "ReceiverRecreated");
+    ASSERT_NE(recreated->getLabelDefinition(), nullptr);
+    sender->setLabelDefinition(recreated->getLabelDefinition());
+    ASSERT_TRUE(model->save(destination.string()));
+    ASSERT_TRUE(model->save(destination.string()));
+    EXPECT_NE(readFile(destination).find("ReceiverRecreated"), std::string::npos);
+    EXPECT_FALSE(fs::exists(destination.string() + ".tmp"));
 }
