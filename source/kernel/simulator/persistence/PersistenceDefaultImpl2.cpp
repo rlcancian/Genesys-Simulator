@@ -2,6 +2,8 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cerrno>
+#include <exception>
 #include <memory>
 #include <fstream>
 #include <vector>
@@ -106,25 +108,77 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file");
 	Util::IncIndent();
 	const std::string tempFilename = filename + ".tmp";
-	bool ok;
+	const auto dot = filename.find_last_of('.');
+	const std::string requestedExtension = dot == std::string::npos ? "" : filename.substr(dot + 1);
+	const std::string format = requestedExtension == "xml" || requestedExtension == "json"
+			|| requestedExtension == "cpp" ? requestedExtension : "gen";
+	std::string failureCode;
+	std::string failureDetail;
+	bool dumpSucceeded = false;
+	int systemError = 0;
 	{
 		std::ofstream file{tempFilename};
-		ok = file.is_open() && serializer->dump(file);
-		if (ok) {
-			file.flush();
-			ok = file.good();
+		if (!file.is_open()) {
+			// Capture errno immediately after the failed open, before logging or cleanup.
+			systemError = errno;
+			failureCode = "FILE_OPEN_FAILED";
+			failureDetail = "stage=open";
+		} else {
+			try {
+				dumpSucceeded = serializer->dump(file);
+			} catch (const std::exception&) {
+				failureCode = "SERIALIZER_EXCEPTION";
+				failureDetail = "stage=dump exception=std::exception";
+			} catch (...) {
+				failureCode = "SERIALIZER_EXCEPTION";
+				failureDetail = "stage=dump exception=unknown";
+			}
+
+			// A serializer can return false with a healthy stream (logical error), or
+			// return false because the stream failed. Never conflate these cases.
+			if (failureCode.empty() && !file.good()) {
+				failureCode = "FILE_WRITE_FAILED";
+				failureDetail = "stage=dump stream_state=" + std::to_string(file.rdstate());
+			} else if (failureCode.empty() && !dumpSucceeded) {
+				failureCode = "SERIALIZER_DUMP_FAILED";
+				failureDetail = "stage=dump stream_state=" + std::to_string(file.rdstate());
+			}
+			if (failureCode.empty()) {
+				file.flush();
+				if (!file.good()) {
+					failureCode = "FILE_FLUSH_FAILED";
+					failureDetail = "stage=flush stream_state=" + std::to_string(file.rdstate());
+				}
+			}
+			file.close();
+			if (!file.good()) {
+				// errno is meaningful here only when the underlying close reports failure.
+				const int closeError = errno;
+				if (failureCode.empty()) {
+					failureCode = "FILE_CLOSE_FAILED";
+					failureDetail = "stage=close stream_state=" + std::to_string(file.rdstate());
+					systemError = closeError;
+				} else {
+					_model->getTracer()->traceError("SAVE_DIAGNOSTIC code=FILE_CLOSE_FAILED"
+						" stage=close secondary=true stream_state=" + std::to_string(file.rdstate()));
+				}
+			}
 		}
-		file.close();
-		ok = ok && file.good();
 	}
-	if (ok) {
-		ok = std::rename(tempFilename.c_str(), filename.c_str()) == 0;
-		if (!ok) {
-			_model->getTracer()->traceError("Error saving file \"" + filename + "\": could not replace destination with \"" + tempFilename + "\"");
-			std::remove(tempFilename.c_str());
-		}
-	} else {
-		_model->getTracer()->traceError("Error saving file \"" + filename + "\": could not write temporary file \"" + tempFilename + "\"");
+	if (failureCode.empty() && std::rename(tempFilename.c_str(), filename.c_str()) != 0) {
+		systemError = errno; // POSIX rename: capture before any logging or cleanup.
+		failureCode = "FILE_RENAME_FAILED";
+		failureDetail = "stage=rename";
+	}
+	const bool ok = failureCode.empty();
+	if (!ok) {
+		_model->getTracer()->traceError("SAVE_DIAGNOSTIC code=" + failureCode
+			+ " " + failureDetail
+			+ " format=" + format
+			+ " destination=\"" + filename + "\""
+			+ " temporary=\"" + tempFilename + "\""
+			+ " dump_result=" + (dumpSucceeded ? "true" : "false")
+			+ (systemError != 0 ? " errno=" + std::to_string(systemError) : ""));
 		std::remove(tempFilename.c_str());
 	}
 	Util::DecIndent();
