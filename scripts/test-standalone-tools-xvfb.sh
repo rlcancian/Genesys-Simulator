@@ -170,8 +170,8 @@ mapfile -t startup_plugin_dialogs < <(
     timeout 5s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null || true
 )
 for dialog in "${startup_plugin_dialogs[@]}"; do
-    xdotool_bounded windowfocus "$dialog"
-    xdotool_bounded key --clearmodifiers Escape
+    xdotool_bounded windowactivate --sync "$dialog"
+    xdotool_bounded windowclose "$dialog"
 done
 for _ in $(seq 1 50); do
     remaining_dialog=$(timeout 3s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null | head -n 1 || true)
