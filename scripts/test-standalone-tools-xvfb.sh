@@ -77,6 +77,17 @@ wait_for_window() {
     return 1
 }
 
+wait_for_named_window() {
+    local pid=$1 name=$2 attempts=0 id
+    while ((attempts++ < 100)); do
+        if ! kill -0 "$pid" 2>/dev/null; then return 1; fi
+        id=$(timeout 3s xdotool search --onlyvisible --pid "$pid" --name "$name" 2>/dev/null | head -n 1 || true)
+        if [[ -n "$id" ]]; then printf '%s\n' "$id"; return 0; fi
+        sleep 0.2
+    done
+    return 1
+}
+
 # Prefer Openbox on CI; allow the installed Xfce window manager for local runs.
 case "${GENESYS_TEST_WINDOW_MANAGER:-auto}" in
     auto)
@@ -139,9 +150,9 @@ echo "Using $wm_name; Tools menu x=$tools_menu_x on the 1280px virtual display"
 # Deliberately do not open a model: Tools must be available from an empty GUI.
 "$gui" >"$RUNNER_TEMP/genesys-main-gui.log" 2>&1 &
 gui_pid=$!
-gui_window=$(wait_for_window "$gui_pid") || {
+gui_window=$(wait_for_named_window "$gui_pid" 'GenESyS - Generic and Expansible System Simulator') || {
     cat "$RUNNER_TEMP/genesys-main-gui.log" >&2
-    echo "Main GUI did not create a visible window" >&2
+    echo "Main GUI did not create its visible main window" >&2
     exit 1
 }
 expected_gui=$(readlink -f -- "$gui")
@@ -151,6 +162,27 @@ actual_gui=$(readlink -f -- "/proc/$gui_pid/exe")
     exit 1
 }
 echo "Main GUI PID=$gui_pid window=$gui_window exe=$actual_gui"
+
+# A fresh CI profile may display the modal Plugin Manager immediately when
+# startup discovers blocked optional plugins. Dismiss that diagnostic before
+# testing the unrelated Tools menu, and retain the actual main-window XID above.
+mapfile -t startup_plugin_dialogs < <(
+    timeout 5s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null || true
+)
+for dialog in "${startup_plugin_dialogs[@]}"; do
+    xdotool_bounded windowfocus "$dialog"
+    xdotool_bounded key --clearmodifiers Escape
+done
+for _ in $(seq 1 50); do
+    remaining_dialog=$(timeout 3s xdotool search --onlyvisible --pid "$gui_pid" --name '^Plugin Manager$' 2>/dev/null | head -n 1 || true)
+    [[ -n "$remaining_dialog" ]] || break
+    sleep 0.1
+done
+[[ -z "${remaining_dialog:-}" ]] || {
+    echo "Startup Plugin Manager dialog did not close" >&2
+    exit 1
+}
+xdotool_bounded windowfocus "$gui_window"
 
 # Invoke each real QAction through the Tools menu -> controller -> ToolLauncher path.
 tools=(
