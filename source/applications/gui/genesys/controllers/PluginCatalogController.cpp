@@ -347,7 +347,7 @@ QColor PluginCatalogController::backgroundColorForCategory(const QString& catego
     if (top == QStringLiteral("InputOutput")) {
         return QColor(Qt::darkCyan);
     }
-    if (top == QStringLiteral("MaterialHandling")) {
+    if (top == QStringLiteral("Transfer")) {
         return QColor(Qt::darkBlue);
     }
     if (top == QStringLiteral("Decisions")) {

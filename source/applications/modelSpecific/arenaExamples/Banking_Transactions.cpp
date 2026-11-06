@@ -25,12 +25,12 @@
 #include "plugins/components/Logic/Assign.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
-#include "plugins/components/MaterialHandling/Enter.h"
+#include "plugins/components/Transfer/Enter.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
-#include "plugins/data/MaterialHandling/Station.h"
+#include "plugins/data/Transfer/Station.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/Logic/Set.h"
-#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/Transfer/Route.h"
 
 Banking_Transactions::Banking_Transactions() {
 }

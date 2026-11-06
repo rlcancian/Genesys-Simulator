@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-11-05
+last_updated: 2026-11-06
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -526,7 +526,21 @@ This is the only approved source for work an AI agent may execute without a new 
 - Stop gates: specialized editor regression or required validation red.
 - Completion evidence: the main palette filters presentation only; ModelDataDefinitions remain registered and available to model and specialized-editor flows. Catalog and GUI regressions pass. See [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
 
+### AUTO-TRANSFER-001 — Transfer and LabelDefinition/Label/Goto implementation
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Environment: `github` and `local`
+- Authorization: direct maintainer instruction (2026-11-05); explicit handoff to validate and integrate into `WorkInProgress` (2026-11-06).
+- Branch/PR: `WiP202611/transfer-label-goto` / PR #564; merge commit `c1099e3e7eef781c90cece1110bc7b1b0b82c3fc`.
+- Scope: E1–E9 as specified by the maintainer; rename plugin categories and data identity, implement transfer components, static registration, GUI/property/persistence contracts, tests and manuals.
+- Non-goals: historic `.gen`/`.gui` type compatibility, dynamic plugin architecture, unrelated modernization, stable-branch promotion.
+- Acceptance: category migration preserves existing behavior; LabelDefinition has one owning Label; Goto schedules one entity-preserving transfer; Route/Sequence references remain coherent; GUI metadata/persistence, `.gen`/`.gui` roundtrips, documentation and current-head CI pass.
+- Validation: local Ubuntu 24.04 `gui-app`, `tests-unit` (2,004 passed; 4 disabled), `tests-kernel-unit` (2,004 passed; 4 disabled), `tests-smoke` (3/3), focused ASan/UBSan Transfer tests (16/16 with LSan disabled); all PR checks passed on head `020279a55db3f287bb900225d43f15e01add252b`.
+- Evidence: [transfer_label_goto_remote_progress.md](history/evidence/2026/11/transfer_label_goto_remote_progress.md), including the sanitizer leak limitation and distinction between automated GUI persistence validation and manual interaction.
+
 ## 5. Active bounded work
+
 
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
 

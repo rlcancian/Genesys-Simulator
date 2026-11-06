@@ -26,16 +26,17 @@
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
-#include "plugins/data/MaterialHandling/Conveyor.h"
-#include "plugins/data/MaterialHandling/Distance.h"
-#include "plugins/data/MaterialHandling/Sequence.h"
-#include "plugins/data/MaterialHandling/Segment.h"
-#include "plugins/data/MaterialHandling/Transporter.h"
+#include "plugins/data/Transfer/Conveyor.h"
+#include "plugins/data/Transfer/Distance.h"
+#include "plugins/data/Transfer/Sequence.h"
+#include "plugins/data/Transfer/Segment.h"
+#include "plugins/data/Transfer/Transporter.h"
 #include "../../plugins/data/Synchronization/SignalData.h"
-#include "../../plugins/data/MaterialHandling/Station.h"
+#include "../../plugins/data/Transfer/Station.h"
 #include "../../plugins/data/Logic/Set.h"
-#include "plugins/data/Logic/Label.h"
-#include "../../plugins/data/MaterialHandling/Storage.h"
+#include "plugins/data/Transfer/LabelDefinition.h"
+#include "plugins/components/Transfer/Label.h"
+#include "../../plugins/data/Transfer/Storage.h"
 #include "../../plugins/data/InputOutput/File.h"
 #include "../../plugins/data/ExternalIntegration/CppCompiler.h"
 #include "../../plugins/data/ExternalIntegration/PythonRuntime.h"
@@ -94,22 +95,22 @@
 #include "../../plugins/components/Logic/Assign.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
-#include "../../plugins/components/MaterialHandling/Access.h"
-#include "../../plugins/components/MaterialHandling/Exit.h"
-#include "../../plugins/components/MaterialHandling/Move.h"
-#include "../../plugins/components/MaterialHandling/Start.h"
-#include "../../plugins/components/MaterialHandling/Store.h"
-#include "../../plugins/components/MaterialHandling/Stop.h"
-#include "../../plugins/components/MaterialHandling/Unstore.h"
+#include "../../plugins/components/Transfer/Access.h"
+#include "../../plugins/components/Transfer/Exit.h"
+#include "../../plugins/components/Transfer/Move.h"
+#include "../../plugins/components/Transfer/Start.h"
+#include "../../plugins/components/Transfer/Store.h"
+#include "../../plugins/components/Transfer/Stop.h"
+#include "../../plugins/components/Transfer/Unstore.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "../../plugins/components/MaterialHandling/Enter.h"
-#include "../../plugins/components/MaterialHandling/PickStation.h"
-#include "../../plugins/components/MaterialHandling/Route.h"
+#include "../../plugins/components/Transfer/Enter.h"
+#include "../../plugins/components/Transfer/PickStation.h"
+#include "../../plugins/components/Transfer/Route.h"
 #undef protected
 #undef private
 #define private public
@@ -1009,9 +1010,9 @@ public:
     }
 };
 
-class LabelProbe : public Label {
+class LabelProbe : public LabelDefinition {
 public:
-    LabelProbe(Model* model, const std::string& name = "") : Label(model, name) {}
+    LabelProbe(Model* model, const std::string& name = "") : LabelDefinition(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -3298,7 +3299,7 @@ TEST(SimulatorRuntimeTest, SequenceSaveAndLoadPreservesStationAndLabelPerStep) {
     ASSERT_NE(model, nullptr);
 
     Station station(model, "SequencePersistStation");
-    Label label(model, "SequencePersistLabel");
+    LabelDefinition label(model, "SequencePersistLabel");
     SequenceProbe source(model, "SequencePersistRoutingSource");
     source.getSteps()->insert(new SequenceStep(&station));
     source.getSteps()->insert(new SequenceStep(&label));
@@ -3328,7 +3329,7 @@ TEST(SimulatorRuntimeTest, SequenceRecheckRemovesObsoleteAttachedData) {
 
     Station stationA(model, "SequenceRecheckStationA");
     Station stationB(model, "SequenceRecheckStationB");
-    Label labelA(model, "SequenceRecheckLabelA");
+    LabelDefinition labelA(model, "SequenceRecheckLabelA");
     SequenceProbe sequence(model, "SequenceRecheck");
     sequence.getSteps()->insert(new SequenceStep(&stationA));
     sequence.getSteps()->insert(new SequenceStep(&stationB));
@@ -3364,7 +3365,7 @@ TEST(SimulatorRuntimeTest, SequenceCheckFailsForEmptyStep) {
 
     std::string errorMessage;
     EXPECT_FALSE(sequence.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("must reference a Station or a Label"), std::string::npos);
+    EXPECT_NE(errorMessage.find("must reference a Station or a LabelDefinition"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
@@ -3455,7 +3456,7 @@ TEST(SimulatorRuntimeTest, DistancePluginInformationExposesMaterialHandlingCateg
     std::unique_ptr<PluginInformation> info(Distance::GetPluginInformation());
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<Distance>());
-    EXPECT_EQ(info->getCategory(), "MaterialHandling");
+    EXPECT_EQ(info->getCategory(), "Transfer");
 }
 
 TEST(SimulatorRuntimeTest, SegmentCheckFailsForMissingStationsAndNegativeLengths) {
@@ -3531,7 +3532,7 @@ TEST(SimulatorRuntimeTest, SegmentPluginInformationExposesMaterialHandlingCatego
     std::unique_ptr<PluginInformation> info(Segment::GetPluginInformation());
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<Segment>());
-    EXPECT_EQ(info->getCategory(), "MaterialHandling");
+    EXPECT_EQ(info->getCategory(), "Transfer");
 }
 
 TEST(SimulatorRuntimeTest, LabelCheckFailsWithoutEnteringComponent) {
@@ -3542,7 +3543,7 @@ TEST(SimulatorRuntimeTest, LabelCheckFailsWithoutEnteringComponent) {
     LabelProbe label(model, "LabelCheckMissingDestination");
     std::string errorMessage;
     EXPECT_FALSE(label.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("entering component was not defined"), std::string::npos);
+    EXPECT_NE(errorMessage.find("has no valid owning Label receiver"), std::string::npos);
     EXPECT_EQ(label.getAttachedData()->count("EnteringLabelComponent"), 0u);
 }
 
@@ -3551,15 +3552,18 @@ TEST(SimulatorRuntimeTest, LabelCheckPassesWithValidEnteringComponentAndAttaches
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    LabelProbe label(model, "LabelCheckValidDestination");
+    Label receiver(model, "LabelCheckReceiver");
     CollectorSinkComponentProbe sink(model, "LabelCheckSink");
-    label.setEnterIntoLabelComponent(&sink);
+    receiver.connectTo(&sink);
+    auto* definition = receiver.getLabelDefinition();
+    ASSERT_NE(definition, nullptr);
+    EXPECT_EQ(definition->getEnterIntoLabelComponent(), &receiver);
+    EXPECT_EQ(receiver.getInternalData("LabelDefinition"), definition);
 
     std::string errorMessage;
-    EXPECT_TRUE(label.CheckProbe(errorMessage));
+    EXPECT_TRUE(ModelDataDefinition::Check(definition, errorMessage)) << errorMessage;
     EXPECT_TRUE(errorMessage.empty());
-    ASSERT_EQ(label.getAttachedData()->count("EnteringLabelComponent"), 1u);
-    EXPECT_EQ(label.getAttachedData()->at("EnteringLabelComponent"), &sink);
+    EXPECT_TRUE(ModelComponent::Check(&receiver));
 }
 
 TEST(SimulatorRuntimeTest, LabelLoadWithMissingEnteringComponentRemainsTraceableAndCheckFails) {
@@ -3569,7 +3573,7 @@ TEST(SimulatorRuntimeTest, LabelLoadWithMissingEnteringComponentRemainsTraceable
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
-    fields.saveField("typename", Util::TypeOf<Label>());
+    fields.saveField("typename", Util::TypeOf<LabelDefinition>());
     fields.saveField("id", 1u);
     fields.saveField("name", "LabelLoadMissingDestination");
     fields.saveField("reportStatistics", true);
@@ -3583,7 +3587,7 @@ TEST(SimulatorRuntimeTest, LabelLoadWithMissingEnteringComponentRemainsTraceable
 
     std::string errorMessage;
     EXPECT_FALSE(loaded.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("entering component was not defined"), std::string::npos);
+    EXPECT_NE(errorMessage.find("has no valid owning Label receiver"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, LabelSendEntityWithoutDestinationDoesNotCrash) {
@@ -3600,14 +3604,13 @@ TEST(SimulatorRuntimeTest, LabelShowIncludesLabelAndEnteringComponent) {
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    LabelProbe label(model, "LabelShowProbe");
-    CollectorSinkComponentProbe sink(model, "LabelShowSink");
-    label.setLabel("Station-Transfer");
-    label.setEnterIntoLabelComponent(&sink);
-
-    const std::string shown = label.show();
-    EXPECT_NE(shown.find("label=\"Station-Transfer\""), std::string::npos);
-    EXPECT_NE(shown.find("enteringComponent=LabelShowSink"), std::string::npos);
+    Label receiver(model, "LabelShowReceiver");
+    auto* definition = receiver.getLabelDefinition();
+    ASSERT_NE(definition, nullptr);
+    definition->setLabel("Station-Transfer");
+    const std::string shown = definition->show();
+    EXPECT_NE(shown.find("Station-Transfer"), std::string::npos);
+    EXPECT_NE(shown.find("enteringComponent=LabelShowReceiver"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, LabelSaveAndLoadRoundTripPreservesLabelAndEnteringComponentName) {
@@ -3615,11 +3618,8 @@ TEST(SimulatorRuntimeTest, LabelSaveAndLoadRoundTripPreservesLabelAndEnteringCom
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    CollectorSinkComponentProbe sink(model, "LabelPersistSink");
     LabelProbe source(model, "LabelPersistSource");
     source.setLabel("QueueToSink");
-    source.setEnterIntoLabelComponent(&sink);
-
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
@@ -3627,11 +3627,12 @@ TEST(SimulatorRuntimeTest, LabelSaveAndLoadRoundTripPreservesLabelAndEnteringCom
     LabelProbe loaded(model, "LabelPersistLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
     EXPECT_EQ(loaded.getLabel(), "QueueToSink");
-    EXPECT_EQ(loaded.getEnterIntoLabelComponent(), &sink);
-
+    // The receiver reference is no longer persisted on LabelDefinition.
+    // It is reconstructed exclusively from the owning Label component.
+    EXPECT_EQ(loaded.getEnterIntoLabelComponent(), nullptr);
     std::string errorMessage;
-    EXPECT_TRUE(loaded.CheckProbe(errorMessage));
-    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_FALSE(loaded.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("has no valid owning Label receiver"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, SetDestructorDeletesOwnedContainerButNotMembers) {
@@ -5079,12 +5080,12 @@ TEST(SimulatorRuntimeTest, RouteCheckAcceptsLabelDestinationWithoutStation) {
     ASSERT_NE(model, nullptr);
 
     CollectorSinkComponentProbe sink(model, "RouteLabelCheckSink");
-    Label label(model, "RouteLabelCheck");
-    label.setEnterIntoLabelComponent(&sink);
+    Label receiver(model, "RouteLabelReceiver");
+    receiver.connectTo(&sink);
 
     RouteProbe route(model, "RouteToLabel");
     route.setRouteDestinationType(Route::DestinationType::Label);
-    route.setLabel(&label);
+    route.setLabel(receiver.getLabelDefinition());
     route.setRouteTimeExpression("0.0");
 
     std::string errorMessage;
@@ -5152,14 +5153,14 @@ TEST(SimulatorRuntimeTest, RouteDispatchUsesLabelEnterComponentWhenDelayExpires)
     ASSERT_NE(model, nullptr);
 
     CollectorSinkComponentProbe sink(model, "RouteLabelSink");
-    Label label(model, "RouteLabel");
+    Label receiver(model, "RouteLabelReceiver");
+    receiver.connectTo(&sink);
     EntityType routeEntityType(model, "RouteLabelType");
-    label.setEnterIntoLabelComponent(&sink);
 
     RouteProbe route(model, "RouteLabelDispatcher");
     route.setReportStatistics(false);
     route.setRouteDestinationType(Route::DestinationType::Label);
-    route.setLabel(&label);
+    route.setLabel(receiver.getLabelDefinition());
     route.setRouteTimeExpression("2.0");
 
     std::string errorMessage;
