@@ -114,6 +114,7 @@ jobs:
           set +e
           ps -ef > standalone-tools-evidence/processes-after.txt
           cp "$RUNNER_TEMP/genesys-main-gui.log" standalone-tools-evidence/ 2>/dev/null || true
+          cp "$RUNNER_TEMP/genesys-window-manager.log" standalone-tools-evidence/ 2>/dev/null || true
           cp "$RUNNER_TEMP/genesys-openbox.log" standalone-tools-evidence/ 2>/dev/null || true
           find build/standalone-tools \( -name CMakeError.log -o -name LastTest.log \) \
             | while read -r item; do
