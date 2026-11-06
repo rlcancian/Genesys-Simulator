@@ -1939,14 +1939,28 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     const int rootTabCount = tabs->count();
     graphicalAdapter->setSelected(true);
     ASSERT_TRUE(createNetwork->isEnabled());
-    QTimer::singleShot(0, []() {
+    bool createNetworkDialogHandled = false;
+    QTimer createNetworkDialogDriver;
+    QTimer createNetworkDialogWatchdog;
+    createNetworkDialogWatchdog.setSingleShot(true);
+    QObject::connect(&createNetworkDialogWatchdog, &QTimer::timeout, []() {
+        if (auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget())) dialog->reject();
+    });
+    QObject::connect(&createNetworkDialogDriver, &QTimer::timeout, [&]() {
         auto* dialog = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
         if (dialog != nullptr) {
+            createNetworkDialogHandled = true;
+            createNetworkDialogDriver.stop();
             dialog->setTextValue(QStringLiteral("PersistedGuiNetwork"));
             dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok)->click();
         }
     });
+    createNetworkDialogDriver.start(5);
+    createNetworkDialogWatchdog.start(5000);
     createNetwork->trigger();
+    createNetworkDialogDriver.stop();
+    createNetworkDialogWatchdog.stop();
+    ASSERT_TRUE(createNetworkDialogHandled);
     auto* network = dynamic_cast<EFSMNetwork*>(adapter->getNetwork());
     ASSERT_NE(network, nullptr);
     EXPECT_EQ(originalModel->getDataManager()->getDataDefinition(
@@ -1956,14 +1970,28 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     ASSERT_NE(networkView, nullptr);
     ASSERT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
     auto enterStateName = [](QAction* action, const QString& name) {
-        QTimer::singleShot(0, [name]() {
+        bool dialogHandled = false;
+        QTimer dialogDriver;
+        QTimer dialogWatchdog;
+        dialogWatchdog.setSingleShot(true);
+        QObject::connect(&dialogWatchdog, &QTimer::timeout, []() {
+            if (auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget())) dialog->reject();
+        });
+        QObject::connect(&dialogDriver, &QTimer::timeout, [&dialogHandled, &dialogDriver, name]() {
             auto* dialog = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
             if (dialog != nullptr) {
+                dialogHandled = true;
+                dialogDriver.stop();
                 dialog->setTextValue(name);
                 dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok)->click();
             }
         });
+        dialogDriver.start(5);
+        dialogWatchdog.start(5000);
         action->trigger();
+        dialogDriver.stop();
+        dialogWatchdog.stop();
+        EXPECT_TRUE(dialogHandled);
     };
     QAction* createState = nullptr;
     QAction* createTransition = nullptr;
@@ -1999,8 +2027,17 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     QApplication::processEvents();
     EXPECT_EQ(networkView->getScene()->selectedItems().size(), 2);
     ASSERT_TRUE(createTransition->isEnabled());
-    QTimer::singleShot(0, []() {
+    bool createTransitionDialogHandled = false;
+    QTimer createTransitionDialogDriver;
+    QTimer createTransitionDialogWatchdog;
+    createTransitionDialogWatchdog.setSingleShot(true);
+    QObject::connect(&createTransitionDialogWatchdog, &QTimer::timeout, []() {
+        if (auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget())) dialog->reject();
+    });
+    QObject::connect(&createTransitionDialogDriver, &QTimer::timeout, [&]() {
         if (auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget())) {
+            createTransitionDialogHandled = true;
+            createTransitionDialogDriver.stop();
             message->accept();
             return;
         }
@@ -2010,13 +2047,20 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
         const auto edits = dialog->findChildren<QLineEdit*>();
         const auto buttons = dialog->findChildren<QDialogButtonBox*>();
         if (combos.size() == 2 && !edits.isEmpty() && buttons.size() == 1) {
+            createTransitionDialogHandled = true;
+            createTransitionDialogDriver.stop();
             combos.at(0)->setCurrentIndex(combos.at(0)->findText(QStringLiteral("PersistedIdle")));
             combos.at(1)->setCurrentIndex(combos.at(1)->findText(QStringLiteral("PersistedDone")));
             edits.at(0)->setText(QStringLiteral("Complete"));
             buttons.at(0)->button(QDialogButtonBox::Ok)->click();
         }
     });
+    createTransitionDialogDriver.start(5);
+    createTransitionDialogWatchdog.start(5000);
     createTransition->trigger();
+    createTransitionDialogDriver.stop();
+    createTransitionDialogWatchdog.stop();
+    ASSERT_TRUE(createTransitionDialogHandled);
     ASSERT_EQ(network->getTransitions()->size(), 1u);
     auto* transition = network->getTransitions()->front();
     EXPECT_EQ(transition->getSource(), idle);
