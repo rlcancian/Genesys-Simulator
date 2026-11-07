@@ -1,0 +1,23 @@
+.TH GENESYS-AI-ASSISTANT-GUI 1 "2026-11-05" "GenESyS" "GenESyS Manual"
+.SH NAME
+genesys-ai-assistant-gui \- standalone GenESyS AI Assistant Qt application
+.SH SYNOPSIS
+.B genesys-ai-assistant-gui
+.SH DESCRIPTION
+.B genesys-ai-assistant-gui
+is an independent Qt6/C++23 application and process. It can also be launched
+from the
+.B Tools
+menu of the main
+.BR genesys-gui (1)
+application by selecting
+.BR "AI Assistant" .
+The application opens its own AI Assistant window. Provider credentials and services are configured separately; opening the window does not establish a functioning provider or share the main GUI model.
+.PP
+In the current Debian installation, the executable is installed in
+.IR /usr/bin/ .
+In the GenESyS portable distribution, it is installed in the runtime
+.I libexec/genesys/system/bin
+directory and a public command is provided by the portable installer.
+.SH SEE ALSO
+.BR genesys-gui (1)

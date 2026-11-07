@@ -3,3 +3,6 @@ usr/libexec/genesys/system/bin/genesys-gui
 usr/share/applications/io.github.rlcancian.genesys.desktop
 usr/share/metainfo/io.github.rlcancian.genesys.metainfo.xml
 usr/share/icons/hicolor/scalable/apps/io.github.rlcancian.genesys.svg
+usr/bin/genesys-dataanalyser-gui
+usr/bin/genesys-optimizer-gui
+usr/bin/genesys-ai-assistant-gui
