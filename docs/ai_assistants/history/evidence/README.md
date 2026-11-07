@@ -29,6 +29,7 @@ history/evidence/
 Current ledger:
 
 - [`2026/11/VALIDATION_LEDGER.md`](2026/11/VALIDATION_LEDGER.md)
+- [`2026/11/2026-11-07_november_consolidation.md`](2026/11/2026-11-07_november_consolidation.md) — PR #560/#562 final-head and integration evidence.
 - [`2026/07/VALIDATION_LEDGER.md`](2026/07/VALIDATION_LEDGER.md)
 
 A separate document may be added inside the same month only when its technical detail cannot be represented responsibly in the ledger. It must still be linked from that month's ledger.

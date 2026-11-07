@@ -539,21 +539,23 @@ This is the only approved source for work an AI agent may execute without a new 
 - Validation: local Ubuntu 24.04 `gui-app`, `tests-unit` (2,004 passed; 4 disabled), `tests-kernel-unit` (2,004 passed; 4 disabled), `tests-smoke` (3/3), focused ASan/UBSan Transfer tests (16/16 with LSan disabled); all PR checks passed on head `020279a55db3f287bb900225d43f15e01add252b`.
 - Evidence: [transfer_label_goto_remote_progress.md](history/evidence/2026/11/transfer_label_goto_remote_progress.md), including the sanitizer leak limitation and distinction between automated GUI persistence validation and manual interaction.
 
-## 5. Active bounded work
-
 ### AUTO-GUI-002 — Consolidate standalone GUI tools and installed launch paths
 
 - Priority: `P1`
-- Status: `running` (human-authorized 2026-11-05; integration explicitly authorized 2026-11-06).
-- Issue: [#561](https://github.com/rlcancian/Genesys-Simulator/issues/561).
-- Branch/PR: `WiP202611/standalone-tools-gui` / PR #562; rebased by merge commit onto WorkInProgress `82cb4bdb28d698daea14dc01914797cb59f6d1ed`.
-- Scope: verify distinct Qt6/C++23 executables, independent `main()` and window lifecycle for Data Analyser, Optimizer and AI Assistant; audit Tools action wiring; fix executable discovery for installed GUI layouts; include optional tools in the Debian package when selected; preserve separate development presets and portable package behavior; add focused and end-to-end evidence where CI permits; inventory legacy window sources.
-- Acceptance: no in-process Tools windows, correct installed lookup, explicit missing-executable diagnostics, no unrelated executable launches, three independently testable targets; installed menu launches verified by PID/window/close lifecycle; Debian package and required final-head checks pass.
-- Non-goals: changing optimizer/statistical/AI algorithms, rewriting source-window architecture, adding IPC/model sharing, broad plugin changes, stable-branch promotion.
-- Stop gates: unresolved trust boundary, incompatible installation policy, package branch conflict requiring scope decisions, or persistent required CI failures. Rollback: revert the bounded PR.
-- Parallel change warning: PR #524 proposes a separate Debian packaging consolidation and remains outside this task.
+- Status: `done_confirmed`.
+- Environment: local + GitHub Actions.
+- Authorization: explicit maintainer instructions dated 2026-11-05 and 2026-11-06, including merge authorization after required checks.
+- Issue/branch/PR: [#561](https://github.com/rlcancian/Genesys-Simulator/issues/561); `WiP202611/standalone-tools-gui`; [PR #562](https://github.com/rlcancian/Genesys-Simulator/pull/562).
+- Base: `WorkInProgress` `82cb4bdb28d698daea14dc01914797cb59f6d1ed`.
+- Merge: `46bdedfc94ac9ae6144675fe6b2a64c0c5e98460` (2026-11-07).
+- Scope: independent Data Analyser, Optimizer and AI Assistant Qt applications; Tools process launch; installed executable lookup; Debian inclusion; tests and manuals.
+- Non-goals: scientific/optimizer/AI algorithm changes, IPC/model transfer, broad source relocation, dynamic-plugin migration, stable-branch promotion. PR #524 remains separate.
+- Validation: tests-unit 2,004 passed + 4 disabled; tests-kernel-unit 2,004 passed + 4 disabled; smoke 3/3; six ToolLauncher CTests; real Tools menu launches with PID/window/close/cleanup checks; Debian package and install/reinstall/remove/purge lifecycle; all final PR checks passed.
+- Acceptance: three independent targets and processes; no in-process Tools windows; deterministic installed lookup; safe missing/non-executable behavior; real menu launches; package, documentation and final-head CI verified.
+- Completion evidence: [`history/evidence/2026/11/2026-11-07_november_consolidation.md`](history/evidence/2026/11/2026-11-07_november_consolidation.md). Post-merge Debian workflow is separately tracked in that evidence; pre-merge lifecycle passed.
+- Remaining boundaries: no live optional issue-relay test; no full portable archive lifecycle in this run; optimizer and AI scientific/provider behavior were outside scope.
 
-
+## 5. Active bounded work
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
 
 - Priority: `P1`

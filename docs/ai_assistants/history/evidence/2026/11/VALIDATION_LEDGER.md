@@ -2,7 +2,7 @@
 document_type: validation-evidence
 authority: informative
 owner: project-maintainer
-last_updated: 2026-11-05
+last_updated: 2026-11-07
 status: active
 scope: model-save-decide-source-editor-plugin-catalog
 ---
@@ -84,3 +84,7 @@ Hosted runs used GitHub's pull-request merge candidate (`164dca372a5c2a53acf5db6
 - The previously reported local hook message `Hook failed — hook returned invalid stop hook JSON output` was not reproduced or traced to a safe local configuration fix during this cycle. No hooks or required checks were disabled. The memory observer independently reported exhausted Claude weekly allowance; it was not restarted or modified.
 
 The five backlog entries `AUTO-GUIFIX-001` through `AUTO-GUIFIX-005` were marked `done_confirmed` after source, test and integration evidence was recorded. Current repository state is maintained in [`../../../../STATUS.md`](../../../../STATUS.md).
+
+## November 2026 integration closeout
+
+The later Report Issue and Standalone Tools integrations (PRs #560 and #562) are recorded separately in [`2026-11-07_november_consolidation.md`](2026-11-07_november_consolidation.md), including their merge commits, final-head checks, PDF evidence and remaining validation boundaries.
