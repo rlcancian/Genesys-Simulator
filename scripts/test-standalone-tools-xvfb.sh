@@ -140,12 +140,12 @@ if [[ "$wm_ready" != true ]]; then
     echo "No EWMH window manager detected in the private Xvfb display" >&2
     exit 1
 fi
-tools_menu_x=${GENESYS_TEST_TOOLS_MENU_X:-370}
-[[ "$tools_menu_x" =~ ^[0-9]+$ ]] || {
-    echo "GENESYS_TEST_TOOLS_MENU_X must be a non-negative integer" >&2
+tools_menu_offset_x=${GENESYS_TEST_TOOLS_MENU_OFFSET_X:-370}
+[[ "$tools_menu_offset_x" =~ ^[0-9]+$ ]] || {
+    echo "GENESYS_TEST_TOOLS_MENU_OFFSET_X must be a non-negative integer" >&2
     exit 2
 }
-echo "Using $wm_name; Tools menu x=$tools_menu_x on the 1280px virtual display"
+echo "Using $wm_name; Tools menu offset x=$tools_menu_offset_x from the main window"
 
 # Give the GUI an isolated first-run profile with plugin autoload disabled.
 # Missing optional system plugins can otherwise open a diagnostic window on
@@ -192,11 +192,18 @@ for index in "${!tools[@]}"; do
     }
 
     xdotool_bounded windowactivate --sync "$gui_window"
-    # F10 does not activate QMenuBar reliably in the Qt6/Xfwm4 combination.
-    # The virtual display is fixed at 1280px and the English Tools label is at
-    # x=370 in the current QMenuBar. Derive y from X11 so WM decorations remain
-    # variable; CI may override x if the UI layout changes.
+    # Derive the absolute location from the main window: the client is centered
+    # by the window manager, so using a screen-absolute constant misses Tools
+    # on narrower virtual displays. The offset is relative to the left edge of
+    # the QMainWindow and can be overridden when menu layout/font changes.
+    window_x=$(xwininfo -id "$gui_window" | awk '/Absolute upper-left X:/ { print $4 }')
     window_y=$(xwininfo -id "$gui_window" | awk '/Absolute upper-left Y:/ { print $4 }')
+    [[ "$window_x" =~ ^-?[0-9]+$ && "$window_y" =~ ^-?[0-9]+$ ]] || {
+        echo "Could not determine main GUI window position" >&2
+        exit 1
+    }
+    tools_menu_x=$((window_x + tools_menu_offset_x))
+    echo "Opening Tools at screen x=$tools_menu_x y=$((window_y + 15)) (window x=$window_x)"
     xdotool_bounded mousemove "$tools_menu_x" "$((window_y + 15))" click 1
     sleep 0.15
     xdotool_bounded key --clearmodifiers Down
