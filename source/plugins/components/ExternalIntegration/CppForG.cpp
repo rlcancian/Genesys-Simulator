@@ -18,6 +18,7 @@
 #include <fstream>
 #include <dlfcn.h>
 #include <string>
+#include <stdexcept>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -44,8 +45,9 @@ CppForG::CppForG(Model* model, std::string name) : ModelComponent(model, Util::T
 									Util::TypeOf<CppForG>(), getName(), "IncludesCode", "");
 	SimulationControlGenericClass<CppCompiler*, Model*, CppCompiler>* propCppCompiler = new SimulationControlGenericClass<CppCompiler*, Model*, CppCompiler>(
 									_parentModel,
-									std::bind(&CppForG::getCppCompiler, this), std::bind(&CppForG::setCppCompiler, this, std::placeholders::_1),
-									Util::TypeOf<CppForG>(), getName(), "CppCompiler", "");
+									std::bind(&CppForG::getCppCompiler, this), nullptr,
+									Util::TypeOf<CppForG>(), getName(), "CppCompiler", "", false, true, false,
+									nullptr, false, true);
 
 	_parentModel->getControls()->insert(propDispatchEvent);
 	_parentModel->getControls()->insert(propBetweenRep);
@@ -74,7 +76,9 @@ ModelComponent* CppForG::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void CppForG::setCppCompiler(CppCompiler* _cppCompiler) {
-	this->_cppCompiler = _cppCompiler;
+	if (_cppCompiler != this->_cppCompiler) {
+		throw std::invalid_argument("CppForG owns its CppCompiler; edit its settings through the inline property.");
+	}
 }
 
 CppCompiler* CppForG::getCppCompiler() const {

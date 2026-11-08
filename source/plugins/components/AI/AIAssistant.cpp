@@ -90,7 +90,11 @@ void AIAssistant::setAISupport(AISupport* value) {
     if (value != nullptr) _attachedDataInsert("AISupport", value); else _attachedDataRemove("AISupport");
 }
 AISupport* AIAssistant::getAISupport() const { return _aiSupport; }
-void AIAssistant::setAISupportName(std::string value) { _aiSupportName = std::move(value); _aiSupport = nullptr; }
+void AIAssistant::setAISupportName(std::string value) {
+    _aiSupportName = std::move(value);
+    _aiSupport = nullptr;
+    _attachedDataRemove("AISupport");
+}
 std::string AIAssistant::getAISupportName() const { return _aiSupport != nullptr ? _aiSupport->getName() : _aiSupportName; }
 #define AI_STRING_PROPERTY(Name, Field) \
 void AIAssistant::set##Name(std::string value) { Field = std::move(value); } \

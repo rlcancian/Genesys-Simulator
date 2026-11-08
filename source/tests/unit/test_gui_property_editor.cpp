@@ -20,15 +20,19 @@
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/Synchronization/Match.h"
+#include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/AI/AISupport.h"
 #include "plugins/data/Continuous/ODESolver.h"
+#include "plugins/data/ExternalIntegration/CppCompiler.h"
+#include "plugins/data/ExternalIntegration/SPICERunner.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/Grouping/EntityGroup.h"
 
@@ -221,6 +225,9 @@ TEST(PropertyEditorModelDataReference, AIAssistantSelectsAnExistingAISupportInst
 
     EXPECT_EQ(assistant.getAISupport(), sharedSupport);
     EXPECT_EQ(assistant.getAISupportName(), "SharedSupport_PropertyEditor");
+    assistant.setAISupportName("LegacySupportName");
+    EXPECT_EQ(assistant.getAISupport(), nullptr);
+    EXPECT_EQ(assistant.getAttachedData()->find("AISupport"), assistant.getAttachedData()->end());
 }
 
 TEST(PropertyEditorModelDataReference, ContinuousSystemSelectsAnExistingODESolver) {
@@ -462,6 +469,41 @@ TEST(PropertyEditorModelDataReference, MatchExposesCommonQueueOrderingProperties
 
     EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderRule")), nullptr);
     EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderAttributeName")), nullptr);
+}
+
+TEST(PropertyEditorModelDataReference, CppForGExposesOwnedCompilerSettingsInline) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppForG component(model, "CppForG_PropertyEditor");
+    CppCompiler* ownedCompiler = component.getCppCompiler();
+    ASSERT_NE(ownedCompiler, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("CppCompiler")), nullptr);
+    QtBrowserItem* sourceFileItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename"));
+    ASSERT_NE(sourceFileItem, nullptr);
+    EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
+    EXPECT_THROW(component.setCppCompiler(nullptr), std::invalid_argument);
+}
+
+TEST(PropertyEditorModelDataReference, SPICECircuitRunnerCallbackExpiresWithCircuit) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* runner = new SPICERunner(model, "SPICERunner_CallbackLifetime");
+    {
+        SPICECircuit circuit(model, "SPICECircuit_CallbackLifetime");
+        circuit.setRunner(runner);
+    }
+    EXPECT_NO_THROW(runner->CompileSpiceFile());
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {
