@@ -268,6 +268,7 @@ bool RSimulator::_check(std::string& errorMessage) {
 void RSimulator::_ensureRunner() {
 	if (_runner == nullptr) {
 		_runner = new RSimulatorRunner(_parentModel, getName() + ".RSimulatorRunner");
+		_syncRunnerConfiguration();
 	}
 }
 

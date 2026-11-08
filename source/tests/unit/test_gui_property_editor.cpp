@@ -20,6 +20,7 @@
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
+#include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
@@ -328,6 +329,22 @@ TEST(PropertyEditorModelDataReference, PythonForGExposesItsOwnedRuntimeConfigura
     ASSERT_NE(editor, nullptr);
     commitTextWithEnter(editor, QStringLiteral("python3-property-editor"));
     EXPECT_EQ(component.getPythonRuntime()->getPythonExecutable(), "python3-property-editor");
+}
+
+TEST(PropertyEditorModelDataReference, RSimulatorComponentConfigurationIsTheRunnerSourceOfTruth) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulator component(model, "RSimulator_PropertyEditor");
+    component.setRExecutable("Rscript-custom");
+    component.setWorkingDirectory("/tmp/r-simulator-property-editor");
+    component.setPreludeScript("# multiline prelude\noptions(stringsAsFactors = FALSE)");
+    ASSERT_NE(component.getRunner(), nullptr);
+    EXPECT_EQ(component.getRunner()->getRExecutable(), "Rscript-custom");
+    EXPECT_EQ(component.getRunner()->getWorkingDirectory(), "/tmp/r-simulator-property-editor");
+    EXPECT_EQ(component.getRunner()->getPreludeScript(), "# multiline prelude\noptions(stringsAsFactors = FALSE)");
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {
