@@ -44,11 +44,18 @@ bool jsonNumber(const std::string& json, const std::string& key, double& value) 
 
 AIAssistant::AIAssistant(Model* model, std::string name)
     : ModelComponent(model, Util::TypeOf<AIAssistant>(), name) {
+    auto* supportControl = new SimulationControlGenericClass<AISupport*, Model*, AISupport>(
+        _parentModel,
+        std::bind(&AIAssistant::getAISupport, this),
+        std::bind(&AIAssistant::setAISupport, this, std::placeholders::_1),
+        Util::TypeOf<AIAssistant>(), getName(), "AISupport", "");
+    _parentModel->getControls()->insert(supportControl);
+    _addSimulationControl(supportControl);
+
     auto addString = [this](const std::string& property, auto getter, auto setter) {
         auto* control = new SimulationControlString(getter, setter, Util::TypeOf<AIAssistant>(), getName(), property);
         _parentModel->getControls()->insert(control); _addSimulationControl(control);
     };
-    addString("AISupport", std::bind(&AIAssistant::getAISupportName, this), std::bind(&AIAssistant::setAISupportName, this, std::placeholders::_1));
     addString("PromptTemplate", std::bind(&AIAssistant::getPromptTemplate, this), std::bind(&AIAssistant::setPromptTemplate, this, std::placeholders::_1));
     addString("ConversationScope", std::bind(&AIAssistant::getConversationScope, this), std::bind(&AIAssistant::setConversationScope, this, std::placeholders::_1));
     addString("ConversationKeyExpression", std::bind(&AIAssistant::getConversationKeyExpression, this), std::bind(&AIAssistant::setConversationKeyExpression, this, std::placeholders::_1));

@@ -15,9 +15,11 @@
 #include "kernel/simulator/model/Model.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/AI/AIAssistant.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
+#include "plugins/data/AI/AISupport.h"
 
 #include <functional>
 
@@ -179,6 +181,35 @@ QSpinBox* beginIntegerEdit(ObjectPropertyBrowser& browser, const QString& proper
     browser.editItem(item);
     drainGuiEvents();
     return browser.findChild<QSpinBox*>();
+}
+
+TEST(PropertyEditorModelDataReference, AIAssistantSelectsAnExistingAISupportInstance) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* sharedSupport = new AISupport(model, "SharedSupport_PropertyEditor");
+    AIAssistant assistant(model, "Assistant_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &assistant);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("AISupport"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int sharedIndex = selector->findText(QString::fromStdString(sharedSupport->getName()));
+    ASSERT_GE(sharedIndex, 0);
+    selector->setCurrentIndex(sharedIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(assistant.getAISupport(), sharedSupport);
+    EXPECT_EQ(assistant.getAISupportName(), "SharedSupport_PropertyEditor");
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {
