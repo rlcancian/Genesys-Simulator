@@ -16,10 +16,12 @@
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/AI/AIAssistant.h"
+#include "plugins/components/Continuous/ContinuousSystemComponent.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/AI/AISupport.h"
+#include "plugins/data/Continuous/ODESolver.h"
 
 #include <functional>
 
@@ -210,6 +212,34 @@ TEST(PropertyEditorModelDataReference, AIAssistantSelectsAnExistingAISupportInst
 
     EXPECT_EQ(assistant.getAISupport(), sharedSupport);
     EXPECT_EQ(assistant.getAISupportName(), "SharedSupport_PropertyEditor");
+}
+
+TEST(PropertyEditorModelDataReference, ContinuousSystemSelectsAnExistingODESolver) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* solver = new ODESolver(model, "SelectedSolver_PropertyEditor");
+    ContinuousSystemComponent component(model, "Continuous_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("ODESolver"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int solverIndex = selector->findText(QString::fromStdString(solver->getName()));
+    ASSERT_GE(solverIndex, 0);
+    selector->setCurrentIndex(solverIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getOdeSolver(), solver);
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {

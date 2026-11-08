@@ -10,6 +10,7 @@
 
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelDataManager.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 #include "plugins/data/Logic/Variable.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -71,6 +72,13 @@ PluginInformation* ContinuousSystemComponent::GetPluginInformation() {
 
 ContinuousSystemComponent::ContinuousSystemComponent(Model* model, std::string name)
 	: ModelComponent(model, Util::TypeOf<ContinuousSystemComponent>(), name) {
+	auto* solverControl = new SimulationControlGenericClass<ODESolver*, Model*, ODESolver>(
+		_parentModel,
+		std::bind(&ContinuousSystemComponent::getOdeSolver, this),
+		std::bind(&ContinuousSystemComponent::setOdeSolver, this, std::placeholders::_1),
+		Util::TypeOf<ContinuousSystemComponent>(), getName(), "ODESolver", "");
+	_parentModel->getControls()->insert(solverControl);
+	_addSimulationControl(solverControl);
 }
 
 // ---------------------------------------------------------------------------
