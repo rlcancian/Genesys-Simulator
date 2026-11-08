@@ -860,7 +860,7 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Status: `running`
 - Environment: `local` (C++23, CMake/Ninja, Qt6, Google Test)
 - Authorization: explicit maintainer request dated 2026-11-08; implement the specified component/DataDefinition editor contracts, tests, documentation, commits and Draft PR; no automatic merge.
-- Branch/PR: `WiP202611/datadef-component-properties` (active implementation; PR after validation).
+- Branch/PR: `WiP202611/datadef-component-properties`, [PR #571](https://github.com/rlcancian/Genesys-Simulator/pull/571) (Draft; incremental audit/implementation continues; no merge).
 - Base: `origin/WorkInProgress` at `82acab46238b1fea689202b24185bf2e2e8b3c00`.
 - Scope: inventory ModelComponent-to-ModelDataDefinition associations and correct confirmed Property Editor gaps across AI, continuous, modal, template, external integration, polymorphic Search/Remove, discrete/transfer and scientific components; implement Match queue configuration in a separate bounded commit after auditing routing and persistence contracts; add focused GUI/kernel/persistence/lifetime regressions and manual-impact documentation.
 - Non-goals: making `Counter` or `StatisticsCollector` editable; broad property framework/plugin architecture refactoring; changing simulation algorithms except where a confirmed property contract requires it; introducing unsafe sharing/ownership changes; inventing migration behavior for legacy Match output connections; reimplementing Wait/Signal changes identified by PR #570 commits `b33c9c634` and `b10adbf59`.
