@@ -860,10 +860,10 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Status: `running`
 - Environment: `local` (C++23, CMake/Ninja, Qt6)
 - Authorization: explicit maintainer task dated 2026-11-08; implementation and PR are authorized, merge is not.
-- Branch/PR: `WiP202611/wait-signal-data-property` (active implementation; PR to be opened after validation).
+- Branch/PR: `WiP202611/wait-signal-data-property`, [PR #570](https://github.com/rlcancian/Genesys-Simulator/pull/570) (Draft; awaiting CI/review; no merge performed).
 - Base: current `origin/WorkInProgress` at `82acab46238b1fea689202b24185bf2e2e8b3c00`.
 - Scope: expose the existing `SignalData` reference as an editable property on only `Wait` and `Signal`, following current `SimulationControlGenericClass` patterns; add getters if required; verify shared-instance selection, `.gen`/`.gui` persistence, invalid/null reference behavior and signal/wait regressions.
 - Non-goals: changes to other ModelComponents, SignalData ownership semantics, property-editor architecture, plugin registration, or persistence format.
 - Acceptance: both controls appear in the Property Editor and can reference the same existing SignalData without duplicate definitions; references round-trip through model and graphical save/load; invalid/null handling matches existing contracts; focused signal behavior tests and affected unit/kernel/GUI builds pass.
-- Validation: focused tests first, then relevant CMake/Ninja/CTest presets and GUI tests where available; no unexecuted validation may be reported as passing.
+- Validation: GCC 13.3/C++23, CMake/Ninja. `genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.*Signal*'` passed (16 tests); focused CTest selection passed (28 tests); actual Property Editor selection and `.gen`/`.gui` shared-reference round trips passed; `git diff --check` passed. Full `gui-app` build was started but interrupted at 123/370 steps; it is not counted as PASS. PR checks remain pending.
 - Stop gates: a required ownership/persistence contract change or invalid-reference policy decision beyond the current architecture; preserve the branch and report evidence if encountered.
