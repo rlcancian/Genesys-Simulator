@@ -5509,6 +5509,8 @@ TEST(SimulatorRuntimeTest, MatchPersistenceRoundTripPreservesRuleQueueCountMatch
     source.setNumberOfQueues(4);
     source.setMatchSize("3");
     source.setAttributeName("Color");
+    source.setQueueOrderRule(Queue::OrderRule::SMALLESTVALUE);
+    source.setQueueOrderAttributeName("Price");
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
@@ -5520,6 +5522,45 @@ TEST(SimulatorRuntimeTest, MatchPersistenceRoundTripPreservesRuleQueueCountMatch
     EXPECT_EQ(loaded.getNumberOfQueues(), 4u);
     EXPECT_EQ(loaded.getMatchSize(), "3");
     EXPECT_EQ(loaded.getAttributeName(), "Color");
+    EXPECT_EQ(loaded.getQueueOrderRule(), Queue::OrderRule::SMALLESTVALUE);
+    EXPECT_EQ(loaded.getQueueOrderAttributeName(), "Price");
+}
+
+TEST(SimulatorRuntimeTest, MatchPropagatesCommonQueueOrderingToExistingAndNewQueues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MatchProbe match(model, "MatchQueueOrdering");
+    match.setNumberOfQueues(2);
+    match.setQueueOrderAttributeName("Price");
+    match.setQueueOrderRule(Queue::OrderRule::HIGHESTVALUE);
+    match.CreateInternalAndAttachedDataProbe();
+
+    auto getMatchQueue = [model](const std::string& name) {
+        return dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), name));
+    };
+    Queue* q0 = getMatchQueue("MatchQueueOrdering.Queue0");
+    Queue* q1 = getMatchQueue("MatchQueueOrdering.Queue1");
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
+    EXPECT_EQ(q0->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q1->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q0->getAttributeName(), "Price");
+    EXPECT_EQ(q1->getAttributeName(), "Price");
+
+    for (Queue::OrderRule rule : {Queue::OrderRule::FIFO, Queue::OrderRule::LIFO,
+                                  Queue::OrderRule::HIGHESTVALUE, Queue::OrderRule::SMALLESTVALUE}) {
+        match.setQueueOrderRule(rule);
+        EXPECT_EQ(q0->getOrderRule(), rule);
+        EXPECT_EQ(q1->getOrderRule(), rule);
+    }
+
+    match.setNumberOfQueues(3);
+    match.CreateInternalAndAttachedDataProbe();
+    Queue* q2 = getMatchQueue("MatchQueueOrdering.Queue2");
+    ASSERT_NE(q2, nullptr);
+    EXPECT_EQ(q2->getOrderRule(), match.getQueueOrderRule());
+    EXPECT_EQ(q2->getAttributeName(), "Price");
 }
 
 TEST(SimulatorRuntimeTest, MatchCheckValidatesQueueCountMatchSizeAndByAttributeContract) {

@@ -23,6 +23,7 @@
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/Synchronization/Match.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
@@ -444,6 +445,23 @@ TEST(PropertyEditorModelDataReference, SearchAndRemoveRestoreSharedEntityGroupRe
     EXPECT_EQ(loadedSearch->getSearchInType(), Search::SearchInType::ENTITYGROUP);
     EXPECT_EQ(loadedRemove->getRemoveFromType(), Remove::RemoveFromType::ENTITYGROUP);
     QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, MatchExposesCommonQueueOrderingProperties) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Match component(model, "Match_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderRule")), nullptr);
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderAttributeName")), nullptr);
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {
