@@ -19,6 +19,7 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include <algorithm>
 #include <cstdlib>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -51,6 +52,10 @@ std::string Remove::getRemoveStartRank() const {
 
 void Remove::setRemoveFromType(Remove::RemoveFromType _removeFromType) {
 	this->_removeFromType = _removeFromType;
+	if ((_removeFromType == RemoveFromType::QUEUE && dynamic_cast<Queue*>(_removeFrom) == nullptr)
+			|| (_removeFromType == RemoveFromType::ENTITYGROUP && dynamic_cast<EntityGroup*>(_removeFrom) == nullptr)) {
+		setRemoveFrom(nullptr);
+	}
 }
 
 Remove::RemoveFromType Remove::getRemoveFromType() const {
@@ -58,7 +63,22 @@ Remove::RemoveFromType Remove::getRemoveFromType() const {
 }
 
 void Remove::setRemoveFrom(ModelDataDefinition* _removeFrom) {
+	if (_removeFrom != nullptr) {
+		const bool isQueue = dynamic_cast<Queue*>(_removeFrom) != nullptr;
+		const bool isEntityGroup = dynamic_cast<EntityGroup*>(_removeFrom) != nullptr;
+		if ((_removeFromType == RemoveFromType::QUEUE && !isQueue)
+				|| (_removeFromType == RemoveFromType::ENTITYGROUP && !isEntityGroup)) {
+			throw std::invalid_argument("RemoveFrom reference type does not match RemoveFromType");
+		}
+	}
 	this->_removeFrom = _removeFrom;
+	_optionalEditableDataDefinitionRemove("Queue");
+	_optionalEditableDataDefinitionRemove("EntityGroup");
+	if (dynamic_cast<Queue*>(_removeFrom) != nullptr) {
+		_optionalEditableDataDefinitionInsert("Queue", _removeFrom);
+	} else if (dynamic_cast<EntityGroup*>(_removeFrom) != nullptr) {
+		_optionalEditableDataDefinitionInsert("EntityGroup", _removeFrom);
+	}
 }
 
 ModelDataDefinition* Remove::getRemoveFrom() const {
@@ -87,14 +107,36 @@ Remove::Remove(Model* model, std::string name, std::string pluginTypeName)
     SimulationControlGenericEnum<Remove::RemoveFromType, Remove>* propRemoveType = new SimulationControlGenericEnum<Remove::RemoveFromType, Remove>(
                                     std::bind(&Remove::getRemoveFromType, this), std::bind(&Remove::setRemoveFromType, this, std::placeholders::_1),
                                     Util::TypeOf<Remove>(), getName(), "RemoveFromType", "");
+	auto createRemoveFrom = [this](Model* model, const std::string& name) -> ModelDataDefinition* {
+		if (_removeFromType == RemoveFromType::QUEUE) return new Queue(model, name);
+		if (_removeFromType == RemoveFromType::ENTITYGROUP) return new EntityGroup(model, name);
+		return nullptr;
+	};
+	auto resolveRemoveFrom = [this](const std::string& name) -> ModelDataDefinition* {
+		if (_removeFromType == RemoveFromType::QUEUE) return _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), name);
+		if (_removeFromType == RemoveFromType::ENTITYGROUP) return _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), name);
+		return nullptr;
+	};
+	auto removeFromChoices = [this]() -> List<std::string>* {
+		auto* names = new List<std::string>();
+		const std::string type = _removeFromType == RemoveFromType::QUEUE ? Util::TypeOf<Queue>() : Util::TypeOf<EntityGroup>();
+		List<ModelDataDefinition*>* definitions = _parentModel->getDataManager()->getDataDefinitionList(type);
+		if (definitions != nullptr) {
+			for (ModelDataDefinition* definition : *definitions->list()) if (definition != nullptr) names->insert(definition->getName());
+		}
+		return names;
+	};
+	auto removeFromCreatableTypes = [this]() -> List<std::string>* {
+		auto* types = new List<std::string>();
+		types->insert(_removeFromType == RemoveFromType::QUEUE ? Util::TypeOf<Queue>() : Util::TypeOf<EntityGroup>());
+		return types;
+	};
 	SimulationControlGenericClass<ModelDataDefinition*, Model*, Queue>* propRemoveFrom = new SimulationControlGenericClass<ModelDataDefinition*, Model*, Queue>(
 									_parentModel,
 									std::bind(&Remove::getRemoveFrom, this),
-									[this](ModelDataDefinition* removeFrom) {
-										this->setRemoveFromType(Remove::RemoveFromType::QUEUE);
-										this->setRemoveFrom(removeFrom);
-									},
-									Util::TypeOf<Remove>(), getName(), "RemoveFrom", "");
+									std::bind(&Remove::setRemoveFrom, this, std::placeholders::_1),
+									Util::TypeOf<Remove>(), getName(), "RemoveFrom", "", false, true, false, createRemoveFrom,
+									false, false, resolveRemoveFrom, removeFromChoices, removeFromCreatableTypes);
 
 	
 	_parentModel->getControls()->insert(propRemoveFrom);
@@ -175,9 +217,9 @@ bool Remove::_loadInstance(PersistenceRecord *fields) {
 		std::string removeFromName = fields->loadField("removeFrom", "");
 		if (removeFromName != "") {
 			if (_removeFromType == RemoveFromType::QUEUE) {
-				_removeFrom = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), removeFromName);
+				setRemoveFrom(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), removeFromName));
 			} else if (_removeFromType == RemoveFromType::ENTITYGROUP) {
-				_removeFrom = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), removeFromName);
+				setRemoveFrom(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), removeFromName));
 			}
 		}
 	}
@@ -255,19 +297,20 @@ PluginInformation* Remove::GetPluginInformation() {
 void Remove::_createEditableDataDefinitions() {
 	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_removeFromType == Remove::RemoveFromType::QUEUE) {
-		if (_removeFrom == nullptr) {
+		if (dynamic_cast<Queue*>(_removeFrom) == nullptr) {
 			_removeFrom = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
 			if (_removeFrom == nullptr) {
 				_removeFrom = new Queue(_parentModel, getName() + ".Queue");
 			}
 		}
 		if (_removeFrom != nullptr) {
-			_optionalEditableDataDefinitionInsert("Queue", _removeFrom);
+			setRemoveFrom(_removeFrom);
 		} else {
 			_optionalEditableDataDefinitionRemove("Queue");
 		}
 	}
 	if (_removeFromType == Remove::RemoveFromType::ENTITYGROUP) {
-		// Not supported in this implementation batch. Explicitly validated in _check().
+		if (dynamic_cast<EntityGroup*>(_removeFrom) != nullptr) setRemoveFrom(_removeFrom);
+		else setRemoveFrom(nullptr);
 	}
 }

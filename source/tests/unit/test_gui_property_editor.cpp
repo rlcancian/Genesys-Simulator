@@ -21,12 +21,15 @@
 #include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
+#include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Remove.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/AI/AISupport.h"
 #include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/Grouping/EntityGroup.h"
 
 #include <functional>
 
@@ -345,6 +348,102 @@ TEST(PropertyEditorModelDataReference, RSimulatorComponentConfigurationIsTheRunn
     EXPECT_EQ(component.getRunner()->getRExecutable(), "Rscript-custom");
     EXPECT_EQ(component.getRunner()->getWorkingDirectory(), "/tmp/r-simulator-property-editor");
     EXPECT_EQ(component.getRunner()->getPreludeScript(), "# multiline prelude\noptions(stringsAsFactors = FALSE)");
+}
+
+TEST(PropertyEditorModelDataReference, SearchSelectsEntityGroupWithoutChangingSearchMode) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "SearchGroup_PropertyEditor");
+    Search component(model, "Search_PropertyEditor");
+    component.setSearchInType(Search::SearchInType::ENTITYGROUP);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    EXPECT_EQ(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SearchInName")), nullptr);
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SearchIn"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    EXPECT_GE(selector->findText(QString("Criar novo %1").arg(QString::fromStdString(Util::TypeOf<EntityGroup>()))), 0);
+    const int groupIndex = selector->findText(QString::fromStdString(group->getName()));
+    ASSERT_GE(groupIndex, 0);
+    selector->setCurrentIndex(groupIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getSearchIn(), group);
+    EXPECT_EQ(component.getSearchInType(), Search::SearchInType::ENTITYGROUP);
+}
+
+TEST(PropertyEditorModelDataReference, RemoveSelectsEntityGroupWithoutChangingRemoveMode) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "RemoveGroup_PropertyEditor");
+    Remove component(model, "Remove_PropertyEditor");
+    component.setRemoveFromType(Remove::RemoveFromType::ENTITYGROUP);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("RemoveFrom"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    EXPECT_GE(selector->findText(QString("Criar novo %1").arg(QString::fromStdString(Util::TypeOf<EntityGroup>()))), 0);
+    const int groupIndex = selector->findText(QString::fromStdString(group->getName()));
+    ASSERT_GE(groupIndex, 0);
+    selector->setCurrentIndex(groupIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getRemoveFrom(), group);
+    EXPECT_EQ(component.getRemoveFromType(), Remove::RemoveFromType::ENTITYGROUP);
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveRestoreSharedEntityGroupReference) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "SharedGroup_RoundTrip");
+    auto* search = new Search(model, "Search_RoundTrip");
+    auto* remove = new Remove(model, "Remove_RoundTrip");
+    search->setSearchInType(Search::SearchInType::ENTITYGROUP);
+    search->setSearchIn(group);
+    remove->setRemoveFromType(Remove::RemoveFromType::ENTITYGROUP);
+    remove->setRemoveFrom(group);
+
+    const QString path = QStringLiteral("/tmp/genesys_search_remove_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedGroup = dynamic_cast<EntityGroup*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<EntityGroup>(), "SharedGroup_RoundTrip"));
+    auto* loadedSearch = dynamic_cast<Search*>(loaded->getComponentManager()->find("Search_RoundTrip"));
+    auto* loadedRemove = dynamic_cast<Remove*>(loaded->getComponentManager()->find("Remove_RoundTrip"));
+    ASSERT_NE(loadedGroup, nullptr);
+    ASSERT_NE(loadedSearch, nullptr);
+    ASSERT_NE(loadedRemove, nullptr);
+    EXPECT_EQ(loadedSearch->getSearchIn(), loadedGroup);
+    EXPECT_EQ(loadedRemove->getRemoveFrom(), loadedGroup);
+    EXPECT_EQ(loadedSearch->getSearchInType(), Search::SearchInType::ENTITYGROUP);
+    EXPECT_EQ(loadedRemove->getRemoveFromType(), Remove::RemoveFromType::ENTITYGROUP);
+    QFile::remove(path);
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {
