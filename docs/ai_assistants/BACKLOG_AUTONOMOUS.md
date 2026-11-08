@@ -853,3 +853,17 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Acceptance: title/description validation; bug as default; no automatic sensitive diagnostics; encoded and bounded GitHub URL; clipboard path for oversize content; explicit browser handoff; error preservation; verified HTTPS issue identity for relay; bounded asynchronous response handling/cancellation; mock HTTP status/timeout/security tests; GUI build and QtTest evidence; successful manual PDF regeneration and review; final-head required checks green.
 - Validation: 21 focused QtTests; local GUI build; unit/kernel (1,998 passed, 4 disabled each), smoke (3/3), canonical PDF build and page inspection; final PR-head required checks passed.
 - Evidence: `history/evidence/2026/11/2026-11-06_report_issue_pr560_validation.md`. A live relay-to-GitHub transaction remains unverified because no operational relay was available.
+
+### AUTO-SIGNAL-001 — Expose shared SignalData on Wait and Signal
+
+- Priority: `P1`
+- Status: `ready`
+- Environment: `local` (C++23, CMake/Ninja, Qt6)
+- Authorization: explicit maintainer task dated 2026-11-08; implementation and PR are authorized, merge is not.
+- Branch/PR: `WiP202611/wait-signal-data-property` (PR to be opened after validation).
+- Base: current `origin/WorkInProgress` at `82acab46238b1fea689202b24185bf2e2e8b3c00`.
+- Scope: expose the existing `SignalData` reference as an editable property on only `Wait` and `Signal`, following current `SimulationControlGenericClass` patterns; add getters if required; verify shared-instance selection, `.gen`/`.gui` persistence, invalid/null reference behavior and signal/wait regressions.
+- Non-goals: changes to other ModelComponents, SignalData ownership semantics, property-editor architecture, plugin registration, or persistence format.
+- Acceptance: both controls appear in the Property Editor and can reference the same existing SignalData without duplicate definitions; references round-trip through model and graphical save/load; invalid/null handling matches existing contracts; focused signal behavior tests and affected unit/kernel/GUI builds pass.
+- Validation: focused tests first, then relevant CMake/Ninja/CTest presets and GUI tests where available; no unexecuted validation may be reported as passing.
+- Stop gates: a required ownership/persistence contract change or invalid-reference policy decision beyond the current architecture; preserve the branch and report evidence if encountered.
