@@ -857,10 +857,10 @@ A task moves to `done` only after required validation is green, evidence is revi
 ### AUTO-SIGNAL-001 — Expose shared SignalData on Wait and Signal
 
 - Priority: `P1`
-- Status: `ready`
+- Status: `running`
 - Environment: `local` (C++23, CMake/Ninja, Qt6)
 - Authorization: explicit maintainer task dated 2026-11-08; implementation and PR are authorized, merge is not.
-- Branch/PR: `WiP202611/wait-signal-data-property` (PR to be opened after validation).
+- Branch/PR: `WiP202611/wait-signal-data-property` (active implementation; PR to be opened after validation).
 - Base: current `origin/WorkInProgress` at `82acab46238b1fea689202b24185bf2e2e8b3c00`.
 - Scope: expose the existing `SignalData` reference as an editable property on only `Wait` and `Signal`, following current `SimulationControlGenericClass` patterns; add getters if required; verify shared-instance selection, `.gen`/`.gui` persistence, invalid/null reference behavior and signal/wait regressions.
 - Non-goals: changes to other ModelComponents, SignalData ownership semantics, property-editor architecture, plugin registration, or persistence format.
