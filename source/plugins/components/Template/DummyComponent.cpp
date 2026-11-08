@@ -13,6 +13,7 @@
 
 #include "plugins/components/Template/DummyComponent.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 //#include "kernel/simulator/Simulator.h"
 //#include "kernel/simulator/PluginManager.h"
 
@@ -31,6 +32,18 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 //
 
 DummyComponent::DummyComponent(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DummyComponent>(), name) {
+	auto* propInternalDataDefinition = new SimulationControlGenericClass<DummyElement*, Model*, DummyElement>(
+		_parentModel,
+		std::bind(&DummyComponent::getInternalDataDefinition, this),
+		nullptr,
+		Util::TypeOf<DummyComponent>(), getName(), "DummyElement", "Internal data definition owned by this template component.",
+		false, true, false, nullptr, false, true);
+	_parentModel->getControls()->insert(propInternalDataDefinition);
+	_addSimulationControl(propInternalDataDefinition);
+}
+
+DummyElement* DummyComponent::getInternalDataDefinition() const {
+	return _internalDataDefinition;
 }
 
 
@@ -102,6 +115,13 @@ bool DummyComponent::_loadInstance(PersistenceRecord *fields) {
 void DummyComponent::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
+}
+
+void DummyComponent::_createEditableDataDefinitions() {
+	if (_internalDataDefinition == nullptr) {
+		_internalDataDefinition = new DummyElement(_parentModel, getName() + ".DummyElement");
+	}
+	_mandatoryNonEditableDataDefinitionInsert("DummyElement", _internalDataDefinition);
 }
 
 void DummyComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {

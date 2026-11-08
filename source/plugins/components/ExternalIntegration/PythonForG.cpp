@@ -17,6 +17,15 @@ ModelDataDefinition* PythonForG::NewInstance(Model* model, std::string name) {
 PythonForG::PythonForG(Model* model, std::string name)
 	: ModelComponent(model, Util::TypeOf<PythonForG>(), name) {
 	_createNonEditableDataDefinitions();
+	auto* propPythonRuntime = new SimulationControlGenericClass<PythonRuntime*, Model*, PythonRuntime>(
+		_parentModel,
+		std::bind(&PythonForG::getPythonRuntime, this),
+		nullptr,
+		Util::TypeOf<PythonForG>(), getName(), "PythonRuntime",
+		"Internal Python runtime configuration. The runtime is owned by this component and cannot be replaced.",
+		false, true, false, nullptr, false, true);
+	_parentModel->getControls()->insert(propPythonRuntime);
+	_addSimulationControl(propPythonRuntime);
 
 	auto* propInitCode = new SimulationControlSourceCodeString(
 			std::bind(&PythonForG::getInitBetweenReplicationCodeProperty, this),

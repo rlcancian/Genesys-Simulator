@@ -96,8 +96,11 @@ std::string ContinuousSystemComponent::show() {
 
 void ContinuousSystemComponent::setOdeSolver(ODESolver* solver) {
 	_odeSolver = solver;
+	_odeSolverName = solver != nullptr ? solver->getName() : "";
 	if (solver != nullptr) {
-		_odeSolverName = solver->getName();
+		_mandatoryEditableDataDefinitionInsert("ODESolver", solver);
+	} else {
+		_mandatoryEditableDataDefinitionRemove("ODESolver");
 	}
 }
 

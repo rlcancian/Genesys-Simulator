@@ -18,6 +18,8 @@
 #include "plugins/components/AI/AIAssistant.h"
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/Template/DummyComponent.h"
+#include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
@@ -242,6 +244,9 @@ TEST(PropertyEditorModelDataReference, ContinuousSystemSelectsAnExistingODESolve
     drainGuiEvents();
 
     EXPECT_EQ(component.getOdeSolver(), solver);
+    ASSERT_NE(component.getAttachedData(), nullptr);
+    ASSERT_TRUE(component.getAttachedData()->contains("ODESolver"));
+    EXPECT_EQ(component.getAttachedData()->at("ODESolver"), solver);
 }
 
 TEST(PropertyEditorModelDataReference, ModalModelSelectsADerivedDefaultNetwork) {
@@ -270,6 +275,59 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsADerivedDefaultNetwork) 
     drainGuiEvents();
 
     EXPECT_EQ(component.getNetwork(), network);
+}
+
+TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyComponent component(model, "Dummy_PropertyEditor");
+    ModelDataDefinition::CreateInternalData(&component);
+    ASSERT_NE(component.getInternalDataDefinition(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(
+                  Util::TypeOf<DummyElement>(), component.getInternalDataDefinition()->getName()),
+              component.getInternalDataDefinition());
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("DummyElement"));
+    ASSERT_NE(item, nullptr);
+    browser.setExpanded(item, true);
+    drainGuiEvents();
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SomeString")), nullptr);
+}
+
+TEST(PropertyEditorModelDataReference, PythonForGExposesItsOwnedRuntimeConfiguration) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonForG component(model, "PythonForG_PropertyEditor");
+    ASSERT_NE(component.getPythonRuntime(), nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* runtimeItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("PythonRuntime"));
+    ASSERT_NE(runtimeItem, nullptr);
+    browser.setExpanded(runtimeItem, true);
+    drainGuiEvents();
+    QtBrowserItem* executableItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("PythonExecutable"));
+    ASSERT_NE(executableItem, nullptr);
+    browser.setCurrentItem(executableItem);
+    browser.editItem(executableItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("python3-property-editor"));
+    EXPECT_EQ(component.getPythonRuntime()->getPythonExecutable(), "python3-property-editor");
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {
