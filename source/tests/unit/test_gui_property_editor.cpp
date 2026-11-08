@@ -17,11 +17,13 @@
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/AI/AIAssistant.h"
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/AI/AISupport.h"
 #include "plugins/data/Continuous/ODESolver.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
 
 #include <functional>
 
@@ -240,6 +242,34 @@ TEST(PropertyEditorModelDataReference, ContinuousSystemSelectsAnExistingODESolve
     drainGuiEvents();
 
     EXPECT_EQ(component.getOdeSolver(), solver);
+}
+
+TEST(PropertyEditorModelDataReference, ModalModelSelectsADerivedDefaultNetwork) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* network = new EFSMNetwork(model, "EFSMNetwork_PropertyEditor");
+    ModalModelDefault component(model, "ModalAdapter_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int networkIndex = selector->findText(QString::fromStdString(network->getName()));
+    ASSERT_GE(networkIndex, 0);
+    selector->setCurrentIndex(networkIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getNetwork(), network);
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {

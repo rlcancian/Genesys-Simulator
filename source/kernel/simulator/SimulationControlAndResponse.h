@@ -699,12 +699,13 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericClass: public SimulationControl {
 public:
     using Creator = std::function<T(M, const std::string&)>;
-    SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+    SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr, bool includeDerivedTypes=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 		static_assert(std::is_pointer<T>::value, "SimulationControlGenericClass requires pointer type T");
 		_model = model;
 		_getter= getter;
 		_setter = setter;
         _creator = creator;
+        _includeDerivedTypes = includeDerivedTypes;
 		_readonly = setter == nullptr;
 		_propertyType = Util::TypeOf<C>();
 	}
@@ -735,13 +736,23 @@ public:
         // value.pop_back();
 		T newVal;
 
-        for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
-            if (modeldata->getName() == value) {
-                exists = true;
-                newVal = static_cast<T>(modeldata);
-                break;
-            };
-        };
+		if (_includeDerivedTypes) {
+			for (C* compatible : _model->getDataManager()->template getDataDefinitionsAssignableTo<C>()) {
+				if (compatible->getName() == value) {
+						exists = true;
+						newVal = compatible;
+					break;
+				}
+			}
+		} else {
+			for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
+				if (modeldata->getName() == value) {
+					exists = true;
+					newVal = static_cast<T>(modeldata);
+					break;
+				};
+			};
+		}
 
 		if (!exists) {
             if (_creator != nullptr) {
@@ -802,11 +813,15 @@ public:
 
     virtual List<std::string>* getStrValues() override {
         List<std::string>* strOptions = new List<std::string>();
-        for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
-            if (modeldata != nullptr) {
-                strOptions->insert(modeldata->getName());
-            }
-        }
+		if (_includeDerivedTypes) {
+			for (C* compatible : _model->getDataManager()->template getDataDefinitionsAssignableTo<C>()) {
+				strOptions->insert(compatible->getName());
+			}
+		} else {
+			for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
+				if (modeldata != nullptr) strOptions->insert(modeldata->getName());
+			}
+		}
         return strOptions;
     }
 
@@ -825,6 +840,7 @@ private:
 	GetterGeneric<T> _getter;
 	SetterGeneric<T> _setter;
     Creator _creator;
+    bool _includeDerivedTypes{false};
 };
 
 // @ToDo: (pequena alteração): remove typename C
