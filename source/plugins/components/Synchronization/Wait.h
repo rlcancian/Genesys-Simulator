@@ -50,6 +50,7 @@ public: // virtual
 	virtual std::string show() override;
 public: //
 	void setSignalData(SignalData* signal);
+	SignalData* getSignalData() const;
 	void setWaitType(WaitType _watType);
 	Wait::WaitType getWaitType() const;
 	void setCondition(std::string _condition);

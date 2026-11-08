@@ -32,13 +32,19 @@ ModelDataDefinition* Signal::NewInstance(Model* model, std::string name) {
 }
 
 Signal::Signal(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Signal>(), name) {
+	SimulationControlGenericClass<SignalData*, Model*, SignalData>* propSignalData = new SimulationControlGenericClass<SignalData*, Model*, SignalData>(
+									_parentModel,
+									std::bind(&Signal::getSignalData, this), std::bind(&Signal::setSignalData, this, std::placeholders::_1),
+									Util::TypeOf<Signal>(), getName(), "SignalData", "");
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Signal::limitExpression, this), std::bind(&Signal::setLimitExpression, this, std::placeholders::_1),
 									Util::TypeOf<Signal>(), getName(), "LimitExpression", "");
 
+	_parentModel->getControls()->insert(propSignalData);
 	_parentModel->getControls()->insert(propExpression);
 
 	// setting properties
+	_addSimulationControl(propSignalData);
 	_addSimulationControl(propExpression);
 }
 
@@ -52,6 +58,10 @@ std::string Signal::show() {
 
 void Signal::setSignalData(SignalData* signal) {
 	_signalData = signal;
+}
+
+SignalData* Signal::getSignalData() const {
+	return _signalData;
 }
 
 // public static

@@ -15,14 +15,18 @@
 #include "kernel/simulator/model/Model.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Synchronization/Signal.h"
+#include "plugins/components/Synchronization/Wait.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
+#include "plugins/data/Synchronization/SignalData.h"
 
 #include <functional>
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QCoreApplication>
 #include <QDoubleSpinBox>
 #include <QEventLoop>
@@ -208,6 +212,55 @@ TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedV
     EXPECT_EQ(object->valueSetCount(), 1);
     drainGuiEvents();
     EXPECT_NEAR(object->value(), 1.25, 1e-12);
+}
+
+TEST(PropertyEditorModelDataReference, WaitAndSignalSelectTheSameSignalData) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* sharedSignalData = new SignalData(model, "SharedSignalData_PropertyEditor");
+    ASSERT_NE(sharedSignalData, nullptr);
+    Wait wait(model, "Wait_PropertyEditor");
+    Signal signal(model, "Signal_PropertyEditor");
+
+    auto selectSharedSignalData = [sharedSignalData](ModelComponent* component) {
+        ASSERT_NE(component, nullptr);
+        ObjectPropertyBrowser browser;
+        browser.resize(640, 480);
+        browser.show();
+        bindEditableKernelObject(browser, component);
+
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SignalData"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int sharedIndex = selector->findText(QString::fromStdString(sharedSignalData->getName()));
+        ASSERT_GE(sharedIndex, 0);
+        selector->setCurrentIndex(sharedIndex);
+        drainGuiEvents();
+
+        SimulationControl* signalDataControl = nullptr;
+        for (SimulationControl* control : *component->getSimulationControls()->list()) {
+            if (control != nullptr && control->getName() == "SignalData") {
+                signalDataControl = control;
+                break;
+            }
+        }
+        ASSERT_NE(signalDataControl, nullptr);
+        EXPECT_EQ(signalDataControl->getReferencedModelDataDefinition(), sharedSignalData);
+    };
+
+    selectSharedSignalData(&wait);
+    selectSharedSignalData(&signal);
 }
 
 TEST(PropertyEditorDoubleCommit, BacteriaSignalGridSetterAndSimulationControlPreserveDouble) {
