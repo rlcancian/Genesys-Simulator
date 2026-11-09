@@ -767,7 +767,14 @@ public:
 		}
 
 		if (!exists) {
-			throw std::invalid_argument("ModelDataDefinition reference does not exist: " + value);
+			if (_keepsChoicesWhenSet) {
+				throw std::invalid_argument("ModelDataDefinition reference does not exist: " + value);
+			}
+			newVal = _creator ? _creator(_model, value) : new C(_model, value);
+			if (newVal == nullptr) {
+				throw std::logic_error("SimulationControlGenericClass creator returned null");
+			}
+			_model->getDataManager()->insert(newVal);
 		}
 
 		_setter(newVal);
@@ -781,6 +788,7 @@ public:
     virtual bool supportsInlineExpansion() const override { return true; }
     // This method marks class references as selectable from existing ModelDataDefinition instances.
     virtual bool supportsExistingObjectSelection() const override { return true; }
+    // This selector contract also disables implicit creation when a supplied reference name is unresolved.
     virtual bool keepsExistingObjectChoicesWhenSet() const override { return _keepsChoicesWhenSet; }
     // This method marks class references as creatable when writable.
     virtual bool supportsObjectCreation() const override { return !_readonly; }

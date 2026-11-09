@@ -28,6 +28,7 @@ Branch `WiP20261109/wait-queue-signaldata-selector`, based on `WorkInProgress` a
 - Wait removes SignalData callbacks on reassignment, deactivation, and destruction; it registers callbacks only for `WaitForSignal` and preserves configured SignalData across mode changes and persistence.
 - Wait and Signal dispatch paths guard null required references; model checks continue to diagnose missing configuration.
 - Generic model-data controls reject unknown reference names. Object construction occurs only through the explicit creation operation.
+- The parent-Model fallback for reference lookup and creation is restricted to the three explicit selector controls; legacy generic controls retain their scene-based behavior.
 - Three controls opt into keeping compatible object choices visible while a reference is set; other controls keep their existing selector behavior.
 - Explicit reference creation resolves the model from the edited object's owning Model when a graphical scene is absent.
 
@@ -35,16 +36,17 @@ Branch `WiP20261109/wait-queue-signaldata-selector`, based on `WorkInProgress` a
 
 - `cmake --preset tests-unit`: PASS (configuration).
 - `cmake --build --preset tests-unit --parallel 4`: PASS.
-- Focused CTest selection for Wait materialization, handler rechecks, Wait validation, shared SignalData selection, and Queue selector replacement/creation: PASS, 8/8 (including explicit SignalData creation/reuse and Queue plus SignalData name-based identity restoration).
+- Focused CTest selection for Wait/Signal materialization, handler rechecks, validation, shared SignalData selection, Queue selector replacement/creation, and generic selector regressions: PASS, 13/13.
+- Full serial `ctest --test-dir build/tests-unit --output-on-failure`: PASS (2,048 registered test cases; CTest exit status 0). An earlier run exposed five failing editor tests; selector model lookup was narrowed to the three explicit controls, and all five now pass both individually and in the full rerun.
 - `cmake --preset gui-app`: PASS (configuration).
 - `cmake --build --preset gui-app --parallel 4`: PASS.
-- The entire 2,046-test CTest run was attempted with 12-way parallelism and interrupted at 253/2046 after `SourceCodePropertyEditor` tests failed. The cause is unknown; this is not a full-suite pass.
-- The focused `tests-kernel-unit` selection passed 7/7. The `tests-kernel-unit` build target also completed its configured unit-test execution successfully (11/11 reported by its test summary).
+- The entire 2,046-test CTest run at 12-way parallelism previously exposed `SourceCodePropertyEditor` failures and was interrupted. The serial full-suite rerun passed after restricting scene-less resolution to the three target selectors.
+- The focused `tests-kernel-unit` selection passed 7/7. Final `tests-kernel-unit` build/test target: PASS (11/11).
 - `git diff --check`: PASS.
 
 ## Remaining validation
 
-- Full unit suite and smoke suite on the final PR head; the smoke preset run is still in progress.
+- Hosted checks on the final PR head; end-to-end Signal/Wait execution, full `.gen`/`.gui` identity coverage, legacy Queue fixture, sanitizers, broader Seize regression, and interactive main-GUI workflow remain unverified.
 - Shared Wait/Signal end-to-end simulation test.
 - `.gen` and `.gui` round-trip identity tests, including legacy auto-created Wait Queue fixtures.
 - Ownership sanitizer coverage and broader Seize/other generic selector regression.

@@ -1203,7 +1203,9 @@ ModelDataDefinition* ObjectPropertyBrowser::_referencedModelDataDefinition(const
     }
 
     ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
-    Model* model = _modelObject != nullptr ? _modelObject->getParentModel() : nullptr;
+    Model* model = binding.descriptor.keepsExistingObjectChoicesWhenSet && _modelObject != nullptr
+                       ? _modelObject->getParentModel()
+                       : nullptr;
     if (model == nullptr) model = (scene != nullptr && scene->getSimulator() != nullptr &&
                     scene->getSimulator()->getModelManager() != nullptr)
                        ? scene->getSimulator()->getModelManager()->current()
@@ -2438,7 +2440,9 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
     }
 
     ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
-    Model* model = _modelObject != nullptr ? _modelObject->getParentModel() : nullptr;
+    Model* model = binding.descriptor.keepsExistingObjectChoicesWhenSet && _modelObject != nullptr
+                       ? _modelObject->getParentModel()
+                       : nullptr;
     if (model == nullptr) model = (scene != nullptr && scene->getSimulator() != nullptr &&
                     scene->getSimulator()->getModelManager() != nullptr)
                        ? scene->getSimulator()->getModelManager()->current()
