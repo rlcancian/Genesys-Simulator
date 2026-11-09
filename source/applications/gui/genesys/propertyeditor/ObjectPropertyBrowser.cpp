@@ -1104,7 +1104,7 @@ bool ObjectPropertyBrowser::_isKernelEditingEnabled(const GenesysPropertyDescrip
 }
 
 bool ObjectPropertyBrowser::_hasGraphicalRepresentation(const GenesysPropertyDescriptor& desc) const {
-    if (!desc.isModelDataDefinitionReference || desc.currentValue.empty()) {
+    if (!desc.isModelDataDefinitionReference || desc.isInlineObject || desc.currentValue.empty()) {
         return false;
     }
 
@@ -1139,7 +1139,7 @@ bool ObjectPropertyBrowser::_isModelObjectActionProperty(
     SimulationControl* control
     ) const {
     (void)control;
-    return desc.isModelDataDefinitionReference && _modelObject != nullptr;
+    return desc.isModelDataDefinitionReference && !desc.isInlineObject && _modelObject != nullptr;
 }
 
 ObjectPropertyBrowser::ModelObjectRelation ObjectPropertyBrowser::_relationForDataDefinition(
