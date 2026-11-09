@@ -1,3 +1,12 @@
+---
+document_type: evidence
+authority: scoped
+owner: ai-assistant
+date: 2026-11-09
+task: Wait Queue and SignalData explicit selector correction
+status: provisional
+---
+
 # Wait Queue and SignalData selector correction
 
 ## Scope
