@@ -88,3 +88,5 @@ The five backlog entries `AUTO-GUIFIX-001` through `AUTO-GUIFIX-005` were marked
 ## November 2026 integration closeout
 
 The later Report Issue and Standalone Tools integrations (PRs #560 and #562) are recorded separately in [`2026-11-07_november_consolidation.md`](2026-11-07_november_consolidation.md), including their merge commits, final-head checks, PDF evidence and remaining validation boundaries.
+
+The active ModelComponent/DataDefinition Property Editor audit for PR #571 is recorded in [`2026-11-08_datadef_component_property_audit.md`](2026-11-08_datadef_component_property_audit.md). It includes focused load/reconnection regressions and explicitly retains the Wait/Signal dependency and Match output-port migration as unresolved scope.

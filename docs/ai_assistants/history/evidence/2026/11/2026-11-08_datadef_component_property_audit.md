@@ -1,3 +1,12 @@
+---
+document_type: evidence
+authority: informative
+owner: project-maintainer
+date: 2026-11-08
+status: implementation-in-progress
+tracks: AUTO-PROPERTY-001,PR-571
+---
+
 # ModelComponent DataDefinition Property Audit — 2026-11-08
 
 ## Scope and method
