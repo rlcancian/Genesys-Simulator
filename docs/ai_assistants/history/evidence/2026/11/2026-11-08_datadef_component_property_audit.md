@@ -83,6 +83,13 @@ Queue order and queue-count persistence are now validated, and queue reductions 
 
 ## Validation on the current working tree
 
+- Environment: Ubuntu 24.04, GCC 13.3.0, CMake/Ninja, C++23, Qt6, Python 3.12.3.
+- `cmake --build --preset tests-unit --parallel 8`: PASS.
+- `ctest --preset tests-unit --output-on-failure`: 2,026 passed, 4 pre-existing disabled, 0 failed (2,030 registered).
+- The first complete unit run exposed one failure in the legacy `PythonForGCreatesInternalRuntimeAndPersistsConfiguration` probe: it loaded a component record into the same model while the original component still exclusively owned that runtime. The probe now loads into a fresh `Model`, matching actual model restoration; the isolated regression and complete unit suite then passed.
+- `cmake --preset tests-kernel-unit`, `cmake --build --preset tests-kernel-unit --parallel 8`, and `ctest --preset tests-kernel-unit --output-on-failure`: PASS; 2,026 passed, 4 pre-existing disabled, 0 failed (2,030 registered).
+- `cmake --preset tests-smoke`, `cmake --build --preset tests-smoke --parallel 8`, and `ctest --preset tests-smoke --output-on-failure`: PASS, 3/3.
+- `cmake --build --preset gui-app --parallel 8`: PASS; built the full Qt6 GUI target through 370 Ninja steps. Existing warnings were emitted by `FitterDummyImpl.cpp` for non-void methods without return statements and by the vendored Qt property browser for deprecated `QString::count()`; neither warning originates in this change.
 - CMake/Ninja target `genesys_test_gui_gmdd_layout`: built successfully.
 - CMake/Ninja targets `genesys_test_simulator_runtime` and `genesys_kernel_unit_tests`: built successfully.
 - `cmake --build --preset gui-app --parallel 8`: PASS; built the full Qt6 GUI target through 370 Ninja steps. Existing warnings were emitted by `FitterDummyImpl.cpp` for non-void methods without return statements and by the vendored Qt property browser for deprecated `QString::count()`; neither warning originates in this change.
@@ -90,6 +97,7 @@ Queue order and queue-count persistence are now validated, and queue reductions 
 - `ctest --test-dir build/tests-unit -R 'Search|Remove|Queueable|Seizable|Buffer|Batch|Match|PropertyEditorModelDataReference|ModalModelDefaultNetwork|RSimulator|PythonRuntime|CppCompiler|SPICECircuit' --output-on-failure`: 119/119 executed passed; four pre-existing disabled Search/Remove tests were not run.
 - Focused `.gen` round-trips now verify identity and absence of duplicate internal definitions for `AISupport`, `ODESolver`, `DummyElement`, `PythonRuntime`, `RSimulatorRunner`, `CppCompiler`, and `Match` queues.
 - No manual interaction in the full desktop GUI was performed; Qt tests exercise the Property Editor widgets under the available test environment.
+- The governed AI documentation validator passes on the evidence and ledger files.
 - Wait/Signal remains dependent on PR #570, still open Draft at HEAD `b10adbf599d8990d55520fef6fa60c069763d872` when checked.
 
 ## Outcome
