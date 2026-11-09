@@ -90,3 +90,7 @@ The five backlog entries `AUTO-GUIFIX-001` through `AUTO-GUIFIX-005` were marked
 The later Report Issue and Standalone Tools integrations (PRs #560 and #562) are recorded separately in [`2026-11-07_november_consolidation.md`](2026-11-07_november_consolidation.md), including their merge commits, final-head checks, PDF evidence and remaining validation boundaries.
 
 The active ModelComponent/DataDefinition Property Editor audit for PR #571 is recorded in [`2026-11-08_datadef_component_property_audit.md`](2026-11-08_datadef_component_property_audit.md). It includes focused load/reconnection regressions and explicitly retains the Wait/Signal dependency and Match output-port migration as unresolved scope.
+
+## 2026-11-09 PR #571 integration
+
+PR #571 head `44e36ee5a6117101b4bf96f429da015349aae197` passed its required checks and was merged into `WorkInProgress` with merge commit `3eafcc14544c4b91c6b17d35b3827581d9dbcb76`. The canonical local checkout was fast-forwarded to the same `origin/WorkInProgress` SHA and was clean. The post-merge Debian package workflow (`42545696837`) was still in progress at this observation. This integration does not close `AUTO-PROPERTY-001`: the Wait/Signal work remains in PR #570, and Match multi-output migration remains undefined for legacy connections.
