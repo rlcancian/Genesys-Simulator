@@ -4646,6 +4646,24 @@ TEST(SimulatorRuntimeTest, SignalDataDestructorHandlesOwnedHandlersLifecycle) {
     EXPECT_NO_THROW(delete signal);
 }
 
+TEST(SimulatorRuntimeTest, WaitAndSignalMaterializationDoesNotCreateReferences) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    WaitProbe wait(model, "WaitNoImplicitReferences");
+    SignalProbe signal(model, "SignalNoImplicitReferences");
+
+    ASSERT_EQ(wait.getQueue(), nullptr);
+    ASSERT_EQ(wait.getSignalData(), nullptr);
+    ASSERT_EQ(signal.getSignalData(), nullptr);
+    wait.CreateInternalAndAttachedDataProbe();
+    signal.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(wait.getQueue(), nullptr);
+    EXPECT_EQ(wait.getSignalData(), nullptr);
+    EXPECT_EQ(signal.getSignalData(), nullptr);
+    EXPECT_EQ(wait.getInternalData()->count("Queue"), 0u);
+}
+
 TEST(SimulatorRuntimeTest, SignalDataInitBetweenReplicationsResetsRemainsToLimit) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
