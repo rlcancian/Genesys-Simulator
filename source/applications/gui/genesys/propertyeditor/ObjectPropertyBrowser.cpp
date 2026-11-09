@@ -1056,10 +1056,12 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
     } else {
         choices << (referencedType.isEmpty() ? QStringLiteral("") : QString("Selecione %1").arg(referencedType));
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
-        if (objectExists && desc.keepsExistingObjectChoicesWhenSet) {
-            choices[0] = QString::fromStdString(referencedDataDefinition->getName());
-        }
         QSet<QString> seenLabels;
+        if (objectExists && desc.keepsExistingObjectChoicesWhenSet) {
+            const QString currentName = QString::fromStdString(referencedDataDefinition->getName());
+            choices[0] = currentName;
+            seenLabels.insert(currentName);
+        }
         for (const std::string& choiceValue : desc.choices) {
             const QString choiceLabel = QString::fromStdString(choiceValue);
             if (choiceLabel.isEmpty() || seenLabels.contains(choiceLabel)) {
