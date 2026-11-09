@@ -4746,6 +4746,44 @@ TEST(SimulatorRuntimeTest, WaitAndSignalPersistenceRoundTripPreservesSharedSigna
     EXPECT_EQ(loadedWait._signalData, loadedSignal.SignalDataPtrProbe());
 }
 
+TEST(SimulatorRuntimeTest, WaitAndSignalGenRoundTripPreservesOneSharedSignalData) {
+    const std::string filename = "/tmp/genesys_wait_signal_shared_data_" + std::to_string(::getpid()) + ".gen";
+    ::unlink(filename.c_str());
+
+    Simulator sourceSimulator;
+    sourceSimulator.getPluginManager()->autoInsertPlugins();
+    Model* sourceModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(sourceModel, nullptr);
+
+    auto* sharedData = new SignalData(sourceModel, "SharedSignalData");
+    auto* wait = new Wait(sourceModel, "WaitSharedSignalData");
+    wait->setWaitType(Wait::WaitType::WaitForSignal);
+    wait->setSignalData(sharedData);
+    auto* signal = new Signal(sourceModel, "SignalSharedSignalData");
+    signal->setSignalData(sharedData);
+
+    ASSERT_TRUE(sourceModel->save(filename));
+
+    Simulator loadedSimulator;
+    loadedSimulator.getPluginManager()->autoInsertPlugins();
+    Model* loadedModel = loadedSimulator.getModelManager()->loadModel(filename);
+    ASSERT_NE(loadedModel, nullptr);
+
+    auto* loadedWait = dynamic_cast<Wait*>(loadedModel->getComponentManager()->find("WaitSharedSignalData"));
+    auto* loadedSignal = dynamic_cast<Signal*>(loadedModel->getComponentManager()->find("SignalSharedSignalData"));
+    auto* loadedData = dynamic_cast<SignalData*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<SignalData>(), "SharedSignalData"));
+    ASSERT_NE(loadedWait, nullptr);
+    ASSERT_NE(loadedSignal, nullptr);
+    ASSERT_NE(loadedData, nullptr);
+    EXPECT_EQ(loadedWait->getSignalData(), loadedData);
+    EXPECT_EQ(loadedSignal->getSignalData(), loadedData);
+    EXPECT_EQ(loadedWait->getSignalData(), loadedSignal->getSignalData());
+    EXPECT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<SignalData>()), 1u);
+
+    ::unlink(filename.c_str());
+}
+
 TEST(SimulatorRuntimeTest, SignalCheckRequiresSignalDataAndValidLimitExpression) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();

@@ -54,14 +54,20 @@ Wait::Wait(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 									_parentModel,
 									std::bind(&Wait::getQueue, this), std::bind(&Wait::setQueue, this, std::placeholders::_1),
 									Util::TypeOf<Wait>(), getName(), "Queue", "");																			
+	SimulationControlGenericClass<SignalData*, Model*, SignalData>* propSignalData = new SimulationControlGenericClass<SignalData*, Model*, SignalData>(
+									_parentModel,
+									std::bind(&Wait::getSignalData, this), std::bind(&Wait::setSignalData, this, std::placeholders::_1),
+									Util::TypeOf<Wait>(), getName(), "SignalData", "");
 
 	_parentModel->getControls()->insert(propQueue);
+	_parentModel->getControls()->insert(propSignalData);
     _parentModel->getControls()->insert(propWaitType);
 	_parentModel->getControls()->insert(propCondition);
 	_parentModel->getControls()->insert(propExpression);
 
 	// setting properties
 	_addSimulationControl(propQueue);
+	_addSimulationControl(propSignalData);
     _addSimulationControl(propWaitType);
 	_addSimulationControl(propCondition);
 	_addSimulationControl(propExpression);
@@ -75,6 +81,10 @@ std::string Wait::show() {
 
 void Wait::setSignalData(SignalData* signal) {
 	_signalData = signal;
+}
+
+SignalData* Wait::getSignalData() const {
+	return _signalData;
 }
 
 void Wait::setCondition(std::string _condition) {

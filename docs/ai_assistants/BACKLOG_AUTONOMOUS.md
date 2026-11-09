@@ -867,6 +867,20 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Validation: 21 focused QtTests; local GUI build; unit/kernel (1,998 passed, 4 disabled each), smoke (3/3), canonical PDF build and page inspection; final PR-head required checks passed.
 - Evidence: `history/evidence/2026/11/2026-11-06_report_issue_pr560_validation.md`. A live relay-to-GitHub transaction remains unverified because no operational relay was available.
 
+### AUTO-SIGNAL-001 — Expose shared SignalData on Wait and Signal
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local` (C++23, CMake/Ninja, Qt6)
+- Authorization: explicit maintainer task dated 2026-11-08; maintainer explicitly authorized integration on 2026-11-09, subject to required checks.
+- Branch/PR: `WiP202611/wait-signal-data-property`, [PR #570](https://github.com/rlcancian/Genesys-Simulator/pull/570) (Draft; reconciling latest WorkInProgress and rerunning required validation).
+- Base: current `origin/WorkInProgress` at `82acab46238b1fea689202b24185bf2e2e8b3c00`.
+- Scope: expose the existing `SignalData` reference as an editable property on only `Wait` and `Signal`, following current `SimulationControlGenericClass` patterns; add getters if required; verify shared-instance selection, `.gen`/`.gui` persistence, invalid/null reference behavior and signal/wait regressions.
+- Non-goals: changes to other ModelComponents, SignalData ownership semantics, property-editor architecture, plugin registration, or persistence format.
+- Acceptance: both controls appear in the Property Editor and can reference the same existing SignalData without duplicate definitions; references round-trip through model and graphical save/load; invalid/null handling matches existing contracts; focused signal behavior tests and affected unit/kernel/GUI builds pass.
+- Validation: historical branch evidence: GCC 13.3/C++23; 16 signal runtime tests and 28 focused tests passed, including Property Editor selection and `.gen`/`.gui` shared-reference round trips. Full `gui-app` build was interrupted and is not counted as PASS. Current merged-base validation is pending.
+- Stop gates: a required ownership/persistence contract change or invalid-reference policy decision beyond the current architecture; preserve the branch and report evidence if encountered.
+
 ### AUTO-PROPERTY-001 — ModelComponent DataDefinition property contracts
 
 - Priority: `P1`
