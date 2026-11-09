@@ -38,12 +38,13 @@ Branch `WiP20261109/wait-queue-signaldata-selector`, based on `WorkInProgress` a
 - Focused CTest selection for Wait materialization, handler rechecks, Wait validation, shared SignalData selection, and Queue selector replacement/creation: PASS, 8/8 (including explicit SignalData creation/reuse and Queue plus SignalData name-based identity restoration).
 - `cmake --preset gui-app`: PASS (configuration).
 - `cmake --build --preset gui-app --parallel 4`: PASS.
-- A parallel run of the entire 2,046-test suite was interrupted after unrelated GUI tests failed under concurrent execution; it is not a full-suite pass. Re-run the full suite under the repository's expected scheduling and triage failures.
+- The entire 2,046-test CTest run was attempted with 12-way parallelism and interrupted at 253/2046 after `SourceCodePropertyEditor` tests failed. The cause is unknown; this is not a full-suite pass.
+- The focused `tests-kernel-unit` selection passed 7/7. The `tests-kernel-unit` build target also completed its configured unit-test execution successfully (11/11 reported by its test summary).
 - `git diff --check`: PASS.
 
 ## Remaining validation
 
-- Full unit, kernel-unit, and smoke suites on the final PR head.
+- Full unit suite and smoke suite on the final PR head; the smoke preset run is still in progress.
 - Shared Wait/Signal end-to-end simulation test.
 - `.gen` and `.gui` round-trip identity tests, including legacy auto-created Wait Queue fixtures.
 - Ownership sanitizer coverage and broader Seize/other generic selector regression.
