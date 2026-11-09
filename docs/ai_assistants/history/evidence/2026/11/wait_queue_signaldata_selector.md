@@ -35,7 +35,7 @@ Branch `WiP20261109/wait-queue-signaldata-selector`, based on `WorkInProgress` a
 
 - `cmake --preset tests-unit`: PASS (configuration).
 - `cmake --build --preset tests-unit --parallel 4`: PASS.
-- Focused CTest selection for Wait materialization, handler rechecks, Wait validation, shared SignalData selection, and Queue selector replacement/creation: PASS, 7/7 (including explicit SignalData creation and reuse by Wait).
+- Focused CTest selection for Wait materialization, handler rechecks, Wait validation, shared SignalData selection, and Queue selector replacement/creation: PASS, 8/8 (including explicit SignalData creation/reuse and Queue plus SignalData name-based identity restoration).
 - `cmake --preset gui-app`: PASS (configuration).
 - `cmake --build --preset gui-app --parallel 4`: PASS.
 - A parallel run of the entire 2,046-test suite was interrupted after unrelated GUI tests failed under concurrent execution; it is not a full-suite pass. Re-run the full suite under the repository's expected scheduling and triage failures.

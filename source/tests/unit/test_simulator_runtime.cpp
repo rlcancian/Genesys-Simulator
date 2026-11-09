@@ -4738,7 +4738,9 @@ TEST(SimulatorRuntimeTest, WaitAndSignalPersistenceRoundTripPreservesSharedSigna
     ASSERT_NE(model, nullptr);
 
     SignalDataProbe sharedSignalData(model, "SharedSignalData");
+    Queue* sharedQueue = new Queue(model, "WaitPersistQueue");
     WaitProbe sourceWait(model, "WaitPersistSource");
+    sourceWait.setQueue(sharedQueue);
     sourceWait.setWaitType(Wait::WaitType::WaitForSignal);
     sourceWait.setSignalData(&sharedSignalData);
 
@@ -4756,6 +4758,8 @@ TEST(SimulatorRuntimeTest, WaitAndSignalPersistenceRoundTripPreservesSharedSigna
     SignalProbe loadedSignal(model, "SignalPersistLoaded");
     ASSERT_TRUE(loadedWait.LoadInstanceProbe(&waitFields));
     ASSERT_TRUE(loadedSignal.LoadInstanceProbe(&signalFields));
+
+    EXPECT_EQ(loadedWait.getQueue(), sharedQueue);
 
     ASSERT_NE(loadedWait._signalData, nullptr);
     ASSERT_NE(loadedSignal.SignalDataPtrProbe(), nullptr);
