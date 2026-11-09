@@ -15,8 +15,22 @@ ModelDataDefinition* PythonForG::NewInstance(Model* model, std::string name) {
 }
 
 PythonForG::PythonForG(Model* model, std::string name)
+	: PythonForG(model, name, true) { }
+
+PythonForG::PythonForG(Model* model, std::string name, bool createOwnedRuntime)
 	: ModelComponent(model, Util::TypeOf<PythonForG>(), name) {
-	_createNonEditableDataDefinitions();
+	if (createOwnedRuntime) {
+		_createNonEditableDataDefinitions();
+	}
+	auto* propPythonRuntime = new SimulationControlGenericClass<PythonRuntime*, Model*, PythonRuntime>(
+		_parentModel,
+		std::bind(&PythonForG::getPythonRuntime, this),
+		nullptr,
+		Util::TypeOf<PythonForG>(), getName(), "PythonRuntime",
+		"Internal Python runtime configuration. The runtime is owned by this component and cannot be replaced.",
+		false, true, false, nullptr, false, true);
+	_parentModel->getControls()->insert(propPythonRuntime);
+	_addSimulationControl(propPythonRuntime);
 
 	auto* propInitCode = new SimulationControlSourceCodeString(
 			std::bind(&PythonForG::getInitBetweenReplicationCodeProperty, this),
@@ -59,7 +73,7 @@ PluginInformation* PythonForG::GetPluginInformation() {
 }
 
 ModelComponent* PythonForG::LoadInstance(Model* model, PersistenceRecord* fields) {
-	PythonForG* newComponent = new PythonForG(model);
+	PythonForG* newComponent = new PythonForG(model, fields->loadField("name", ""), false);
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
@@ -145,6 +159,13 @@ bool PythonForG::_validateDispatchCode(const std::string& candidate, std::string
 bool PythonForG::_loadInstance(PersistenceRecord* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
+		_pythonRuntime = dynamic_cast<PythonRuntime*>(_parentModel->getDataManager()->getDataDefinition(
+			Util::TypeOf<PythonRuntime>(), getName() + ".PythonRuntime"));
+		if (_pythonRuntime != nullptr) {
+			_mandatoryNonEditableDataDefinitionInsert("PythonRuntime", _pythonRuntime);
+		} else {
+			_createNonEditableDataDefinitions();
+		}
 		_initBetweenReplicationCode = fields->loadField("initBetweenReplicationCode", DEFAULT.initBetweenReplicationCode);
 		_onDispatchEventCode = fields->loadField("onDispatchEventCode", DEFAULT.onDispatchEventCode);
 		_forwardEntityOnError = fields->loadField("forwardEntityOnError", DEFAULT.forwardEntityOnError);

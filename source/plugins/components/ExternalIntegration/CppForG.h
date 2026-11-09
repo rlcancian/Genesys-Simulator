@@ -59,6 +59,7 @@ protected:
 	// virtual void _createAttachedAttributes() override;
 
 private: // methods
+	CppForG(Model* model, std::string name, bool createOwnedCompiler);
 
 private: // attributes 1:1
 

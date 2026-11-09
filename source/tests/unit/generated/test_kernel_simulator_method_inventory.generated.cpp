@@ -1555,42 +1555,42 @@ TEST(KernelSimulatorMethodInventory, SimulationControl_310) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_311) {
-    // SimulationControlAndResponse.h :: SimulationControl :: (void)typeName;
+    // SimulationControlAndResponse.h :: SimulationControl :: (void)index; (void)value;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_312) {
-    // SimulationControlAndResponse.h :: SimulationControl :: return supportsInlineExpansion() && !isModelDataDefinitionReference();
+    // SimulationControlAndResponse.h :: SimulationControl :: throw std::logic_error("Positional list insertion is not supported");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_313) {
-    // SimulationControlAndResponse.h :: SimulationControl :: (void)value;
+    // SimulationControlAndResponse.h :: SimulationControl :: (void)index; (void)value;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_314) {
-    // SimulationControlAndResponse.h :: SimulationControl :: (void)typeName;
+    // SimulationControlAndResponse.h :: SimulationControl :: throw std::logic_error("Positional list editing is not supported");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_315) {
-    // SimulationControlAndResponse.h :: SimulationControl :: return createObjectInstance(value);
+    // SimulationControlAndResponse.h :: SimulationControl :: (void)index;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_316) {
-    // SimulationControlAndResponse.h :: SimulationControl :: (void)value;
+    // SimulationControlAndResponse.h :: SimulationControl :: throw std::logic_error("Positional list removal is not supported");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_317) {
-    // SimulationControlAndResponse.h :: SimulationControl :: (void)value;
+    // SimulationControlAndResponse.h :: SimulationControl :: (void)typeName;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_318) {
-    // SimulationControlAndResponse.h :: SimulationControl :: return createNewListElement(value);
+    // SimulationControlAndResponse.h :: SimulationControl :: return supportsInlineExpansion() && !isModelDataDefinitionReference();
     SUCCEED();
 }
 
@@ -1600,592 +1600,592 @@ TEST(KernelSimulatorMethodInventory, SimulationControl_319) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControl_320) {
+    // SimulationControlAndResponse.h :: SimulationControl :: (void)typeName;
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControl_321) {
+    // SimulationControlAndResponse.h :: SimulationControl :: return createObjectInstance(value);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControl_322) {
+    // SimulationControlAndResponse.h :: SimulationControl :: (void)value;
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControl_323) {
+    // SimulationControlAndResponse.h :: SimulationControl :: (void)value;
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControl_324) {
+    // SimulationControlAndResponse.h :: SimulationControl :: return createNewListElement(value);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControl_325) {
+    // SimulationControlAndResponse.h :: SimulationControl :: (void)value;
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControl_326) {
     // SimulationControlAndResponse.h :: SimulationControl :: return getChildSimulationControls(index);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlString_321) {
+TEST(KernelSimulatorMethodInventory, SimulationControlString_327) {
     // SimulationControlAndResponse.h :: SimulationControlString :: _propertyType = Util::TypeOf<std::string>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlString_322) {
+TEST(KernelSimulatorMethodInventory, SimulationControlString_328) {
     // SimulationControlAndResponse.h :: SimulationControlString :: errorMessage.clear();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlString_323) {
+TEST(KernelSimulatorMethodInventory, SimulationControlString_329) {
     // SimulationControlAndResponse.h :: SimulationControlString :: return _validator(value, errorMessage);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlString_324) {
+TEST(KernelSimulatorMethodInventory, SimulationControlString_330) {
     // SimulationControlAndResponse.h :: SimulationControlString :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlString_325) {
+TEST(KernelSimulatorMethodInventory, SimulationControlString_331) {
     // SimulationControlAndResponse.h :: SimulationControlString :: throw std::logic_error("SimulationControlString setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlString_326) {
+TEST(KernelSimulatorMethodInventory, SimulationControlString_332) {
     // SimulationControlAndResponse.h :: SimulationControlString :: _setter(value);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_327) {
+TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_333) {
     // SimulationControlAndResponse.h :: SimulationControlSourceCodeString :: _propertyType = Util::TypeOf<SourceCodeString>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_328) {
+TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_334) {
     // SimulationControlAndResponse.h :: SimulationControlSourceCodeString :: errorMessage.clear();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_329) {
+TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_335) {
     // SimulationControlAndResponse.h :: SimulationControlSourceCodeString :: return _validator(value, errorMessage);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_330) {
+TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_336) {
     // SimulationControlAndResponse.h :: SimulationControlSourceCodeString :: (void)remove;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_331) {
+TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_337) {
     // SimulationControlAndResponse.h :: SimulationControlSourceCodeString :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_332) {
+TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_338) {
     // SimulationControlAndResponse.h :: SimulationControlSourceCodeString :: throw std::logic_error("SimulationControlSourceCodeString setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_333) {
+TEST(KernelSimulatorMethodInventory, SimulationControlSourceCodeString_339) {
     // SimulationControlAndResponse.h :: SimulationControlSourceCodeString :: _setter(SourceCodeString(std::move(value)));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationResponseDouble_334) {
+TEST(KernelSimulatorMethodInventory, SimulationResponseDouble_340) {
     // SimulationControlAndResponse.h :: SimulationResponseDouble :: _propertyType = Util::TypeOf<double>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlDouble_335) {
+TEST(KernelSimulatorMethodInventory, SimulationControlDouble_341) {
     // SimulationControlAndResponse.h :: SimulationControlDouble :: _propertyType = Util::TypeOf<double>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlDouble_336) {
+TEST(KernelSimulatorMethodInventory, SimulationControlDouble_342) {
     // SimulationControlAndResponse.h :: SimulationControlDouble :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlDouble_337) {
+TEST(KernelSimulatorMethodInventory, SimulationControlDouble_343) {
     // SimulationControlAndResponse.h :: SimulationControlDouble :: throw std::logic_error("SimulationControlDouble setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlDouble_338) {
+TEST(KernelSimulatorMethodInventory, SimulationControlDouble_344) {
     // SimulationControlAndResponse.h :: SimulationControlDouble :: _setter(std::stod(value));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlBool_339) {
+TEST(KernelSimulatorMethodInventory, SimulationControlBool_345) {
     // SimulationControlAndResponse.h :: SimulationControlBool :: _propertyType = Util::TypeOf<bool>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlBool_340) {
+TEST(KernelSimulatorMethodInventory, SimulationControlBool_346) {
     // SimulationControlAndResponse.h :: SimulationControlBool :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlBool_341) {
+TEST(KernelSimulatorMethodInventory, SimulationControlBool_347) {
     // SimulationControlAndResponse.h :: SimulationControlBool :: throw std::logic_error("SimulationControlBool setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlBool_342) {
+TEST(KernelSimulatorMethodInventory, SimulationControlBool_348) {
     // SimulationControlAndResponse.h :: SimulationControlBool :: std::istringstream auxStr(value);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlBool_343) {
+TEST(KernelSimulatorMethodInventory, SimulationControlBool_349) {
     // SimulationControlAndResponse.h :: SimulationControlBool :: boolVal = std::stoi(value) != 0;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlBool_344) {
+TEST(KernelSimulatorMethodInventory, SimulationControlBool_350) {
     // SimulationControlAndResponse.h :: SimulationControlBool :: _setter(boolVal);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlUInt_345) {
+TEST(KernelSimulatorMethodInventory, SimulationControlUInt_351) {
     // SimulationControlAndResponse.h :: SimulationControlUInt :: _propertyType = Util::TypeOf<unsigned int>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlUInt_346) {
+TEST(KernelSimulatorMethodInventory, SimulationControlUInt_352) {
     // SimulationControlAndResponse.h :: SimulationControlUInt :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlUInt_347) {
+TEST(KernelSimulatorMethodInventory, SimulationControlUInt_353) {
     // SimulationControlAndResponse.h :: SimulationControlUInt :: throw std::logic_error("SimulationControlUInt setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlUInt_348) {
+TEST(KernelSimulatorMethodInventory, SimulationControlUInt_354) {
     // SimulationControlAndResponse.h :: SimulationControlUInt :: _setter(std::stoul(value));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlUShort_349) {
+TEST(KernelSimulatorMethodInventory, SimulationControlUShort_355) {
     // SimulationControlAndResponse.h :: SimulationControlUShort :: _propertyType = Util::TypeOf<unsigned short>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlUShort_350) {
+TEST(KernelSimulatorMethodInventory, SimulationControlUShort_356) {
     // SimulationControlAndResponse.h :: SimulationControlUShort :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlUShort_351) {
+TEST(KernelSimulatorMethodInventory, SimulationControlUShort_357) {
     // SimulationControlAndResponse.h :: SimulationControlUShort :: throw std::logic_error("SimulationControlUShort setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlUShort_352) {
+TEST(KernelSimulatorMethodInventory, SimulationControlUShort_358) {
     // SimulationControlAndResponse.h :: SimulationControlUShort :: _setter(std::stoul(value));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlInt_353) {
+TEST(KernelSimulatorMethodInventory, SimulationControlInt_359) {
     // SimulationControlAndResponse.h :: SimulationControlInt :: _propertyType = Util::TypeOf<int>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlInt_354) {
+TEST(KernelSimulatorMethodInventory, SimulationControlInt_360) {
     // SimulationControlAndResponse.h :: SimulationControlInt :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlInt_355) {
+TEST(KernelSimulatorMethodInventory, SimulationControlInt_361) {
     // SimulationControlAndResponse.h :: SimulationControlInt :: throw std::logic_error("SimulationControlInt setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlInt_356) {
+TEST(KernelSimulatorMethodInventory, SimulationControlInt_362) {
     // SimulationControlAndResponse.h :: SimulationControlInt :: _setter(std::stoi(value));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_357) {
+TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_363) {
     // SimulationControlAndResponse.h :: SimulationControlTimeUnit :: _propertyType = Util::TypeOf<Util::TimeUnit>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_358) {
+TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_364) {
     // SimulationControlAndResponse.h :: SimulationControlTimeUnit :: int intVal = static_cast<int>(_getter());
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_359) {
+TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_365) {
     // SimulationControlAndResponse.h :: SimulationControlTimeUnit :: return std::to_string(intVal);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_360) {
+TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_366) {
     // SimulationControlAndResponse.h :: SimulationControlTimeUnit :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_361) {
+TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_367) {
     // SimulationControlAndResponse.h :: SimulationControlTimeUnit :: throw std::logic_error("SimulationControlTimeUnit setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_362) {
+TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_368) {
     // SimulationControlAndResponse.h :: SimulationControlTimeUnit :: int intVal = std::stoul(value);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_363) {
+TEST(KernelSimulatorMethodInventory, SimulationControlTimeUnit_369) {
     // SimulationControlAndResponse.h :: SimulationControlTimeUnit :: _setter(static_cast<Util::TimeUnit>(intVal));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_364) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_370) {
     // SimulationControlAndResponse.h :: SimulationControlGeneric :: _propertyType = Util::TypeOf<T>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_365) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_371) {
     // SimulationControlAndResponse.h :: SimulationControlGeneric :: T tVal = static_cast<T>(_getter());
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_366) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_372) {
     // SimulationControlAndResponse.h :: SimulationControlGeneric :: strVal = auxStr.str();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_367) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_373) {
     // SimulationControlAndResponse.h :: SimulationControlGeneric :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_368) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_374) {
     // SimulationControlAndResponse.h :: SimulationControlGeneric :: throw std::logic_error("SimulationControlGeneric setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_369) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_375) {
     // SimulationControlAndResponse.h :: SimulationControlGeneric :: _setter(value);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_370) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_376) {
     // SimulationControlAndResponse.h :: SimulationControlGeneric :: std::istringstream auxStr(value);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_371) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGeneric_377) {
     // SimulationControlAndResponse.h :: SimulationControlGeneric :: _setter(static_cast<T>(tVal));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_372) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_378) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: static_assert(std::is_enum<T>::value, "SimulationControlGenericEnum requires T to be an enum");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_373) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_379) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: _propertyType = Util::TypeOf<T>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_374) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_380) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: int intVal = static_cast<int>(_getter());
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_375) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_381) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: int max_i = static_cast<int>(T::num_elements);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_376) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_382) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: return E::convertEnumToStr(static_cast<T>(intVal));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_377) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_383) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: _ensureWritable("set value of");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_378) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_384) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: throw std::logic_error("SimulationControlGenericEnum setter is not defined");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_379) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_385) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: int intVal = std::stoul(value);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_380) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_386) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: _setter(static_cast<T>(intVal));
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_381) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_387) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: List<std::string>* strOptions = new List<std::string>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_382) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_388) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: int max_i = static_cast<int>(T::num_elements);;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_383) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_389) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: std::string value = E::convertEnumToStr((T)i);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_384) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericEnum_390) {
     // SimulationControlAndResponse.h :: SimulationControlGenericEnum :: strOptions->insert(value);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_385) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_391) {
     // SimulationControlAndResponse.h :: SimulationControlGenericClass :: static_assert(std::is_pointer<T>::value, "SimulationControlGenericClass requires pointer type T");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_386) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_392) {
     // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _propertyType = Util::TypeOf<C>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_387) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: T tVal = static_cast<T>(_getter());
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_388) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: strVal = tVal->getName();
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_389) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _ensureWritable("set value of");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_390) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: throw std::logic_error("SimulationControlGenericClass setter is not defined");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_391) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _setter(nullptr);
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_392) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: newVal = static_cast<T>(modeldata);
-    SUCCEED();
-}
-
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_393) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: newVal = _creator(_model, value);
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: T tVal = static_cast<T>(_getter());
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_394) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: newVal = new C(_model, value);
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: strVal = tVal->getName();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_395) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: throw std::logic_error("SimulationControlGenericClass creator returned null");
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _ensureWritable("set value of");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_396) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _model->getDataManager()->insert(newVal);
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: throw std::logic_error("SimulationControlGenericClass setter is not defined");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_397) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _setter(newVal);
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _setter(nullptr);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_398) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return static_cast<T>(_getter());
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: newVal = _nameResolver(value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_399) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return static_cast<T>(_getter()) != nullptr;
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: newVal = static_cast<T>(modeldata);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_400) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return hasObjectInstance();
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: newVal = _creator(_model, value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_401) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _ensureWritable("create instance for");
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: newVal = new C(_model, value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_402) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: name = getValue();
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: throw std::logic_error("SimulationControlGenericClass creator returned null");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_403) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: setValue(name, false);
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _model->getDataManager()->insert(newVal);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_404) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return hasObjectInstance();
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _setter(newVal);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_405) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: List<std::string>* strOptions = new List<std::string>();
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return static_cast<T>(_getter());
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_406) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: strOptions->insert(modeldata->getName());
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return static_cast<T>(_getter()) != nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_407) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: T tVal = static_cast<T>(_getter());
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return hasObjectInstance();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_408) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: _ensureWritable("create instance for");
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_409) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: name = getValue();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_410) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: setValue(name, false);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_411) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return hasObjectInstance();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_412) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return _choicesProvider();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_413) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: List<std::string>* strOptions = new List<std::string>();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_414) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: strOptions->insert(compatible->getName());
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_415) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClass :: T tVal = static_cast<T>(_getter());
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClass_416) {
     // SimulationControlAndResponse.h :: SimulationControlGenericClass :: return tVal->getSimulationControls();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_409) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_417) {
     // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: static_assert(std::is_pointer<T>::value, "SimulationControlGenericClassNotDC requires pointer type T");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_410) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_418) {
     // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _propertyType = Util::TypeOf<C>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_411) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: T tVal = static_cast<T>(_getter());
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_412) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: strVal = tVal->getName();
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_413) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _ensureWritable("set value of");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_414) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: throw std::logic_error("SimulationControlGenericClassNotDC setter is not defined");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_415) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: T newVal = _createNewInstance(value);
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_416) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _setter(newVal);
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_417) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return static_cast<T>(_getter()) != nullptr;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_418) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _ensureWritable("ensure instance of");
-    SUCCEED();
-}
-
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_419) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: throw std::logic_error("SimulationControlGenericClassNotDC setter is not defined");
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: T tVal = static_cast<T>(_getter());
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_420) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: T current = static_cast<T>(_getter());
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: strVal = tVal->getName();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_421) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: newVal = _createNewInstance("");
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _ensureWritable("set value of");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_422) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _setter(newVal);
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: throw std::logic_error("SimulationControlGenericClassNotDC setter is not defined");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_423) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return static_cast<T>(_getter()) != nullptr;
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: T newVal = _createNewInstance(value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_424) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return ensureObjectInstance();
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _setter(newVal);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_425) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: setValue(value, false);
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return static_cast<T>(_getter()) != nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_426) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return hasObjectInstance();
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _ensureWritable("ensure instance of");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_427) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: T tVal = static_cast<T>(_getter());
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: throw std::logic_error("SimulationControlGenericClassNotDC setter is not defined");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_428) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: T current = static_cast<T>(_getter());
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_429) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: newVal = _createNewInstance("");
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_430) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: _setter(newVal);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_431) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return static_cast<T>(_getter()) != nullptr;
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_432) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return ensureObjectInstance();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_433) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: setValue(value, false);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_434) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return hasObjectInstance();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_435) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: T tVal = static_cast<T>(_getter());
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericClassNotDC_436) {
     // SimulationControlAndResponse.h :: SimulationControlGenericClassNotDC :: return tVal->getSimulationControls();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_429) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: _propertyType = Util::TypeOf<C>();
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_430) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: List<T>* tVal = static_cast<List<T>*>(_getter());
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_431) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: std::string strVal = std::to_string(tVal->size()) + " Items";
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_432) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: _ensureWritable(remove ? "remove value from" : "add value to");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_433) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: std::istringstream auxStr(value);
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_434) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: newVal = static_cast<T>(newVal);
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_435) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: throw std::logic_error("SimulationControlGenericList remover is not defined");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_436) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: _remover(newVal);
-    SUCCEED();
-}
-
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_437) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: throw std::logic_error("SimulationControlGenericList adder is not defined");
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: _propertyType = Util::TypeOf<C>();
     SUCCEED();
 }
 
@@ -2195,107 +2195,107 @@ TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_438) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_439) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: _adder(newVal);
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: std::string strVal = std::to_string(tVal->size()) + " Items";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_440) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: List<T>* tVal = static_cast<List<T>*>(_getter());
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: _ensureWritable(remove ? "remove value from" : "add value to");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_441) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: List<std::string>* strOptions = new List<std::string>();
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: std::istringstream auxStr(value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_442) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericList :: strVal = auxStr.str();
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: newVal = static_cast<T>(newVal);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_443) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: throw std::logic_error("SimulationControlGenericList remover is not defined");
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_444) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: _remover(newVal);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_445) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: throw std::logic_error("SimulationControlGenericList adder is not defined");
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_446) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: List<T>* tVal = static_cast<List<T>*>(_getter());
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_447) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: _adder(newVal);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_448) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: List<T>* tVal = static_cast<List<T>*>(_getter());
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_449) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: List<std::string>* strOptions = new List<std::string>();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_450) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericList :: strVal = auxStr.str();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericList_451) {
     // SimulationControlAndResponse.h :: SimulationControlGenericList :: strOptions->insert(strVal);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_444) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_452) {
     // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: static_assert(std::is_pointer<T>::value, "SimulationControlGenericListPointer requires pointer type T");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_445) {
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_453) {
     // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _propertyType = Util::TypeOf<C>();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_446) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<T>* tVal = static_cast<List<T>*>(_getter());
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_447) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: std::string strVal = std::to_string(tVal->size()) + " Items";
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_448) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _ensureWritable(remove ? "remove value from" : "add value to");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_449) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<T>* tVal = static_cast<List<T>*>(_getter());
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_450) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: throw std::logic_error("SimulationControlGenericListPointer remover is not defined");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_451) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _remover(existingVal);
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_452) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_453) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: throw std::logic_error("SimulationControlGenericListPointer could not create a new list element");
-    SUCCEED();
-}
-
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_454) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<std::string>* types = new List<std::string>();
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<T>* tVal = static_cast<List<T>*>(_getter());
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_455) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: types->insert(typeName);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: std::string strVal = std::to_string(tVal->size()) + " Items";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_456) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return _currentElementTypeGetter();
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _ensureWritable(remove ? "remove value from" : "add value to");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_457) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return _currentElementTypeSetter(typeName);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<T>* tVal = static_cast<List<T>*>(_getter());
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_458) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return createNewListElementOfType(getCurrentListElementType(), value);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: throw std::logic_error("SimulationControlGenericListPointer remover is not defined");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_459) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _ensureWritable("create list element for");
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _remover(existingVal);
     SUCCEED();
 }
 
@@ -2305,332 +2305,332 @@ TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_460) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_461) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: T newVal = _createElement(value);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: throw std::logic_error("SimulationControlGenericListPointer could not create a new list element");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_462) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _adder(newVal);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<std::string>* types = new List<std::string>();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_463) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _ensureWritable("create typed list element for");
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: types->insert(typeName);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_464) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return _currentElementTypeGetter();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_465) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return SimulationControl::createNewListElementOfType(typeName, value);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return _currentElementTypeSetter(typeName);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_466) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: effectiveTypeName = getCurrentListElementType();
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return createNewListElementOfType(getCurrentListElementType(), value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_467) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: T newVal = _typedNamedCreator(_model, effectiveTypeName, value);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _ensureWritable("create list element for");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_468) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _adder(newVal);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_469) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<T>* tVal = static_cast<List<T>*>(_getter());
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: T newVal = _createElement(value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_470) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: selectedElement->ensureSimulationControls(_model);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _adder(newVal);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_471) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return selectedElement->getSimulationControls();
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _ensureWritable("create typed list element for");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_472) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return _listElementDataDefinitionGetter(index);
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_473) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<T>* tVal = static_cast<List<T>*>(_getter());
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return SimulationControl::createNewListElementOfType(typeName, value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_474) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<std::string>* strOptions = new List<std::string>();
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: effectiveTypeName = getCurrentListElementType();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_475) {
-    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: strVal = element->getName();
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: T newVal = _typedNamedCreator(_model, effectiveTypeName, value);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_476) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: _adder(newVal);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_477) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<T>* tVal = static_cast<List<T>*>(_getter());
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_478) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: selectedElement->ensureSimulationControls(_model);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_479) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return selectedElement->getSimulationControls();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_480) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: return _listElementDataDefinitionGetter(index);
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_481) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<T>* tVal = static_cast<List<T>*>(_getter());
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_482) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: List<std::string>* strOptions = new List<std::string>();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_483) {
+    // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: strVal = element->getName();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulationControlGenericListPointer_484) {
     // SimulationControlAndResponse.h :: SimulationControlGenericListPointer :: strOptions->insert(strVal);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationExperiment_477) {
+TEST(KernelSimulatorMethodInventory, SimulationExperiment_485) {
     // SimulationExperiment.h :: SimulationExperiment :: SimulationExperiment();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationExperiment_478) {
+TEST(KernelSimulatorMethodInventory, SimulationExperiment_486) {
     // SimulationExperiment.h :: SimulationExperiment :: virtual ~SimulationExperiment() = default;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_479) {
+TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_487) {
     // SimulationReporterDefaultImpl1.h :: SimulationReporterDefaultImpl1 :: SimulationReporterDefaultImpl1(ModelSimulation* simulation, Model* model, List<ModelDataDefinition*>* statsCountersSimulation);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_480) {
+TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_488) {
     // SimulationReporterDefaultImpl1.h :: SimulationReporterDefaultImpl1 :: virtual ~SimulationReporterDefaultImpl1() = default;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_481) {
+TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_489) {
     // SimulationReporterDefaultImpl1.h :: SimulationReporterDefaultImpl1 :: virtual void showReplicationStatistics() override;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_482) {
+TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_490) {
     // SimulationReporterDefaultImpl1.h :: SimulationReporterDefaultImpl1 :: virtual void showSimulationStatistics() override;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_483) {
+TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_491) {
     // SimulationReporterDefaultImpl1.h :: SimulationReporterDefaultImpl1 :: virtual void showSimulationResponses() override;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_484) {
+TEST(KernelSimulatorMethodInventory, SimulationReporterDefaultImpl1_492) {
     // SimulationReporterDefaultImpl1.h :: SimulationReporterDefaultImpl1 :: virtual void showSimulationControls() override;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporter_if_485) {
+TEST(KernelSimulatorMethodInventory, SimulationReporter_if_493) {
     // SimulationReporter_if.h :: SimulationReporter_if :: virtual ~SimulationReporter_if() = default;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporter_if_486) {
+TEST(KernelSimulatorMethodInventory, SimulationReporter_if_494) {
     // SimulationReporter_if.h :: SimulationReporter_if :: virtual void showReplicationStatistics() = 0;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporter_if_487) {
+TEST(KernelSimulatorMethodInventory, SimulationReporter_if_495) {
     // SimulationReporter_if.h :: SimulationReporter_if :: virtual void showSimulationStatistics() = 0;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporter_if_488) {
+TEST(KernelSimulatorMethodInventory, SimulationReporter_if_496) {
     // SimulationReporter_if.h :: SimulationReporter_if :: virtual void showSimulationResponses() = 0;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationReporter_if_489) {
+TEST(KernelSimulatorMethodInventory, SimulationReporter_if_497) {
     // SimulationReporter_if.h :: SimulationReporter_if :: virtual void showSimulationControls() = 0;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_490) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_498) {
     // SimulationScenario.h :: SimulationScenario :: SimulationScenario();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_491) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_499) {
     // SimulationScenario.h :: SimulationScenario :: virtual ~SimulationScenario();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_492) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_500) {
     // SimulationScenario.h :: SimulationScenario :: bool startSimulation(Simulator *sim, std::string& errorMessage);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_493) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_501) {
     // SimulationScenario.h :: SimulationScenario :: std::list<std::pair<std::string, double>*>* getControlValues() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_494) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_502) {
     // SimulationScenario.h :: SimulationScenario :: double getResponseValue(const std::string& responseName);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_495) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_503) {
     // SimulationScenario.h :: SimulationScenario :: void setModelFilename(std::string _modelFilename);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_496) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_504) {
     // SimulationScenario.h :: SimulationScenario :: std::string getModelFilename() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_497) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_505) {
     // SimulationScenario.h :: SimulationScenario :: void setScenarioName(std::string _name);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_498) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_506) {
     // SimulationScenario.h :: SimulationScenario :: std::string getScenarioName() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_499) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_507) {
     // SimulationScenario.h :: SimulationScenario :: void setScenarioDescription(std::string _scenarioDescription);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_500) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_508) {
     // SimulationScenario.h :: SimulationScenario :: std::string getScenarioDescription() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_501) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_509) {
     // SimulationScenario.h :: SimulationScenario :: double getControlValue(const std::string& controlName);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_502) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_510) {
     // SimulationScenario.h :: SimulationScenario :: void setSelectedControls(std::list<std::string>* selectedControls);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulationScenario_503) {
+TEST(KernelSimulatorMethodInventory, SimulationScenario_511) {
     // SimulationScenario.h :: SimulationScenario :: void setControl(std::string name, double value) const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_504) {
+TEST(KernelSimulatorMethodInventory, Simulator_512) {
     // Simulator.h :: Simulator :: Simulator();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_505) {
+TEST(KernelSimulatorMethodInventory, Simulator_513) {
     // Simulator.h :: Simulator :: virtual ~Simulator();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_506) {
+TEST(KernelSimulatorMethodInventory, Simulator_514) {
     // Simulator.h :: Simulator :: std::string getVersion() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_507) {
+TEST(KernelSimulatorMethodInventory, Simulator_515) {
     // Simulator.h :: Simulator :: unsigned int getVersionNumber() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_508) {
+TEST(KernelSimulatorMethodInventory, Simulator_516) {
     // Simulator.h :: Simulator :: std::string getName() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_509) {
+TEST(KernelSimulatorMethodInventory, Simulator_517) {
     // Simulator.h :: Simulator :: LicenceManager* getLicenceManager() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_510) {
+TEST(KernelSimulatorMethodInventory, Simulator_518) {
     // Simulator.h :: Simulator :: PluginManager* getPluginManager() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_511) {
+TEST(KernelSimulatorMethodInventory, Simulator_519) {
     // Simulator.h :: Simulator :: ModelManager* getModelManager() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_512) {
+TEST(KernelSimulatorMethodInventory, Simulator_520) {
     // Simulator.h :: Simulator :: TraceManager* getTraceManager() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_513) {
+TEST(KernelSimulatorMethodInventory, Simulator_521) {
     // Simulator.h :: Simulator :: ParserManager* getParserManager() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Simulator_514) {
+TEST(KernelSimulatorMethodInventory, Simulator_522) {
     // Simulator.h :: Simulator :: ExperimentManager* getExperimentManager() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_515) {
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_523) {
     // SimulatorFacade.h :: SimulatorFacade :: virtual ~SimulatorFacade() = default;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_516) {
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_524) {
     // SimulatorFacade.h :: SimulatorFacade :: return _simulator != nullptr ? _simulator->getVersion() : "";
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_517) {
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_525) {
     // SimulatorFacade.h :: SimulatorFacade :: return _simulator != nullptr ? _simulator->getVersionNumber() : 0u;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_518) {
-    // SimulatorFacade.h :: SimulatorFacade :: return _simulator != nullptr ? _simulator->getName() : "";
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_519) {
-    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_520) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->showLicence() : "";
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_521) {
-    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_522) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->showLimits() : "";
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_523) {
-    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_524) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->showActivationCode() : "";
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_525) {
-    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
-    SUCCEED();
-}
-
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_526) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->lookforActivationCode() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return _simulator != nullptr ? _simulator->getName() : "";
     SUCCEED();
 }
 
@@ -2640,7 +2640,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_527) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_528) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insertActivationCode() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->showLicence() : "";
     SUCCEED();
 }
 
@@ -2650,42 +2650,42 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_529) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_530) {
-    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->showLimits() : "";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_531) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getModelComponentsLimit() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_532) {
-    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->showActivationCode() : "";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_533) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getModelDatasLimit() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_534) {
-    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->lookforActivationCode() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_535) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getEntityLimit() : 0u;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_536) {
     // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_536) {
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insertActivationCode() : false;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_537) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getHostsLimit() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
     SUCCEED();
 }
 
@@ -2695,47 +2695,47 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_538) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_539) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getThreadsLimit() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getModelComponentsLimit() : 0u;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_540) {
-    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_541) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->show() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getModelDatasLimit() : 0u;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_542) {
-    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_543) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->completePluginsFieldsAndTemplates() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getEntityLimit() : 0u;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_544) {
-    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_545) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->check(dynamicLibraryFilename) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getHostsLimit() : 0u;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_546) {
-    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: LicenceManager* m = licenceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_547) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->checkSystemDependencies(dynamicLibraryFilename) : SystemDependencyCheckResult{};
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getThreadsLimit() : 0u;
     SUCCEED();
 }
 
@@ -2745,7 +2745,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_548) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_549) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->discoverPluginFilenames() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->show() : "";
     SUCCEED();
 }
 
@@ -2755,7 +2755,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_550) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_551) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getPluginLoadIssues() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->completePluginsFieldsAndTemplates() : nullptr;
     SUCCEED();
 }
 
@@ -2765,7 +2765,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_552) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_553) {
-    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->check(dynamicLibraryFilename) : false;
     SUCCEED();
 }
 
@@ -2775,7 +2775,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_554) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_555) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(dynamicLibraryFilename) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->checkSystemDependencies(dynamicLibraryFilename) : SystemDependencyCheckResult{};
     SUCCEED();
 }
 
@@ -2785,7 +2785,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_556) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_557) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(dynamicLibraryFilename, options) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->discoverPluginFilenames() : nullptr;
     SUCCEED();
 }
 
@@ -2795,7 +2795,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_558) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_559) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->remove(dynamicLibraryFilename) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getPluginLoadIssues() : nullptr;
     SUCCEED();
 }
 
@@ -2805,7 +2805,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_560) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_561) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->remove(plugin) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
     SUCCEED();
 }
 
@@ -2815,7 +2815,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_562) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_563) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->find(pluginTypeName) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(dynamicLibraryFilename) : nullptr;
     SUCCEED();
 }
 
@@ -2825,7 +2825,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_564) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_565) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinitionPluginTypenames() : std::vector<std::string>{};
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(dynamicLibraryFilename, options) : nullptr;
     SUCCEED();
 }
 
@@ -2835,7 +2835,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_566) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_567) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->sourceIncludePathFor(pluginTypeName) : "";
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->remove(dynamicLibraryFilename) : false;
     SUCCEED();
 }
 
@@ -2845,7 +2845,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_568) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_569) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->autoInsertPlugins(pluginsListFilename, lookForPluginsIfFilenameNotFound) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->remove(plugin) : false;
     SUCCEED();
 }
 
@@ -2855,7 +2855,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_570) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_571) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->autoInsertPlugins(pluginsListFilename, lookForPluginsIfFilenameNotFound, options) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->find(pluginTypeName) : nullptr;
     SUCCEED();
 }
 
@@ -2865,7 +2865,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_572) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_573) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->autoInsertPlugins() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinitionPluginTypenames() : std::vector<std::string>{};
     SUCCEED();
 }
 
@@ -2875,7 +2875,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_574) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_575) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->autoInsertPlugins(options) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->sourceIncludePathFor(pluginTypeName) : "";
     SUCCEED();
 }
 
@@ -2885,7 +2885,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_576) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_577) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->front() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->autoInsertPlugins(pluginsListFilename, lookForPluginsIfFilenameNotFound) : nullptr;
     SUCCEED();
 }
 
@@ -2895,7 +2895,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_578) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_579) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->next() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->autoInsertPlugins(pluginsListFilename, lookForPluginsIfFilenameNotFound, options) : nullptr;
     SUCCEED();
 }
 
@@ -2905,7 +2905,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_580) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_581) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->last() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->autoInsertPlugins() : nullptr;
     SUCCEED();
 }
 
@@ -2915,7 +2915,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_582) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_583) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->size() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->autoInsertPlugins(options) : nullptr;
     SUCCEED();
 }
 
@@ -2925,7 +2925,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_584) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_585) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getAtRank(rank) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->front() : nullptr;
     SUCCEED();
 }
 
@@ -2935,7 +2935,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_586) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_587) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->newInstance(pluginTypename, model, name) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->next() : nullptr;
     SUCCEED();
 }
 
@@ -2945,47 +2945,47 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_588) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_589) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->newInstance<T>(model, name) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->last() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_590) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_591) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->newModel() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->size() : 0u;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_592) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_593) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getAtRank(rank) : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_594) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_595) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->setCurrent(model) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->newInstance(pluginTypename, model, name) : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_596) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: PluginManager* m = pluginManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_597) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->saveModel(filename) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->newInstance<T>(model, name) : nullptr;
     SUCCEED();
 }
 
@@ -2995,7 +2995,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_598) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_599) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->loadModel(filename) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->newModel() : nullptr;
     SUCCEED();
 }
 
@@ -3005,7 +3005,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_600) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_601) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->createFromLanguage(modelSpecification) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
@@ -3015,7 +3015,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_602) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_603) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->size() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->setCurrent(model) : false;
     SUCCEED();
 }
 
@@ -3025,7 +3025,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_604) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_605) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->models() : std::vector<Model*>{};
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->saveModel(filename) : false;
     SUCCEED();
 }
 
@@ -3035,7 +3035,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_606) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_607) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->hasModel(model) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->loadModel(filename) : nullptr;
     SUCCEED();
 }
 
@@ -3045,7 +3045,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_608) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_609) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->indexOf(model) : -1;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->createFromLanguage(modelSpecification) : nullptr;
     SUCCEED();
 }
 
@@ -3055,7 +3055,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_610) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_611) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->modelAt(index) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->size() : 0u;
     SUCCEED();
 }
 
@@ -3065,7 +3065,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_612) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_613) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->currentIndex() : -1;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->models() : std::vector<Model*>{};
     SUCCEED();
 }
 
@@ -3075,7 +3075,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_614) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_615) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->front() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->hasModel(model) : false;
     SUCCEED();
 }
 
@@ -3085,97 +3085,97 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_616) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_617) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->last() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->indexOf(model) : -1;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_618) {
-    // SimulatorFacade.h :: SimulatorFacade :: return currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_619) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->modelAt(index) : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_620) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->next() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_621) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->currentIndex() : -1;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_622) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->previous() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_623) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->front() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_624) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->canGoNext() : false;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_625) {
     // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_625) {
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->last() : nullptr;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_626) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->canGoPrevious() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return currentModel_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_627) {
-    // SimulatorFacade.h :: SimulatorFacade :: return TraceManager::convertEnumToStr(level);
+    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_628) {
-    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->next() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_629) {
-    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_630) {
-    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->previous() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_631) {
-    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_632) {
-    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->canGoNext() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_633) {
-    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelManager* m = modelManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_634) {
-    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->canGoPrevious() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_635) {
-    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return TraceManager::convertEnumToStr(level);
     SUCCEED();
 }
 
@@ -3225,7 +3225,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_644) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_645) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->errorMessages() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
     SUCCEED();
 }
 
@@ -3240,7 +3240,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_647) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_648) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getTraceLevel() : TraceManager::Level::L0_noTraces;
+    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
     SUCCEED();
 }
 
@@ -3255,82 +3255,82 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_650) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_651) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->isTraceSimulationRuleAllAllowed() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_652) {
-    // SimulatorFacade.h :: SimulatorFacade :: ParserManager* m = parserManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_653) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->generateNewParser(changes) : ParserManager::GenerateNewParserResult{};
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->errorMessages() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_654) {
-    // SimulatorFacade.h :: SimulatorFacade :: ParserManager* m = parserManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_655) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->connectNewParser(newParser) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_656) {
-    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getTraceLevel() : TraceManager::Level::L0_noTraces;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_657) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->newSimulationExperiment() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_658) {
-    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: TraceManager* m = traceManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_659) {
-    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->isTraceSimulationRuleAllAllowed() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_660) {
-    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ParserManager* m = parserManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_661) {
-    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->generateNewParser(changes) : ParserManager::GenerateNewParserResult{};
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_662) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->saveSimulationExperiment(filename) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ParserManager* m = parserManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_663) {
-    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->connectNewParser(newParser) : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_664) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->loadSimulationExperiment(filename) : false;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_665) {
     // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_665) {
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->newSimulationExperiment() : nullptr;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_666) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->size() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
     SUCCEED();
 }
 
@@ -3340,7 +3340,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_667) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_668) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->front() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
     SUCCEED();
 }
 
@@ -3350,7 +3350,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_669) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_670) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->current() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->saveSimulationExperiment(filename) : false;
     SUCCEED();
 }
 
@@ -3360,7 +3360,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_671) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_672) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->next() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->loadSimulationExperiment(filename) : false;
     SUCCEED();
 }
 
@@ -3370,57 +3370,57 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_673) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_674) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getExperiments() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->size() : 0u;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_675) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_676) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->save(filename) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->front() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_677) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_678) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->load(filename) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->current() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_679) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_680) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->check() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->next() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_681) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: ExperimentManager* m = experimentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_682) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getExperiments() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_683) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->showLanguage() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_684) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->save(filename) : false;
     SUCCEED();
 }
 
@@ -3430,7 +3430,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_685) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_686) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->insert(elemOrComp) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->load(filename) : false;
     SUCCEED();
 }
 
@@ -3440,12 +3440,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_687) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_688) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->check() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_689) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->collectDataDefinitionsRemovedWith(roots) : std::list<ModelDataDefinition*>{};
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
@@ -3455,7 +3455,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_690) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_691) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->createEntity(name, insertIntoModel) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->showLanguage() : "";
     SUCCEED();
 }
 
@@ -3470,7 +3470,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_693) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_694) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->insert(elemOrComp) : false;
     SUCCEED();
 }
 
@@ -3480,12 +3480,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_695) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_696) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->parseExpression(expression) : 0.0;
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_697) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->collectDataDefinitionsRemovedWith(roots) : std::list<ModelDataDefinition*>{};
     SUCCEED();
 }
 
@@ -3495,7 +3495,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_698) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_699) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->checkExpression(expression, expressionName, errorMessage) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->createEntity(name, insertIntoModel) : nullptr;
     SUCCEED();
 }
 
@@ -3510,7 +3510,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_701) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_702) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getId() : static_cast<Util::identification>(0);
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
@@ -3520,7 +3520,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_703) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_704) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->hasChanged() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->parseExpression(expression) : 0.0;
     SUCCEED();
 }
 
@@ -3535,7 +3535,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_706) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_707) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getFutureEvents() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->checkExpression(expression, expressionName, errorMessage) : false;
     SUCCEED();
 }
 
@@ -3545,27 +3545,27 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_708) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_709) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getControls() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_710) {
-    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getId() : static_cast<Util::identification>(0);
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_711) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getResponses() : nullptr;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_712) {
     // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_712) {
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->hasChanged() : false;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_713) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getPersistence() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
@@ -3575,47 +3575,47 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_714) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_715) {
-    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getLevel() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getFutureEvents() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_716) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_717) {
-    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->show() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getControls() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_718) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_719) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getResponses() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_720) {
-    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getName() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_721) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getPersistence() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_722) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: Model* model = currentModel_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_723) {
-    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getAnalystName() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: return model != nullptr ? model->getLevel() : 0u;
     SUCCEED();
 }
 
@@ -3625,12 +3625,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_724) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_725) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->show() : "";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_726) {
-    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getDescription() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
@@ -3640,12 +3640,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_727) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_728) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getName() : "";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_729) {
-    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getProjectTitle() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
@@ -3655,12 +3655,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_730) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_731) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getAnalystName() : "";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_732) {
-    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getVersion() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
@@ -3670,7 +3670,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_733) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_734) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
+    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getDescription() : "";
     SUCCEED();
 }
 
@@ -3680,62 +3680,62 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_735) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_736) {
-    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->hasChanged() : false;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_737) {
     // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_737) {
+    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getProjectTitle() : "";
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_738) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_739) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->show() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_740) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->getVersion() : "";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_741) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_742) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_743) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_744) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return info != nullptr ? info->hasChanged() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_745) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelInfo* info = modelInfo_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_746) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getNumberOfReplications() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_747) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->show() : "";
     SUCCEED();
 }
 
@@ -3745,7 +3745,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_748) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_749) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getReplicationLength() : 0.0;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3760,7 +3760,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_751) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_752) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getReplicationLengthTimeUnit() : Util::TimeUnit::unknown;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3770,12 +3770,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_753) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_754) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getNumberOfReplications() : 0u;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_755) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getReplicationBaseTimeUnit() : Util::TimeUnit::unknown;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3785,12 +3785,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_756) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_757) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getReplicationLength() : 0.0;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_758) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getWarmUpPeriod() : 0.0;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3800,12 +3800,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_759) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_760) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getReplicationLengthTimeUnit() : Util::TimeUnit::unknown;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_761) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getWarmUpPeriodTimeUnit() : Util::TimeUnit::unknown;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3815,12 +3815,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_762) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_763) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getReplicationBaseTimeUnit() : Util::TimeUnit::unknown;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_764) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getTerminatingCondition() : "";
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3830,12 +3830,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_765) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_766) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getWarmUpPeriod() : 0.0;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_767) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isPauseOnEvent() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3845,12 +3845,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_768) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_769) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getWarmUpPeriodTimeUnit() : Util::TimeUnit::unknown;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_770) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isStepByStep() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3860,12 +3860,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_771) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_772) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getTerminatingCondition() : "";
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_773) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isInitializeStatistics() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3875,12 +3875,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_774) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_775) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isPauseOnEvent() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_776) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isInitializeSystem() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3890,12 +3890,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_777) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_778) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isStepByStep() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_779) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isPauseOnReplication() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3905,12 +3905,12 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_780) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_781) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isInitializeStatistics() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_782) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getReporter() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3920,7 +3920,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_783) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_784) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getSimulatedTime() : 0.0;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isInitializeSystem() : false;
     SUCCEED();
 }
 
@@ -3930,17 +3930,17 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_785) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_786) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isRunning() : false;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_787) {
     // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_787) {
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isPauseOnReplication() : false;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_788) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isPaused() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -3950,7 +3950,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_789) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_790) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getCurrentReplicationNumber() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getReporter() : nullptr;
     SUCCEED();
 }
 
@@ -3960,17 +3960,17 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_791) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_792) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getSimulatedTime() : 0.0;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_793) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isShowReportsAfterReplication() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_794) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isRunning() : false;
     SUCCEED();
 }
 
@@ -3980,7 +3980,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_795) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_796) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isShowReportsAfterSimulation() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isPaused() : false;
     SUCCEED();
 }
 
@@ -3990,7 +3990,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_797) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_798) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getBreakpointsOnTime() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getCurrentReplicationNumber() : 0u;
     SUCCEED();
 }
 
@@ -4000,17 +4000,17 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_799) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_800) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getBreakpointsOnEntity() : nullptr;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_801) {
     // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_801) {
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isShowReportsAfterReplication() : false;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_802) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getBreakpointsOnComponent() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
@@ -4020,7 +4020,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_803) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_804) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getSimulationStatisticsAggregates() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isShowReportsAfterSimulation() : false;
     SUCCEED();
 }
 
@@ -4030,7 +4030,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_805) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_806) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getBreakpointsOnTime() : nullptr;
     SUCCEED();
 }
 
@@ -4040,7 +4040,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_807) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_808) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getCurrentEvent() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getBreakpointsOnEntity() : nullptr;
     SUCCEED();
 }
 
@@ -4050,17 +4050,17 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_809) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_810) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getBreakpointsOnComponent() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_811) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isShowSimulationResposesInReport() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_812) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getSimulationStatisticsAggregates() : nullptr;
     SUCCEED();
 }
 
@@ -4070,47 +4070,47 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_813) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_814) {
-    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isShowSimulationControlsInReport() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_815) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_816) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(anElement) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->getCurrentEvent() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_817) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_818) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_819) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(datadefinitionTypename, anElement) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isShowSimulationResposesInReport() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_820) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_821) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelSimulation* s = modelSimulation_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_822) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->check(datadefinitionTypename, anElement, expressionName, errorMessage) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return s != nullptr ? s->isShowSimulationControlsInReport() : false;
     SUCCEED();
 }
 
@@ -4120,7 +4120,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_823) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_824) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->check(datadefinitionTypename, elementName, expressionName, mandatory, errorMessage) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(anElement) : false;
     SUCCEED();
 }
 
@@ -4135,7 +4135,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_826) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_827) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinition(datadefinitionTypename, id) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(datadefinitionTypename, anElement) : false;
     SUCCEED();
 }
 
@@ -4145,27 +4145,27 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_828) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_829) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinition(datadefinitionTypename, name) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_830) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->check(datadefinitionTypename, anElement, expressionName, errorMessage) : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_831) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getNumberOfDataDefinitions(datadefinitionTypename) : 0u;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_832) {
     // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_832) {
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->check(datadefinitionTypename, elementName, expressionName, mandatory, errorMessage) : false;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_833) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getNumberOfDataDefinitions() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
@@ -4175,7 +4175,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_834) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_835) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getRankOf(datadefinitionTypename, name) : -1;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinition(datadefinitionTypename, id) : nullptr;
     SUCCEED();
 }
 
@@ -4185,7 +4185,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_836) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_837) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinitionClassnames() : std::list<std::string>{};
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinition(datadefinitionTypename, name) : nullptr;
     SUCCEED();
 }
 
@@ -4195,7 +4195,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_838) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_839) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinitionList(datadefinitionTypename) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getNumberOfDataDefinitions(datadefinitionTypename) : 0u;
     SUCCEED();
 }
 
@@ -4205,57 +4205,57 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_840) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_841) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getNumberOfDataDefinitions() : 0u;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_842) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->hasChanged() : false;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_843) {
     // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_843) {
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getRankOf(datadefinitionTypename, name) : -1;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_844) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_845) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(comp) : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinitionClassnames() : std::list<std::string>{};
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_846) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_847) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getDataDefinitionList(datadefinitionTypename) : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_848) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->find(name) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_849) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_850) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->find(id) : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->hasChanged() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_851) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelDataManager* m = modelDataManager_();
     SUCCEED();
 }
 
@@ -4265,7 +4265,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_852) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_853) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getNumberOfComponents() : 0u;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->insert(comp) : false;
     SUCCEED();
 }
 
@@ -4275,27 +4275,27 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_854) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_855) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->begin() : _empty.begin();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_856) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->find(name) : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_857) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->end() : _empty.end();
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_858) {
     // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_858) {
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->find(id) : nullptr;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_859) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->front() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
@@ -4305,7 +4305,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_860) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_861) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->next() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getNumberOfComponents() : 0u;
     SUCCEED();
 }
 
@@ -4315,7 +4315,7 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_862) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_863) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->hasChanged() : false;
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->begin() : _empty.begin();
     SUCCEED();
 }
 
@@ -4325,72 +4325,72 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_864) {
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_865) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->end() : _empty.end();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_866) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getSourceComponents() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_867) {
-    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->front() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_868) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getTransferInComponents() : nullptr;
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, SimulatorFacade_869) {
     // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_869) {
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->next() : nullptr;
+    SUCCEED();
+}
+
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_870) {
-    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getAllComponents() : nullptr;
+    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_871) {
-    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->hasChanged() : false;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_872) {
-    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_873) {
-    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_874) {
-    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getSourceComponents() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_875) {
-    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_876) {
-    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getTransferInComponents() : nullptr;
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_877) {
-    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: ModelComponentManager* m = modelComponentManager_();
     SUCCEED();
 }
 
 TEST(KernelSimulatorMethodInventory, SimulatorFacade_878) {
-    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    // SimulatorFacade.h :: SimulatorFacade :: return m != nullptr ? m->getAllComponents() : nullptr;
     SUCCEED();
 }
 
@@ -4594,312 +4594,352 @@ TEST(KernelSimulatorMethodInventory, SimulatorFacade_918) {
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SinkModelComponent_919) {
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_919) {
+    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_920) {
+    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_921) {
+    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_922) {
+    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_923) {
+    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_924) {
+    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_925) {
+    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SimulatorFacade_926) {
+    // SimulatorFacade.h :: SimulatorFacade :: OnEventManager* m = onEventManager_();
+    SUCCEED();
+}
+
+TEST(KernelSimulatorMethodInventory, SinkModelComponent_927) {
     // SinkModelComponent.h :: SinkModelComponent :: SinkModelComponent(Model* model, std::string componentTypename, std::string name = "");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SinkModelComponent_920) {
+TEST(KernelSimulatorMethodInventory, SinkModelComponent_928) {
     // SinkModelComponent.h :: SinkModelComponent :: virtual ~SinkModelComponent() = default;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_921) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_929) {
     // SourceModelComponent.h :: SourceModelComponent :: SourceModelComponent(Model* model, std::string componentTypename, std::string name = "");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_922) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_930) {
     // SourceModelComponent.h :: SourceModelComponent :: virtual ~SourceModelComponent() = default;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_923) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_931) {
     // SourceModelComponent.h :: SourceModelComponent :: void setFirstCreation(double _firstCreation);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_924) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_932) {
     // SourceModelComponent.h :: SourceModelComponent :: double getFirstCreation() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_925) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_933) {
     // SourceModelComponent.h :: SourceModelComponent :: void setEntityType(EntityType* _entityType);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_926) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_934) {
     // SourceModelComponent.h :: SourceModelComponent :: void setEntityTypeName(std::string entityTypeName);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_927) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_935) {
     // SourceModelComponent.h :: SourceModelComponent :: EntityType* getEntityType() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_928) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_936) {
     // SourceModelComponent.h :: SourceModelComponent :: void setTimeUnit(Util::TimeUnit _timeUnit);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_929) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_937) {
     // SourceModelComponent.h :: SourceModelComponent :: Util::TimeUnit getTimeUnit() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_930) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_938) {
     // SourceModelComponent.h :: SourceModelComponent :: void setTimeBetweenCreationsExpression(std::string _timeBetweenCreations, Util::TimeUnit _timeUnit=Util::TimeUnit::unknown);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_931) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_939) {
     // SourceModelComponent.h :: SourceModelComponent :: std::string getTimeBetweenCreationsExpression() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_932) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_940) {
     // SourceModelComponent.h :: SourceModelComponent :: void setMaxCreations(unsigned long _maxCreations);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_933) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_941) {
     // SourceModelComponent.h :: SourceModelComponent :: void setMaxCreations(std::string _maxCreationsExpression);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_934) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_942) {
     // SourceModelComponent.h :: SourceModelComponent :: std::string getMaxCreations() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_935) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_943) {
     // SourceModelComponent.h :: SourceModelComponent :: unsigned int getEntitiesCreated() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_936) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_944) {
     // SourceModelComponent.h :: SourceModelComponent :: void setEntitiesCreated(unsigned int _entitiesCreated);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_937) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_945) {
     // SourceModelComponent.h :: SourceModelComponent :: void setEntitiesPerCreation(unsigned int _entitiesPerCreation);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_938) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_946) {
     // SourceModelComponent.h :: SourceModelComponent :: unsigned int getEntitiesPerCreation() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SourceModelComponent_939) {
+TEST(KernelSimulatorMethodInventory, SourceModelComponent_947) {
     // SourceModelComponent.h :: SourceModelComponent :: virtual std::string show() override;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemCommandExecutor_if_940) {
+TEST(KernelSimulatorMethodInventory, SystemCommandExecutor_if_948) {
     // SystemDependencyResolver.h :: SystemCommandExecutor_if :: virtual ~SystemCommandExecutor_if() = default;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemCommandExecutor_if_941) {
+TEST(KernelSimulatorMethodInventory, SystemCommandExecutor_if_949) {
     // SystemDependencyResolver.h :: SystemCommandExecutor_if :: virtual SystemCommandResult run(const std::string& command) = 0;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemShellCommandExecutor_942) {
+TEST(KernelSimulatorMethodInventory, SystemShellCommandExecutor_950) {
     // SystemDependencyResolver.h :: SystemShellCommandExecutor :: SystemCommandResult run(const std::string& command) override;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_943) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_951) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: SystemDependencyCheckEntry(SystemDependency dependency, Status status, SystemCommandResult checkResult = {}, std::string message = "");
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_944) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_952) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: const SystemDependency& dependency() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_945) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_953) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: Status status() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_946) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_954) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: const SystemCommandResult& checkResult() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_947) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_955) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: const std::string& message() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_948) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_956) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: bool blocksInsertion() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_949) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_957) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: bool canAttemptInstall() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_950) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_958) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: std::string diagnosticText() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_951) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckEntry_959) {
     // SystemDependencyResolver.h :: SystemDependencyCheckEntry :: static std::string statusToString(Status status);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_952) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_960) {
     // SystemDependencyResolver.h :: SystemDependencyCheckResult :: void add(SystemDependencyCheckEntry entry);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_953) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_961) {
     // SystemDependencyResolver.h :: SystemDependencyCheckResult :: const std::list<SystemDependencyCheckEntry>& entries() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_954) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_962) {
     // SystemDependencyResolver.h :: SystemDependencyCheckResult :: bool canInsertPlugin() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_955) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_963) {
     // SystemDependencyResolver.h :: SystemDependencyCheckResult :: bool hasBlockingEntries() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_956) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_964) {
     // SystemDependencyResolver.h :: SystemDependencyCheckResult :: bool canAttemptInstallForAllMissing() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_957) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_965) {
     // SystemDependencyResolver.h :: SystemDependencyCheckResult :: std::string summary() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_958) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyCheckResult_966) {
     // SystemDependencyResolver.h :: SystemDependencyCheckResult :: std::string diagnosticText(bool includeSatisfied = false) const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallEntry_959) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallEntry_967) {
     // SystemDependencyResolver.h :: SystemDependencyInstallEntry :: SystemDependencyInstallEntry(SystemDependency dependency, SystemCommandResult installResult);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallEntry_960) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallEntry_968) {
     // SystemDependencyResolver.h :: SystemDependencyInstallEntry :: const SystemDependency& dependency() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallEntry_961) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallEntry_969) {
     // SystemDependencyResolver.h :: SystemDependencyInstallEntry :: const SystemCommandResult& installResult() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallEntry_962) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallEntry_970) {
     // SystemDependencyResolver.h :: SystemDependencyInstallEntry :: std::string diagnosticText() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_963) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_971) {
     // SystemDependencyResolver.h :: SystemDependencyInstallResult :: void add(SystemDependencyInstallEntry entry);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_964) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_972) {
     // SystemDependencyResolver.h :: SystemDependencyInstallResult :: const std::list<SystemDependencyInstallEntry>& entries() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_965) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_973) {
     // SystemDependencyResolver.h :: SystemDependencyInstallResult :: bool succeeded() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_966) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_974) {
     // SystemDependencyResolver.h :: SystemDependencyInstallResult :: std::string summary() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_967) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyInstallResult_975) {
     // SystemDependencyResolver.h :: SystemDependencyInstallResult :: std::string diagnosticText() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyResolver_968) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyResolver_976) {
     // SystemDependencyResolver.h :: SystemDependencyResolver :: static SystemDependency::OS currentOS();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, SystemDependencyResolver_969) {
+TEST(KernelSimulatorMethodInventory, SystemDependencyResolver_977) {
     // SystemDependencyResolver.h :: SystemDependencyResolver :: static bool appliesToCurrentOS(const SystemDependency& dependency);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_970) {
+TEST(KernelSimulatorMethodInventory, TraceManager_978) {
     // TraceManager.h :: TraceManager :: static std::string convertEnumToStr(Level level);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_971) {
+TEST(KernelSimulatorMethodInventory, TraceManager_979) {
     // TraceManager.h :: TraceManager :: TraceManager(Simulator* simulator); //(Model* model);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_972) {
+TEST(KernelSimulatorMethodInventory, TraceManager_980) {
     // TraceManager.h :: TraceManager :: virtual ~TraceManager();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_973) {
+TEST(KernelSimulatorMethodInventory, TraceManager_981) {
     // TraceManager.h :: TraceManager :: void addTraceSimulationExceptionRuleModelData(void* thisobject);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_974) {
+TEST(KernelSimulatorMethodInventory, TraceManager_982) {
     // TraceManager.h :: TraceManager :: void beginShutdown();
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_975) {
+TEST(KernelSimulatorMethodInventory, TraceManager_983) {
     // TraceManager.h :: TraceManager :: List<std::string>* errorMessages() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_976) {
+TEST(KernelSimulatorMethodInventory, TraceManager_984) {
     // TraceManager.h :: TraceManager :: void setTraceLevel(TraceManager::Level _traceLevel);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_977) {
+TEST(KernelSimulatorMethodInventory, TraceManager_985) {
     // TraceManager.h :: TraceManager :: TraceManager::Level getTraceLevel() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_978) {
+TEST(KernelSimulatorMethodInventory, TraceManager_986) {
     // TraceManager.h :: TraceManager :: Simulator* getParentSimulator() const;
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_979) {
+TEST(KernelSimulatorMethodInventory, TraceManager_987) {
     // TraceManager.h :: TraceManager :: void setTraceSimulationRuleAllAllowed(bool _traceSimulationRuleAllAllowed);
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, TraceManager_980) {
+TEST(KernelSimulatorMethodInventory, TraceManager_988) {
     // TraceManager.h :: TraceManager :: bool isTraceSimulationRuleAllAllowed() const;
     SUCCEED();
 }

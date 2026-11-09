@@ -224,7 +224,7 @@ bool RSimulator::_loadInstance(PersistenceRecord *fields) {
 		for (unsigned int i = 0u; i < commandCount; i++) {
 			_commands->insert(fields->loadField("command" + Util::StrIndex(i), ""));
 		}
-		_syncRunnerConfiguration();
+		_createEditableDataDefinitions();
 	}
 	return res;
 }
@@ -267,7 +267,12 @@ bool RSimulator::_check(std::string& errorMessage) {
 
 void RSimulator::_ensureRunner() {
 	if (_runner == nullptr) {
-		_runner = new RSimulatorRunner(_parentModel, getName() + ".RSimulatorRunner");
+		_runner = dynamic_cast<RSimulatorRunner*>(_parentModel->getDataManager()->getDataDefinition(
+			Util::TypeOf<RSimulatorRunner>(), getName() + ".RSimulatorRunner"));
+		if (_runner == nullptr) {
+			_runner = new RSimulatorRunner(_parentModel, getName() + ".RSimulatorRunner");
+		}
+		_syncRunnerConfiguration();
 	}
 }
 

@@ -16,6 +16,8 @@
 #include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/ExternalIntegration/SPICERunner.h"
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
+#include <memory>
+#include <mutex>
 
 /*!
  This component ...
@@ -23,7 +25,7 @@
 class SPICECircuit : public ModelComponent {
 public: /// constructors
 	SPICECircuit(Model* model, std::string name = "");
-	virtual ~SPICECircuit() = default;
+	virtual ~SPICECircuit();
 
 public: /// new public user methods for this components
 	void setRunner(SPICERunner* runner);
@@ -57,14 +59,18 @@ protected: /// virtual protected methods that could be overriden by derived clas
 	/*! This method is called by ModelSimulation when initianting the replication. The model should set all value for a new replication (Ex: setting back to 0 any internal counter, clearing lists, etc. */
 	// virtual void _initBetweenReplications();
 	// virtual void _createInternalStatisticReporters() override;
-	// virtual void _createEditableDataDefinitions() override;
-	virtual void _createNonEditableDataDefinitions() override;
+	virtual void _createEditableDataDefinitions() override;
 	// virtual void _createAttachedAttributes() override;
 	/*! This method is not used yet. It should be usefull for new UIs */
 	// virtual void _addSimulationControl(SimulationControl* property);
 protected:
 
 private: /// new private user methods
+	struct CallbackLifetime {
+		std::mutex mutex;
+		SPICECircuit* circuit = nullptr;
+		SPICERunner* runner = nullptr;
+	};
 	// Spice subcircuit declaration, if one exists
     std::string spice_template;
     // Name of component
@@ -80,6 +86,7 @@ private: /// new private user methods
     std::string model_file;
     // Spice compiler
     SPICERunner *compiler = nullptr;
+	std::shared_ptr<CallbackLifetime> _callbackLifetime;
 
 	static unsigned int counter;
 	bool plain_circuit;

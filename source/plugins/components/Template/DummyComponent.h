@@ -25,7 +25,7 @@ public: /// constructors
 	virtual ~DummyComponent() = default;
 
 public: /// new public user methods for this component
-	// ...
+	DummyElement* getInternalDataDefinition() const;
 
 public: /// virtual public methods
 	virtual std::string show() override;
@@ -39,6 +39,7 @@ protected: /// virtual protected method that must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override; ///< This method is only for ModelComponents, not ModelDataElements
+	virtual void _createEditableDataDefinitions() override;
 
 
 protected: /// virtual protected methods that could be overriden by derived classes, if needed

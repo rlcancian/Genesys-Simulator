@@ -44,11 +44,18 @@ bool jsonNumber(const std::string& json, const std::string& key, double& value) 
 
 AIAssistant::AIAssistant(Model* model, std::string name)
     : ModelComponent(model, Util::TypeOf<AIAssistant>(), name) {
+    auto* supportControl = new SimulationControlGenericClass<AISupport*, Model*, AISupport>(
+        _parentModel,
+        std::bind(&AIAssistant::getAISupport, this),
+        std::bind(&AIAssistant::setAISupport, this, std::placeholders::_1),
+        Util::TypeOf<AIAssistant>(), getName(), "AISupport", "");
+    _parentModel->getControls()->insert(supportControl);
+    _addSimulationControl(supportControl);
+
     auto addString = [this](const std::string& property, auto getter, auto setter) {
         auto* control = new SimulationControlString(getter, setter, Util::TypeOf<AIAssistant>(), getName(), property);
         _parentModel->getControls()->insert(control); _addSimulationControl(control);
     };
-    addString("AISupport", std::bind(&AIAssistant::getAISupportName, this), std::bind(&AIAssistant::setAISupportName, this, std::placeholders::_1));
     addString("PromptTemplate", std::bind(&AIAssistant::getPromptTemplate, this), std::bind(&AIAssistant::setPromptTemplate, this, std::placeholders::_1));
     addString("ConversationScope", std::bind(&AIAssistant::getConversationScope, this), std::bind(&AIAssistant::setConversationScope, this, std::placeholders::_1));
     addString("ConversationKeyExpression", std::bind(&AIAssistant::getConversationKeyExpression, this), std::bind(&AIAssistant::setConversationKeyExpression, this, std::placeholders::_1));
@@ -83,7 +90,11 @@ void AIAssistant::setAISupport(AISupport* value) {
     if (value != nullptr) _attachedDataInsert("AISupport", value); else _attachedDataRemove("AISupport");
 }
 AISupport* AIAssistant::getAISupport() const { return _aiSupport; }
-void AIAssistant::setAISupportName(std::string value) { _aiSupportName = std::move(value); _aiSupport = nullptr; }
+void AIAssistant::setAISupportName(std::string value) {
+    _aiSupportName = std::move(value);
+    _aiSupport = nullptr;
+    _attachedDataRemove("AISupport");
+}
 std::string AIAssistant::getAISupportName() const { return _aiSupport != nullptr ? _aiSupport->getName() : _aiSupportName; }
 #define AI_STRING_PROPERTY(Name, Field) \
 void AIAssistant::set##Name(std::string value) { Field = std::move(value); } \
@@ -229,6 +240,9 @@ void AIAssistant::_fail(Entity* entity, const std::string& message) {
 bool AIAssistant::_loadInstance(PersistenceRecord* f) {
     bool ok = ModelComponent::_loadInstance(f);
     _aiSupportName = f->loadField("aiSupport", DEFAULT.aiSupportName);
+    _aiSupport = nullptr;
+    _attachedDataRemove("AISupport");
+    _resolveSupport();
     _promptTemplate = f->loadField("promptTemplate", DEFAULT.promptTemplate);
     _conversationScope = f->loadField("conversationScope", DEFAULT.conversationScope);
     _conversationKeyExpression = f->loadField("conversationKeyExpression", DEFAULT.conversationKeyExpression);
