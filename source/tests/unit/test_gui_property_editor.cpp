@@ -15,9 +15,29 @@
 #include "kernel/simulator/model/Model.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/AI/AIAssistant.h"
+#include "plugins/components/Continuous/ContinuousSystemComponent.h"
+#include "plugins/components/Continuous/DiffEquations.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/Template/DummyComponent.h"
+#include "plugins/components/ExternalIntegration/PythonForG.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
+#include "plugins/components/ExternalIntegration/RSimulator.h"
+#include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/Synchronization/Match.h"
+#include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
+#include "plugins/data/AI/AISupport.h"
+#include "plugins/data/Continuous/ODESolver.h"
+#include "plugins/data/ExternalIntegration/CppCompiler.h"
+#include "plugins/data/ExternalIntegration/SPICERunner.h"
+#include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
+#include "plugins/data/Template/DummyElement.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/Grouping/EntityGroup.h"
 
 #include <functional>
 
@@ -179,6 +199,535 @@ QSpinBox* beginIntegerEdit(ObjectPropertyBrowser& browser, const QString& proper
     browser.editItem(item);
     drainGuiEvents();
     return browser.findChild<QSpinBox*>();
+}
+
+TEST(PropertyEditorModelDataReference, AIAssistantSelectsAnExistingAISupportInstance) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* sharedSupport = new AISupport(model, "SharedSupport_PropertyEditor");
+    AIAssistant assistant(model, "Assistant_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &assistant);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("AISupport"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int sharedIndex = selector->findText(QString::fromStdString(sharedSupport->getName()));
+    ASSERT_GE(sharedIndex, 0);
+    selector->setCurrentIndex(sharedIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(assistant.getAISupport(), sharedSupport);
+    EXPECT_EQ(assistant.getAISupportName(), "SharedSupport_PropertyEditor");
+    assistant.setAISupportName("LegacySupportName");
+    EXPECT_EQ(assistant.getAISupport(), nullptr);
+    EXPECT_EQ(assistant.getAttachedData()->find("AISupport"), assistant.getAttachedData()->end());
+}
+
+TEST(PropertyEditorModelDataReference, AIAssistantRestoresSelectedSupportBeforeModelCheck) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* support = new AISupport(model, "AISupport_ReferenceRoundTrip");
+    auto* assistant = new AIAssistant(model, "AIAssistant_ReferenceRoundTrip");
+    assistant->setAISupport(support);
+
+    const QString path = QStringLiteral("/tmp/genesys_ai_support_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedAssistant = dynamic_cast<AIAssistant*>(
+        loaded->getComponentManager()->find("AIAssistant_ReferenceRoundTrip"));
+    auto* loadedSupport = dynamic_cast<AISupport*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<AISupport>(), "AISupport_ReferenceRoundTrip"));
+    ASSERT_NE(loadedAssistant, nullptr);
+    ASSERT_NE(loadedSupport, nullptr);
+    EXPECT_EQ(loadedAssistant->getAISupport(), loadedSupport);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<AISupport>()), 1u);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, ContinuousSystemSelectsAnExistingODESolver) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* solver = new ODESolver(model, "SelectedSolver_PropertyEditor");
+    ContinuousSystemComponent component(model, "Continuous_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("ODESolver"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int solverIndex = selector->findText(QString::fromStdString(solver->getName()));
+    ASSERT_GE(solverIndex, 0);
+    selector->setCurrentIndex(solverIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getOdeSolver(), solver);
+    ASSERT_NE(component.getAttachedData(), nullptr);
+    ASSERT_TRUE(component.getAttachedData()->contains("ODESolver"));
+    EXPECT_EQ(component.getAttachedData()->at("ODESolver"), solver);
+}
+
+TEST(PropertyEditorModelDataReference, ContinuousSystemRestoresSelectedSolverBeforeModelCheck) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* solver = new ODESolver(model, "ODESolver_ReferenceRoundTrip");
+    auto* component = new ContinuousSystemComponent(model, "ContinuousSystem_ReferenceRoundTrip");
+    component->setOdeSolver(solver);
+
+    const QString path = QStringLiteral("/tmp/genesys_ode_solver_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedComponent = dynamic_cast<ContinuousSystemComponent*>(
+        loaded->getComponentManager()->find("ContinuousSystem_ReferenceRoundTrip"));
+    auto* loadedSolver = dynamic_cast<ODESolver*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<ODESolver>(), "ODESolver_ReferenceRoundTrip"));
+    ASSERT_NE(loadedComponent, nullptr);
+    ASSERT_NE(loadedSolver, nullptr);
+    EXPECT_EQ(loadedComponent->getOdeSolver(), loadedSolver);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<ODESolver>()), 1u);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, ModalModelSelectsADerivedDefaultNetwork) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* network = new EFSMNetwork(model, "EFSMNetwork_PropertyEditor");
+    ModalModelDefault component(model, "ModalAdapter_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int networkIndex = selector->findText(QString::fromStdString(network->getName()));
+    ASSERT_GE(networkIndex, 0);
+    selector->setCurrentIndex(networkIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getNetwork(), network);
+}
+
+TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyComponent component(model, "Dummy_PropertyEditor");
+    ModelDataDefinition::CreateInternalData(&component);
+    ASSERT_NE(component.getInternalDataDefinition(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(
+                  Util::TypeOf<DummyElement>(), component.getInternalDataDefinition()->getName()),
+              component.getInternalDataDefinition());
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("DummyElement"));
+    ASSERT_NE(item, nullptr);
+    browser.setExpanded(item, true);
+    drainGuiEvents();
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SomeString")), nullptr);
+}
+
+TEST(PropertyEditorModelDataReference, OwnedRuntimeDefinitionsReattachOnGenLoadWithoutDuplicates) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* dummy = new DummyComponent(model, "Dummy_InternalRoundTrip");
+    auto* python = new PythonForG(model, "Python_InternalRoundTrip");
+    python->getPythonRuntime()->setPythonExecutable("custom-python");
+    auto* r = new RSimulator(model, "R_InternalRoundTrip");
+    r->setRExecutable("custom-Rscript");
+    r->setPreludeScript("# prelude\nvalue <- 7\n");
+    r->setCommandList("result <- value + 1\n");
+
+    const QString path = QStringLiteral("/tmp/genesys_owned_runtime_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+
+    auto* loadedDummy = dynamic_cast<DummyComponent*>(loaded->getComponentManager()->find("Dummy_InternalRoundTrip"));
+    auto* loadedPython = dynamic_cast<PythonForG*>(loaded->getComponentManager()->find("Python_InternalRoundTrip"));
+    auto* loadedR = dynamic_cast<RSimulator*>(loaded->getComponentManager()->find("R_InternalRoundTrip"));
+    ASSERT_NE(loadedDummy, nullptr);
+    ASSERT_NE(loadedPython, nullptr);
+    ASSERT_NE(loadedR, nullptr);
+    auto* dummyData = dynamic_cast<DummyElement*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<DummyElement>(), "Dummy_InternalRoundTrip.DummyElement"));
+    auto* pythonRuntime = dynamic_cast<PythonRuntime*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<PythonRuntime>(), "Python_InternalRoundTrip.PythonRuntime"));
+    auto* rRunner = dynamic_cast<RSimulatorRunner*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<RSimulatorRunner>(), "R_InternalRoundTrip.RSimulatorRunner"));
+    ASSERT_NE(dummyData, nullptr);
+    ASSERT_NE(pythonRuntime, nullptr);
+    ASSERT_NE(rRunner, nullptr);
+    EXPECT_EQ(loadedDummy->getInternalDataDefinition(), dummyData);
+    EXPECT_EQ(loadedPython->getPythonRuntime(), pythonRuntime);
+    EXPECT_EQ(pythonRuntime->getPythonExecutable(), "custom-python");
+    EXPECT_EQ(loadedR->getRunner(), rRunner);
+    EXPECT_EQ(rRunner->getRExecutable(), "custom-Rscript");
+    EXPECT_EQ(rRunner->getPreludeScript(), "# prelude\nvalue <- 7\n");
+    EXPECT_EQ(loadedR->getCommandList(), "result <- value + 1");
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<DummyElement>()), 1u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<PythonRuntime>()), 1u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<RSimulatorRunner>()), 1u);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, PythonForGExposesItsOwnedRuntimeConfiguration) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonForG component(model, "PythonForG_PropertyEditor");
+    ASSERT_NE(component.getPythonRuntime(), nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* runtimeItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("PythonRuntime"));
+    ASSERT_NE(runtimeItem, nullptr);
+    browser.setExpanded(runtimeItem, true);
+    drainGuiEvents();
+    QtBrowserItem* executableItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("PythonExecutable"));
+    ASSERT_NE(executableItem, nullptr);
+    browser.setCurrentItem(executableItem);
+    browser.editItem(executableItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("python3-property-editor"));
+    EXPECT_EQ(component.getPythonRuntime()->getPythonExecutable(), "python3-property-editor");
+}
+
+TEST(PropertyEditorModelDataReference, RSimulatorComponentConfigurationIsTheRunnerSourceOfTruth) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulator component(model, "RSimulator_PropertyEditor");
+    component.setRExecutable("Rscript-custom");
+    component.setWorkingDirectory("/tmp/r-simulator-property-editor");
+    component.setPreludeScript("# multiline prelude\noptions(stringsAsFactors = FALSE)");
+    ASSERT_NE(component.getRunner(), nullptr);
+    EXPECT_EQ(component.getRunner()->getRExecutable(), "Rscript-custom");
+    EXPECT_EQ(component.getRunner()->getWorkingDirectory(), "/tmp/r-simulator-property-editor");
+    EXPECT_EQ(component.getRunner()->getPreludeScript(), "# multiline prelude\noptions(stringsAsFactors = FALSE)");
+}
+
+TEST(PropertyEditorModelDataReference, SearchSelectsEntityGroupWithoutChangingSearchMode) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "SearchGroup_PropertyEditor");
+    Search component(model, "Search_PropertyEditor");
+    component.setSearchInType(Search::SearchInType::ENTITYGROUP);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    EXPECT_EQ(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SearchInName")), nullptr);
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SearchIn"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    EXPECT_GE(selector->findText(QString("Criar novo %1").arg(QString::fromStdString(Util::TypeOf<EntityGroup>()))), 0);
+    const int groupIndex = selector->findText(QString::fromStdString(group->getName()));
+    ASSERT_GE(groupIndex, 0);
+    selector->setCurrentIndex(groupIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getSearchIn(), group);
+    EXPECT_EQ(component.getSearchInType(), Search::SearchInType::ENTITYGROUP);
+}
+
+TEST(PropertyEditorModelDataReference, RemoveSelectsEntityGroupWithoutChangingRemoveMode) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "RemoveGroup_PropertyEditor");
+    Remove component(model, "Remove_PropertyEditor");
+    component.setRemoveFromType(Remove::RemoveFromType::ENTITYGROUP);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("RemoveFrom"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    EXPECT_GE(selector->findText(QString("Criar novo %1").arg(QString::fromStdString(Util::TypeOf<EntityGroup>()))), 0);
+    const int groupIndex = selector->findText(QString::fromStdString(group->getName()));
+    ASSERT_GE(groupIndex, 0);
+    selector->setCurrentIndex(groupIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getRemoveFrom(), group);
+    EXPECT_EQ(component.getRemoveFromType(), Remove::RemoveFromType::ENTITYGROUP);
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveRestoreSharedEntityGroupReference) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "SharedGroup_RoundTrip");
+    auto* search = new Search(model, "Search_RoundTrip");
+    auto* remove = new Remove(model, "Remove_RoundTrip");
+    search->setSearchInType(Search::SearchInType::ENTITYGROUP);
+    search->setSearchIn(group);
+    remove->setRemoveFromType(Remove::RemoveFromType::ENTITYGROUP);
+    remove->setRemoveFrom(group);
+
+    const QString path = QStringLiteral("/tmp/genesys_search_remove_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedGroup = dynamic_cast<EntityGroup*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<EntityGroup>(), "SharedGroup_RoundTrip"));
+    auto* loadedSearch = dynamic_cast<Search*>(loaded->getComponentManager()->find("Search_RoundTrip"));
+    auto* loadedRemove = dynamic_cast<Remove*>(loaded->getComponentManager()->find("Remove_RoundTrip"));
+    ASSERT_NE(loadedGroup, nullptr);
+    ASSERT_NE(loadedSearch, nullptr);
+    ASSERT_NE(loadedRemove, nullptr);
+    EXPECT_EQ(loadedSearch->getSearchIn(), loadedGroup);
+    EXPECT_EQ(loadedRemove->getRemoveFrom(), loadedGroup);
+    EXPECT_EQ(loadedSearch->getSearchInType(), Search::SearchInType::ENTITYGROUP);
+    EXPECT_EQ(loadedRemove->getRemoveFromType(), Remove::RemoveFromType::ENTITYGROUP);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, MatchExposesCommonQueueOrderingProperties) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Match component(model, "Match_PropertyEditor");
+    ModelDataDefinition::CreateInternalData(&component);
+    auto* q0 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "Match_PropertyEditor.Queue0"));
+    auto* q1 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "Match_PropertyEditor.Queue1"));
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    QtBrowserItem* ruleItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderRule"));
+    ASSERT_NE(ruleItem, nullptr);
+    browser.setCurrentItem(ruleItem);
+    browser.editItem(ruleItem);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int ruleIndex = selector->findText(QStringLiteral("HIGHESTVALUE"));
+    ASSERT_GE(ruleIndex, 0);
+    selector->setCurrentIndex(ruleIndex);
+    drainGuiEvents();
+
+    QtBrowserItem* attributeItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderAttributeName"));
+    ASSERT_NE(attributeItem, nullptr);
+    browser.setCurrentItem(attributeItem);
+    browser.editItem(attributeItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("Priority"));
+    EXPECT_EQ(component.getQueueOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(component.getQueueOrderAttributeName(), "Priority");
+    EXPECT_EQ(q0->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q1->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q0->getAttributeName(), "Priority");
+    EXPECT_EQ(q1->getAttributeName(), "Priority");
+}
+
+TEST(PropertyEditorModelDataReference, CppForGExposesOwnedCompilerSettingsInline) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppForG component(model, "CppForG_PropertyEditor");
+    CppCompiler* ownedCompiler = component.getCppCompiler();
+    ASSERT_NE(ownedCompiler, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("CppCompiler")), nullptr);
+    QtBrowserItem* sourceFileItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename"));
+    ASSERT_NE(sourceFileItem, nullptr);
+    browser.setCurrentItem(sourceFileItem);
+    browser.editItem(sourceFileItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("cppforg-edited.cpp"));
+    EXPECT_EQ(ownedCompiler->getSourceFilename(), "cppforg-edited.cpp");
+    EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
+    EXPECT_THROW(component.setCppCompiler(nullptr), std::invalid_argument);
+}
+
+TEST(PropertyEditorModelDataReference, SPICECircuitRunnerCallbackExpiresWithCircuit) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* runner = new SPICERunner(model, "SPICERunner_CallbackLifetime");
+    {
+        SPICECircuit circuit(model, "SPICECircuit_CallbackLifetime");
+        circuit.setRunner(runner);
+    }
+    EXPECT_NO_THROW(runner->CompileSpiceFile());
+}
+
+TEST(PropertyEditorModelDataReference, SPICECircuitPreservesSharedRunnerOnGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* runner = new SPICERunner(model, "SPICERunner_RoundTrip");
+    auto* circuit = new SPICECircuit(model, "SPICECircuit_RoundTrip");
+    circuit->setRunner(runner);
+
+    const QString path = QStringLiteral("/tmp/genesys_spice_runner_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedCircuit = dynamic_cast<SPICECircuit*>(loaded->getComponentManager()->find("SPICECircuit_RoundTrip"));
+    auto* loadedRunner = dynamic_cast<SPICERunner*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<SPICERunner>(), "SPICERunner_RoundTrip"));
+    ASSERT_NE(loadedCircuit, nullptr);
+    ASSERT_NE(loadedRunner, nullptr);
+    EXPECT_EQ(loadedCircuit->getRunner(), loadedRunner);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, DiffEquationsExposesOwnedCompilerSettingsInline) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DiffEquations component(model, "DiffEquations_PropertyEditor");
+    CppCompiler* ownedCompiler = component.getCppCompiler();
+    ASSERT_NE(ownedCompiler, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("CppCompiler")), nullptr);
+    QtBrowserItem* sourceFileItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename"));
+    ASSERT_NE(sourceFileItem, nullptr);
+    browser.setCurrentItem(sourceFileItem);
+    browser.editItem(sourceFileItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("diff-equations-edited.cpp"));
+    EXPECT_EQ(ownedCompiler->getSourceFilename(), "diff-equations-edited.cpp");
+    EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
+}
+
+TEST(PropertyEditorModelDataReference, OwnedCompilerSettingsSurviveGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* cppForG = new CppForG(model, "CppForG_CompilerRoundTrip");
+    auto* diffEquations = new DiffEquations(model, "DiffEquations_CompilerRoundTrip");
+    cppForG->getCppCompiler()->setCompilerCommand("custom-cxx");
+    diffEquations->getCppCompiler()->setOutputFilename("custom-output.so");
+    cppForG->setOnDispatchEventCode("// editable incomplete source\n");
+
+    const QString path = QStringLiteral("/tmp/genesys_internal_compiler_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedCppForG = dynamic_cast<CppForG*>(loaded->getComponentManager()->find("CppForG_CompilerRoundTrip"));
+    auto* loadedDiffEquations = dynamic_cast<DiffEquations*>(loaded->getComponentManager()->find("DiffEquations_CompilerRoundTrip"));
+    ASSERT_NE(loadedCppForG, nullptr);
+    ASSERT_NE(loadedDiffEquations, nullptr);
+    ASSERT_NE(loadedCppForG->getCppCompiler(), nullptr);
+    ASSERT_NE(loadedDiffEquations->getCppCompiler(), nullptr);
+    EXPECT_EQ(loaded->getDataManager()->getDataDefinition(Util::TypeOf<CppCompiler>(),
+                                                          "CppForG_CompilerRoundTrip.CppCompiler"),
+              loadedCppForG->getCppCompiler());
+    EXPECT_EQ(loaded->getDataManager()->getDataDefinition(Util::TypeOf<CppCompiler>(),
+                                                          "DiffEquations_CompilerRoundTrip.CppCompiler"),
+              loadedDiffEquations->getCppCompiler());
+    auto* loadedCompilers = loaded->getDataManager()->getDataDefinitionList(Util::TypeOf<CppCompiler>());
+    ASSERT_NE(loadedCompilers, nullptr);
+    EXPECT_EQ(loadedCompilers->size(), 2u);
+    EXPECT_EQ(loadedCppForG->getCppCompiler()->getCompilerCommand(), "custom-cxx");
+    EXPECT_EQ(loadedDiffEquations->getCppCompiler()->getOutputFilename(), "custom-output.so");
+    EXPECT_EQ(loadedCppForG->getOnDispatchEventCode(), "// editable incomplete source\n");
+    QFile::remove(path);
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {

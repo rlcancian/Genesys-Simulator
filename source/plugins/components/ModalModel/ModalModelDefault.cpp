@@ -10,6 +10,7 @@
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
@@ -23,6 +24,13 @@ constexpr const char* kNetworkAssociationKey = "ModalModelDefault.Network";
 
 ModalModelDefault::ModalModelDefault(Model* model, std::string name)
 	: ModelComponent(model, Util::TypeOf<ModalModelDefault>(), name) {
+	auto* networkControl = new SimulationControlGenericClass<DefaultNetwork*, Model*, DefaultNetwork>(
+		_parentModel,
+		std::bind(&ModalModelDefault::getNetwork, this),
+		std::bind(&ModalModelDefault::setNetwork, this, std::placeholders::_1),
+		Util::TypeOf<ModalModelDefault>(), getName(), "Network", "", false, true, false, nullptr, true);
+	_parentModel->getControls()->insert(networkControl);
+	_addSimulationControl(networkControl);
 }
 
 void ModalModelDefault::setMaxTransitionsPerDispatch(unsigned int maxTransitionsPerDispatch) {

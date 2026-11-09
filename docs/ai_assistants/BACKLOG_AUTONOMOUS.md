@@ -544,17 +544,31 @@ This is the only approved source for work an AI agent may execute without a new 
 - Priority: P0.
 - Status: running.
 - Environment: github (instrumentation, CI evidence) then local (root-cause reproduction).
-- Authorization: direct maintainer instruction dated 2026-11-06, limited to Phase 1 diagnosis, trace classification, reproducible tests and one Draft PR.
-- Branch: WiP202611/save-failure-diagnostics; target WorkInProgress, no merge authorized in Phase 1.
+- Authorization: direct maintainer instruction dated 2026-11-06 for diagnostic implementation; explicit maintainer instruction dated 2026-11-09 authorizes integration into WorkInProgress after required validation.
+- Branch/PR: `WiP202611/save-failure-diagnostics`, [PR #568](https://github.com/rlcancian/Genesys-Simulator/pull/568), target WorkInProgress.
 - Scope: map kernel/GUI persistence, classify failures of temporary open/write/dump/flush/close/rename, observe plugin/name/registration issues, characterize filesystem/serializer/model/overlay scenarios, preserve previous saves and record evidence.
-- Non-goals: persistence redesign, changing ModelCheck, deleting independent data, comprehensive plugin refactoring or merging the PR.
-- Acceptance: a complete evidence record with baseline SHA and CI provenance; separate logical/I/O/GUI diagnostics; repeatable isolated kernel and GUI regression fixtures; unresolved hypotheses explicitly labelled.
+- Non-goals: persistence redesign, changing ModelCheck, deleting independent data, comprehensive plugin refactoring, or promoting stable branches.
+- Acceptance: complete evidence record with baseline SHA and CI provenance; separate logical/I/O/GUI diagnostics; repeatable isolated kernel and GUI regression fixtures; unresolved hypotheses explicitly labelled; current-head focused tests and required checks pass before merge.
 - Stop gates: unsafe large-file change, data-loss risk, current-head CI failure that cannot be diagnosed remotely, local-only interaction or filesystem evidence, or any human architectural decision.
-- Evidence: history/evidence/2026/11/model_save_failure_diagnostics.md.
+- Evidence: `history/evidence/2026/11/model_save_failure_diagnostics.md`.
+
+### AUTO-GUI-002 — Consolidate standalone GUI tools and installed launch paths
+
+- Priority: `P1`
+- Status: `done_confirmed`.
+- Environment: local + GitHub Actions.
+- Authorization: explicit maintainer instructions dated 2026-11-05 and 2026-11-06, including merge authorization after required checks.
+- Issue/branch/PR: [#561](https://github.com/rlcancian/Genesys-Simulator/issues/561); `WiP202611/standalone-tools-gui`; [PR #562](https://github.com/rlcancian/Genesys-Simulator/pull/562).
+- Base: `WorkInProgress` `82cb4bdb28d698daea14dc01914797cb59f6d1ed`.
+- Merge: `46bdedfc94ac9ae6144675fe6b2a64c0c5e98460` (2026-11-07).
+- Scope: independent Data Analyser, Optimizer and AI Assistant Qt applications; Tools process launch; installed executable lookup; Debian inclusion; tests and manuals.
+- Non-goals: scientific/optimizer/AI algorithm changes, IPC/model transfer, broad source relocation, dynamic-plugin migration, stable-branch promotion. PR #524 remains separate.
+- Validation: tests-unit 2,004 passed + 4 disabled; tests-kernel-unit 2,004 passed + 4 disabled; smoke 3/3; six ToolLauncher CTests; real Tools menu launches with PID/window/close/cleanup checks; Debian package and install/reinstall/remove/purge lifecycle; all final PR checks passed.
+- Acceptance: three independent targets and processes; no in-process Tools windows; deterministic installed lookup; safe missing/non-executable behavior; real menu launches; package, documentation and final-head CI verified.
+- Completion evidence: [`history/evidence/2026/11/2026-11-07_november_consolidation.md`](history/evidence/2026/11/2026-11-07_november_consolidation.md). Post-merge Debian workflow is separately tracked in that evidence; pre-merge lifecycle passed.
+- Remaining boundaries: no live optional issue-relay test; no full portable archive lifecycle in this run; optimizer and AI scientific/provider behavior were outside scope.
 
 ## 5. Active bounded work
-
-
 ### AUTO-MODAL-002 — Verify and complete the current ModalModel/DefaultNetwork architecture
 
 - Priority: `P1`
@@ -836,3 +850,35 @@ Do not reopen without new evidence:
 A paused task becomes eligible only after the maintainer changes it to `ready` and confirms scope, validation and stop conditions.
 
 A task moves to `done` only after required validation is green, evidence is reviewed, the PR is merged, source-branch deletion is confirmed, issue/status/backlog/changelog are updated and remaining boundaries are explicit.
+
+
+## 9. Active bounded GUI work authorized by maintainer
+
+### AUTO-GUI-001 — Simplify and correct GUI Report Issue
+
+- Priority: P1
+- Status: done_confirmed
+- Environment: local + github
+- Authorization: direct maintainer instruction dated 2026-11-06 authorizes local audit, required validation, PR completion, and merge into WorkInProgress after all gates pass; this supersedes the 2026-11-05 no-merge limit.
+- Branch/PR: `WiP202611/report-issue-gui` / PR #560; merge commit `82cb4bdb28d698daea14dc01914797cb59f6d1ed`.
+- Scope: three-field issue report dialog, browser URL prefill without relay, optional secure asynchronous relay, strict issue confirmation, privacy, focused QtTest and CI, user/developer documentation, regenerated canonical manual PDF, and local/hosted validation.
+- Non-goals: no production relay deployment, GitHub secret/token provisioning, production test issue, new backend service, broad controller refactor, or promotion to stable branches.
+- Acceptance: title/description validation; bug as default; no automatic sensitive diagnostics; encoded and bounded GitHub URL; clipboard path for oversize content; explicit browser handoff; error preservation; verified HTTPS issue identity for relay; bounded asynchronous response handling/cancellation; mock HTTP status/timeout/security tests; GUI build and QtTest evidence; successful manual PDF regeneration and review; final-head required checks green.
+- Validation: 21 focused QtTests; local GUI build; unit/kernel (1,998 passed, 4 disabled each), smoke (3/3), canonical PDF build and page inspection; final PR-head required checks passed.
+- Evidence: `history/evidence/2026/11/2026-11-06_report_issue_pr560_validation.md`. A live relay-to-GitHub transaction remains unverified because no operational relay was available.
+
+### AUTO-PROPERTY-001 — ModelComponent DataDefinition property contracts
+
+- Priority: `P1`
+- Status: `running`
+- Environment: `local` (C++23, CMake/Ninja, Qt6, Google Test)
+- Authorization: explicit maintainer request dated 2026-11-08; on 2026-11-09 the maintainer explicitly directed merge of the validated slice after required checks passed. The overall audit remains open.
+- Branch/PR: `WiP202611/datadef-component-properties`, [PR #571](https://github.com/rlcancian/Genesys-Simulator/pull/571), merged as `3eafcc14544c4b91c6b17d35b3827581d9dbcb76`.
+- Base/integration: started at `origin/WorkInProgress` `82acab46238b1fea689202b24185bf2e2e8b3c00`; current integrated HEAD `3eafcc14544c4b91c6b17d35b3827581d9dbcb76`.
+- Scope: inventory ModelComponent-to-ModelDataDefinition associations and correct confirmed Property Editor gaps across AI, continuous, modal, template, external integration, polymorphic Search/Remove, discrete/transfer and scientific components; implement Match queue configuration in a separate bounded commit after auditing routing and persistence contracts; add focused GUI/kernel/persistence/lifetime regressions and manual-impact documentation.
+- Non-goals: making `Counter` or `StatisticsCollector` editable; broad property framework/plugin architecture refactoring; changing simulation algorithms except where a confirmed property contract requires it; introducing unsafe sharing/ownership changes; inventing migration behavior for legacy Match output connections; reimplementing Wait/Signal changes identified by PR #570 commits `b33c9c634` and `b10adbf59`.
+- Dependencies: reconcile Wait/Signal from PR #570 only after its commits are integrated into the working base or explicitly incorporated by an auditable dependency; current implementation is not part of `origin/WorkInProgress` at task start.
+- Acceptance: each configurable association is represented by a compatible component-owned SimulationControl; Property Editor selection/editing demonstrably changes the component state; ownership, internal/external and shared-reference semantics remain safe; supported `.gen`/`.gui` references round-trip without duplicate definitions; `Counter`/`StatisticsCollector` remain excluded; Match queue count/rules/attributes stay coherent and persist; no unresolved in-scope component association is omitted from the final traceability matrix; required focused, ordinary, kernel, smoke and GUI validation passes, or explicit blockers remain documented.
+- Validation: red/green focused tests by vertical slice; current CMake/Ninja presets and CTest; GUI interaction/Qt tests for editor behavior; sanitizer diagnostics for ownership changes; manual-impact review and PDF regeneration if LaTeX changes.
+- Stop gates: stop any ownership design requiring a materially different public/API contract; stop Match multi-output migration if legacy connection routing is ambiguous (contain it and record exact blocker); do not add controls for Counter/StatisticsCollector; preserve the Wait/Signal feature branch and avoid duplicate changes.
+- Audit/integration update (2026-11-09): the inventory and local validation are recorded in [`history/evidence/2026/11/2026-11-08_datadef_component_property_audit.md`](history/evidence/2026/11/2026-11-08_datadef_component_property_audit.md); PR #571 at head `44e36ee5a6117101b4bf96f429da015349aae197` passed all PR checks and was merged as `3eafcc14544c4b91c6b17d35b3827581d9dbcb76`. The local `WorkInProgress` checkout was fast-forwarded to that SHA and was clean/synchronized. The post-merge Debian package workflow was still running when recorded. The item remains `running`: Wait/Signal is still owned by open Draft PR #570, and Match output-port count/routing migration remains intentionally contained because legacy single-output connections have no specified mapping. `Match::NumberOfQueues` remains editable during model editing without a runtime guard. No LaTeX sources changed; PDF regeneration is not applicable.

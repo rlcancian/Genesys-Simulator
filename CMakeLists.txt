@@ -21,6 +21,7 @@ option(GENESYS_BUILD_WORKER_APPLICATION "Build worker HTTP application" ${GENESY
 set(GENESYS_BUILD_WEB_APPLICATION "${GENESYS_BUILD_WORKER_APPLICATION}" CACHE BOOL "Deprecated alias for GENESYS_BUILD_WORKER_APPLICATION" FORCE)
 option(GENESYS_BUILD_LAUNCHER_APPLICATION "Build GenESyS launcher and dispatcher applications" OFF)
 option(GENESYS_BUILD_LAUNCHER_TESTS "Build focused GenESyS launcher/dispatcher tests" OFF)
+option(GENESYS_BUILD_TOOL_LAUNCHER_TESTS "Build focused Qt6 standalone Tools launcher tests" OFF)
 option(GENESYS_BUILD_TESTS "Build tests" ON)
 option(GENESYS_BUILD_KERNEL "Build kernel static libraries" ON)
 option(GENESYS_BUILD_PARSER "Build parser static library" ON)
@@ -59,7 +60,7 @@ else()
     message(STATUS "GenESyS: experimental Python integration disabled by option")
 endif()
 
-if(GENESYS_BUILD_TESTS OR GENESYS_BUILD_LAUNCHER_TESTS)
+if(GENESYS_BUILD_TESTS OR GENESYS_BUILD_LAUNCHER_TESTS OR GENESYS_BUILD_TOOL_LAUNCHER_TESTS)
     find_package(GTest CONFIG QUIET)
     if(GTest_FOUND)
         if(TARGET GTest::gtest AND TARGET GTest::gtest_main)
@@ -143,6 +144,10 @@ endif()
 
 if(GENESYS_BUILD_TOOLS OR GENESYS_BUILD_GUI_APPLICATION)
     add_subdirectory(source/tools)
+endif()
+
+if(GENESYS_BUILD_TOOL_LAUNCHER_TESTS)
+    add_subdirectory(source/tests/tool_launcher)
 endif()
 
 if(GENESYS_BUILD_TESTS)

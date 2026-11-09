@@ -58,6 +58,10 @@ public:
 	std::string getMatchSize() const;
 	void setNumberOfQueues(unsigned int _numberOfQueues);
 	unsigned int getNumberOfQueues() const;
+	void setQueueOrderRule(Queue::OrderRule orderRule);
+	Queue::OrderRule getQueueOrderRule() const;
+	void setQueueOrderAttributeName(std::string attributeName);
+	std::string getQueueOrderAttributeName() const;
 protected: // virtual
 	//virtual void _initBetweenReplications();
 	// virtual void _createInternalStatisticReporters() override;
@@ -77,11 +81,15 @@ private: // attributes 1:1
 		const unsigned int numberOfQueues = 2;
 		const std::string matchSize = "1";
 		const std::string attributeName = "";
+		const Queue::OrderRule queueOrderRule = Queue::OrderRule::FIFO;
+		const std::string queueOrderAttributeName = "";
 	} DEFAULT;
 	Match::Rule _rule = DEFAULT.rule;
 	unsigned int _numberOfQueues = DEFAULT.numberOfQueues;
 	std::string _matchSize = DEFAULT.matchSize;
 	std::string _attributeName = DEFAULT.attributeName;
+	Queue::OrderRule _queueOrderRule = DEFAULT.queueOrderRule;
+	std::string _queueOrderAttributeName = DEFAULT.queueOrderAttributeName;
 private: // attributes 1:1
 	std::map<Queue*, std::map<double, unsigned int>*>* _entitiesByAttrib = new std::map<Queue*, std::map<double, unsigned int>*>();
 private: // attributes 1:n

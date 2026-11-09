@@ -84,6 +84,16 @@ dispatcher mechanism and the administrative update policy),
 supported base application set, so \texttt{apt install genesys-gui} is
 sufficient to obtain a working GUI, shell, and worker installation.
 
+The Debian GUI package also installs three independent graphical
+applications: \texttt{genesys-dataanalyser-gui},
+\texttt{genesys-optimizer-gui}, and
+\texttt{genesys-ai-assistant-gui}. They can be launched directly or through
+the \textbf{Tools} menu of the main \texttt{genesys-gui} window. Each
+runs in its own process and can be closed independently. If a tool is
+not included in a custom installation, the menu reports that its
+executable is missing or is not executable. Tools do not automatically
+receive the model currently open in the editor.
+
 The Debian metadata installs a small, stable command at
 \path{/usr/bin/genesys-gui} and also ships the desktop integration files under
 the standard XDG locations:

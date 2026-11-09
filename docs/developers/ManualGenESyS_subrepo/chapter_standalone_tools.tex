@@ -60,6 +60,47 @@ pulls only the backend libraries it needs. In practice, that separation keeps
 the main editor lighter and makes the auxiliary workflows easier to reason
 about.
 
+\section{Independent GUI processes and Tools menu}
+\label{sec:standalone-tools-process}
+
+The main editor's \textbf{Tools} menu contains \textbf{Data Analyzer},
+\textbf{Optimization}, and \textbf{AI Assistant}. Each action requests
+its own installed executable through \texttt{ToolLauncher} and Qt's
+\texttt{QProcess::startDetached}; it does not construct a tool window in
+the main GUI process. Each standalone program constructs a separate
+\texttt{QApplication}, \texttt{Simulator}, and top-level window. Closing
+one of these applications does not terminate the editor.
+
+The \texttt{gui-app} CMake preset builds only the main editor, while
+\texttt{gui-dataanalyser}, \texttt{gui-optimizer}, and
+\texttt{gui-ai-assistant} remain independent build presets. A development
+build of the editor alone therefore does not guarantee that all Tools
+menu items are available. The Debian package build enables these three
+optional targets and installs them in the installation prefix's
+\texttt{bin} directory. The main GUI itself is installed below
+\path{libexec/genesys/system/bin}; the launcher service resolves the
+documented prefix-relative directory without executing arbitrary
+programs from \texttt{PATH}. The portable distribution instead places
+the actual tool executables beside the main GUI, with public wrapper
+commands under the portable installation's \texttt{bin} directory.
+
+A tool's local \texttt{Simulator} does not automatically contain the
+model currently open in the editor. No model pointer crosses the process
+boundary, and the Tools actions do not currently implement model
+serialization or interprocess state synchronization. Independent
+process startup must not be confused with scientific or AI-provider
+workflow validation.
+
+The Data Analyzer and Optimizer window implementation files still
+reside under \path{source/applications/gui/genesys/tools/} for historical
+reasons. Their respective standalone CMake targets compile those
+files directly, and the main GUI source target excludes their
+translation units. A future focused migration may move the files
+into the standalone application directories, but deleting them now
+would remove active window implementations. The source inventory and
+related validation plan are maintained in
+\path{docs/ai_assistants/reference/STANDALONE_TOOLS_GUI.md}.
+
 \section{Support-package entry point}
 
 The repository also contains the \texttt{source/tools} package, which is a

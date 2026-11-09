@@ -62,6 +62,8 @@ unsigned int XNOR::counter = 0;
 
 SPICECircuit::SPICECircuit(Model* model, std::string name)
 	: ModelComponent(model, Util::TypeOf<SPICECircuit>(), name) {
+	_callbackLifetime = std::make_shared<CallbackLifetime>();
+	_callbackLifetime->circuit = this;
 	SimulationControlGenericClass<SPICERunner*, Model*, SPICERunner>* propRunner = new SimulationControlGenericClass<SPICERunner*, Model*, SPICERunner>(
 		_parentModel,
 		std::bind(&SPICECircuit::getRunner, this),
@@ -70,6 +72,14 @@ SPICECircuit::SPICECircuit(Model* model, std::string name)
 
 	_parentModel->getControls()->insert(propRunner);
 	_addSimulationControl(propRunner);
+}
+
+SPICECircuit::~SPICECircuit() {
+	if (_callbackLifetime != nullptr) {
+		std::lock_guard<std::mutex> lock(_callbackLifetime->mutex);
+		_callbackLifetime->circuit = nullptr;
+		_callbackLifetime->runner = nullptr;
+	}
 }
 
 
@@ -137,10 +147,27 @@ void SPICECircuit::UpdateConnections() {
 }
 
 void SPICECircuit::setRunner(SPICERunner* runner) {
+	const bool changed = compiler != runner;
 	compiler = runner;
-
-	if (compiler != nullptr) {
-		compiler->SendCallback([this]() {this->UpdateConnections(); });
+	_optionalEditableDataDefinitionRemove("Runner");
+	if (runner != nullptr) {
+		_optionalEditableDataDefinitionInsert("Runner", runner);
+	}
+	if (_callbackLifetime != nullptr) {
+		{
+			std::lock_guard<std::mutex> lock(_callbackLifetime->mutex);
+			_callbackLifetime->runner = runner;
+		}
+		if (runner != nullptr && changed) {
+			std::weak_ptr<CallbackLifetime> weakLifetime = _callbackLifetime;
+			runner->SendCallback([weakLifetime, runner]() {
+				auto lifetime = weakLifetime.lock();
+				if (lifetime == nullptr) return;
+				std::lock_guard<std::mutex> lock(lifetime->mutex);
+				if (lifetime->circuit == nullptr || lifetime->runner != runner) return;
+				lifetime->circuit->UpdateConnections();
+			});
+		}
 	}
 }
 
@@ -1136,7 +1163,7 @@ bool SPICECircuit::_loadInstance(PersistenceRecord *fields) {
 	if (res) {
 		const std::string runnerName = fields->loadField("runner", "");
 		if (!runnerName.empty()) {
-			compiler = dynamic_cast<SPICERunner*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<SPICERunner>(), runnerName));
+			setRunner(dynamic_cast<SPICERunner*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<SPICERunner>(), runnerName)));
 		}
 	}
 	return res;
@@ -1160,10 +1187,10 @@ void SPICECircuit::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber
 
 // void SPICECircuit::_createEditableDataDefinitions() { }
 
-void SPICECircuit::_createNonEditableDataDefinitions() {
+void SPICECircuit::_createEditableDataDefinitions() {
 	if (compiler != nullptr) {
-		_mandatoryNonEditableDataDefinitionInsert("Runner", compiler);
+		setRunner(compiler);
 	} else {
-		_mandatoryNonEditableDataDefinitionRemove("Runner");
+		_optionalEditableDataDefinitionRemove("Runner");
 	}
 }

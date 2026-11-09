@@ -699,12 +699,20 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericClass: public SimulationControl {
 public:
     using Creator = std::function<T(M, const std::string&)>;
-    SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+    using NameResolver = std::function<T(const std::string&)>;
+    using ChoicesProvider = std::function<List<std::string>*()>;
+    using CreatableTypesProvider = std::function<List<std::string>*()>;
+    SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr, bool includeDerivedTypes=false, bool inlineObjectProperty=false, NameResolver nameResolver=nullptr, ChoicesProvider choicesProvider=nullptr, CreatableTypesProvider creatableTypesProvider=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 		static_assert(std::is_pointer<T>::value, "SimulationControlGenericClass requires pointer type T");
 		_model = model;
 		_getter= getter;
 		_setter = setter;
         _creator = creator;
+        _includeDerivedTypes = includeDerivedTypes;
+        _inlineObjectProperty = inlineObjectProperty;
+        _nameResolver = nameResolver;
+        _choicesProvider = choicesProvider;
+        _creatableTypesProvider = creatableTypesProvider;
 		_readonly = setter == nullptr;
 		_propertyType = Util::TypeOf<C>();
 	}
@@ -735,13 +743,26 @@ public:
         // value.pop_back();
 		T newVal;
 
-        for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
-            if (modeldata->getName() == value) {
-                exists = true;
-                newVal = static_cast<T>(modeldata);
-                break;
-            };
-        };
+		if (_nameResolver) {
+			newVal = _nameResolver(value);
+			exists = newVal != nullptr;
+		} else if (_includeDerivedTypes) {
+			for (C* compatible : _model->getDataManager()->template getDataDefinitionsAssignableTo<C>()) {
+				if (compatible->getName() == value) {
+						exists = true;
+						newVal = compatible;
+					break;
+				}
+			}
+		} else {
+			for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
+				if (modeldata->getName() == value) {
+					exists = true;
+					newVal = static_cast<T>(modeldata);
+					break;
+				};
+			};
+		}
 
 		if (!exists) {
             if (_creator != nullptr) {
@@ -768,8 +789,13 @@ public:
     virtual bool supportsExistingObjectSelection() const override { return true; }
     // This method marks class references as creatable when writable.
     virtual bool supportsObjectCreation() const override { return !_readonly; }
-    // This method marks class references as non-inline object payloads.
-    virtual bool isInlineObjectProperty() const override { return false; }
+    virtual List<std::string>* getCreatableReferenceTypes() override {
+        if (_creatableTypesProvider) return _creatableTypesProvider();
+        return nullptr;
+    }
+    // Internal references can expose their child controls inline while remaining
+    // read-only as references, so the GUI cannot replace or remove owned data.
+    virtual bool isInlineObjectProperty() const override { return _inlineObjectProperty; }
     // Property Editor advanced editing experiment, step 1:
     // ModelDataDefinition references must report whether the referenced object
     // actually exists. Previously the base implementation always returned true,
@@ -801,12 +827,19 @@ public:
     }
 
     virtual List<std::string>* getStrValues() override {
-        List<std::string>* strOptions = new List<std::string>();
-        for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
-            if (modeldata != nullptr) {
-                strOptions->insert(modeldata->getName());
-            }
+        if (_choicesProvider) {
+            return _choicesProvider();
         }
+        List<std::string>* strOptions = new List<std::string>();
+		if (_includeDerivedTypes) {
+			for (C* compatible : _model->getDataManager()->template getDataDefinitionsAssignableTo<C>()) {
+				strOptions->insert(compatible->getName());
+			}
+		} else {
+			for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
+				if (modeldata != nullptr) strOptions->insert(modeldata->getName());
+			}
+		}
         return strOptions;
     }
 
@@ -825,6 +858,11 @@ private:
 	GetterGeneric<T> _getter;
 	SetterGeneric<T> _setter;
     Creator _creator;
+    bool _includeDerivedTypes{false};
+    bool _inlineObjectProperty{false};
+    NameResolver _nameResolver;
+    ChoicesProvider _choicesProvider;
+    CreatableTypesProvider _creatableTypesProvider;
 };
 
 // @ToDo: (pequena alteração): remove typename C

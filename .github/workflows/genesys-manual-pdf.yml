@@ -1,0 +1,76 @@
+name: GenESyS Manual PDF Validation
+
+on:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - docs/developers/ManualGenESyS_subrepo/**
+      - .github/workflows/genesys-manual-pdf.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-manual-pdf-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manual:
+    name: Compile and validate combined User and Developer Manual
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Record provenance
+        run: |
+          set -Eeuo pipefail
+          echo "Commit: $(git rev-parse HEAD)"
+          echo "Ref: ${GITHUB_REF}"
+          echo "Runner: $(lsb_release -ds)"
+
+      - name: Install XeLaTeX, bibliography and PDF inspection dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            latexmk texlive-xetex texlive-latex-extra texlive-bibtex-extra \
+            texlive-fonts-recommended texlive-science texlive-pictures \
+            texlive-plain-generic \
+            biber poppler-utils
+
+      - name: Build canonical manual from maintained LaTeX sources
+        run: |
+          set -Eeuo pipefail
+          # Ensure neither canonical nor source-tree output can mask a failed build.
+          rm -f docs/ManualGenESyS.pdf
+          rm -f docs/developers/ManualGenESyS_subrepo/ManualGenESyS.pdf
+          bash docs/developers/ManualGenESyS_subrepo/make.sh
+
+      - name: Verify PDF structure and updated chapters
+        run: |
+          set -Eeuo pipefail
+          pdf=docs/ManualGenESyS.pdf
+          test -s "$pdf"
+          pdfinfo "$pdf" | grep -E '^(Pages|Page size|PDF version):'
+          pages="$(pdfinfo "$pdf" | awk '/^Pages:/ {print $2}')"
+          test "$pages" -gt 20
+          test -s docs/developers/ManualGenESyS_subrepo/ManualGenESyS.log
+          pdftotext -layout "$pdf" "$RUNNER_TEMP/manual-text.txt"
+          grep -Fq "Reporting an Issue" "$RUNNER_TEMP/manual-text.txt"
+          grep -Fq "GUI Issue Reporting Boundary" "$RUNNER_TEMP/manual-text.txt"
+          sha256sum "$pdf"
+
+      - name: Upload generated PDF and LaTeX diagnostics for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-manual-pdf-evidence
+          path: |
+            docs/ManualGenESyS.pdf
+            docs/developers/ManualGenESyS_subrepo/ManualGenESyS.log
+            docs/developers/ManualGenESyS_subrepo/ManualGenESyS.blg
+          if-no-files-found: warn
+          retention-days: 14

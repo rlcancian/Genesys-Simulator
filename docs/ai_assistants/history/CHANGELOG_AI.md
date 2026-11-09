@@ -2,7 +2,7 @@
 document_type: history-index
 authority: informative
 owner: project-maintainer
-last_updated: 2026-11-06
+last_updated: 2026-11-07
 status: active
 tracks: 511
 ---
@@ -17,6 +17,8 @@ This is a concise index of material AI-assisted development and governance chang
 
 | Date | Scope | Environment | PR/issue | Merge/checkpoint | Validation/evidence | Remaining boundary |
 |---|---|---|---|---|---|---|
+| 2026-11-07 | Launch standalone Data Analyser, Optimizer and AI Assistant as separate Tools processes; add installed lookup and Debian package support | local + GitHub Actions | PR #562 / issue #561 | merge commit `46bdedfc94ac9ae6144675fe6b2a64c0c5e98460` | tests-unit 2,004 + 4 disabled; kernel 2,004 + 4 disabled; smoke 3/3; six ToolLauncher tests; real Xvfb Tools menu process/window/close checks; Debian package/lifecycle; final manual PDF check green; evidence `history/evidence/2026/11/2026-11-07_november_consolidation.md` | full portable archive lifecycle not repeated; no algorithm/provider claims |
+| 2026-11-06 | Simplify Report Issue form and add safe browser fallback with optional asynchronous HTTPS relay | local + GitHub Actions | PR #560 / issue #561 | merge commit `82cb4bdb28d698daea14dc01914797cb59f6d1ed` | 21 QtTests, GUI build, unit/kernel/smoke, Debian package/lifecycle and manual checks passed; evidence `history/evidence/2026/11/2026-11-07_november_consolidation.md` | live relay-to-GitHub integration not exercised; browser handoff does not claim issue creation |
 | 2026-11-06 | Rename MaterialHandling to Transfer; add LabelDefinition, Label and Goto; migrate Route/Sequence | local + GitHub | PR #564 | merge commit `c1099e3e7eef781c90cece1110bc7b1b0b82c3fc` | tests-unit 2,004 passed + 4 disabled; tests-kernel-unit 2,004 passed + 4 disabled; smoke 3/3; GUI build; focused ASan/UBSan 16/16 with LSan disabled; all PR workflows green; manual PDF 394 pages rebuilt and inspected; evidence `history/evidence/2026/11/transfer_label_goto_remote_progress.md` | LSan reports plugin-template/Buffer and SequenceStep allocations; full desktop Property Editor/drag-drop session not independently exercised; no stable promotion |
 | 2026-11-05 | Integrate five model-editor fixes and Decide condition undo/redo | local + GitHub | PRs #559, #563, #565 | WorkInProgress merge HEAD `957c66503c8966de95b4d34b047ff03dc256efcb` | save without ModelCheck/orphan cleanup; positional Decide ports/connections and undo; C++/Python/R/Gro/Octave editor persistence; PickUp identity; component-only main palette; unit/kernel 1,981 passed + 4 disabled each, smoke 3/3, GUI build, focused ASan/UBSan 5/5 and all hosted checks green; evidence `history/evidence/2026/11/VALIDATION_LEDGER.md` | LSan and interactive human GUI session not covered; no stable promotion |
 | 2026-10-30 | Correct integrated-branch wording in EFSM User Manual and regenerate the official PDF | local | PR #555 | Base `WorkInProgress` `1d31cf7e6021c246f55713144b1014c5b841ec6c` | Doxygen 1.9.8 and `latexmk` succeeded; 3,981 pages; guide page 177 visually checked; evidence `history/evidence/2026/10/2026-10-30_modal_efsm_user_manual_final.md` | Documentation only; no implementation behavior change |

@@ -51,17 +51,27 @@ Match::Match(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propAttributeName = new SimulationControlGeneric<std::string>(
 									std::bind(&Match::getAttributeName, this), std::bind(&Match::setAttributeName, this, std::placeholders::_1),
 									Util::TypeOf<Match>(), getName(), "AttributeName", "");
+	SimulationControlGenericEnum<Queue::OrderRule, Queue>* propQueueOrderRule = new SimulationControlGenericEnum<Queue::OrderRule, Queue>(
+									std::bind(&Match::getQueueOrderRule, this), std::bind(&Match::setQueueOrderRule, this, std::placeholders::_1),
+									Util::TypeOf<Match>(), getName(), "QueueOrderRule", "Common ordering rule applied to all internal queues.");
+	SimulationControlGeneric<std::string>* propQueueOrderAttributeName = new SimulationControlGeneric<std::string>(
+									std::bind(&Match::getQueueOrderAttributeName, this), std::bind(&Match::setQueueOrderAttributeName, this, std::placeholders::_1),
+									Util::TypeOf<Match>(), getName(), "QueueOrderAttributeName", "Attribute used by HIGHESTVALUE or SMALLESTVALUE queue ordering.");
 
     _parentModel->getControls()->insert(propRule);
 	_parentModel->getControls()->insert(propNumberQueues);
 	_parentModel->getControls()->insert(propMatchSize);
 	_parentModel->getControls()->insert(propAttributeName);
+	_parentModel->getControls()->insert(propQueueOrderRule);
+	_parentModel->getControls()->insert(propQueueOrderAttributeName);
 
 	// setting properties
     _addSimulationControl(propRule);
 	_addSimulationControl(propNumberQueues);
 	_addSimulationControl(propMatchSize);
 	_addSimulationControl(propAttributeName);
+	_addSimulationControl(propQueueOrderRule);
+	_addSimulationControl(propQueueOrderAttributeName);
 }
 
 Match::~Match() {
@@ -200,6 +210,8 @@ bool Match::_loadInstance(PersistenceRecord *fields) {
 		_numberOfQueues = fields->loadField("numberOfQueues", DEFAULT.numberOfQueues);
 		_matchSize = fields->loadField("matchSize", DEFAULT.matchSize);
 		_attributeName = fields->loadField("attributeName", DEFAULT.attributeName);
+		_queueOrderRule = static_cast<Queue::OrderRule>(fields->loadField("queueOrderRule", static_cast<int>(DEFAULT.queueOrderRule)));
+		_queueOrderAttributeName = fields->loadField("queueOrderAttributeName", DEFAULT.queueOrderAttributeName);
 	}
 	return res;
 }
@@ -210,6 +222,8 @@ void Match::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	fields->saveField("numberOfQueues", _numberOfQueues, DEFAULT.numberOfQueues, saveDefaultValues);
 	fields->saveField("matchSize", _matchSize, DEFAULT.matchSize, saveDefaultValues);
 	fields->saveField("attributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
+	fields->saveField("queueOrderRule", static_cast<int>(_queueOrderRule), static_cast<int>(DEFAULT.queueOrderRule), saveDefaultValues);
+	fields->saveField("queueOrderAttributeName", _queueOrderAttributeName, DEFAULT.queueOrderAttributeName, saveDefaultValues);
 	fields->saveField("queues", _queues->size(), 0u, saveDefaultValues);
 }
 
@@ -245,6 +259,28 @@ unsigned int Match::getNumberOfQueues() const {
 	return _numberOfQueues;
 }
 
+void Match::setQueueOrderRule(Queue::OrderRule orderRule) {
+	_queueOrderRule = orderRule;
+	for (Queue* queue : *_queues->list()) {
+		if (queue != nullptr) queue->setOrderRule(_queueOrderRule);
+	}
+}
+
+Queue::OrderRule Match::getQueueOrderRule() const {
+	return _queueOrderRule;
+}
+
+void Match::setQueueOrderAttributeName(std::string attributeName) {
+	_queueOrderAttributeName = std::move(attributeName);
+	for (Queue* queue : *_queues->list()) {
+		if (queue != nullptr) queue->setAttributeName(_queueOrderAttributeName);
+	}
+}
+
+std::string Match::getQueueOrderAttributeName() const {
+	return _queueOrderAttributeName;
+}
+
 bool Match::_check(std::string& errorMessage) {
 	bool resultAll = true;
 	if (_numberOfQueues < 2) {
@@ -254,6 +290,8 @@ bool Match::_check(std::string& errorMessage) {
 	resultAll &= _parentModel->checkExpression(_matchSize, "MatchSize", errorMessage);
 	const bool attributeMandatory = _rule == Match::Rule::ByAttribute;
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Attribute>(), _attributeName, "AttributeName", attributeMandatory, errorMessage);
+	const bool queueOrderAttributeMandatory = _queueOrderRule == Queue::OrderRule::HIGHESTVALUE || _queueOrderRule == Queue::OrderRule::SMALLESTVALUE;
+	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Attribute>(), _queueOrderAttributeName, "QueueOrderAttributeName", queueOrderAttributeMandatory, errorMessage);
 	return resultAll;
 }
 
@@ -278,16 +316,26 @@ void Match::_createEditableDataDefinitions() {
 		_entitiesByAttrib->erase(obsoleteQueue);
 	}
 	while (_queues->size() < _numberOfQueues) {
-		Queue* newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+		const std::string queueName = getName() + ".Queue" + std::to_string(_queues->size());
+		// On load, internal Queue data definitions have already been restored by
+		// the model serializer. Reattach them instead of creating same-named
+		// duplicates; create only when no persisted queue exists (new model/edit).
+		Queue* newQueue = dynamic_cast<Queue*>(
+			_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queueName));
 		if (newQueue == nullptr) {
-			newQueue = new Queue(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+			newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, queueName);
+			if (newQueue == nullptr) {
+				newQueue = new Queue(_parentModel, queueName);
+			}
+			ModelDataDefinition::CreateInternalData(newQueue);
 		}
-		ModelDataDefinition::CreateInternalData(newQueue);
 		_queues->insert(newQueue);
 		_mandatoryNonEditableDataDefinitionInsert(newQueue->getName(), newQueue);
 	}
 	for (Queue* queue : *_queues->list()) {
 		if (queue != nullptr) {
+			queue->setOrderRule(_queueOrderRule);
+			queue->setAttributeName(_queueOrderAttributeName);
 			_mandatoryNonEditableDataDefinitionInsert(queue->getName(), queue);
 		}
 	}

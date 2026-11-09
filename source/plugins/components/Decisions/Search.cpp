@@ -21,6 +21,7 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include <algorithm>
 #include <cstdlib>
+#include <stdexcept>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -34,7 +35,22 @@ ModelDataDefinition* Search::NewInstance(Model* model, std::string name) {
 }
 
 void Search::setSearchIn(ModelDataDefinition* _searchIn) {
+	if (_searchIn != nullptr) {
+		const bool isQueue = dynamic_cast<Queue*>(_searchIn) != nullptr;
+		const bool isEntityGroup = dynamic_cast<EntityGroup*>(_searchIn) != nullptr;
+		if ((_searchInType == SearchInType::QUEUE && !isQueue)
+				|| (_searchInType == SearchInType::ENTITYGROUP && !isEntityGroup)) {
+			throw std::invalid_argument("SearchIn reference type does not match SearchInType");
+		}
+	}
 	this->_searchIn = _searchIn;
+	_optionalEditableDataDefinitionRemove("Queue");
+	_optionalEditableDataDefinitionRemove("EntityGroup");
+	if (dynamic_cast<Queue*>(_searchIn) != nullptr) {
+		_optionalEditableDataDefinitionInsert("Queue", _searchIn);
+	} else if (dynamic_cast<EntityGroup*>(_searchIn) != nullptr) {
+		_optionalEditableDataDefinitionInsert("EntityGroup", _searchIn);
+	}
 }
 
 ModelDataDefinition* Search::getSearchIn() const {
@@ -43,6 +59,10 @@ ModelDataDefinition* Search::getSearchIn() const {
 
 void Search::setSearchInType(Search::SearchInType _searchInType) {
 	this->_searchInType = _searchInType;
+	if ((_searchInType == SearchInType::QUEUE && dynamic_cast<Queue*>(_searchIn) == nullptr)
+			|| (_searchInType == SearchInType::ENTITYGROUP && dynamic_cast<EntityGroup*>(_searchIn) == nullptr)) {
+		setSearchIn(nullptr);
+	}
 }
 
 Search::SearchInType Search::getSearchInType() const {
@@ -89,7 +109,7 @@ void Search::setSearchInName(std::string searchInName) {
 		datadef = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), searchInName);
 	}
 	if (datadef != nullptr) {
-		_searchIn = datadef;
+		setSearchIn(datadef);
 	}
 }
 
@@ -121,17 +141,36 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	SimulationControlGeneric<std::string>* propSaveAttribute = new SimulationControlGeneric<std::string>(
 									std::bind(&Search::getSaveFounRankAttribute, this), std::bind(&Search::setSaveFounRankAttribute, this, std::placeholders::_1),
 									Util::TypeOf<Search>(), getName(), "SaveFounRankAttribute", "");
-	SimulationControlGeneric<std::string>* propSearchInName = new SimulationControlGeneric<std::string>(
-									std::bind(&Search::getSearchInName, this), std::bind(&Search::setSearchInName, this, std::placeholders::_1),
-									Util::TypeOf<Search>(), getName(), "SearchInName", "");
+	auto createSearchIn = [this](Model* model, const std::string& name) -> ModelDataDefinition* {
+		if (_searchInType == SearchInType::QUEUE) return new Queue(model, name);
+		if (_searchInType == SearchInType::ENTITYGROUP) return new EntityGroup(model, name);
+		return nullptr;
+	};
+	auto resolveSearchIn = [this](const std::string& name) -> ModelDataDefinition* {
+		if (_searchInType == SearchInType::QUEUE) return _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), name);
+		if (_searchInType == SearchInType::ENTITYGROUP) return _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), name);
+		return nullptr;
+	};
+	auto searchInChoices = [this]() -> List<std::string>* {
+		auto* names = new List<std::string>();
+		const std::string type = _searchInType == SearchInType::QUEUE ? Util::TypeOf<Queue>() : Util::TypeOf<EntityGroup>();
+		List<ModelDataDefinition*>* definitions = _parentModel->getDataManager()->getDataDefinitionList(type);
+		if (definitions != nullptr) {
+			for (ModelDataDefinition* definition : *definitions->list()) if (definition != nullptr) names->insert(definition->getName());
+		}
+		return names;
+	};
+	auto searchInCreatableTypes = [this]() -> List<std::string>* {
+		auto* types = new List<std::string>();
+		types->insert(_searchInType == SearchInType::QUEUE ? Util::TypeOf<Queue>() : Util::TypeOf<EntityGroup>());
+		return types;
+	};
 	SimulationControlGenericClass<ModelDataDefinition*, Model*, Queue>* propSearchIn = new SimulationControlGenericClass<ModelDataDefinition*, Model*, Queue>(
 									_parentModel,
 									std::bind(&Search::getSearchIn, this),
-									[this](ModelDataDefinition* searchIn) {
-										this->setSearchInType(Search::SearchInType::QUEUE);
-										this->setSearchIn(searchIn);
-									},
-									Util::TypeOf<Search>(), getName(), "SearchIn", "");
+									std::bind(&Search::setSearchIn, this, std::placeholders::_1),
+									Util::TypeOf<Search>(), getName(), "SearchIn", "", false, true, false, createSearchIn,
+									false, false, resolveSearchIn, searchInChoices, searchInCreatableTypes);
     SimulationControlGenericEnum<Search::SearchInType, Search>* propSearchInType = new SimulationControlGenericEnum<Search::SearchInType, Search>(
                                     std::bind(&Search::getSearchInType, this), std::bind(&Search::setSearchInType, this, std::placeholders::_1),
                                     Util::TypeOf<Search>(), getName(), "SearchInType", "");
@@ -141,7 +180,6 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_parentModel->getControls()->insert(propEnd);
 	_parentModel->getControls()->insert(propCondition);
 	_parentModel->getControls()->insert(propSaveAttribute);
-	_parentModel->getControls()->insert(propSearchInName);
 	_parentModel->getControls()->insert(propSearchIn);
     _parentModel->getControls()->insert(propSearchInType);
 
@@ -150,7 +188,6 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_addSimulationControl(propEnd);
 	_addSimulationControl(propCondition);
 	_addSimulationControl(propSaveAttribute);
-	_addSimulationControl(propSearchInName);
 	_addSimulationControl(propSearchIn);
     _addSimulationControl(propSearchInType);
 }
@@ -244,9 +281,9 @@ bool Search::_loadInstance(PersistenceRecord *fields) {
 		const std::string searchInName = fields->loadField("searchIn", "");
 		if (searchInName != "") {
 			if (_searchInType == SearchInType::QUEUE) {
-				_searchIn = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), searchInName);
+				setSearchIn(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), searchInName));
 			} else if (_searchInType == SearchInType::ENTITYGROUP) {
-				_searchIn = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), searchInName);
+				setSearchIn(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), searchInName));
 			}
 		}
 	}
@@ -341,19 +378,20 @@ void Search::_createEditableDataDefinitions() {
 	}
 	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_searchInType == Search::SearchInType::QUEUE) {
-		if (_searchIn == nullptr) {
+		if (dynamic_cast<Queue*>(_searchIn) == nullptr) {
 			_searchIn = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
 			if (_searchIn == nullptr) {
 				_searchIn = new Queue(_parentModel, getName() + ".Queue");
 			}
 		}
 		if (_searchIn != nullptr) {
-			_optionalEditableDataDefinitionInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
+			setSearchIn(_searchIn); // @TODO: Check internal and attached and shared queues
 		} else {
 			_optionalEditableDataDefinitionRemove("Queue");
 		}
 	}
 	if (_searchInType == Search::SearchInType::ENTITYGROUP) {
-		// Not supported in this implementation batch. Explicitly validated in _check().
+		if (dynamic_cast<EntityGroup*>(_searchIn) != nullptr) setSearchIn(_searchIn);
+		else setSearchIn(nullptr);
 	}
 }

@@ -2,7 +2,7 @@
 document_type: validation-evidence
 authority: informative
 owner: project-maintainer
-last_updated: 2026-11-05
+last_updated: 2026-11-07
 status: active
 scope: model-save-decide-source-editor-plugin-catalog
 ---
@@ -84,3 +84,13 @@ Hosted runs used GitHub's pull-request merge candidate (`164dca372a5c2a53acf5db6
 - The previously reported local hook message `Hook failed — hook returned invalid stop hook JSON output` was not reproduced or traced to a safe local configuration fix during this cycle. No hooks or required checks were disabled. The memory observer independently reported exhausted Claude weekly allowance; it was not restarted or modified.
 
 The five backlog entries `AUTO-GUIFIX-001` through `AUTO-GUIFIX-005` were marked `done_confirmed` after source, test and integration evidence was recorded. Current repository state is maintained in [`../../../../STATUS.md`](../../../../STATUS.md).
+
+## November 2026 integration closeout
+
+The later Report Issue and Standalone Tools integrations (PRs #560 and #562) are recorded separately in [`2026-11-07_november_consolidation.md`](2026-11-07_november_consolidation.md), including their merge commits, final-head checks, PDF evidence and remaining validation boundaries.
+
+The active ModelComponent/DataDefinition Property Editor audit for PR #571 is recorded in [`2026-11-08_datadef_component_property_audit.md`](2026-11-08_datadef_component_property_audit.md). It includes focused load/reconnection regressions and explicitly retains the Wait/Signal dependency and Match output-port migration as unresolved scope.
+
+## 2026-11-09 PR #571 integration
+
+PR #571 head `44e36ee5a6117101b4bf96f429da015349aae197` passed its required checks and was merged into `WorkInProgress` with merge commit `3eafcc14544c4b91c6b17d35b3827581d9dbcb76`. The canonical local checkout was fast-forwarded to the same `origin/WorkInProgress` SHA and was clean. The post-merge Debian package workflow (`42545696837`) was still in progress at this observation. This integration does not close `AUTO-PROPERTY-001`: the Wait/Signal work remains in PR #570, and Match multi-output migration remains undefined for legacy connections.
