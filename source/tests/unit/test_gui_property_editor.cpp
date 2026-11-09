@@ -889,6 +889,58 @@ TEST(PropertyEditorModelDataReference, WaitQueueSelectorRetainsAllChoicesAndSwit
     EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), queueCountBefore + 1);
 }
 
+TEST(PropertyEditorModelDataReference, SignalExplicitlyCreatesAndWaitReusesOneSignalData) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Signal signal(model, "SignalCreateSignalData");
+    Wait wait(model, "WaitReuseSignalData");
+    ModelDataDefinition::CreateInternalData(&signal);
+    ModelDataDefinition::CreateInternalData(&wait);
+    ASSERT_EQ(signal.getSignalData(), nullptr);
+    ASSERT_EQ(wait.getSignalData(), nullptr);
+    auto* dataList = model->getDataManager()->getDataDefinitionList(Util::TypeOf<SignalData>());
+    ASSERT_NE(dataList, nullptr);
+    ASSERT_EQ(dataList->size(), 0u);
+
+    ObjectPropertyBrowser signalBrowser;
+    signalBrowser.resize(640, 480);
+    signalBrowser.show();
+    bindEditableKernelObject(signalBrowser, &signal);
+    QtBrowserItem* signalItem = findBrowserItemByName(signalBrowser.topLevelItems(), QStringLiteral("SignalData"));
+    ASSERT_NE(signalItem, nullptr);
+    signalBrowser.setCurrentItem(signalItem);
+    signalBrowser.editItem(signalItem);
+    drainGuiEvents();
+    QComboBox* signalSelector = signalBrowser.findChild<QComboBox*>();
+    ASSERT_NE(signalSelector, nullptr);
+    const int createIndex = signalSelector->findText(QStringLiteral("Criar novo SignalData"));
+    ASSERT_GE(createIndex, 0);
+    signalSelector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    ASSERT_NE(signal.getSignalData(), nullptr);
+    ASSERT_EQ(dataList->size(), 1u);
+
+    ObjectPropertyBrowser waitBrowser;
+    waitBrowser.resize(640, 480);
+    waitBrowser.show();
+    bindEditableKernelObject(waitBrowser, &wait);
+    QtBrowserItem* waitItem = findBrowserItemByName(waitBrowser.topLevelItems(), QStringLiteral("SignalData"));
+    ASSERT_NE(waitItem, nullptr);
+    waitBrowser.setCurrentItem(waitItem);
+    waitBrowser.editItem(waitItem);
+    drainGuiEvents();
+    QComboBox* waitSelector = waitBrowser.findChild<QComboBox*>();
+    ASSERT_NE(waitSelector, nullptr);
+    const int sharedIndex = waitSelector->findText(QString::fromStdString(signal.getSignalData()->getName()));
+    ASSERT_GE(sharedIndex, 0);
+    waitSelector->setCurrentIndex(sharedIndex);
+    drainGuiEvents();
+    EXPECT_EQ(wait.getSignalData(), signal.getSignalData());
+    EXPECT_EQ(dataList->size(), 1u);
+}
+
 TEST(PropertyEditorDoubleCommit, BacteriaSignalGridSetterAndSimulationControlPreserveDouble) {
     Simulator simulator;
     PluginManager* manager = simulator.getPluginManager();
