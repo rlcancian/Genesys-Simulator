@@ -11199,7 +11199,12 @@ TEST(SimulatorRuntimeTest, PythonForGCreatesInternalRuntimeAndPersistsConfigurat
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
 
-    PythonForGProbe loaded(model, "PyComponentLoaded");
+    // A persistence load reconstructs a model in a fresh Model/DataManager.
+    // Loading this record into the same model would make the source component
+    // and the probe both claim exclusive ownership of its PythonRuntime.
+    Model* loadedModel = simulator.getModelManager()->newModel();
+    ASSERT_NE(loadedModel, nullptr);
+    PythonForGProbe loaded(loadedModel, "PyComponentLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
     EXPECT_EQ(loaded.getInitBetweenReplicationCode(), "simulator.trace('init')");
     EXPECT_EQ(loaded.getOnDispatchEventCode(), "simulator.trace(entity.getName())");
