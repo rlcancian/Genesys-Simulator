@@ -462,14 +462,43 @@ TEST(PropertyEditorModelDataReference, MatchExposesCommonQueueOrderingProperties
     ASSERT_NE(model, nullptr);
 
     Match component(model, "Match_PropertyEditor");
+    ModelDataDefinition::CreateInternalData(&component);
+    auto* q0 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "Match_PropertyEditor.Queue0"));
+    auto* q1 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "Match_PropertyEditor.Queue1"));
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
     ObjectPropertyBrowser browser;
     browser.resize(640, 480);
     browser.show();
     bindEditableKernelObject(browser, &component);
     drainGuiEvents();
 
-    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderRule")), nullptr);
-    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderAttributeName")), nullptr);
+    QtBrowserItem* ruleItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderRule"));
+    ASSERT_NE(ruleItem, nullptr);
+    browser.setCurrentItem(ruleItem);
+    browser.editItem(ruleItem);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int ruleIndex = selector->findText(QStringLiteral("HIGHESTVALUE"));
+    ASSERT_GE(ruleIndex, 0);
+    selector->setCurrentIndex(ruleIndex);
+    drainGuiEvents();
+
+    QtBrowserItem* attributeItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderAttributeName"));
+    ASSERT_NE(attributeItem, nullptr);
+    browser.setCurrentItem(attributeItem);
+    browser.editItem(attributeItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("Priority"));
+    EXPECT_EQ(component.getQueueOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(component.getQueueOrderAttributeName(), "Priority");
+    EXPECT_EQ(q0->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q1->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q0->getAttributeName(), "Priority");
+    EXPECT_EQ(q1->getAttributeName(), "Priority");
 }
 
 TEST(PropertyEditorModelDataReference, CppForGExposesOwnedCompilerSettingsInline) {
@@ -490,6 +519,13 @@ TEST(PropertyEditorModelDataReference, CppForGExposesOwnedCompilerSettingsInline
     EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("CppCompiler")), nullptr);
     QtBrowserItem* sourceFileItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename"));
     ASSERT_NE(sourceFileItem, nullptr);
+    browser.setCurrentItem(sourceFileItem);
+    browser.editItem(sourceFileItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("cppforg-edited.cpp"));
+    EXPECT_EQ(ownedCompiler->getSourceFilename(), "cppforg-edited.cpp");
     EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
     EXPECT_THROW(component.setCppCompiler(nullptr), std::invalid_argument);
 }
@@ -505,6 +541,29 @@ TEST(PropertyEditorModelDataReference, SPICECircuitRunnerCallbackExpiresWithCirc
         circuit.setRunner(runner);
     }
     EXPECT_NO_THROW(runner->CompileSpiceFile());
+}
+
+TEST(PropertyEditorModelDataReference, SPICECircuitPreservesSharedRunnerOnGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* runner = new SPICERunner(model, "SPICERunner_RoundTrip");
+    auto* circuit = new SPICECircuit(model, "SPICECircuit_RoundTrip");
+    circuit->setRunner(runner);
+
+    const QString path = QStringLiteral("/tmp/genesys_spice_runner_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedCircuit = dynamic_cast<SPICECircuit*>(loaded->getComponentManager()->find("SPICECircuit_RoundTrip"));
+    auto* loadedRunner = dynamic_cast<SPICERunner*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<SPICERunner>(), "SPICERunner_RoundTrip"));
+    ASSERT_NE(loadedCircuit, nullptr);
+    ASSERT_NE(loadedRunner, nullptr);
+    EXPECT_EQ(loadedCircuit->getRunner(), loadedRunner);
+    QFile::remove(path);
 }
 
 TEST(PropertyEditorModelDataReference, DiffEquationsExposesOwnedCompilerSettingsInline) {
@@ -523,7 +582,15 @@ TEST(PropertyEditorModelDataReference, DiffEquationsExposesOwnedCompilerSettings
     drainGuiEvents();
 
     EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("CppCompiler")), nullptr);
-    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename")), nullptr);
+    QtBrowserItem* sourceFileItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename"));
+    ASSERT_NE(sourceFileItem, nullptr);
+    browser.setCurrentItem(sourceFileItem);
+    browser.editItem(sourceFileItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("diff-equations-edited.cpp"));
+    EXPECT_EQ(ownedCompiler->getSourceFilename(), "diff-equations-edited.cpp");
     EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
 }
 
