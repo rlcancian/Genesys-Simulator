@@ -4928,6 +4928,55 @@ TEST(SimulatorRuntimeTest, WaitForSignalLimitZeroDoesNotReleaseQueuedEntities) {
     EXPECT_EQ(wait.getQueue()->size(), 0u);
 }
 
+TEST(SimulatorRuntimeTest, SignalReleasesEntityWaitingOnSharedSignalDataInSimulation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "SharedSignalE2EEntity");
+    auto* queue = new Queue(model, "SharedSignalE2EQueue");
+    auto* signalData = new SignalData(model, "SharedSignalE2EData");
+    auto* wait = new Wait(model, "SharedSignalE2EWait");
+    auto* signal = new Signal(model, "SharedSignalE2ESignal");
+    auto* waitEntitySource = new Create(model, "SharedSignalE2EWaitSource");
+    auto* signalEntitySource = new Create(model, "SharedSignalE2ESignalSource");
+    auto* waitDispose = new Dispose(model, "SharedSignalE2EWaitDispose");
+    auto* signalDispose = new Dispose(model, "SharedSignalE2ESignalDispose");
+
+    wait->setQueue(queue);
+    wait->setSignalData(signalData);
+    wait->setWaitType(Wait::WaitType::WaitForSignal);
+    wait->setLimitExpression("1");
+    signal->setSignalData(signalData);
+    ASSERT_TRUE(signalData->hasSignalDataEventHandler(wait));
+    waitEntitySource->setEntityType(entityType);
+    waitEntitySource->setFirstCreation(0.0);
+    waitEntitySource->setTimeBetweenCreationsExpression("100");
+    waitEntitySource->setMaxCreations(1ul);
+    signalEntitySource->setEntityType(entityType);
+    signalEntitySource->setFirstCreation(1.0);
+    signalEntitySource->setTimeBetweenCreationsExpression("100");
+    signalEntitySource->setMaxCreations(1ul);
+
+    waitEntitySource->connectTo(wait);
+    wait->connectTo(waitDispose);
+    signalEntitySource->connectTo(signal);
+    signal->connectTo(signalDispose);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(3.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+    model->getSimulation()->start();
+
+    EXPECT_EQ(wait->getQueue(), queue);
+    EXPECT_EQ(wait->getSignalData(), signalData);
+    EXPECT_EQ(signal->getSignalData(), signalData);
+    EXPECT_EQ(queue->size(), 0u);
+    EXPECT_EQ(signalData->remainsToLimit(), 0u);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>()), 0u);
+}
+
 TEST(SimulatorRuntimeTest, SignalAndWaitSharedSignalDataRemainCoherentAfterRecheck) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
