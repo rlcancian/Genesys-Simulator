@@ -4778,7 +4778,9 @@ TEST(SimulatorRuntimeTest, WaitAndSignalGenRoundTripPreservesOneSharedSignalData
     ASSERT_NE(sourceModel, nullptr);
 
     auto* sharedData = new SignalData(sourceModel, "SharedSignalData");
+    auto* sharedQueue = new Queue(sourceModel, "SharedWaitQueue");
     auto* wait = new Wait(sourceModel, "WaitSharedSignalData");
+    wait->setQueue(sharedQueue);
     wait->setWaitType(Wait::WaitType::WaitForSignal);
     wait->setSignalData(sharedData);
     auto* signal = new Signal(sourceModel, "SignalSharedSignalData");
@@ -4795,13 +4797,18 @@ TEST(SimulatorRuntimeTest, WaitAndSignalGenRoundTripPreservesOneSharedSignalData
     auto* loadedSignal = dynamic_cast<Signal*>(loadedModel->getComponentManager()->find("SignalSharedSignalData"));
     auto* loadedData = dynamic_cast<SignalData*>(loadedModel->getDataManager()->getDataDefinition(
         Util::TypeOf<SignalData>(), "SharedSignalData"));
+    auto* loadedQueue = dynamic_cast<Queue*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<Queue>(), "SharedWaitQueue"));
     ASSERT_NE(loadedWait, nullptr);
     ASSERT_NE(loadedSignal, nullptr);
     ASSERT_NE(loadedData, nullptr);
+    ASSERT_NE(loadedQueue, nullptr);
+    EXPECT_EQ(loadedWait->getQueue(), loadedQueue);
     EXPECT_EQ(loadedWait->getSignalData(), loadedData);
     EXPECT_EQ(loadedSignal->getSignalData(), loadedData);
     EXPECT_EQ(loadedWait->getSignalData(), loadedSignal->getSignalData());
     EXPECT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<SignalData>()), 1u);
+    EXPECT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Queue>()), 1u);
 
     ::unlink(filename.c_str());
 }

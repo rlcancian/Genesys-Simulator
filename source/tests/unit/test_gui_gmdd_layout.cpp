@@ -1265,6 +1265,9 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
     EXPECT_NE(loadedWait->getSignalData(), nullptr);
     EXPECT_EQ(loadedWait->getSignalData(), loadedSignal->getSignalData());
     EXPECT_EQ(loadedWait->getSignalData()->getName(), "SignalData_Complex");
+    ASSERT_NE(loadedWait->getQueue(), nullptr);
+    EXPECT_EQ(loadedWait->getQueue()->getName(), "Queue_Complex");
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), 1u);
     EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<SignalData>())->size(), 1u);
 }
 

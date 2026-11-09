@@ -39,6 +39,7 @@ Branch `WiP20261109/wait-queue-signaldata-selector`, based on `WorkInProgress` a
 - Focused CTest selection for Wait/Signal materialization, handler rechecks, validation, shared SignalData selection, Queue selector replacement/creation, and generic selector regressions: PASS, 13/13.
 - Full serial `ctest --test-dir build/tests-unit --output-on-failure`: PASS (2,049 registered test cases; CTest exit status 0). An earlier run exposed five failing editor tests; selector model lookup was narrowed to the three explicit controls, and all five now pass both individually and in the full rerun.
 - End-to-end simulation: PASS. A generated entity waited in the explicitly selected Queue; a second entity triggered Signal using the same SignalData; the waiting entity was released and both entities reached Dispose.
+- Persistence: PASS for `.gen` and `.gui` round trips with `Wait.Queue`, shared `SignalData`, and one-instance Data Manager counts. The `.gui` round trip also retains the shared references across connected components.
 - `cmake --preset gui-app`: PASS (configuration).
 - `cmake --build --preset gui-app --parallel 4`: PASS.
 - The entire 2,046-test CTest run at 12-way parallelism previously exposed `SourceCodePropertyEditor` failures and was interrupted. The serial full-suite rerun passed after restricting scene-less resolution to the three target selectors.
@@ -47,7 +48,7 @@ Branch `WiP20261109/wait-queue-signaldata-selector`, based on `WorkInProgress` a
 
 ## Remaining validation
 
-- Hosted checks on the final PR head; full `.gen`/`.gui` identity coverage, legacy Queue fixture, sanitizers, broader Seize regression, and interactive main-GUI workflow remain unverified.
+- Hosted checks on the final PR head; a fixture from an actual pre-change model, ownership sanitizer coverage, broader Seize regression, and interactive main-GUI workflow remain unverified.
 - Shared Wait/Signal end-to-end simulation test.
 - `.gen` and `.gui` round-trip identity tests, including legacy auto-created Wait Queue fixtures.
 - Ownership sanitizer coverage and broader Seize/other generic selector regression.
