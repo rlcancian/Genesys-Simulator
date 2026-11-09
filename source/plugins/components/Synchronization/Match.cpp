@@ -316,11 +316,19 @@ void Match::_createEditableDataDefinitions() {
 		_entitiesByAttrib->erase(obsoleteQueue);
 	}
 	while (_queues->size() < _numberOfQueues) {
-		Queue* newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+		const std::string queueName = getName() + ".Queue" + std::to_string(_queues->size());
+		// On load, internal Queue data definitions have already been restored by
+		// the model serializer. Reattach them instead of creating same-named
+		// duplicates; create only when no persisted queue exists (new model/edit).
+		Queue* newQueue = dynamic_cast<Queue*>(
+			_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queueName));
 		if (newQueue == nullptr) {
-			newQueue = new Queue(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+			newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, queueName);
+			if (newQueue == nullptr) {
+				newQueue = new Queue(_parentModel, queueName);
+			}
+			ModelDataDefinition::CreateInternalData(newQueue);
 		}
-		ModelDataDefinition::CreateInternalData(newQueue);
 		_queues->insert(newQueue);
 		_mandatoryNonEditableDataDefinitionInsert(newQueue->getName(), newQueue);
 	}

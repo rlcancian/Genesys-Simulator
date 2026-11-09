@@ -107,7 +107,13 @@ ModelDataDefinition* DummyComponent::NewInstance(Model* model, std::string name)
 bool DummyComponent::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_internalDataDefinition = dynamic_cast<DummyElement*>(_parentModel->getDataManager()->getDataDefinition(
+			Util::TypeOf<DummyElement>(), getName() + ".DummyElement"));
+		if (_internalDataDefinition != nullptr) {
+			_mandatoryNonEditableDataDefinitionInsert("DummyElement", _internalDataDefinition);
+		} else {
+			_createEditableDataDefinitions();
+		}
 	}
 	return res;
 }
@@ -119,7 +125,11 @@ void DummyComponent::_saveInstance(PersistenceRecord *fields, bool saveDefaultVa
 
 void DummyComponent::_createEditableDataDefinitions() {
 	if (_internalDataDefinition == nullptr) {
-		_internalDataDefinition = new DummyElement(_parentModel, getName() + ".DummyElement");
+		_internalDataDefinition = dynamic_cast<DummyElement*>(_parentModel->getDataManager()->getDataDefinition(
+			Util::TypeOf<DummyElement>(), getName() + ".DummyElement"));
+		if (_internalDataDefinition == nullptr) {
+			_internalDataDefinition = new DummyElement(_parentModel, getName() + ".DummyElement");
+		}
 	}
 	_mandatoryNonEditableDataDefinitionInsert("DummyElement", _internalDataDefinition);
 }

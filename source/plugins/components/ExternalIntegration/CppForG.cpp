@@ -31,8 +31,14 @@ ModelDataDefinition* CppForG::NewInstance(Model* model, std::string name) {
 	return new CppForG(model, name);
 }
 
-CppForG::CppForG(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<CppForG>(), name) {
-	_createNonEditableDataDefinitions();
+CppForG::CppForG(Model* model, std::string name)
+	: CppForG(model, name, true) { }
+
+CppForG::CppForG(Model* model, std::string name, bool createOwnedCompiler)
+	: ModelComponent(model, Util::TypeOf<CppForG>(), name) {
+	if (createOwnedCompiler) {
+		_createNonEditableDataDefinitions();
+	}
 
 	SimulationControlSourceCodeString* propDispatchEvent = new SimulationControlSourceCodeString(
 									[this]() { return SourceCodeString(getOnDispatchEventCode()); }, [this](SourceCodeString value) { setOnDispatchEventCode(value.str()); },
@@ -66,7 +72,10 @@ std::string CppForG::show() {
 }
 
 ModelComponent* CppForG::LoadInstance(Model* model, PersistenceRecord *fields) {
-	CppForG* newComponent = new CppForG(model);
+	// DataDefinitions are loaded before components. Reuse the persisted internal
+	// compiler after the component's persisted name is known, instead of creating
+	// a second compiler using a generated temporary component name.
+	CppForG* newComponent = new CppForG(model, fields->loadField("name", ""), false);
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
@@ -123,6 +132,15 @@ void CppForG::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool CppForG::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
+		if (_cppCompiler == nullptr) {
+			_cppCompiler = dynamic_cast<CppCompiler*>(_parentModel->getDataManager()->getDataDefinition(
+				Util::TypeOf<CppCompiler>(), getName() + ".CppCompiler"));
+			if (_cppCompiler == nullptr) {
+				_createNonEditableDataDefinitions();
+			} else {
+				_mandatoryNonEditableDataDefinitionInsert("CppCompiler", _cppCompiler);
+			}
+		}
 		_onDispatchEventCode = fields->loadField("onDispatchEventCode", "");
 		_initBetweenReplicationCode = fields->loadField("initBetweenReplicationCode", "");
 		_includesCode = fields->loadField("includesCode", "");

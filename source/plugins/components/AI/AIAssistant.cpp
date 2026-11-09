@@ -240,6 +240,9 @@ void AIAssistant::_fail(Entity* entity, const std::string& message) {
 bool AIAssistant::_loadInstance(PersistenceRecord* f) {
     bool ok = ModelComponent::_loadInstance(f);
     _aiSupportName = f->loadField("aiSupport", DEFAULT.aiSupportName);
+    _aiSupport = nullptr;
+    _attachedDataRemove("AISupport");
+    _resolveSupport();
     _promptTemplate = f->loadField("promptTemplate", DEFAULT.promptTemplate);
     _conversationScope = f->loadField("conversationScope", DEFAULT.conversationScope);
     _conversationKeyExpression = f->loadField("conversationKeyExpression", DEFAULT.conversationKeyExpression);

@@ -34,6 +34,8 @@
 #include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
 #include "plugins/data/ExternalIntegration/SPICERunner.h"
+#include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
+#include "plugins/data/Template/DummyElement.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/Grouping/EntityGroup.h"
 
@@ -231,6 +233,31 @@ TEST(PropertyEditorModelDataReference, AIAssistantSelectsAnExistingAISupportInst
     EXPECT_EQ(assistant.getAttachedData()->find("AISupport"), assistant.getAttachedData()->end());
 }
 
+TEST(PropertyEditorModelDataReference, AIAssistantRestoresSelectedSupportBeforeModelCheck) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* support = new AISupport(model, "AISupport_ReferenceRoundTrip");
+    auto* assistant = new AIAssistant(model, "AIAssistant_ReferenceRoundTrip");
+    assistant->setAISupport(support);
+
+    const QString path = QStringLiteral("/tmp/genesys_ai_support_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedAssistant = dynamic_cast<AIAssistant*>(
+        loaded->getComponentManager()->find("AIAssistant_ReferenceRoundTrip"));
+    auto* loadedSupport = dynamic_cast<AISupport*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<AISupport>(), "AISupport_ReferenceRoundTrip"));
+    ASSERT_NE(loadedAssistant, nullptr);
+    ASSERT_NE(loadedSupport, nullptr);
+    EXPECT_EQ(loadedAssistant->getAISupport(), loadedSupport);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<AISupport>()), 1u);
+    QFile::remove(path);
+}
+
 TEST(PropertyEditorModelDataReference, ContinuousSystemSelectsAnExistingODESolver) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -260,6 +287,31 @@ TEST(PropertyEditorModelDataReference, ContinuousSystemSelectsAnExistingODESolve
     ASSERT_NE(component.getAttachedData(), nullptr);
     ASSERT_TRUE(component.getAttachedData()->contains("ODESolver"));
     EXPECT_EQ(component.getAttachedData()->at("ODESolver"), solver);
+}
+
+TEST(PropertyEditorModelDataReference, ContinuousSystemRestoresSelectedSolverBeforeModelCheck) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* solver = new ODESolver(model, "ODESolver_ReferenceRoundTrip");
+    auto* component = new ContinuousSystemComponent(model, "ContinuousSystem_ReferenceRoundTrip");
+    component->setOdeSolver(solver);
+
+    const QString path = QStringLiteral("/tmp/genesys_ode_solver_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedComponent = dynamic_cast<ContinuousSystemComponent*>(
+        loaded->getComponentManager()->find("ContinuousSystem_ReferenceRoundTrip"));
+    auto* loadedSolver = dynamic_cast<ODESolver*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<ODESolver>(), "ODESolver_ReferenceRoundTrip"));
+    ASSERT_NE(loadedComponent, nullptr);
+    ASSERT_NE(loadedSolver, nullptr);
+    EXPECT_EQ(loadedComponent->getOdeSolver(), loadedSolver);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<ODESolver>()), 1u);
+    QFile::remove(path);
 }
 
 TEST(PropertyEditorModelDataReference, ModalModelSelectsADerivedDefaultNetwork) {
@@ -313,6 +365,53 @@ TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefiniti
     browser.setExpanded(item, true);
     drainGuiEvents();
     EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SomeString")), nullptr);
+}
+
+TEST(PropertyEditorModelDataReference, OwnedRuntimeDefinitionsReattachOnGenLoadWithoutDuplicates) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* dummy = new DummyComponent(model, "Dummy_InternalRoundTrip");
+    auto* python = new PythonForG(model, "Python_InternalRoundTrip");
+    python->getPythonRuntime()->setPythonExecutable("custom-python");
+    auto* r = new RSimulator(model, "R_InternalRoundTrip");
+    r->setRExecutable("custom-Rscript");
+    r->setPreludeScript("# prelude\nvalue <- 7\n");
+    r->setCommandList("result <- value + 1\n");
+
+    const QString path = QStringLiteral("/tmp/genesys_owned_runtime_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+
+    auto* loadedDummy = dynamic_cast<DummyComponent*>(loaded->getComponentManager()->find("Dummy_InternalRoundTrip"));
+    auto* loadedPython = dynamic_cast<PythonForG*>(loaded->getComponentManager()->find("Python_InternalRoundTrip"));
+    auto* loadedR = dynamic_cast<RSimulator*>(loaded->getComponentManager()->find("R_InternalRoundTrip"));
+    ASSERT_NE(loadedDummy, nullptr);
+    ASSERT_NE(loadedPython, nullptr);
+    ASSERT_NE(loadedR, nullptr);
+    auto* dummyData = dynamic_cast<DummyElement*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<DummyElement>(), "Dummy_InternalRoundTrip.DummyElement"));
+    auto* pythonRuntime = dynamic_cast<PythonRuntime*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<PythonRuntime>(), "Python_InternalRoundTrip.PythonRuntime"));
+    auto* rRunner = dynamic_cast<RSimulatorRunner*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<RSimulatorRunner>(), "R_InternalRoundTrip.RSimulatorRunner"));
+    ASSERT_NE(dummyData, nullptr);
+    ASSERT_NE(pythonRuntime, nullptr);
+    ASSERT_NE(rRunner, nullptr);
+    EXPECT_EQ(loadedDummy->getInternalDataDefinition(), dummyData);
+    EXPECT_EQ(loadedPython->getPythonRuntime(), pythonRuntime);
+    EXPECT_EQ(pythonRuntime->getPythonExecutable(), "custom-python");
+    EXPECT_EQ(loadedR->getRunner(), rRunner);
+    EXPECT_EQ(rRunner->getRExecutable(), "custom-Rscript");
+    EXPECT_EQ(rRunner->getPreludeScript(), "# prelude\nvalue <- 7\n");
+    EXPECT_EQ(loadedR->getCommandList(), "result <- value + 1");
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<DummyElement>()), 1u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<PythonRuntime>()), 1u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<RSimulatorRunner>()), 1u);
+    QFile::remove(path);
 }
 
 TEST(PropertyEditorModelDataReference, PythonForGExposesItsOwnedRuntimeConfiguration) {
@@ -592,6 +691,43 @@ TEST(PropertyEditorModelDataReference, DiffEquationsExposesOwnedCompilerSettings
     commitTextWithEnter(editor, QStringLiteral("diff-equations-edited.cpp"));
     EXPECT_EQ(ownedCompiler->getSourceFilename(), "diff-equations-edited.cpp");
     EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
+}
+
+TEST(PropertyEditorModelDataReference, OwnedCompilerSettingsSurviveGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* cppForG = new CppForG(model, "CppForG_CompilerRoundTrip");
+    auto* diffEquations = new DiffEquations(model, "DiffEquations_CompilerRoundTrip");
+    cppForG->getCppCompiler()->setCompilerCommand("custom-cxx");
+    diffEquations->getCppCompiler()->setOutputFilename("custom-output.so");
+    cppForG->setOnDispatchEventCode("// editable incomplete source\n");
+
+    const QString path = QStringLiteral("/tmp/genesys_internal_compiler_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedCppForG = dynamic_cast<CppForG*>(loaded->getComponentManager()->find("CppForG_CompilerRoundTrip"));
+    auto* loadedDiffEquations = dynamic_cast<DiffEquations*>(loaded->getComponentManager()->find("DiffEquations_CompilerRoundTrip"));
+    ASSERT_NE(loadedCppForG, nullptr);
+    ASSERT_NE(loadedDiffEquations, nullptr);
+    ASSERT_NE(loadedCppForG->getCppCompiler(), nullptr);
+    ASSERT_NE(loadedDiffEquations->getCppCompiler(), nullptr);
+    EXPECT_EQ(loaded->getDataManager()->getDataDefinition(Util::TypeOf<CppCompiler>(),
+                                                          "CppForG_CompilerRoundTrip.CppCompiler"),
+              loadedCppForG->getCppCompiler());
+    EXPECT_EQ(loaded->getDataManager()->getDataDefinition(Util::TypeOf<CppCompiler>(),
+                                                          "DiffEquations_CompilerRoundTrip.CppCompiler"),
+              loadedDiffEquations->getCppCompiler());
+    auto* loadedCompilers = loaded->getDataManager()->getDataDefinitionList(Util::TypeOf<CppCompiler>());
+    ASSERT_NE(loadedCompilers, nullptr);
+    EXPECT_EQ(loadedCompilers->size(), 2u);
+    EXPECT_EQ(loadedCppForG->getCppCompiler()->getCompilerCommand(), "custom-cxx");
+    EXPECT_EQ(loadedDiffEquations->getCppCompiler()->getOutputFilename(), "custom-output.so");
+    EXPECT_EQ(loadedCppForG->getOnDispatchEventCode(), "// editable incomplete source\n");
+    QFile::remove(path);
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {

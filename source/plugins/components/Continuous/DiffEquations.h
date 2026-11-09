@@ -71,6 +71,7 @@ protected:
 protected:
 
 private: //! new private user methods
+	DiffEquations(Model* model, std::string name, bool createOwnedCompiler);
 	List<std::string> *_equations = new List<std::string>();
 	List<std::string> *_stateVariableNames = new List<std::string>();
 	List<double> *_valuesOnFinalTime = new List<double>();

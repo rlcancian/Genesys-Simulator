@@ -5563,6 +5563,39 @@ TEST(SimulatorRuntimeTest, MatchPropagatesCommonQueueOrderingToExistingAndNewQue
     EXPECT_EQ(q2->getAttributeName(), "Price");
 }
 
+TEST(SimulatorRuntimeTest, MatchQueueOrderingAndInternalQueuesSurviveGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* match = new Match(model, "MatchQueueRoundTrip");
+    match->setNumberOfQueues(3);
+    match->setQueueOrderRule(Queue::OrderRule::SMALLESTVALUE);
+    match->setQueueOrderAttributeName("Cost");
+    ModelComponent::CreateInternalData(match);
+
+    const std::string path = "/tmp/genesys_match_queue_roundtrip_" + std::to_string(getpid()) + ".gen";
+    std::remove(path.c_str());
+    ASSERT_TRUE(model->save(path));
+    Model* loaded = simulator.getModelManager()->loadModel(path);
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedMatch = dynamic_cast<Match*>(loaded->getComponentManager()->find("MatchQueueRoundTrip"));
+    ASSERT_NE(loadedMatch, nullptr);
+    EXPECT_EQ(loadedMatch->getNumberOfQueues(), 3u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Queue>()), 3u);
+
+    ModelComponent::CreateInternalData(loadedMatch);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Queue>()), 3u);
+    for (unsigned int i = 0; i < 3; ++i) {
+        auto* queue = dynamic_cast<Queue*>(loaded->getDataManager()->getDataDefinition(
+            Util::TypeOf<Queue>(), "MatchQueueRoundTrip.Queue" + std::to_string(i)));
+        ASSERT_NE(queue, nullptr);
+        EXPECT_EQ(queue->getOrderRule(), Queue::OrderRule::SMALLESTVALUE);
+        EXPECT_EQ(queue->getAttributeName(), "Cost");
+    }
+    std::remove(path.c_str());
+}
+
 TEST(SimulatorRuntimeTest, MatchCheckValidatesQueueCountMatchSizeAndByAttributeContract) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();

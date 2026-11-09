@@ -181,8 +181,14 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 // public: //! constructors
 //
 
-DiffEquations::DiffEquations(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DiffEquations>(), name) {
-	_createEditableDataDefinitions();
+DiffEquations::DiffEquations(Model* model, std::string name)
+	: DiffEquations(model, name, true) { }
+
+DiffEquations::DiffEquations(Model* model, std::string name, bool createOwnedCompiler)
+	: ModelComponent(model, Util::TypeOf<DiffEquations>(), name) {
+	if (createOwnedCompiler) {
+		_createEditableDataDefinitions();
+	}
 	auto* propCompiler = new SimulationControlGenericClass<CppCompiler*, Model*, CppCompiler>(
 			_parentModel,
 			std::bind(&DiffEquations::getCppCompiler, this),
@@ -279,7 +285,9 @@ PluginInformation* DiffEquations::GetPluginInformation() {
 }
 
 ModelComponent* DiffEquations::LoadInstance(Model* model, PersistenceRecord *fields) {
-	DiffEquations* newComponent = new DiffEquations(model);
+	// The persisted compiler is loaded before this component. Defer construction
+	// so loading can reattach that compiler instead of creating a duplicate.
+	DiffEquations* newComponent = new DiffEquations(model, fields->loadField("name", ""), false);
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
@@ -299,6 +307,15 @@ ModelDataDefinition* DiffEquations::NewInstance(Model* model, std::string name) 
 bool DiffEquations::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
+		if (_cppCompiler == nullptr) {
+			_cppCompiler = dynamic_cast<CppCompiler*>(_parentModel->getDataManager()->getDataDefinition(
+				Util::TypeOf<CppCompiler>(), getName() + ".CppCompiler"));
+			if (_cppCompiler == nullptr) {
+				_createEditableDataDefinitions();
+			} else {
+				_mandatoryNonEditableDataDefinitionInsert("CppCompiler", _cppCompiler);
+			}
+		}
 		_precision = fields->loadField("precision", DEFAULT.precision);
 		_maxSteps = fields->loadField("maxSteps", DEFAULT.maxSteps);
 		_finalTime = fields->loadField("finalTime", DEFAULT.finalTime);
