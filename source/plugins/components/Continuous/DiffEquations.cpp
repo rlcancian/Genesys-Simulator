@@ -13,6 +13,7 @@
 
 #include "plugins/components/Continuous/DiffEquations.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 //#include "kernel/simulator/Simulator.h"
 //#include "kernel/simulator/PluginManager.h"
 #include "plugins/data/Logic/Variable.h"
@@ -181,6 +182,15 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 //
 
 DiffEquations::DiffEquations(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DiffEquations>(), name) {
+	_createEditableDataDefinitions();
+	auto* propCompiler = new SimulationControlGenericClass<CppCompiler*, Model*, CppCompiler>(
+			_parentModel,
+			std::bind(&DiffEquations::getCppCompiler, this),
+		nullptr,
+		Util::TypeOf<DiffEquations>(), getName(), "CppCompiler", "Internal compiler settings", false, true, false,
+		nullptr, false, true);
+	_parentModel->getControls()->insert(propCompiler);
+	_addSimulationControl(propCompiler);
 }
 
 DiffEquations::~DiffEquations() {
@@ -195,6 +205,10 @@ DiffEquations::~DiffEquations() {
 
 List<std::string> *DiffEquations::getEquations() const {
 	return _equations;
+}
+
+CppCompiler* DiffEquations::getCppCompiler() const {
+	return _cppCompiler;
 }
 
 List<std::string> *DiffEquations::getStateVariableNames() const {

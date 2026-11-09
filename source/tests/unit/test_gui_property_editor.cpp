@@ -17,6 +17,7 @@
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/AI/AIAssistant.h"
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"
+#include "plugins/components/Continuous/DiffEquations.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
@@ -504,6 +505,26 @@ TEST(PropertyEditorModelDataReference, SPICECircuitRunnerCallbackExpiresWithCirc
         circuit.setRunner(runner);
     }
     EXPECT_NO_THROW(runner->CompileSpiceFile());
+}
+
+TEST(PropertyEditorModelDataReference, DiffEquationsExposesOwnedCompilerSettingsInline) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DiffEquations component(model, "DiffEquations_PropertyEditor");
+    CppCompiler* ownedCompiler = component.getCppCompiler();
+    ASSERT_NE(ownedCompiler, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("CppCompiler")), nullptr);
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename")), nullptr);
+    EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
 }
 
 TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {

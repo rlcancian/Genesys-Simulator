@@ -28,6 +28,7 @@ public: //! constructors
 	virtual ~DiffEquations() override;
 
 public: //! new public user methods for this component
+	CppCompiler* getCppCompiler() const;
 	List<std::string> *getEquations() const; //!< equations should be in terms of state variable names and t
 	List<std::string> *getStateVariableNames() const;
 	double getprecision() const;
