@@ -34,6 +34,7 @@ public: // virtual
 	virtual std::string show() override;
 public:
 	void setSignalData(SignalData* signal);
+	SignalData* getSignalData() const;
 	const std::string&limitExpression() const;
 	void setLimitExpression(const std::string&newLimitExpression);
 public: // static

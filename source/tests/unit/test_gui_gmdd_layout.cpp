@@ -26,10 +26,13 @@
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Synchronization/Signal.h"
+#include "plugins/components/Synchronization/Wait.h"
 #include "applications/gui/genesys/actions/DecideConditionUndoCommand.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/Synchronization/SignalData.h"
 
 #include <gtest/gtest.h>
 
@@ -1077,10 +1080,21 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
     Resource* resource = new Resource(model, "Resource_Complex");
     Seize* seize = new Seize(model, "Seize_Complex");
     Release* release = new Release(model, "Release_Complex");
+    auto* sharedSignalData = new SignalData(model, "SignalData_Complex");
+    auto* wait = new Wait(model, "Wait_Complex");
+    auto* signal = new Signal(model, "Signal_Complex");
     ASSERT_NE(queue, nullptr);
     ASSERT_NE(resource, nullptr);
     ASSERT_NE(seize, nullptr);
     ASSERT_NE(release, nullptr);
+    ASSERT_NE(sharedSignalData, nullptr);
+    ASSERT_NE(wait, nullptr);
+    ASSERT_NE(signal, nullptr);
+
+    wait->setWaitType(Wait::WaitType::WaitForSignal);
+    wait->setQueue(queue);
+    wait->setSignalData(sharedSignalData);
+    signal->setSignalData(sharedSignalData);
 
     seize->setQueueableItem(new QueueableItem(queue));
     seize->addRequest(new SeizableItem(resource));
@@ -1110,16 +1124,28 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
 
     Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
     Plugin* releasePlugin = pluginManager->find(Util::TypeOf<Release>());
+    Plugin* waitPlugin = pluginManager->find(Util::TypeOf<Wait>());
+    Plugin* signalPlugin = pluginManager->find(Util::TypeOf<Signal>());
     ASSERT_NE(seizePlugin, nullptr);
     ASSERT_NE(releasePlugin, nullptr);
+    ASSERT_NE(waitPlugin, nullptr);
+    ASSERT_NE(signalPlugin, nullptr);
     auto* graphicalSeize = new GraphicalModelComponent(seizePlugin, seize, QPointF(400.0, 400.0), QColor("#336699"));
     auto* graphicalRelease = new GraphicalModelComponent(releasePlugin, release, QPointF(700.0, 400.0), QColor("#884422"));
+    auto* graphicalWait = new GraphicalModelComponent(waitPlugin, wait, QPointF(400.0, 700.0), QColor("#336699"));
+    auto* graphicalSignal = new GraphicalModelComponent(signalPlugin, signal, QPointF(700.0, 700.0), QColor("#884422"));
     scene->addItem(graphicalSeize);
     scene->getGraphicalModelComponents()->append(graphicalSeize);
     scene->getAllComponents()->append(graphicalSeize);
     scene->addItem(graphicalRelease);
     scene->getGraphicalModelComponents()->append(graphicalRelease);
     scene->getAllComponents()->append(graphicalRelease);
+    scene->addItem(graphicalWait);
+    scene->getGraphicalModelComponents()->append(graphicalWait);
+    scene->getAllComponents()->append(graphicalWait);
+    scene->addItem(graphicalSignal);
+    scene->getGraphicalModelComponents()->append(graphicalSignal);
+    scene->getAllComponents()->append(graphicalSignal);
 
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
 
@@ -1213,8 +1239,12 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
 
     Seize* loadedSeize = dynamic_cast<Seize*>(loadedModel->getComponentManager()->find("Seize_Complex"));
     Release* loadedRelease = dynamic_cast<Release*>(loadedModel->getComponentManager()->find("Release_Complex"));
+    auto* loadedWait = dynamic_cast<Wait*>(loadedModel->getComponentManager()->find("Wait_Complex"));
+    auto* loadedSignal = dynamic_cast<Signal*>(loadedModel->getComponentManager()->find("Signal_Complex"));
     ASSERT_NE(loadedSeize, nullptr);
     ASSERT_NE(loadedRelease, nullptr);
+    ASSERT_NE(loadedWait, nullptr);
+    ASSERT_NE(loadedSignal, nullptr);
 
     // The "next" transfer connection between the two top-level components must survive.
     ASSERT_GT(loadedSeize->getConnectionManager()->size(), 0u);
@@ -1232,6 +1262,10 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
     EXPECT_EQ(seizeResource, releaseResource);
     EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Resource>())->size(), 1u);
     EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), 1u);
+    EXPECT_NE(loadedWait->getSignalData(), nullptr);
+    EXPECT_EQ(loadedWait->getSignalData(), loadedSignal->getSignalData());
+    EXPECT_EQ(loadedWait->getSignalData()->getName(), "SignalData_Complex");
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<SignalData>())->size(), 1u);
 }
 
 TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
