@@ -4646,6 +4646,24 @@ TEST(SimulatorRuntimeTest, SignalDataDestructorHandlesOwnedHandlersLifecycle) {
     EXPECT_NO_THROW(delete signal);
 }
 
+TEST(SimulatorRuntimeTest, WaitAndSignalMaterializationDoesNotCreateReferences) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    WaitProbe wait(model, "WaitNoImplicitReferences");
+    SignalProbe signal(model, "SignalNoImplicitReferences");
+
+    ASSERT_EQ(wait.getQueue(), nullptr);
+    ASSERT_EQ(wait.getSignalData(), nullptr);
+    ASSERT_EQ(signal.getSignalData(), nullptr);
+    wait.CreateInternalAndAttachedDataProbe();
+    signal.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(wait.getQueue(), nullptr);
+    EXPECT_EQ(wait.getSignalData(), nullptr);
+    EXPECT_EQ(signal.getSignalData(), nullptr);
+    EXPECT_EQ(wait.getInternalData()->count("Queue"), 0u);
+}
+
 TEST(SimulatorRuntimeTest, SignalDataInitBetweenReplicationsResetsRemainsToLimit) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -4720,7 +4738,9 @@ TEST(SimulatorRuntimeTest, WaitAndSignalPersistenceRoundTripPreservesSharedSigna
     ASSERT_NE(model, nullptr);
 
     SignalDataProbe sharedSignalData(model, "SharedSignalData");
+    Queue* sharedQueue = new Queue(model, "WaitPersistQueue");
     WaitProbe sourceWait(model, "WaitPersistSource");
+    sourceWait.setQueue(sharedQueue);
     sourceWait.setWaitType(Wait::WaitType::WaitForSignal);
     sourceWait.setSignalData(&sharedSignalData);
 
@@ -4739,6 +4759,8 @@ TEST(SimulatorRuntimeTest, WaitAndSignalPersistenceRoundTripPreservesSharedSigna
     ASSERT_TRUE(loadedWait.LoadInstanceProbe(&waitFields));
     ASSERT_TRUE(loadedSignal.LoadInstanceProbe(&signalFields));
 
+    EXPECT_EQ(loadedWait.getQueue(), sharedQueue);
+
     ASSERT_NE(loadedWait._signalData, nullptr);
     ASSERT_NE(loadedSignal.SignalDataPtrProbe(), nullptr);
     EXPECT_EQ(loadedWait._signalData, &sharedSignalData);
@@ -4756,7 +4778,9 @@ TEST(SimulatorRuntimeTest, WaitAndSignalGenRoundTripPreservesOneSharedSignalData
     ASSERT_NE(sourceModel, nullptr);
 
     auto* sharedData = new SignalData(sourceModel, "SharedSignalData");
+    auto* sharedQueue = new Queue(sourceModel, "SharedWaitQueue");
     auto* wait = new Wait(sourceModel, "WaitSharedSignalData");
+    wait->setQueue(sharedQueue);
     wait->setWaitType(Wait::WaitType::WaitForSignal);
     wait->setSignalData(sharedData);
     auto* signal = new Signal(sourceModel, "SignalSharedSignalData");
@@ -4773,13 +4797,18 @@ TEST(SimulatorRuntimeTest, WaitAndSignalGenRoundTripPreservesOneSharedSignalData
     auto* loadedSignal = dynamic_cast<Signal*>(loadedModel->getComponentManager()->find("SignalSharedSignalData"));
     auto* loadedData = dynamic_cast<SignalData*>(loadedModel->getDataManager()->getDataDefinition(
         Util::TypeOf<SignalData>(), "SharedSignalData"));
+    auto* loadedQueue = dynamic_cast<Queue*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<Queue>(), "SharedWaitQueue"));
     ASSERT_NE(loadedWait, nullptr);
     ASSERT_NE(loadedSignal, nullptr);
     ASSERT_NE(loadedData, nullptr);
+    ASSERT_NE(loadedQueue, nullptr);
+    EXPECT_EQ(loadedWait->getQueue(), loadedQueue);
     EXPECT_EQ(loadedWait->getSignalData(), loadedData);
     EXPECT_EQ(loadedSignal->getSignalData(), loadedData);
     EXPECT_EQ(loadedWait->getSignalData(), loadedSignal->getSignalData());
     EXPECT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<SignalData>()), 1u);
+    EXPECT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Queue>()), 1u);
 
     ::unlink(filename.c_str());
 }
@@ -4904,6 +4933,55 @@ TEST(SimulatorRuntimeTest, WaitForSignalLimitZeroDoesNotReleaseQueuedEntities) {
     signalData.generateSignal(0.0, 10u);
     EXPECT_EQ(wait.TriggerSignalHandlerProbe(&signalData), 0u);
     EXPECT_EQ(wait.getQueue()->size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, SignalReleasesEntityWaitingOnSharedSignalDataInSimulation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "SharedSignalE2EEntity");
+    auto* queue = new Queue(model, "SharedSignalE2EQueue");
+    auto* signalData = new SignalData(model, "SharedSignalE2EData");
+    auto* wait = new Wait(model, "SharedSignalE2EWait");
+    auto* signal = new Signal(model, "SharedSignalE2ESignal");
+    auto* waitEntitySource = new Create(model, "SharedSignalE2EWaitSource");
+    auto* signalEntitySource = new Create(model, "SharedSignalE2ESignalSource");
+    auto* waitDispose = new Dispose(model, "SharedSignalE2EWaitDispose");
+    auto* signalDispose = new Dispose(model, "SharedSignalE2ESignalDispose");
+
+    wait->setQueue(queue);
+    wait->setSignalData(signalData);
+    wait->setWaitType(Wait::WaitType::WaitForSignal);
+    wait->setLimitExpression("1");
+    signal->setSignalData(signalData);
+    ASSERT_TRUE(signalData->hasSignalDataEventHandler(wait));
+    waitEntitySource->setEntityType(entityType);
+    waitEntitySource->setFirstCreation(0.0);
+    waitEntitySource->setTimeBetweenCreationsExpression("100");
+    waitEntitySource->setMaxCreations(1ul);
+    signalEntitySource->setEntityType(entityType);
+    signalEntitySource->setFirstCreation(1.0);
+    signalEntitySource->setTimeBetweenCreationsExpression("100");
+    signalEntitySource->setMaxCreations(1ul);
+
+    waitEntitySource->connectTo(wait);
+    wait->connectTo(waitDispose);
+    signalEntitySource->connectTo(signal);
+    signal->connectTo(signalDispose);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(3.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+    model->getSimulation()->start();
+
+    EXPECT_EQ(wait->getQueue(), queue);
+    EXPECT_EQ(wait->getSignalData(), signalData);
+    EXPECT_EQ(signal->getSignalData(), signalData);
+    EXPECT_EQ(queue->size(), 0u);
+    EXPECT_EQ(signalData->remainsToLimit(), 0u);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>()), 0u);
 }
 
 TEST(SimulatorRuntimeTest, SignalAndWaitSharedSignalDataRemainCoherentAfterRecheck) {

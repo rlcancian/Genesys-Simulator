@@ -45,7 +45,7 @@ public:
 	static std::string convertEnumToStr(WaitType type);
 public: // constructors
 	Wait(Model* model, std::string name = "");
-	virtual ~Wait() = default;
+	virtual ~Wait() override;
 public: // virtual
 	virtual std::string show() override;
 public: //

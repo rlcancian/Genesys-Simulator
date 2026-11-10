@@ -226,6 +226,7 @@ public:
     }
     // This method exposes whether the property supports choosing an existing object instance.
     virtual bool supportsExistingObjectSelection() const { return false; }
+    virtual bool keepsExistingObjectChoicesWhenSet() const { return false; }
     // This method exposes whether the property supports creating a new object instance.
     virtual bool supportsObjectCreation() const { return false; }
     // This method exposes whether the property supports typed creation of a new list element.
@@ -702,7 +703,7 @@ public:
     using NameResolver = std::function<T(const std::string&)>;
     using ChoicesProvider = std::function<List<std::string>*()>;
     using CreatableTypesProvider = std::function<List<std::string>*()>;
-    SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr, bool includeDerivedTypes=false, bool inlineObjectProperty=false, NameResolver nameResolver=nullptr, ChoicesProvider choicesProvider=nullptr, CreatableTypesProvider creatableTypesProvider=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+    SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr, bool includeDerivedTypes=false, bool inlineObjectProperty=false, NameResolver nameResolver=nullptr, ChoicesProvider choicesProvider=nullptr, CreatableTypesProvider creatableTypesProvider=nullptr, bool keepsChoicesWhenSet=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 		static_assert(std::is_pointer<T>::value, "SimulationControlGenericClass requires pointer type T");
 		_model = model;
 		_getter= getter;
@@ -713,6 +714,7 @@ public:
         _nameResolver = nameResolver;
         _choicesProvider = choicesProvider;
         _creatableTypesProvider = creatableTypesProvider;
+        _keepsChoicesWhenSet = keepsChoicesWhenSet;
 		_readonly = setter == nullptr;
 		_propertyType = Util::TypeOf<C>();
 	}
@@ -765,15 +767,14 @@ public:
 		}
 
 		if (!exists) {
-            if (_creator != nullptr) {
-                newVal = _creator(_model, value);
-            } else {
-			    newVal = new C(_model, value);
-            }
-            if (newVal == nullptr) {
-                throw std::logic_error("SimulationControlGenericClass creator returned null");
-            }
-		 	_model->getDataManager()->insert(newVal);
+			if (_keepsChoicesWhenSet) {
+				throw std::invalid_argument("ModelDataDefinition reference does not exist: " + value);
+			}
+			newVal = _creator ? _creator(_model, value) : new C(_model, value);
+			if (newVal == nullptr) {
+				throw std::logic_error("SimulationControlGenericClass creator returned null");
+			}
+			_model->getDataManager()->insert(newVal);
 		}
 
 		_setter(newVal);
@@ -787,6 +788,8 @@ public:
     virtual bool supportsInlineExpansion() const override { return true; }
     // This method marks class references as selectable from existing ModelDataDefinition instances.
     virtual bool supportsExistingObjectSelection() const override { return true; }
+    // This selector contract also disables implicit creation when a supplied reference name is unresolved.
+    virtual bool keepsExistingObjectChoicesWhenSet() const override { return _keepsChoicesWhenSet; }
     // This method marks class references as creatable when writable.
     virtual bool supportsObjectCreation() const override { return !_readonly; }
     virtual List<std::string>* getCreatableReferenceTypes() override {
@@ -822,7 +825,10 @@ public:
         if (name.empty()) {
             return false;
         }
-        setValue(name, false);
+        T created = _creator ? _creator(_model, name) : new C(_model, name);
+        if (created == nullptr) throw std::logic_error("SimulationControlGenericClass creator returned null");
+        _model->getDataManager()->insert(created);
+        _setter(created);
         return hasObjectInstance();
     }
 
@@ -863,6 +869,7 @@ private:
     NameResolver _nameResolver;
     ChoicesProvider _choicesProvider;
     CreatableTypesProvider _creatableTypesProvider;
+    bool _keepsChoicesWhenSet{false};
 };
 
 // @ToDo: (pequena alteração): remove typename C

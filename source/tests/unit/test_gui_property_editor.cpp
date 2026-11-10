@@ -33,6 +33,7 @@
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/Synchronization/SignalData.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/AI/AISupport.h"
 #include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
@@ -777,6 +778,19 @@ TEST(PropertyEditorModelDataReference, WaitAndSignalSelectTheSameSignalData) {
     Wait wait(model, "Wait_PropertyEditor");
     Signal signal(model, "Signal_PropertyEditor");
 
+    // Construction and association materialization must not manufacture either reference.
+    ASSERT_EQ(wait.getQueue(), nullptr);
+    ASSERT_EQ(wait.getSignalData(), nullptr);
+    ASSERT_EQ(signal.getSignalData(), nullptr);
+    ModelDataDefinition::CreateInternalData(&wait);
+    ModelDataDefinition::CreateInternalData(&signal);
+    EXPECT_EQ(wait.getQueue(), nullptr);
+    EXPECT_EQ(wait.getSignalData(), nullptr);
+    EXPECT_EQ(signal.getSignalData(), nullptr);
+    auto* queue = new Queue(model, "Queue_PropertyEditor");
+    model->getDataManager()->insert(queue);
+    wait.setQueue(queue);
+
     auto selectSharedSignalData = [sharedSignalData](ModelComponent* component) {
         ASSERT_NE(component, nullptr);
         ObjectPropertyBrowser browser;
@@ -794,6 +808,9 @@ TEST(PropertyEditorModelDataReference, WaitAndSignalSelectTheSameSignalData) {
         ASSERT_NE(selector, nullptr);
         const int sharedIndex = selector->findText(QString::fromStdString(sharedSignalData->getName()));
         ASSERT_GE(sharedIndex, 0);
+        EXPECT_EQ(selector->findText(QStringLiteral("Selecionar SignalData e Editar")), -1);
+        EXPECT_EQ(selector->findText(QStringLiteral("Remover SignalData")), -1);
+        EXPECT_GE(selector->findText(QStringLiteral("Criar novo SignalData")), 0);
         selector->setCurrentIndex(sharedIndex);
         drainGuiEvents();
 
@@ -810,6 +827,118 @@ TEST(PropertyEditorModelDataReference, WaitAndSignalSelectTheSameSignalData) {
 
     selectSharedSignalData(&wait);
     selectSharedSignalData(&signal);
+}
+
+TEST(PropertyEditorModelDataReference, WaitQueueSelectorRetainsAllChoicesAndSwitchesByIdentity) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* queueA = new Queue(model, "WaitQueueA");
+    auto* queueB = new Queue(model, "WaitQueueB");
+    model->getDataManager()->insert(queueA);
+    model->getDataManager()->insert(queueB);
+    {
+        Wait wait(model, "WaitQueueSelector");
+        wait.setQueue(queueA);
+        ModelDataDefinition::CreateInternalData(&wait);
+        ObjectPropertyBrowser browser;
+        browser.resize(640, 480);
+        browser.show();
+        bindEditableKernelObject(browser, &wait);
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Queue"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int aIndex = selector->findText(QStringLiteral("WaitQueueA"));
+        const int bIndex = selector->findText(QStringLiteral("WaitQueueB"));
+        ASSERT_GE(aIndex, 0);
+        ASSERT_GE(bIndex, 0);
+        EXPECT_GE(selector->findText(QStringLiteral("Criar novo Queue")), 0);
+        EXPECT_EQ(selector->findText(QStringLiteral("Selecionar Queue e Editar")), -1);
+        EXPECT_EQ(selector->findText(QStringLiteral("Remover Queue")), -1);
+        selector->setCurrentIndex(bIndex);
+        drainGuiEvents();
+        EXPECT_EQ(wait.getQueue(), queueB);
+        EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "WaitQueueA"), queueA);
+        EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "WaitQueueB"), queueB);
+    }
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "WaitQueueA"), queueA);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "WaitQueueB"), queueB);
+    Wait createWait(model, "WaitQueueCreate");
+    ObjectPropertyBrowser createBrowser;
+    createBrowser.resize(640, 480);
+    createBrowser.show();
+    bindEditableKernelObject(createBrowser, &createWait);
+    QtBrowserItem* createItem = findBrowserItemByName(createBrowser.topLevelItems(), QStringLiteral("Queue"));
+    ASSERT_NE(createItem, nullptr);
+    createBrowser.setCurrentItem(createItem);
+    createBrowser.editItem(createItem);
+    drainGuiEvents();
+    QComboBox* createSelector = createBrowser.findChild<QComboBox*>();
+    ASSERT_NE(createSelector, nullptr);
+    const int createIndex = createSelector->findText(QStringLiteral("Criar novo Queue"));
+    ASSERT_GE(createIndex, 0);
+    const std::size_t queueCountBefore = model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size();
+    createSelector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    EXPECT_NE(createWait.getQueue(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), queueCountBefore + 1);
+}
+
+TEST(PropertyEditorModelDataReference, SignalExplicitlyCreatesAndWaitReusesOneSignalData) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Signal signal(model, "SignalCreateSignalData");
+    Wait wait(model, "WaitReuseSignalData");
+    ModelDataDefinition::CreateInternalData(&signal);
+    ModelDataDefinition::CreateInternalData(&wait);
+    ASSERT_EQ(signal.getSignalData(), nullptr);
+    ASSERT_EQ(wait.getSignalData(), nullptr);
+    auto* dataList = model->getDataManager()->getDataDefinitionList(Util::TypeOf<SignalData>());
+    ASSERT_NE(dataList, nullptr);
+    ASSERT_EQ(dataList->size(), 0u);
+
+    ObjectPropertyBrowser signalBrowser;
+    signalBrowser.resize(640, 480);
+    signalBrowser.show();
+    bindEditableKernelObject(signalBrowser, &signal);
+    QtBrowserItem* signalItem = findBrowserItemByName(signalBrowser.topLevelItems(), QStringLiteral("SignalData"));
+    ASSERT_NE(signalItem, nullptr);
+    signalBrowser.setCurrentItem(signalItem);
+    signalBrowser.editItem(signalItem);
+    drainGuiEvents();
+    QComboBox* signalSelector = signalBrowser.findChild<QComboBox*>();
+    ASSERT_NE(signalSelector, nullptr);
+    const int createIndex = signalSelector->findText(QStringLiteral("Criar novo SignalData"));
+    ASSERT_GE(createIndex, 0);
+    signalSelector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    ASSERT_NE(signal.getSignalData(), nullptr);
+    ASSERT_EQ(dataList->size(), 1u);
+
+    ObjectPropertyBrowser waitBrowser;
+    waitBrowser.resize(640, 480);
+    waitBrowser.show();
+    bindEditableKernelObject(waitBrowser, &wait);
+    QtBrowserItem* waitItem = findBrowserItemByName(waitBrowser.topLevelItems(), QStringLiteral("SignalData"));
+    ASSERT_NE(waitItem, nullptr);
+    waitBrowser.setCurrentItem(waitItem);
+    waitBrowser.editItem(waitItem);
+    drainGuiEvents();
+    QComboBox* waitSelector = waitBrowser.findChild<QComboBox*>();
+    ASSERT_NE(waitSelector, nullptr);
+    const int sharedIndex = waitSelector->findText(QString::fromStdString(signal.getSignalData()->getName()));
+    ASSERT_GE(sharedIndex, 0);
+    waitSelector->setCurrentIndex(sharedIndex);
+    drainGuiEvents();
+    EXPECT_EQ(wait.getSignalData(), signal.getSignalData());
+    EXPECT_EQ(dataList->size(), 1u);
 }
 
 TEST(PropertyEditorDoubleCommit, BacteriaSignalGridSetterAndSimulationControlPreserveDouble) {

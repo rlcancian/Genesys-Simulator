@@ -1045,7 +1045,7 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
 
     QStringList choices;
     std::vector<ModelObjectAction> actions;
-    if (objectExists) {
+    if (objectExists && !desc.keepsExistingObjectChoicesWhenSet) {
         const QString objectName = QString::fromStdString(referencedDataDefinition->getName());
         choices << objectName;
         choices << QString("Selecionar %1 e Editar").arg(referencedType);
@@ -1054,9 +1054,14 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::SelectAndEdit, "", ""});
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::RemoveReference, "", ""});
     } else {
-        choices << "";
+        choices << (referencedType.isEmpty() ? QStringLiteral("") : QString("Selecione %1").arg(referencedType));
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
         QSet<QString> seenLabels;
+        if (objectExists && desc.keepsExistingObjectChoicesWhenSet) {
+            const QString currentName = QString::fromStdString(referencedDataDefinition->getName());
+            choices[0] = currentName;
+            seenLabels.insert(currentName);
+        }
         for (const std::string& choiceValue : desc.choices) {
             const QString choiceLabel = QString::fromStdString(choiceValue);
             if (choiceLabel.isEmpty() || seenLabels.contains(choiceLabel)) {
@@ -1198,7 +1203,10 @@ ModelDataDefinition* ObjectPropertyBrowser::_referencedModelDataDefinition(const
     }
 
     ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
-    Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
+    Model* model = binding.descriptor.keepsExistingObjectChoicesWhenSet && _modelObject != nullptr
+                       ? _modelObject->getParentModel()
+                       : nullptr;
+    if (model == nullptr) model = (scene != nullptr && scene->getSimulator() != nullptr &&
                     scene->getSimulator()->getModelManager() != nullptr)
                        ? scene->getSimulator()->getModelManager()->current()
                        : nullptr;
@@ -2432,7 +2440,10 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
     }
 
     ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
-    Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
+    Model* model = binding.descriptor.keepsExistingObjectChoicesWhenSet && _modelObject != nullptr
+                       ? _modelObject->getParentModel()
+                       : nullptr;
+    if (model == nullptr) model = (scene != nullptr && scene->getSimulator() != nullptr &&
                     scene->getSimulator()->getModelManager() != nullptr)
                        ? scene->getSimulator()->getModelManager()->current()
                        : nullptr;

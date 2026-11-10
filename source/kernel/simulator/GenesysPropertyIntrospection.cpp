@@ -95,6 +95,7 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.supportsInlineExpansion = control->supportsInlineExpansion();
     desc.supportsListEditor = control->supportsListEditor();
     desc.supportsExistingObjectSelection = control->supportsExistingObjectSelection();
+    desc.keepsExistingObjectChoicesWhenSet = control->keepsExistingObjectChoicesWhenSet();
     desc.supportsObjectCreation = control->supportsObjectCreation();
     desc.supportsNewListElementCreation = control->supportsNewListElementCreation();
     desc.editorHint = control->preferredEditorHint();
