@@ -2144,8 +2144,11 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
             auto found = _propertyList->find(control);
             if (found == _propertyList->end() || found->second == nullptr) {
                 (*_propertyList)[control] =
-                    new DataComponentProperty(_propertyEditor, control, true, refresh);
+                    new DataComponentProperty(_propertyEditor, control, true);
             }
+            // Scene construction pre-creates list editors without a callback.
+            // Install the active browser callback every time this editor opens.
+            (*_propertyList)[control]->setAfterChange(refresh);
             (*_propertyList)[control]->open_window();
         } else {
             auto* editor = new DataComponentProperty(_propertyEditor, control, true, refresh);

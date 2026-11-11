@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <iostream>
+#include <utility>
 
 #include <QObject>
 #include <QWidget>
@@ -33,6 +34,7 @@ public:
     void open_window();
     void config_values();
     bool isInList(const std::string& value) const;
+    void setAfterChange(AfterChange afterChange) { _afterChange = std::move(afterChange); }
 
 private:
     void _notifyChanged();
