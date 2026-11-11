@@ -14,7 +14,7 @@ tracks: AUTO-GUI-003
 - Project: `rlcancian/Genesys-Simulator`.
 - Source baseline **confirmed**: `WorkInProgress` HEAD `aeddc481d00ae17bfdfaa0506f361f03c9939cf9` (documentation PR #574 merge); implementation branch `WiP202611/gui-extensions-architecture-implementation` created directly from this commit.
 - Evidence type: GitHub connector *read-only source inspection*, file-path/line examination and Git tree inventory. **No local checkout, generated CMake graph, compilation, GUI execution, CTest or sanitizer execution**. Source findings are not runtime PASS.
-- Authority: [governance](../../../GOVERNANCE.md), [approved architecture](../../../reference/GUI_EXTENSIONS_ARCHITECTURE.md), [unchanged G0-G7 plan](../../../reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md), `HUM-ARCH-004`, `AUTO-GUI-003`.
+- Authority: [governance](../../../../GOVERNANCE.md), [approved architecture](../../../../reference/GUI_EXTENSIONS_ARCHITECTURE.md), [unchanged G0-G7 plan](../../../../reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md), `HUM-ARCH-004`, `AUTO-GUI-003`.
 - Scope is **G0 only**: coupling audit, ownership and event map, serialization grammar/fixtures, entry-point identification, test strategy. No C++/CMake/kernel modifications or architectural redesign. The previous student PR #436 remains historical reference only.
 
 ## 2. Existing interfaces and implementation inventory — confirmed in code
