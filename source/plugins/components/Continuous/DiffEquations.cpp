@@ -474,6 +474,15 @@ bool DiffEquations::_check(std::string& errorMessage) {
         errorMessage.append("Error saving source code to compile: ");// + e.what();
         errorMessage.append(e.what());
 	}
+	// The compiler now refuses to overwrite a loaded binary. Release the old
+	// version before regenerating, and invalidate the old function pointer.
+	if (resultAll && _cppCompiler->getDynamicLibraryHandler() != nullptr) {
+		dispatchEvent_SharedLibHandler = nullptr;
+		if (!_cppCompiler->unloadLibrary()) {
+			errorMessage += "DiffEquations: cannot unload previous compiled library.";
+			resultAll = false;
+		}
+	}
 	// if saved, compile
 	if (resultAll) {
 		trace("Compiling source file \"" + _sourceFilename + "\"");
