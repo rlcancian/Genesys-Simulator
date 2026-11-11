@@ -119,6 +119,57 @@ ModelGraphicsView -> ModelGraphicsScene (QGraphicsScene)
 
 Do not interpret the model `.gen` fixtures as `.gui` graphical regression fixtures. Mark unexecuted acceptance **UNKNOWN**.
 
+## 6A. Expanded source include/cast inventory (2026-11-11 follow-up)
+
+**Method / scope:** the GitHub tree at baseline commit `aeddc481...` contains 222 `.cpp`/`.h` files under the main GUI. A second, read-only pass inspected **173 distinct files** from `actions/`, `animations/`, `controllers/`, `graphicals/`, `services/`, the application root, `cellular_automata/`, `dialogs/` and non-vendored `propertyeditor/`. Search predicates covered direct `#include` paths to `plugins/`/`essentialPlugins/` and selected direct `dynamic_cast` cases, reporting path and line. Existing extension contracts and selected extension implementations were examined separately. This is **source-text evidence, not a compiler-generated transitive include or target graph**; incidental/indirect includes, precompiled headers and files outside the scanned subset are not cleared.
+
+**Additional confirmed concrete GUI -> model-plugin dependencies (all paths rooted at `source/applications/gui/genesys/`):**
+
+| Host source / line | Direct dependency | Implication / subsequent boundary |
+|---|---|---|
+| `MovedGuiCompatibilityIncludes.h:25–30` + `CMakeLists.txt:61–64` | `Attribute`, `Counter`, `Entity`, `Variable`, **`Queue`** through a compiler-wide forced `-include` | **P1:** this header forces Queue model-plugin visibility into every main GUI translation unit, not just graphical animation code. Do not remove without auditing what currently relies on implicit declarations. |
+| `mainwindow.cpp:25–29,71,81` and `mainwindow_modelrepresentations.cpp:26` | `ModalModelDefault`, `Submodel`, `FSMState`, `DefaultNetwork`, `EFSMNetwork`, `Variable` | Main host includes optional modal and variable implementation types; classify usages as editor/domain responsibilities before migration. |
+| `actions/DecideConditionUndoCommand.h:7`, `graphicals/GraphicalModelComponent.cpp:38,119–125`, `propertyeditor/ObjectPropertyBrowser.cpp:14,2107` | `Decide` | Component-specific port count, undo and property editing: preserve behavior and address with a distinct GUI contract after targeted tests, not a G1 cosmetic include removal. |
+| `actions/EFSMInitialStateUndoCommand.cpp:3–4`, `EFSMStateMembershipUndoCommand.cpp:6–8`, `EFSMStatePropertiesUndoCommand.cpp:3–4`, `EFSMTransitionPropertiesUndoCommand.cpp:3–4`, `EFSMTransitionUndoCommand.cpp:3–4`, `ModalModelBindingsUndoCommand.cpp:3–4` | `FSMState`, `EFSMNetwork`, `DefaultTransitionExtensions`, `ModalModelDefault`, `DefaultNetwork` | Specialized EFSM/modal editing and undo paths must retain invariants; may be relocatable to graphical extension controllers after the generic interface is proven. |
+| `controllers/EditCommandController.cpp:24–26`, `GraphicalContextMenuController.cpp:4–6`, `graphicals/EFSMTransitionGraphicsItem.cpp:3` | Modal/EFSM plus `BioReaction` and `BioSpecies` | Current generic controller and scene item code knows domain-specific plugin classes. |
+| `graphicals/GraphicalModelDataDefinition.cpp:11–12` | `GeneticCircuitPart`, `GeneticRegulation` | Domain-specific biological glyphs and layout interact with existing renderer style; record existing visual oracles before migration. |
+| `services/EFSMNetworkDiagramCodec.cpp:9–11`, `EFSMNetworkDiagramProjection.cpp:13–14` | `FSMState`, `EFSMNetwork`, `DefaultTransitionExtensions` | EFSM-specific persistence/projection services, distinct from generic `.gui` animation persistence. |
+| `animations/AnimationVariable.h:12–17`, `AnimationVariable.cpp:3–7`, `graphicals/ModelGraphicsScene.h:56–60` | `Variable` and essential kernel plugins | Existing legacy animation data path; note that `essentialPlugins` classes are kernel-owned, unlike optional simulation plugin packages. |
+| `cellular_automata/CellularAutomataDemoBuilder.h:97–109`, `.cpp:10`, `CellularAutomataLatticeWidget.cpp:5`, `CellularAutomataViewerWindow.cpp:6` | Multiple concrete cellular automata model types and rules | Domain-specific application code currently compiled with main GUI; migrate to an optional GUI extension package only after actual scene-based replacement is tested. |
+| `dialogs/dialogBreakpoint.cpp:33` | `Transfer/Access.h` | Generic dialog includes a specific model plugin type; retain until actual debugger semantics and dependencies are mapped. |
+
+**Scope control:** these findings expand the G0 coupling backlog; they do **not** expand G1 into a broad EFSM, modal, bio, debugger or property-editor rewrite. The critical proof remains: a new graphical extension can register a tool/factory without editing or rebuilding generic host source for each plugin type. Existing mandatory internal kernel contracts must not be confused with optional concrete simulation plugin dependencies.
+
+## 6B. Prior verified CI baseline and remaining exact-head gate
+
+The preceding **documentation-only** PR #574 passed all required checks before merging into `WorkInProgress`:
+
+- Workflow run [43030166805](https://github.com/rlcancian/Genesys-Simulator/actions/runs/43030166805): `Configure, build and test tests-unit` **PASS**; CTest log reports **2047 tests passed, 0 failed**; `Diagnose GUI GMDD tests` **PASS**.
+- Workflow run [43030166837](https://github.com/rlcancian/Genesys-Simulator/actions/runs/43030166837): Launcher CI **PASS**.
+- Workflow run [43030166843](https://github.com/rlcancian/Genesys-Simulator/actions/runs/43030166843): Documentation governance **PASS**.
+
+The PR #574 head `35f92cecb32defcc4792a52bd8ddca7397874c95` was merged as `aeddc481d00ae17bfdfaa0506f361f03c9939cf9`; the G0 implementation branch started directly there. The PR #575 diff before this addendum consists **only of four Markdown files** and does not modify C++, CMake, build presets or test source. Thus the earlier CI is a relevant **unchanged-code baseline**, not evidence that an extension factory exists or that any new source implementation was tested.
+
+The current G0 PR [#575](https://github.com/rlcancian/Genesys-Simulator/pull/575) also runs its own final-head checks; inspect their results before integration, and do not reuse the previous HEAD's check state after new documentation commits.
+
+The **remaining technical G0 gate** is a *generated* GUI target source/dependency/inclusion inventory, as opposed to an inferred GitHub tree listing. The repository already demonstrates a CMake File API codemodel query in `.github/workflows/genesys-plugin-target-introspection.yml`; this workflow does not currently attach a GUI-target codemodel artifact to PR #575. Reuse that demonstrated approach locally or with an explicitly authorized bounded CI inspection, rather than creating an unrelated architecture or pretending the source-text scan is a generated build graph.
+
+**Suggested local generated-graph capture:**
+
+```bash
+mkdir -p build/gui-app/.cmake/api/v1/query
+touch build/gui-app/.cmake/api/v1/query/codemodel-v2
+cmake --preset gui-app -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build --preset gui-app --parallel "$(nproc)"
+# Inspect: build/gui-app/.cmake/api/v1/reply/index-*.json,
+# its codemodel-v2 target JSON and compile_commands.json.
+# Record genesys_gui_application sources, target dependencies,
+# compiler-wide -include and optional-plugin include paths.
+```
+
+Report exact branch/commit, CMake/G++/Qt/Ninja versions, generated source-count, relevant target names, graph/command file paths and results. **No generated graph was available to this cloud-only read access**; G0 remains PENDING VALIDATION until this evidence and exact-head baseline have been reconciled.
+
+
 ## 7. Validation and handoff
 
 | Check | Result | Evidence |
