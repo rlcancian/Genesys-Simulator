@@ -18,6 +18,7 @@
 #endif
 
 #include <string>
+#include <vector>
 
 #include <sys/types.h>
 #include <limits.h>
@@ -51,7 +52,7 @@ public:
 
 public:
 	CppCompiler(Model* model, std::string name = "");
-	virtual ~CppCompiler() = default;
+	virtual ~CppCompiler() override;
 public: // static
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static PluginInformation* GetPluginInformation();
@@ -98,7 +99,7 @@ protected: // could be overriden
 	virtual void _initBetweenReplications() override;
 	// virtual void _createInternalAndAttachedData() override;
 protected:
-	CompilationResult _invokeCompiler(std::string command);  //system(command.c_str());
+	CompilationResult _invokeCompiler(const std::vector<std::string>& arguments, const std::string& outputPath);
 	std::string _read(std::string filename);
 
 protected:
@@ -115,7 +116,7 @@ private:
 		const std::string outputDir = ".temp/";
 		const std::string outputFilename = "";
 		const std::string compiler = "g++";
-		const std::string flagsGeneral = "-v -w -std=c++14";
+		const std::string flagsGeneral = "-v -w -std=c++23";
 		const std::string flagsDynamicLibrary = "-shared -fPIC";
 		const std::string flagsStaticLibrary = "-fPIC";
 		const std::string flagsExecutable = "";
