@@ -3,141 +3,135 @@ document_type: implementation-plan
 authority: technical-reference
 owner: project-maintainer
 last_reviewed: 2026-11-11
-status: planned-not-started
+status: active-execution-revised-v2
 tracks: AUTO-GUI-003
 ---
 
-# Main GUI Graphical Extensions — Implementation Plan
+# Main GUI Graphical Extensions — Implementation Plan (v2, 2026-11-11)
 
-## 1. Objective, authorization and status
+## 0. Human-directed revision and change history
 
-Implement the [approved graphical extension architecture](GUI_EXTENSIONS_ARCHITECTURE.md) incrementally, **without** bringing optional simulation-specific animation, renderer, dialog or menu implementation into generic GUI host code. Preserve the simulation kernel/parser/plugin independence from all Qt6 applications.
+**Version 1:** approved and recorded 2026-11-11 with eight steps `G0–G7`. Its architecture, intended feature set, module boundaries and deferred dynamic-loading constraints remain authoritative via [GUI_EXTENSIONS_ARCHITECTURE.md](GUI_EXTENSIONS_ARCHITECTURE.md).
 
-Decision: `HUM-ARCH-004` in [BACKLOG_HUMAN](../BACKLOG_HUMAN.md), 2026-11-11; execution tracker: `AUTO-GUI-003` in [BACKLOG_AUTONOMOUS](../BACKLOG_AUTONOMOUS.md), initially **blocked-dependency / not ready** pending an explicit bounded implementation activation and current-code revalidation. Documentation approval and merge do not authorize unattended implementation. Track each implemented slice with a separate bounded branch/PR after activation, not one giant code rewrite.
+**Version 2, 2026-11-11 — explicit maintainer decision `HUM-ARCH-005`:** the first execution revealed an **overly burdensome audit and validation strategy**. Multiple agent sessions completed preparation, inventory, local GUI configuration/build and tests, yet no graphical feature was implemented because generated dependency graphs, repeated broad baselines, evidence consolidation and reporting were treated as serial *prerequisites*. This was an **error in the execution plan** relative to the objective of making functional progress. The maintainer instructed that work prioritize *actual implementation*, with a **small, coherent, impact-directed test set at each step**, then deeper regression and assurance when a demonstrably functional product exists.
 
-**Supported baseline**: Ubuntu 24.04, GCC/toolchain-supported C++23, CMake + Ninja, Qt6, Google Test and existing test/GUI presets (`tests-unit`, `tests-kernel-unit`, `tests-smoke`, `gui-app`), per [README](../../../README.md), [governance](../GOVERNANCE.md), [current status](../STATUS.md) and [GitHub runbook](../runbooks/GITHUB_AGENT.md). Do not claim local build or UI tests from a remote-only agent.
+This is a change of **execution sequence and validation depth, not acceptance of known bugs or permission to misstate results**. Version 2 supersedes Version 1's repeated pre-implementation checks, exhaustive per-stage test matrix and serial stop gates; original G0–G7 functional goals remain. A failure in a directly affected path must be fixed or that path explicitly disabled; no red/UNKNOWN evidence may be reported as PASS. The [targeted governance provision](../GOVERNANCE.md) applies to this **experimental graphical-extension branch only**; normal merge/release gates remain mandatory.
 
-## 2. Scope and explicit non-goals
+## 1. Goal, scope and operating rules
 
-In scope:
-- evolve `GuiExtensionPlugin`/`GuiExtensionRegistry` and dependency metadata without a parallel plugin framework;
-- remove *generic host* coupling to concrete model plugins for animation tools/renderers and keep optional concrete code in application-local graphical extensions;
-- register scene animation tools/factories, component renderers and alternative GUI service providers;
-- reuse existing GUI event/controller contracts to provide thread-safe state/event notifications to interested extensions;
-- persist arbitrary extension-owned animation data and retain unknown/missing-extension records by default, with explicit user-selected discard when saving;
-- introduce end-to-end exemplar(s): queue/resource/station migration and later BacteriaColony/CellularAutomata scene visualizations, GUI-only contribution, alternative report/Expression Builder provider;
-- phase out obsolete Tools/Extensions viewers **after** equivalent scene-based functionality is validated; maintain user-visible compatibility during migration;
-- maintain future dynamic-loading feasibility at the dependency/identifier/contract level while building statically.
+Implement optional graphical extensions of the main Qt6 GUI that provide registered menus/actions/toolbar entries, windows/docks, model-scene animations, component renderers and alternative GUI services, while preserving kernel/parser/simulation-plugin independence from Qt. Generic GUI host must not import *new* optional concrete plugin headers or require plugin-specific switch/enum branches when adding an extension. Existing concrete couplings are migrated incrementally, not removed via one risky rewrite.
 
-Out of scope now:
-- `QPluginLoader`/`dlopen`, unloading, hot reload and unload guards; versioned C ABI implementation, package/SDK distribution and separate shared-library CMake targets;
-- rewriting kernel simulation semantics, parser, whole-cell models or CellularAutomata -> DefaultNetwork backend migration;
-- moving all GUI directories, redesigning Property Editor, creating a parallel scene/network editor, refactoring plugin target overlap (#492) or rewriting the UI framework;
-- wholesale adoption of PR #436 or student ZIPs; they are review-only reference material.
+Current environment: Ubuntu 24.04, C++23 where configured, Qt6, CMake/Ninja and Google Test. Work on `WiP202611/gui-extensions-architecture-implementation`, starting from existing draft [PR #575](https://github.com/rlcancian/Genesys-Simulator/pull/575) and the current remote head; no fresh parallel implementation branch for the same task without an explicit justified split. Prior history: PR #574 merged architecture docs; the source-backed [G0 inventory](../history/evidence/2026/11/2026-11-11_gui_extensions_g0_inventory.md) exists.
 
-## 3. Preconditions and baseline audit (G0; first execution slice)
+**Never expand the scope into:** `dlopen`/`QPluginLoader`, dynamic unload, hot reload, ABI/SDK implementation, separate shared targets, a parallel scene/editor or framework, broad directory moves, general EFSM/Decide/Property Editor cleanup, model/kernel science or parser rewrites, automatic dependency installers, wholesale application of student PR #436. Keep static registration now, with stable extension/type IDs and factories compatible with future dynamic loading.
 
-Prior to each change, re-read `/README.md` and `/docs/ai_assistants/README.md`, governance, architecture, status, both backlogs and this plan. Confirm current `WorkInProgress` HEAD; the source inventory in the architecture reference is an **2026-11-11 observation**, not guaranteed current indefinitely.
+**Continuous execution:** after each small code slice, build its affected target, run the relevant focused tests and continue if they pass. Commit meaningful functionality, push to GitHub at each functional checkpoint, and keep PR #575 accurate; do not stop for routine documentation handoff or seek repeated maintainer confirmation. Diagnose, correct and retry focused failures. Stop only for actual inability to proceed safely, material design choice not covered by this architecture, potentially destructive behavior, or a governance gate requiring human approval.
 
-Inventory/traceability:
-1. inspect `extensions/GuiExtensionContracts.h`, `GuiExtensionManager.*`, `GuiExtensionPluginCatalog.*` and concrete extensions, including registration and `requiredModelPlugins`;
-2. locate all core GUI includes of concrete optional plugin headers (and hidden dependencies through helper services), hardcoded drawing modes/`switch`/`dynamic_cast`, event-driven special cases in `ModelGraphicsScene`/`SceneToolController`/`SimulationEventController`;
-3. map animation creation, scene ownership, deletion/undo/group/resize, event callback lifetimes, saved `.gui` grammar, `AnimationPlaceholder`, serialization and load fallback;
-4. inspect plugin metadata/dependencies in `PluginInformation`, current statically registered plugins, CMake compile-source graph (`file(GLOB_RECURSE)`) and GUI dialog/icon/UI resources;
-5. identify at least one model fixture per animation family; record event ordering, model IDs, missing dependency scenarios and GUI lifecycle.
+## 2. Two levels of validation — deliberately lean before integration
 
-**G0 acceptance:** a source-path/line-backed coupling inventory, a before/after responsibility matrix, current format fixture list, ownership diagram, implementation entry points and a test plan; no broad code modifications. Reconcile other active GUI changes/PRs before starting.
+### 2.1 Development loop (G1–G6)
 
-## 4. Milestones and gates (each can be a bounded PR)
+**One fast check set per functional slice, not per edit or file:**
 
-### G1 — Core extension registration + dependencies
+1. Configure/build the affected `gui-app` or existing focused GUI test target using CMake/Ninja (reuse a valid build tree; do not repeatedly rebuild everything from scratch).
+2. Run **1–3 focused automated tests** exercising the changed behavior (one happy path, one meaningful failure/absence case, and one state/persistence case if relevant). Reuse existing GUI-GTest harnesses and test targets.
+3. Perform one short Qt offscreen or interactive scene check **when** the slice changes menu/toolbar placement or scene interaction; screenshots are not a substitute for action/scene behavior checks.
+4. Record command, result and commit in a **compact existing evidence/progress file**; do not create another full audit or lengthy log dump. An intermediate proof is `PASS for its measured scope` only, not production assurance.
 
-- Preserve the C++ pure-abstract `GuiExtensionPlugin` and `registerContributions(GuiExtensionRegistry*)`; avoid mandatory virtual methods for each category.
-- Extend registry with `addAnimation`, `addComponentRenderer`, `addServiceProvider` **only as needed by subsequent working slices**. Existing `addAction`/`addWindow`/`addDock` remain compatible.
-- Design typed dependency declarations for simulation/model plugins, GUI extensions, and system capabilities. Existing `requiredModelPlugins()` is the initial compatibility route; validate required vs optional behavior; no installation commands.
-- Detect duplicate contribution IDs/extension IDs, missing mandatory plugin(s) and ambiguous registration deterministically; GUI can launch with a disabled/absent optional extension.
-- Do not expose `Ui::MainWindow` as a new external plugin contract; adopt a minimal capability/context abstraction incrementally without broad API churn.
-- **Acceptance:** focused registry/metadata/disabled/duplicate tests; existing contributions unchanged; smoke GUI startup with and without optional registered extension; generic GUI code does not gain concrete plugin includes.
+**Do not require at every slice:** full generated CMake File API graph; complete transitive header inventory; all ~2,000 unit tests; kernel/smoke suite when untouched; repeated sanitizer, ABI, packaging, PDF generation, every exception test or exhaustive dependency matrix. No arbitrary test-count quota beyond the bounded relevant scenarios.
 
-### G2 — Insertable animation tool + generic scene factory
+**Safety exceptions:** if changing kernel/plugin semantics, event ordering, persistence loss behavior, ownership/lifetime, or API compatibility, add the **specific focused negative/regression test before accepting that change**; use a sanitizer only for a genuine lifetime risk. Never silence failing relevant tests, change CI to make checks optional, discard unknown extension data, or omit a required security check.
 
-- Make registered animations discoverable via menu `View → Animations` and GUI animation toolbar (adapt existing GUI placement rather than creating competing UI controls); handlers activate the correct tool.
-- Generic scene invokes the registered animation factory for click/draw or drag/drop insertion; host manages geometry, selection, undo and existing item lifecycle; extension handles domain rendering.
-- Remove per-plugin animation enums, hardcoded class branches and plugin-specific includes from host paths *as they are migrated*. Do not break existing graphics/clock/counter/variable/plot animations.
-- Check whether `AnimationPlaceholder` supports custom extension-owned visual state; do not force it if contract cannot preserve independent factories.
-- **Acceptance:** an independent *static exemplar* adds a new animation tool and visual item without modifying `MainWindow`, `ModelGraphicsScene`, generic controllers or kernel; focused drawing/drag-drop/undo/delete/resize tests; GUI build and no behavior regression for existing tools.
+### 2.2 Integration/assurance loop (after the first functional MVP, at G7)
 
-### G3 — Simulation notifications and graphical persistence
+Before declaring the completed implementation ready for merge: build `gui-app`, run relevant focused GUI interaction and persistence tests and **ordinary `tests-unit` regression** on the final source head; use `tests-kernel-unit`/`tests-smoke` if their code paths or runtime behavior were affected; targeted ASan/UBSan/LSan when ownership changes; required CI, documentation-governance checks and manual-impact review. Record failures, baseline exceptions and results. Mandatory repository checks still govern merges. **Do not merge a failing/unknown mandatory check without an explicit documented waiver.** Defer release-grade ABI/unload/packaging/performance/security matrix to the separate future feature/release process, not to a false `done_confirmed` claim.
 
-- Reuse `OnEventManager` through existing GUI `SimulationEventController` registrations. Bridge events/snapshots from GUI to active graphical instances rather than letting every item register transient kernel callbacks.
-- Verify pre/post-event sequence, time, thread affinity, model switching and replication lifecycle, with special attention to aggregated/continuous state versus per-event visualization.
-- Define a versioned generic graphical record with stable extension/type/item/target IDs, geometry and extension-specific opaque payload; preserve compatible legacy `.gui` records and allow type-specific restore.
-- If a graphical extension is missing, retain the unknown record *as data* and optionally render a non-operational placeholder; on resave offer `Preserve` (default) or explicit `Discard`. Never discard unrecognized fields without user consent.
-- **Acceptance:** save/reload of known animation; **load -> save while extension absent -> reload with extension available** preserves payload, identity, target and geometry; tests for unknown schema, duplicate names, missing model target, missing extension, cancel/discard and corrupt record; event order and GUI-thread update tests; no change to scientific state.
+## 3. Fast development sequence (same eight milestones G0–G7)
 
-### G4 — Migrate existing domain animations (separate small PRs)
+### G0 — Short baseline, then start coding
 
-- Migrate Queue, Resource and Station creation/render/event handling from GUI host to corresponding concrete graphical extensions, preserving actual semantics (resource acquisition/release is not assumed from any `Seize`/`Release` event without a state oracle; station entering/leaving likewise).
-- Preserve existing model/link and historical-current `.gui` fixture behavior. Once migrated, eliminate remaining host concrete plugin includes/cases/calls for that domain; stage each migration separately and keep a regression fixture.
-- Prefer concrete extensions at `source/applications/gui/genesys/extensions/plugins/`, leaving framework interfaces/registry in `extensions/`. Avoid source moves until build/resources/includes are mapped; continue static build.
-- **Acceptance:** same model outputs with and without graphical extensions; identical supported animation states at event checkpoints; no hardcoded target plugin classes in generic GUI; disabled extension leaves simulation intact; save/reopen/undo/delete pass.
+**Already performed:** GitHub source/coupling map, before/after ownership/persistence matrix and test candidates in the G0 inventory; a previous CI baseline passed, and the local Codex session **reported** successful GUI configuration/build and `tests-unit` execution but did not publish command logs/commit. These local results are **reported, not independently verified**. The generated comprehensive File API/include graph remains `UNKNOWN` and is **not** a blocker for the first registered animation.
 
-### G5 — Bacteria Colony + Cellular Automata scene visualizations
+**Closure rule:** verify from the current workspace or retained terminal logs that (a) the relevant GUI target builds and (b) at least the existing impacted GUI tests run, or rerun only the absent narrow check; add a concise G0 result (SHA, command, pass/fail/unknown) to the existing G0 inventory; commit/push. A full generated target/include graph and 100% repository include census are **optional deferred evidence**, to revisit if a concrete compilation/dependency conflict emerges. A missing optional graph **must not cause another session to terminate without implementing G1**.
 
-- BacteriaColony graphical plugin declares the model plugin dependency, registers scene animation and View/Animations + toolbar contribution; binds a particular colony by persistent target identity; draws and updates in the **model scene** rather than relying on a Tools/Extensions window.
-- CellularAutomata graphical plugin similarly contributes a configurable grid animation bound to the proper model data; no unrelated CA backend/DefaultNetwork refactor.
-- Progressively retire the old Tools/Extensions viewers only after the in-scene experience and data persistence are complete.
-- **Acceptance:** integration scenarios for insert, select/configure, start/pause/step/restart, closed/reopened model, extension disabled/missing, model change and UI repaint/latency; verify simulation results unchanged. Large biology snapshots may be throttled only if their visual semantics are declared.
+Do not declare unobserved tests PASS. If local evidence is unavailable, execute a minimal GUI build and focused GUI suite immediately rather than restarting the audit.
 
-### G6 — Component renderer + replaceable GUI service providers
+### G1 — Existing extension contract: registry and dependencies
 
-- Register optional renderers by simulation type and style context (Classic Desktop/Modern Fusion or actual supported styling settings) with generic host fallback; ensure graphical themes do not change domain semantics.
-- Register alternative providers for output reports, charts, Expression Builder etc. by stable service ID, with an explicit selected provider and deterministic no-provider default.
-- Keep GUI menu/action identity stable; do not allow overriding arbitrary private widgets or action handlers.
-- **Acceptance:** two implementations for the same service are selectable, predictable across save/settings when applicable, and default is restored on extension absence; style variations and persist/reopen tests. Verify no unapproved GUI startup/regression changes.
+- Preserve `GuiExtensionPlugin` as a lean pure abstract C++ interface and existing `registerContributions`. Reuse `GuiExtensionRegistry`, `GuiExtensionManager` and `GuiExtensionPluginCatalog`.
+- Add only the metadata, minimal typed dependency categories (model, graphical extension, system capability) and registration IDs needed by the first animation; keep `requiredModelPlugins()` backward compatible. Validate missing required model/GUI dependency and duplicate IDs deterministically; absence disables contribution without changing simulation.
+- Do not implement a general dependency installer, dynamic library manager, complex resolver, or broad replacement of `GuiExtensionRuntimeContext`.
+- **Lean gate:** GUI target builds; focused tests for valid registration, duplicate/missing dependency and no-kernel-dependency case. Next G2 may begin immediately.
 
-### G7 — Documentation, review and integration
+### G2 — Registered graphical animation/factory, menu and toolbar (first visible feature)
 
-- Each functional PR should update affected Developer/User Manual content and regenerate canonical PDF(s) when user-visible or architectural changes require it; record exact scope/versions/results and links in the mandated governance evidence locations.
-- Close only the actual accepted slice in backlog/status. Mark the overall task `done_confirmed` only after complete acceptance, including negative/error cases and required regression evidence.
-- Merge each validated bounded PR into `WorkInProgress`; do not promote to semester-stable or master as part of this roadmap.
+- Register an animation **descriptor plus type-specific factory** as a contribution rather than hardcoded `DrawingMode`/`createPlaceholderAnimation` branch. Use the existing scene/editor, action creation, placement and undo mechanisms; avoid a second QGraphicsScene or per-plugin menus in `MainWindow`.
+- Place the action in `View → Animations` and an existing animation toolbar, without a new per-plugin host QAction declaration.
+- Supply a separate, statically registered graphical extension under `source/applications/gui/genesys/extensions/plugins/`; it produces at least one **real type-specific QGraphicsItem/AnimationPlaceholder-derived visualization** with visible state, not merely a menu message. Reuse legacy animation bases only if compatible.
+- **Lean gate:** GUI build, one focused registered-tool/in-scene insertion test (position and selection), and one undo/remove/re-add or repeated-insertion test. Execute a single bounded GUI interaction check. Preserve existing drawing modes until migrated.
 
-## 5. Required verification matrix
+### G3 — Minimal event updates and safe graphical persistence
 
-| Invariant / scenario | Verification / oracle |
-| --- | --- |
-| Kernel/app separation | Build/test kernel and shell with GUI extensions disabled; inspect compile and link dependencies; no new Qt includes in kernel/plugins |
-| Zero optional concrete classes in host | Source/include graph search plus compiler dependency confirmation; new exemplar requires no edits to generic scene/mainwindow/controllers |
-| Registration/dependencies | Nominal, duplicate ID, missing required/optional model and system capability, GUI-only extension |
-| Action/menu/toolbar | GUI interaction and Qt test: correct placement, handler, enable/visibility, checked/state and teardown |
-| Animation creation | scene insert via tool and drag/drop, item position/size, undo/redo/delete, multiple instances and context switch |
-| Runtime events | Correct pre/post state, model/replication/reset, event order, off-GUI-thread delivery and bounded refresh |
-| Persistence | Original `.gui` fixtures; known and missing extension round-trip including unknown fields; explicit confirm discard |
-| Renderers/services | deterministic selected provider, fallback, theme/style variants, two extensions contending |
-| Safety/regression | CMake + Ninja Qt6 GUI preset, Google Test affected suites, unit/kernel/smoke as impact requires; ASan/UBSan/LSan on lifetime changes |
+- Extend existing GUI-side `SimulationEventController` (or a narrowly scoped GUI-owned adapter) to forward the minimum safe event/snapshot needed by the MVP animation, with correct GUI-thread delivery. Avoid direct per-item kernel callback subscriptions and new kernel dependencies.
+- Preserve existing `.gui` animation records. Save/reload the new registered animation's common and extension-owned state with stable IDs, schema and target identity.
+- Implement **lossless retention of unknown/absent-extension graphical records by default**; avoid data destruction on ordinary save. A user-confirmed discard UI may be completed after the first retention path, but do not offer a destructive implicit fallback. Do not claim preservation without a test.
+- **Lean gate:** one known animation save/reload test, one missing-extension `load→save→reinstall→reload` opaque record test, plus one event-driven GUI-state update check. Proceed as soon as relevant tests pass; defer exhaustive corrupt-field variants.
 
-Report **PASS/FAIL/UNKNOWN**, with branch/head, environment, commands, fixture names, expected outputs and exact CI runs/artifacts. Do not infer PASS from build-only or PR merge. A remote-only agent must use CI evidence and cannot claim an interactive local GUI session.
+### G4 — First real simulation-domain extension, then optional legacy migration
 
-## 6. Dependencies, risk control and rollback
+- Move **at least one** existing simulation-domain visualization into a concrete graphical extension; priority candidates Queue/Resource/Station. Choose the lowest-risk candidate based on current code, record the choice succinctly and keep its actual kernel data/GUI behavior semantics. The feature must appear in the **model scene**, not exclusively a standalone window.
+- Add a second existing domain family only if its migration is small and nonblocking; complete Queue/Resource/Station incrementally as subsequent deliverables.
+- Keep `GraphicalModelComponent` Queue-pointer coupling and current legacy modes until their replacement is actually tested; do not make removal of every preexisting plugin include an MVP gate. Each newly added extension should avoid new host-side concrete includes.
+- **Lean gate:** real model fixture updates the in-scene visualization; one bounded relevant state transition test and save/reload regression. Scientific simulation result must not change.
 
-- Prerequisite: current source/branch inspection, including ongoing GUI/editor modifications; `HUM-ARCH-001` / #492 is a blocker for eventual dynamic package migration, *not* for the current static GUI registration design.
-- Preserve current registration and legacy GUI serialization while adding new generic constructs; avoid broad renaming/relocation that breaks model files or resources.
-- Risk: plugin-provided `QGraphicsItem` ownership vs scene and QObject parents. Map create/adopt/delete/undo/rebuild before touching pointer lifetimes; focused sanitizers only on the affected paths.
-- Risk: timing/observability of `Seize`/`Release`, queue occupancy and biological state. Validate against authoritative kernel state at declared event boundaries.
-- Risk: unavailable extension records. Fail closed for malformed/mismatched payload and preserve unrecognized data, with user-confirmed destructive action.
-- Rollback by reverting the bounded feature PR, not altering kernel semantics or deleting unknown data; retain compatibility fixtures.
+### G5 — Biological/cellular scene visualizations
 
-## 7. Deferred dynamic loading / unloading gate (NOT part of G0–G7)
+- Adapt the existing `BacteriaColony` and `CellularAutomata` graphical viewers, in scoped increments, to contribute animations insertable into `ModelGraphicsScene` with stable target identity; prefer reuse of their existing rendering and state access rather than a new visualization stack.
+- Existing Tools/Extensions windows remain available until scene version reaches equivalent essential behavior. Do not couple this task with a new CA/DefaultNetwork model backend.
+- **Lean gate per family:** one actual in-scene update plus one save/reload/disable-and-reenable check. Record missing optional features; do not call unfinished migration complete.
 
-Dynamic graphical packages and unload support require a *separate future decision, issue, test plan and PR series*, after static target consolidation concerns and ABI design are resolved. Record, but **do not implement now**, Qt/C++ bridge vs approved versioned C ABI, package discovery, symbol/SDK/toolchain compatibility, host/plugin allocator boundaries, lifecycle and active scene/QObject/callback pinning, dependency unload order, event queue drain, security/trust, state rehydration, error recovery and teardown test matrix. No current-phase `QPluginLoader`, `dlopen`, ref counting or hot reload.
+### G6 — Renderer/provider extensibility
 
-The stable C ABI mandated for future core packages does not allow Qt/C++ objects across that boundary. The future GUI boundary requires explicit design: versioned C ABI adapter where appropriate and/or a separately controlled Qt-compatible host SDK, with no undocumented compatibility claims.
+- Add small registered component-renderer and service-provider contracts only as demanded by actual examples, retaining Classic/Modern host fallback.
+- Demonstrate one alternative representation and one selectable GUI service (report/chart/Expression Builder or simpler existing contract-compatible service), with deterministic fallback when disabled.
+- **Lean gate:** focused provider selection/fallback and style rendering tests; GUI builds and existing default remains available.
 
-## 8. Plan execution and exit conditions
+### G7 — Consolidation, documentation and integration
 
-- **Planning stage:** maintainer decision and docs recorded; no source change; `AUTO-GUI-003` not executable yet.
-- **After explicit activation:** start with G0 audit and one minimum G1/G2 vertical slice proving registered static animation insertion. Do not begin queue/resource/bacteria migrations until that contract and persistence strategy are tested.
-- **Success:** adding a new optional GUI extension requires no changes to generic GUI host source, it can declare simulation dependencies without owning them, it receives safe GUI-routed simulation updates, and its in-scene animation survives absence/reinstallation and save/reopen with no silent data loss.
-- **Stop/escalate:** an unresolved semantic kernel event question, persistence compatibility ambiguity, ownership/ABI boundary shift, broad target reorganization, or new requirement for actual dynamic loading. Do not assume decisions not recorded in the approved architecture.
+- Reconcile code, architecture docs, status/backlogs, User/Developer Manual impact and evidence in the existing governance structures; only publish PDFs when actual affected manual changes require them.
+- Run the **integration/assurance loop `2.2** once on the final candidate head, with reasonable diagnostics if a suite fails. Review PR #575 (or bounded follow-on PRs if the existing PR was already integrated), required checks and compatibility. Keep draft until ready.
+- Close individual milestones only for demonstrated behavior. `AUTO-GUI-003` reaches `done_confirmed` only with its complete approved scope, actual tests and required review/integration; partial MVP is not `done_confirmed`.
+- No automatic stable-branch promotion or undocumented waiver.
 
-**Documentation-only manual impact:** this plan records future architectural and UI changes but modifies no current runtime/user instructions. Developer/User Manual updates and generated PDFs belong to the implementation PRs as their actual scope is delivered.
+## 4. Expanded MVP — deliver functional breadth before full assurance
+
+A **meaningful interim MVP** is reached after G1, G2, the minimal G3 slice **and at least one domain-specific in-scene visualization from G4**. It must visibly demonstrate:
+
+1. A statically registered, optional graphical plugin with stable ID and declared model/GUI/system dependency metadata;
+2. A plugin-contributed menu + animation toolbar tool, whose factory creates a type-specific movable/selectable scene item **without new domain-plugin includes or branches in generic host**;
+3. Live/current simulation or model-state-driven update through the GUI-side path, not only a static rectangle;
+4. Save/reopen of that item, including extension data, plus preservation on re-save with the graphical extension absent;
+5. A **real simulation-domain example** whose visual state reflects a model object, not an inert demonstration;
+6. Bounded tests for registration, creation, state update and round-trip, plus one GUI build and a short interaction check.
+
+**MVP excludes:** full migration of all existing animations and all bio/cellular viewers, all interchangeable services/renderers, dynamic loading, hot-unload safety, exhaustive unrelated regression suite at each intermediate commit and full performance/ABI validation. These remain G4–G7 or future scoped work; they are not silently discarded.
+
+Allow staged implementation **in the same workstream**: `MVP-A` is registered tool+factory+visual update (G1/G2 + partial G3) and `MVP-B` adds retained persistence and one real domain extension. Do not stop work after MVP-A merely to request another prompt; implement MVP-B once focused tests permit.
+
+## 5. Minimal reporting and Git collaboration
+
+- Use the existing `AUTO-GUI-003` backlog, `STATUS.md` and the [G0 evidence](../history/evidence/2026/11/2026-11-11_gui_extensions_g0_inventory.md) for G0; add concise incremental evidence under the existing `history/evidence` mechanism when implementation creates new findings. Prefer one short incremental implementation record, **not** a separate long report for every test or edit.
+- Commit real working slices and push at milestone checkpoints; put changed paths, relevant command/results and remaining limitations in commit/PR text. Preserve uncommitted user changes; use the existing worktree when available. Do not reset, clean or force push.
+- Use PR #575 as the active continuation vehicle; update its title/body from G0-only to reflect the new implementation scope. Avoid duplicate PRs. Keep it draft while code is evolving; follow normative review/merge policy when ready.
+- Do not block on canceled historical CI jobs if the current local **scoped** tests pass; do not call those canceled checks passed. Review current final-head mandatory CI before merging.
+- When necessary to prevent a destructive compatibility change, apply a narrow stop gate, document the obstacle and proceed with independent functionality rather than broad refactoring.
+
+## 6. Deferred dynamic loading/unloading (unchanged)
+
+Dynamic graphical plugin packaging, `dlopen`/`QPluginLoader`, unload guards, ABI stable C interface with a Qt adapter, cross-version compatibility, ref counts, delayed callbacks, library teardown and hot reload remain **future-only** requirements, not tasks for G0–G7. Existing core package policy requiring a stable versioned C ABI remains in force. Maintain a plausible future boundary with registered factories/stable IDs and application-local code; do not implement an ABI or promise binary independence now.
+
+## 7. Governance status and next execution
+
+This is the **approved v2 execution plan**, effective immediately under `HUM-ARCH-005`, not a new plan replacing the approved architecture. It resolves the previously blocking G0-generated-graph condition without asserting that missing evidence exists. It authorizes an executor to move directly from minimal current baseline to functional G1/G2 code, continuing to G3 and the first G4 domain example without new routine human check-ins.
+
+If a material **new architectural choice**, data loss, security change, broken relevant test, merge blocker or external authorization is required, stop that impacted path and report it precisely; otherwise prioritize implementation. Any required full-suite regression and manuals/CI/PR checks remain part of G7 rather than serial prerequisites before every source file.
