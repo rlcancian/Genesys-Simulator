@@ -119,6 +119,37 @@ TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
     EXPECT_EQ(countPorts(decide), 4);
 }
 
+TEST(DecideDynamicPortPresentation, AppliesQueuedConditionPortEditsInOrder) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    auto* decide = new Decide(model, "QueuedDynamicDecide");
+    GraphicalModelComponent graphical(plugin, decide, QPointF(100, 100), Qt::blue);
+
+    // Model the queued Property Editor callback: several list edits may have
+    // happened before the event loop delivers its refresh.
+    decide->editConditionInsertAt(0, "first");
+    decide->editConditionInsertAt(1, "second");
+    decide->editConditionInsertAt(1, "middle");
+    decide->editConditionRemoveAt(1);
+
+    unsigned int index = 0;
+    bool inserted = false;
+    while (decide->takeConditionPortEdit(index, inserted)) {
+        graphical.applyDecideConditionPortEdit(index, inserted);
+    }
+
+    ASSERT_EQ(decide->getConditions()->size(), 2u);
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "first");
+    EXPECT_EQ(decide->getConditions()->getAtRank(1), "second");
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 3); // two conditions + Else
+    for (int port = 0; port < graphical.getGraphicalOutputPorts().size(); ++port) {
+        EXPECT_EQ(graphical.getGraphicalOutputPorts().at(port)->portNum(), static_cast<unsigned int>(port));
+    }
+}
+
 TEST(DecideConditionUndo, RemoveUndoRedoRestoresOnlyTheRemovedConnectionAndElse) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
