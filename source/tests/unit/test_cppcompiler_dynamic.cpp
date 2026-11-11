@@ -11,6 +11,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/ModelManager.h"
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
+#include "plugins/components/Continuous/DiffEquations.h"
 
 namespace {
 namespace fs = std::filesystem;
@@ -112,4 +113,29 @@ TEST(CppCompilerDynamicTest, FailsForUnknownCompilerWithoutExecutingShell) {
     EXPECT_FALSE(failure.success);
     EXPECT_FALSE(failure.compilationErrOutput.empty());
     EXPECT_FALSE(fs::exists(scratch.path() / "artifact.so"));
+}
+
+
+TEST(CppCompilerDynamicTest, DiffEquationsCanRecompileAfterPreviousLibraryWasLoaded) {
+    ScopedTempDirectory scratch;
+    ASSERT_FALSE(scratch.path().empty());
+    const fs::path previousCwd = fs::current_path();
+    struct RestoreCwd {
+        fs::path previous;
+        ~RestoreCwd() { std::error_code error; fs::current_path(previous, error); }
+    } restore{previousCwd};
+    fs::current_path(scratch.path());
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    auto* equations = new DiffEquations(model, "diff_recheck");
+    equations->getEquations()->insert("-x0");
+    std::string error;
+    ASSERT_TRUE(ModelDataDefinition::Check(equations, error)) << error;
+    ASSERT_NE(equations->getCppCompiler(), nullptr);
+    ASSERT_NE(equations->getCppCompiler()->getDynamicLibraryHandler(), nullptr);
+
+    error.clear();
+    EXPECT_TRUE(ModelDataDefinition::Check(equations, error)) << error;
+    EXPECT_NE(equations->getCppCompiler()->getDynamicLibraryHandler(), nullptr);
 }
