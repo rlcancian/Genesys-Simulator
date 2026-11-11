@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-10-30
+last_updated: 2026-11-11
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -137,6 +137,23 @@ A decision recorded here is not implemented automatically unless a corresponding
   the explicit pipeline.
 - Must not be combined with: AspectC++ adoption, Clang rewriting, dynamic
   plugin migration, persistence redesign or scientific algorithm changes.
+
+### HUM-ARCH-004 — Main GUI graphical extension architecture
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-11-11 (explicit maintainer approval during architecture discussion).
+- Decision: evolve the existing pure-abstract C++ `GuiExtensionPlugin` and `GuiExtensionRegistry`, with one contribution-registration method (not a virtual method per UI feature). Extend contribution categories as needed for menus/actions/toolbars, windows/docks, in-scene animations/factories, component renderers and replaceable service providers.
+- Dependencies: declare required simulation/model plugin(s) rather than composing or owning a kernel `Plugin`; support separate types for GUI-extension dependencies and system capabilities. A graphical-only extension can have no kernel plugin dependency. Never auto-install system requirements.
+- Architectural boundaries: kernel/parser/simulation plugins remain Qt/GUI-independent; the **generic main GUI must not include or hardcode optional concrete plugin types**. Route kernel events through the GUI and notify interested graphical extensions; reuse existing scene/editor infrastructure. Save graphics with stable IDs and preserve absent-extension animation records by default, offering explicit user-confirmed discard on resave.
+- Placement: retain framework classes in `source/applications/gui/genesys/extensions/`; propose `source/applications/gui/genesys/extensions/plugins/` for concrete graphical plugin implementations, without immediate large-scale file moves or separate library targets.
+- Future constraint: static registration and compilation for now. Actual shared-library packaging, dynamic load/unload, active-object/callback lifetime protection, hot reload and the Qt/C++ adapter to the approved stable versioned C ABI are **deferred** and require a separate explicit decision/plan. Kernel plugin-target duplication issue #492 remains independent.
+- Scope clarification: historical student PR #436 and DCS-5 artifacts are non-authoritative examples, not approved patches. Existing Tools/Extensions windows (e.g. Bacteria Colony) are to be phased out only after equivalent insertable model-scene animations are verified.
+- Implementation status: **not started**. Documentation-only plan/decision approved; no unattended implementation authorization.
+- Approved references: [architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md) and [gated implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md); `AUTO-GUI-003` owns future execution after activation.
+- Decision unlocks: planning and future separately authorized bounded GUI refactors. Stop for maintainer if kernel semantics, unsupported persistence migration, stable ABI policy or dynamic loading becomes part of the proposed change.
+- Non-goals: no dynamic plugin migration, hot unload guards, kernel model semantics changes, broad CMake reorganization or GUI framework rewrite.
+
 
 ## 4. Security and deployment decisions
 

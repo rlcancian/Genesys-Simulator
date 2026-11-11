@@ -2,7 +2,7 @@
 document_type: architecture
 authority: normative-reference
 owner: project-maintainer
-last_reviewed: 2026-10-29
+last_reviewed: 2026-11-11
 review_cadence: 90d
 status: active
 tracks: 511
@@ -170,6 +170,15 @@ The main GUI should launch independent frontends through an explicit process/app
 Process boundaries require explicit model/context transfer. Raw C++ pointers must not be shared across independent processes.
 
 Qt parent-child ownership must be distinguished from non-`QObject` ownership. GUI refactoring must not introduce double deletion, retained callbacks, or widgets outliving their backing model objects.
+
+### 5.1. Optional graphical extensions (maintainer decision 2026-11-11)
+
+The main GUI has an application-local **graphical extension architecture**, distinct from simulation plugins. Preserve the existing pure-abstract C++ `GuiExtensionPlugin` plus `GuiExtensionRegistry` and evolve registered GUI contributions (actions, menus/toolbars, windows/docks, insertable scene animations, component renderers, alternative service providers). Graphical extensions may declare optional dependencies on kernel plugins, other GUI extensions and system capabilities, but are not owners of simulation plugins or model objects. A GUI-only extension requires no kernel plugin.
+
+The **generic GUI host must not import headers of optional concrete simulation plugins or hardcode their animation/renderer/event semantics**. Place such knowledge only in concrete graphical extension implementations; reuse the existing `ModelGraphicsScene` and GUI simulation-event controller, which routes kernel notifications to interested GUI representations. Kernel, parser and model plugins remain independent of Qt and GUI extensions. Persist extension-owned graphical animation state with stable identities and retain unknown/missing-extension records by default, offering user-confirmed discard on resave.
+
+Current registration/build remains static. This decision **does not authorize dynamic loading/unloading or shared-library migration**. Preserve a future dynamic boundary design that respects the approved stable C ABI for core plugins; a Qt-facing C++ plugin SDK is not automatically an ABI-stable substitute. The relationship between these two boundaries is a deferred design question. For source evidence, directories, contracts, acceptance and the gated roadmap see [graphical extension architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md) and [implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md); decision `HUM-ARCH-004` and non-ready task `AUTO-GUI-003`.
+
 
 ## 6. Worker architecture and security boundary
 

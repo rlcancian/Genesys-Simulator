@@ -2,7 +2,7 @@
 document_type: reference
 authority: technical-reference
 owner: project-maintainer
-last_reviewed: 2026-07-22
+last_reviewed: 2026-11-11
 review_cadence: on-plugin-contract-change
 status: active
 tracks: 511
@@ -143,6 +143,9 @@ For CppForG, PythonForG, external processes, generated code or dynamic libraries
 Graphical plugin configuration belongs in application/property-editor layers and should communicate through stable model/plugin contracts.
 
 Do not add Qt widget dependencies to kernel plugin classes merely to expose configuration. Reusable property editors should validate type, domain, references, expressions and persistence without changing plugin ownership.
+
+Graphical extensions of the **main Qt GUI** are a separate application-layer mechanism, not simulation-plugin subclasses. The approved static-first architecture, registry/factory contracts, dependency policy and future dynamic ABI considerations are documented in [GUI_EXTENSIONS_ARCHITECTURE.md](GUI_EXTENSIONS_ARCHITECTURE.md) and the [gated implementation plan](GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md). No current dynamic loading/unloading claim is implied.
+
 
 ## 12. Validation checklist
 
