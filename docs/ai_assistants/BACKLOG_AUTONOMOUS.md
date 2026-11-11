@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-11-06
+last_updated: 2026-11-11
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -896,3 +896,20 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Validation: red/green focused tests by vertical slice; current CMake/Ninja presets and CTest; GUI interaction/Qt tests for editor behavior; sanitizer diagnostics for ownership changes; manual-impact review and PDF regeneration if LaTeX changes.
 - Stop gates: stop any ownership design requiring a materially different public/API contract; stop Match multi-output migration if legacy connection routing is ambiguous (contain it and record exact blocker); do not add controls for Counter/StatisticsCollector; preserve the Wait/Signal feature branch and avoid duplicate changes.
 - Audit/integration update (2026-11-09): the inventory and local validation are recorded in [`history/evidence/2026/11/2026-11-08_datadef_component_property_audit.md`](history/evidence/2026/11/2026-11-08_datadef_component_property_audit.md); PR #571 at head `44e36ee5a6117101b4bf96f429da015349aae197` passed all PR checks and was merged as `3eafcc14544c4b91c6b17d35b3827581d9dbcb76`. The local `WorkInProgress` checkout was fast-forwarded to that SHA and was clean/synchronized. The post-merge Debian package workflow was still running when recorded. The item remains `running`: Wait/Signal is still owned by open Draft PR #570, and Match output-port count/routing migration remains intentionally contained because legacy single-output connections have no specified mapping. `Match::NumberOfQueues` remains editable during model editing without a runtime guard. No LaTeX sources changed; PDF regeneration is not applicable.
+
+## 10. Planned graphical extensions (not executable until activated)
+
+### AUTO-GUI-003 — Implement static-first main GUI graphical extensions
+
+- Priority: `P1`
+- Status: `blocked-dependency`
+- Environment: `local` for C++23/Qt6 GUI tests + `github` for PR/CI integration.
+- Authorization: maintainer approved **architecture and documentation only** on 2026-11-11 (`HUM-ARCH-004`). The current request explicitly authorizes the documentation PR/merge, **not implementation**. Separate explicit activation required before starting G0/G1 or any source changes.
+- Decision and plan: [GUI extension architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md), [G0–G7 implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md).
+- Scope after activation: audit current coupling, extend existing registry/dependency contracts, add registered scene animation/factory and GUI event/persistence bridge, migrate domain animations incrementally, integrate BacteriaColony/CellularAutomata scene visualizations and alternative renderer/service contributions.
+- Non-goals: compile/load/unload dynamic packages; C ABI/Qt adapter implementation; hot-reload guards; kernel algorithm/model semantics changes; full GUI rewrite; broad static plugin target consolidation (#492); indiscriminate application of student PR #436.
+- Dependencies/blockers: maintainer must activate the first bounded slice; G0 current-head audit and accepted baseline precede G1/G2; per-slice API/lifecycle/persistence decisions must be evidenced before later migrations. Future dynamic work needs a separate human decision and follows the established C ABI/target gates.
+- First ready candidate **after authorization**: bounded G0 evidence-backed coupling, ownership and persistence inventory, then a minimal G1/G2 registered-animation vertical slice (separate PRs as appropriate). Do not begin G4/G5 before factory + event/persistence acceptance.
+- Acceptance: a new optional GUI extension adds its animation/tool without modifying generic GUI, kernel or parser; dependency absence preserves simulation; event delivery is consistent; graphical state survives save/reload and missing-extension round-trip; alternate providers are deterministic; targeted GUI tests, unit/kernel/smoke as affected, and safety diagnostics on ownership paths pass.
+- Stop gates: uncertain event semantics, model binding, unknown-extension data retention, ownership, concurrent GUI modifications, unstable C++/Qt ABI or any request to implement dynamic loading without explicit scope approval.
+- Rollback: per-phase reviewable merge commits and current-format compatibility fixtures. No release-branch promotion.

@@ -2,7 +2,7 @@
 document_type: reference-index
 authority: informative
 owner: project-maintainer
-last_reviewed: 2026-10-29
+last_reviewed: 2026-11-11
 status: active
 tracks: 511
 ---
@@ -170,6 +170,15 @@ Use for the approved 2026-10-29 hierarchical Network-view decision,
 the source-backed G0.1 GUI inventory, the proposed versioned diagram
 record contract, G0.2 acceptance criteria, the read-only EFSM G1 slice,
 subsequent G2–G6 gates, and eventual local-agent handoff.
+
+### [`GUI_EXTENSIONS_ARCHITECTURE.md`](GUI_EXTENSIONS_ARCHITECTURE.md)
+
+Use for the maintainer-approved (2026-11-11) static-first graphical plugin architecture: pure abstract C++ extension contract, registered GUI contributions, optional kernel/system dependencies, in-scene animations, GUI event bridge, unknown-extension persistence, configurable renderers/services, application-local directory layout and **future-only** dynamic ABI/unload constraints.
+
+### [`GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md`](GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md)
+
+Use for the gated G0–G7 implementation roadmap, acceptance and negative tests, incremental migration of queue/resource/station and biological/cellular animations, review/rollback policy, current blockers and deferred dynamic-load design. Planning approval is not permission for autonomous source changes.
+
 
 ## 3. Reference rules
 
