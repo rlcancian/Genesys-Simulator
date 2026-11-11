@@ -39,6 +39,102 @@
 
 #include "../../../kernel/simulator/model/Model.h"
 
+#include <spawn.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <filesystem>
+#include <sstream>
+#include <chrono>
+#include <vector>
+#include <stdexcept>
+#include <cstring>
+#include <cctype>
+#include <algorithm>
+
+extern char **environ;
+
+namespace {
+namespace fs = std::filesystem;
+
+// Tokenize user-configurable compiler options without invoking a shell.
+// Quotes group whitespace; no shell expansion, pipes or redirections are interpreted.
+std::vector<std::string> splitCompilerArguments(const std::string& text) {
+    std::vector<std::string> result;
+    std::string current;
+    char quote = 0;
+    bool escaped = false;
+    bool inToken = false;
+    for (char ch : text) {
+        if (escaped) {
+            current += ch;
+            escaped = false;
+            inToken = true;
+        } else if (ch == '\\' && quote != '\'') {
+            escaped = true;
+            inToken = true;
+        } else if (quote != 0) {
+            if (ch == quote) quote = 0;
+            else current += ch;
+        } else if (ch == '\'' || ch == '"') {
+            quote = ch;
+            inToken = true;
+        } else if (std::isspace(static_cast<unsigned char>(ch))) {
+            if (inToken) {
+                result.push_back(current);
+                current.clear();
+                inToken = false;
+            }
+        } else {
+            current += ch;
+            inToken = true;
+        }
+    }
+    if (quote || escaped) throw std::invalid_argument("Unclosed quote or escape in compiler options");
+    if (inToken) result.push_back(current);
+    return result;
+}
+
+struct TemporaryLog {
+    std::string path;
+    int fd = -1;
+    ~TemporaryLog() {
+        if (fd >= 0) ::close(fd);
+        if (!path.empty()) std::remove(path.c_str());
+    }
+    bool open(const fs::path& dir, const std::string& label) {
+        path = (dir / ("genesys-" + label + "-XXXXXX")).string();
+        fd = ::mkstemp(path.data());
+        return fd >= 0;
+    }
+    void close() {
+        if (fd >= 0) { ::close(fd); fd = -1; }
+    }
+};
+
+std::string makeOutputPath(const std::string& dir, const std::string& filename) {
+    if (filename.empty()) throw std::invalid_argument("OutputFilename must not be empty");
+    const fs::path name(filename);
+    return fs::absolute(name.is_absolute() ? name : fs::path(dir) / name).lexically_normal().string();
+}
+
+std::vector<std::string> buildCompilerArguments(const std::string& compiler,
+    const std::string& general, const std::string& specific,
+    const std::string& objectFiles, const std::string& source, const std::string& output) {
+    auto args = splitCompilerArguments(compiler);
+    if (args.empty() || args[0].empty()) throw std::invalid_argument("CompilerCommand must not be empty");
+    for (const auto& part : {general, specific, objectFiles}) {
+        auto more = splitCompilerArguments(part);
+        args.insert(args.end(), more.begin(), more.end());
+    }
+    if (source.empty()) throw std::invalid_argument("SourceFilename must not be empty");
+    args.push_back(fs::absolute(source).lexically_normal().string());
+    args.push_back("-o");
+    args.push_back(output);
+    return args;
+}
+} // namespace
+
+
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -110,6 +206,10 @@ CppCompiler::CppCompiler(Model* model, std::string name) : ModelDataDefinition(m
 	_addSimulationControl(propTempDir);
 	_addSimulationControl(propOutputFilename);
 	_addSimulationControl(propObjectFiles);
+}
+
+CppCompiler::~CppCompiler() {
+    unloadLibrary();
 }
 
 // static
@@ -240,90 +340,89 @@ void CppCompiler::_initBetweenReplications() {
 
 
 CppCompiler::CompilationResult CppCompiler::compileToExecutable() {
-	CppCompiler::CompilationResult result;
-	std::string outputDir = _outputDir;
-	if (!outputDir.empty() && outputDir.back() != Util::DirSeparator()) {
-		outputDir += Util::DirSeparator();
-	}
-	const std::string outputPath = outputDir + _outputFilename;
-	Util::FileDelete(outputPath);
-	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsExecutable + " " + _objectFiles + " " + _sourceFilename + " -o " + outputPath);
-	result = _invokeCompiler(command);
-	if (result.success) {
-		_outputFilename = outputPath;
-	}
-	_compiledToDynamicLibrary = false;
-	return result;
+    CompilationResult result;
+    try {
+        if (_dynamicLibraryHandle != nullptr) throw std::runtime_error("Unload the library before compiling");
+        const auto output = makeOutputPath(_outputDir, _outputFilename);
+        const auto args = buildCompilerArguments(_compilerCommand, _flagsGeneral, _flagsExecutable,
+                                                 _objectFiles, _sourceFilename, output);
+        result = _invokeCompiler(args, output);
+        if (result.success) _outputFilename = output;
+        _compiledToDynamicLibrary = false;
+    } catch (const std::exception& e) {
+        result.compilationErrOutput = e.what();
+    }
+    return result;
 }
 
 CppCompiler::CompilationResult CppCompiler::compileToDynamicLibrary() {
-	CppCompiler::CompilationResult result;
-	std::string outputDir = _outputDir;
-	if (!outputDir.empty() && outputDir.back() != Util::DirSeparator()) {
-		outputDir += Util::DirSeparator();
-	}
-	const std::string outputPath = outputDir + _outputFilename;
-	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsDynamicLibrary + " " + _objectFiles + " " + _sourceFilename + " -o " + outputPath);
-	result = _invokeCompiler(command);
-	_compiledToDynamicLibrary = result.success;
-	if (result.success) {
-		_outputFilename = outputPath;
-	}
-	return result;
+    CompilationResult result;
+    try {
+        if (_dynamicLibraryHandle != nullptr) throw std::runtime_error("Unload the library before compiling");
+        const auto output = makeOutputPath(_outputDir, _outputFilename);
+        const auto args = buildCompilerArguments(_compilerCommand, _flagsGeneral, _flagsDynamicLibrary,
+                                                 _objectFiles, _sourceFilename, output);
+        result = _invokeCompiler(args, output);
+        _compiledToDynamicLibrary = result.success;
+        if (result.success) _outputFilename = output;
+    } catch (const std::exception& e) {
+        _compiledToDynamicLibrary = false;
+        result.compilationErrOutput = e.what();
+    }
+    return result;
 }
 
 CppCompiler::CompilationResult CppCompiler::compileToStaticLibrary() {
-	CppCompiler::CompilationResult result;
-	std::string outputDir = _outputDir;
-	if (!outputDir.empty() && outputDir.back() != Util::DirSeparator()) {
-		outputDir += Util::DirSeparator();
-	}
-	const std::string outputPath = outputDir + _outputFilename;
-	Util::FileDelete(outputPath);
-	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsStaticLibrary + " " + _objectFiles + " " + _sourceFilename + " -o " + outputPath);
-	result = _invokeCompiler(command);
-	if (result.success) {
-		_outputFilename = outputPath;
-	}
-	_compiledToDynamicLibrary = false;
-	return result;
+    CompilationResult result;
+    try {
+        if (_dynamicLibraryHandle != nullptr) throw std::runtime_error("Unload the library before compiling");
+        const auto output = makeOutputPath(_outputDir, _outputFilename);
+        const auto args = buildCompilerArguments(_compilerCommand, _flagsGeneral, _flagsStaticLibrary,
+                                                 _objectFiles, _sourceFilename, output);
+        result = _invokeCompiler(args, output);
+        if (result.success) _outputFilename = output;
+        _compiledToDynamicLibrary = false;
+    } catch (const std::exception& e) {
+        result.compilationErrOutput = e.what();
+    }
+    return result;
 }
 
 bool CppCompiler::loadLibrary(std::string& errorMessage) {
-	try {
-		_dynamicLibraryHandle = dlopen(_outputFilename.c_str(), RTLD_LAZY);
-	} catch (const std::exception& e) {
-		if (dlerror() != NULL)
-			errorMessage += dlerror();
-		errorMessage += e.what();
-		return false;
-	}
-	if (_dynamicLibraryHandle == nullptr) {
-		errorMessage += dlerror();
-	}
-	_libraryLoaded = _dynamicLibraryHandle != nullptr;
-	return _libraryLoaded;
+    if (_dynamicLibraryHandle != nullptr) {
+        errorMessage += "A library is already loaded; unload it before loading again.";
+        return false;
+    }
+    if (_outputFilename.empty()) {
+        errorMessage += "OutputFilename must not be empty.";
+        return false;
+    }
+    ::dlerror();
+    void* handle = ::dlopen(_outputFilename.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (handle == nullptr) {
+        const char* error = ::dlerror();
+        errorMessage += error ? error : "Unknown dlopen error";
+        _libraryLoaded = false;
+        return false;
+    }
+    _dynamicLibraryHandle = handle;
+    _libraryLoaded = true;
+    return true;
 }
 
 bool CppCompiler::unloadLibrary() {
-	if (!_libraryLoaded || _dynamicLibraryHandle == nullptr) {
-		_dynamicLibraryHandle = nullptr;
-		_libraryLoaded = false;
-		return true;
-	}
-
-	const int closeResult = dlclose(_dynamicLibraryHandle);
-	if (closeResult != 0) {
-		return false;
-	}
-
-	_dynamicLibraryHandle = nullptr;
-	_libraryLoaded = false;
-	return true;
+    if (_dynamicLibraryHandle == nullptr) {
+        _libraryLoaded = false;
+        return true;
+    }
+    if (::dlclose(_dynamicLibraryHandle) != 0) return false;
+    _dynamicLibraryHandle = nullptr;
+    _libraryLoaded = false;
+    return true;
 }
 
 void* CppCompiler::getDynamicLibraryHandler() const {
-	return _dynamicLibraryHandle;
+    return _dynamicLibraryHandle;
 }
 
 void CppCompiler::setObjectFiles(std::string _objectFiles) {
@@ -343,7 +442,12 @@ std::string CppCompiler::getFlagsExecutable() const {
 }
 
 void CppCompiler::setLibraryLoaded(bool libraryLoaded) {
-	this->_libraryLoaded = libraryLoaded;
+	if (!libraryLoaded) {
+        unloadLibrary();
+    } else if (_dynamicLibraryHandle == nullptr) {
+        std::string error;
+        loadLibrary(error);
+    }
 }
 
 void CppCompiler::setFlagsStaticLibrary(std::string _flagsStaticLibrary) {
@@ -419,44 +523,77 @@ std::string CppCompiler::_read(std::string filename) {
 	return res;
 }
 
-CppCompiler::CompilationResult CppCompiler::_invokeCompiler(std::string command) {
-	std::string destPath = _tempDir.empty() ? _outputDir : _tempDir;
-	if (!destPath.empty() && destPath.back() != Util::DirSeparator()) {
-		destPath += Util::DirSeparator();
-	}
-	const std::string stdoutFile = destPath + "stdout.log";
-	const std::string stderrFile = destPath + "stderr.log";
-	const std::string redirect = " >" + stdoutFile + " 2>" + stderrFile;
+CppCompiler::CompilationResult CppCompiler::_invokeCompiler(
+        const std::vector<std::string>& arguments, const std::string& outputPath) {
+    CompilationResult result;
+    result.destinationPath = outputPath;
+    try {
+        const fs::path output(outputPath);
+        fs::create_directories(output.parent_path());
+        const fs::path tempDir = fs::absolute(_tempDir.empty() ? output.parent_path() : fs::path(_tempDir));
+        fs::create_directories(tempDir);
+        // Never accept an artifact left by an earlier compilation.
+        std::error_code removeError;
+        fs::remove(output, removeError);
+        if (removeError) throw fs::filesystem_error("Cannot remove previous compiler output", output, removeError);
 
-	Util::IncIndent();
+        TemporaryLog outLog, errLog;
+        if (!outLog.open(tempDir, "compiler-out") || !errLog.open(tempDir, "compiler-err"))
+            throw std::runtime_error("Unable to create temporary compiler logs");
 
-	Util::FileDelete(_outputFilename);
-	Util::FileDelete(stdoutFile);
-	Util::FileDelete(stderrFile);
+        posix_spawn_file_actions_t actions;
+        const int actionError = ::posix_spawn_file_actions_init(&actions);
+        if (actionError != 0) throw std::runtime_error(std::string("posix_spawn actions: ") + std::strerror(actionError));
+        int setup = ::posix_spawn_file_actions_adddup2(&actions, outLog.fd, STDOUT_FILENO);
+        if (setup == 0) setup = ::posix_spawn_file_actions_adddup2(&actions, errLog.fd, STDERR_FILENO);
+        if (setup == 0) setup = ::posix_spawn_file_actions_addclose(&actions, outLog.fd);
+        if (setup == 0) setup = ::posix_spawn_file_actions_addclose(&actions, errLog.fd);
 
-	const std::string execCommand = command + redirect;
-	//trace(execCommand);
-	system(execCommand.c_str());
-	for (short i = 0; i < 32; i++)
-        std::this_thread::yield(); // give the system some time // TODO: Does it work? Is this enough?
-	const std::string resultStdout = _read(stdoutFile);
-	const std::string resultStderr = _read(stderrFile);
-	//trace(resultStdout);
-	//trace(resultStderr);
+        std::vector<char*> argv;
+        argv.reserve(arguments.size() + 1);
+        for (const std::string& item : arguments) argv.push_back(const_cast<char*>(item.c_str()));
+        argv.push_back(nullptr);
+        pid_t pid = -1;
+        int spawnError = setup == 0 ? ::posix_spawnp(&pid, argv[0], &actions, nullptr, argv.data(), environ) : setup;
+        ::posix_spawn_file_actions_destroy(&actions);
+        outLog.close();
+        errLog.close();
 
-	CppCompiler::CompilationResult result;
-	std::ifstream f(_outputFilename.c_str());
-	result.success =  f.good();
-	result.compilationStdOutput = resultStdout;
-	result.compilationErrOutput = resultStderr;
-	result.destinationPath = destPath;
+        if (spawnError != 0)
+            throw std::runtime_error(std::string("Cannot launch compiler: ") + std::strerror(spawnError));
 
-	Util::FileDelete(stdoutFile);
-	Util::FileDelete(stderrFile);
-
-	Util::DecIndent();
-
-	return result;
+        int status = 0;
+        bool timedOut = false;
+        bool waited = false;
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+        while (std::chrono::steady_clock::now() < deadline) {
+            const pid_t finished = ::waitpid(pid, &status, WNOHANG);
+            if (finished == pid) { waited = true; break; }
+            if (finished < 0 && errno != EINTR) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        if (!waited) {
+            ::kill(pid, SIGKILL);
+            while (::waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+            timedOut = true;
+        }
+        result.compilationStdOutput = _read(outLog.path);
+        result.compilationErrOutput = _read(errLog.path);
+        result.success = !timedOut && WIFEXITED(status) && WEXITSTATUS(status) == 0 &&
+                         fs::is_regular_file(output);
+        if (timedOut) result.compilationErrOutput += "\nCompiler timed out or could not be waited for.";
+        else if (!result.success) result.compilationErrOutput +=
+            "\nCompiler failed or did not generate the expected output.";
+        if (!result.success) {
+            std::error_code ec;
+            fs::remove(output, ec);
+        }
+    } catch (const std::exception& e) {
+        result.compilationErrOutput += std::string("\n") + e.what();
+        std::error_code ec;
+        fs::remove(outputPath, ec);
+    }
+    return result;
 }
 
 // void CppCompiler::_createInternalStatisticReporters() { }
