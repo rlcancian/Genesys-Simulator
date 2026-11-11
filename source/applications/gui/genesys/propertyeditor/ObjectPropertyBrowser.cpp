@@ -2111,12 +2111,22 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
                 : dynamic_cast<ModelGraphicsScene*>(editedGraphical->scene());
             unsigned int index = 0;
             bool inserted = false;
-            if (decide->takeConditionPortEdit(index, inserted)) {
+            bool portsChanged = false;
+            // The list editor can queue several positional edits before the
+            // queued refresh callback runs. Apply every edit in order so the
+            // graphical ports continue to match Conditions (plus the Else port).
+            while (decide->takeConditionPortEdit(index, inserted)) {
                 if (editedGraphical != nullptr) {
                     editedGraphical->applyDecideConditionPortEdit(index, inserted);
+                    portsChanged = true;
                 }
             }
             hasConditionEdit = decide->takeConditionEdit(conditionEdit);
+            if (portsChanged && editedScene != nullptr) {
+                editedScene->update();
+                editedScene->notifyGraphicalModelChange(GraphicalModelEvent::EventType::EDIT,
+                    GraphicalModelEvent::EventObjectType::COMPONENT, editedGraphical);
+            }
         }
         this->_notifyModelChangeApplied();
         if (hasConditionEdit && editedScene != nullptr && editedScene->getUndoStack() != nullptr) {
