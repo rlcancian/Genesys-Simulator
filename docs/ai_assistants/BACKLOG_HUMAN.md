@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -68,6 +68,17 @@ A decision recorded here is not implemented automatically unless a corresponding
   - synchronized `ModalModelDefault` input/output bindings;
   - visual distinction between process topology and mathematical/formal network topology.
 - Must not be combined with: process `Connection` payload generalization or release/promotion gates.
+
+### HUM-MODAL-003 — Complete ModalModel/Network graphical editor evolution (2026-11-12)
+
+- Priority: P1.
+- Status: decision-recorded; **full sequential local implementation expressly authorized**.
+- Decision: the ONLY Network-related contextual action on ModalModelDefault is **Open Network**, enabled only for a valid, model-registered reference. Create/select/replace/remove references exclusively through the Property Editor. Also support Open Network on graphical Network DataDefinition. No implicit creation on double-click.
+- Architecture: preserve DefaultNetwork polymorphism, existing GraphNetwork->DefaultNetwork inheritance, shared Network ID/context and model ownership; use existing GUI extension framework, static-first; no new kernel Qt dependency or dynamic GUI loading.
+- Scope: full G0, A1–A5, B1–B5, C1–C6, D1–D5 implementation, including Graph/DTMC/CPN contextual editors and truthful EFSM/DTMC/CPN visual runtime animation plus graph structural-algorithm visualization. Essential risk-proportionate validation, continuous autonomous execution, no intermediate approvals for decisions already covered.
+- Approved execution plan: [Modal Network GUI Evolution Plan](reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md).
+- Execution task: AUTO-MODAL-005 in BACKLOG_AUTONOMOUS.md; local development branch, suggested WiP20261112/modal_model_gui, target review then human-controlled merge to WorkInProgress.
+- Human stop gates: only genuine unforeseen substantive architectural/scientific/persistence/security decision or execution blocker. No automatic final merge.
 
 ### HUM-ARCH-001 — Static component target consolidation
 

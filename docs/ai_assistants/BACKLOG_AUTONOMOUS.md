@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-11-11
+last_updated: 2026-11-12
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -913,3 +913,18 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Acceptance: a new optional GUI extension adds its animation/tool without modifying generic GUI, kernel or parser; dependency absence preserves simulation; event delivery is consistent; graphical state survives save/reload and missing-extension round-trip; alternate providers are deterministic; targeted GUI tests, unit/kernel/smoke as affected, and safety diagnostics on ownership paths pass.
 - Stop gates: uncertain event semantics, model binding, unknown-extension data retention, ownership, concurrent GUI modifications, unstable C++/Qt ABI or any request to implement dynamic loading without explicit scope approval.
 - Rollback: per-phase reviewable merge commits and current-format compatibility fixtures. No release-branch promotion.
+
+## 11. Authorized full ModalNetwork GUI implementation
+
+### AUTO-MODAL-005 — Execute complete ModalModel/DefaultNetwork GUI evolution
+
+- Priority: P1.
+- Status: **ready** (explicit maintainer authorization 2026-11-12).
+- Environment: local Ubuntu, actual GCC/C++23, Qt6, CMake/Ninja, Google Test; integrate remotely only after final human review.
+- Source and full acceptance: [MODAL_NETWORK_GUI_EVOLUTION_PLAN.md](reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md), decision HUM-MODAL-003.
+- Integration base: synchronize the latest origin/WorkInProgress; branch example WiP20261112/modal_model_gui. Never develop directly on WorkInProgress.
+- Authorization: execute ALL milestones G0, A1–A5, B1–B5, C1–C6 and D1–D5 sequentially and autonomously, including fully functional contextual Graph/Markov/CPN GUI editors and faithful graphical animation of actual supported Network behavior. No intermediate approval for plan-covered decisions.
+- Scope/acceptance: all gates and end-to-end scenarios in the plan, small traceable commits, short persistent progress log, essential targeted validation throughout, final appropriate CMake/CTest/Qt verification. Focus on complete functional delivery, avoid excessive or repetitive audits/tests.
+- Non-goals: new mathematical semantics, broad plugin-system rewrite, dynamic GUI packaging/unload, unrelated AUTO-GUI-003 migrations, auto-merge.
+- Blockers: only genuine unforeseen semantic, irreversible persistence, ownership, ABI or security decision, or indispensable failing validation. Report precise blocker; do not mark partial implementation complete.
+- Completion: branch ready for maintainer review, evidence-backed progress matrix and clear final tests/results; integration into WorkInProgress requires a separate human-reviewed step.
