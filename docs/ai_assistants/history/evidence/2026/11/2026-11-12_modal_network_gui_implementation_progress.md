@@ -17,7 +17,8 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 |---|---|---|
 | G0 | In progress | Verified clean branch base, CMake/Ninja presets, GUI target, GUI regression target, Network hierarchy and current menu/property-editor code. A complete fixture matrix and baseline suite are still pending. |
 | A1 | In progress | Removed EFSM-specific create/select menu actions and handlers; generic Open Network labeling and reference gating use the shared submodel tab/context path. Adapter-open and null-reference tests pass. A direct graphical Network data-definition open test remains. |
-| A2–A5 | Not started | Property Editor association workflow. |
+| A2 | Pass (focused) | `Network` choices enumerate registered `DefaultNetwork` subtypes and resolve by concrete class plus model ID. Focused test selects EFSM, Graph, Directed Graph, DAG, Markov and CPN objects with the same name. |
+| A3–A5 | Not started | Property Editor typed creation, safe replacement/removal and remaining UX. |
 | B1–B5 | Not started | Identity, persistence, replacement, lifetime and structural placement gates. |
 | C1–C6 | Not started | EFSM GUI isolation and extension registration. |
 | D1–D5 | Not started | Context-specific editors, formalism topology, persistence, undo/redo and animation. |
@@ -31,15 +32,22 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
   adapter through the existing live-registration check.
 - Updated the existing EFSM GUI test for the generic action label and absence of
   the obsolete actions.
+- Added identity-based polymorphic selection for the ModalModelDefault
+  `Network` reference. No generic `DefaultNetwork` creation option is exposed;
+  typed creation will be added in A3.
 
 ## Validation
 
 - `cmake --build --preset gui-app --target genesys_gui -j 4` — PASS.
 - `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 4` — PASS.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.SharedNetworkOpensOneSubmodelTabFromMultipleAdapters:EFSMNetworkEditor.AdapterWithoutNetworkCannotOpenASubmodelContext'` — PASS, 2 tests.
+- `cmake --build --preset gui-app --target genesys_gui -j 4` — PASS after the Property Editor change.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 4` — PASS after the Property Editor change.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='PropertyEditorModelDataReference.ModalModelSelectsPolymorphicNetworkByTypeAndIdentity'` — PASS, selects all six concrete network families from duplicate-name options.
 - Full GUI regression suite — UNKNOWN/not run. Existing tests for the removed
   create/select actions must be migrated to the Property Editor in A2/A3.
 
 ## Commits
 
-Pending first milestone commit.
+- `c3f97a9e30866e5ae3b8cc670cce867c96a0d823` — `modal-gui(A1): replace EFSM menu actions with Open Network` (pushed to `origin/WiP20261112/modal_model_gui`).
+- A2 changes are in progress and not yet committed.

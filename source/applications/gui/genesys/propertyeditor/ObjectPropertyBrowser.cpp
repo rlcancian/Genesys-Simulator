@@ -12,6 +12,7 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../services/GraphicalModelBuilder.h"
 #include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
 
 #include <map>
 #include <set>
@@ -1145,7 +1146,14 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
         QSet<QString> seenLabels;
         if (objectExists && desc.keepsExistingObjectChoicesWhenSet) {
-            const QString currentName = QString::fromStdString(referencedDataDefinition->getName());
+            const bool identifyNetwork = desc.ownerClassName == Util::TypeOf<ModalModelDefault>()
+                                         && desc.displayName == "Network";
+            const QString currentName = identifyNetwork
+                ? QStringLiteral("%1::%2 [#%3]")
+                      .arg(QString::fromStdString(referencedDataDefinition->getClassname()),
+                           QString::fromStdString(referencedDataDefinition->getName()))
+                      .arg(referencedDataDefinition->getId())
+                : QString::fromStdString(referencedDataDefinition->getName());
             choices[0] = currentName;
             seenLabels.insert(currentName);
         }

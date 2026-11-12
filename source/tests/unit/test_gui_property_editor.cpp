@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <vector>
 
 #include "mainwindow.h"
 #include "actions/AddUndoCommand.h"
@@ -26,6 +27,11 @@
 #include "plugins/components/Continuous/DiffEquations.h"
 #include "plugins/components/Continuous/LSODE.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/data/ModalModel/GraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedGraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
+#include "plugins/data/ModalModel/MarkovChainNetwork.h"
+#include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 #include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
@@ -994,32 +1000,44 @@ TEST(PropertyEditorModelDataReference, ContinuousSystemRestoresSelectedSolverBef
     QFile::remove(path);
 }
 
-TEST(PropertyEditorModelDataReference, ModalModelSelectsADerivedDefaultNetwork) {
+TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByTypeAndIdentity) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    auto* network = new EFSMNetwork(model, "EFSMNetwork_PropertyEditor");
+    auto* network = new EFSMNetwork(model, "SharedNetworkName_PropertyEditor");
+    std::vector<DefaultNetwork*> networks{
+        network,
+        new GraphNetwork(model, "SharedNetworkName_PropertyEditor"),
+        new DirectedGraphNetwork(model, "SharedNetworkName_PropertyEditor"),
+        new DirectedAcyclicGraphNetwork(model, "SharedNetworkName_PropertyEditor"),
+        new MarkovChainNetwork(model, "SharedNetworkName_PropertyEditor"),
+        new ColoredPetriNetNetwork(model, "SharedNetworkName_PropertyEditor")
+    };
     ModalModelDefault component(model, "ModalAdapter_PropertyEditor");
     ObjectPropertyBrowser browser;
     browser.resize(640, 480);
     browser.show();
     bindEditableKernelObject(browser, &component);
 
-    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
-    ASSERT_NE(item, nullptr);
-    browser.setCurrentItem(item);
-    browser.editItem(item);
-    drainGuiEvents();
-    QComboBox* selector = browser.findChild<QComboBox*>();
-    ASSERT_NE(selector, nullptr);
-    const int networkIndex = selector->findText(QString::fromStdString(network->getName()));
-    ASSERT_GE(networkIndex, 0);
-    selector->setCurrentIndex(networkIndex);
-    drainGuiEvents();
-
-    EXPECT_EQ(component.getNetwork(), network);
+    for (DefaultNetwork* candidate : networks) {
+        const QString choice = QStringLiteral("%1::%2 [#%3]")
+            .arg(QString::fromStdString(candidate->getClassname()), QString::fromStdString(candidate->getName()))
+            .arg(candidate->getId());
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int index = selector->findText(choice);
+        ASSERT_GE(index, 0) << choice.toStdString();
+        selector->setCurrentIndex(index);
+        drainGuiEvents();
+        EXPECT_EQ(component.getNetwork(), candidate) << choice.toStdString();
+    }
 }
 
 TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {

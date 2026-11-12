@@ -11,6 +11,7 @@
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/model/ModelDataManager.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
@@ -20,15 +21,57 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 
 namespace {
 constexpr const char* kNetworkAssociationKey = "ModalModelDefault.Network";
+
+using ModalModelNetworkControlBase = SimulationControlGenericClass<DefaultNetwork*, Model*, DefaultNetwork>;
+
+class ModalModelNetworkControl final : public ModalModelNetworkControlBase {
+public:
+	using ModalModelNetworkControlBase::ModalModelNetworkControlBase;
+
+	// Network creation is exposed only after the Property Editor can request an
+	// explicit registered subtype; never fall back to constructing inert base data.
+	bool supportsObjectCreation() const override { return false; }
+};
+
+std::string networkChoice(DefaultNetwork* network) {
+	return network->getClassname() + "::" + network->getName() + " [#" + std::to_string(network->getId()) + "]";
+}
 }
 
 ModalModelDefault::ModalModelDefault(Model* model, std::string name)
 	: ModelComponent(model, Util::TypeOf<ModalModelDefault>(), name) {
-	auto* networkControl = new SimulationControlGenericClass<DefaultNetwork*, Model*, DefaultNetwork>(
+	auto resolveNetworkChoice = [model](const std::string& choice) -> DefaultNetwork* {
+		const std::size_t delimiter = choice.find("::");
+		const std::size_t identityStart = choice.rfind(" [#");
+		if (delimiter == std::string::npos || identityStart == std::string::npos
+		    || identityStart <= delimiter + 2 || choice.empty() || choice.back() != ']') {
+			return nullptr;
+		}
+		try {
+			const auto id = static_cast<Util::identification>(std::stoul(
+				choice.substr(identityStart + 3, choice.size() - identityStart - 4)));
+			auto* definition = model->getDataManager()->getDataDefinition(choice.substr(0, delimiter), id);
+			auto* network = dynamic_cast<DefaultNetwork*>(definition);
+			return network != nullptr && networkChoice(network) == choice ? network : nullptr;
+		} catch (...) {
+			return nullptr;
+		}
+	};
+	auto networkChoices = [model]() {
+		auto* choices = new List<std::string>();
+		if (model == nullptr || model->getDataManager() == nullptr) return choices;
+		for (DefaultNetwork* network : model->getDataManager()->getDataDefinitionsAssignableTo<DefaultNetwork>()) {
+			if (network != nullptr) choices->insert(networkChoice(network));
+		}
+		return choices;
+	};
+	auto* networkControl = new ModalModelNetworkControl(
 		_parentModel,
 		std::bind(&ModalModelDefault::getNetwork, this),
 		std::bind(&ModalModelDefault::setNetwork, this, std::placeholders::_1),
-		Util::TypeOf<ModalModelDefault>(), getName(), "Network", "", false, true, false, nullptr, true);
+		Util::TypeOf<ModalModelDefault>(), getName(), "Network", "", false, true, false, nullptr, true, false,
+		[resolveNetworkChoice](const std::string& value) { return resolveNetworkChoice(value); },
+		[networkChoices]() { return networkChoices(); }, nullptr, true);
 	_parentModel->getControls()->insert(networkControl);
 	_addSimulationControl(networkControl);
 }
