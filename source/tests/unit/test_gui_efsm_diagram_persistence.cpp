@@ -1383,7 +1383,7 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     }
     ASSERT_NE(openAction, nullptr);
     firstItem->setSelected(true);
-    EXPECT_EQ(openAction->text(), QStringLiteral("Open EFSM Network"));
+    EXPECT_EQ(openAction->text(), QStringLiteral("Open Network"));
     EXPECT_TRUE(openAction->isEnabled());
     openAction->trigger();
     ASSERT_EQ(tabs->count(), rootCount + 1);
@@ -1533,25 +1533,22 @@ TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
     }
     ASSERT_NE(graphicalAdapter, nullptr);
     QAction* openAction = nullptr;
-    QAction* createAction = nullptr;
-    QAction* selectAction = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
         if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) {
             openAction = action;
         }
-        if (action->text() == QStringLiteral("Create EFSM Network")) createAction = action;
-        if (action->text() == QStringLiteral("Select EFSM Network")) selectAction = action;
     }
     ASSERT_NE(openAction, nullptr);
-    ASSERT_NE(createAction, nullptr);
-    ASSERT_NE(selectAction, nullptr);
     QTabWidget* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
     ASSERT_NE(tabs, nullptr);
     const int tabCount = tabs->count();
     graphicalAdapter->setSelected(true);
+    EXPECT_EQ(openAction->text(), QStringLiteral("Open Network"));
     EXPECT_FALSE(openAction->isEnabled());
-    EXPECT_TRUE(createAction->isEnabled());
-    EXPECT_FALSE(selectAction->isEnabled());
+    for (QAction* action : window.findChildren<QAction*>()) {
+        EXPECT_NE(action->text(), QStringLiteral("Create EFSM Network"));
+        EXPECT_NE(action->text(), QStringLiteral("Select EFSM Network"));
+    }
     openAction->trigger();
     EXPECT_EQ(tabs->count(), tabCount);
     EXPECT_EQ(adapter->getNetwork(), nullptr);
