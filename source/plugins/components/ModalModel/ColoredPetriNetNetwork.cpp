@@ -33,6 +33,7 @@ ModelDataDefinition* ColoredPetriNetNetwork::NewInstance(Model* model, std::stri
 PluginInformation* ColoredPetriNetNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<ColoredPetriNetNetwork>(), &ColoredPetriNetNetwork::LoadInstance, &ColoredPetriNetNetwork::NewInstance);
 	info->setCategory("ModalModel");
+	info->setDataDefinitionBaseTypeName(Util::TypeOf<DefaultNetwork>());
 	info->setDescriptionHelp("Fixed-inscription coloured Petri net network with bipartite topology and deterministic single firing.");
 	return info;
 }

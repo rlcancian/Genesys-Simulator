@@ -64,6 +64,7 @@ ModelDataDefinition* GraphNetwork::NewInstance(Model* model, std::string name) {
 PluginInformation* GraphNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GraphNetwork>(), &GraphNetwork::LoadInstance, &GraphNetwork::NewInstance);
 	info->setCategory("ModalModel");
+	info->setDataDefinitionBaseTypeName(Util::TypeOf<DefaultNetwork>());
 	info->setDescriptionHelp("Undirected mathematical graph network with topology and graph algorithms; not a process Connection network.");
 	return info;
 }

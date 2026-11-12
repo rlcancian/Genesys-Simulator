@@ -91,6 +91,7 @@ ModelDataDefinition* MarkovChainNetwork::NewInstance(Model* model, std::string n
 PluginInformation* MarkovChainNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<MarkovChainNetwork>(), &MarkovChainNetwork::LoadInstance, &MarkovChainNetwork::NewInstance);
 	info->setCategory("ModalModel");
+	info->setDataDefinitionBaseTypeName(Util::TypeOf<DefaultNetwork>());
 	info->setDescriptionHelp("Finite time-homogeneous DTMC network. One activation samples exactly one transition from the current state.");
 	return info;
 }

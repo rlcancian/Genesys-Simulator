@@ -2551,19 +2551,17 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
         return false;
     }
 
-    ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
-    bool created = referencedDataDefinition != nullptr;
-    if (referencedDataDefinition == nullptr) {
-        try {
-            const std::string defaultName = _defaultModelObjectName(binding.descriptor, typeName).toStdString();
-            created = typeName.empty()
-                          ? binding.control->createObjectInstance(defaultName)
-                          : binding.control->createObjectInstanceOfType(typeName, defaultName);
-        } catch (...) {
-            created = false;
-        }
-        referencedDataDefinition = _referencedModelDataDefinition(binding);
+    ModelDataDefinition* referencedDataDefinition = nullptr;
+    bool created = false;
+    try {
+        const std::string defaultName = _defaultModelObjectName(binding.descriptor, typeName).toStdString();
+        created = typeName.empty()
+                      ? binding.control->createObjectInstance(defaultName)
+                      : binding.control->createObjectInstanceOfType(typeName, defaultName);
+    } catch (...) {
+        created = false;
     }
+    referencedDataDefinition = _referencedModelDataDefinition(binding);
 
     if (!created || referencedDataDefinition == nullptr) {
         return false;

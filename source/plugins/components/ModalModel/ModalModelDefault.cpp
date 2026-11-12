@@ -7,10 +7,15 @@
 
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/PluginManager.h"
+#include "../../../kernel/simulator/Simulator.h"
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+
+#include <algorithm>
+#include <utility>
 #include "kernel/simulator/model/ModelDataManager.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -26,11 +31,59 @@ using ModalModelNetworkControlBase = SimulationControlGenericClass<DefaultNetwor
 
 class ModalModelNetworkControl final : public ModalModelNetworkControlBase {
 public:
-	using ModalModelNetworkControlBase::ModalModelNetworkControlBase;
+	ModalModelNetworkControl(Model* model, GetterGeneric<DefaultNetwork*> getter,
+	                         SetterGeneric<DefaultNetwork*> setter, NameResolver resolver,
+	                         ChoicesProvider choices)
+		: ModalModelNetworkControlBase(
+			  model, std::move(getter), setter, Util::TypeOf<ModalModelDefault>(), "", "Network", "",
+			  false, true, false, nullptr, true, false, std::move(resolver), std::move(choices),
+			  [model]() {
+				  auto* types = new List<std::string>();
+				  PluginManager* plugins = model != nullptr && model->getParentSimulator() != nullptr
+					  ? model->getParentSimulator()->getPluginManager() : nullptr;
+				  if (plugins != nullptr) {
+					  for (const std::string& type : plugins->getDataDefinitionPluginTypenamesAssignableTo(
+						       Util::TypeOf<DefaultNetwork>())) {
+						  types->insert(type);
+					  }
+				  }
+				  return types;
+			  }, true),
+		  _model(model), _setter(std::move(setter)) {}
 
-	// Network creation is exposed only after the Property Editor can request an
-	// explicit registered subtype; never fall back to constructing inert base data.
-	bool supportsObjectCreation() const override { return false; }
+	bool supportsObjectCreation() const override {
+		PluginManager* plugins = _model != nullptr && _model->getParentSimulator() != nullptr
+			? _model->getParentSimulator()->getPluginManager() : nullptr;
+		return plugins != nullptr
+		       && !plugins->getDataDefinitionPluginTypenamesAssignableTo(Util::TypeOf<DefaultNetwork>()).empty();
+	}
+
+	List<std::string>* getCreatableReferenceTypes() override {
+		auto* types = new List<std::string>();
+		PluginManager* plugins = _model != nullptr && _model->getParentSimulator() != nullptr
+			? _model->getParentSimulator()->getPluginManager() : nullptr;
+		if (plugins != nullptr) {
+			for (const std::string& type : plugins->getDataDefinitionPluginTypenamesAssignableTo(
+				     Util::TypeOf<DefaultNetwork>())) types->insert(type);
+		}
+		return types;
+	}
+
+	bool createObjectInstanceOfType(const std::string& typeName, const std::string& name = "") override {
+		if (_model == nullptr || _model->getParentSimulator() == nullptr || name.empty()) return false;
+		PluginManager* plugins = _model->getParentSimulator()->getPluginManager();
+		const auto supported = plugins->getDataDefinitionPluginTypenamesAssignableTo(Util::TypeOf<DefaultNetwork>());
+		if (std::find(supported.begin(), supported.end(), typeName) == supported.end()) return false;
+		ModelDataDefinition* created = plugins->newInstance(typeName, _model, name);
+		auto* network = dynamic_cast<DefaultNetwork*>(created);
+		if (network == nullptr) return false;
+		_setter(network);
+		return getReferencedModelDataDefinition() == network;
+	}
+
+private:
+	Model* _model;
+	SetterGeneric<DefaultNetwork*> _setter;
 };
 
 std::string networkChoice(DefaultNetwork* network) {
@@ -69,9 +122,8 @@ ModalModelDefault::ModalModelDefault(Model* model, std::string name)
 		_parentModel,
 		std::bind(&ModalModelDefault::getNetwork, this),
 		std::bind(&ModalModelDefault::setNetwork, this, std::placeholders::_1),
-		Util::TypeOf<ModalModelDefault>(), getName(), "Network", "", false, true, false, nullptr, true, false,
 		[resolveNetworkChoice](const std::string& value) { return resolveNetworkChoice(value); },
-		[networkChoices]() { return networkChoices(); }, nullptr, true);
+		[networkChoices]() { return networkChoices(); });
 	_parentModel->getControls()->insert(networkControl);
 	_addSimulationControl(networkControl);
 }

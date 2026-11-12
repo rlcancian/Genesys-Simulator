@@ -54,6 +54,7 @@ ModelDataDefinition* EFSMNetwork::NewInstance(Model* model, std::string name) {
 PluginInformation* EFSMNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<EFSMNetwork>(), &EFSMNetwork::LoadInstance, &EFSMNetwork::NewInstance);
 	info->setCategory("ModalModel");
+	info->setDataDefinitionBaseTypeName(Util::TypeOf<DefaultNetwork>());
 	info->setDescriptionHelp("Extended finite-state-machine network with explicit DefaultNetwork activation semantics.");
 	return info;
 }

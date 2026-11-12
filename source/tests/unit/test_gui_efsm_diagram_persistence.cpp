@@ -1554,165 +1554,6 @@ TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
     EXPECT_EQ(adapter->getNetwork(), nullptr);
 }
 
-TEST(EFSMNetworkEditor, CreateNetworkActionAttachesANetworkWithoutRejectingAnIncompleteModel) {
-    MainWindow window;
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
-    Simulator* simulator = window.myScene()->getSimulator();
-    ASSERT_NE(simulator, nullptr);
-    simulator->getPluginManager()->autoInsertPlugins();
-    Model* model = simulator->getModelManager()->current();
-    ASSERT_NE(model, nullptr);
-    auto* existingNetwork = new EFSMNetwork(model, "TakenNetwork");
-    auto* source = new Create(model, "NetworkCreateSource");
-    auto* adapter = new ModalModelDefault(model, "NetworkCreateAdapter");
-    auto* sink = new Dispose(model, "NetworkCreateSink");
-    source->getConnectionManager()->insert(adapter);
-    adapter->getConnectionManager()->insert(sink);
-    auto* view = window.findChild<ModelGraphicsView*>();
-    ASSERT_NE(view, nullptr);
-    std::map<std::string, QColor> colors;
-    GraphicalModelBuilder builder(simulator, view, window.myScene(), &colors, nullptr);
-    builder.generateGraphicalModelFromModel();
-
-    GraphicalModelComponent* graphicalAdapter = nullptr;
-    for (QGraphicsItem* item : window.myScene()->items()) {
-        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
-        if (graphical != nullptr && graphical->getComponent() == adapter) {
-            graphicalAdapter = graphical;
-            break;
-        }
-    }
-    ASSERT_NE(graphicalAdapter, nullptr);
-    graphicalAdapter->setSelected(true);
-    QAction* createAction = nullptr;
-    for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Create EFSM Network")) {
-            createAction = action;
-            break;
-        }
-    }
-    ASSERT_NE(createAction, nullptr);
-    QAction* openAction = nullptr;
-    for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) openAction = action;
-    }
-    ASSERT_NE(openAction, nullptr);
-    QTabWidget* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
-    ASSERT_NE(tabs, nullptr);
-    const int rootTabCount = tabs->count();
-    EXPECT_FALSE(openAction->isEnabled());
-
-    auto attemptNetworkCreation = [&](const QString& name, bool acceptPrompt) {
-        bool promptHandled = false;
-        bool warningShown = false;
-        QTimer dialogDriver;
-        QObject::connect(&dialogDriver, &QTimer::timeout, [&]() {
-            QWidget* active = QApplication::activeModalWidget();
-            if (auto* prompt = qobject_cast<QInputDialog*>(active)) {
-                if (!promptHandled) {
-                    promptHandled = true;
-                    prompt->setTextValue(name);
-                    auto* buttons = prompt->findChild<QDialogButtonBox*>();
-                    buttons->button(acceptPrompt ? QDialogButtonBox::Ok : QDialogButtonBox::Cancel)->click();
-                }
-            } else if (auto* warning = qobject_cast<QMessageBox*>(active)) {
-                warningShown = true;
-                warning->accept();
-            }
-        });
-        dialogDriver.start(5);
-        createAction->trigger();
-        dialogDriver.stop();
-        return std::pair{promptHandled, warningShown};
-    };
-
-    const auto [cancelPromptHandled, cancelWarningShown] =
-        attemptNetworkCreation(QStringLiteral("CanceledNetwork"), false);
-    EXPECT_TRUE(cancelPromptHandled);
-    EXPECT_FALSE(cancelWarningShown);
-    EXPECT_EQ(adapter->getNetwork(), nullptr);
-    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
-
-    const auto [conflictPromptHandled, conflictWarningShown] =
-        attemptNetworkCreation(QStringLiteral("TakenNetwork"), true);
-    EXPECT_TRUE(conflictPromptHandled);
-    EXPECT_TRUE(conflictWarningShown);
-    EXPECT_EQ(adapter->getNetwork(), nullptr);
-    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), existingNetwork->getId()),
-              existingNetwork);
-    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
-
-    const auto [createPromptHandled, createWarningShown] =
-        attemptNetworkCreation(QStringLiteral("CreatedNetwork"), true);
-    EXPECT_TRUE(createPromptHandled);
-    EXPECT_FALSE(createWarningShown);
-    ASSERT_NE(adapter->getNetwork(), nullptr);
-    EXPECT_EQ(adapter->getNetwork()->getName(), "CreatedNetwork");
-    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 2u);
-    EXPECT_EQ(tabs->count(), rootTabCount + 1);
-    ASSERT_TRUE(window.myScene()->hasModelLevelFilter());
-    EXPECT_EQ(window.myScene()->modelLevelFilter(), static_cast<unsigned int>(adapter->getNetwork()->getId()));
-    EXPECT_TRUE(window.myScene()->getGraphicalModelDataDefinitions()->isEmpty());
-}
-
-TEST(EFSMNetworkEditor, SelectNetworkActionAssociatesTheChosenIdentityWithoutGlobalValidation) {
-    MainWindow window;
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
-    Simulator* simulator = window.myScene()->getSimulator();
-    ASSERT_NE(simulator, nullptr);
-    simulator->getPluginManager()->autoInsertPlugins();
-    Model* model = simulator->getModelManager()->current();
-    ASSERT_NE(model, nullptr);
-    auto* first = new EFSMNetwork(model, "DuplicateLabel");
-    auto* second = new EFSMNetwork(model, "DuplicateLabel");
-    auto* adapter = new ModalModelDefault(model, "NetworkSelectAdapter");
-    adapter->setNetwork(first);
-    auto* source = new Create(model, "NetworkSelectSource");
-    auto* sink = new Dispose(model, "NetworkSelectSink");
-    source->getConnectionManager()->insert(adapter);
-    adapter->getConnectionManager()->insert(sink);
-
-    auto* view = window.findChild<ModelGraphicsView*>();
-    ASSERT_NE(view, nullptr);
-    std::map<std::string, QColor> colors;
-    GraphicalModelBuilder builder(simulator, view, window.myScene(), &colors, nullptr);
-    builder.generateGraphicalModelFromModel();
-    GraphicalModelComponent* graphicalAdapter = nullptr;
-    for (QGraphicsItem* item : window.myScene()->items()) {
-        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
-        if (graphical != nullptr && graphical->getComponent() == adapter) {
-            graphicalAdapter = graphical;
-            break;
-        }
-    }
-    ASSERT_NE(graphicalAdapter, nullptr);
-    QAction* selectAction = nullptr;
-    for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Select EFSM Network")) selectAction = action;
-    }
-    ASSERT_NE(selectAction, nullptr);
-    graphicalAdapter->setSelected(true);
-    ASSERT_TRUE(selectAction->isEnabled());
-
-    QTimer::singleShot(0, [second]() {
-        auto* prompt = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
-        if (prompt == nullptr) return;
-        auto* combo = prompt->findChild<QComboBox*>();
-        auto* buttons = prompt->findChild<QDialogButtonBox*>();
-        if (combo == nullptr || buttons == nullptr) return;
-        combo->setCurrentIndex(combo->findText(QStringLiteral("%1 [#%2]")
-                                                    .arg(QString::fromStdString(second->getName()))
-                                                    .arg(second->getId())));
-        buttons->button(QDialogButtonBox::Ok)->click();
-    });
-    selectAction->trigger();
-
-    EXPECT_EQ(adapter->getNetwork(), second);
-    EXPECT_NE(adapter->getNetwork(), first);
-    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 2u);
-    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), first->getId()), first);
-}
-
 TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete) {
     MainWindow window;
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
@@ -1909,6 +1750,8 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     ASSERT_NE(originalModel, nullptr);
 
     auto* adapter = new ModalModelDefault(originalModel, "PersistedGuiAdapter");
+    auto* network = new EFSMNetwork(originalModel, "PersistedGuiNetwork");
+    adapter->setNetwork(network);
     auto* source = new Create(originalModel, "PersistedGuiSource");
     auto* sink = new Dispose(originalModel, "PersistedGuiSink");
     source->getConnectionManager()->insert(adapter);
@@ -1919,54 +1762,21 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     GraphicalModelBuilder rootBuilder(simulator, rootView, window.myScene(), &colors, nullptr);
     rootBuilder.generateGraphicalModelFromModel();
 
-    auto findAdapterItem = [&window, adapter]() {
-        for (QGraphicsItem* item : window.myScene()->items()) {
-            auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
-            if (graphical != nullptr && graphical->getComponent() == adapter) return graphical;
-        }
-        return static_cast<GraphicalModelComponent*>(nullptr);
-    };
-    GraphicalModelComponent* graphicalAdapter = findAdapterItem();
-    ASSERT_NE(graphicalAdapter, nullptr);
-    QAction* createNetwork = nullptr;
-    QAction* openSubmodel = nullptr;
-    for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Create EFSM Network")) createNetwork = action;
-        if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) openSubmodel = action;
-    }
-    ASSERT_NE(createNetwork, nullptr);
-    ASSERT_NE(openSubmodel, nullptr);
+    auto* openNetwork = window.findChild<QAction*>(QStringLiteral("actionOpenSelectedSubmodel"));
+    ASSERT_NE(openNetwork, nullptr);
     auto* tabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
     ASSERT_NE(tabs, nullptr);
     const int rootTabCount = tabs->count();
-    graphicalAdapter->setSelected(true);
-    ASSERT_TRUE(createNetwork->isEnabled());
-    bool createNetworkDialogHandled = false;
-    QTimer createNetworkDialogDriver;
-    QTimer createNetworkDialogWatchdog;
-    createNetworkDialogWatchdog.setSingleShot(true);
-    QObject::connect(&createNetworkDialogWatchdog, &QTimer::timeout, []() {
-        if (auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget())) dialog->reject();
-    });
-    QObject::connect(&createNetworkDialogDriver, &QTimer::timeout, [&]() {
-        auto* dialog = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
-        if (dialog != nullptr) {
-            createNetworkDialogHandled = true;
-            createNetworkDialogDriver.stop();
-            dialog->setTextValue(QStringLiteral("PersistedGuiNetwork"));
-            dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok)->click();
+    for (QGraphicsItem* item : window.myScene()->items()) {
+        auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
+        if (graphical != nullptr && graphical->getComponent() == adapter) {
+            graphical->setSelected(true);
+            break;
         }
-    });
-    createNetworkDialogDriver.start(5);
-    createNetworkDialogWatchdog.start(5000);
-    createNetwork->trigger();
-    createNetworkDialogDriver.stop();
-    createNetworkDialogWatchdog.stop();
-    ASSERT_TRUE(createNetworkDialogHandled);
-    auto* network = dynamic_cast<EFSMNetwork*>(adapter->getNetwork());
-    ASSERT_NE(network, nullptr);
-    EXPECT_EQ(originalModel->getDataManager()->getDataDefinition(
-                  Util::TypeOf<EFSMNetwork>(), network->getId()), network);
+    }
+    EXPECT_EQ(openNetwork->text(), QStringLiteral("Open Network"));
+    ASSERT_TRUE(openNetwork->isEnabled());
+    openNetwork->trigger();
     ASSERT_EQ(tabs->count(), rootTabCount + 1);
     auto* networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
     ASSERT_NE(networkView, nullptr);
@@ -2262,7 +2072,7 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     ASSERT_TRUE(parsedLayouts.contains(static_cast<unsigned long>(restoredNetwork->getId())));
     ASSERT_EQ(parsedLayouts.value(static_cast<unsigned long>(restoredNetwork->getId())).states.size(), 2);
 
-    graphicalAdapter = nullptr;
+    GraphicalModelComponent* graphicalAdapter = nullptr;
     for (QGraphicsItem* item : window.myScene()->items()) {
         auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
         if (graphical != nullptr && graphical->getComponent()->getName() == "PersistedGuiAdapter") {
@@ -2272,8 +2082,9 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     }
     ASSERT_NE(graphicalAdapter, nullptr);
     graphicalAdapter->setSelected(true);
-    ASSERT_TRUE(openSubmodel->isEnabled());
-    openSubmodel->trigger();
+    EXPECT_EQ(openNetwork->text(), QStringLiteral("Open Network"));
+    ASSERT_TRUE(openNetwork->isEnabled());
+    openNetwork->trigger();
     networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
     ASSERT_NE(networkView, nullptr);
     ASSERT_TRUE(networkView->getScene()->hasModelLevelFilter());

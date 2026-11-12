@@ -1021,6 +1021,7 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     browser.show();
     bindEditableKernelObject(browser, &component);
 
+    QtBrowserItem* item = nullptr;
     for (DefaultNetwork* candidate : networks) {
         const QString choice = QStringLiteral("%1::%2 [#%3]")
             .arg(QString::fromStdString(candidate->getClassname()), QString::fromStdString(candidate->getName()))
@@ -1038,6 +1039,24 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
         drainGuiEvents();
         EXPECT_EQ(component.getNetwork(), candidate) << choice.toStdString();
     }
+
+    const QString graphType = QString::fromStdString(Util::TypeOf<DirectedGraphNetwork>());
+    const QString createLabel = QStringLiteral("Criar novo %1").arg(graphType);
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    auto* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    EXPECT_EQ(selector->findText(QStringLiteral("Criar novo DefaultNetwork")), -1);
+    const int createIndex = selector->findText(createLabel);
+    ASSERT_GE(createIndex, 0);
+    selector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    auto* createdNetwork = dynamic_cast<DirectedGraphNetwork*>(component.getNetwork());
+    ASSERT_NE(createdNetwork, nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
 }
 
 TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {
