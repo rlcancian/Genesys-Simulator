@@ -40,13 +40,14 @@
 class Decide : public ModelComponent {
 public:
 	struct ConditionEdit {
-		enum class Kind { Insert, Replace, Remove };
+		enum class Kind { Insert, Replace, Remove, Move };
 		Kind kind;
 		unsigned int index = 0;
 		std::string before;
 		std::string after;
 		ModelComponent* removedTarget = nullptr;
 		unsigned int removedTargetPort = 0;
+		unsigned int destinationIndex = 0;
 	};
 
 	Decide(Model* model, std::string name = "");
@@ -56,6 +57,7 @@ public:
 	void addConditions(std::string newCondition);
 	void insertConditionAt(unsigned int index, std::string condition);
 	void replaceConditionAt(unsigned int index, std::string condition);
+	void moveCondition(unsigned int from, unsigned int to);
 	void removeConditionAt(unsigned int index);
 	void editConditionInsertAt(unsigned int index, std::string condition);
 	void editConditionReplaceAt(unsigned int index, std::string condition);

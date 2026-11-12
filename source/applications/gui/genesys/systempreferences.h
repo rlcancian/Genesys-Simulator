@@ -38,7 +38,7 @@ public:
      * @brief Interface density/style preset used by the Qt application.
      */
     enum class InterfaceStyle {
-        Classic,
+        Arena,
         Modern
     };
 

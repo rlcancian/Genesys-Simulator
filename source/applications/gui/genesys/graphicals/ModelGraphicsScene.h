@@ -42,7 +42,7 @@
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalComponentPort.h"
 #include "graphicals/GraphicalDiagramConnection.h"
-#include "propertyeditor/DataComponentProperty.h"
+class DataComponentProperty;
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"

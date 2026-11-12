@@ -88,6 +88,7 @@ protected: // virtual
 protected:
 
 private: // methods
+	void _moveSeizeRequest(int from, int to);
 	void _adjustConnections();
 	void _ensureInternalComponents();
 	void _reconcileInternalComponents();

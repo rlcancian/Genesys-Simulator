@@ -58,15 +58,23 @@ void DecideConditionUndoCommand::apply(bool after) {
 			}
 		}
 		break;
+	case Decide::ConditionEdit::Kind::Move: {
+		const unsigned int from = performOriginal ? _edit.index : _edit.destinationIndex;
+		const unsigned int to = performOriginal ? _edit.destinationIndex : _edit.index;
+		_decide->moveCondition(from, to);
+		if (_graphical != nullptr) _graphical->moveDecideConditionPort(from, to);
+		break;
+	}
 	}
 
 	unsigned int changedIndex = 0;
 	bool inserted = false;
-	if (_decide->takeConditionPortEdit(changedIndex, inserted) && _graphical != nullptr) {
+	if (_edit.kind != Decide::ConditionEdit::Kind::Move
+		&& _decide->takeConditionPortEdit(changedIndex, inserted) && _graphical != nullptr) {
 		_graphical->applyDecideConditionPortEdit(changedIndex, inserted);
 	}
 	Decide::ConditionEdit ignoredEdit;
-	_decide->takeConditionEdit(ignoredEdit);
+	if (_edit.kind != Decide::ConditionEdit::Kind::Move) _decide->takeConditionEdit(ignoredEdit);
 
 	if (_edit.kind == Decide::ConditionEdit::Kind::Remove && !after) {
 		restoreRemovedConnection();

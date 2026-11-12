@@ -150,6 +150,69 @@ TEST(DecideDynamicPortPresentation, AppliesQueuedConditionPortEditsInOrder) {
     }
 }
 
+TEST(DecideConditionUndo, MoveKeepsGraphicalConnectionsAndElseThroughUndoRedo) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* decide = new Decide(model, "MoveGraphicalDecide");
+    decide->addConditions("first");
+    decide->addConditions("second");
+    decide->addConditions("third");
+    auto* target = new Dispose(model, "MoveGraphicalTarget");
+    auto* elseTarget = new Dispose(model, "MoveGraphicalElse");
+    Plugin* decidePlugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    Plugin* disposePlugin = simulator.getPluginManager()->find(Util::TypeOf<Dispose>());
+    ASSERT_NE(decidePlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(decidePlugin, decide, QPointF(100, 100), Qt::blue);
+    auto* graphicalTarget = new GraphicalModelComponent(disposePlugin, target, QPointF(400, 100), Qt::blue);
+    auto* graphicalElse = new GraphicalModelComponent(disposePlugin, elseTarget, QPointF(400, 300), Qt::blue);
+    scene.addItem(graphical);
+    scene.addItem(graphicalTarget);
+    scene.addItem(graphicalElse);
+    auto* firstConnection = new Connection{target, {0}};
+    auto* elseConnection = new Connection{elseTarget, {0}};
+    decide->getConnectionManager()->insertAtPort(0, firstConnection);
+    decide->getConnectionManager()->insertAtPort(3, elseConnection);
+    auto* firstPort = graphical->getGraphicalOutputPorts().at(0);
+    auto* elsePort = graphical->getGraphicalOutputPorts().at(3);
+    const qreal firstPosition = firstPort->y();
+    const qreal elsePosition = elsePort->y();
+    scene.addGraphicalConnection(firstPort, graphicalTarget->getGraphicalInputPorts().at(0), 0, 0);
+    scene.addGraphicalConnection(elsePort, graphicalElse->getGraphicalInputPorts().at(0), 0, 0);
+    ASSERT_EQ(firstPort->getConnections()->size(), 1);
+    auto* graphicalConnection = firstPort->getConnections()->front();
+
+    decide->moveCondition(0, 2);
+    graphical->moveDecideConditionPort(0, 2);
+    Decide::ConditionEdit edit{Decide::ConditionEdit::Kind::Move, 0};
+    edit.destinationIndex = 2;
+    undoStack.push(new DecideConditionUndoCommand(decide, graphical, edit));
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), firstPort);
+    EXPECT_EQ(firstPort->portNum(), 2u);
+    EXPECT_EQ(graphicalConnection->getPortSourceConnection(), 2u);
+    EXPECT_GT(firstPort->y(), firstPosition);
+    EXPECT_EQ(graphicalConnection->getSourceGraphicalPort(), firstPort);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(3), elsePort);
+    EXPECT_EQ(elsePort->y(), elsePosition);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(3), elseConnection);
+    undoStack.undo();
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(0), firstPort);
+    EXPECT_EQ(firstPort->portNum(), 0u);
+    EXPECT_EQ(firstPort->y(), firstPosition);
+    EXPECT_EQ(graphicalConnection->getPortSourceConnection(), 0u);
+    undoStack.redo();
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), firstPort);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(3), elsePort);
+}
+
 TEST(DecideConditionUndo, RemoveUndoRedoRestoresOnlyTheRemovedConnectionAndElse) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -931,6 +994,27 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
     scene->getGraphicalModelComponents()->append(graphicalSeize);
     scene->getAllComponents()->append(graphicalSeize);
     ASSERT_NE(graphicalSeize, nullptr);
+    auto* movedDecide = new Decide(model, "Decide_SerializerMove");
+    movedDecide->addConditions("1");
+    movedDecide->addConditions("0");
+    auto* movedTarget = new Dispose(model, "Dispose_SerializerMove");
+    Plugin* decidePlugin = pluginManager->find(Util::TypeOf<Decide>());
+    Plugin* disposePlugin = pluginManager->find(Util::TypeOf<Dispose>());
+    ASSERT_NE(decidePlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+    auto* graphicalDecide = new GraphicalModelComponent(decidePlugin, movedDecide, QPointF(100, 100), Qt::blue);
+    auto* graphicalTarget = new GraphicalModelComponent(disposePlugin, movedTarget, QPointF(400, 100), Qt::blue);
+    scene->addItem(graphicalDecide);
+    scene->addItem(graphicalTarget);
+    scene->getGraphicalModelComponents()->append(graphicalDecide);
+    scene->getGraphicalModelComponents()->append(graphicalTarget);
+    scene->getAllComponents()->append(graphicalDecide);
+    scene->getAllComponents()->append(graphicalTarget);
+    movedDecide->getConnectionManager()->insertAtPort(0, new Connection{movedTarget, {0}});
+    scene->addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(0),
+        graphicalTarget->getGraphicalInputPorts().at(0), 0, 0);
+    movedDecide->moveCondition(0, 1);
+    graphicalDecide->moveDecideConditionPort(0, 1);
     const QString expectedCategoryColor = QColor(Qt::darkGreen).name(QColor::HexRgb);
 
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
@@ -1062,6 +1146,15 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
     GraphicalModelComponent* loadedComponent = findGraphicalComponentByName(*scene, "Seize_Serializer");
     ASSERT_NE(loadedComponent, nullptr);
     EXPECT_EQ(loadedComponent->getColor().name(QColor::HexRgb), expectedCategoryColor);
+    auto* loadedDecide = dynamic_cast<Decide*>(loadedModel->getComponentManager()->find("Decide_SerializerMove"));
+    ASSERT_NE(loadedDecide, nullptr);
+    EXPECT_EQ(loadedDecide->getConditions()->getAtRank(1), "1");
+    ASSERT_NE(loadedDecide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+    EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(1)->component->getName(), "Dispose_SerializerMove");
+    auto* loadedGraphicalDecide = findGraphicalComponentByName(*scene, "Decide_SerializerMove");
+    ASSERT_NE(loadedGraphicalDecide, nullptr);
+    ASSERT_EQ(loadedGraphicalDecide->getGraphicalOutputPorts().at(1)->getConnections()->size(), 1);
+    EXPECT_EQ(loadedGraphicalDecide->getGraphicalOutputPorts().at(1)->getConnections()->front()->getPortSourceConnection(), 1u);
 
     GraphicalModelDataDefinition* loadedQueueGmdd = findGraphicalDataDefinitionByTypeAndName(
         *scene,

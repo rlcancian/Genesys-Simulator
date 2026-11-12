@@ -312,6 +312,7 @@ void PropertyEditorController::bindDataDefinitionFromInspector(
     }
 
     ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;
+    _propertyBrowser->setModelScene(scene);
     QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
     QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
 
@@ -353,6 +354,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
     if (selectedItems.size() == 1) {
         QGraphicsItem* item = selectedItems.at(0);
         ModelGraphicsScene* scene = _graphicsView->getScene();
+        _propertyBrowser->setModelScene(scene);
         const QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
         const QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
         refreshGraphicalDataDefinitionEditability(scene, editableDataDefinitions);

@@ -1,4 +1,5 @@
 #include "PersistencePartialLoadImpl1.h"
+#include "ConnectionPersistence.h"
 
 #include <exception>
 #include <fstream>
@@ -248,8 +249,16 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 			}
 
 			unsigned short nextSize = fields->loadField("nexts", 1);
-			for (unsigned short i = 0; i < nextSize; i++) {
-				Util::identification nextId = fields->loadField("nextId" + Util::StrIndex(i), 0);
+			const auto outputPorts = nextSize == 0 ? std::vector<unsigned int>{} : connectionOutputPorts(*fields);
+			if (outputPorts.size() != nextSize) {
+				_model->getTracer()->traceError("Error connecting component id=" + std::to_string(id)
+					+ ": connection count does not match saved ports");
+				++recoverableErrors;
+				requiredConnectionFailure = true;
+				continue;
+			}
+			for (unsigned int outputPort : outputPorts) {
+				Util::identification nextId = fields->loadField("nextId" + Util::StrIndex(outputPort), 0);
 				if (nextSize == 1) {
 					nextId = fields->loadField("nextId", static_cast<unsigned int>(nextId));
 				}
@@ -264,9 +273,9 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 					continue;
 				}
 
-				unsigned short nextPort = fields->loadField("nextinputPortNumber" + Util::StrIndex(i), 0);
-				component->getConnectionManager()->insert(nextComponent, nextPort);
-				_model->getTracer()->trace(component->getName() + "<" + std::to_string(i) + ">"
+				unsigned short nextPort = fields->loadField("nextinputPortNumber" + Util::StrIndex(outputPort), 0);
+				component->getConnectionManager()->insertAtPort(outputPort, new Connection{nextComponent, {nextPort, ""}});
+				_model->getTracer()->trace(component->getName() + "<" + std::to_string(outputPort) + ">"
 										   + " --> " + nextComponent->getName() + "<" + std::to_string(nextPort) + ">");
 			}
 		} catch (const std::exception& e) {

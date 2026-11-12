@@ -176,6 +176,25 @@ void GraphicalModelComponent::applyDecideConditionPortEdit(unsigned int index, b
 	}
 }
 
+void GraphicalModelComponent::moveDecideConditionPort(unsigned int from, unsigned int to) {
+	if (_graphicalOutputPorts.isEmpty() || from >= static_cast<unsigned int>(_graphicalOutputPorts.size() - 1)
+		|| to >= static_cast<unsigned int>(_graphicalOutputPorts.size() - 1) || from == to) return;
+	_graphicalOutputPorts.move(static_cast<int>(from), static_cast<int>(to));
+	const unsigned int count = static_cast<unsigned int>(_graphicalOutputPorts.size());
+	const qreal step = static_cast<qreal>(_height) / static_cast<qreal>(count + 1);
+	for (unsigned int index = 0; index < count; ++index) {
+		GraphicalComponentPort* port = _graphicalOutputPorts.at(static_cast<int>(index));
+		port->setPortNum(index);
+		port->setY(step * static_cast<qreal>(index + 1) - port->height() / 2);
+		for (GraphicalConnection* connection : *port->getConnections()) {
+			if (connection != nullptr && connection->getSourceGraphicalPort() == port) {
+				connection->setSourcePortNumber(index);
+				connection->updateDimensionsAndPosition();
+			}
+		}
+	}
+}
+
 GraphicalModelComponent::GraphicalModelComponent(const GraphicalModelComponent& orig) : GraphicalModelDataDefinition(
 	orig) {
 }

@@ -373,10 +373,6 @@ GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* 
     }
     _propertyEditor->addElement(component);
     for (auto prop : *component->getSimulationControls()->list()) {
-        if (prop->getIsList()) {
-            (*(_propertyList))[prop] = new DataComponentProperty(_propertyEditor, prop, false);
-        }
-
         if (prop->getIsClass()) {
             (*(_propertyEditorUI))[prop] = new DataComponentEditor(_propertyEditor, prop);
         }

@@ -10,7 +10,7 @@
 #include <memory>
 #include <map>
 
-#include "propertyeditor/DataComponentProperty.h"
+class DataComponentProperty;
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
 

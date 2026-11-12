@@ -8,6 +8,7 @@
 #include "kernel/simulator/essentialPlugins/Entity.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Decide.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 
 #include <vector>
@@ -61,6 +62,16 @@ public:
     }
 };
 
+class DecideProbe final : public Decide {
+public:
+    DecideProbe(Model* model, const std::string& name)
+        : Decide(model, name) {}
+
+    void dispatch(Entity* entity) {
+        _onDispatchEvent(entity, 0u);
+    }
+};
+
 void drainFutureEvents(Model* model) {
     ASSERT_NE(model, nullptr);
     while (!model->getFutureEvents()->empty()) {
@@ -106,6 +117,28 @@ TEST(SearchRemoveRuntimeTest, SearchQueueFindsEntityInRangeSavesRankAndRoutesToF
     EXPECT_TRUE(notFoundSink.receivedEntities().empty());
     ASSERT_EQ(foundSink.receivedEntities().size(), 1u);
     EXPECT_EQ(foundSink.receivedEntities().front(), trigger);
+}
+
+TEST(SearchRemoveRuntimeTest, DecideEvaluatesUniformConditionAndUsesBothOutputs) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DecideProbe decide(model, "DecideUniformCondition");
+    CollectorSinkComponentProbe trueSink(model, "DecideUniformTrue");
+    CollectorSinkComponentProbe elseSink(model, "DecideUniformElse");
+    decide.addConditions("unif(0,1) < 0.5");
+    decide.getConnectionManager()->insert(&trueSink);
+    decide.getConnectionManager()->insert(&elseSink);
+
+    for (unsigned int i = 0; i < 100; ++i) {
+        decide.dispatch(model->createEntity("DecideUniformEntity" + std::to_string(i), true));
+    }
+    drainFutureEvents(model);
+
+    EXPECT_GT(trueSink.receivedEntities().size(), 0u);
+    EXPECT_GT(elseSink.receivedEntities().size(), 0u);
+    EXPECT_EQ(trueSink.receivedEntities().size() + elseSink.receivedEntities().size(), 100u);
 }
 
 TEST(SearchRemoveRuntimeTest, SearchQueueNotFoundRoutesToPortZeroAndSavesZeroRank) {

@@ -13,8 +13,18 @@
 
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/persistence/PersistencePartialLoadImpl1.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Failure.h"
+#include "plugins/data/Logic/Set.h"
+#include "plugins/data/Transfer/Station.h"
 #include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Continuous/LSODE.h"
+#include "plugins/components/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/Transfer/PickStation.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/Decisions/PickUp.h"
@@ -207,6 +217,207 @@ TEST(DecideConditionsEditorTest, PositionalEditsPreserveUnaffectedKernelConnecti
 	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), otherwise);
 	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), nullptr);
 	EXPECT_EQ(decide->getConnectionManager()->size(), 2u);
+}
+
+TEST(DecideConditionsEditorTest, MovePreservesConnectionsAndElseAcrossEmptyPorts) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	Decide decide(model, "MoveDecide");
+	Decide destination(model, "MoveDestination");
+	decide.addConditions("first");
+	decide.addConditions("second");
+	decide.addConditions("third");
+	auto* first = new Connection{&destination, {0}};
+	auto* otherwise = new Connection{&destination, {1}};
+	decide.getConnectionManager()->insertAtPort(0, first);
+	decide.getConnectionManager()->insertAtPort(3, otherwise);
+	decide.moveCondition(0, 2);
+	EXPECT_EQ(decide.getConditions()->getAtRank(2), "first");
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(0), nullptr);
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(2), first);
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(3), otherwise);
+	decide.moveCondition(2, 0);
+	EXPECT_EQ(decide.getConditions()->getAtRank(0), "first");
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(0), first);
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(3), otherwise);
+}
+
+TEST(DecideConditionsEditorTest, MovedListsAndConnectionsSurviveSaveAndLoad) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* decide = new Decide(model, "MovePersistDecide");
+	decide->addConditions("1");
+	decide->addConditions("0");
+	auto* target = new Dispose(model, "MovePersistTarget");
+	auto* otherwise = new Dispose(model, "MovePersistElse");
+	decide->getConnectionManager()->insertAtPort(0, new Connection{target, {0}});
+	decide->getConnectionManager()->insertAtPort(2, new Connection{otherwise, {0}});
+	decide->moveCondition(0, 1);
+	auto* lsode = new LSODE(model, "MovePersistLSODE");
+	lsode->addDiffEquation("first");
+	lsode->addDiffEquation("second");
+	auto* assign = new Assign(model, "MovePersistAssign");
+	assign->addAssignment(new Assignment("Entity.first", "1"));
+	assign->addAssignment(new Assignment("Entity.second", "2"));
+	for (ModelComponent* component : {static_cast<ModelComponent*>(lsode), static_cast<ModelComponent*>(assign)}) {
+		for (SimulationControl* control : *component->getSimulationControls()->list()) {
+			if (control->getName() == "DiffEquations" || control->getName() == "Assignments") control->moveListElement(0, 1);
+		}
+	}
+	const std::string filename = "/tmp/genesys_list_move_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedDecide = dynamic_cast<Decide*>(loaded->getComponentManager()->find("MovePersistDecide"));
+	auto* loadedLSODE = dynamic_cast<LSODE*>(loaded->getComponentManager()->find("MovePersistLSODE"));
+	auto* loadedAssign = dynamic_cast<Assign*>(loaded->getComponentManager()->find("MovePersistAssign"));
+	ASSERT_NE(loadedDecide, nullptr);
+	ASSERT_NE(loadedLSODE, nullptr);
+	ASSERT_NE(loadedAssign, nullptr);
+	EXPECT_EQ(loadedDecide->getConditions()->getAtRank(0), "0");
+	EXPECT_EQ(loadedDecide->getConditions()->getAtRank(1), "1");
+	ASSERT_NE(loadedDecide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(1)->component->getName(), "MovePersistTarget");
+	ASSERT_NE(loadedDecide->getConnectionManager()->getConnectionAtPort(2), nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(2)->component->getName(), "MovePersistElse");
+	EXPECT_EQ(loadedLSODE->getDiffEquations()->getAtRank(0), "second");
+	EXPECT_EQ(loadedAssign->getAssignments()->getAtRank(0)->getDestination(), "Entity.second");
+	Model* partiallyLoaded = simulator.getModelManager()->newModel();
+	PersistencePartialLoadImpl1 partialLoader(partiallyLoaded);
+	ASSERT_TRUE(partialLoader.load(filename));
+	auto* partialDecide = dynamic_cast<Decide*>(partiallyLoaded->getComponentManager()->find("MovePersistDecide"));
+	ASSERT_NE(partialDecide, nullptr);
+	ASSERT_NE(partialDecide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+	EXPECT_EQ(partialDecide->getConnectionManager()->getConnectionAtPort(1)->component->getName(), "MovePersistTarget");
+	ASSERT_NE(partialDecide->getConnectionManager()->getConnectionAtPort(2), nullptr);
+	EXPECT_EQ(partialDecide->getConnectionManager()->getConnectionAtPort(2)->component->getName(), "MovePersistElse");
+	const std::string cppFilename = "/tmp/genesys_list_move_" + std::to_string(::getpid()) + ".cpp";
+	ASSERT_TRUE(model->save(cppFilename));
+	std::ifstream cppFile(cppFilename);
+	ASSERT_TRUE(cppFile.good());
+	const std::string generated((std::istreambuf_iterator<char>(cppFile)), std::istreambuf_iterator<char>());
+	EXPECT_NE(generated.find("MovePersistDecide->getConnectionManager()->insertAtPort(1,"), std::string::npos);
+	EXPECT_NE(generated.find("MovePersistDecide->getConnectionManager()->insertAtPort(2,"), std::string::npos);
+	::unlink(cppFilename.c_str());
+	::unlink(filename.c_str());
+}
+
+TEST(DecideConditionsEditorTest, SingleSparseElseConnectionSurvivesSaveAndLoad) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* decide = new Decide(model, "SingleSparseDecide");
+	decide->addConditions("0");
+	decide->addConditions("1");
+	auto* otherwise = new Dispose(model, "SingleSparseElse");
+	decide->getConnectionManager()->insertAtPort(2, new Connection{otherwise, {0}});
+	const std::string filename = "/tmp/genesys_single_sparse_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedDecide = dynamic_cast<Decide*>(loaded->getComponentManager()->find("SingleSparseDecide"));
+	ASSERT_NE(loadedDecide, nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(0), nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+	ASSERT_NE(loadedDecide->getConnectionManager()->getConnectionAtPort(2), nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(2)->component->getName(), "SingleSparseElse");
+	::unlink(filename.c_str());
+}
+
+TEST(DecideConditionsEditorTest, MovedNonOwningResourceListsSurviveSaveAndLoad) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* first = new Resource(model, "MoveListResourceFirst");
+	auto* second = new Resource(model, "MoveListResourceSecond");
+	auto* resourceSet = new Set(model, "MoveListSet");
+	resourceSet->addElementSet(first);
+	resourceSet->addElementSet(second);
+	auto* failure = new Failure(model, "MoveListFailure");
+	failure->addResource(first);
+	failure->addResource(second);
+	for (ModelDataDefinition* owner : {static_cast<ModelDataDefinition*>(resourceSet), static_cast<ModelDataDefinition*>(failure)}) {
+		for (SimulationControl* control : *owner->getSimulationControls()->list()) {
+			if (control->getName() == "ElementSet" || control->getName() == "FalingResources") control->moveListElement(0, 1);
+		}
+	}
+	const std::string filename = "/tmp/genesys_resource_list_move_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedSet = dynamic_cast<Set*>(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Set>(), "MoveListSet"));
+	auto* loadedFailure = dynamic_cast<Failure*>(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Failure>(), "MoveListFailure"));
+	ASSERT_NE(loadedSet, nullptr);
+	ASSERT_NE(loadedFailure, nullptr);
+	ASSERT_EQ(loadedSet->getElementSet()->size(), 2u);
+	ASSERT_EQ(loadedFailure->falingResources()->size(), 2u);
+	EXPECT_EQ(loadedSet->getElementSet()->getAtRank(0)->getName(), "MoveListResourceSecond");
+	EXPECT_EQ(loadedFailure->falingResources()->getAtRank(0)->getName(), "MoveListResourceSecond");
+	::unlink(filename.c_str());
+}
+
+TEST(DecideConditionsEditorTest, MovedObjectListsSurviveSaveAndLoad) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* first = new Resource(model, "MoveObjectFirst");
+	auto* second = new Resource(model, "MoveObjectSecond");
+	auto* seize = new Seize(model, "MoveObjectSeize");
+	seize->addRequest(new SeizableItem(first));
+	seize->addRequest(new SeizableItem(second));
+	auto* release = new Release(model, "MoveObjectRelease");
+	release->addReleaseRequests(new SeizableItem(first));
+	release->addReleaseRequests(new SeizableItem(second));
+	auto* process = new Process(model, "MoveObjectProcess");
+	process->addSeizeRequest(new SeizableItem(first));
+	process->addSeizeRequest(new SeizableItem(second));
+	ModelDataDefinition::CreateInternalData(process);
+	auto* firstStation = new Station(model, "MoveStationFirst");
+	auto* secondStation = new Station(model, "MoveStationSecond");
+	auto* pick = new PickStation(model, "MoveObjectPick");
+	pick->addPickableStationItem(new PickableStationItem(firstStation, std::string("1")));
+	pick->addPickableStationItem(new PickableStationItem(secondStation, std::string("2")));
+	for (ModelComponent* component : {static_cast<ModelComponent*>(seize), static_cast<ModelComponent*>(release),
+			static_cast<ModelComponent*>(process), static_cast<ModelComponent*>(pick)}) {
+		for (SimulationControl* control : *component->getSimulationControls()->list()) {
+			if (control->getName() == "Requests" || control->getName() == "ReleaseRequests"
+				|| control->getName() == "SeizeRequests" || control->getName() == "PickableStationItens") {
+				control->moveListElement(0, 1);
+			}
+		}
+	}
+	const std::string filename = "/tmp/genesys_object_list_move_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedSeize = dynamic_cast<Seize*>(loaded->getComponentManager()->find("MoveObjectSeize"));
+	auto* loadedRelease = dynamic_cast<Release*>(loaded->getComponentManager()->find("MoveObjectRelease"));
+	auto* loadedProcess = dynamic_cast<Process*>(loaded->getComponentManager()->find("MoveObjectProcess"));
+	auto* loadedPick = dynamic_cast<PickStation*>(loaded->getComponentManager()->find("MoveObjectPick"));
+	ASSERT_NE(loadedSeize, nullptr);
+	ASSERT_NE(loadedRelease, nullptr);
+	ASSERT_NE(loadedProcess, nullptr);
+	ASSERT_NE(loadedPick, nullptr);
+	ASSERT_EQ(loadedSeize->getSeizeRequests()->size(), 2u);
+	ASSERT_EQ(loadedRelease->getReleaseRequests()->size(), 2u);
+	ASSERT_EQ(loadedProcess->getSeizeRequests()->size(), 2u);
+	ASSERT_EQ(loadedPick->getPickableStationItens()->size(), 2u);
+	EXPECT_EQ(loadedSeize->getSeizeRequests()->getAtRank(0)->getName(), "MoveObjectSecond");
+	EXPECT_EQ(loadedRelease->getReleaseRequests()->getAtRank(0)->getName(), "MoveObjectSecond");
+	EXPECT_EQ(loadedProcess->getSeizeRequests()->getAtRank(0)->getName(), "MoveObjectSecond");
+	ASSERT_NE(loadedPick->getPickableStationItens()->getAtRank(0)->getStation(), nullptr);
+	EXPECT_EQ(loadedPick->getPickableStationItens()->getAtRank(0)->getStation()->getName(), "MoveStationSecond");
+	::unlink(filename.c_str());
 }
 
 TEST(PluginIdentityAndCodePersistenceTest, PickUpHasDistinctIdentityAndCppForGRoundTripsText) {
