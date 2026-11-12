@@ -223,6 +223,12 @@ Select validation according to impact.
 
 Validate build, package creation, install, startup, upgrade/reinstall when relevant, uninstall, files left behind, version metadata, dependencies, and service/runtime assumptions separately from unit tests.
 
+### 9.1. Maintainer-approved experimental graphical-extension execution profile (2026-11-11)
+
+For `AUTO-GUI-003` only, on feature branch `WiP202611/gui-extensions-architecture-implementation`, the maintainer explicitly prioritized working GUI code over repetitive exhaustive preliminary audits/tests (decision `HUM-ARCH-005`). During **unmerged incremental development** an affected Qt6 build plus a small relevant focused test set and bounded GUI interaction check when appropriate is an acceptable *intermediate checkpoint*; run the ordinary `tests-unit` regression and other required suites **at integration/review of the final functional candidate**, not after every small commit. A previously successful baseline can be cited with its exact SHA, but not promoted to current-head test evidence. Optional complete CMake File API graph/whole-tree include census must not block beginning implementation when the relevant dependency surfaces are already inspected.
+
+This is a **timing and proportionality exception**, not a waiver for merge/promotion: existing sections 7–9 requirements, mandatory red CI blockers, persistence/data-loss prohibitions, safety-critical tests for changed ownership/event semantics, honest PASS/FAIL/UNKNOWN reporting, affected manual impact and explicit approval requirements still apply. Any later change to other projects' validation policy requires a separate decision. See [GUI extension implementation plan v2](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md).
+
 ## 10. Manual impact requirement
 
 Material changes to GenESyS are not considered fully documented until the affected manual content has been reviewed and updated.

@@ -149,11 +149,24 @@ A decision recorded here is not implemented automatically unless a corresponding
 - Placement: retain framework classes in `source/applications/gui/genesys/extensions/`; propose `source/applications/gui/genesys/extensions/plugins/` for concrete graphical plugin implementations, without immediate large-scale file moves or separate library targets.
 - Future constraint: static registration and compilation for now. Actual shared-library packaging, dynamic load/unload, active-object/callback lifetime protection, hot reload and the Qt/C++ adapter to the approved stable versioned C ABI are **deferred** and require a separate explicit decision/plan. Kernel plugin-target duplication issue #492 remains independent.
 - Scope clarification: historical student PR #436 and DCS-5 artifacts are non-authoritative examples, not approved patches. Existing Tools/Extensions windows (e.g. Bacteria Colony) are to be phased out only after equivalent insertable model-scene animations are verified.
-- Implementation status: **not started**. Documentation-only plan/decision approved; no unattended implementation authorization.
+- Implementation status (2026-11-11): incremental implementation explicitly authorized; source-based G0 inventory recorded, but code work not yet committed. The execution/validation strategy was subsequently revised by `HUM-ARCH-005`. Architecture decisions above remain unchanged.
 - Approved references: [architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md) and [gated implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md); `AUTO-GUI-003` owns future execution after activation.
 - Decision unlocks: planning and future separately authorized bounded GUI refactors. Stop for maintainer if kernel semantics, unsupported persistence migration, stable ABI policy or dynamic loading becomes part of the proposed change.
 - Non-goals: no dynamic plugin migration, hot unload guards, kernel model semantics changes, broad CMake reorganization or GUI framework rewrite.
 
+
+### HUM-ARCH-005 — Accelerate graphical extensions with focused interim validation
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-11-11 (explicit maintainer instruction after repeated G0 sessions).
+- Problem: Version 1 of the G0–G7 plan over-prioritized generated dependency inventories, repeated full-suite validations, documentation and sequential acceptance gates; local GUI build and `tests-unit` were **reported successful** by Codex yet no graphical implementation had begun. This was a **planning/execution mistake**: process blocked the intended architectural development.
+- Directive: **more functional implementation, fewer audits and lighter interim tests**. Preserve the eight existing stages and the full feature goals, but change their execution to small vertical slices: build affected Qt6 target, run 1–3 focused tests, inspect one bounded GUI interaction where relevant, commit/push, and continue autonomously. A full generated dependency graph is no longer a G0-to-G1 gate. Do not repeatedly run the full regression suite at each minor commit.
+- Functional MVP: actual registered animation factory/menu/toolbar and in-scene animated object, GUI-routed model-state update, save/reopen with missing-extension retention, **plus at least one simulation-domain graphical example**; not a static demo/menu-only check. User/developer features beyond this remain scheduled in G4–G7.
+- Integration assurance: run `tests-unit`, relevant GUI interaction and required impacted kernel/smoke/sanitizer/CI checks before final merge under normative §9.1, not throughout every intermediate modification. Do not silently weaken merge/release checks, ignore failures of directly impacted paths, or declare UNKNOWN as PASS.
+- Execution: the active local Codex executor may proceed across G0–G7 without routine human/ChatGPT Web prompts while the approved scope and safety gates hold; maintain the existing implementation branch/PR #575, commit and push meaningful progress. No unapproved dynamic loading, broad redesign, data loss or automatic stable-branch promotion.
+- Approved revised reference: [GUI extensions implementation plan v2](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md); `AUTO-GUI-003`.
+- Outstanding evidence: local GUI build/tests reported by Codex but not yet published; do not describe these as independently audited results. Full generated dependency graph optional unless a concrete issue needs it.
 
 ## 4. Security and deployment decisions
 
