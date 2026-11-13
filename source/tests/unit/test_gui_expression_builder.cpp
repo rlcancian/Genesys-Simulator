@@ -327,7 +327,8 @@ TEST(ExpressionBuilderPropertyTest, CommittedExpressionSurvivesSaveAndReload) {
         auto* dialog = qobject_cast<ExpressionBuilder*>(QApplication::activeModalWidget());
         if (dialog == nullptr) return;
         dialog->findChild<QPlainTextEdit*>(QStringLiteral("expressionEditor"))
-            ->setPlainText(QStringLiteral("if(2 > 1, 3, 5) + norm(0, 1)"));
+            ->setPlainText(QStringLiteral("norm(2,-1) + rnd"));
+        EXPECT_TRUE(dialog->validateCurrentExpression());
         dialog->findChild<QPushButton*>(QStringLiteral("btnApply"))->click();
         accepted = dialog->result() == QDialog::Accepted;
     });
@@ -339,7 +340,7 @@ TEST(ExpressionBuilderPropertyTest, CommittedExpressionSurvivesSaveAndReload) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     }
 
-    const std::string expected = "if(2 > 1, 3, 5) + norm(0, 1)";
+    const std::string expected = "norm(2,-1) + rnd";
     EXPECT_TRUE(accepted);
     ASSERT_EQ(delay->delayExpression(), expected);
     ASSERT_EQ(delay->delayTimeUnit(), Util::TimeUnit::minute);
