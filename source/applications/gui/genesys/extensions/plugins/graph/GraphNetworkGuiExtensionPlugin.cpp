@@ -489,6 +489,11 @@ public:
             auto* node = dynamic_cast<GraphNode*>(dropped);
             if (network != nullptr && node != nullptr) network->addNode(node);
         };
+        editor.onDataDefinitionRemoved = [](ModelDataDefinition* definition, ModelDataDefinition* dropped) {
+            auto* network = dynamic_cast<GraphNetwork*>(definition);
+            auto* node = dynamic_cast<GraphNode*>(dropped);
+            if (network != nullptr && node != nullptr) network->removeNode(node);
+        };
         registry->addNetworkEditor(std::move(editor));
 
         GuiActionContribution addEdge;

@@ -651,6 +651,12 @@ public:
         };
         editor.acceptsDrop = acceptsCpnDrop;
         editor.onDataDefinitionDropped = addCpnNode;
+        editor.onDataDefinitionRemoved = [](ModelDataDefinition* owner, ModelDataDefinition* dropped) {
+            auto* network = dynamic_cast<ColoredPetriNetNetwork*>(owner);
+            if (network == nullptr || dropped == nullptr) return;
+            if (auto* place = dynamic_cast<PetriPlace*>(dropped)) network->removePlace(place);
+            if (auto* transition = dynamic_cast<CPNTransition*>(dropped)) network->removeTransition(transition);
+        };
         registry->addNetworkEditor(std::move(editor));
         GuiActionContribution fire;
         fire.id = "modal.cpn.fire-transition";

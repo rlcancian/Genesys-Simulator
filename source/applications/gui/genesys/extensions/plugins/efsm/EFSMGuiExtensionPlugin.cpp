@@ -80,6 +80,11 @@ public:
             auto* state = dynamic_cast<FSMState*>(dropped);
             if (network != nullptr && state != nullptr) network->addState(state);
         };
+        networkEditor.onDataDefinitionRemoved = [](ModelDataDefinition* owner, ModelDataDefinition* dropped) {
+            auto* network = dynamic_cast<EFSMNetwork*>(owner);
+            auto* state = dynamic_cast<FSMState*>(dropped);
+            if (network != nullptr && state != nullptr) network->removeState(state);
+        };
         registry->addNetworkEditor(std::move(networkEditor));
         addAction(registry, "modal.efsm.create-state", "Create EFSM State",
                   &EFSMNetworkEditorController::canCreateState,

@@ -70,6 +70,46 @@
 #include <algorithm>
 
 namespace {
+    class AddNetworkDataDefinitionUndoCommand final : public QUndoCommand {
+    public:
+        AddNetworkDataDefinitionUndoCommand(ModelGraphicsScene* scene,
+                                            ModelDataDefinition* owner,
+                                            GraphicalModelDataDefinition* graphicalItem)
+            : _scene(scene), _owner(owner), _graphicalItem(graphicalItem), _firstRedo(true) {
+            setText(QObject::tr("Add network element"));
+        }
+
+        void undo() override {
+            if (_scene.isNull() || _owner == nullptr || _graphicalItem == nullptr
+                || _graphicalItem->getDataDefinition() == nullptr) return;
+            GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionRemoved(
+                _owner, _graphicalItem->getDataDefinition());
+            _scene->detachGraphicalModelDataDefinition(_graphicalItem);
+            GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
+                _scene->getSimulator(), _scene.data());
+        }
+
+        void redo() override {
+            if (_firstRedo) {
+                _firstRedo = false;
+                return;
+            }
+            if (_scene.isNull() || _owner == nullptr || _graphicalItem == nullptr
+                || _graphicalItem->getDataDefinition() == nullptr) return;
+            GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
+                _owner, _graphicalItem->getDataDefinition());
+            _scene->restoreGraphicalModelDataDefinition(_graphicalItem);
+            GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
+                _scene->getSimulator(), _scene.data());
+        }
+
+    private:
+        QPointer<ModelGraphicsScene> _scene;
+        ModelDataDefinition* _owner = nullptr;
+        GraphicalModelDataDefinition* _graphicalItem = nullptr;
+        bool _firstRedo = true;
+    };
+
     // Keep sync-in-progress state exception-safe inside queued synchronization execution.
     class ScopedSyncInProgress {
     public:
@@ -3482,6 +3522,10 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                         clearSelection();
                         graphicalDataDefinition->setSelected(true);
                         graphicalDataDefinition->setFocus();
+                        if (hasModelLevelFilter() && getUndoStack() != nullptr) {
+                            getUndoStack()->push(new AddNetworkDataDefinitionUndoCommand(
+                                this, _networkEditorOwner, graphicalDataDefinition));
+                        }
                     }
 
                     // Reuse the canonical queued sync so editability and diagram links remain consistent.

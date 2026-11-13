@@ -1223,6 +1223,45 @@ TEST(GraphNetworkGuiExtension, DroppedGraphNodeJoinsTheNetworkAndScene) {
                   ->getDataDefinition(), network.getNodes().front());
 }
 
+TEST(GraphNetworkGuiExtension, DroppedGraphNodeCanBeUndoneAndRedone) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNetwork network(model, "UndoDroppedNodeGraph");
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    scene.setNetworkEditorOwner(&network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    Plugin* nodePlugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+    ASSERT_NE(nodePlugin, nullptr);
+    QTreeWidgetItem draggedItem;
+    draggedItem.setWhatsThis(0, QString::fromStdString(nodePlugin->getPluginInfo()->getPluginTypename()));
+    scene.setObjectBeingDragged(&draggedItem);
+    QGraphicsSceneDragDropEvent event(QEvent::GraphicsSceneDrop);
+    event.setScenePos(QPointF(150, 90));
+    scene.dropEvent(&event);
+
+    ASSERT_EQ(network.getNodes().size(), 1u);
+    auto* node = network.getNodes().front();
+    auto* graphical = scene.findGraphicalModelDataDefinition(node);
+    ASSERT_NE(graphical, nullptr);
+    const QPointF originalPosition = graphical->pos();
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    EXPECT_TRUE(network.getNodes().empty());
+    EXPECT_EQ(graphical->scene(), nullptr);
+    EXPECT_EQ(scene.findGraphicalModelDataDefinition(node), nullptr);
+
+    undoStack.redo();
+    ASSERT_EQ(network.getNodes().size(), 1u);
+    EXPECT_EQ(network.getNodes().front(), node);
+    EXPECT_EQ(scene.findGraphicalModelDataDefinition(node), graphical);
+    EXPECT_EQ(graphical->pos(), originalPosition);
+}
+
 TEST(GraphNetworkGuiExtension, CreatesEdgesFromSelectedNodesWithUndoRedo) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();

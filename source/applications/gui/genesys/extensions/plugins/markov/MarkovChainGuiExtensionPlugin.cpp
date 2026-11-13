@@ -478,6 +478,11 @@ public:
             auto* state = dynamic_cast<MarkovState*>(dropped);
             if (network != nullptr && state != nullptr) network->addState(state);
         };
+        editor.onDataDefinitionRemoved = [](ModelDataDefinition* definition, ModelDataDefinition* dropped) {
+            auto* network = dynamic_cast<MarkovChainNetwork*>(definition);
+            auto* state = dynamic_cast<MarkovState*>(dropped);
+            if (network != nullptr && state != nullptr) network->removeState(state);
+        };
         registry->addNetworkEditor(std::move(editor));
 
         GuiActionContribution transition;

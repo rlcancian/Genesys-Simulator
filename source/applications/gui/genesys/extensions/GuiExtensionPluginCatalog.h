@@ -23,6 +23,7 @@ public:
 	static std::vector<GuiDiagramProjectionContribution> diagramProjectionContributions();
 	static bool acceptsNetworkEditorDrop(ModelDataDefinition* owner, const std::string& pluginType, bool isComponent);
 	static void notifyNetworkEditorDataDefinitionDrop(ModelDataDefinition* owner, ModelDataDefinition* dropped);
+	static void notifyNetworkEditorDataDefinitionRemoved(ModelDataDefinition* owner, ModelDataDefinition* dropped);
 	static void synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene);
 	static void synchronizeDiagramProjectionsOnSceneThread(Simulator* simulator, ModelGraphicsScene* scene);
 	static void restoreDiagramProjections(

@@ -310,3 +310,4 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - Updated Graph/Markov/CPN GUI extension filter — PASS, 16/16.
 - `GraphNetworkTest|MarkovChainNetworkTest|ColoredPetriNetNetworkTest|EFSMNetworkTest` kernel filter — PASS, 61/61 after adding ordinal restore APIs.
 - Integrated GUI filter across extensions, persistence and EFSM host/editor — PASS, 48/48 across 7 suites.
+- Network palette drops now enter the scene undo stack through a formalism-neutral command. Undo removes the extension membership and detaches the existing graphical object; redo restores the same domain and graphical identities. Graph drop undo/redo regression — PASS, 2/2 with the existing drop test; `git diff --check` — PASS. The command is generic and dispatches membership through the registered editor contribution.

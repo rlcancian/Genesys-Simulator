@@ -91,6 +91,7 @@ struct GuiNetworkEditorContribution {
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<bool(ModelDataDefinition*, const std::string&, bool)> acceptsDrop;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionDropped;
+	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionRemoved;
 };
 
 class GuiExtensionRegistry {
