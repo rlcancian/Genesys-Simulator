@@ -24,7 +24,8 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | B1 | Pass (focused) | Identity audit is covered by six concrete subtype choices with duplicate display names, exact identity selection, unique legacy name resolution and ambiguous legacy name rejection. |
 | B2 | In progress | ModalModelDefault persists concrete Network type and model ID alongside the legacy name. Exact lookup validates type, ID and name; invalid, missing and ambiguous legacy references fail closed with explicit diagnostics. Exact typed `.gen` round-trip passes; damaged-reference and broader compatibility coverage remain. |
 | B3 | Pass (focused) | Bindings remap by stable port names; new ports receive defaults; port-name metadata persists while detached. Unsafe custom-binding/connection changes reject transactionally. Property Editor confirms schema-changing replacements before mutation; cancellation preserves the old association. Binding rows are exposed in the Property Editor; the EFSM bindings dialog/action is removed. Undo/redo covers binding edits and Network reference changes, including graphical port synchronization. |
-| B4–B5 | Not started | Lifetime validation and necessary physical-structure review remain. |
+| B4 | Pass (focused) | ModelDataManager remains the Network owner; adapter detach and replacement do not delete an unshared or shared Network. Existing GUI coverage also proves reference removal leaves the Network selectable for reattachment. Focused adapter suite: 14/14 PASS. Broader close/delete lifetime audit remains in final validation. |
+| B5 | Not started | Bounded source/include review remains; no physical restructuring has been justified so far. |
 | C1–C6 | Not started | EFSM GUI isolation and extension registration. |
 | D1–D5 | Not started | Context-specific editors, formalism topology, persistence, undo/redo and animation. |
 
@@ -79,6 +80,8 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
   binding text edits. Association undo/redo re-runs the kernel's transactional
   reconciliation and synchronizes graphical ports; unsafe stale replay is marked
   obsolete. The focused UI regression now exercises both command families.
+- Added a shared-reference lifetime regression: detaching one adapter and then
+  replacing the other leaves both model-managed Network objects registered.
 - Property Editor replacement prompts before changing an existing association
   when the input/output port schema differs. The confirmation explains
   name-based mapping and that unsafe loss of custom bindings or connected-port
@@ -117,6 +120,8 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='PropertyEditorModelDataReference.ModalModelSelectsPolymorphicNetworkByTypeAndIdentity'` — PASS; exercises schema-change cancellation, acceptance, reference undo/redo, binding edits and binding undo/redo.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after replacement confirmation.
 - `git diff --check` — PASS after replacement confirmation.
+- `cmake --build build/tests-unit --target genesys_test_modal_model_default_network -j 8` — PASS after shared Network lifetime coverage.
+- `./build/tests-unit/source/tests/genesys_test_modal_model_default_network` — PASS, 14 tests, including shared-reference detach/replacement retention.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after A4/B2.
 - Full GUI regression suite — UNKNOWN/not run. Existing tests for the removed
   create/select actions must be migrated to the Property Editor in A2/A3.
@@ -129,3 +134,4 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 - `f08fe0e0f` — `modal-gui(A4,B2): preserve typed network references` (pushed to `origin/WiP20261112/modal_model_gui`).
 - `31296e77f` — `modal-gui(B2): diagnose ambiguous legacy network references` (pushed to `origin/WiP20261112/modal_model_gui`).
 - B3 replacement, binding-schema persistence, graphical port synchronization, Property Editor binding edits, cancellation/acceptance confirmation, and undo/redo are validated for the cases listed above and pending commit.
+- B4 focused ownership evidence: detach/replacement does not remove Network objects from their model manager, including when a second adapter still references the shared object. Full destruction/scene-close audit remains a final-validation item.

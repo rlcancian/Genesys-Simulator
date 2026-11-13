@@ -12,6 +12,7 @@
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
@@ -526,5 +527,26 @@ TEST(ModalModelDefaultNetworkTest, NetworkWithoutAdapterRemainsModelManagedRoot)
 
 	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), "UnboundNetwork"), network);
 	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "UnboundState"), state);
+}
+
+TEST(ModalModelDefaultNetworkTest, SharedNetworkRemainsModelManagedWhenAdaptersDetachOrReplaceIt) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* shared = new EFSMNetwork(model, "SharedLifetimeNetwork");
+	auto* replacement = new GraphNetwork(model, "ReplacementLifetimeNetwork");
+	auto* first = new ModalModelDefault(model, "FirstLifetimeAdapter");
+	auto* second = new ModalModelDefault(model, "SecondLifetimeAdapter");
+	first->setNetwork(shared);
+	second->setNetwork(shared);
+
+	first->setNetwork(nullptr);
+	EXPECT_EQ(second->getNetwork(), shared);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), shared->getId()), shared);
+
+	second->setNetwork(replacement);
+	EXPECT_EQ(second->getNetwork(), replacement);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), shared->getId()), shared);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<GraphNetwork>(), replacement->getId()), replacement);
 }
 
