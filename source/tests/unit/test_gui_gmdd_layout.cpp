@@ -33,6 +33,7 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/Synchronization/SignalData.h"
+#include "plugins/data/ModalModel/GraphNode.h"
 
 #include <gtest/gtest.h>
 
@@ -375,6 +376,25 @@ TEST(SourceCodePropertyEditor, CancelLeavesTheOriginalCodeUntouched) {
         buttons->button(QDialogButtonBox::Cancel)->click();
     });
     EXPECT_EQ(cpp->getOnDispatchEventCode(), "original\nline");
+}
+
+TEST(GraphNodePropertyEditor, ExposesTheInheritedNodeNameProperty) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNode node(model, "EditableNode");
+
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, &node);
+    QApplication::processEvents();
+
+    QtProperty* name = nullptr;
+    for (QtProperty* root : browser.properties()) {
+        if ((name = findPropertyByName(root, QStringLiteral("Name"))) != nullptr) break;
+    }
+    ASSERT_NE(name, nullptr);
+    EXPECT_FALSE(browser.items(name).isEmpty());
 }
 
 TEST(SourceCodePropertyEditor, ApplyCommitsCodeWithoutClosingTheEditor) {

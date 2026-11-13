@@ -437,6 +437,52 @@ TEST(GraphNetworkGuiExtension, ProjectsParallelAndSelfLoopEdgesFromTheNetworkTop
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 3);
 }
 
+TEST(GraphNetworkGuiExtension, RendersArrowsOnlyForDirectedGraphFamilies) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNetwork undirected(model, "UndirectedGraph");
+    DirectedGraphNetwork directed(model, "DirectedGraph");
+    auto* undirectedSource = new GraphNode(model, "UndirectedSource");
+    auto* undirectedDestination = new GraphNode(model, "UndirectedDestination");
+    auto* directedSource = new GraphNode(model, "DirectedSource");
+    auto* directedDestination = new GraphNode(model, "DirectedDestination");
+    ASSERT_TRUE(undirected.addNode(undirectedSource));
+    ASSERT_TRUE(undirected.addNode(undirectedDestination));
+    ASSERT_TRUE(directed.addNode(directedSource));
+    ASSERT_TRUE(directed.addNode(directedDestination));
+    ASSERT_TRUE(undirected.addEdge(new GraphEdge(model, undirectedSource, undirectedDestination, "UndirectedEdge")));
+    ASSERT_TRUE(directed.addEdge(new GraphEdge(model, directedSource, directedDestination, "DirectedEdge")));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    Plugin* nodePlugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+    ASSERT_NE(nodePlugin, nullptr);
+    scene.setNetworkEditorOwner(&undirected);
+    scene.addGraphicalModelDataDefinition(nodePlugin, undirectedSource, QPointF(20, 20));
+    scene.addGraphicalModelDataDefinition(nodePlugin, undirectedDestination, QPointF(220, 20));
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    auto undirectedItems = scene.extensionOverlayItems(QStringLiteral("modal.graph.gui"));
+    ASSERT_EQ(undirectedItems.size(), 1);
+    auto* undirectedPath = dynamic_cast<QGraphicsPathItem*>(undirectedItems.front());
+    ASSERT_NE(undirectedPath, nullptr);
+    const int undirectedElementCount = undirectedPath->path().elementCount();
+    EXPECT_EQ(undirectedElementCount, 2);
+
+    scene.clearExtensionOverlayItems(QStringLiteral("modal.graph.gui"));
+    scene.clear();
+    scene.setNetworkEditorOwner(&directed);
+    scene.addGraphicalModelDataDefinition(nodePlugin, directedSource, QPointF(20, 20));
+    scene.addGraphicalModelDataDefinition(nodePlugin, directedDestination, QPointF(220, 20));
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    auto directedItems = scene.extensionOverlayItems(QStringLiteral("modal.graph.gui"));
+    ASSERT_EQ(directedItems.size(), 1);
+    auto* directedPath = dynamic_cast<QGraphicsPathItem*>(directedItems.front());
+    ASSERT_NE(directedPath, nullptr);
+    EXPECT_GT(directedPath->path().elementCount(), undirectedElementCount);
+}
+
 TEST(GraphNetworkGuiExtension, RemovesNodeAndIncidentEdgesWithUndoRedoAndStableGeometry) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
