@@ -289,6 +289,18 @@ void GuiExtensionPluginCatalog::registerPlugin(const GuiExtensionPlugin* plugin)
 	}
 }
 
+void GuiExtensionPluginCatalog::notifySimulationStart(Simulator* simulator, QMainWindow* window) {
+    if (simulator == nullptr || window == nullptr) return;
+    for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+        if (plugin == nullptr) continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const GuiSimulationStartContribution& contribution : registry.simulationStarts()) {
+            if (contribution.onSimulationStart) contribution.onSimulationStart(simulator, window);
+        }
+    }
+}
+
 void GuiExtensionPluginCatalog::synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene) {
 	if (scene == nullptr) return;
 	for (const GuiDiagramProjectionContribution& projection : diagramProjectionContributions()) {
