@@ -158,6 +158,13 @@ TEST_F(ReadFixture, PropertyEditorDefaultCreationAllowsChildNamingAndReordering)
     destinationsControl->moveListElement(0, 1);
     EXPECT_EQ(read->getDestinations()->getAtRank(0)->getDestination(), "SecondInput");
     EXPECT_EQ(read->getDestinations()->getAtRank(1)->getDestination(), "FirstInput");
+
+    ASSERT_TRUE(destinationsControl->supportsListElementRemoval());
+    EXPECT_FALSE(destinationsControl->removeListElementAt(-1));
+    EXPECT_FALSE(destinationsControl->removeListElementAt(2));
+    ASSERT_TRUE(destinationsControl->removeListElementAt(0));
+    ASSERT_EQ(read->getDestinations()->size(), 1u);
+    EXPECT_EQ(read->getDestinations()->getAtRank(0)->getDestination(), "FirstInput");
 }
 
 TEST_F(ReadFixture, FileRecordsAreConsumedInOrderAndRoutedAfterCompleteAssignments) {
