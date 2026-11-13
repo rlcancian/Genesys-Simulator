@@ -19,7 +19,7 @@ namespace fs = std::filesystem;
 class ScopedTempDirectory {
 public:
     ScopedTempDirectory() {
-        std::string pattern = (fs::temp_directory_path() / "genesys-cppcompiler-XXXXXX").string();
+        std::string pattern = (fs::temp_directory_path() / "genesys-cppcompiler space-XXXXXX").string();
         std::vector<char> name(pattern.begin(), pattern.end());
         name.push_back('\0');
         char* created = ::mkdtemp(name.data());
@@ -48,7 +48,10 @@ TEST(CppCompilerDynamicTest, CompilesLoadsResolvesAndUnloadsLibrary) {
     ScopedTempDirectory scratch;
     ASSERT_FALSE(scratch.path().empty());
     const fs::path source = scratch.path() / "with spaces.cpp";
-    writeSource(source, "extern \"C\" int genesys_test_value() { return 42; }\n");
+    const fs::path includeDir = scratch.path() / "include files";
+    fs::create_directories(includeDir);
+    writeSource(includeDir / "test_value.h", "inline constexpr int TEST_VALUE = 42;\n");
+    writeSource(source, "#include \"test_value.h\"\nextern \"C\" int genesys_test_value() { return TEST_VALUE; }\n");
 
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -57,6 +60,7 @@ TEST(CppCompilerDynamicTest, CompilesLoadsResolvesAndUnloadsLibrary) {
     compiler->setOutputDir(scratch.path().string());
     compiler->setTempDir(scratch.path().string());
     compiler->setOutputFilename("test_plugin.so");
+    compiler->setFlagsGeneral(compiler->getFlagsGeneral() + " -I\"" + includeDir.string() + "\"");
     const auto compilation = compiler->compileToDynamicLibrary();
     ASSERT_TRUE(compilation.success) << compilation.compilationErrOutput;
     EXPECT_TRUE(fs::is_regular_file(scratch.path() / "test_plugin.so"));
@@ -71,6 +75,34 @@ TEST(CppCompilerDynamicTest, CompilesLoadsResolvesAndUnloadsLibrary) {
     EXPECT_TRUE(compiler->unloadLibrary());
     EXPECT_FALSE(compiler->IsLibraryLoaded());
     EXPECT_TRUE(compiler->unloadLibrary());
+}
+
+TEST(CppCompilerDynamicTest, RejectsInvalidLibraryAndReportsMissingSymbol) {
+    ScopedTempDirectory scratch;
+    ASSERT_FALSE(scratch.path().empty());
+    const fs::path source = scratch.path() / "no_export.cpp";
+    writeSource(source, "extern \"C\" int present_symbol() { return 9; }\n");
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    auto* compiler = new CppCompiler(model, "symbol_failure");
+    compiler->setSourceFilename(source.string());
+    compiler->setOutputDir(scratch.path().string());
+    compiler->setTempDir(scratch.path().string());
+    compiler->setOutputFilename("library.so");
+    ASSERT_TRUE(compiler->compileToDynamicLibrary().success);
+    std::string error;
+    ASSERT_TRUE(compiler->loadLibrary(error)) << error;
+    ::dlerror();
+    EXPECT_EQ(::dlsym(compiler->getDynamicLibraryHandler(), "missing_symbol"), nullptr);
+    EXPECT_NE(::dlerror(), nullptr);
+    ASSERT_TRUE(compiler->unloadLibrary());
+
+    writeSource(scratch.path() / "library.so", "not an ELF shared object\n");
+    error.clear();
+    EXPECT_FALSE(compiler->loadLibrary(error));
+    EXPECT_FALSE(error.empty());
+    EXPECT_FALSE(compiler->IsLibraryLoaded());
 }
 
 TEST(CppCompilerDynamicTest, RejectsSyntaxErrorsAndNeverAcceptsStaleArtifact) {
@@ -99,6 +131,7 @@ TEST(CppCompilerDynamicTest, FailsForUnknownCompilerWithoutExecutingShell) {
     ScopedTempDirectory scratch;
     ASSERT_FALSE(scratch.path().empty());
     const fs::path source = scratch.path() / "code.cpp";
+    const fs::path shellMarker = scratch.path() / "shell-was-used";
     writeSource(source, "int value() { return 5; }\n");
 
     Simulator simulator;
@@ -108,11 +141,12 @@ TEST(CppCompilerDynamicTest, FailsForUnknownCompilerWithoutExecutingShell) {
     compiler->setOutputDir(scratch.path().string());
     compiler->setTempDir(scratch.path().string());
     compiler->setOutputFilename("artifact.so");
-    compiler->setCompilerCommand("definitely-missing-genesys-compiler");
+    compiler->setCompilerCommand("definitely-missing-genesys-compiler; touch " + shellMarker.string());
     const auto failure = compiler->compileToDynamicLibrary();
     EXPECT_FALSE(failure.success);
     EXPECT_FALSE(failure.compilationErrOutput.empty());
     EXPECT_FALSE(fs::exists(scratch.path() / "artifact.so"));
+    EXPECT_FALSE(fs::exists(shellMarker));
 }
 
 

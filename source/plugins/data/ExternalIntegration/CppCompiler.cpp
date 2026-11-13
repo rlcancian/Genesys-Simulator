@@ -276,7 +276,10 @@ bool CppCompiler::_loadInstance(PersistenceRecord *fields) {
 		_flagsStaticLibrary = fields->loadField("flagsStaticLibrary", DEFAULT.flagsStaticLibrary);
 		_flagsExecutable = fields->loadField("flagsExecutable", DEFAULT.flagsExecutable);
 		_objectFiles = fields->loadField("objectFiles", DEFAULT.objectFiles);
-		_libraryLoaded = fields->loadField("libraryLoaded", false);
+		// A dlopen handle is process-local and is not restored from persistence.
+		// Never let the serialized display flag claim that an absent handle is live.
+		fields->loadField("libraryLoaded", false);
+		_libraryLoaded = false;
 		// Example extension point:
 		// _compiledToDynamicLibrary = fields->loadField("compiledToDynamicLibrary", false);
 	}
@@ -543,7 +546,7 @@ CppCompiler::CompilationResult CppCompiler::_invokeCompiler(
 
         posix_spawn_file_actions_t actions;
         const int actionError = ::posix_spawn_file_actions_init(&actions);
-        if (actionError != 0) throw std::runtime_error(std::string("posix_spawn actions: ") + std::strerror(actionError));
+        if (actionError != 0) throw std::runtime_error(std::string("posix_spawn_file_actions_init: ") + std::strerror(actionError));
         int setup = ::posix_spawn_file_actions_adddup2(&actions, outLog.fd, STDOUT_FILENO);
         if (setup == 0) setup = ::posix_spawn_file_actions_adddup2(&actions, errLog.fd, STDERR_FILENO);
         if (setup == 0) setup = ::posix_spawn_file_actions_addclose(&actions, outLog.fd);
@@ -555,7 +558,7 @@ CppCompiler::CompilationResult CppCompiler::_invokeCompiler(
         argv.push_back(nullptr);
         pid_t pid = -1;
         int spawnError = setup == 0 ? ::posix_spawnp(&pid, argv[0], &actions, nullptr, argv.data(), environ) : setup;
-        ::posix_spawn_file_actions_destroy(&actions);
+        const int destroyError = ::posix_spawn_file_actions_destroy(&actions);
         outLog.close();
         errLog.close();
 
@@ -565,23 +568,35 @@ CppCompiler::CompilationResult CppCompiler::_invokeCompiler(
         int status = 0;
         bool timedOut = false;
         bool waited = false;
+        int waitError = 0;
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
         while (std::chrono::steady_clock::now() < deadline) {
             const pid_t finished = ::waitpid(pid, &status, WNOHANG);
             if (finished == pid) { waited = true; break; }
-            if (finished < 0 && errno != EINTR) break;
+            if (finished < 0 && errno != EINTR) { waitError = errno; break; }
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
-        if (!waited) {
-            ::kill(pid, SIGKILL);
-            while (::waitpid(pid, &status, 0) < 0 && errno == EINTR) {}
+        if (!waited && waitError == 0) {
             timedOut = true;
+            if (::kill(pid, SIGKILL) != 0 && errno != ESRCH) waitError = errno;
+            while (::waitpid(pid, &status, 0) < 0) {
+                if (errno == EINTR) continue;
+                if (errno != ECHILD && waitError == 0) waitError = errno;
+                break;
+            }
+        }
+        if (waitError != 0) {
+            result.compilationErrOutput = std::string("Unable to wait for compiler process: ") + std::strerror(waitError);
+            std::error_code ec;
+            fs::remove(output, ec);
+            return result;
         }
         result.compilationStdOutput = _read(outLog.path);
         result.compilationErrOutput = _read(errLog.path);
-        result.success = !timedOut && WIFEXITED(status) && WEXITSTATUS(status) == 0 &&
+        result.success = !timedOut && destroyError == 0 && WIFEXITED(status) && WEXITSTATUS(status) == 0 &&
                          fs::is_regular_file(output);
         if (timedOut) result.compilationErrOutput += "\nCompiler timed out or could not be waited for.";
+        else if (destroyError != 0) result.compilationErrOutput += std::string("\nposix_spawn_file_actions_destroy: ") + std::strerror(destroyError);
         else if (!result.success) result.compilationErrOutput +=
             "\nCompiler failed or did not generate the expected output.";
         if (!result.success) {

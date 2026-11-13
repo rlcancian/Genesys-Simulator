@@ -201,6 +201,7 @@ DiffEquations::DiffEquations(Model* model, std::string name, bool createOwnedCom
 
 DiffEquations::~DiffEquations() {
 	delete _equations;
+	delete _stateVariableNames;
 	delete _valuesOnFinalTime;
 }
 
