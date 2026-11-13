@@ -3,6 +3,9 @@
 The GUI issue reporting workflow and privacy protections are documented in
 [ReportIssue.md](ReportIssue.md).
 
+The Expression Builder user workflow is documented in
+[ExpressionBuilder.md](ExpressionBuilder.md).
+
 This directory contains user-facing documentation configuration for GenESyS.
 
 The current EFSM Network editor workflow is documented in

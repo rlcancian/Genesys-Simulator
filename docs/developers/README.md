@@ -3,6 +3,9 @@
 The GUI issue reporting implementation, relay contract and QtTest suite are
 documented in [ReportIssue.md](ReportIssue.md).
 
+The Expression Builder parser-safety and Property Editor integration are documented
+in [ExpressionBuilder.md](ExpressionBuilder.md).
+
 This directory contains developer-facing documentation configuration for GenESyS.
 
 Current Doxygen entrypoint:
