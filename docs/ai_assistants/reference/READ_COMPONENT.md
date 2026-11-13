@@ -1,3 +1,12 @@
+---
+document_type: reference
+authority: technical-reference
+owner: project-maintainer
+last_reviewed: 2026-11-13
+review_cadence: on-material-change
+status: draft
+---
+
 # Read — InputOutput ModelComponent
 
 Status: implementation in progress. Verify CI and GUI behavior before claiming support.
