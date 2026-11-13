@@ -15,7 +15,7 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 
 | Milestone | State | Evidence / remaining work |
 |---|---|---|
-| G0 | In progress | Verified clean branch base, CMake/Ninja presets, GUI target, GUI regression target, Network hierarchy and current menu/property-editor code. A complete fixture matrix and baseline suite are still pending. |
+| G0 | Pass (bounded) | Verified clean branch base, CMake/Ninja presets, GUI target, GUI regression target, Network hierarchy and current menu/property-editor code. Focused fixtures cover EFSM, shared adapters, Graph/directed/DAG, Markov, CPN, null references, duplicate names and damaged identities. Baseline and integrated GUI filters pass. |
 | A1 | Pass (focused) | Removed EFSM-specific create/select menu actions and handlers; generic Open Network labeling and reference gating use the shared submodel tab/context path. Adapter-open, null-reference and direct graphical Network data-definition open tests pass; repeated opening reuses the shared tab. |
 | A2 | Pass (focused) | `Network` choices enumerate registered `DefaultNetwork` subtypes and resolve by concrete class plus model ID. Focused test selects EFSM, Graph, Directed Graph, DAG, Markov and CPN objects with the same name. |
 | A3 | Pass (focused) | Plugin metadata records direct data-definition base types; PluginManager discovers transitive compatible factories. Property Editor creates and attaches an explicitly selected subtype and offers no inert base type. |
@@ -316,3 +316,5 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - Tightened network drop undo/redo to unregister/re-register the created data definition through `Model`, matching existing deletion semantics and preventing undone nodes from remaining as model-managed orphans. The drop regression now asserts data-manager identity is absent after undo and restored after redo — PASS, 1/1.
 - Extended the shared adapter navigation regression to select a graphical EFSM Network data definition directly and open/reuse the same Network tab — PASS, 1/1.
 - Added a persistence-level damaged typed-reference regression: after changing the saved model ID while retaining the concrete type/name, load does not bind to another object and validation reports `missing or mismatched Network` — PASS, 1/1.
+- Integrated GUI filter `GuiExtensionManager.*:GraphNetworkGuiExtension.*:MarkovChainNetworkGuiExtension.*:ColoredPetriNetGuiExtension.*:EFSMNetworkDiagramProjection.*:EFSMNetworkDiagramPersistence.*:EFSMNetworkEditor.*:ModalNetworkReferencePersistence.*` — PASS, 55/55 across 8 suites at HEAD `5a05fcf2e` (includes the A1 graphical Network opening change).
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS at current source state, including the generic network-drop undo and Markov/CPN validation actions.
