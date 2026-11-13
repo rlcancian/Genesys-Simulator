@@ -25,6 +25,7 @@
 #include <memory>
 #include <iterator>
 #include <utility>
+#include <unordered_set>
 #include <vector>
 #include <optional>
 
@@ -268,6 +269,14 @@ void addArrow(QPainterPath& path, const QPointF& tip) {
 
 void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
     if (scene == nullptr) return;
+    std::unordered_set<MarkovChainNetwork::MarkovTransition*> selectedTransitions;
+    for (QGraphicsItem* item : scene->extensionOverlayItems(QString::fromLatin1(kMarkovExtensionId))) {
+        if (item != nullptr && item->isSelected() && item->data(1).isValid()) {
+            auto* transition = reinterpret_cast<MarkovChainNetwork::MarkovTransition*>(
+                static_cast<quintptr>(item->data(1).toULongLong()));
+            if (transition != nullptr) selectedTransitions.insert(transition);
+        }
+    }
     scene->clearExtensionOverlayItems(QString::fromLatin1(kMarkovExtensionId));
     auto* network = dynamic_cast<MarkovChainNetwork*>(scene->networkEditorOwner());
     if (network == nullptr) return;
@@ -339,6 +348,7 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
                                   QString::fromStdString(transition->getDestination()->getName()))
                              .arg(transition->getProbability(), 0, 'g', 8));
         scene->addExtensionOverlayItem(QString::fromLatin1(kMarkovExtensionId), edge);
+        if (selectedTransitions.contains(transition)) edge->setSelected(true);
         auto* label = new QGraphicsSimpleTextItem(QString::number(transition->getProbability(), 'g', 5));
         label->setBrush(QColor(35, 45, 60));
         label->setPos(path.pointAtPercent(0.5) + QPointF(4, -14));

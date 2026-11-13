@@ -34,6 +34,7 @@
 #include <cmath>
 #include <iterator>
 #include <optional>
+#include <unordered_set>
 #include <utility>
 
 namespace {
@@ -77,6 +78,13 @@ private:
 
 void synchronizeGraphProjection(Simulator*, ModelGraphicsScene* scene) {
     if (scene == nullptr) return;
+    std::unordered_set<GraphEdge*> selectedEdges;
+    for (QGraphicsItem* item : scene->extensionOverlayItems(QString::fromLatin1(kGraphExtensionId))) {
+        if (item != nullptr && item->isSelected() && item->data(1).isValid()) {
+            auto* edge = reinterpret_cast<GraphEdge*>(static_cast<quintptr>(item->data(1).toULongLong()));
+            if (edge != nullptr) selectedEdges.insert(edge);
+        }
+    }
     scene->clearExtensionOverlayItems(QString::fromLatin1(kGraphExtensionId));
     auto* network = dynamic_cast<GraphNetwork*>(scene->networkEditorOwner());
     if (network == nullptr) return;
@@ -139,6 +147,7 @@ void synchronizeGraphProjection(Simulator*, ModelGraphicsScene* scene) {
             item->setPath(path.united(arrow));
         }
         scene->addExtensionOverlayItem(QString::fromLatin1(kGraphExtensionId), item);
+        if (selectedEdges.contains(edge)) item->setSelected(true);
     }
 }
 

@@ -1562,7 +1562,13 @@ TEST(ColoredPetriNetGuiExtension, CreatesAndEditsBipartiteArcThroughSharedEditor
     ASSERT_EQ(network.getArcs()->size(), 1u); CPNArc* arc = network.getArcs()->front(); EXPECT_TRUE(arc->isOutputArc()); EXPECT_EQ(arc->getInscription("default"), 1u);
     QGraphicsItem* arcItem = nullptr; for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui"))) if (dynamic_cast<QGraphicsPathItem*>(item) && item->data(1).isValid()) arcItem = item;
     ASSERT_NE(arcItem, nullptr); const auto props = GuiExtensionPluginCatalog::networkElementProperties(&network, arcItem); ASSERT_EQ(props.size(), 5u); EXPECT_EQ(props.back().name, "Inscription");
-    auto* edit = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(&network, arcItem, "Inscription", "blue=3;green=2"); ASSERT_NE(edit, nullptr); undoStack.push(edit);
+    arcItem->setSelected(true);
+    auto* edit = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(&network, arcItem, "Inscription", "blue=3;green=2");
+    ASSERT_NE(edit, nullptr); undoStack.push(edit);
+    bool relationRemainsSelected = false;
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui")))
+        if (item->isSelected() && item->data(1).toULongLong() == reinterpret_cast<quintptr>(arc)) relationRemainsSelected = true;
+    EXPECT_TRUE(relationRemainsSelected);
     EXPECT_EQ(arc->getInscription("blue"), 3u); EXPECT_EQ(arc->getInscription("green"), 2u); undoStack.undo(); EXPECT_EQ(arc->getInscription("default"), 1u); undoStack.redo(); EXPECT_EQ(arc->getInscription("green"), 2u);
     undoStack.undo(); undoStack.undo(); EXPECT_TRUE(network.getArcs()->empty()); undoStack.redo(); undoStack.redo(); ASSERT_EQ(network.getArcs()->size(), 1u); EXPECT_EQ(network.getArcs()->front(), arc);
 }

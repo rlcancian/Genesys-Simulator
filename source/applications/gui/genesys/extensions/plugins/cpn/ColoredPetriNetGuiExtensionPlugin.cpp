@@ -31,6 +31,7 @@
 #include <map>
 #include <memory>
 #include <utility>
+#include <unordered_set>
 
 namespace {
 
@@ -67,6 +68,13 @@ void addArrow(QPainterPath& path, const QPointF& tip) {
 
 void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
     if (scene == nullptr) return;
+    std::unordered_set<CPNArc*> selectedArcs;
+    for (QGraphicsItem* item : scene->extensionOverlayItems(QString::fromLatin1(kCpnExtensionId))) {
+        if (item != nullptr && item->isSelected() && item->data(1).isValid()) {
+            auto* arc = reinterpret_cast<CPNArc*>(static_cast<quintptr>(item->data(1).toULongLong()));
+            if (arc != nullptr) selectedArcs.insert(arc);
+        }
+    }
     scene->clearExtensionOverlayItems(QString::fromLatin1(kCpnExtensionId));
     auto* network = dynamic_cast<ColoredPetriNetNetwork*>(scene->networkEditorOwner());
     if (network == nullptr) return;
@@ -132,6 +140,7 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
             ? QObject::tr("Last firing: %1").arg(QString::fromStdString(arc->show()))
             : QString::fromStdString(arc->show()));
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), item);
+        if (selectedArcs.contains(arc)) item->setSelected(true);
     }
 }
 
