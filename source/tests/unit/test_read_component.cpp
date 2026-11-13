@@ -121,6 +121,44 @@ TEST_F(ReadFixture, PropertyEditorCreatesNamedDestinationsAndExposesChildControl
     EXPECT_EQ(labels->getAtRank(0), "Measurement");
 }
 
+TEST_F(ReadFixture, PropertyEditorDefaultCreationAllowsChildNamingAndReordering) {
+    auto* read = reader();
+    SimulationControl* destinationsControl = nullptr;
+    for (SimulationControl* control : *read->getSimulationControls()->list()) {
+        if (control->getName() == "Destinations") {
+            destinationsControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(destinationsControl, nullptr);
+    // The actual GUI calls createNewListElement() without a name.
+    ASSERT_TRUE(destinationsControl->createNewListElement());
+    ASSERT_EQ(read->getDestinations()->size(), 1u);
+    EXPECT_TRUE(read->getDestinations()->getAtRank(0)->getDestination().empty());
+    auto* firstControls = destinationsControl->getChildSimulationControls(0);
+    ASSERT_NE(firstControls, nullptr);
+    SimulationControl* firstDestination = nullptr;
+    for (SimulationControl* control : *firstControls->list()) {
+        if (control->getName() == "Destination") firstDestination = control;
+    }
+    ASSERT_NE(firstDestination, nullptr);
+    firstDestination->setValue("FirstInput");
+    EXPECT_EQ(read->getDestinations()->getAtRank(0)->getDestination(), "FirstInput");
+
+    ASSERT_TRUE(destinationsControl->createNewListElement());
+    auto* secondControls = destinationsControl->getChildSimulationControls(1);
+    ASSERT_NE(secondControls, nullptr);
+    for (SimulationControl* control : *secondControls->list()) {
+        if (control->getName() == "Destination") control->setValue("SecondInput");
+    }
+    ASSERT_EQ(read->getDestinations()->size(), 2u);
+    EXPECT_EQ(read->getDestinations()->getAtRank(1)->getDestination(), "SecondInput");
+
+    destinationsControl->moveListElement(0, 1);
+    EXPECT_EQ(read->getDestinations()->getAtRank(0)->getDestination(), "SecondInput");
+    EXPECT_EQ(read->getDestinations()->getAtRank(1)->getDestination(), "FirstInput");
+}
+
 TEST_F(ReadFixture, FileRecordsAreConsumedInOrderAndRoutedAfterCompleteAssignments) {
     TemporaryInput file("# data\n\n10 25 3\n12 30 4\n15 28 2\n");
     auto* read = reader();
