@@ -8,8 +8,9 @@
 #include "plugins/data/ModalModel/GraphNode.h"
 #include "plugins/data/ModalModel/GraphEdge.h"
 #include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
-#include "kernel/util/Util.h"
 #include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/TraceManager.h"
+#include "kernel/util/Util.h"
 
 #include <QGraphicsPathItem>
 #include <QGraphicsEllipseItem>
@@ -29,8 +30,10 @@
 #include <QUndoStack>
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <iterator>
+#include <optional>
 #include <utility>
 
 namespace {
@@ -227,31 +230,97 @@ private:
     std::vector<std::pair<GraphEdge*, unsigned int>> _incidentEdges;
 };
 
-class EditGraphEdgeWeightUndoCommand final : public QUndoCommand {
+class EditGraphEdgePropertiesUndoCommand final : public QUndoCommand {
 public:
-    EditGraphEdgeWeightUndoCommand(GraphEdge* edge, ModelGraphicsScene* scene, double weight)
-        : _edge(edge), _scene(scene), _beforeHasWeight(edge != nullptr && edge->hasWeight()),
-          _beforeWeight(edge != nullptr ? edge->getWeight() : 1.0), _afterWeight(weight) {
-        setText(QObject::tr("Edit graph edge weight"));
+    EditGraphEdgePropertiesUndoCommand(GraphNetwork* network, GraphEdge* edge, ModelGraphicsScene* scene,
+                                       std::string name, std::optional<double> weight)
+        : _network(network), _edge(edge), _scene(scene), _beforeName(edge != nullptr ? edge->getName() : ""),
+          _afterName(std::move(name)), _beforeWeight(edge != nullptr && edge->hasWeight()
+              ? std::optional<double>(edge->getWeight()) : std::nullopt), _afterWeight(weight) {
+        setText(QObject::tr("Edit graph edge"));
     }
     void redo() override {
-        if (_edge == nullptr) { setObsolete(true); return; }
-        _edge->setWeight(_afterWeight);
-        if (_scene != nullptr) synchronizeGraphProjection(nullptr, _scene);
+        _apply(_afterName, _afterWeight);
     }
     void undo() override {
-        if (_edge == nullptr) { setObsolete(true); return; }
-        if (_beforeHasWeight) _edge->setWeight(_beforeWeight);
+        _apply(_beforeName, _beforeWeight);
+    }
+private:
+    void _apply(const std::string& name, const std::optional<double>& weight) {
+        if (_network == nullptr || _edge == nullptr || !_network->containsEdge(_edge)) {
+            setObsolete(true);
+            return;
+        }
+        _edge->setName(name);
+        if (weight.has_value()) _edge->setWeight(*weight);
         else _edge->clearWeight();
         if (_scene != nullptr) synchronizeGraphProjection(nullptr, _scene);
     }
-private:
+    GraphNetwork* _network;
     GraphEdge* _edge;
     QPointer<ModelGraphicsScene> _scene;
-    bool _beforeHasWeight;
-    double _beforeWeight;
-    double _afterWeight;
+    std::string _beforeName;
+    std::string _afterName;
+    std::optional<double> _beforeWeight;
+    std::optional<double> _afterWeight;
 };
+
+class EditGraphNodePropertiesUndoCommand final : public QUndoCommand {
+public:
+    struct Properties {
+        std::string name;
+        std::string label;
+        std::uint32_t traceLevel = 0;
+        bool reportStatistics = false;
+    };
+    EditGraphNodePropertiesUndoCommand(GraphNetwork* network, GraphNode* node, Properties after)
+        : _network(network), _node(node), _before(_read(node)), _after(std::move(after)) {
+        setText(QObject::tr("Edit graph node"));
+    }
+    void redo() override { _apply(_after); }
+    void undo() override { _apply(_before); }
+private:
+    static Properties _read(GraphNode* node) {
+        Properties result;
+        if (node != nullptr) {
+            result.name = node->getName();
+            result.label = node->getLabel();
+            result.traceLevel = static_cast<std::uint32_t>(node->getTraceLevelSpecific());
+            result.reportStatistics = node->isReportStatistics();
+        }
+        return result;
+    }
+    void _apply(const Properties& properties) {
+        if (_network == nullptr || _node == nullptr || !_network->containsNode(_node)) {
+            setObsolete(true);
+            return;
+        }
+        const std::string normalized = Util::StrReplace(properties.name, " ", "_");
+        Model* model = _node->getParentModel();
+        auto* manager = model != nullptr ? model->getDataManager() : nullptr;
+        ModelDataDefinition* conflict = manager != nullptr
+            ? manager->getDataDefinition(Util::TypeOf<GraphNode>(), normalized) : nullptr;
+        if (normalized.empty() || (conflict != nullptr && conflict != _node)) {
+            setObsolete(true);
+            return;
+        }
+        _node->setName(properties.name);
+        _node->setLabel(properties.label);
+        _node->setTraceLevelSpecific(static_cast<TraceManager::Level>(properties.traceLevel));
+        _node->setReportStatistics(properties.reportStatistics);
+    }
+    GraphNetwork* _network;
+    GraphNode* _node;
+    Properties _before;
+    Properties _after;
+};
+
+GraphEdge* graphEdgeForItem(QGraphicsItem* item, GraphNetwork* network) {
+    if (item == nullptr || network == nullptr || dynamic_cast<QGraphicsPathItem*>(item) == nullptr
+        || !item->data(1).isValid()) return nullptr;
+    auto* edge = reinterpret_cast<GraphEdge*>(static_cast<quintptr>(item->data(1).toULongLong()));
+    return edge != nullptr && network->containsEdge(edge) ? edge : nullptr;
+}
 
 
 bool canCreateEdge(const GuiExtensionRuntimeContext& context) {
@@ -265,53 +334,21 @@ bool canCreateEdge(const GuiExtensionRuntimeContext& context) {
             ++selectedNodes;
         }
     }
-    return selectedNodes == 2;
+    return selectedNodes == 1;
 }
 
 void createEdge(const GuiExtensionRuntimeContext& context) {
-    if (!canCreateEdge(context) || context.simulator == nullptr) return;
+    if (!canCreateEdge(context)) return;
     auto* scene = context.graphicsScene;
-    auto* network = dynamic_cast<GraphNetwork*>(scene->networkEditorOwner());
-    std::vector<GraphNode*> selectedNodes;
     for (QGraphicsItem* item : scene->selectedItems()) {
         auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
         auto* node = graphical != nullptr ? dynamic_cast<GraphNode*>(graphical->getDataDefinition()) : nullptr;
-        if (node != nullptr && network != nullptr && network->containsNode(node)) selectedNodes.push_back(node);
+        auto* network = dynamic_cast<GraphNetwork*>(scene->networkEditorOwner());
+        if (node != nullptr && network != nullptr && network->containsNode(node)) {
+            scene->beginNetworkRelationCreation(graphical);
+            return;
+        }
     }
-    if (network == nullptr || selectedNodes.size() != 2 || network->getParentModel() == nullptr) return;
-
-    QDialog dialog(context.mainWindow);
-    dialog.setWindowTitle(QObject::tr("Create Graph Edge"));
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* sourceChoice = new QComboBox(&dialog);
-    auto* destinationChoice = new QComboBox(&dialog);
-    for (GraphNode* node : selectedNodes) {
-        const QString label = QString::fromStdString(node->getName());
-        const QVariant identity = QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(node));
-        sourceChoice->addItem(label, identity);
-        destinationChoice->addItem(label, identity);
-    }
-    layout->addWidget(new QLabel(QObject::tr("Source node:"), &dialog));
-    layout->addWidget(sourceChoice);
-    layout->addWidget(new QLabel(QObject::tr("Destination node:"), &dialog));
-    layout->addWidget(destinationChoice);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    layout->addWidget(buttons);
-    if (dialog.exec() != QDialog::Accepted) return;
-    auto* source = reinterpret_cast<GraphNode*>(static_cast<quintptr>(sourceChoice->currentData().toULongLong()));
-    auto* destination = reinterpret_cast<GraphNode*>(static_cast<quintptr>(destinationChoice->currentData().toULongLong()));
-    if (source == nullptr || destination == nullptr) return;
-
-    if (dynamic_cast<DirectedAcyclicGraphNetwork*>(network) != nullptr
-        && (source == destination || network->hasPath(destination, source))) {
-        QMessageBox::warning(context.mainWindow, QObject::tr("Invalid DAG Edge"),
-                             QObject::tr("This edge would create a cycle in the directed acyclic graph."));
-        return;
-    }
-    auto* edge = new GraphEdge(network->getParentModel(), source, destination);
-    scene->getUndoStack()->push(new AddGraphEdgeUndoCommand(network, edge, scene));
 }
 
 bool canDeleteEdge(const GuiExtensionRuntimeContext& context) {
@@ -334,24 +371,6 @@ GraphEdge* selectedEdge(const GuiExtensionRuntimeContext& context) {
         if (edge != nullptr && network->containsEdge(edge)) return edge;
     }
     return nullptr;
-}
-
-bool canEditEdgeWeight(const GuiExtensionRuntimeContext& context) {
-    return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
-        && selectedEdge(context) != nullptr;
-}
-
-void editSelectedEdgeWeight(const GuiExtensionRuntimeContext& context) {
-    GraphEdge* edge = selectedEdge(context);
-    if (edge == nullptr || context.graphicsScene->getUndoStack() == nullptr) return;
-    bool accepted = false;
-    const double weight = QInputDialog::getDouble(
-        context.mainWindow, QObject::tr("Graph Edge Weight"), QObject::tr("Weight:"), edge->getWeight(),
-        -1.0e12, 1.0e12, 6, &accepted);
-    if (accepted && std::isfinite(weight) && (!edge->hasWeight() || edge->getWeight() != weight)) {
-        context.graphicsScene->getUndoStack()->push(
-            new EditGraphEdgeWeightUndoCommand(edge, context.graphicsScene, weight));
-    }
 }
 
 void deleteSelectedEdge(const GuiExtensionRuntimeContext& context) {
@@ -481,6 +500,102 @@ public:
         editor.supports = [](ModelDataDefinition* definition) {
             return dynamic_cast<GraphNetwork*>(definition) != nullptr;
         };
+        editor.ownsEditableDataDefinition = [](ModelDataDefinition* definition, ModelDataDefinition* candidate) {
+            auto* network = dynamic_cast<GraphNetwork*>(definition);
+            auto* node = dynamic_cast<GraphNode*>(candidate);
+            return network != nullptr && node != nullptr && network->containsNode(node);
+        };
+        editor.createDataDefinitionPropertyCommand = [](
+            ModelDataDefinition* definition, ModelDataDefinition* candidate,
+            const std::string& propertyName, const std::string& value) -> QUndoCommand* {
+            auto* network = dynamic_cast<GraphNetwork*>(definition);
+            auto* node = dynamic_cast<GraphNode*>(candidate);
+            if (network == nullptr || node == nullptr || !network->containsNode(node)) return nullptr;
+            EditGraphNodePropertiesUndoCommand::Properties updated;
+            updated.name = node->getName();
+            updated.label = node->getLabel();
+            updated.traceLevel = static_cast<std::uint32_t>(node->getTraceLevelSpecific());
+            updated.reportStatistics = node->isReportStatistics();
+            if (propertyName == "Name") updated.name = value;
+            else if (propertyName == "Label") updated.label = value;
+            else if (propertyName == "Report Statistics") updated.reportStatistics = value == "true" || value == "1";
+            else if (propertyName == "Trace Level") {
+                unsigned int parsed = 0;
+                const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+                if (error != std::errc{} || end != value.data() + value.size()) return nullptr;
+                updated.traceLevel = parsed;
+            } else return nullptr;
+            return new EditGraphNodePropertiesUndoCommand(network, node, std::move(updated));
+        };
+        editor.canStartRelationCreation = [](ModelDataDefinition* definition, QGraphicsItem* sourceItem) {
+            auto* network = dynamic_cast<GraphNetwork*>(definition);
+            auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(sourceItem);
+            auto* node = graphical != nullptr ? dynamic_cast<GraphNode*>(graphical->getDataDefinition()) : nullptr;
+            return network != nullptr && node != nullptr && network->containsNode(node);
+        };
+        editor.createRelationCommand = [](
+            ModelDataDefinition* definition, QGraphicsItem* sourceItem,
+            QGraphicsItem* destinationItem) -> QUndoCommand* {
+            auto* network = dynamic_cast<GraphNetwork*>(definition);
+            auto* sourceGraphic = dynamic_cast<GraphicalModelDataDefinition*>(sourceItem);
+            auto* destinationGraphic = dynamic_cast<GraphicalModelDataDefinition*>(destinationItem);
+            auto* source = sourceGraphic != nullptr ? dynamic_cast<GraphNode*>(sourceGraphic->getDataDefinition()) : nullptr;
+            auto* destination = destinationGraphic != nullptr
+                ? dynamic_cast<GraphNode*>(destinationGraphic->getDataDefinition()) : nullptr;
+            if (network == nullptr || source == nullptr || destination == nullptr
+                || !network->containsNode(source) || !network->containsNode(destination)) return nullptr;
+            if (dynamic_cast<DirectedAcyclicGraphNetwork*>(network) != nullptr
+                && (source == destination || network->hasPath(destination, source))) return nullptr;
+            std::size_t ordinal = network->getEdges().size();
+            std::string name;
+            bool inUse = false;
+            do {
+                name = "E" + std::to_string(ordinal++);
+                inUse = false;
+                for (GraphEdge* edge : network->getEdges()) {
+                    if (edge != nullptr && edge->getName() == name) { inUse = true; break; }
+                }
+            } while (inUse);
+            auto* edge = new GraphEdge(network->getParentModel(), source, destination, name);
+            return new AddGraphEdgeUndoCommand(network, edge, sourceGraphic->scene() != nullptr
+                ? dynamic_cast<ModelGraphicsScene*>(sourceGraphic->scene()) : nullptr);
+        };
+        editor.elementProperties = [](ModelDataDefinition* definition, QGraphicsItem* item) {
+            std::vector<GuiNetworkEditorContribution::ElementProperty> properties;
+            auto* network = dynamic_cast<GraphNetwork*>(definition);
+            GraphEdge* edge = graphEdgeForItem(item, network);
+            if (edge == nullptr) return properties;
+            using Property = GuiNetworkEditorContribution::ElementProperty;
+            properties.push_back(Property{"Name", edge->getName(), {}, Property::Kind::String, true});
+            properties.push_back(Property{"Source Node", edge->getSource() != nullptr
+                ? edge->getSource()->getName() : "", {}, Property::Kind::String, false});
+            properties.push_back(Property{"Destination Node", edge->getDestination() != nullptr
+                ? edge->getDestination()->getName() : "", {}, Property::Kind::String, false});
+            properties.push_back(Property{"Weight", edge->hasWeight() ? std::to_string(edge->getWeight()) : "",
+                {}, Property::Kind::String, true});
+            return properties;
+        };
+        editor.createElementPropertyCommand = [](ModelDataDefinition* definition, QGraphicsItem* item,
+                                                   const std::string& propertyName,
+                                                   const std::string& value) -> QUndoCommand* {
+            auto* network = dynamic_cast<GraphNetwork*>(definition);
+            GraphEdge* edge = graphEdgeForItem(item, network);
+            if (edge == nullptr) return nullptr;
+            std::string name = edge->getName();
+            std::optional<double> weight = edge->hasWeight()
+                ? std::optional<double>(edge->getWeight()) : std::nullopt;
+            if (propertyName == "Name") name = value;
+            else if (propertyName == "Weight") {
+                if (!value.empty()) {
+                    double parsed = 0.0;
+                    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+                    if (error != std::errc{} || end != value.data() + value.size() || !std::isfinite(parsed)) return nullptr;
+                    weight = parsed;
+                } else weight.reset();
+            } else return nullptr;
+            auto* scene = item != nullptr ? dynamic_cast<ModelGraphicsScene*>(item->scene()) : nullptr;
+            return new EditGraphEdgePropertiesUndoCommand(network, edge, scene, std::move(name), weight);
+        };
         editor.acceptsDrop = [](ModelDataDefinition*, const std::string& pluginType, bool isComponent) {
             return !isComponent && pluginType == Util::TypeOf<GraphNode>();
         };
@@ -519,18 +634,6 @@ public:
         removeEdge.isEnabled = canDeleteEdge;
         removeEdge.trigger = deleteSelectedEdge;
         registry->addAction(std::move(removeEdge));
-
-        GuiActionContribution editEdgeWeight;
-        editEdgeWeight.id = "modal.graph.edit-edge-weight";
-        editEdgeWeight.text = "Edit Selected Graph Edge Weight...";
-        editEdgeWeight.menuPath = "Model";
-        editEdgeWeight.isVisible = [](const GuiExtensionRuntimeContext& context) {
-            return context.graphicsScene != nullptr
-                && dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
-        };
-        editEdgeWeight.isEnabled = canEditEdgeWeight;
-        editEdgeWeight.trigger = editSelectedEdgeWeight;
-        registry->addAction(std::move(editEdgeWeight));
 
         GuiActionContribution removeNode;
         removeNode.id = "modal.graph.remove-node";

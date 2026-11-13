@@ -1783,7 +1783,7 @@ TEST(GraphNetworkGuiExtension, DroppedGraphNodeCanBeUndoneAndRedone) {
     EXPECT_EQ(graphical->pos(), originalPosition);
 }
 
-TEST(GraphNetworkGuiExtension, CreatesEdgesFromSelectedNodesWithUndoRedo) {
+TEST(GraphNetworkGuiExtension, CreatesAndEditsEdgesThroughTheSharedEditorWithUndoRedo) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
@@ -1804,86 +1804,65 @@ TEST(GraphNetworkGuiExtension, CreatesEdgesFromSelectedNodesWithUndoRedo) {
     auto* firstItem = scene.addGraphicalModelDataDefinition(nodePlugin, first, QPointF(20, 20));
     auto* secondItem = scene.addGraphicalModelDataDefinition(nodePlugin, second, QPointF(220, 20));
     firstItem->setSelected(true);
-    secondItem->setSelected(true);
-    ASSERT_EQ(scene.selectedItems().size(), 2);
 
     GuiActionContribution createEdge;
     for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
         if (plugin == nullptr || plugin->extensionId() != "modal.graph.gui") continue;
         GuiExtensionRegistry registry;
         plugin->registerContributions(&registry);
-        for (const auto& action : registry.actions()) {
-            if (action.id == "modal.graph.create-edge") createEdge = action;
-        }
+        for (const auto& action : registry.actions()) if (action.id == "modal.graph.create-edge") createEdge = action;
     }
     ASSERT_TRUE(static_cast<bool>(createEdge.trigger));
     GuiExtensionRuntimeContext context;
     context.simulator = &simulator;
     context.graphicsScene = &scene;
     ASSERT_TRUE(createEdge.isEnabled(context));
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        ASSERT_NE(dialog, nullptr);
-        const auto choices = dialog->findChildren<QComboBox*>();
-        ASSERT_EQ(choices.size(), 2);
-        choices.at(0)->setCurrentText(QStringLiteral("Start"));
-        choices.at(1)->setCurrentText(QStringLiteral("Finish"));
-        dialog->accept();
-    });
     createEdge.trigger(context);
+    ASSERT_TRUE(scene.isNetworkRelationCreationActive());
+    EXPECT_TRUE(network.getEdges().empty());
+
+    QGraphicsSceneMouseEvent click(QEvent::GraphicsSceneMousePress);
+    click.setButton(Qt::LeftButton);
+    click.setButtons(Qt::LeftButton);
+    click.setScenePos(secondItem->sceneBoundingRect().center());
+    scene.mousePressEvent(&click);
+    ASSERT_FALSE(scene.isNetworkRelationCreationActive());
     ASSERT_EQ(network.getEdges().size(), 1u);
-    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 1);
-
-    scene.getUndoStack()->undo();
-    EXPECT_TRUE(network.getEdges().empty());
-    EXPECT_TRUE(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).isEmpty());
-    scene.getUndoStack()->redo();
-    EXPECT_EQ(network.getEdges().size(), 1u);
-    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 1);
-
-    GuiActionContribution removeEdge;
-    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
-        if (plugin == nullptr || plugin->extensionId() != "modal.graph.gui") continue;
-        GuiExtensionRegistry registry;
-        plugin->registerContributions(&registry);
-        for (const auto& action : registry.actions()) {
-            if (action.id == "modal.graph.remove-edge") removeEdge = action;
-        }
-    }
-    ASSERT_TRUE(static_cast<bool>(removeEdge.trigger));
-    scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).front()->setSelected(true);
-    ASSERT_TRUE(removeEdge.isEnabled(context));
-    removeEdge.trigger(context);
-    EXPECT_TRUE(network.getEdges().empty());
-    scene.getUndoStack()->undo();
-    EXPECT_EQ(network.getEdges().size(), 1u);
-
-    GuiActionContribution editEdgeWeight;
-    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
-        if (plugin == nullptr || plugin->extensionId() != "modal.graph.gui") continue;
-        GuiExtensionRegistry registry;
-        plugin->registerContributions(&registry);
-        for (const auto& action : registry.actions()) {
-            if (action.id == "modal.graph.edit-edge-weight") editEdgeWeight = action;
-        }
-    }
-    ASSERT_TRUE(static_cast<bool>(editEdgeWeight.trigger));
-    scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).front()->setSelected(true);
-    ASSERT_TRUE(editEdgeWeight.isEnabled(context));
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
-        ASSERT_NE(dialog, nullptr);
-        dialog->setDoubleValue(4.25);
-        dialog->accept();
-    });
-    editEdgeWeight.trigger(context);
     GraphEdge* edge = network.getEdges().front();
+    EXPECT_EQ(edge->getSource(), first);
+    EXPECT_EQ(edge->getDestination(), second);
+    EXPECT_EQ(edge->getName(), "E0");
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 1);
+
+    const auto overlayItems = scene.extensionOverlayItems(QStringLiteral("modal.graph.gui"));
+    ASSERT_EQ(overlayItems.size(), 1);
+    auto properties = GuiExtensionPluginCatalog::networkElementProperties(&network, overlayItems.front());
+    ASSERT_EQ(properties.size(), 4u);
+    EXPECT_EQ(properties[0].name, "Name");
+    EXPECT_EQ(properties[1].name, "Source Node");
+    EXPECT_FALSE(properties[1].editable);
+    EXPECT_EQ(properties[2].name, "Destination Node");
+    EXPECT_FALSE(properties[2].editable);
+    EXPECT_EQ(properties[3].name, "Weight");
+    QUndoCommand* weightCommand = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
+        &network, overlayItems.front(), "Weight", "4.25");
+    ASSERT_NE(weightCommand, nullptr);
+    undoStack.push(weightCommand);
     ASSERT_TRUE(edge->hasWeight());
     EXPECT_DOUBLE_EQ(edge->getWeight(), 4.25);
-    scene.getUndoStack()->undo();
+    undoStack.undo();
     EXPECT_FALSE(edge->hasWeight());
-    scene.getUndoStack()->redo();
+    undoStack.redo();
     EXPECT_DOUBLE_EQ(edge->getWeight(), 4.25);
+
+    undoStack.undo();
+    undoStack.undo();
+    EXPECT_TRUE(network.getEdges().empty());
+    EXPECT_TRUE(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).isEmpty());
+    undoStack.redo();
+    undoStack.redo();
+    ASSERT_EQ(network.getEdges().size(), 1u);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 1);
 }
 
 TEST(GraphNetworkGuiExtension, RejectsCycleBeforeCreatingAnEdgeObject) {
@@ -1906,54 +1885,17 @@ TEST(GraphNetworkGuiExtension, RejectsCycleBeforeCreatingAnEdgeObject) {
     auto* firstItem = scene.addGraphicalModelDataDefinition(nodePlugin, first, QPointF(20, 20));
     auto* secondItem = scene.addGraphicalModelDataDefinition(nodePlugin, second, QPointF(220, 20));
 
-    GuiActionContribution createEdge;
-    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
-        if (plugin == nullptr || plugin->extensionId() != "modal.graph.gui") continue;
-        GuiExtensionRegistry registry;
-        plugin->registerContributions(&registry);
-        for (const auto& action : registry.actions()) {
-            if (action.id == "modal.graph.create-edge") createEdge = action;
-        }
-    }
-    ASSERT_TRUE(static_cast<bool>(createEdge.trigger));
-    GuiExtensionRuntimeContext context;
-    context.simulator = &simulator;
-    context.graphicsScene = &scene;
-    firstItem->setSelected(true);
-    secondItem->setSelected(true);
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        ASSERT_NE(dialog, nullptr);
-        const auto choices = dialog->findChildren<QComboBox*>();
-        ASSERT_EQ(choices.size(), 2);
-        choices.at(0)->setCurrentText(QStringLiteral("B"));
-        choices.at(1)->setCurrentText(QStringLiteral("A"));
-        dialog->accept();
-    });
-    createEdge.trigger(context);
+    QUndoCommand* forward = GuiExtensionPluginCatalog::createNetworkRelationCommand(&network, firstItem, secondItem);
+    ASSERT_NE(forward, nullptr);
+    undoStack.push(forward);
     ASSERT_EQ(network.getEdges().size(), 1u);
+    GraphEdge* edge = network.getEdges().front();
+    EXPECT_EQ(edge->getSource(), first);
+    EXPECT_EQ(edge->getDestination(), second);
 
     const unsigned int edgeObjectCount = model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<GraphEdge>());
-    firstItem->setSelected(false);
-    secondItem->setSelected(false);
-    firstItem->setSelected(true);
-    secondItem->setSelected(true);
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        ASSERT_NE(dialog, nullptr);
-        const auto choices = dialog->findChildren<QComboBox*>();
-        ASSERT_EQ(choices.size(), 2);
-        choices.at(0)->setCurrentText(QStringLiteral("A"));
-        choices.at(1)->setCurrentText(QStringLiteral("B"));
-        dialog->accept();
-        QTimer::singleShot(0, []() {
-            auto* warning = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
-            ASSERT_NE(warning, nullptr);
-            warning->accept();
-        });
-    });
-    createEdge.trigger(context);
-
+    EXPECT_EQ(GuiExtensionPluginCatalog::createNetworkRelationCommand(&network, secondItem, firstItem), nullptr);
+    EXPECT_EQ(GuiExtensionPluginCatalog::createNetworkRelationCommand(&network, firstItem, firstItem), nullptr);
     EXPECT_EQ(network.getEdges().size(), 1u);
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<GraphEdge>()), edgeObjectCount);
 }

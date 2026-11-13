@@ -434,6 +434,8 @@ non-EFSM formalism work remain in C5 and D1–D5.
 
 ### Remaining work
 
-- EFSM user-visible checkpoint has the required implementation and focused evidence; commit and publish it next.
-- Generalize the relation Property Editor and source/destination gesture to GraphNetwork, DirectedGraphNetwork and DAG, then MarkovChainNetwork and ColoredPetriNetNetwork. Replace their formalism-specific relation property dialogs/actions where the shared Property Editor provides equivalent domain coverage.
-- Add focused tests for each topology rule and verify `.gen`/`.gui` plus undo/redo at integration points. AUTO-MODAL-006 remains running until all requested formalism integrations are complete.
+- EFSM user-visible checkpoint: commit `762747215`, published on `origin/WiP20261112/modal_model_gui`.
+- GraphNetwork/DirectedGraph/DAG now use the shared source-selection and relation-creation API. GraphNodes expose base properties through the active network editor; selected GraphEdges expose Name and Weight in the Property Editor, with endpoints read-only. The old edge weight dialog action was removed.
+- DAG rejects self-loops and cycle-forming edges before allocating a GraphEdge. Directedness remains assigned by the concrete GraphNetwork specialization.
+- Graph-focused build — PASS. `GraphNetworkGuiExtension.*` — PASS, 9/9, including gesture-driven directed edge creation, Property Editor descriptors/weight edit undo-redo, DAG cycle/self-loop rejection without allocation, existing projection, persistence geometry and node-removal regressions.
+- Next: complete MarkovChainNetwork and ColoredPetriNetNetwork integration, remove redundant relation edit dialogs when equivalent Property Editor coverage is in place, and validate persistence/undo-redo for those formalism-owned relations. AUTO-MODAL-006 remains running.
