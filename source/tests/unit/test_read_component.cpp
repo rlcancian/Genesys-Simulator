@@ -1,0 +1,255 @@
+#include <gtest/gtest.h>
+
+#include "kernel/simulator/Event.h"
+#include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/essentialPlugins/EntityType.h"
+#include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/model/ModelComponentManager.h"
+#include "kernel/simulator/model/ModelDataManager.h"
+#include "plugins/components/InputOutput/Read.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/data/Logic/Variable.h"
+
+#include <atomic>
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <memory>
+#include <string>
+#include <vector>
+#include <unistd.h>
+
+namespace {
+class TemporaryInput {
+public:
+    explicit TemporaryInput(const std::string& text, const std::string& extension = ".txt") {
+        static std::atomic<unsigned long> next{0};
+        path = std::filesystem::temp_directory_path() /
+            ("genesys_read_" + std::to_string(::getpid()) + "_" +
+             std::to_string(++next) + extension);
+        std::ofstream output(path);
+        output << text;
+        if (!output.good()) throw std::runtime_error("cannot write Read test fixture");
+    }
+    ~TemporaryInput() { std::error_code ignored; std::filesystem::remove(path, ignored); }
+    std::filesystem::path path;
+};
+
+class ReadProbe final : public Read {
+public:
+    using Read::Read;
+    void dispatch(Entity* entity) { _onDispatchEvent(entity, 0); }
+    void resetReplication() { _initBetweenReplications(); }
+    bool check(std::string& error) { return _check(error); }
+};
+
+struct ReadFixture : testing::Test {
+    Simulator simulator;
+    Model* model = nullptr;
+
+    void SetUp() override {
+        simulator.getPluginManager()->autoInsertPlugins();
+        model = simulator.getModelManager()->newModel();
+        ASSERT_NE(model, nullptr);
+    }
+
+    ReadProbe* reader(const std::string& name = "Input") {
+        auto* component = new ReadProbe(model, name);
+        component->connectTo(new Dispose(model, name + "_Dispose"));
+        return component;
+    }
+
+    static void addAttribute(Read* read, const std::string& name) {
+        read->addDestination(new ReadDestination(name, true));
+    }
+    static void addVariable(Read* read, const std::string& name) {
+        read->addDestination(new ReadDestination(name, false));
+    }
+
+    Variable* variable(const std::string& name) {
+        return dynamic_cast<Variable*>(model->getDataManager()->getDataDefinition(
+            Util::TypeOf<Variable>(), name));
+    }
+};
+} // namespace
+
+TEST_F(ReadFixture, MetadataAndStaticPluginRegistration) {
+    std::unique_ptr<PluginInformation> info(Read::GetPluginInformation());
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), "Read");
+    EXPECT_EQ(info->getCategory(), "InputOutput");
+    EXPECT_EQ(info->getMinimumInputs(), 1u);
+    EXPECT_EQ(info->getMaximumInputs(), 1u);
+    EXPECT_EQ(info->getMinimumOutputs(), 1u);
+    EXPECT_EQ(info->getMaximumOutputs(), 1u);
+    EXPECT_NE(simulator.getPluginManager()->find("Read"), nullptr);
+}
+
+TEST_F(ReadFixture, FileRecordsAreConsumedInOrderAndRoutedAfterCompleteAssignments) {
+    TemporaryInput file("# data\n\n10 25 3\n12 30 4\n15 28 2\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addAttribute(read, "ProcessingTime");
+    addVariable(read, "CurrentLoad");
+    addAttribute(read, "Priority");
+    std::string error;
+    ASSERT_TRUE(read->check(error)) << error;
+
+    const double expected[3][3] = {{10,25,3}, {12,30,4}, {15,28,2}};
+    for (const auto& row : expected) {
+        Entity* entity = model->createEntity("ReadEntity", true);
+        read->dispatch(entity);
+        EXPECT_DOUBLE_EQ(entity->getAttributeValue("ProcessingTime"), row[0]);
+        EXPECT_DOUBLE_EQ(entity->getAttributeValue("Priority"), row[2]);
+        ASSERT_NE(variable("CurrentLoad"), nullptr);
+        EXPECT_DOUBLE_EQ(variable("CurrentLoad")->getValue(), row[1]);
+    }
+    ASSERT_EQ(model->getFutureEvents()->size(), 3u);
+    for (Event* event : *model->getFutureEvents()->list()) {
+        EXPECT_EQ(event->getComponent(), read->getConnectionManager()->getFrontConnection()->component);
+    }
+}
+
+TEST_F(ReadFixture, KeyboardProviderProcessesValuesWithoutHumanInteraction) {
+    auto* read = reader();
+    read->setReadFromType(Read::ReadFromType::KEYBOARD);
+    addAttribute(read, "X");
+    addVariable(read, "Y");
+    std::vector<std::string> records{"1 2", "3 4"};
+    std::size_t offset = 0;
+    read->setKeyboardInputProvider([&](const std::string& prompt, std::string& record) {
+        EXPECT_NE(prompt.find("2 numeric"), std::string::npos);
+        if (offset == records.size()) return false;
+        record = records[offset++];
+        return true;
+    });
+    for (int i = 0; i < 2; ++i) {
+        Entity* entity = model->createEntity("KeyboardEntity", true);
+        read->dispatch(entity);
+        EXPECT_DOUBLE_EQ(entity->getAttributeValue("X"), i == 0 ? 1 : 3);
+    }
+    ASSERT_NE(variable("Y"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("Y")->getValue(), 4);
+    EXPECT_EQ(model->getFutureEvents()->size(), 2u);
+}
+
+TEST_F(ReadFixture, IncompleteAndInvalidRecordsDoNotPartiallyAssignOrForward) {
+    TemporaryInput file("1 2\nnot-a-number 9\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addAttribute(read, "X");
+    addVariable(read, "Y");
+    Entity* first = model->createEntity("First", true);
+    read->dispatch(first);
+    EXPECT_DOUBLE_EQ(first->getAttributeValue("X"), 1);
+    ASSERT_NE(variable("Y"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("Y")->getValue(), 2);
+    auto* second = model->createEntity("Second", true);
+    read->dispatch(second);
+    EXPECT_EQ(model->getFutureEvents()->size(), 1u);
+    EXPECT_DOUBLE_EQ(second->getAttributeValue("X"), 0);
+    EXPECT_DOUBLE_EQ(variable("Y")->getValue(), 2);
+}
+
+TEST_F(ReadFixture, EndOfFileDoesNotForwardAnExtraEntity) {
+    TemporaryInput file("8\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addVariable(read, "Value");
+    read->dispatch(model->createEntity("First", true));
+    EXPECT_EQ(model->getFutureEvents()->size(), 1u);
+    read->dispatch(model->createEntity("Second", true));
+    EXPECT_EQ(model->getFutureEvents()->size(), 1u);
+    ASSERT_NE(variable("Value"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("Value")->getValue(), 8);
+}
+
+TEST_F(ReadFixture, ResetBetweenReplicationsRewindsFileCursor) {
+    TemporaryInput file("5\n9\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addVariable(read, "Value");
+    read->dispatch(model->createEntity("First", true));
+    EXPECT_DOUBLE_EQ(variable("Value")->getValue(), 5);
+    read->dispatch(model->createEntity("Second", true));
+    EXPECT_DOUBLE_EQ(variable("Value")->getValue(), 9);
+    read->resetReplication();
+    read->dispatch(model->createEntity("Third", true));
+    EXPECT_DOUBLE_EQ(variable("Value")->getValue(), 5);
+    EXPECT_EQ(model->getFutureEvents()->size(), 3u);
+}
+
+TEST_F(ReadFixture, ModelCheckRejectsMissingFileAndEmptyDestinations) {
+    auto* read = reader();
+    std::string error;
+    EXPECT_FALSE(read->check(error));
+    EXPECT_NE(error.find("Filename"), std::string::npos);
+    EXPECT_NE(error.find("destination"), std::string::npos);
+    addVariable(read, "Only");
+    read->setFilename("/this/is/a/nonexistent/file/genesys-read.txt");
+    error.clear();
+    EXPECT_FALSE(read->check(error));
+    EXPECT_NE(error.find("cannot open"), std::string::npos);
+}
+
+TEST_F(ReadFixture, KeyboardCancellationDoesNotForwardOrApplyChanges) {
+    auto* read = reader();
+    read->setReadFromType(Read::ReadFromType::KEYBOARD);
+    addVariable(read, "Value");
+    read->setKeyboardInputProvider([](const std::string&, std::string&) { return false; });
+    read->dispatch(model->createEntity("Cancelled", true));
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+    ASSERT_NE(variable("Value"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("Value")->getValue(), 0);
+}
+
+TEST_F(ReadFixture, PersistenceRestoresSourceFileAndOrderedDestinations) {
+    TemporaryInput file("4 7\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addAttribute(read, "Speed");
+    addVariable(read, "Load");
+    std::string error;
+    ASSERT_TRUE(read->check(error)) << error;
+    TemporaryInput serialized("", ".gen");
+    ASSERT_TRUE(model->save(serialized.path.string()));
+    Model* restored = simulator.getModelManager()->newModel();
+    ASSERT_NE(restored, nullptr);
+    ASSERT_TRUE(restored->load(serialized.path.string()));
+    auto* loaded = dynamic_cast<Read*>(restored->getComponentManager()->find("Input"));
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->readFromType(), Read::ReadFromType::FILE);
+    EXPECT_EQ(loaded->filename(), file.path.string());
+    ASSERT_EQ(loaded->getDestinations()->size(), 2u);
+    EXPECT_EQ(loaded->getDestinations()->getAtRank(0)->getDestination(), "Speed");
+    EXPECT_TRUE(loaded->getDestinations()->getAtRank(0)->isAttributeNotVariable());
+    EXPECT_EQ(loaded->getDestinations()->getAtRank(1)->getDestination(), "Load");
+    EXPECT_FALSE(loaded->getDestinations()->getAtRank(1)->isAttributeNotVariable());
+    EXPECT_EQ(loaded->getDestinations()->getAtRank(0)->getSimulationControls()->size(), 2u);
+}
+
+TEST_F(ReadFixture, CreateReadDisposeModelRunsToCompletion) {
+    TemporaryInput file("11\n22\n");
+    auto* source = new Create(model, "CreateReadEntities");
+    auto* read = new Read(model, "ReadFileRecords");
+    auto* sink = new Dispose(model, "DisposeReadEntities");
+    auto* entityType = new EntityType(model, "ReadEntityType");
+    source->setEntityType(entityType);
+    source->setFirstCreation(0.0);
+    source->setTimeBetweenCreationsExpression("1.0");
+    source->setMaxCreations(2);
+    read->setFilename(file.path.string());
+    addVariable(read, "LastValue");
+    source->connectTo(read);
+    read->connectTo(sink);
+    model->getSimulation()->setReplicationLength(10.0, Util::TimeUnit::second);
+    model->getSimulation()->setNumberOfReplications(1);
+    ASSERT_TRUE(model->check());
+    model->getSimulation()->start();
+    ASSERT_NE(variable("LastValue"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("LastValue")->getValue(), 22);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>()), 0u);
+}
