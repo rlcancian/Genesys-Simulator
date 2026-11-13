@@ -115,7 +115,9 @@ TEST_F(ReadFixture, PropertyEditorCreatesNamedDestinationsAndExposesChildControl
     EXPECT_EQ(destination->getDestination(), "Measurement");
     ASSERT_NE(destinationsControl->getChildSimulationControls(0), nullptr);
     EXPECT_EQ(destinationsControl->getChildSimulationControls(0)->size(), 2u);
-    EXPECT_EQ(destinationsControl->getStrValues()->getAtRank(0), "Measurement");
+    std::unique_ptr<List<std::string>> labels(destinationsControl->getStrValues());
+    ASSERT_NE(labels, nullptr);
+    EXPECT_EQ(labels->getAtRank(0), "Measurement");
 }
 
 TEST_F(ReadFixture, FileRecordsAreConsumedInOrderAndRoutedAfterCompleteAssignments) {
