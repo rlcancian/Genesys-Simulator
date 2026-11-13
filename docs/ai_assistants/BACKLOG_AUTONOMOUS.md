@@ -933,10 +933,11 @@ A task moves to `done` only after required validation is green, evidence is revi
 ### AUTO-MODAL-006 — Universal Network node/relation editing
 
 - Priority: P1.
-- Status: **running**.
+- Status: **blocked-review** (implementation and local validation complete; awaiting maintainer review).
 - Environment: local Ubuntu; branch `WiP20261112/modal_model_gui`, based on the current `origin/WorkInProgress` integration line.
 - Authorization: HUM-MODAL-004 and the maintainer's explicit implementation mandate dated 2026-11-13.
 - Scope: extend the shared extension and Property Editor contracts to mathematical nodes and relations; complete EFSM (state/transition editing, mouse relation creation, undo/redo, `.gen`/`.gui` persistence, removal of EFSM edit dialogs) as the first testable checkpoint; then apply the same mechanisms to Graph, DirectedGraph, DAG, Markov and CPN while preserving each domain's topology and ownership rules.
 - Acceptance: selected elements expose their actual domain properties in the existing Property Editor; relation creation requires no dialog and validates before mutation; invalid graphs remain unchanged; operations update the projection and undo/redo; persisted models reopen with topology and properties intact. Focused tests and affected CMake targets pass at each checkpoint.
 - Non-goals: kernel Qt dependencies, proxy ModelDataDefinitions, invented formalism semantics, and automatic merge to WorkInProgress.
 - Progress evidence: `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md`.
+- Completion evidence (2026-11-13): EFSM, Graph/DirectedGraph/DAG, Markov and CPN implementations are committed on the development branch; GUI test target passed 155/155 on rerun, formalism kernel/model-file tests passed 45/45, GUI app build and documentation governance passed. Branch HEAD `c189e11b5`; no merge to WorkInProgress. Interactive desktop smoke remains unperformed.

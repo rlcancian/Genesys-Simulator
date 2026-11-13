@@ -432,7 +432,7 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - Focused filter covering state selection/editing, EFSM gesture, transition Property Editor, context/action integration, main-window save/reopen and parallel-transition layout — PASS, 9/9.
 - `git diff --check` — PASS before checkpoint commit.
 
-### Remaining work
+### Functional implementation and validation
 
 - EFSM user-visible checkpoint: commit `762747215`, published on `origin/WiP20261112/modal_model_gui`.
 - GraphNetwork/DirectedGraph/DAG now use the shared source-selection and relation-creation API. GraphNodes expose base properties through the active network editor; selected GraphEdges expose Name and Weight in the Property Editor, with endpoints read-only. The old edge weight dialog action was removed.
@@ -443,6 +443,7 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - Markov + CPN + Graph focused GUI tests, plus EFSM relation/property focused tests — PASS, 22/22 after the latest changes. The test covers multi-color inscriptions/marking, bidirectional CPN arc semantics, Markov probability property undo/redo, DAG rejection, graph projection and existing persistence geometry.
 - Projection refreshes for Graph edges, Markov transitions and CPN arcs now carry selection forward by domain-object identity. A regression verifies that editing an arc keeps the same mathematical arc selected after overlay recreation; this avoids leaving the Property Editor attached to a discarded graphical item.
 - `cmake --build --preset gui-app --target genesys_gui -j 4` — PASS. The unit test target rebuilt after the selection-preservation change; focused Graph/Markov/CPN/EFSM relation checks — PASS, 22/22 before the added selection-preservation assertion, and the three directly affected gesture/property tests — PASS, 3/3 afterward.
-- Final integration validation for this continuation: full `genesys_test_gui_gmdd_layout` — PASS, 155/155. Its first invocation ended in an intermittent SIGSEGV without a diagnostic; an immediate rerun completed all 155 tests successfully. Markov and CPN kernel/persistence tests through CTest — PASS, 27/27.
-- `cmake --build --preset gui-app --target genesys_gui -j 4` after the final projection changes — PASS. `python3 scripts/validate-ai-docs.py` — PASS; `git diff --check` — PASS.
-- Remaining: review integration diff and publish the follow-up checkpoint. AUTO-MODAL-006 remains running while we finish persistence-focused checks and the final branch review; no WorkInProgress merge is authorized.
+- Final integration validation: full `genesys_test_gui_gmdd_layout` — PASS, 155/155. Its first invocation ended in an intermittent SIGSEGV without a diagnostic; an immediate rerun completed all 155 tests successfully. Graph/DAG kernel and persistence tests through CTest — PASS, 18/18; Markov and CPN kernel/persistence tests — PASS, 27/27.
+- `cmake --build --preset gui-app --target genesys_gui -j 4` after final projection changes — PASS. `python3 scripts/validate-ai-docs.py` — PASS; `git diff --check` — PASS.
+- Three implementation checkpoints are published on `WiP20261112/modal_model_gui`: EFSM `762747215`, Graph/DAG `52236f2ad`, Markov/CPN `783531e92`, plus selection-lifetime fix `c189e11b5`. Branch is synchronized with origin and ready for maintainer review. No merge to WorkInProgress was performed.
+- Limit: no manual interactive desktop smoke was performed in this session. The gesture, cancellation, property commands, topology rejection, projection refresh, undo/redo and persistence coverage was exercised through the offscreen GUI test target and kernel/model-file persistence tests.
