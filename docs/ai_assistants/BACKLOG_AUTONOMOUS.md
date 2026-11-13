@@ -919,7 +919,7 @@ A task moves to `done` only after required validation is green, evidence is revi
 ### AUTO-MODAL-005 — Execute complete ModalModel/DefaultNetwork GUI evolution
 
 - Priority: P1.
-- Status: **ready** (explicit maintainer authorization 2026-11-12).
+- Status: **in progress** (explicit maintainer authorization 2026-11-12; active branch `WiP20261112/modal_model_gui`).
 - Environment: local Ubuntu, actual GCC/C++23, Qt6, CMake/Ninja, Google Test; integrate remotely only after final human review.
 - Source and full acceptance: [MODAL_NETWORK_GUI_EVOLUTION_PLAN.md](reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md), decision HUM-MODAL-003.
 - Integration base: synchronize the latest origin/WorkInProgress; branch example WiP20261112/modal_model_gui. Never develop directly on WorkInProgress.
@@ -928,3 +928,4 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Non-goals: new mathematical semantics, broad plugin-system rewrite, dynamic GUI packaging/unload, unrelated AUTO-GUI-003 migrations, auto-merge.
 - Blockers: only genuine unforeseen semantic, irreversible persistence, ownership, ABI or security decision, or indispensable failing validation. Report precise blocker; do not mark partial implementation complete.
 - Completion: branch ready for maintainer review, evidence-backed progress matrix and clear final tests/results; integration into WorkInProgress requires a separate human-reviewed step.
+- Current checkpoint: G0, A1–A5, B1–B5, C1–C6 and D1–D5 implemented and validated. GUI app build, full tests-unit (2,109 executed), full tests-kernel-unit (2,111 executed) and runnable smoke tests (3/3) passed; four configured-disabled tests in each unit suite were not run. See `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md`.

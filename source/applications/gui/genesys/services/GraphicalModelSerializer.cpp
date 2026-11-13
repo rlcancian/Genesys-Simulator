@@ -1175,6 +1175,14 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             continue;
         }
 
+        // View-state directives are header records, not section comments. Keep
+        // them in the header collection so zoom and visibility flags restore.
+        if (activeSection == GuiSection::Header
+            && QRegularExpression("^0\\s+(GUI|Show|View)\\s+").match(normalized).hasMatch()) {
+            gui.append(normalized);
+            continue;
+        }
+
         // Legacy section names for backward compatibility.
         if (normalized.compare("Counters", Qt::CaseInsensitive) == 0) {
             activeSection = GuiSection::LegacyCounters;

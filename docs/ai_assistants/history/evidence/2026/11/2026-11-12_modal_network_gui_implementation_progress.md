@@ -368,4 +368,14 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - A real process simulation now runs through pause, one-event step, resume and two replications while the GUI controller handlers record event refreshes and replication rows.
 - `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='SimulationEventController.RealSimulationCanPauseStepResumeAndRefreshReplications'` — PASS, 1/1.
 - Combined focused formalism, lifecycle, property-editor and scene-close filter — PASS, 25/25.
-- Integrated whole-application final validation remains outstanding.
+- D5 focused lifecycle validation is complete; the integration checks immediately below close out the full build and test validation for this branch.
+
+### Integration validation checkpoint
+
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after the `.gui` header parser fix.
+- `ctest --test-dir build/tests-unit --output-on-failure -j 8` — PASS, 2,109/2,109 executed; four configured-disabled tests did not run. A prior run exposed the `.gui` view-state regression below; the full suite passed after its fix.
+- `cmake --build --preset tests-kernel-unit -j 8` — PASS on final source.
+- `ctest --test-dir build/tests-kernel-unit --output-on-failure -j 8` — PASS, 2,111/2,111 executed; four configured-disabled tests did not run.
+- `cmake --build --preset tests-smoke -j 8` — PASS. `ctest --test-dir build/tests-smoke --output-on-failure -j 8 -E '_NOT_BUILT'` — PASS, 3/3 runnable smoke tests. The preset's other 48 registered entries are `_NOT_BUILT` placeholders and were excluded after building its declared smoke targets.
+- `GuiGmddLayout.SerializerRoundTripRestoresViewStateGeometriesAndGroups` failed in both the first full unit run and isolated reproduction: the `.gui` reader treated `0 GUI`/`0 Show` header directives as an unknown section, leaving visibility flags and zoom unchanged. Header directives are now retained as header data; isolated regression and the subsequent full `tests-unit` suite pass.
+- `git diff --check` — PASS before final commit. Final branch commit/push verification is recorded at closeout.
