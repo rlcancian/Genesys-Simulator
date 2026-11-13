@@ -483,8 +483,6 @@ private: // opened-model document state
     void _openSelectedSubmodel();
     /** @brief Returns the selected ModalModelDefault adapter, if any. */
     ModalModelDefault* _selectedModalModelDefault() const;
-    /** @brief Edits the selected adapter's network input/output bindings. */
-    void _editModalModelBindings();
     /** @brief Creates one FSMState in the active EFSM Network context. */
     void _createEfsmState();
     /** @brief Creates one EFSMTransition between two selected states. */
@@ -555,7 +553,6 @@ private: // interface and model main elements to join
     QAction* _actionModelNext = nullptr;
     // Runtime action that opens a level-scoped graphical tab from the selected owner item.
     QAction* _actionOpenSelectedSubmodel = nullptr;
-    QAction* _actionEditModalModelBindings = nullptr;
     QAction* _actionCreateEfsmState = nullptr;
     QAction* _actionCreateEfsmTransition = nullptr;
     QAction* _actionEditEfsmTransition = nullptr;

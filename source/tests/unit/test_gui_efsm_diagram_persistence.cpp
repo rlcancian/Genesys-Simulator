@@ -14,7 +14,6 @@
 #include "actions/EFSMInitialStateUndoCommand.h"
 #include "actions/EFSMStateMembershipUndoCommand.h"
 #include "actions/EFSMStatePropertiesUndoCommand.h"
-#include "actions/ModalModelBindingsUndoCommand.h"
 #include "controllers/EditCommandController.h"
 #include "mainwindow.h"
 #include "services/EFSMNetworkDiagramCodec.h"
@@ -1758,7 +1757,7 @@ TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete)
     EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), network->getId()), network);
 }
 
-TEST(EFSMNetworkEditor, AdapterBindingsCanBeEditedAndUndoneFromTheProcessCanvas) {
+TEST(EFSMNetworkEditor, AdapterBindingsHaveNoLegacyDialogAction) {
     MainWindow window;
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
     Simulator* simulator = window.myScene()->getSimulator();
@@ -1791,33 +1790,9 @@ TEST(EFSMNetworkEditor, AdapterBindingsCanBeEditedAndUndoneFromTheProcessCanvas)
     }
     ASSERT_NE(graphicalAdapter, nullptr);
     graphicalAdapter->setSelected(true);
-    QAction* editBindings = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Edit EFSM Bindings...")) editBindings = action;
+        EXPECT_NE(action->text(), QStringLiteral("Edit EFSM Bindings..."));
     }
-    ASSERT_NE(editBindings, nullptr);
-    ASSERT_TRUE(editBindings->isEnabled());
-    QTimer dialogDriver;
-    QObject::connect(&dialogDriver, &QTimer::timeout, [&dialogDriver]() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) return;
-        auto* input = dialog->findChild<QLineEdit*>(QStringLiteral("efsmInputBinding_0"));
-        auto* output = dialog->findChild<QLineEdit*>(QStringLiteral("efsmOutputBinding_0"));
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (input != nullptr && output != nullptr && buttons.size() == 1) {
-            input->setText(QStringLiteral("2 + 3"));
-            output->setText(QStringLiteral("Outcome"));
-            dialogDriver.stop();
-            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
-        }
-    });
-    dialogDriver.start(5);
-    editBindings->trigger();
-    dialogDriver.stop();
-    EXPECT_EQ(adapter->getInputBinding(0), "2 + 3");
-    EXPECT_EQ(adapter->getOutputBinding(0), "Outcome");
-    ASSERT_TRUE(window.myScene()->getUndoStack()->canUndo());
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
     EXPECT_EQ(adapter->getInputBinding(0), "1");
     EXPECT_EQ(adapter->getOutputBinding(0), "InitialResult");
     EXPECT_EQ(source->getConnectionManager()->size(), 1u);

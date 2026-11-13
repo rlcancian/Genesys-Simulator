@@ -1021,6 +1021,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
         new MarkovChainNetwork(model, "SharedNetworkName_PropertyEditor"),
         new ColoredPetriNetNetwork(model, "SharedNetworkName_PropertyEditor")
     };
+    networks.back()->addInputPort("fire");
+    networks.back()->addOutputPort("fired");
     ModalModelDefault component(model, "ModalAdapter_PropertyEditor");
     Plugin* adapterPlugin = simulator.getPluginManager()->find(Util::TypeOf<ModalModelDefault>());
     ASSERT_NE(adapterPlugin, nullptr);
@@ -1107,6 +1109,52 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     EXPECT_EQ(component.getNetwork(), createdNetwork);
     EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
     EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+
+    const DefaultNetwork* bindingNetwork = networks.back();
+    const QString bindingChoice = QStringLiteral("%1::%2 [#%3]")
+        .arg(QString::fromStdString(bindingNetwork->getClassname()), QString::fromStdString(bindingNetwork->getName()))
+        .arg(bindingNetwork->getId());
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int bindingNetworkIndex = selector->findText(bindingChoice);
+    ASSERT_GE(bindingNetworkIndex, 0);
+    selector->setCurrentIndex(bindingNetworkIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), bindingNetwork);
+    ASSERT_EQ(component.getNetworkBindingControls().size(), 2u);
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+    ASSERT_NE(item, nullptr);
+    browser.setExpanded(item, true);
+    drainGuiEvents();
+    QtBrowserItem* inputBinding = findBrowserItemByName(item->children(), QStringLiteral("Input Binding 0 (fire)"));
+    QtBrowserItem* outputBinding = findBrowserItemByName(item->children(), QStringLiteral("Output Binding 0 (fired)"));
+    ASSERT_NE(inputBinding, nullptr);
+    ASSERT_NE(outputBinding, nullptr);
+    browser.setCurrentItem(inputBinding);
+    browser.editItem(inputBinding);
+    drainGuiEvents();
+    QLineEdit* bindingEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(bindingEditor, nullptr);
+    commitTextWithEnter(bindingEditor, QStringLiteral("2"));
+    EXPECT_EQ(component.getInputBinding(0), "2");
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+    ASSERT_NE(item, nullptr);
+    outputBinding = findBrowserItemByName(item->children(), QStringLiteral("Output Binding 0 (fired)"));
+    ASSERT_NE(outputBinding, nullptr);
+    browser.setCurrentItem(outputBinding);
+    browser.editItem(outputBinding);
+    drainGuiEvents();
+    bindingEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(bindingEditor, nullptr);
+    commitTextWithEnter(bindingEditor, QStringLiteral("firedValue"));
+    EXPECT_EQ(component.getOutputBinding(0), "firedValue");
 }
 
 TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {

@@ -37,6 +37,7 @@ public:
 	void setNetwork(DefaultNetwork* network);
 	int getDynamicInputPortCount() const override;
 	int getDynamicOutputPortCount() const override;
+	const std::vector<SimulationControl*>& getNetworkBindingControls() const;
 	std::string getNetworkName() const;
 	void setNetworkName(const std::string& networkName);
 	void setInputBinding(unsigned int port, const std::string& expression);
@@ -76,6 +77,7 @@ protected:
 private:
 	DefaultNetwork* _resolveNetworkReference();
 	void _syncBindingsToNetwork();
+	void _rebuildNetworkBindingControls();
 	bool _dispatchNetworkActivation(Entity* entity, unsigned int inputPortNumber);
 	Entity* _cloneEntity(Entity* entity);
 	void _writeOutputBinding(Entity* entity, unsigned int outputPort, double value);
@@ -91,4 +93,7 @@ private:
 	std::vector<std::string> _outputBindings;
 	std::vector<std::string> _inputBindingPortNames;
 	std::vector<std::string> _outputBindingPortNames;
+	std::vector<SimulationControl*> _networkBindingControls;
+	std::vector<SimulationControl*> _inputBindingControls;
+	std::vector<SimulationControl*> _outputBindingControls;
 };

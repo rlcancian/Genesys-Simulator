@@ -30,13 +30,54 @@ constexpr const char* kNetworkAssociationKey = "ModalModelDefault.Network";
 
 using ModalModelNetworkControlBase = SimulationControlGenericClass<DefaultNetwork*, Model*, DefaultNetwork>;
 
+class ModalModelBindingPropertyControl final : public SimulationControl {
+public:
+	ModalModelBindingPropertyControl(ModalModelDefault* adapter, bool output, unsigned int port,
+	                                 const std::string& portName)
+		: SimulationControl(Util::TypeOf<ModalModelDefault>(), adapter->getName(), "", "", false, false, false),
+		  _adapter(adapter), _output(output), _port(port) {
+		_propertyType = Util::TypeOf<std::string>();
+		setPort(port, portName, true);
+	}
+
+	std::string getValue() const override {
+		return _output ? _adapter->getOutputBinding(_port) : _adapter->getInputBinding(_port);
+	}
+
+	void setValue(std::string value, bool remove = false) override {
+		(void)remove;
+		_ensureWritable("set value of");
+		if (_adapter->getNetwork() == nullptr) {
+			throw std::logic_error("Cannot edit a Network binding without an attached Network");
+		}
+		if (_output) _adapter->setOutputBinding(_port, value);
+		else _adapter->setInputBinding(_port, value);
+	}
+
+	void setPort(unsigned int port, const std::string& portName, bool active) {
+		_port = port;
+		_active = active;
+		_readonly = !active;
+		setName(std::string(_output ? "Output Binding " : "Input Binding ")
+		        + std::to_string(port) + " (" + portName + ")");
+	}
+
+	bool isActive() const { return _active; }
+
+private:
+	ModalModelDefault* _adapter;
+	bool _output;
+	unsigned int _port;
+	bool _active = false;
+};
+
 class ModalModelNetworkControl final : public ModalModelNetworkControlBase {
 public:
-	ModalModelNetworkControl(Model* model, GetterGeneric<DefaultNetwork*> getter,
+	ModalModelNetworkControl(Model* model, ModalModelDefault* adapter, GetterGeneric<DefaultNetwork*> getter,
 	                         SetterGeneric<DefaultNetwork*> setter, NameResolver resolver,
 	                         ChoicesProvider choices)
 		: ModalModelNetworkControlBase(
-			  model, std::move(getter), setter, Util::TypeOf<ModalModelDefault>(), "", "Network", "",
+			  model, getter, setter, Util::TypeOf<ModalModelDefault>(), "", "Network", "",
 			  false, true, false, nullptr, true, false, std::move(resolver), std::move(choices),
 			  [model]() {
 				  auto* types = new List<std::string>();
@@ -50,7 +91,7 @@ public:
 				  }
 				  return types;
 			  }, true),
-		  _model(model), _setter(std::move(setter)) {}
+		  _model(model), _adapter(adapter), _getter(std::move(getter)), _setter(std::move(setter)) {}
 
 	bool supportsObjectCreation() const override {
 		PluginManager* plugins = _model != nullptr && _model->getParentSimulator() != nullptr
@@ -60,6 +101,23 @@ public:
 	}
 
 	bool supportsReferenceRemoval() const override { return true; }
+	bool supportsReferenceChildEditing() const override { return true; }
+
+	List<SimulationControl*>* getChildSimulationControls(int index = 0) override {
+		(void)index;
+		DefaultNetwork* network = _getter();
+		if (network == nullptr) return nullptr;
+		_children.clear();
+		if (network->getSimulationControls() != nullptr) {
+			for (SimulationControl* control : *network->getSimulationControls()->list()) {
+				_children.insert(control);
+			}
+		}
+		for (SimulationControl* control : _adapter->getNetworkBindingControls()) {
+			if (control != nullptr) _children.insert(control);
+		}
+		return &_children;
+	}
 
 	List<std::string>* getCreatableReferenceTypes() override {
 		auto* types = new List<std::string>();
@@ -86,7 +144,10 @@ public:
 
 private:
 	Model* _model;
+	ModalModelDefault* _adapter;
+	GetterGeneric<DefaultNetwork*> _getter;
 	SetterGeneric<DefaultNetwork*> _setter;
+	List<SimulationControl*> _children;
 };
 
 std::string networkChoice(DefaultNetwork* network) {
@@ -123,6 +184,7 @@ ModalModelDefault::ModalModelDefault(Model* model, std::string name)
 	};
 	auto* networkControl = new ModalModelNetworkControl(
 		_parentModel,
+		this,
 		std::bind(&ModalModelDefault::getNetwork, this),
 		std::bind(&ModalModelDefault::setNetwork, this, std::placeholders::_1),
 		[resolveNetworkChoice](const std::string& value) { return resolveNetworkChoice(value); },
@@ -184,6 +246,10 @@ int ModalModelDefault::getDynamicInputPortCount() const {
 
 int ModalModelDefault::getDynamicOutputPortCount() const {
 	return _network == nullptr ? 0 : static_cast<int>(_network->getNumOutputPorts());
+}
+
+const std::vector<SimulationControl*>& ModalModelDefault::getNetworkBindingControls() const {
+	return _networkBindingControls;
 }
 
 void ModalModelDefault::setNetwork(DefaultNetwork* network) {
@@ -294,6 +360,41 @@ void ModalModelDefault::setNetwork(DefaultNetwork* network) {
 		for (unsigned int port = 0; port < _network->getNumInputPorts(); ++port) _inputBindingPortNames.push_back(_network->getInputPortName(port));
 		for (unsigned int port = 0; port < _network->getNumOutputPorts(); ++port) _outputBindingPortNames.push_back(_network->getOutputPortName(port));
 	}
+	_rebuildNetworkBindingControls();
+}
+
+void ModalModelDefault::_rebuildNetworkBindingControls() {
+	_networkBindingControls.clear();
+	const unsigned int inputCount = _network != nullptr ? _network->getNumInputPorts() : 0;
+	const unsigned int outputCount = _network != nullptr ? _network->getNumOutputPorts() : 0;
+	auto update = [this](std::vector<SimulationControl*>& controls, bool output, unsigned int count) {
+		for (unsigned int port = 0; port < count; ++port) {
+			if (controls.size() <= port) {
+				auto* control = new ModalModelBindingPropertyControl(
+					this, output, port, output ? _network->getOutputPortName(port) : _network->getInputPortName(port));
+				controls.push_back(control);
+				_parentModel->getControls()->insert(control);
+				_addSimulationControl(control);
+			} else {
+				auto* control = dynamic_cast<ModalModelBindingPropertyControl*>(controls[port]);
+				if (control != nullptr) {
+					control->setPort(port,
+						output ? _network->getOutputPortName(port) : _network->getInputPortName(port), true);
+					_parentModel->getControls()->insert(control);
+				}
+			}
+			_networkBindingControls.push_back(controls[port]);
+		}
+		for (unsigned int port = count; port < controls.size(); ++port) {
+			auto* control = dynamic_cast<ModalModelBindingPropertyControl*>(controls[port]);
+			if (control != nullptr) {
+				control->setPort(port, "", false);
+				_parentModel->getControls()->remove(control);
+			}
+		}
+	};
+	update(_inputBindingControls, false, inputCount);
+	update(_outputBindingControls, true, outputCount);
 }
 
 std::string ModalModelDefault::getNetworkName() const {

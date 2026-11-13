@@ -1631,6 +1631,16 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
         if (reference != nullptr) {
             parent->addSubProperty(reference);
         }
+        if (_isModelObjectActionProperty(desc, control) && control->supportsReferenceChildEditing()) {
+            List<SimulationControl*>* children = control->getEditableChildSimulationControls();
+            if (children != nullptr && !children->empty()) {
+                QtProperty* details = _groupManager->addProperty(QString::fromStdString(desc.displayName + " Details"));
+                parent->addSubProperty(details);
+                for (SimulationControl* child : *children->list()) {
+                    _appendDescriptorRecursively(details, child, recursionPath, depth + 1);
+                }
+            }
+        }
         return;
     }
 
