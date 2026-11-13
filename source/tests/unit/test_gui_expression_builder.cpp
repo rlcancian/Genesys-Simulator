@@ -9,6 +9,9 @@
 #include "applications/gui/genesys/propertyeditor/ObjectPropertyBrowser.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/model/ModelManager.h"
+#include "kernel/simulator/model/ModelComponentManager.h"
+#include "kernel/simulator/PluginManager.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 
 #include <QApplication>
@@ -23,6 +26,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QTimer>
+#include <QTemporaryDir>
 
 TEST(ExpressionBuilderCatalogTest, OnlyAdvertisesImplementedGrammarEntries) {
     const auto entries = parserFunctionCatalog();
@@ -300,4 +304,58 @@ TEST(ExpressionBuilderPropertyTest, AcceptCommitsExpressionOnceThroughPropertyBr
     EXPECT_TRUE(opened);
     EXPECT_EQ(delay.delayExpression(), "norm(2,-1) + rnd");
     EXPECT_EQ(notifications, 1);
+}
+
+TEST(ExpressionBuilderPropertyTest, CommittedExpressionSurvivesSaveAndReload) {
+    Simulator sourceSimulator;
+    sourceSimulator.getPluginManager()->autoInsertPlugins();
+    Model* model = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* delay = new Delay(model, "ExpressionBuilderPersistedDelay");
+    delay->setDelayTimeUnit(Util::TimeUnit::minute);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    showEditableDelay(browser, *delay);
+
+    QtBrowserItem* property = findExpressionProperty(browser.topLevelItems());
+    ASSERT_NE(property, nullptr);
+    browser.setCurrentItem(property);
+    bool accepted = false;
+    QTimer::singleShot(0, [&]() {
+        auto* dialog = qobject_cast<ExpressionBuilder*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        dialog->findChild<QPlainTextEdit*>(QStringLiteral("expressionEditor"))
+            ->setPlainText(QStringLiteral("if(2 > 1, 3, 5) + norm(0, 1)"));
+        dialog->findChild<QPushButton*>(QStringLiteral("btnApply"))->click();
+        accepted = dialog->result() == QDialog::Accepted;
+    });
+    QTimer::singleShot(1000, &browser, []() {
+        if (auto* dialog = QApplication::activeModalWidget()) dialog->close();
+    });
+    openSelectedExpressionEditor(browser);
+    for (int i = 0; i < 8; ++i) {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    }
+
+    const std::string expected = "if(2 > 1, 3, 5) + norm(0, 1)";
+    EXPECT_TRUE(accepted);
+    ASSERT_EQ(delay->delayExpression(), expected);
+    ASSERT_EQ(delay->delayTimeUnit(), Util::TimeUnit::minute);
+
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const std::string path = directory.filePath(QStringLiteral("expression-builder.gen")).toStdString();
+    ASSERT_TRUE(model->save(path));
+
+    Simulator loadedSimulator;
+    loadedSimulator.getPluginManager()->autoInsertPlugins();
+    Model* loadedModel = loadedSimulator.getModelManager()->loadModel(path);
+    ASSERT_NE(loadedModel, nullptr);
+    auto* restored = dynamic_cast<Delay*>(
+        loadedModel->getComponentManager()->find("ExpressionBuilderPersistedDelay"));
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored->delayExpression(), expected);
+    EXPECT_EQ(restored->delayTimeUnit(), Util::TimeUnit::minute);
 }
