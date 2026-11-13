@@ -65,7 +65,6 @@ ExpressionBuilder::ExpressionBuilder(QWidget *parent) :
     if (treeCategories->topLevelItemCount() > 0) {
         QTreeWidgetItem* firstCategory = treeCategories->topLevelItem(0);
         treeCategories->setCurrentItem(firstCategory);
-        on_categorySelected(firstCategory, 0);
     }
 }
 
@@ -93,11 +92,36 @@ void ExpressionBuilder::initializeCategories()
         } else {
             const QStringList parameters = info.syntax.mid(opening + 1, closing - opening - 1)
                                                .split(QLatin1Char(','), Qt::SkipEmptyParts);
+            // Use the catalog's tested examples as editable argument defaults.
+            // A nested expression such as ln(exp(1)) must remain one argument.
+            QStringList exampleArguments;
+            const int exampleOpening = info.example.indexOf(QLatin1Char('('));
+            const int exampleClosing = info.example.lastIndexOf(QLatin1Char(')'));
+            if (exampleOpening >= 0 && exampleClosing > exampleOpening) {
+                const QString contents = info.example.mid(exampleOpening + 1,
+                    exampleClosing - exampleOpening - 1);
+                QString argument;
+                int nesting = 0;
+                for (const QChar character : contents) {
+                    if (character == QLatin1Char('(')) ++nesting;
+                    else if (character == QLatin1Char(')')) --nesting;
+                    if (character == QLatin1Char(',') && nesting == 0) {
+                        exampleArguments.append(argument.trimmed());
+                        argument.clear();
+                    } else {
+                        argument.append(character);
+                    }
+                }
+                exampleArguments.append(argument.trimmed());
+            }
+
             QStringList placeholders;
             for (int index = 0; index < parameters.size(); ++index) {
                 const QString key = QStringLiteral("arg%1").arg(index + 1);
                 const QString meaning = parameters.at(index).trimmed();
-                expression.parameters.append({key, QStringLiteral("1"), meaning});
+                const QString defaultValue = exampleArguments.size() == parameters.size()
+                    ? exampleArguments.at(index) : QStringLiteral("1");
+                expression.parameters.append({key, defaultValue, meaning});
                 placeholders.append(QStringLiteral("{%1}").arg(key));
             }
             expression.pattern = info.name + QLatin1Char('(')
@@ -120,9 +144,15 @@ void ExpressionBuilder::initializeCategories()
             QStringLiteral("<"), QStringLiteral(">"), QStringLiteral("<="),
             QStringLiteral(">="), QStringLiteral("=="), QStringLiteral("!="),
             QStringLiteral("and"), QStringLiteral("or"), QStringLiteral("nand"),
-            QStringLiteral("xor"), QStringLiteral("not")}) {
-        operators.expressions.append({symbol, QStringLiteral(" ") + symbol + QStringLiteral(" "),
-                                       tr("Insert a grammar operator"), {}});
+            QStringLiteral("xor"), QStringLiteral("not"), QStringLiteral("="),
+            QStringLiteral("<>"), QStringLiteral("&&"), QStringLiteral("||"),
+            QStringLiteral("!"), QStringLiteral("("), QStringLiteral(")"),
+            QStringLiteral("["), QStringLiteral("]"), QStringLiteral(",")}) {
+        const bool delimiter = symbol == QLatin1String("(") || symbol == QLatin1String(")")
+            || symbol == QLatin1String("[") || symbol == QLatin1String("]")
+            || symbol == QLatin1String(",");
+        const QString insertedText = delimiter ? symbol : QStringLiteral(" ") + symbol + QStringLiteral(" ");
+        operators.expressions.append({symbol, insertedText, tr("Insert a grammar operator"), {}});
     }
     categories.append(operators);
 }
