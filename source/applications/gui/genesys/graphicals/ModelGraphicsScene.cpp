@@ -2944,14 +2944,10 @@ void ModelGraphicsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
             }
         }
         else if (component == nullptr && group == nullptr && connection == nullptr) {
-            QRectF rectScenePost = item->sceneBoundingRect();
-
-            qreal rectX = rectScenePost.bottomLeft().x();
-            qreal rectY = rectScenePost.topRight().y();
-
-            myQPointF.setX(rectX);
-            myQPointF.setY(rectY);
-
+            // Compare the item's actual position with the press snapshot. Its
+            // bounding rectangle can be offset from pos() (for example an
+            // EFSM transition path), which made a plain click look like a move.
+            myQPointF = item->pos();
             QPointF oldPos = _oldPositionsItems[item];
 
             if (!(qAbs(oldPos.x() - myQPointF.x()) <= 1.5 && qAbs(oldPos.y() - myQPointF.y()) <= 1.5)) {

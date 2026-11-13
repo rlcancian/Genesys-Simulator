@@ -386,3 +386,12 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - Registered a formalism-specific context-menu contribution that is visible when one or two EFSM states are selected and invokes the existing undoable transition creation handler.
 - `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS.
 - `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.*'` — PASS, 8/8, including the new context-menu visibility regression.
+
+### EFSM transition selection crash follow-up
+
+- A user-reported SIGSEGV on transition click mapped to `ModelGraphicsScene::mouseReleaseEvent`: path bounds were compared to item position, incorrectly enqueuing a Move command for a click. The command refreshed the EFSM projection, deleting the selected overlay while release handling still referenced it.
+- Movement detection now compares actual item positions with the press snapshot; legitimate FSMState movement still refreshes transition geometry and remains undoable.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS.
+- EFSM transition click regression plus existing state-move/undo regression — PASS, 2/2.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS.
+- `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.*:EFSMNetworkDiagramProjection.*'` — PASS, 11 tests.

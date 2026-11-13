@@ -2103,6 +2103,53 @@ TEST(EFSMNetworkDiagramProjection, MovingAStateRefreshesItsFormalTransitionGeome
     EXPECT_NE(edgeItem->path().pointAtPercent(0.5), before);
 }
 
+TEST(EFSMNetworkDiagramProjection, SelectingTransitionDoesNotTreatItsPathBoundsAsMovement) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "SelectTransitionNetwork");
+    FSMState source(model, "SelectSource");
+    FSMState destination(model, "SelectDestination");
+    network.setInitialState(&source);
+    network.addState(&destination);
+    network.addTransition(new EFSMTransition(&source, &destination, "SelectEdge"));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    auto* sourceItem = scene.findGraphicalModelDataDefinition(&source);
+    auto* destinationItem = scene.findGraphicalModelDataDefinition(&destination);
+    ASSERT_NE(sourceItem, nullptr);
+    ASSERT_NE(destinationItem, nullptr);
+    sourceItem->setPos(-180.0, 0.0);
+    destinationItem->setPos(180.0, 0.0);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    auto* edge = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.extensionOverlayItems(QStringLiteral("efsm")).first());
+    ASSERT_NE(edge, nullptr);
+    const QPointF clickPoint = edge->path().pointAtPercent(0.5);
+    ASSERT_EQ(scene.itemAt(clickPoint, QTransform()), edge);
+
+    QGraphicsSceneMouseEvent press(QEvent::GraphicsSceneMousePress);
+    press.setButton(Qt::LeftButton);
+    press.setButtons(Qt::LeftButton);
+    press.setScenePos(clickPoint);
+    press.setButtonDownScenePos(Qt::LeftButton, clickPoint);
+    scene.mousePressEvent(&press);
+    QGraphicsSceneMouseEvent release(QEvent::GraphicsSceneMouseRelease);
+    release.setButton(Qt::LeftButton);
+    release.setScenePos(clickPoint);
+    scene.mouseReleaseEvent(&release);
+
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).first(), edge);
+    EXPECT_EQ(undoStack.count(), 0);
+}
+
 TEST(EFSMNetworkUndo, DeleteActionAndUndoRefreshTheSharedSceneProjection) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
