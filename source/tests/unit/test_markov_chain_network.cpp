@@ -110,6 +110,23 @@ TEST(MarkovChainNetworkTest, ProgrammaticStatesBelongToNetworkEditingLevel) {
 	EXPECT_EQ(network.getStates()->size(), 2u);
 }
 
+TEST(MarkovChainNetworkTest, SettingInitialStateKeepsExactlyOneNodeMarked) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	MarkovChainNetwork network(model, "UniqueInitial");
+	MarkovState first(model, "First");
+	MarkovState second(model, "Second");
+	network.addState(&first);
+	network.addState(&second);
+	network.setInitialState(&first);
+	ASSERT_TRUE(first.isInitialNode());
+	network.setInitialState(&second);
+	EXPECT_FALSE(first.isInitialNode());
+	EXPECT_TRUE(second.isInitialNode());
+	EXPECT_EQ(network.getInitialState(), &second);
+}
+
 TEST(MarkovChainNetworkTest, TransitionDetachAndRestorePreserveOwnershipAndOrdinal) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();

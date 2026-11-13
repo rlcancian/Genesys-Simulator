@@ -193,12 +193,12 @@ std::vector<MarkovChainNetwork::MarkovTransition*> MarkovChainNetwork::getOutgoi
 }
 
 void MarkovChainNetwork::setInitialState(MarkovState* state) {
+	if (state != nullptr) addState(state);
+	for (MarkovState* candidate : *_states->list()) {
+		if (candidate != nullptr) candidate->setInitialNode(candidate == state);
+	}
 	_initialState = state;
 	_currentState = state;
-	if (state != nullptr) {
-		state->setInitialNode(true);
-		addState(state);
-	}
 }
 
 MarkovState* MarkovChainNetwork::getInitialState() const {

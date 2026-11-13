@@ -74,6 +74,72 @@ private:
     bool _everAttached = false;
 };
 
+class RemoveMarkovTransitionUndoCommand final : public QUndoCommand {
+public:
+    RemoveMarkovTransitionUndoCommand(MarkovChainNetwork* network,
+                                      MarkovChainNetwork::MarkovTransition* transition,
+                                      ModelGraphicsScene* scene)
+        : _network(network), _transition(transition), _scene(scene) { setText(QObject::tr("Remove Markov transition")); }
+    void redo() override {
+        if (_network == nullptr || _transition == nullptr) { setObsolete(true); return; }
+        _owned = _network->detachTransition(_transition, &_ordinal);
+        if (!_owned) { setObsolete(true); return; }
+        synchronizeMarkovProjection(nullptr, _scene);
+    }
+    void undo() override {
+        if (_network == nullptr || !_owned || !_network->restoreTransition(_owned.get(), _ordinal)) { setObsolete(true); return; }
+        _owned.release();
+        synchronizeMarkovProjection(nullptr, _scene);
+    }
+private:
+    MarkovChainNetwork* _network;
+    MarkovChainNetwork::MarkovTransition* _transition;
+    QPointer<ModelGraphicsScene> _scene;
+    unsigned int _ordinal = 0;
+    std::unique_ptr<MarkovChainNetwork::MarkovTransition> _owned;
+};
+
+class EditMarkovProbabilityUndoCommand final : public QUndoCommand {
+public:
+    EditMarkovProbabilityUndoCommand(MarkovChainNetwork::MarkovTransition* transition,
+                                     ModelGraphicsScene* scene, double value)
+        : _transition(transition), _scene(scene), _before(transition->getProbability()), _after(value) {
+        setText(QObject::tr("Edit Markov transition probability"));
+    }
+    void redo() override { apply(_after); }
+    void undo() override { apply(_before); }
+private:
+    void apply(double value) {
+        if (_transition == nullptr) { setObsolete(true); return; }
+        _transition->setProbability(value);
+        synchronizeMarkovProjection(nullptr, _scene);
+    }
+    MarkovChainNetwork::MarkovTransition* _transition;
+    QPointer<ModelGraphicsScene> _scene;
+    double _before;
+    double _after;
+};
+
+class SetMarkovInitialStateUndoCommand final : public QUndoCommand {
+public:
+    SetMarkovInitialStateUndoCommand(MarkovChainNetwork* network, ModelGraphicsScene* scene, MarkovState* after)
+        : _network(network), _scene(scene), _before(network->getInitialState()), _after(after) {
+        setText(QObject::tr("Set Markov initial state"));
+    }
+    void redo() override { apply(_after); }
+    void undo() override { apply(_before); }
+private:
+    void apply(MarkovState* state) {
+        if (_network == nullptr) { setObsolete(true); return; }
+        _network->setInitialState(state);
+        synchronizeMarkovProjection(nullptr, _scene);
+    }
+    MarkovChainNetwork* _network;
+    QPointer<ModelGraphicsScene> _scene;
+    MarkovState* _before;
+    MarkovState* _after;
+};
+
 void addArrow(QPainterPath& path, const QPointF& tip) {
     const QPointF tangent = path.pointAtPercent(0.98) - path.pointAtPercent(0.94);
     const qreal angle = std::atan2(tangent.y(), tangent.x());
@@ -150,6 +216,8 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
         edge->setPen(QPen(QColor(65, 75, 90), 2.0));
         edge->setBrush(Qt::NoBrush);
         edge->setZValue(-1.0);
+        edge->setData(1, QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(transition)));
+        edge->setFlag(QGraphicsItem::ItemIsSelectable, true);
         edge->setToolTip(QStringLiteral("%1 → %2  p=%3")
                              .arg(QString::fromStdString(transition->getSource()->getName()),
                                   QString::fromStdString(transition->getDestination()->getName()))
@@ -172,6 +240,59 @@ bool canCreateTransition(const GuiExtensionRuntimeContext& context) {
         if (graphical != nullptr && dynamic_cast<MarkovState*>(graphical->getDataDefinition()) != nullptr) ++count;
     }
     return count == 2;
+}
+
+MarkovChainNetwork::MarkovTransition* selectedTransition(const GuiExtensionRuntimeContext& context) {
+    if (context.graphicsScene == nullptr) return nullptr;
+    auto* network = dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner());
+    if (network == nullptr) return nullptr;
+    for (QGraphicsItem* item : context.graphicsScene->selectedItems()) {
+        if (dynamic_cast<QGraphicsPathItem*>(item) == nullptr || !item->data(1).isValid()) continue;
+        auto* transition = reinterpret_cast<MarkovChainNetwork::MarkovTransition*>(
+            static_cast<quintptr>(item->data(1).toULongLong()));
+        if (transition != nullptr && network->getTransitions()->find(transition) != network->getTransitions()->list()->end())
+            return transition;
+    }
+    return nullptr;
+}
+
+void removeSelectedTransition(const GuiExtensionRuntimeContext& context) {
+    auto* transition = selectedTransition(context);
+    if (transition == nullptr || context.graphicsScene->getUndoStack() == nullptr) return;
+    auto* network = dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner());
+    context.graphicsScene->getUndoStack()->push(
+        new RemoveMarkovTransitionUndoCommand(network, transition, context.graphicsScene));
+}
+
+void editSelectedProbability(const GuiExtensionRuntimeContext& context) {
+    auto* transition = selectedTransition(context);
+    if (transition == nullptr || context.graphicsScene->getUndoStack() == nullptr) return;
+    bool accepted = false;
+    const double value = QInputDialog::getDouble(context.mainWindow, QObject::tr("Markov Transition Probability"),
+        QObject::tr("Probability:"), transition->getProbability(), 0.0, 1.0, 6, &accepted);
+    if (accepted && std::isfinite(value) && value != transition->getProbability())
+        context.graphicsScene->getUndoStack()->push(
+            new EditMarkovProbabilityUndoCommand(transition, context.graphicsScene, value));
+}
+
+MarkovState* selectedMarkovState(const GuiExtensionRuntimeContext& context) {
+    if (context.graphicsScene == nullptr) return nullptr;
+    for (QGraphicsItem* item : context.graphicsScene->selectedItems()) {
+        auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        auto* state = graphical != nullptr ? dynamic_cast<MarkovState*>(graphical->getDataDefinition()) : nullptr;
+        if (state != nullptr) return state;
+    }
+    return nullptr;
+}
+
+void setSelectedInitialState(const GuiExtensionRuntimeContext& context) {
+    auto* network = context.graphicsScene != nullptr
+        ? dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) : nullptr;
+    auto* state = selectedMarkovState(context);
+    if (network != nullptr && state != nullptr && context.graphicsScene->getUndoStack() != nullptr
+        && network->getStates()->find(state) != network->getStates()->list()->end())
+        context.graphicsScene->getUndoStack()->push(
+            new SetMarkovInitialStateUndoCommand(network, context.graphicsScene, state));
 }
 
 void createTransition(const GuiExtensionRuntimeContext& context) {
@@ -261,6 +382,55 @@ public:
         transition.isEnabled = canCreateTransition;
         transition.trigger = createTransition;
         registry->addAction(std::move(transition));
+
+        GuiActionContribution removeTransition;
+        removeTransition.id = "modal.markov.remove-transition";
+        removeTransition.text = "Remove Selected Markov Transition";
+        removeTransition.menuPath = "Model";
+        removeTransition.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        removeTransition.isEnabled = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
+                && selectedTransition(context) != nullptr;
+        };
+        removeTransition.trigger = removeSelectedTransition;
+        registry->addAction(std::move(removeTransition));
+
+        GuiActionContribution editProbability;
+        editProbability.id = "modal.markov.edit-transition-probability";
+        editProbability.text = "Edit Selected Markov Transition Probability...";
+        editProbability.menuPath = "Model";
+        editProbability.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        editProbability.isEnabled = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
+                && selectedTransition(context) != nullptr;
+        };
+        editProbability.trigger = editSelectedProbability;
+        registry->addAction(std::move(editProbability));
+
+        GuiActionContribution setInitial;
+        setInitial.id = "modal.markov.set-initial-state";
+        setInitial.text = "Set Selected Markov State as Initial";
+        setInitial.menuPath = "Model";
+        setInitial.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        setInitial.isEnabled = [](const GuiExtensionRuntimeContext& context) {
+            auto* network = context.graphicsScene != nullptr
+                ? dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) : nullptr;
+            auto* state = selectedMarkovState(context);
+            return network != nullptr && context.graphicsScene->getUndoStack() != nullptr && state != nullptr
+                && state != network->getInitialState()
+                && network->getStates()->find(state) != network->getStates()->list()->end();
+        };
+        setInitial.trigger = setSelectedInitialState;
+        registry->addAction(std::move(setInitial));
     }
 };
 

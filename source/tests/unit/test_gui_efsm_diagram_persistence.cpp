@@ -387,6 +387,61 @@ TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndo
     ASSERT_EQ(network.getTransitions()->size(), 1u);
     EXPECT_EQ(network.getTransitions()->front(), transition);
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 4);
+
+    auto actionById = [](const std::string& id) {
+        GuiActionContribution result;
+        for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+            if (plugin == nullptr || plugin->extensionId() != "modal.markov.gui") continue;
+            GuiExtensionRegistry registry;
+            plugin->registerContributions(&registry);
+            for (const auto& action : registry.actions()) if (action.id == id) result = action;
+        }
+        return result;
+    };
+    auto removeTransition = actionById("modal.markov.remove-transition");
+    auto editProbability = actionById("modal.markov.edit-transition-probability");
+    ASSERT_TRUE(static_cast<bool>(removeTransition.trigger));
+    ASSERT_TRUE(static_cast<bool>(editProbability.trigger));
+    scene.clearSelection();
+    QGraphicsItem* transitionItem = nullptr;
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui"))) {
+        if (dynamic_cast<QGraphicsPathItem*>(item) != nullptr && item->data(1).isValid()) transitionItem = item;
+    }
+    ASSERT_NE(transitionItem, nullptr);
+    transitionItem->setSelected(true);
+    ASSERT_TRUE(removeTransition.isEnabled(context));
+    removeTransition.trigger(context);
+    EXPECT_TRUE(network.getTransitions()->empty());
+    undoStack.undo();
+    ASSERT_EQ(network.getTransitions()->size(), 1u);
+    scene.clearSelection();
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui"))) {
+        if (dynamic_cast<QGraphicsPathItem*>(item) != nullptr && item->data(1).isValid()) item->setSelected(true);
+    }
+    QTimer::singleShot(0, []() {
+        auto* probability = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(probability, nullptr);
+        probability->setDoubleValue(0.8);
+        probability->accept();
+    });
+    editProbability.trigger(context);
+    EXPECT_DOUBLE_EQ(transition->getProbability(), 0.8);
+    undoStack.undo();
+    EXPECT_DOUBLE_EQ(transition->getProbability(), 0.35);
+    undoStack.redo();
+    EXPECT_DOUBLE_EQ(transition->getProbability(), 0.8);
+
+    auto setInitial = actionById("modal.markov.set-initial-state");
+    ASSERT_TRUE(static_cast<bool>(setInitial.trigger));
+    scene.clearSelection();
+    secondItem->setSelected(true);
+    ASSERT_TRUE(setInitial.isEnabled(context));
+    setInitial.trigger(context);
+    EXPECT_EQ(network.getInitialState(), second);
+    undoStack.undo();
+    EXPECT_EQ(network.getInitialState(), first);
+    undoStack.redo();
+    EXPECT_EQ(network.getInitialState(), second);
 }
 
 TEST(MarkovChainNetworkGuiExtension, DroppedMarkovStateJoinsTheNetworkAndScene) {
