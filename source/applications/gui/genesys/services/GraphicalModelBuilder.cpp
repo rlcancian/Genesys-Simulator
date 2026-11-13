@@ -1,8 +1,8 @@
 #include "GraphicalModelBuilder.h"
+#include "../extensions/GuiExtensionPluginCatalog.h"
 
 #include "GraphicalDataDefinitionLayout.h"
 #include "GraphicalAutomaticPositioningStrategy.h"
-#include "EFSMNetworkDiagramProjection.h"
 #include "../TraitsGUI.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -1032,7 +1032,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     if (visibleDataDefinitions.isEmpty()) {
         scene->clearGraphicalDiagramConnections();
         scene->clearGraphicalModelDataDefinitions();
-        EFSMNetworkDiagramProjection::synchronize(simulator, scene);
+        GuiExtensionPluginCatalog::synchronizeDiagramProjections(simulator, scene);
         scene->setDiagramLayerState(false, false);
         return;
     }
@@ -1404,7 +1404,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     }
 
     const bool hasDataDefinitions = !dataDefinitionMap.empty();
-    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(simulator, scene);
     scene->setDiagramLayerState(hasDataDefinitions, hasDataDefinitions);
     if (hasDataDefinitions) {
         scene->showDiagrams();

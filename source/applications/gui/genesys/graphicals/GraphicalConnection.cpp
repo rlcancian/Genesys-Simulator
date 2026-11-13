@@ -300,6 +300,10 @@ void GraphicalConnection::setSourcePortNumber(unsigned int portNumber) {
 unsigned int GraphicalConnection::getPortDestinationConnection() const {
     return _portDestinationConnection;
 }
+void GraphicalConnection::setDestinationPortNumber(unsigned int portNumber) {
+	_portDestinationConnection = portNumber;
+	if (_destinationConnection != nullptr) _destinationConnection->channel.portNumber = portNumber;
+}
 GraphicalComponentPort* GraphicalConnection::getSourceGraphicalPort() {
 	return _sourceGraphicalPort.data();
 }

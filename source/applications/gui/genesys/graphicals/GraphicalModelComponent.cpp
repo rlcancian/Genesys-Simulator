@@ -105,6 +105,10 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	unsigned int numInputPorts = std::max<unsigned int>(
 		component->getConnectionManager()->getCurrentInputConnectionsSize(),
 		plugin->getPluginInfo()->getMinimumInputs());
+	numInputPorts = std::max(numInputPorts, component->getConnectionManager()->getMinInputConnections());
+	if (component->getDynamicInputPortCount() >= 0) {
+		numInputPorts = std::max(numInputPorts, static_cast<unsigned int>(component->getDynamicInputPortCount()));
+	}
 	qreal step = (double)_height / (double)(numInputPorts + 1);
 	for (unsigned int i = 0; i < numInputPorts; i++) {
 		port = new GraphicalComponentPort(this, true, i, parent);
@@ -121,6 +125,10 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	}
 	unsigned int numOutputPorts = std::max<unsigned int>(
 		component->getConnectionManager()->getCurrentOutputConnectionsSize(), declaredOutputPorts);
+	numOutputPorts = std::max(numOutputPorts, component->getConnectionManager()->getMinOutputConnections());
+	if (component->getDynamicOutputPortCount() >= 0) {
+		numOutputPorts = std::max(numOutputPorts, static_cast<unsigned int>(component->getDynamicOutputPortCount()));
+	}
 	if (dynamic_cast<Decide*>(component) != nullptr) {
 		// A Decide's semantic ports are defined by its ordered conditions, even if
 		// a malformed/stale connection map contains an out-of-range key.
@@ -193,6 +201,65 @@ void GraphicalModelComponent::moveDecideConditionPort(unsigned int from, unsigne
 			}
 		}
 	}
+}
+
+void GraphicalModelComponent::synchronizeDynamicPorts() {
+	if (_component == nullptr) return;
+	const int dynamicInputs = _component->getDynamicInputPortCount();
+	const int dynamicOutputs = _component->getDynamicOutputPortCount();
+	if (dynamicInputs < 0 && dynamicOutputs < 0) return;
+
+	auto synchronize = [this](QList<GraphicalComponentPort*>& ports, unsigned int desiredCount, bool input) {
+		for (unsigned int index = static_cast<unsigned int>(ports.size()); index > desiredCount; --index) {
+			GraphicalComponentPort* port = ports.at(static_cast<int>(index - 1));
+			if (port != nullptr && !port->getConnections()->isEmpty()) break;
+			ports.removeAt(static_cast<int>(index - 1));
+			delete port;
+		}
+		while (static_cast<unsigned int>(ports.size()) < desiredCount) {
+			const unsigned int index = static_cast<unsigned int>(ports.size());
+			auto* port = new GraphicalComponentPort(this, input, index, nullptr);
+			port->setParentItem(this);
+			port->setX(input ? 0 : _width - port->width());
+			ports.append(port);
+		}
+		const unsigned int count = static_cast<unsigned int>(ports.size());
+		const qreal step = static_cast<qreal>(_height) / static_cast<qreal>(count + 1);
+		for (unsigned int index = 0; index < count; ++index) {
+			GraphicalComponentPort* port = ports.at(static_cast<int>(index));
+			port->setPortNum(index);
+			port->setY(step * static_cast<qreal>(index + 1) - port->height() / 2);
+			for (GraphicalConnection* connection : *port->getConnections()) {
+				if (connection == nullptr) continue;
+				if (input && connection->getDestinationGraphicalPort() == port) {
+					connection->setDestinationPortNumber(index);
+				} else if (!input && connection->getSourceGraphicalPort() == port) {
+					connection->setSourcePortNumber(index);
+				}
+				connection->updateDimensionsAndPosition();
+			}
+		}
+	};
+
+	if (dynamicInputs >= 0) {
+		unsigned int required = static_cast<unsigned int>(dynamicInputs);
+		for (GraphicalComponentPort* port : _graphicalInputPorts) {
+			if (port != nullptr && !port->getConnections()->isEmpty()) {
+				required = std::max(required, port->portNum() + 1);
+			}
+		}
+		synchronize(_graphicalInputPorts, required, true);
+	}
+	if (dynamicOutputs >= 0) {
+		unsigned int required = static_cast<unsigned int>(dynamicOutputs);
+		for (GraphicalComponentPort* port : _graphicalOutputPorts) {
+			if (port != nullptr && !port->getConnections()->isEmpty()) {
+				required = std::max(required, port->portNum() + 1);
+			}
+		}
+		synchronize(_graphicalOutputPorts, required, false);
+	}
+	update();
 }
 
 GraphicalModelComponent::GraphicalModelComponent(const GraphicalModelComponent& orig) : GraphicalModelDataDefinition(

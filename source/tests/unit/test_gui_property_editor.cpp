@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <vector>
 
 #include "mainwindow.h"
 #include "actions/AddUndoCommand.h"
@@ -9,6 +10,7 @@
 #include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "propertyeditor/qtpropertybrowser/qtvariantproperty.h"
 #include "services/ModelLanguageSynchronizer.h"
 
 #include "kernel/simulator/PluginManager.h"
@@ -26,6 +28,11 @@
 #include "plugins/components/Continuous/DiffEquations.h"
 #include "plugins/components/Continuous/LSODE.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/data/ModalModel/GraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedGraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
+#include "plugins/data/ModalModel/MarkovChainNetwork.h"
+#include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 #include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
@@ -69,6 +76,7 @@
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QMenu>
+#include <QMessageBox>
 #include <QLocale>
 #include <QPlainTextEdit>
 #include <QSet>
@@ -100,6 +108,24 @@ void drainGuiEvents() {
     for (int i = 0; i < 8; ++i) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     }
+}
+
+void acceptModalModelNetworkSchemaConfirmation() {
+    QTimer::singleShot(0, []() {
+        auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        if (message != nullptr && message->button(QMessageBox::Yes) != nullptr) {
+            message->button(QMessageBox::Yes)->click();
+        }
+    });
+}
+
+void rejectModalModelNetworkSchemaConfirmation() {
+    QTimer::singleShot(0, []() {
+        auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        if (message != nullptr && message->button(QMessageBox::No) != nullptr) {
+            message->button(QMessageBox::No)->click();
+        }
+    });
 }
 
 class ScopedDefaultLocale {
@@ -436,6 +462,7 @@ TEST(PropertyEditorLists, MovesNonOwningDataDefinitionListsWithoutDeletingMember
     ASSERT_TRUE(undoStack.canUndo());
     undoStack.undo();
     drainGuiEvents();
+    drainGuiEvents();
     EXPECT_EQ(resourceSet.getElementSet()->getAtRank(0), first);
     EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "ListMemberSecond"), second);
 
@@ -512,6 +539,7 @@ TEST(PropertyEditorLists, ProcessMoveReconcilesInternalReleaseOrder) {
     EXPECT_EQ(release->getReleaseRequests()->getAtRank(0)->getResource(), firstResource);
     EXPECT_EQ(release->getReleaseRequests()->getAtRank(0), firstRelease);
     undoStack.redo();
+    drainGuiEvents();
     drainGuiEvents();
     EXPECT_EQ(process.getSeizeRequests()->getAtRank(0), second);
     EXPECT_EQ(release->getReleaseRequests()->getAtRank(0)->getResource(), secondResource);
@@ -994,32 +1022,239 @@ TEST(PropertyEditorModelDataReference, ContinuousSystemRestoresSelectedSolverBef
     QFile::remove(path);
 }
 
-TEST(PropertyEditorModelDataReference, ModalModelSelectsADerivedDefaultNetwork) {
+TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByTypeAndIdentity) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    auto* network = new EFSMNetwork(model, "EFSMNetwork_PropertyEditor");
+    auto* network = new EFSMNetwork(model, "SharedNetworkName_PropertyEditor");
+    network->addInputPort("Trigger");
+    network->addOutputPort("Result");
+    auto* graphNetwork = new GraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    graphNetwork->addInputPort("Trigger");
+    graphNetwork->addInputPort("GraphInput1");
+    graphNetwork->addOutputPort("Result");
+    graphNetwork->addOutputPort("GraphOutput1");
+    graphNetwork->addOutputPort("GraphOutput2");
+    auto* directedGraph = new DirectedGraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    directedGraph->addInputPort("Trigger");
+    directedGraph->addOutputPort("Result");
+    auto* dag = new DirectedAcyclicGraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    dag->addInputPort("Trigger");
+    dag->addOutputPort("Result");
+    auto* markov = new MarkovChainNetwork(model, "SharedNetworkName_PropertyEditor");
+    markov->addInputPort("Trigger");
+    markov->addOutputPort("Result");
+    auto* cpn = new ColoredPetriNetNetwork(model, "SharedNetworkName_PropertyEditor");
+    std::vector<DefaultNetwork*> networks{
+        network,
+        graphNetwork,
+        directedGraph,
+        dag,
+        markov,
+        cpn
+    };
     ModalModelDefault component(model, "ModalAdapter_PropertyEditor");
+    Plugin* adapterPlugin = simulator.getPluginManager()->find(Util::TypeOf<ModalModelDefault>());
+    ASSERT_NE(adapterPlugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(adapterPlugin, &component, QPointF(100, 100), Qt::blue);
+    scene.addItem(graphical);
     ObjectPropertyBrowser browser;
     browser.resize(640, 480);
     browser.show();
-    bindEditableKernelObject(browser, &component);
+    browser.setActiveObject(graphical, &component, {}, {QString::fromStdString(component.getName())});
+    drainGuiEvents();
 
-    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    QtBrowserItem* item = nullptr;
+    for (DefaultNetwork* candidate : networks) {
+        const QString choice = QStringLiteral("%1::%2 [#%3]")
+            .arg(QString::fromStdString(candidate->getClassname()), QString::fromStdString(candidate->getName()))
+            .arg(candidate->getId());
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        int index = selector->findText(choice);
+        ASSERT_GE(index, 0) << choice.toStdString();
+        if (candidate == networks[1]) {
+            rejectModalModelNetworkSchemaConfirmation();
+            selector->setCurrentIndex(index);
+            drainGuiEvents();
+            EXPECT_EQ(component.getNetwork(), networks[0]);
+            item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+            ASSERT_NE(item, nullptr);
+            browser.setCurrentItem(item);
+            browser.editItem(item);
+            drainGuiEvents();
+            selector = browser.findChild<QComboBox*>();
+            ASSERT_NE(selector, nullptr);
+            index = selector->findText(choice);
+            ASSERT_GE(index, 0);
+        }
+        acceptModalModelNetworkSchemaConfirmation();
+        selector->setCurrentIndex(index);
+        drainGuiEvents();
+        EXPECT_EQ(component.getNetwork(), candidate) << choice.toStdString();
+        EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+        if (candidate == graphNetwork) {
+            QtBrowserItem* details = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+            ASSERT_NE(details, nullptr);
+            browser.setExpanded(details, true);
+            drainGuiEvents();
+            QtBrowserItem* capability = findBrowserItemByName(details->children(), QStringLiteral("Execution Capability"));
+            ASSERT_NE(capability, nullptr);
+            auto* capabilityProperty = dynamic_cast<QtVariantProperty*>(capability->property());
+            ASSERT_NE(capabilityProperty, nullptr);
+            EXPECT_EQ(capabilityProperty->value().toString(),
+                QStringLiteral("Structural graph; no simulation-time activation events"));
+            EXPECT_FALSE(capability->property()->isEnabled());
+        }
+    }
+    ASSERT_EQ(component.getNetwork(), networks.back());
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), networks[networks.size() - 2]);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+    undoStack.redo();
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), networks.back());
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+
+    const QString graphType = QString::fromStdString(Util::TypeOf<DirectedGraphNetwork>());
+    const QString createLabel = QStringLiteral("Criar novo %1").arg(graphType);
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
     ASSERT_NE(item, nullptr);
     browser.setCurrentItem(item);
     browser.editItem(item);
     drainGuiEvents();
-    QComboBox* selector = browser.findChild<QComboBox*>();
+    auto* selector = browser.findChild<QComboBox*>();
     ASSERT_NE(selector, nullptr);
-    const int networkIndex = selector->findText(QString::fromStdString(network->getName()));
-    ASSERT_GE(networkIndex, 0);
-    selector->setCurrentIndex(networkIndex);
+    EXPECT_EQ(selector->findText(QStringLiteral("Criar novo DefaultNetwork")), -1);
+    const int createIndex = selector->findText(createLabel);
+    ASSERT_GE(createIndex, 0);
+    selector->setCurrentIndex(createIndex);
     drainGuiEvents();
+    auto* createdNetwork = dynamic_cast<DirectedGraphNetwork*>(component.getNetwork());
+    ASSERT_NE(createdNetwork, nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
 
-    EXPECT_EQ(component.getNetwork(), network);
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int removeIndex = selector->findText(QStringLiteral("Remover referência"));
+    ASSERT_GE(removeIndex, 0);
+    selector->setCurrentIndex(removeIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), nullptr);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const QString createdChoice = QStringLiteral("%1::%2 [#%3]")
+        .arg(graphType, QString::fromStdString(createdNetwork->getName()))
+        .arg(createdNetwork->getId());
+    const int reattachIndex = selector->findText(createdChoice);
+    ASSERT_GE(reattachIndex, 0);
+    acceptModalModelNetworkSchemaConfirmation();
+    selector->setCurrentIndex(reattachIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), createdNetwork);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+
+    const DefaultNetwork* bindingNetwork = networks.back();
+    const QString bindingChoice = QStringLiteral("%1::%2 [#%3]")
+        .arg(QString::fromStdString(bindingNetwork->getClassname()), QString::fromStdString(bindingNetwork->getName()))
+        .arg(bindingNetwork->getId());
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int bindingNetworkIndex = selector->findText(bindingChoice);
+    ASSERT_GE(bindingNetworkIndex, 0);
+    acceptModalModelNetworkSchemaConfirmation();
+    selector->setCurrentIndex(bindingNetworkIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), bindingNetwork);
+    ASSERT_EQ(component.getNetworkBindingControls().size(),
+        static_cast<std::size_t>(component.getDynamicInputPortCount() + component.getDynamicOutputPortCount()));
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+    ASSERT_NE(item, nullptr);
+    browser.setExpanded(item, true);
+    drainGuiEvents();
+    QtBrowserItem* inputBinding = findBrowserItemByName(item->children(), QStringLiteral("Input Binding 0 (fire)"));
+    QtBrowserItem* outputBinding = findBrowserItemByName(item->children(), QStringLiteral("Output Binding 0 (fired)"));
+    ASSERT_NE(inputBinding, nullptr);
+    ASSERT_NE(outputBinding, nullptr);
+    const std::string previousInputBinding = component.getInputBinding(0);
+    const std::string previousOutputBinding = component.getOutputBinding(0);
+    browser.setCurrentItem(inputBinding);
+    browser.editItem(inputBinding);
+    drainGuiEvents();
+    QLineEdit* bindingEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(bindingEditor, nullptr);
+    commitTextWithEnter(bindingEditor, QStringLiteral("2"));
+    EXPECT_EQ(component.getInputBinding(0), "2");
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+    ASSERT_NE(item, nullptr);
+    outputBinding = findBrowserItemByName(item->children(), QStringLiteral("Output Binding 0 (fired)"));
+    ASSERT_NE(outputBinding, nullptr);
+    browser.setCurrentItem(outputBinding);
+    browser.editItem(outputBinding);
+    drainGuiEvents();
+    bindingEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(bindingEditor, nullptr);
+    commitTextWithEnter(bindingEditor, QStringLiteral("firedValue"));
+    EXPECT_EQ(component.getOutputBinding(0), "firedValue");
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    EXPECT_EQ(component.getOutputBinding(0), previousOutputBinding);
+    undoStack.undo();
+    EXPECT_EQ(component.getInputBinding(0), previousInputBinding);
+    undoStack.redo();
+    EXPECT_EQ(component.getInputBinding(0), "2");
+    undoStack.redo();
+    EXPECT_EQ(component.getOutputBinding(0), "firedValue");
+
+    for (std::size_t index = 0; index < networks.size(); ++index) {
+        auto* adapter = new ModalModelDefault(model, "ProcessAdapter_" + std::to_string(index));
+        auto* processSource = new Create(model, "ProcessSource_" + std::to_string(index));
+        auto* processSink = new Dispose(model, "ProcessSink_" + std::to_string(index));
+        adapter->setNetwork(networks[index]);
+        processSource->getConnectionManager()->insert(adapter);
+        adapter->getConnectionManager()->insert(processSink);
+        EXPECT_EQ(processSource->getConnectionManager()->size(), 1u);
+        EXPECT_EQ(adapter->getConnectionManager()->size(), 1u);
+    }
 }
 
 TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {

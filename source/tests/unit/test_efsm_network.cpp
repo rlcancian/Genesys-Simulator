@@ -157,6 +157,7 @@ TEST(EFSMNetworkTest, ActivationFiresOneEnabledTransitionAndPublishesOutput) {
 	EXPECT_TRUE(result.isPresent(0));
 	EXPECT_DOUBLE_EQ(result.getValue(0), 99.0);
 	EXPECT_EQ(network.getCurrentState(), &busy);
+	EXPECT_EQ(network.getLastTransition(), transition);
 	EXPECT_DOUBLE_EQ(network.getActivationCount(), 1.0);
 }
 

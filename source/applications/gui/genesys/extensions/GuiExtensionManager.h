@@ -4,6 +4,7 @@
 #include "GuiExtensionContracts.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 class QAction;
@@ -20,6 +21,8 @@ public:
 	void setPlugins(std::vector<const GuiExtensionPlugin*> plugins);
 	void setLoadedModelPluginIds(std::vector<std::string> modelPluginIds);
 	void rebuild(const GuiExtensionRuntimeContext& context);
+	void refreshActionStates(const GuiExtensionRuntimeContext& context);
+	void populateContextMenu(QMenu* menu, QGraphicsItem* item) const;
 	void clear();
 
 private:
@@ -35,8 +38,11 @@ private:
 	std::vector<const GuiExtensionPlugin*> _plugins;
 	std::vector<std::string> _loadedModelPluginIds;
 	std::vector<QAction*> _createdActions;
+	std::vector<std::pair<QAction*, GuiActionContribution>> _actionContributions;
 	std::vector<QAction*> _createdMenuActions;
 	std::vector<QDockWidget*> _createdDocks;
+	std::vector<GuiContextMenuContribution> _contextMenuContributions;
+	GuiExtensionRuntimeContext _runtimeContext;
 };
 
 #endif /* GUIEXTENSIONMANAGER_H */

@@ -1,5 +1,7 @@
 #include "GuiExtensionPluginCatalog.h"
+#include "../graphicals/ModelGraphicsScene.h"
 #include "../systempreferences.h"
+#include "kernel/simulator/model/ModelDataDefinition.h"
 
 #include <algorithm>
 #include <cctype>
@@ -16,6 +18,9 @@
 #include <QJsonValue>
 #include <QString>
 #include <QProcessEnvironment>
+#include <QMetaObject>
+#include <QPointer>
+#include <QThread>
 
 namespace {
 std::vector<const GuiExtensionPlugin*>& registryStorage() {
@@ -281,6 +286,100 @@ void GuiExtensionPluginCatalog::registerPlugin(const GuiExtensionPlugin* plugin)
 	std::vector<const GuiExtensionPlugin*>& registry = registryStorage();
 	if (std::find(registry.begin(), registry.end(), plugin) == registry.end()) {
 		registry.push_back(plugin);
+	}
+}
+
+void GuiExtensionPluginCatalog::synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene) {
+	if (scene == nullptr) return;
+	for (const GuiDiagramProjectionContribution& projection : diagramProjectionContributions()) {
+		if (projection.synchronize) projection.synchronize(simulator, scene);
+	}
+}
+
+void GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(Simulator* simulator,
+                                                                            ModelGraphicsScene* scene) {
+	if (scene == nullptr) return;
+	if (QThread::currentThread() == scene->thread()) {
+		synchronizeDiagramProjections(simulator, scene);
+		return;
+	}
+	QPointer<ModelGraphicsScene> guardedScene(scene);
+	QMetaObject::invokeMethod(scene, [guardedScene]() {
+		if (guardedScene != nullptr) {
+			synchronizeDiagramProjections(guardedScene->getSimulator(), guardedScene);
+		}
+	}, Qt::QueuedConnection);
+}
+
+std::vector<GuiDiagramProjectionContribution> GuiExtensionPluginCatalog::diagramProjectionContributions() {
+	std::vector<GuiDiagramProjectionContribution> projections;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		const auto& registered = registry.diagramProjections();
+		projections.insert(projections.end(), registered.begin(), registered.end());
+	}
+	return projections;
+}
+
+bool GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+	ModelDataDefinition* owner, const std::string& pluginType, bool isComponent) {
+	if (owner == nullptr || pluginType.empty() || isComponent) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.acceptsDrop
+				&& editor.acceptsDrop(owner, pluginType, isComponent)) return true;
+		}
+	}
+	return false;
+}
+
+void GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
+	ModelDataDefinition* owner, ModelDataDefinition* dropped) {
+	if (owner == nullptr || dropped == nullptr) return;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.acceptsDrop
+				&& editor.acceptsDrop(owner, dropped->getClassname(), false)
+				&& editor.onDataDefinitionDropped) {
+				editor.onDataDefinitionDropped(owner, dropped);
+				return;
+			}
+		}
+	}
+}
+
+void GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionRemoved(
+		ModelDataDefinition* owner, ModelDataDefinition* dropped) {
+	if (owner == nullptr || dropped == nullptr) return;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.onDataDefinitionRemoved) {
+				editor.onDataDefinitionRemoved(owner, dropped);
+				return;
+			}
+		}
+	}
+}
+
+void GuiExtensionPluginCatalog::restoreDiagramProjections(
+	Simulator* simulator, ModelDataDefinition* owner, ModelGraphicsScene* scene,
+	const std::function<std::any(const std::string&, unsigned long)>& layoutProvider) {
+	if (owner == nullptr || scene == nullptr || !layoutProvider) return;
+	for (const GuiDiagramProjectionContribution& diagram : diagramProjectionContributions()) {
+		if (!diagram.supports || !diagram.supports(owner) || !diagram.restoreLayout) continue;
+		diagram.restoreLayout(simulator, owner, scene,
+		                     layoutProvider(diagram.id, static_cast<unsigned long>(owner->getId())));
 	}
 }
 

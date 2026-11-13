@@ -12,6 +12,7 @@
 #include "plugins/data/ModalModel/MarkovState.h"
 
 #include <string>
+#include <memory>
 #include <vector>
 
 class Sampler_if;
@@ -67,12 +68,15 @@ public:
 	List<MarkovState*>* getStates() const;
 	void addTransition(MarkovTransition* transition);
 	void removeTransition(MarkovTransition* transition);
+	std::unique_ptr<MarkovTransition> detachTransition(MarkovTransition* transition, unsigned int* ordinal = nullptr);
+	bool restoreTransition(MarkovTransition* transition, unsigned int ordinal);
 	List<MarkovTransition*>* getTransitions() const;
 	std::vector<MarkovTransition*> getOutgoingTransitions(MarkovState* state) const;
 	void setInitialState(MarkovState* state);
 	MarkovState* getInitialState() const;
 	void setCurrentState(MarkovState* state);
 	MarkovState* getCurrentState() const;
+	MarkovTransition* getLastTransition() const;
 	unsigned int getStateIndex(MarkovState* state) const;
 	MarkovState* getStateAt(unsigned int index) const;
 	double getProbabilityTolerance() const;
@@ -100,6 +104,7 @@ private:
 	List<MarkovTransition*>* _transitions = new List<MarkovTransition*>();
 	MarkovState* _initialState = nullptr;
 	MarkovState* _currentState = nullptr;
+	MarkovTransition* _lastTransition = nullptr;
 	Sampler_if* _sampler = nullptr;
 	double _probabilityTolerance = 1e-9;
 };

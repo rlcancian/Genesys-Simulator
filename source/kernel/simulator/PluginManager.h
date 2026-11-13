@@ -154,6 +154,7 @@ public:
 	 * creatable element types to editors without hard-coding plugin names in the GUI.
 	 */
 	std::vector<std::string> getDataDefinitionPluginTypenames() const;
+	std::vector<std::string> getDataDefinitionPluginTypenamesAssignableTo(const std::string& baseTypeName) const;
 	/*! \brief Returns the source include path for a connected plugin type. */
 	std::string sourceIncludePathFor(const std::string& pluginTypeName);
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */

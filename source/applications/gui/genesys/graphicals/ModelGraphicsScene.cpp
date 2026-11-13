@@ -55,6 +55,9 @@
 #include "dialogs/DialogTimerConfigure.h"
 #include "animations/AnimationQueue.h"
 #include "services/GraphicalModelBuilder.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
+#include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../plugins/data/ModalModel/DefaultNetwork.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
@@ -69,6 +72,49 @@
 #include <algorithm>
 
 namespace {
+    class AddNetworkDataDefinitionUndoCommand final : public QUndoCommand {
+    public:
+        AddNetworkDataDefinitionUndoCommand(ModelGraphicsScene* scene,
+                                            ModelDataDefinition* owner,
+                                            GraphicalModelDataDefinition* graphicalItem)
+            : _scene(scene), _owner(owner), _graphicalItem(graphicalItem), _firstRedo(true) {
+            setText(QObject::tr("Add network element"));
+        }
+
+        void undo() override {
+            if (_scene.isNull() || _owner == nullptr || _graphicalItem == nullptr
+                || _graphicalItem->getDataDefinition() == nullptr) return;
+            ModelDataDefinition* definition = _graphicalItem->getDataDefinition();
+            GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionRemoved(_owner, definition);
+            if (Model* model = definition->getParentModel()) model->remove(definition);
+            definition->setModelLevel(0);
+            _scene->detachGraphicalModelDataDefinition(_graphicalItem);
+            GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
+                _scene->getSimulator(), _scene.data());
+        }
+
+        void redo() override {
+            if (_firstRedo) {
+                _firstRedo = false;
+                return;
+            }
+            if (_scene.isNull() || _owner == nullptr || _graphicalItem == nullptr
+                || _graphicalItem->getDataDefinition() == nullptr) return;
+            ModelDataDefinition* definition = _graphicalItem->getDataDefinition();
+            if (Model* model = definition->getParentModel()) model->insert(definition);
+            GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(_owner, definition);
+            _scene->restoreGraphicalModelDataDefinition(_graphicalItem);
+            GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
+                _scene->getSimulator(), _scene.data());
+        }
+
+    private:
+        QPointer<ModelGraphicsScene> _scene;
+        ModelDataDefinition* _owner = nullptr;
+        GraphicalModelDataDefinition* _graphicalItem = nullptr;
+        bool _firstRedo = true;
+    };
+
     // Keep sync-in-progress state exception-safe inside queued synchronization execution.
     class ScopedSyncInProgress {
     public:
@@ -198,9 +244,8 @@ ModelGraphicsScene::ModelGraphicsScene(qreal x, qreal y, qreal width, qreal heig
 }
 
 ModelGraphicsScene::~ModelGraphicsScene() {
-    // Projection items are scene-owned, while their EFSM objects belong to the model.
-    // Remove the projection explicitly before the base QGraphicsScene destructor runs.
-    clearEFSMNetworkDiagramItems();
+    // Extension overlays are scene-owned; clear tracked handles before base destruction.
+    clearExtensionOverlayItems();
 
     // Release transient drawing items that may still be detached from normal commit flow.
     if (_currentRectangle != nullptr) {
@@ -331,12 +376,10 @@ ModelGraphicsScene::~ModelGraphicsScene() {
     _graphicalEntities = nullptr;
     delete _graphicalGroups;
     _graphicalGroups = nullptr;
-    delete _efsmNetworkDiagramItems;
-    _efsmNetworkDiagramItems = nullptr;
 }
 
 void ModelGraphicsScene::clear() {
-    clearEFSMNetworkDiagramItems();
+    clearExtensionOverlayItems();
     QGraphicsScene::clear();
 }
 
@@ -2901,14 +2944,10 @@ void ModelGraphicsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
             }
         }
         else if (component == nullptr && group == nullptr && connection == nullptr) {
-            QRectF rectScenePost = item->sceneBoundingRect();
-
-            qreal rectX = rectScenePost.bottomLeft().x();
-            qreal rectY = rectScenePost.topRight().y();
-
-            myQPointF.setX(rectX);
-            myQPointF.setY(rectY);
-
+            // Compare the item's actual position with the press snapshot. Its
+            // bounding rectangle can be offset from pos() (for example an
+            // EFSM transition path), which made a plain click look like a move.
+            myQPointF = item->pos();
             QPointF oldPos = _oldPositionsItems[item];
 
             if (!(qAbs(oldPos.x() - myQPointF.x()) <= 1.5 && qAbs(oldPos.y() - myQPointF.y()) <= 1.5)) {
@@ -3148,6 +3187,14 @@ bool ModelGraphicsScene::hasModelLevelFilter() const {
 
 unsigned int ModelGraphicsScene::modelLevelFilter() const {
     return _modelLevelFilter;
+}
+
+void ModelGraphicsScene::setNetworkEditorOwner(ModelDataDefinition* owner) {
+    _networkEditorOwner = owner;
+}
+
+ModelDataDefinition* ModelGraphicsScene::networkEditorOwner() const {
+    return _networkEditorOwner;
 }
 
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {
@@ -3440,6 +3487,14 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
             QString pluginname = treeItem->whatsThis(0);
             Plugin* plugin = _simulator->getPluginManager()->find(pluginname.toStdString());
             if (plugin != nullptr) {
+                const bool isNetworkEditor = dynamic_cast<DefaultNetwork*>(_networkEditorOwner) != nullptr;
+                if (isNetworkEditor
+                    && !GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+                        _networkEditorOwner, plugin->getPluginInfo()->getPluginTypename(),
+                        plugin->getPluginInfo()->isComponent())) {
+                    event->ignore();
+                    return;
+                }
                 if (plugin->getPluginInfo()->isComponent()) {
                     event->setDropAction(Qt::IgnoreAction);
                     event->accept();
@@ -3456,6 +3511,10 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                 // Allow graphical authoring of data definitions by dropping them directly on the canvas.
                 ModelDataDefinition* dataDefinition = plugin->newInstance(_simulator->getModelManager()->current());
                 if (dataDefinition != nullptr) {
+                    if (isNetworkEditor) {
+                        GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
+                            _networkEditorOwner, dataDefinition);
+                    }
                     event->setDropAction(Qt::IgnoreAction);
                     event->accept();
 
@@ -3465,6 +3524,10 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                         clearSelection();
                         graphicalDataDefinition->setSelected(true);
                         graphicalDataDefinition->setFocus();
+                        if (isNetworkEditor && getUndoStack() != nullptr) {
+                            getUndoStack()->push(new AddNetworkDataDefinitionUndoCommand(
+                                this, _networkEditorOwner, graphicalDataDefinition));
+                        }
                     }
 
                     // Reuse the canonical queued sync so editability and diagram links remain consistent.
@@ -3818,12 +3881,8 @@ GraphicalModelDataDefinition* ModelGraphicsScene::findGraphicalModelDataDefiniti
     return nullptr;
 }
 
-void ModelGraphicsScene::clearEFSMNetworkDiagramItems() {
-    if (_efsmNetworkDiagramItems == nullptr) {
-        return;
-    }
-    const QList<QGraphicsItem*> itemsToRemove = *_efsmNetworkDiagramItems;
-    _efsmNetworkDiagramItems->clear();
+void ModelGraphicsScene::clearExtensionOverlayItems(const QString& extensionId) {
+    const QList<QGraphicsItem*> itemsToRemove = _extensionOverlayItems.take(extensionId);
     for (QGraphicsItem* item : itemsToRemove) {
         if (item != nullptr && item->scene() == this) {
             removeItem(item);
@@ -3832,17 +3891,24 @@ void ModelGraphicsScene::clearEFSMNetworkDiagramItems() {
     }
 }
 
-void ModelGraphicsScene::addEFSMNetworkDiagramItem(QGraphicsItem* item) {
-    if (item == nullptr || _efsmNetworkDiagramItems == nullptr) {
+void ModelGraphicsScene::addExtensionOverlayItem(const QString& extensionId, QGraphicsItem* item) {
+    if (extensionId.isEmpty() || item == nullptr) {
         delete item;
         return;
     }
     addItem(item);
-    _efsmNetworkDiagramItems->append(item);
+    _extensionOverlayItems[extensionId].append(item);
 }
 
-QList<QGraphicsItem*>* ModelGraphicsScene::getEFSMNetworkDiagramItems() const {
-    return _efsmNetworkDiagramItems;
+QList<QGraphicsItem*> ModelGraphicsScene::extensionOverlayItems(const QString& extensionId) const {
+    return _extensionOverlayItems.value(extensionId);
+}
+
+void ModelGraphicsScene::clearExtensionOverlayItems() {
+    const QStringList extensionIds = _extensionOverlayItems.keys();
+    for (const QString& extensionId : extensionIds) {
+        clearExtensionOverlayItems(extensionId);
+    }
 }
 
 void ModelGraphicsScene::clearAnimationsValues() {

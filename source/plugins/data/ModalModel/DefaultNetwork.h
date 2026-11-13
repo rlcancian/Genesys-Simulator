@@ -44,6 +44,7 @@ class Counter;
  */
 class DefaultNetwork : public ModelDataDefinition {
 public:
+	bool isModelDataRoot() const override { return true; }
 	DefaultNetwork(Model* model, std::string name = "", std::string dataDefinitionTypename = Util::TypeOf<DefaultNetwork>());
 	virtual ~DefaultNetwork() override;
 public: // static

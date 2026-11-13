@@ -56,6 +56,7 @@ public:
     void setModelChangedCallback(ModelChangedCallback callback);
     void setModelScene(ModelGraphicsScene* scene);
     bool isCommitPipelineBusy() const;
+    void refreshAfterUndo();
 
 private:
     enum class ActiveMode {

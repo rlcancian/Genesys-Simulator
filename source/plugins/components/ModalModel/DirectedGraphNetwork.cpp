@@ -26,6 +26,7 @@ ModelDataDefinition* DirectedGraphNetwork::NewInstance(Model* model, std::string
 PluginInformation* DirectedGraphNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<DirectedGraphNetwork>(), &DirectedGraphNetwork::LoadInstance, &DirectedGraphNetwork::NewInstance);
 	info->setCategory("ModalModel");
+	info->setDataDefinitionBaseTypeName(Util::TypeOf<GraphNetwork>());
 	info->setDescriptionHelp("Directed mathematical graph network with predecessor/successor and directed reachability semantics.");
 	return info;
 }

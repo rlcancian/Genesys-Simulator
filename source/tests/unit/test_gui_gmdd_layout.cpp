@@ -5,6 +5,8 @@
 #include "graphicals/ModelGraphicsView.h"
 #include "controllers/PropertyEditorController.h"
 #include "controllers/PluginCatalogController.h"
+#include "controllers/SimulationEventController.h"
+#include "animations/AnimationTransition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "codeeditor/CodeEditor.h"
 #include "services/GraphicalModelBuilder.h"
@@ -12,6 +14,7 @@
 #include "cellular_automata/CellularAutomataViewerWindow.h"
 
 #include "../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../kernel/simulator/essentialPlugins/EntityType.h"
 #include "../../kernel/simulator/persistence/GenSerializer.h"
 #include "../../kernel/simulator/model/Model.h"
 #include "../../kernel/simulator/model/ModelDataDefinition.h"
@@ -26,6 +29,7 @@
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/Synchronization/Signal.h"
 #include "plugins/components/Synchronization/Wait.h"
 #include "applications/gui/genesys/actions/DecideConditionUndoCommand.h"
@@ -33,6 +37,7 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/Synchronization/SignalData.h"
+#include "plugins/data/ModalModel/GraphNode.h"
 
 #include <gtest/gtest.h>
 
@@ -49,16 +54,20 @@
 #include <QGraphicsTextItem>
 #include <QList>
 #include <QPlainTextEdit>
+#include <QProgressBar>
 #include <QRectF>
 #include <QScrollBar>
 #include <QSlider>
 #include <QTemporaryDir>
 #include <QTextEdit>
+#include <QTabWidget>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QUndoStack>
 #include <QPushButton>
 #include <QKeyEvent>
+#include <QLabel>
+#include <QTableWidget>
 
 #include <algorithm>
 #include <functional>
@@ -375,6 +384,166 @@ TEST(SourceCodePropertyEditor, CancelLeavesTheOriginalCodeUntouched) {
         buttons->button(QDialogButtonBox::Cancel)->click();
     });
     EXPECT_EQ(cpp->getOnDispatchEventCode(), "original\nline");
+}
+
+TEST(GraphNodePropertyEditor, ExposesTheInheritedNodeNameProperty) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNode node(model, "EditableNode");
+
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, &node);
+    QApplication::processEvents();
+
+    QtProperty* name = nullptr;
+    for (QtProperty* root : browser.properties()) {
+        if ((name = findPropertyByName(root, QStringLiteral("Name"))) != nullptr) break;
+    }
+    ASSERT_NE(name, nullptr);
+    EXPECT_FALSE(browser.items(name).isEmpty());
+}
+
+TEST(SimulationEventController, StartPauseResumeAndEndKeepAnimationLifecycleConsistent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    QLabel replicationLabel;
+    QProgressBar progressBar;
+    QTableWidget eventsTable;
+    eventsTable.setColumnCount(3);
+    QTableWidget entitiesTable;
+    QTableWidget variablesTable;
+    QTextEdit simulationText;
+    QTextEdit reportsText;
+    QTabWidget centralTabs;
+    QAction graphicalSimulation;
+    QAction animationsEnabled;
+    animationsEnabled.setCheckable(true);
+    animationsEnabled.setChecked(true);
+    bool modelChecked = true;
+    int actionRefreshCount = 0;
+    SimulationEventController controller(
+        &simulator, graphicsView.getScene(), &graphicsView, &replicationLabel, &progressBar,
+        &eventsTable, &entitiesTable, &variablesTable, &simulationText, &reportsText,
+        &centralTabs, &graphicalSimulation, &animationsEnabled, &modelChecked, 0,
+        SimulationEventController::Callbacks{
+            [&actionRefreshCount]() { ++actionRefreshCount; },
+            {}, {}, {}, {}});
+
+    AnimationTransition::setPause(true);
+    AnimationTransition::setRunning(false);
+    controller.onSimulationStartHandler(nullptr);
+    EXPECT_TRUE(AnimationTransition::isRunning());
+    EXPECT_FALSE(AnimationTransition::isPaused());
+
+    controller.onSimulationPausedHandler(nullptr);
+    controller.onSimulationResumeHandler(nullptr);
+    EXPECT_GE(actionRefreshCount, 3);
+
+    AnimationTransition::setPause(true);
+    controller.onSimulationEndHandler(nullptr);
+    EXPECT_FALSE(AnimationTransition::isRunning());
+    EXPECT_FALSE(AnimationTransition::isPaused());
+    EXPECT_FALSE(modelChecked);
+
+    controller.onSimulationStartHandler(nullptr);
+    EXPECT_TRUE(AnimationTransition::isRunning());
+    controller.onSimulationEndHandler(nullptr);
+    EXPECT_FALSE(AnimationTransition::isRunning());
+}
+
+TEST(SimulationEventController, RealSimulationCanPauseStepResumeAndRefreshReplications) {
+    class EventBridge {
+    public:
+        SimulationEventController* controller = nullptr;
+        void onStart(SimulationEvent* event) { controller->onSimulationStartHandler(event); }
+        void onReplicationStart(SimulationEvent* event) { controller->onReplicationStartHandler(event); }
+        void onProcess(SimulationEvent* event) { controller->onProcessEventHandler(event); }
+        void onPaused(SimulationEvent* event) { controller->onSimulationPausedHandler(event); }
+        void onResume(SimulationEvent* event) { controller->onSimulationResumeHandler(event); }
+        void onEnd(SimulationEvent* event) { controller->onSimulationEndHandler(event); }
+    };
+
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* entityType = new EntityType(model, "GuiLifecycleEntity");
+    auto* create = new Create(model, "GuiLifecycleCreate");
+    auto* dispose = new Dispose(model, "GuiLifecycleDispose");
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(1);
+    create->connectTo(dispose);
+    model->getSimulation()->setReplicationLength(1.0);
+    model->getSimulation()->setNumberOfReplications(2);
+    model->getSimulation()->setPauseOnEvent(true);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    QLabel replicationLabel;
+    QProgressBar progressBar;
+    QTableWidget eventsTable;
+    eventsTable.setColumnCount(3);
+    QTableWidget entitiesTable;
+    QTableWidget variablesTable;
+    QTextEdit simulationText;
+    QTextEdit reportsText;
+    QTabWidget centralTabs;
+    QAction graphicalSimulation;
+    QAction animationsEnabled;
+    animationsEnabled.setCheckable(true);
+    animationsEnabled.setChecked(true);
+    bool modelChecked = true;
+    int processedEvents = 0;
+    int graphicalRefreshes = 0;
+    SimulationEventController controller(
+        &simulator, graphicsView.getScene(), &graphicsView, &replicationLabel, &progressBar,
+        &eventsTable, &entitiesTable, &variablesTable, &simulationText, &reportsText,
+        &centralTabs, &graphicalSimulation, &animationsEnabled, &modelChecked, 0,
+        SimulationEventController::Callbacks{
+            []() {},
+            [&processedEvents](SimulationEvent*) { ++processedEvents; },
+            [](bool) {}, [](bool) {},
+            [&graphicalRefreshes](SimulationEvent*) { ++graphicalRefreshes; }});
+    EventBridge bridge;
+    bridge.controller = &controller;
+    model->getOnEventManager()->addOnSimulationStartHandler(&bridge, &EventBridge::onStart);
+    model->getOnEventManager()->addOnReplicationStartHandler(&bridge, &EventBridge::onReplicationStart);
+    model->getOnEventManager()->addOnProcessEventHandler(&bridge, &EventBridge::onProcess);
+    model->getOnEventManager()->addOnSimulationPausedHandler(&bridge, &EventBridge::onPaused);
+    model->getOnEventManager()->addOnSimulationResumeHandler(&bridge, &EventBridge::onResume);
+    model->getOnEventManager()->addOnSimulationEndHandler(&bridge, &EventBridge::onEnd);
+
+    model->getSimulation()->start();
+    ASSERT_TRUE(model->getSimulation()->isPaused());
+    ASSERT_EQ(processedEvents, 1);
+    EXPECT_EQ(graphicalRefreshes, 1);
+
+    model->getSimulation()->step();
+    ASSERT_TRUE(model->getSimulation()->isPaused());
+    EXPECT_EQ(processedEvents, 2);
+    EXPECT_EQ(graphicalRefreshes, 2);
+
+    model->getSimulation()->setPauseOnEvent(false);
+    model->getSimulation()->start();
+    EXPECT_FALSE(model->getSimulation()->isRunning());
+    EXPECT_EQ(model->getSimulation()->getCurrentReplicationNumber(), 3u);
+    ASSERT_EQ(eventsTable.rowCount(), 2);
+    ASSERT_NE(eventsTable.item(0, 2), nullptr);
+    ASSERT_NE(eventsTable.item(1, 2), nullptr);
+    EXPECT_TRUE(eventsTable.item(0, 2)->text().startsWith(QStringLiteral("Replication ")));
+    EXPECT_TRUE(eventsTable.item(1, 2)->text().startsWith(QStringLiteral("Replication ")));
+    EXPECT_NE(eventsTable.item(0, 2)->text(), eventsTable.item(1, 2)->text());
+    EXPECT_EQ(processedEvents, 4);
+    EXPECT_EQ(graphicalRefreshes, 4);
+    EXPECT_FALSE(AnimationTransition::isRunning());
+    EXPECT_FALSE(modelChecked);
 }
 
 TEST(SourceCodePropertyEditor, ApplyCommitsCodeWithoutClosingTheEditor) {
