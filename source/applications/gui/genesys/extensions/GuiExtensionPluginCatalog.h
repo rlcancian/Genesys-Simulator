@@ -20,6 +20,8 @@ public:
 	static std::vector<const GuiExtensionPlugin*> resolvedPlugins();
 	static GuiExtensionPresentationMetadata presentationMetadata(const std::string& extensionId);
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
+	/** Notify GUI extensions before the first simulation event is dispatched. */
+	static void notifySimulationStart(Simulator* simulator, QMainWindow* window);
 	static std::vector<GuiDiagramProjectionContribution> diagramProjectionContributions();
 	static bool ownsEditableNetworkDataDefinition(ModelDataDefinition* owner, ModelDataDefinition* candidate);
 	static QUndoCommand* createNetworkDataDefinitionPropertyCommand(

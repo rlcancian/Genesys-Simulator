@@ -1204,6 +1204,10 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
             itemActions.push_back({ObjectListAction::Kind::MoveUp, ""});
             itemActions.push_back({ObjectListAction::Kind::MoveDown, ""});
         }
+        if (control->supportsListElementRemoval() && _isKernelEditingEnabled(desc)) {
+            itemChoices << QStringLiteral("Remover item");
+            itemActions.push_back({ObjectListAction::Kind::Remove, ""});
+        }
         _enumNames[elementGroup] = itemChoices;
         _objectListActions[elementGroup] = itemActions;
         _enumManager->setEnumNames(elementGroup, itemChoices);
@@ -3039,6 +3043,8 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
                 return _moveListItem(property, it.value().listElementIndex - 1);
             case ObjectListAction::Kind::MoveDown:
                 return _moveListItem(property, it.value().listElementIndex + 1);
+            case ObjectListAction::Kind::Remove:
+                return _removeListItem(property);
             case ObjectListAction::Kind::None:
                 return true;
         }
@@ -3049,6 +3055,35 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
     }
 
     return false;
+}
+
+bool ObjectPropertyBrowser::_removeListItem(QtProperty* property) {
+    if (isCommitPipelineBusy()) return false;
+    auto it = _bindings.find(property);
+    if (it == _bindings.end() || !_hasValidActiveBindingContext(property)) return false;
+    const Binding binding = it.value();
+    if (!binding.isListItemAction || binding.control == nullptr ||
+        !binding.control->supportsListElementRemoval() ||
+        !_isKernelEditingEnabled(binding.descriptor) ||
+        binding.listElementIndex < 0 ||
+        binding.listElementIndex >= static_cast<int>(binding.descriptor.choices.size())) {
+        return false;
+    }
+
+    try {
+        if (!binding.control->removeListElementAt(binding.listElementIndex)) return false;
+    } catch (const std::exception& e) {
+        qWarning() << "[PropertyEditor] failed to remove list element:" << e.what();
+        return false;
+    } catch (...) {
+        qWarning() << "[PropertyEditor] failed to remove list element: unknown error";
+        return false;
+    }
+
+    _materializeAffectedModelDataDefinitions();
+    _synchronizeGraphicalModelDataDefinitionsNow();
+    _notifyModelChangeApplied();
+    return true;
 }
 
 bool ObjectPropertyBrowser::_moveListItem(QtProperty* property, int destination) {
