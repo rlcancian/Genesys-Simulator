@@ -338,6 +338,21 @@ TEST_F(ReadFixture, KeyboardProviderExceptionStopsInsteadOfEscapingDispatch) {
     EXPECT_FALSE(errors->empty());
 }
 
+TEST_F(ReadFixture, DuplicateDestinationPointerIsNotAdoptedTwice) {
+    auto* read = reader();
+    auto* destination = new ReadDestination("SingleOwner", false);
+    read->addDestination(destination);
+    read->addDestination(destination);
+    ASSERT_EQ(read->getDestinations()->size(), 1u);
+    EXPECT_EQ(read->getDestinations()->getAtRank(0), destination);
+    read->removeDestination(destination);
+    EXPECT_TRUE(read->getDestinations()->empty());
+    // Ownership remains with Read until teardown; a repeated add/removal
+    // must never cause two owners or two destructor calls.
+    read->addDestination(destination);
+    EXPECT_EQ(read->getDestinations()->size(), 1u);
+}
+
 TEST_F(ReadFixture, RemovedDestinationControlsAreReleasedOnComponentTeardown) {
     const auto controlsBefore = model->getControls()->size();
     auto* read = new Read(model, "ControlLifetime");
