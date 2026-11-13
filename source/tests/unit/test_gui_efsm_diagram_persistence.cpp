@@ -16,6 +16,8 @@
 #include "actions/EFSMStatePropertiesUndoCommand.h"
 #include "controllers/EditCommandController.h"
 #include "mainwindow.h"
+#include "extensions/GuiExtensionContracts.h"
+#include "extensions/GuiExtensionManager.h"
 #include "services/EFSMNetworkDiagramCodec.h"
 #include "services/EFSMNetworkDiagramProjection.h"
 #include "services/GraphicalModelBuilder.h"
@@ -61,6 +63,9 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QGraphicsSceneMouseEvent>
+#include <QGraphicsRectItem>
+#include <QMainWindow>
+#include <QMenu>
 #include <QSpinBox>
 
 #include <algorithm>
@@ -160,6 +165,40 @@ EFSMNetwork* findNetworkByName(Model* model, const std::string& name) {
 }
 
 } // namespace
+
+TEST(GuiExtensionManager, ContextMenuContributionsAreDispatchedWithoutFormalismBranches) {
+    class ContextMenuPlugin final : public GuiExtensionPlugin {
+    public:
+        std::string extensionId() const override { return "context-menu-test"; }
+        std::string displayName() const override { return "Context menu test"; }
+        std::string version() const override { return "1"; }
+        std::vector<std::string> requiredModelPlugins() const override { return {}; }
+        void registerContributions(GuiExtensionRegistry* registry) const override {
+            registry->addContextMenu({
+                "test.context-menu",
+                [](const GuiExtensionRuntimeContext&, QGraphicsItem* item) { return item != nullptr; },
+                [](QMenu* menu, const GuiExtensionRuntimeContext&, QGraphicsItem*) {
+                    menu->addAction(QStringLiteral("Extension item action"));
+                }});
+        }
+    } plugin;
+
+    QMainWindow host;
+    GuiExtensionRuntimeContext context;
+    context.mainWindow = &host;
+    GuiExtensionManager manager(&host);
+    manager.setPlugins({&plugin});
+    manager.rebuild(context);
+    QMenu menu;
+    QGraphicsRectItem item;
+    manager.populateContextMenu(&menu, &item);
+    ASSERT_EQ(menu.actions().size(), 1);
+    EXPECT_EQ(menu.actions().front()->text(), QStringLiteral("Extension item action"));
+
+    QMenu emptyMenu;
+    manager.populateContextMenu(&emptyMenu, nullptr);
+    EXPECT_TRUE(emptyMenu.actions().empty());
+}
 
 TEST(EFSMNetworkDiagramPersistence, EmptyLayoutProducesNoEntriesAndLeavesOtherSectionsIntact) {
     Simulator simulator;

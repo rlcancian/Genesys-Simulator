@@ -20,6 +20,7 @@ public:
 	void setPlugins(std::vector<const GuiExtensionPlugin*> plugins);
 	void setLoadedModelPluginIds(std::vector<std::string> modelPluginIds);
 	void rebuild(const GuiExtensionRuntimeContext& context);
+	void populateContextMenu(QMenu* menu, QGraphicsItem* item) const;
 	void clear();
 
 private:
@@ -37,6 +38,8 @@ private:
 	std::vector<QAction*> _createdActions;
 	std::vector<QAction*> _createdMenuActions;
 	std::vector<QDockWidget*> _createdDocks;
+	std::vector<GuiContextMenuContribution> _contextMenuContributions;
+	GuiExtensionRuntimeContext _runtimeContext;
 };
 
 #endif /* GUIEXTENSIONMANAGER_H */

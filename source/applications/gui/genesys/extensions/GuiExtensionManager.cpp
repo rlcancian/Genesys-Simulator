@@ -49,6 +49,7 @@ void GuiExtensionManager::setLoadedModelPluginIds(std::vector<std::string> model
 
 void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	clear();
+	_runtimeContext = context;
 	if (_mainWindow == nullptr) {
 		return;
 	}
@@ -73,6 +74,16 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	for (const GuiDockContribution& dock : registry.docks()) {
 		_applyDockContribution(dock, context);
 	}
+	_contextMenuContributions = registry.contextMenus();
+}
+
+void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) const {
+	if (menu == nullptr) return;
+	for (const GuiContextMenuContribution& contribution : _contextMenuContributions) {
+		if (!contribution.populate) continue;
+		if (contribution.isVisible && !contribution.isVisible(_runtimeContext, item)) continue;
+		contribution.populate(menu, _runtimeContext, item);
+	}
 }
 
 void GuiExtensionManager::clear() {
@@ -90,6 +101,8 @@ void GuiExtensionManager::clear() {
 		delete *it;
 	}
 	_createdMenuActions.clear();
+	_contextMenuContributions.clear();
+	_runtimeContext = GuiExtensionRuntimeContext{};
 }
 
 bool GuiExtensionManager::_isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const {

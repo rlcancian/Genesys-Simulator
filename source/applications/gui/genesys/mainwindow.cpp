@@ -2080,7 +2080,10 @@ void MainWindow::_rebuildViewDependentControllers() {
         ui,
         _actionOpenSelectedSubmodel,
         [this]() { return ui->graphicsView->getScene(); },
-        [this]() { _actualizeActions(); });
+        [this]() { _actualizeActions(); },
+        [this](QMenu* menu, QGraphicsItem* item) {
+            if (_guiExtensionManager != nullptr) _guiExtensionManager->populateContextMenu(menu, item);
+        });
     ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
                                                  &GraphicalContextMenuController::handleGraphicsViewContextMenu);
     _dialogUtilityController = std::make_unique<DialogUtilityController>(

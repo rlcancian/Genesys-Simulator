@@ -113,12 +113,14 @@ GraphicalContextMenuController::GraphicalContextMenuController(ModelGraphicsView
                                                                Ui::MainWindow* ui,
                                                                QAction* openSubmodelAction,
                                                                std::function<ModelGraphicsScene*()> currentScene,
-                                                               std::function<void()> actualizeActions)
+                                                               std::function<void()> actualizeActions,
+                                                               ExtensionMenuPopulator populateExtensionMenu)
     : _graphicsView(graphicsView),
       _ui(ui),
       _openSubmodelAction(openSubmodelAction),
       _currentScene(std::move(currentScene)),
-      _actualizeActions(std::move(actualizeActions)) {
+      _actualizeActions(std::move(actualizeActions)),
+      _populateExtensionMenu(std::move(populateExtensionMenu)) {
 }
 
 void GraphicalContextMenuController::handleGraphicsViewContextMenu(QContextMenuEvent* event) {
@@ -142,6 +144,7 @@ void GraphicalContextMenuController::handleGraphicsViewContextMenu(QContextMenuE
     } else {
         populateItemMenu(&menu, contextKind, clickedItem);
     }
+    if (_populateExtensionMenu) _populateExtensionMenu(&menu, clickedItem);
 
     if (!menu.actions().isEmpty()) {
         event->accept();

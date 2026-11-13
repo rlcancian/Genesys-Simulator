@@ -8,6 +8,8 @@
 class Simulator;
 class QMainWindow;
 class QWidget;
+class QGraphicsItem;
+class QMenu;
 class ModelGraphicsView;
 class ModelGraphicsScene;
 
@@ -51,6 +53,14 @@ struct GuiWindowContribution {
 	std::function<void(const GuiExtensionRuntimeContext&)> open;
 };
 
+// Formalism GUI extensions can add context-specific actions without teaching the
+// generic scene controller about domain model classes.
+struct GuiContextMenuContribution {
+	std::string id;
+	std::function<bool(const GuiExtensionRuntimeContext&, QGraphicsItem*)> isVisible;
+	std::function<void(QMenu*, const GuiExtensionRuntimeContext&, QGraphicsItem*)> populate;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAction(GuiActionContribution contribution) {
@@ -65,6 +75,10 @@ public:
 		_windows.push_back(std::move(contribution));
 	}
 
+	void addContextMenu(GuiContextMenuContribution contribution) {
+		_contextMenus.push_back(std::move(contribution));
+	}
+
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
 	}
@@ -77,16 +91,22 @@ public:
 		return _windows;
 	}
 
+	const std::vector<GuiContextMenuContribution>& contextMenus() const {
+		return _contextMenus;
+	}
+
 	void clear() {
 		_actions.clear();
 		_docks.clear();
 		_windows.clear();
+		_contextMenus.clear();
 	}
 
 private:
 	std::vector<GuiActionContribution> _actions;
 	std::vector<GuiDockContribution> _docks;
 	std::vector<GuiWindowContribution> _windows;
+	std::vector<GuiContextMenuContribution> _contextMenus;
 };
 
 class GuiExtensionPlugin {
