@@ -121,8 +121,7 @@ Read::Read(Model* model, std::string name)
             std::bind(&Read::removeDestination, this, std::placeholders::_1),
             Util::TypeOf<Read>(), getName(), "Destinations", "Ordered destinations for numeric input fields.",
             true, true, false,
-            [](Model* model, const std::string& name) { return new ReadDestination(model, name); },
-            [](Model* model) { return new ReadDestination(model, ""); });
+            [](Model* model, const std::string& name) { return new ReadDestination(model, name); });
     for (SimulationControl* control : {static_cast<SimulationControl*>(filenameControl),
                                        static_cast<SimulationControl*>(sourceControl),
                                        static_cast<SimulationControl*>(destinationsControl)}) {
