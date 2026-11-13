@@ -12,6 +12,9 @@
 #include "plugins/components/DiscreteProcessing/Delay.h"
 
 #include <QApplication>
+#include <QClipboard>
+#include <QListWidget>
+#include <QTreeWidget>
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QKeyEvent>
@@ -79,6 +82,40 @@ void openSelectedExpressionEditor(ObjectPropertyBrowser& browser) {
     QApplication::sendEvent(&browser, &press);
 }
 } // namespace
+
+
+TEST(ExpressionBuilderDialogTest, FunctionInsertionRespectsExistingTextAndCursor) {
+    ExpressionBuilder editor;
+    editor.setExpressionContext(nullptr, QStringLiteral("2 + "));
+    auto* tree = editor.findChild<QTreeWidget*>(QStringLiteral("treeCategories"));
+    auto* choices = editor.findChild<QListWidget*>(QStringLiteral("listExpressions"));
+    auto* input = editor.findChild<QPlainTextEdit*>(QStringLiteral("expressionEditor"));
+    auto* insert = editor.findChild<QPushButton*>(QStringLiteral("btnInsert"));
+    ASSERT_NE(tree, nullptr);
+    ASSERT_NE(choices, nullptr);
+    ASSERT_NE(input, nullptr);
+    ASSERT_NE(insert, nullptr);
+    ASSERT_GT(tree->topLevelItemCount(), 0);
+    EXPECT_EQ(tree->topLevelItem(0)->text(0), QStringLiteral("Arithmetic"));
+    choices->setCurrentRow(0);
+    EXPECT_GT(choices->count(), 0);
+    input->moveCursor(QTextCursor::End);
+    insert->click();
+    EXPECT_EQ(editor.expressionText(), QStringLiteral("2 + round(1)"));
+    EXPECT_TRUE(editor.validateCurrentExpression());
+}
+
+TEST(ExpressionBuilderDialogTest, StandaloneCopyUsesSelectedFunctionWhenExpressionIsEmpty) {
+    ExpressionBuilder editor;
+    editor.setExpressionContext(nullptr, QString());
+    auto* choices = editor.findChild<QListWidget*>(QStringLiteral("listExpressions"));
+    auto* copy = editor.findChild<QPushButton*>(QStringLiteral("btnCopyToClipboard"));
+    ASSERT_NE(choices, nullptr);
+    ASSERT_NE(copy, nullptr);
+    choices->setCurrentRow(0);
+    copy->click();
+    EXPECT_EQ(QApplication::clipboard()->text(), QStringLiteral("round(1)"));
+}
 
 TEST(ExpressionBuilderDialogTest, EditsExpressionAndRejectsInvalidSyntaxWithoutEvaluation) {
     ExpressionBuilder editor;
