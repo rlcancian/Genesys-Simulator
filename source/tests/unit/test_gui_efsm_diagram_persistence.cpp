@@ -105,6 +105,22 @@ public:
     using ModalModelDefault::_check;
 };
 
+class ScopedGuiExtensionConfig final {
+public:
+    explicit ScopedGuiExtensionConfig(const QByteArray& path)
+        : _wasSet(qEnvironmentVariableIsSet("GENESYS_GUI_EXTENSIONS_CONFIG")),
+          _previous(qgetenv("GENESYS_GUI_EXTENSIONS_CONFIG")) {
+        qputenv("GENESYS_GUI_EXTENSIONS_CONFIG", path);
+    }
+    ~ScopedGuiExtensionConfig() {
+        if (_wasSet) qputenv("GENESYS_GUI_EXTENSIONS_CONFIG", _previous);
+        else qunsetenv("GENESYS_GUI_EXTENSIONS_CONFIG");
+    }
+private:
+    bool _wasSet;
+    QByteArray _previous;
+};
+
 void setEFSMNetworkDiagramLayout(GraphicalModelSerializer* serializer, Model* model,
                                  unsigned long networkId, const EFSMNetworkDiagramLayout& layout) {
     serializer->setNetworkDiagramLayout(model, kEFSMGuiExtensionId, networkId, layout);
@@ -571,6 +587,78 @@ TEST(MarkovChainNetworkGuiExtension, GenericGuiPersistenceRestoresStateGeometryA
     ASSERT_NE(restoredSecond, nullptr);
     EXPECT_EQ(restoredFirst->pos(), QPointF(45.5, 67.25));
     EXPECT_EQ(restoredSecond->pos(), QPointF(270.75, 190.125));
+}
+
+TEST(GuiExtensionCatalog, DisabledMarkovEditorPreservesGuiGeometryAndKernelExecution) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new MarkovChainNetwork(model, "OptionalMarkovEditor");
+    auto* state = new MarkovState(model, "Absorbing");
+    network->addState(state);
+    network->addTransition(new MarkovChainNetwork::MarkovTransition(state, state, 1.0, "Stay"));
+
+    SerializerHarness harness(&simulator);
+    auto* scene = harness.graphicsView.getScene();
+    scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene->setNetworkEditorOwner(network);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    auto* stateItem = scene->findGraphicalModelDataDefinition(state);
+    ASSERT_NE(stateItem, nullptr);
+    stateItem->setPos(188.25, 92.5);
+
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const QString guiFilename = temporaryDir.filePath("optional_markov.gui");
+    const QString configFilename = temporaryDir.filePath("gui_extensions.json");
+    ASSERT_TRUE(harness.serializer->saveGraphicalModel(guiFilename));
+    QFile config(configFilename);
+    ASSERT_TRUE(config.open(QIODevice::WriteOnly | QIODevice::Text));
+    config.write("{\"disabled\":[\"modal.markov.gui\"]}");
+    config.close();
+    ScopedGuiExtensionConfig scopedConfig(configFilename.toUtf8());
+
+    const auto enabledPlugins = GuiExtensionPluginCatalog::resolvedPlugins();
+    EXPECT_EQ(std::find_if(enabledPlugins.begin(), enabledPlugins.end(), [](const GuiExtensionPlugin* plugin) {
+        return plugin != nullptr && plugin->extensionId() == "modal.markov.gui";
+    }), enabledPlugins.end());
+    Model* loadedModel = harness.serializer->loadGraphicalModel(guiFilename.toStdString());
+    ASSERT_NE(loadedModel, nullptr);
+    auto* loadedNetwork = dynamic_cast<MarkovChainNetwork*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<MarkovChainNetwork>(), std::string("OptionalMarkovEditor")));
+    ASSERT_NE(loadedNetwork, nullptr);
+    scene->setModelLevelFilter(static_cast<unsigned int>(loadedNetwork->getId()));
+    scene->setNetworkEditorOwner(loadedNetwork);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    auto* loadedState = loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<MarkovState>(), std::string("Absorbing"));
+    auto* loadedStateItem = scene->findGraphicalModelDataDefinition(loadedState);
+    ASSERT_NE(loadedStateItem, nullptr);
+    EXPECT_EQ(loadedStateItem->pos(), QPointF(188.25, 92.5));
+
+    const QString roundTripFilename = temporaryDir.filePath("optional_markov_round_trip.gui");
+    ASSERT_TRUE(harness.serializer->saveGraphicalModel(roundTripFilename));
+    loadedModel = harness.serializer->loadGraphicalModel(roundTripFilename.toStdString());
+    ASSERT_NE(loadedModel, nullptr);
+    loadedNetwork = dynamic_cast<MarkovChainNetwork*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<MarkovChainNetwork>(), std::string("OptionalMarkovEditor")));
+    ASSERT_NE(loadedNetwork, nullptr);
+    scene->setModelLevelFilter(static_cast<unsigned int>(loadedNetwork->getId()));
+    scene->setNetworkEditorOwner(loadedNetwork);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    loadedState = loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<MarkovState>(), std::string("Absorbing"));
+    loadedStateItem = scene->findGraphicalModelDataDefinition(loadedState);
+    ASSERT_NE(loadedStateItem, nullptr);
+    EXPECT_EQ(loadedStateItem->pos(), QPointF(188.25, 92.5));
+
+    const NetworkActivationResult activation = loadedNetwork->activate(
+        NetworkActivationFrame(loadedNetwork->getNumInputPorts()));
+    EXPECT_TRUE(activation.isPresent(0));
+    EXPECT_EQ(loadedNetwork->getCurrentState(), loadedState);
+    ASSERT_NE(loadedNetwork->getLastTransition(), nullptr);
+    EXPECT_EQ(loadedNetwork->getLastTransition()->getName(), "Stay");
 }
 
 TEST(ColoredPetriNetGuiExtension, ValidationActionReportsInvalidGuardExpressions) {
