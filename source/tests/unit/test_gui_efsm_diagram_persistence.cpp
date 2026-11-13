@@ -435,6 +435,125 @@ TEST(GraphNetworkGuiExtension, GenericGuiPersistenceRestoresNodeGeometryByStable
     EXPECT_NE(loadedNetwork->getEdges().front()->getDestination(), nullptr);
 }
 
+TEST(MarkovChainNetworkGuiExtension, GenericGuiPersistenceRestoresStateGeometryAndTopology) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new MarkovChainNetwork(model, "PersistedMarkov");
+    auto* first = new MarkovState(model, "Start");
+    auto* second = new MarkovState(model, "Finish");
+    network->addState(first);
+    network->addState(second);
+    network->setInitialState(first);
+    network->addTransition(new MarkovChainNetwork::MarkovTransition(first, second, 1.0, "Advance"));
+
+    SerializerHarness harness(&simulator);
+    ModelGraphicsScene* scene = harness.graphicsView.getScene();
+    scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene->setNetworkEditorOwner(network);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    auto* firstItem = scene->findGraphicalModelDataDefinition(first);
+    auto* secondItem = scene->findGraphicalModelDataDefinition(second);
+    ASSERT_NE(firstItem, nullptr);
+    ASSERT_NE(secondItem, nullptr);
+    firstItem->setPos(45.5, 67.25);
+    secondItem->setPos(270.75, 190.125);
+
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const QString guiFilename = temporaryDir.filePath("markov_network.gui");
+    ASSERT_TRUE(harness.serializer->saveGraphicalModel(guiFilename));
+    Model* loadedModel = harness.serializer->loadGraphicalModel(guiFilename.toStdString());
+    ASSERT_NE(loadedModel, nullptr);
+    auto* loadedNetwork = dynamic_cast<MarkovChainNetwork*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<MarkovChainNetwork>(), std::string("PersistedMarkov")));
+    ASSERT_NE(loadedNetwork, nullptr);
+    ASSERT_EQ(loadedNetwork->getStates()->size(), 2u);
+    ASSERT_EQ(loadedNetwork->getTransitions()->size(), 1u);
+    ASSERT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<MarkovState>()), 2u);
+    ASSERT_NE(loadedNetwork->getInitialState(), nullptr);
+    EXPECT_EQ(loadedNetwork->getInitialState()->getName(), "Start");
+    EXPECT_DOUBLE_EQ(loadedNetwork->getTransitions()->front()->getProbability(), 1.0);
+    scene->setModelLevelFilter(static_cast<unsigned int>(loadedNetwork->getId()));
+    scene->setNetworkEditorOwner(loadedNetwork);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    auto* restoredFirst = scene->findGraphicalModelDataDefinition(
+        loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovState>(), std::string("Start")));
+    auto* restoredSecond = scene->findGraphicalModelDataDefinition(
+        loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovState>(), std::string("Finish")));
+    ASSERT_NE(restoredFirst, nullptr);
+    ASSERT_NE(restoredSecond, nullptr);
+    EXPECT_EQ(restoredFirst->pos(), QPointF(45.5, 67.25));
+    EXPECT_EQ(restoredSecond->pos(), QPointF(270.75, 190.125));
+}
+
+TEST(ColoredPetriNetGuiExtension, GenericGuiPersistenceRestoresNodeGeometryAndTopology) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new ColoredPetriNetNetwork(model, "PersistedCPN");
+    auto* input = new PetriPlace(model, "Input");
+    auto* output = new PetriPlace(model, "Output");
+    auto* transition = new CPNTransition(model, "Transfer");
+    network->addPlace(input);
+    network->addPlace(output);
+    network->addTransition(transition);
+    network->setInitialTokens(input, "red", 3);
+    auto* incoming = new CPNArc(model, input, transition, CPNArc::Direction::PlaceToTransition, "InputArc");
+    incoming->setInscription("red", 1);
+    auto* outgoing = new CPNArc(model, output, transition, CPNArc::Direction::TransitionToPlace, "OutputArc");
+    outgoing->setInscription("red", 1);
+    ASSERT_TRUE(network->addArc(incoming));
+    ASSERT_TRUE(network->addArc(outgoing));
+
+    SerializerHarness harness(&simulator);
+    ModelGraphicsScene* scene = harness.graphicsView.getScene();
+    scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene->setNetworkEditorOwner(network);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    auto* inputItem = scene->findGraphicalModelDataDefinition(input);
+    auto* outputItem = scene->findGraphicalModelDataDefinition(output);
+    auto* transitionItem = scene->findGraphicalModelDataDefinition(transition);
+    ASSERT_NE(inputItem, nullptr);
+    ASSERT_NE(outputItem, nullptr);
+    ASSERT_NE(transitionItem, nullptr);
+    inputItem->setPos(30.25, 80.5);
+    transitionItem->setPos(230.75, 80.5);
+    outputItem->setPos(430.125, 80.5);
+
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const QString guiFilename = temporaryDir.filePath("cpn_network.gui");
+    ASSERT_TRUE(harness.serializer->saveGraphicalModel(guiFilename));
+    Model* loadedModel = harness.serializer->loadGraphicalModel(guiFilename.toStdString());
+    ASSERT_NE(loadedModel, nullptr);
+    auto* loadedNetwork = dynamic_cast<ColoredPetriNetNetwork*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<ColoredPetriNetNetwork>(), std::string("PersistedCPN")));
+    ASSERT_NE(loadedNetwork, nullptr);
+    ASSERT_EQ(loadedNetwork->getPlaces()->size(), 2u);
+    ASSERT_EQ(loadedNetwork->getTransitions()->size(), 1u);
+    ASSERT_EQ(loadedNetwork->getArcs()->size(), 2u);
+    ASSERT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<CPNArc>()), 2u);
+    EXPECT_EQ(loadedNetwork->getInitialTokens(loadedNetwork->getPlaces()->front(), "red"), 3u);
+    scene->setModelLevelFilter(static_cast<unsigned int>(loadedNetwork->getId()));
+    scene->setNetworkEditorOwner(loadedNetwork);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    auto* restoredInput = scene->findGraphicalModelDataDefinition(
+        loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<PetriPlace>(), std::string("Input")));
+    auto* restoredOutput = scene->findGraphicalModelDataDefinition(
+        loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<PetriPlace>(), std::string("Output")));
+    auto* restoredTransition = scene->findGraphicalModelDataDefinition(
+        loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<CPNTransition>(), std::string("Transfer")));
+    ASSERT_NE(restoredInput, nullptr);
+    ASSERT_NE(restoredOutput, nullptr);
+    ASSERT_NE(restoredTransition, nullptr);
+    EXPECT_EQ(restoredInput->pos(), QPointF(30.25, 80.5));
+    EXPECT_EQ(restoredTransition->pos(), QPointF(230.75, 80.5));
+    EXPECT_EQ(restoredOutput->pos(), QPointF(430.125, 80.5));
+}
+
 TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndoRedo) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
