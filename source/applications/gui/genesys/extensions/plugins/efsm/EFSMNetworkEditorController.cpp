@@ -366,56 +366,53 @@ void EFSMNetworkEditorController::editState() {
     _host->_actualizeActions();
 }
 
-void EFSMNetworkEditorController::actualizeActions(bool opened, bool simulationInteractionLocked) {
-    const bool efsmContext = opened && !simulationInteractionLocked && _host->ui != nullptr
-                             && _host->ui->graphicsView != nullptr && _host->ui->graphicsView->getScene() != nullptr
-                             && _host->ui->graphicsView->getScene()->hasModelLevelFilter()
-                             && _host->ui->graphicsView->getScene()->modelLevelFilter() != 0
-                             && _host->simulator->getModelManager()->current() != nullptr
-                             && _host->simulator->getModelManager()->current()->getDataManager() != nullptr
-                             && _host->simulator->getModelManager()->current()->getDataManager()->getDataDefinition(
-                                    Util::TypeOf<EFSMNetwork>(), _host->ui->graphicsView->getScene()->modelLevelFilter()) != nullptr;
-    if (_host->_actionCreateEfsmState != nullptr) {
-        _host->_actionCreateEfsmState->setEnabled(efsmContext);
-    }
-    if (_host->_actionCreateEfsmTransition != nullptr) {
-        _host->_actionCreateEfsmTransition->setEnabled(efsmContext);
-    }
-    if (_host->_actionEditEfsmTransition != nullptr) {
-        int selectedTransitionCount = 0;
-        if (_host->ui != nullptr && _host->ui->graphicsView != nullptr && _host->ui->graphicsView->getScene() != nullptr) {
-            for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
-                if (dynamic_cast<EFSMTransitionGraphicsItem*>(item) != nullptr) {
-                    ++selectedTransitionCount;
-                }
-            }
+bool EFSMNetworkEditorController::hasNetworkContext() const {
+    if (_host == nullptr || _host->ui == nullptr || _host->ui->graphicsView == nullptr
+        || _host->ui->graphicsView->getScene() == nullptr || _host->simulator == nullptr
+        || _host->simulator->getModelManager() == nullptr) return false;
+    ModelGraphicsScene* scene = _host->ui->graphicsView->getScene();
+    Model* model = _host->simulator->getModelManager()->current();
+    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0 || model == nullptr
+        || model->getDataManager() == nullptr || model->getSimulation() == nullptr
+        || model->getSimulation()->isRunning() || model->getSimulation()->isPaused()) return false;
+    return model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter()) != nullptr;
+}
+
+bool EFSMNetworkEditorController::canCreateTransition() const {
+    if (!hasNetworkContext()) return false;
+    int selectedStateCount = 0;
+    for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
+        auto* definition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        if (definition != nullptr && dynamic_cast<FSMState*>(definition->getDataDefinition()) != nullptr) {
+            ++selectedStateCount;
         }
-        _host->_actionEditEfsmTransition->setEnabled(efsmContext && selectedTransitionCount == 1);
     }
-    if (_host->_actionSetEfsmInitialState != nullptr) {
-        int selectedStateCount = 0;
-        if (_host->ui != nullptr && _host->ui->graphicsView != nullptr && _host->ui->graphicsView->getScene() != nullptr) {
-            for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
-                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
-                if (graphicalDefinition != nullptr
-                    && dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) != nullptr) {
-                    ++selectedStateCount;
-                }
-            }
-        }
-        _host->_actionSetEfsmInitialState->setEnabled(efsmContext && selectedStateCount == 1);
+    return selectedStateCount == 1 || selectedStateCount == 2;
+}
+
+bool EFSMNetworkEditorController::canEditTransition() const {
+    if (!hasNetworkContext()) return false;
+    int count = 0;
+    for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
+        if (dynamic_cast<EFSMTransitionGraphicsItem*>(item) != nullptr) ++count;
     }
-    if (_host->_actionEditEfsmState != nullptr) {
-        int selectedStateCount = 0;
-        if (_host->ui != nullptr && _host->ui->graphicsView != nullptr && _host->ui->graphicsView->getScene() != nullptr) {
-            for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
-                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
-                if (graphicalDefinition != nullptr
-                    && dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) != nullptr) {
-                    ++selectedStateCount;
-                }
-            }
-        }
-        _host->_actionEditEfsmState->setEnabled(efsmContext && selectedStateCount == 1);
+    return count == 1;
+}
+
+bool EFSMNetworkEditorController::canEditState() const {
+    return canSetInitialState();
+}
+
+bool EFSMNetworkEditorController::canSetInitialState() const {
+    if (!hasNetworkContext()) return false;
+    int count = 0;
+    for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
+        auto* definition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        if (definition != nullptr && dynamic_cast<FSMState*>(definition->getDataDefinition()) != nullptr) ++count;
     }
+    return count == 1;
+}
+
+bool EFSMNetworkEditorController::canCreateState() const {
+    return hasNetworkContext();
 }

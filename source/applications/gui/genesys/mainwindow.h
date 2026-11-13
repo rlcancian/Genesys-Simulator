@@ -79,7 +79,6 @@ class MainWindow : public QMainWindow {
     // Allow the Phase 4 event controller to register private compatibility handlers.
     friend class SimulationEventController;
     friend class EFSMNetworkEditorController;
-
 public:
     /** @brief Builds the composition root, wiring controllers/services and legacy Qt surface. */
 	MainWindow(QWidget *parent = nullptr);
@@ -548,12 +547,6 @@ private: // interface and model main elements to join
     QAction* _actionModelNext = nullptr;
     // Runtime action that opens a level-scoped graphical tab from the selected owner item.
     QAction* _actionOpenSelectedSubmodel = nullptr;
-    QAction* _actionCreateEfsmState = nullptr;
-    QAction* _actionCreateEfsmTransition = nullptr;
-    QAction* _actionEditEfsmTransition = nullptr;
-    QAction* _actionSetEfsmInitialState = nullptr;
-    QAction* _actionEditEfsmState = nullptr;
-    std::unique_ptr<EFSMNetworkEditorController> _efsmNetworkEditorController;
     QMenu* _menuOpenRecent = nullptr;
     QList<QAction*> _recentModelActions;
     // Keep core simulation command gateway owned by MainWindow composition root.

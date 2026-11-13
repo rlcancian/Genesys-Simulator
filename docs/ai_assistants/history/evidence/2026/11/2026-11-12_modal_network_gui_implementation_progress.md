@@ -27,8 +27,10 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | B4 | Pass (focused) | ModelDataManager remains the Network owner; adapter detach and replacement do not delete an unshared or shared Network. Existing GUI coverage also proves reference removal leaves the Network selectable for reattachment. Focused adapter suite: 14/14 PASS. Broader close/delete lifetime audit remains in final validation. |
 | B5 | Pass | Reviewed ModalModel implementation/header placement and Network data-definition headers/implementations. The existing split keeps GUI-independent mathematical implementations in plugin translation units and data contracts under `data/ModalModel`; no source relocation is justified. GUI app build passes. |
 | C1 | In progress | Responsibility map is recorded. Added formalism-neutral context-menu dispatch and extension-owned scene overlay tracking; removed EFSM-named overlay APIs and EFSM item classification from generic scene/controller. Focused EFSM projection/editor tests and GUI app build pass. Remaining: generic serializer/projection registration and MainWindow action/handler dispatch. |
-| C2 | In progress | Five EFSM state/transition command handlers and their selection/context action enablement moved into `extensions/plugins/efsm/EFSMNetworkEditorController`; MainWindow actions delegate to it. Focused edit/undo/reopen tests and GUI build pass. Action registration, projection and serializer isolation remain. |
-| C3–C6 | Not started | Extension registration, formalism editor isolation and shared-host integration remain. |
+| C2 | Pass (focused) | EFSM state/transition handlers and selection predicates are in `extensions/plugins/efsm/EFSMNetworkEditorController`; GUI build and focused edit/undo/reopen tests pass. |
+| C3 | Pass (focused) | `EFSMGuiExtensionPlugin` registers five actions through the existing registry with stable IDs. Manager refreshes current-context visibility/enabled state and dispatches against the live context. Root/Network visibility and handler tests pass. |
+| C4 | In progress | Generic scene/context menu no longer identify EFSM. MainWindow, GraphicalModelBuilder and GraphicalModelSerializer still directly restore/synchronize EFSM projections and persist the EFSM codec section. |
+| C5–C6 | Not started | Minimal shared editor contribution contract and static integration/lifetime verification remain. |
 | D1–D5 | Not started | Context-specific editors, formalism topology, persistence, undo/redo and animation. |
 
 ## Executed changes
@@ -135,6 +137,13 @@ map is a source inventory, not evidence that extraction is complete.
   `_actualizeActions()` into the EFSM controller. The composition root now
   calls one controller update hook; the existing EFSM edit/undo tests remain
   green after the move.
+- Added a statically registered `EFSMGuiExtensionPlugin` under
+  `extensions/plugins/efsm/`; it contributes create/edit/set-initial actions
+  through the existing `GuiExtensionRegistry`, using stable IDs and the Model
+  menu. MainWindow no longer constructs, stores or inserts EFSM QAction
+  instances. EFSM context predicates live with the controller. The generic
+  extension manager now updates contribution visibility/enabled state using
+  the latest runtime context and invokes the latest context on trigger.
 
 ## Validation
 
@@ -194,6 +203,10 @@ map is a source inventory, not evidence that extraction is complete.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after moving action enablement.
 - `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after moving action enablement.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.SelectedStateCanBeEditedAndUndoneThroughTheMainWindowAction:EFSMNetworkEditor.SelectedTransitionCanBeEditedAndUndoneThroughTheMainWindowAction:EFSMNetworkEditor.MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM'` — PASS, 3 tests after moving action enablement.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after static action contribution integration.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after action contribution integration.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.*:EFSMNetworkEditor.*'` — PASS, 9 tests; includes dynamic contribution state/dispatch, stable EFSM action ID, hidden root context, enabled Network context, editing, undo and persistence/reopen execution.
+- `git diff --check` — PASS after action contribution integration.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.SelectedStateCanBeEditedAndUndoneThroughTheMainWindowAction:EFSMNetworkEditor.SelectedTransitionCanBeEditedAndUndoneThroughTheMainWindowAction:EFSMNetworkEditor.MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM'` — PASS, 3 tests; confirms state/transition editing, undo and saved/reopened execution behavior remain.
 
 - `c3f97a9e30866e5ae3b8cc670cce867c96a0d823` — `modal-gui(A1): replace EFSM menu actions with Open Network` (pushed to `origin/WiP20261112/modal_model_gui`).
@@ -209,3 +222,4 @@ map is a source inventory, not evidence that extraction is complete.
 - `16b43904b` — `modal-gui(C2): extract EFSM editing handlers` (pushed).
 - `55e15fbba` — `modal-gui(C2): isolate EFSM action enablement` (pushed).
 - `5ca1431aa` — progress-log commit recording the C2 enablement extraction (pushed).
+- Pending commit: static EFSM GUI action contribution registration and current-context refresh.

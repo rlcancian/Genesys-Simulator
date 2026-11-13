@@ -86,11 +86,25 @@ void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) 
 	}
 }
 
+void GuiExtensionManager::refreshActionStates(const GuiExtensionRuntimeContext& context) {
+	_runtimeContext = context;
+	for (const auto& entry : _actionContributions) {
+		QAction* action = entry.first;
+		const GuiActionContribution& contribution = entry.second;
+		if (action == nullptr) continue;
+		const bool visible = !contribution.isVisible || contribution.isVisible(_runtimeContext);
+		action->setVisible(visible);
+		if (contribution.isEnabled) action->setEnabled(visible && contribution.isEnabled(_runtimeContext));
+		else action->setEnabled(visible);
+	}
+}
+
 void GuiExtensionManager::clear() {
 	for (QAction* action : _createdActions) {
 		delete action;
 	}
 	_createdActions.clear();
+	_actionContributions.clear();
 
 	for (QDockWidget* dock : _createdDocks) {
 		delete dock;
@@ -219,9 +233,6 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	if (_mainWindow == nullptr) {
 		return;
 	}
-	if (contribution.isVisible && !contribution.isVisible(context)) {
-		return;
-	}
 	if (!contribution.trigger) {
 		return;
 	}
@@ -239,8 +250,10 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	if (contribution.isEnabled) {
 		action->setEnabled(contribution.isEnabled(context));
 	}
-	QObject::connect(action, &QAction::triggered, _mainWindow, [contribution, context](bool) {
-		contribution.trigger(context);
+	QObject::connect(action, &QAction::triggered, _mainWindow, [this, contribution](bool) {
+		if (contribution.isVisible && !contribution.isVisible(_runtimeContext)) return;
+		if (contribution.isEnabled && !contribution.isEnabled(_runtimeContext)) return;
+		contribution.trigger(_runtimeContext);
 	});
 
 	if (QMenu* menu = _resolveMenuPath(contribution.menuPath)) {
@@ -251,6 +264,8 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	}
 
 	_createdActions.push_back(action);
+	_actionContributions.emplace_back(action, contribution);
+	action->setVisible(!contribution.isVisible || contribution.isVisible(context));
 }
 
 void GuiExtensionManager::_applyWindowContribution(const GuiWindowContribution& contribution, const GuiExtensionRuntimeContext& context) {

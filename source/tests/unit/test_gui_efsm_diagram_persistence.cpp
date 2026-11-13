@@ -200,6 +200,44 @@ TEST(GuiExtensionManager, ContextMenuContributionsAreDispatchedWithoutFormalismB
     EXPECT_TRUE(emptyMenu.actions().empty());
 }
 
+TEST(GuiExtensionManager, ActionContributionsRefreshForTheCurrentRuntimeContext) {
+    class ContextActionPlugin final : public GuiExtensionPlugin {
+    public:
+        std::string extensionId() const override { return "context-action-test"; }
+        std::string displayName() const override { return "Context action test"; }
+        std::string version() const override { return "1"; }
+        std::vector<std::string> requiredModelPlugins() const override { return {}; }
+        void registerContributions(GuiExtensionRegistry* registry) const override {
+            registry->addAction({
+                "test.context-action", "Context action", "Model", {}, {}, {},
+                [](const GuiExtensionRuntimeContext& context) { return context.graphicsScene != nullptr; },
+                [](const GuiExtensionRuntimeContext& context) { return context.graphicsScene != nullptr; },
+                [this](const GuiExtensionRuntimeContext& context) { lastTriggeredScene = context.graphicsScene; }});
+        }
+        mutable ModelGraphicsScene* lastTriggeredScene = nullptr;
+    } plugin;
+
+    QMainWindow host;
+    ModelGraphicsScene scene(0, 0, 100, 100);
+    GuiExtensionRuntimeContext context;
+    context.mainWindow = &host;
+    GuiExtensionManager manager(&host);
+    manager.setPlugins({&plugin});
+    manager.rebuild(context);
+
+    QAction* action = host.findChild<QAction*>(QStringLiteral("test.context-action"));
+    ASSERT_NE(action, nullptr);
+    EXPECT_FALSE(action->isVisible());
+    EXPECT_FALSE(action->isEnabled());
+
+    context.graphicsScene = &scene;
+    manager.refreshActionStates(context);
+    EXPECT_TRUE(action->isVisible());
+    EXPECT_TRUE(action->isEnabled());
+    action->trigger();
+    EXPECT_EQ(plugin.lastTriggeredScene, &scene);
+}
+
 TEST(EFSMNetworkDiagramPersistence, EmptyLayoutProducesNoEntriesAndLeavesOtherSectionsIntact) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -1497,6 +1535,13 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     ASSERT_NE(firstItem, nullptr);
     ASSERT_NE(secondItem, nullptr);
 
+    QAction* createStateAction = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->objectName() == QStringLiteral("modal.efsm.create-state")) createStateAction = action;
+    }
+    ASSERT_NE(createStateAction, nullptr);
+    EXPECT_FALSE(createStateAction->isVisible());
+
     QAction* openAction = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
         if (action->objectName() == QStringLiteral("actionOpenSelectedSubmodel")) {
@@ -1508,6 +1553,13 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     EXPECT_EQ(openAction->text(), QStringLiteral("Open Network"));
     EXPECT_TRUE(openAction->isEnabled());
     openAction->trigger();
+    // Opening the submodel rebuilds the active extension context, so resolve
+    // the action again instead of retaining an action owned by the old manager.
+    createStateAction = nullptr;
+    for (QAction* action : window.findChildren<QAction*>()) {
+        if (action->objectName() == QStringLiteral("modal.efsm.create-state")) createStateAction = action;
+    }
+    ASSERT_NE(createStateAction, nullptr);
     ASSERT_EQ(tabs->count(), rootCount + 1);
     auto* networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
     ASSERT_NE(networkView, nullptr);
@@ -1516,11 +1568,7 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     EXPECT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
     EXPECT_NE(networkView->getScene()->findGraphicalModelDataDefinition(state), nullptr);
     EXPECT_EQ(networkView->getScene()->extensionOverlayItems(QStringLiteral("efsm")).size(), 0);
-    QAction* createStateAction = nullptr;
-    for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Create EFSM State")) createStateAction = action;
-    }
-    ASSERT_NE(createStateAction, nullptr);
+    EXPECT_TRUE(createStateAction->isVisible());
     EXPECT_TRUE(createStateAction->isEnabled());
 
     const int networkTabIndex = tabs->currentIndex();

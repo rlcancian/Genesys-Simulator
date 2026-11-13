@@ -50,7 +50,6 @@
 #include "controllers/SceneToolController.h"
 // Add graphical context-menu controller include for canvas popup orchestration.
 #include "controllers/GraphicalContextMenuController.h"
-#include "extensions/plugins/efsm/EFSMNetworkEditorController.h"
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
@@ -333,26 +332,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _actionOpenSelectedSubmodel->setObjectName(QStringLiteral("actionOpenSelectedSubmodel"));
     _actionOpenSelectedSubmodel->setToolTip(tr("Open a graphical tab scoped to the selected item's internal model level."));
     connect(_actionOpenSelectedSubmodel, &QAction::triggered, this, [this]() { _openSelectedSubmodel(); });
-    _efsmNetworkEditorController = std::make_unique<EFSMNetworkEditorController>(this);
-    _actionCreateEfsmState = new QAction(tr("Create EFSM State"), this);
-    connect(_actionCreateEfsmState, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->createState(); });
-    _actionCreateEfsmTransition = new QAction(tr("Create EFSM Transition"), this);
-    connect(_actionCreateEfsmTransition, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->createTransition(); });
-    _actionEditEfsmTransition = new QAction(tr("Edit EFSM Transition..."), this);
-    connect(_actionEditEfsmTransition, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->editTransition(); });
-    _actionSetEfsmInitialState = new QAction(tr("Set Selected EFSM State as Initial"), this);
-    connect(_actionSetEfsmInitialState, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->setInitialState(); });
-    _actionEditEfsmState = new QAction(tr("Edit EFSM State..."), this);
-    connect(_actionEditEfsmState, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->editState(); });
     _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionOpenSelectedSubmodel);
-    ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmState);
-    ui->menuModel->insertAction(ui->actionModelOpen, _actionCreateEfsmTransition);
-    ui->menuModel->insertAction(ui->actionModelOpen, _actionEditEfsmTransition);
-    ui->menuModel->insertAction(ui->actionModelOpen, _actionSetEfsmInitialState);
-    ui->menuModel->insertAction(ui->actionModelOpen, _actionEditEfsmState);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
     ui->menuModel->insertMenu(ui->actionModelOpen, _menuOpenRecent);
 
@@ -1939,6 +1922,16 @@ void MainWindow::_actualizeActions() {
     }
     // Lock GUI interactions tied to model editing while simulation is running or paused.
     const bool simulationInteractionLocked = opened && (running || paused);
+    if (_guiExtensionManager != nullptr) {
+        GuiExtensionRuntimeContext extensionContext;
+        extensionContext.simulator = simulator;
+        extensionContext.mainWindow = this;
+        extensionContext.ui = ui;
+        extensionContext.graphicsView = ui != nullptr ? ui->graphicsView : nullptr;
+        extensionContext.graphicsScene = extensionContext.graphicsView != nullptr
+            ? extensionContext.graphicsView->getScene() : nullptr;
+        _guiExtensionManager->refreshActionStates(extensionContext);
+    }
 
     //
     ui->graphicsView->setEnabled(opened);
@@ -1969,7 +1962,6 @@ void MainWindow::_actualizeActions() {
                                                 && !simulationInteractionLocked
                                                 && _canOpenSubmodelFor(_selectedSubmodelOwner()));
     }
-    _efsmNetworkEditorController->actualizeActions(opened, simulationInteractionLocked);
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.
     ui->toolBarEdit->setEnabled(opened && !simulationInteractionLocked);

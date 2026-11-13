@@ -12,7 +12,12 @@ public:
     void editTransition();
     void setInitialState();
     void editState();
-    void actualizeActions(bool opened, bool simulationInteractionLocked);
+    bool hasNetworkContext() const;
+    bool canCreateState() const;
+    bool canCreateTransition() const;
+    bool canEditTransition() const;
+    bool canEditState() const;
+    bool canSetInitialState() const;
 
 private:
     MainWindow* _host = nullptr;
