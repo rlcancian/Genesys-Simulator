@@ -15,6 +15,7 @@
 #include "actions/EFSMStateMembershipUndoCommand.h"
 #include "actions/EFSMStatePropertiesUndoCommand.h"
 #include "controllers/EditCommandController.h"
+#include "controllers/PluginCatalogController.h"
 #include "mainwindow.h"
 #include "extensions/GuiExtensionContracts.h"
 #include "extensions/GuiExtensionManager.h"
@@ -26,12 +27,14 @@
 
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Persistence.h"
+#include "kernel/simulator/PropertyGenesys.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelDataManager.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/Submodel.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Transfer/Goto.h"
@@ -69,6 +72,7 @@
 #include <QLineEdit>
 #include <QTimer>
 #include <QTabWidget>
+#include <QTreeWidget>
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QGraphicsSceneMouseEvent>
@@ -283,6 +287,49 @@ TEST(GuiExtensionManager, NetworkCanvasAcceptsOnlyFormalismDataDefinitions) {
         nullptr, Util::TypeOf<FSMState>(), false));
 }
 
+TEST(GuiExtensionManager, PluginPaletteShowsOnlyActiveNetworkElementTypes) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    QTreeWidget palette;
+    std::map<std::string, QColor> categoryColors;
+    PluginCatalogController controller(&simulator, &palette, nullptr, &categoryColors);
+    auto containsPlugin = [&palette](const std::string& type) {
+        return !palette.findItems(QString::fromStdString(type), Qt::MatchExactly | Qt::MatchRecursive, 0).isEmpty();
+    };
+
+    controller.reloadFromPluginManager();
+    EXPECT_TRUE(containsPlugin(Util::TypeOf<Create>()));
+    EXPECT_FALSE(containsPlugin(Util::TypeOf<GraphNode>()));
+
+    GraphNetwork graph(model, "GraphPalette");
+    controller.reloadFromPluginManager(&graph);
+    EXPECT_TRUE(containsPlugin(Util::TypeOf<GraphNode>()));
+    EXPECT_FALSE(containsPlugin(Util::TypeOf<Create>()));
+    EXPECT_FALSE(containsPlugin(Util::TypeOf<GraphEdge>()));
+
+    MarkovChainNetwork markov(model, "MarkovPalette");
+    controller.reloadFromPluginManager(&markov);
+    EXPECT_TRUE(containsPlugin(Util::TypeOf<MarkovState>()));
+    EXPECT_FALSE(containsPlugin(Util::TypeOf<GraphNode>()));
+
+    ColoredPetriNetNetwork cpn(model, "CpnPalette");
+    controller.reloadFromPluginManager(&cpn);
+    EXPECT_TRUE(containsPlugin(Util::TypeOf<PetriPlace>()));
+    EXPECT_TRUE(containsPlugin(Util::TypeOf<CPNTransition>()));
+    EXPECT_FALSE(containsPlugin(Util::TypeOf<MarkovState>()));
+
+    EFSMNetwork efsm(model, "EfsmPalette");
+    controller.reloadFromPluginManager(&efsm);
+    EXPECT_TRUE(containsPlugin(Util::TypeOf<FSMState>()));
+    EXPECT_FALSE(containsPlugin(Util::TypeOf<PetriPlace>()));
+
+    controller.reloadFromPluginManager();
+    EXPECT_TRUE(containsPlugin(Util::TypeOf<Create>()));
+    EXPECT_FALSE(containsPlugin(Util::TypeOf<FSMState>()));
+}
+
 TEST(GuiExtensionManager, NetworkCanvasRejectsProcessComponentBeforeModelMutation) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -315,6 +362,40 @@ TEST(GuiExtensionManager, NetworkCanvasRejectsProcessComponentBeforeModelMutatio
     scene.dropEvent(&allowedEvent);
     EXPECT_EQ(network.getStates()->size(), 1u);
     EXPECT_EQ(scene.getGraphicalModelDataDefinitions()->size(), 1);
+}
+
+TEST(GuiExtensionManager, ProcessSubmodelStillAcceptsProcessComponentDrops) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* submodel = new Submodel(model, "RegularSubmodel");
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(submodel->getId()));
+    scene.setNetworkEditorOwner(submodel);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    scene.setPropertyEditor(&propertyEditor);
+    scene.setPropertyList(&propertyList);
+    scene.setPropertyEditorUI(&propertyEditorUi);
+    scene.setComboBox(&propertyCombo);
+    Plugin* createPlugin = simulator.getPluginManager()->find(Util::TypeOf<Create>());
+    ASSERT_NE(createPlugin, nullptr);
+    QTreeWidgetItem draggedItem;
+    draggedItem.setWhatsThis(0, QString::fromStdString(createPlugin->getPluginInfo()->getPluginTypename()));
+    scene.setObjectBeingDragged(&draggedItem);
+    QGraphicsSceneDragDropEvent event(QEvent::GraphicsSceneDrop);
+    event.setScenePos(QPointF(120, 80));
+
+    const std::size_t componentsBefore = model->getComponentManager()->getNumberOfComponents();
+    scene.dropEvent(&event);
+    EXPECT_EQ(model->getComponentManager()->getNumberOfComponents(), componentsBefore + 1);
+    EXPECT_EQ(scene.getGraphicalModelComponents()->size(), 1);
 }
 
 TEST(GraphNetworkGuiExtension, ProjectsParallelAndSelfLoopEdgesFromTheNetworkTopology) {
@@ -3079,6 +3160,12 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     ASSERT_EQ(tabs->count(), rootCount + 1);
     auto* networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
     ASSERT_NE(networkView, nullptr);
+    auto* pluginPalette = window.findChild<QTreeWidget*>(QStringLiteral("treeWidget_Plugins"));
+    ASSERT_NE(pluginPalette, nullptr);
+    EXPECT_TRUE(pluginPalette->findItems(QString::fromStdString(Util::TypeOf<Create>()),
+        Qt::MatchExactly | Qt::MatchRecursive, 0).isEmpty());
+    EXPECT_FALSE(pluginPalette->findItems(QString::fromStdString(Util::TypeOf<FSMState>()),
+        Qt::MatchExactly | Qt::MatchRecursive, 0).isEmpty());
     EXPECT_TRUE(tabs->tabText(tabs->currentIndex()).contains(QStringLiteral("SharedNavigationNetwork")));
     ASSERT_TRUE(networkView->getScene()->hasModelLevelFilter());
     EXPECT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
@@ -3109,8 +3196,13 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     }
     ASSERT_GE(rootTabIndex, 0);
     tabs->setCurrentIndex(rootTabIndex);
+    QApplication::processEvents();
     ASSERT_TRUE(window.myScene()->hasModelLevelFilter());
     ASSERT_EQ(window.myScene()->modelLevelFilter(), 0u);
+    EXPECT_FALSE(pluginPalette->findItems(QString::fromStdString(Util::TypeOf<Create>()),
+        Qt::MatchExactly | Qt::MatchRecursive, 0).isEmpty());
+    EXPECT_TRUE(pluginPalette->findItems(QString::fromStdString(Util::TypeOf<FSMState>()),
+        Qt::MatchExactly | Qt::MatchRecursive, 0).isEmpty());
     window.myScene()->clearSelection();
     secondItem = graphicalAdapter(secondAdapter);
     ASSERT_NE(secondItem, nullptr);

@@ -356,6 +356,7 @@ private: // view
     ModelGraphicsView* _createModelGraphicsView(QWidget* parent);
     /** @brief Makes a graphics view the active compatibility target used by legacy wrappers. */
     void _activateModelGraphicsView(ModelGraphicsView* graphicsView, bool rebuildControllers = true);
+    void _reloadPluginCatalogForCurrentContext();
     /** @brief Ensures that an opened kernel model has a corresponding graphical tab. */
     ModelGraphicsView* _ensureModelTab(Model* model);
     /** @brief Removes the tab and graphical view associated with a model no longer opened. */

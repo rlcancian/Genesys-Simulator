@@ -1355,11 +1355,20 @@ void MainWindow::_activateModelGraphicsView(ModelGraphicsView* graphicsView, boo
     ui->graphicsView = graphicsView;
     _configureModelGraphicsView(ui->graphicsView);
     _initModelGraphicsView();
+    _reloadPluginCatalogForCurrentContext();
     GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
 
     if (rebuildControllers) {
         _rebuildViewDependentControllers();
     }
+}
+
+void MainWindow::_reloadPluginCatalogForCurrentContext() {
+    if (_pluginCatalogController == nullptr || ui == nullptr || ui->graphicsView == nullptr
+        || ui->graphicsView->getScene() == nullptr) return;
+    ModelDataDefinition* editorOwner = ui->graphicsView->getScene()->networkEditorOwner();
+    _pluginCatalogController->reloadFromPluginManager(
+        dynamic_cast<DefaultNetwork*>(editorOwner) != nullptr ? editorOwner : nullptr);
 }
 
 ModelGraphicsView* MainWindow::_ensureModelTab(Model* model) {
@@ -1756,9 +1765,7 @@ void MainWindow::_rebuildViewDependentControllers() {
         [this]() { _actualizeActions(); },
         [this]() { _actualizeTabPanes(); },
         [this]() {
-            if (_pluginCatalogController != nullptr) {
-                _pluginCatalogController->reloadFromPluginManager();
-            }
+            _reloadPluginCatalogForCurrentContext();
             _refreshGuiExtensions();
         },
         [this]() { return myScene(); },
@@ -1831,9 +1838,7 @@ void MainWindow::refreshGuiExtensions() {
 }
 
 void MainWindow::refreshPluginCatalog() {
-	if (_pluginCatalogController != nullptr) {
-		_pluginCatalogController->reloadFromPluginManager();
-	}
+	_reloadPluginCatalogForCurrentContext();
 }
 
 void MainWindow::_onPropertyEditorModelChanged() {

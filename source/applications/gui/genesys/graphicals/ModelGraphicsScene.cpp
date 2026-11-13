@@ -57,6 +57,7 @@
 #include "services/GraphicalModelBuilder.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
 #include "../../../../kernel/simulator/model/Model.h"
+#include "../../../../plugins/data/ModalModel/DefaultNetwork.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
@@ -3490,7 +3491,8 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
             QString pluginname = treeItem->whatsThis(0);
             Plugin* plugin = _simulator->getPluginManager()->find(pluginname.toStdString());
             if (plugin != nullptr) {
-                if (hasModelLevelFilter()
+                const bool isNetworkEditor = dynamic_cast<DefaultNetwork*>(_networkEditorOwner) != nullptr;
+                if (isNetworkEditor
                     && !GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
                         _networkEditorOwner, plugin->getPluginInfo()->getPluginTypename(),
                         plugin->getPluginInfo()->isComponent())) {
@@ -3513,7 +3515,7 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                 // Allow graphical authoring of data definitions by dropping them directly on the canvas.
                 ModelDataDefinition* dataDefinition = plugin->newInstance(_simulator->getModelManager()->current());
                 if (dataDefinition != nullptr) {
-                    if (hasModelLevelFilter()) {
+                    if (isNetworkEditor) {
                         GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
                             _networkEditorOwner, dataDefinition);
                     }
@@ -3526,7 +3528,7 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                         clearSelection();
                         graphicalDataDefinition->setSelected(true);
                         graphicalDataDefinition->setFocus();
-                        if (hasModelLevelFilter() && getUndoStack() != nullptr) {
+                        if (isNetworkEditor && getUndoStack() != nullptr) {
                             getUndoStack()->push(new AddNetworkDataDefinitionUndoCommand(
                                 this, _networkEditorOwner, graphicalDataDefinition));
                         }
