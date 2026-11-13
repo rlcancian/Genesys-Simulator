@@ -222,10 +222,18 @@ extern "C" void initBetweenReplications(Model* model) {
     std::error_code executableError;
     const fs::path executablePath = fs::read_symlink("/proc/self/exe", executableError);
     if (!executableError) {
-        const fs::path installRoot = executablePath.parent_path().parent_path() /
-            GENESYS_CPPFORG_INSTALL_INCLUDE_ROOT;
-        if (fs::exists(installRoot / "kernel/simulator/model/Model.h"))
-            includeRoot = fs::absolute(installRoot).string();
+        fs::path executableDirectory = executablePath.parent_path();
+        while (!executableDirectory.empty()) {
+            const fs::path candidate = executableDirectory / GENESYS_CPPFORG_INSTALL_INCLUDE_ROOT;
+            std::error_code existsError;
+            if (fs::exists(candidate / "kernel/simulator/model/Model.h", existsError)) {
+                includeRoot = fs::absolute(candidate).string();
+                break;
+            }
+            const fs::path parent = executableDirectory.parent_path();
+            if (parent == executableDirectory) break;
+            executableDirectory = parent;
+        }
     }
     // Development builds can use the source tree even when launched elsewhere.
     const fs::path sourceRoot = fs::path(__FILE__).parent_path().parent_path().parent_path().parent_path();
