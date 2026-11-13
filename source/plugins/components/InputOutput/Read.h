@@ -35,6 +35,7 @@ private:
     bool _attributeNotVariable = true;
     std::function<void()> _onChange;
     List<SimulationControl*>* _controls = new List<SimulationControl*>();
+    Model* _ownerModel = nullptr;
 };
 
 /**
@@ -92,6 +93,8 @@ private:
     ReadFromType _source = Defaults::source;
     std::string _filename;
     List<ReadDestination*>* _destinations = new List<ReadDestination*>();
+    // Retain removed items until destruction to support editor reconciliation.
+    std::vector<ReadDestination*> _removedDestinations;
     std::ifstream _stream;
     KeyboardInputProvider _keyboardInput;
     unsigned long long _lineNumber = 0;
