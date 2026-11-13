@@ -6,12 +6,21 @@
 #include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/data/ModalModel/GraphNode.h"
 #include "plugins/data/ModalModel/GraphEdge.h"
+#include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
 #include "kernel/util/Util.h"
 
 #include <QGraphicsPathItem>
+#include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QInputDialog>
+#include <QLabel>
+#include <QMainWindow>
+#include <QMessageBox>
 #include <QPainterPath>
 #include <QPointer>
 #include <QPen>
+#include <QVBoxLayout>
 #include <QUndoCommand>
 #include <QUndoStack>
 
@@ -143,6 +152,32 @@ private:
     QPointer<ModelGraphicsScene> _scene;
 };
 
+class EditGraphEdgeWeightUndoCommand final : public QUndoCommand {
+public:
+    EditGraphEdgeWeightUndoCommand(GraphEdge* edge, ModelGraphicsScene* scene, double weight)
+        : _edge(edge), _scene(scene), _beforeHasWeight(edge != nullptr && edge->hasWeight()),
+          _beforeWeight(edge != nullptr ? edge->getWeight() : 1.0), _afterWeight(weight) {
+        setText(QObject::tr("Edit graph edge weight"));
+    }
+    void redo() override {
+        if (_edge == nullptr) { setObsolete(true); return; }
+        _edge->setWeight(_afterWeight);
+        if (_scene != nullptr) synchronizeGraphProjection(nullptr, _scene);
+    }
+    void undo() override {
+        if (_edge == nullptr) { setObsolete(true); return; }
+        if (_beforeHasWeight) _edge->setWeight(_beforeWeight);
+        else _edge->clearWeight();
+        if (_scene != nullptr) synchronizeGraphProjection(nullptr, _scene);
+    }
+private:
+    GraphEdge* _edge;
+    QPointer<ModelGraphicsScene> _scene;
+    bool _beforeHasWeight;
+    double _beforeWeight;
+    double _afterWeight;
+};
+
 
 bool canCreateEdge(const GuiExtensionRuntimeContext& context) {
     if (context.graphicsScene == nullptr
@@ -162,14 +197,45 @@ void createEdge(const GuiExtensionRuntimeContext& context) {
     if (!canCreateEdge(context) || context.simulator == nullptr) return;
     auto* scene = context.graphicsScene;
     auto* network = dynamic_cast<GraphNetwork*>(scene->networkEditorOwner());
-    std::vector<GraphNode*> nodes;
+    std::vector<GraphNode*> selectedNodes;
     for (QGraphicsItem* item : scene->selectedItems()) {
         auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
         auto* node = graphical != nullptr ? dynamic_cast<GraphNode*>(graphical->getDataDefinition()) : nullptr;
-        if (node != nullptr) nodes.push_back(node);
+        if (node != nullptr && network != nullptr && network->containsNode(node)) selectedNodes.push_back(node);
     }
-    if (network == nullptr || nodes.size() != 2 || network->getParentModel() == nullptr) return;
-    auto* edge = new GraphEdge(network->getParentModel(), nodes[0], nodes[1]);
+    if (network == nullptr || selectedNodes.size() != 2 || network->getParentModel() == nullptr) return;
+
+    QDialog dialog(context.mainWindow);
+    dialog.setWindowTitle(QObject::tr("Create Graph Edge"));
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* sourceChoice = new QComboBox(&dialog);
+    auto* destinationChoice = new QComboBox(&dialog);
+    for (GraphNode* node : selectedNodes) {
+        const QString label = QString::fromStdString(node->getName());
+        const QVariant identity = QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(node));
+        sourceChoice->addItem(label, identity);
+        destinationChoice->addItem(label, identity);
+    }
+    layout->addWidget(new QLabel(QObject::tr("Source node:"), &dialog));
+    layout->addWidget(sourceChoice);
+    layout->addWidget(new QLabel(QObject::tr("Destination node:"), &dialog));
+    layout->addWidget(destinationChoice);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+    if (dialog.exec() != QDialog::Accepted) return;
+    auto* source = reinterpret_cast<GraphNode*>(static_cast<quintptr>(sourceChoice->currentData().toULongLong()));
+    auto* destination = reinterpret_cast<GraphNode*>(static_cast<quintptr>(destinationChoice->currentData().toULongLong()));
+    if (source == nullptr || destination == nullptr) return;
+
+    if (dynamic_cast<DirectedAcyclicGraphNetwork*>(network) != nullptr
+        && (source == destination || network->hasPath(destination, source))) {
+        QMessageBox::warning(context.mainWindow, QObject::tr("Invalid DAG Edge"),
+                             QObject::tr("This edge would create a cycle in the directed acyclic graph."));
+        return;
+    }
+    auto* edge = new GraphEdge(network->getParentModel(), source, destination);
     scene->getUndoStack()->push(new AddGraphEdgeUndoCommand(network, edge, scene));
 }
 
@@ -181,6 +247,36 @@ bool canDeleteEdge(const GuiExtensionRuntimeContext& context) {
             && item->data(1).isValid()) return true;
     }
     return false;
+}
+
+GraphEdge* selectedEdge(const GuiExtensionRuntimeContext& context) {
+    if (context.graphicsScene == nullptr) return nullptr;
+    auto* network = dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner());
+    if (network == nullptr) return nullptr;
+    for (QGraphicsItem* item : context.graphicsScene->selectedItems()) {
+        if (dynamic_cast<QGraphicsPathItem*>(item) == nullptr || !item->data(1).isValid()) continue;
+        auto* edge = reinterpret_cast<GraphEdge*>(static_cast<quintptr>(item->data(1).toULongLong()));
+        if (edge != nullptr && network->containsEdge(edge)) return edge;
+    }
+    return nullptr;
+}
+
+bool canEditEdgeWeight(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
+        && selectedEdge(context) != nullptr;
+}
+
+void editSelectedEdgeWeight(const GuiExtensionRuntimeContext& context) {
+    GraphEdge* edge = selectedEdge(context);
+    if (edge == nullptr || context.graphicsScene->getUndoStack() == nullptr) return;
+    bool accepted = false;
+    const double weight = QInputDialog::getDouble(
+        context.mainWindow, QObject::tr("Graph Edge Weight"), QObject::tr("Weight:"), edge->getWeight(),
+        -1.0e12, 1.0e12, 6, &accepted);
+    if (accepted && std::isfinite(weight) && (!edge->hasWeight() || edge->getWeight() != weight)) {
+        context.graphicsScene->getUndoStack()->push(
+            new EditGraphEdgeWeightUndoCommand(edge, context.graphicsScene, weight));
+    }
 }
 
 void deleteSelectedEdge(const GuiExtensionRuntimeContext& context) {
@@ -253,6 +349,18 @@ public:
         removeEdge.isEnabled = canDeleteEdge;
         removeEdge.trigger = deleteSelectedEdge;
         registry->addAction(std::move(removeEdge));
+
+        GuiActionContribution editEdgeWeight;
+        editEdgeWeight.id = "modal.graph.edit-edge-weight";
+        editEdgeWeight.text = "Edit Selected Graph Edge Weight...";
+        editEdgeWeight.menuPath = "Model";
+        editEdgeWeight.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        editEdgeWeight.isEnabled = canEditEdgeWeight;
+        editEdgeWeight.trigger = editSelectedEdgeWeight;
+        registry->addAction(std::move(editEdgeWeight));
     }
 };
 
