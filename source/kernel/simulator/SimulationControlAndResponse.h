@@ -215,6 +215,12 @@ public:
     virtual bool supportsPositionalListEditing() const { return false; }
     virtual std::string getListElementLabel() const { return "Item"; }
     virtual bool supportsListElementMove() const { return false; }
+    // Opt-in only: most existing list editors do not expose element removal.
+    virtual bool supportsListElementRemoval() const { return false; }
+    virtual bool removeListElementAt(int index) {
+        (void)index;
+        return false;
+    }
     virtual bool handlesListMoveReconciliation() const { return false; }
     virtual void moveListElement(int from, int to) {
         (void)from; (void)to;
