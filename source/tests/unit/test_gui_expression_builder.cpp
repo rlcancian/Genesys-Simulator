@@ -107,7 +107,7 @@ TEST(ExpressionBuilderPropertyTest, DelayIsTaggedAsParserExpression) {
     Delay delay(model, "ExpressionHintDelay");
     bool found = false;
     for (SimulationControl* control : *delay.getSimulationControls()->list()) {
-        if (control->getPropertyName() == "DelayExpression") {
+        if (control->getName() == "DelayExpression") {
             EXPECT_EQ(control->preferredEditorHint(), SimulationControlEditorHint::ParserExpression);
             found = true;
         }
