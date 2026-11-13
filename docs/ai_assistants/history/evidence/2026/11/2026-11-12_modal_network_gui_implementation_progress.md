@@ -410,3 +410,11 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - Updated the user EFSM guide for Property Editor association, generic `Open Network`, state/transition creation, and contextual transition editing. Updated the Developer Manual's Modal Network architecture section to remove stale branch-status claims and describe current extension/editor boundaries.
 - `cd docs/developers/ManualGenESyS_subrepo && ./make.sh` — PASS; regenerated `docs/ManualGenESyS.pdf` (398 pages).
 - `./validate_figure_specs.sh` — PASS. No undefined-reference/fatal LaTeX diagnostics were found; Developer Manual pages 250–251 were visually inspected for the updated section.
+
+
+### PR #577 integration closeout (2026-11-13)
+
+- PR #577 merged into `WorkInProgress` with merge commit `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb`; final candidate head was `b88984d7fd6d957ba87cff6f9382f9b1df73d427`.
+- All 19 final-head GitHub checks passed. This includes `tests-unit` (2,109 executed, four configured-disabled), `tests-kernel-unit` (2,111 executed, four configured-disabled), runnable smoke (3/3), GUI application build, focused GUI tests, manual build/governance, Debian package build with Lintian, and install/reinstall/remove/purge lifecycle validation.
+- `origin/WorkInProgress` verified at merge commit `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb`; `origin/WiP20261112/modal_model_gui` remains at candidate `b88984d7fd6d957ba87cff6f9382f9b1df73d427` for continued development.
+- Merge mode: merge commit; no squash/rebase; no source-branch deletion.

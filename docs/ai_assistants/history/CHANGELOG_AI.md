@@ -2,7 +2,7 @@
 document_type: history-index
 authority: informative
 owner: project-maintainer
-last_updated: 2026-11-11
+last_updated: 2026-11-13
 status: active
 tracks: 511
 ---
@@ -17,6 +17,7 @@ This is a concise index of material AI-assisted development and governance chang
 
 | Date | Scope | Environment | PR/issue | Merge/checkpoint | Validation/evidence | Remaining boundary |
 |---|---|---|---|---|---|---|
+| 2026-11-13 | Complete ModalModel/Network GUI evolution (AUTO-MODAL-005) | local + GitHub Actions | PR #577 / HUM-MODAL-003 | merge commit `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb` | all 19 final-head checks passed: unit 2,109 executed (+4 disabled), kernel-unit 2,111 (+4 disabled), smoke 3/3 runnable, GUI/manual, Debian package/Lintian and lifecycle; evidence `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md` | interactive desktop drag/drop remains maintainer-tested; GraphNetwork is structural, without simulated algorithm events |
 | 2026-11-11 | Record approved main-GUI graphical-extension architecture, gated roadmap and deferred dynamic-load constraints (documentation only) | GitHub documentation | PR #574 / HUM-ARCH-004 / AUTO-GUI-003 | WorkInProgress-targeted documentation PR | architecture and future acceptance plan recorded; documentation-governance validation tracked on PR #574; no C++/GUI test claims | implementation is non-ready; static aggregation unchanged; no dynamic load/unload |
 | 2026-11-07 | Launch standalone Data Analyser, Optimizer and AI Assistant as separate Tools processes; add installed lookup and Debian package support | local + GitHub Actions | PR #562 / issue #561 | merge commit `46bdedfc94ac9ae6144675fe6b2a64c0c5e98460` | tests-unit 2,004 + 4 disabled; kernel 2,004 + 4 disabled; smoke 3/3; six ToolLauncher tests; real Xvfb Tools menu process/window/close checks; Debian package/lifecycle; final manual PDF check green; evidence `history/evidence/2026/11/2026-11-07_november_consolidation.md` | full portable archive lifecycle not repeated; no algorithm/provider claims |
 | 2026-11-06 | Simplify Report Issue form and add safe browser fallback with optional asynchronous HTTPS relay | local + GitHub Actions | PR #560 / issue #561 | merge commit `82cb4bdb28d698daea14dc01914797cb59f6d1ed` | 21 QtTests, GUI build, unit/kernel/smoke, Debian package/lifecycle and manual checks passed; evidence `history/evidence/2026/11/2026-11-07_november_consolidation.md` | live relay-to-GitHub integration not exercised; browser handoff does not claim issue creation |

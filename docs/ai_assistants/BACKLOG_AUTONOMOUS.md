@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-11-12
+last_updated: 2026-11-13
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -919,13 +919,13 @@ A task moves to `done` only after required validation is green, evidence is revi
 ### AUTO-MODAL-005 — Execute complete ModalModel/DefaultNetwork GUI evolution
 
 - Priority: P1.
-- Status: **in progress** (explicit maintainer authorization 2026-11-12; active branch `WiP20261112/modal_model_gui`).
-- Environment: local Ubuntu, actual GCC/C++23, Qt6, CMake/Ninja, Google Test; integrate remotely only after final human review.
+- Status: **done_confirmed** (integrated by PR #577 on 2026-11-13).
+- Environment: local Ubuntu plus GitHub Actions; merge commit `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb` on `WorkInProgress`.
 - Source and full acceptance: [MODAL_NETWORK_GUI_EVOLUTION_PLAN.md](reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md), decision HUM-MODAL-003.
 - Integration base: synchronize the latest origin/WorkInProgress; branch example WiP20261112/modal_model_gui. Never develop directly on WorkInProgress.
 - Authorization: execute ALL milestones G0, A1–A5, B1–B5, C1–C6 and D1–D5 sequentially and autonomously, including fully functional contextual Graph/Markov/CPN GUI editors and faithful graphical animation of actual supported Network behavior. No intermediate approval for plan-covered decisions.
 - Scope/acceptance: all gates and end-to-end scenarios in the plan, small traceable commits, short persistent progress log, essential targeted validation throughout, final appropriate CMake/CTest/Qt verification. Focus on complete functional delivery, avoid excessive or repetitive audits/tests.
-- Non-goals: new mathematical semantics, broad plugin-system rewrite, dynamic GUI packaging/unload, unrelated AUTO-GUI-003 migrations, or merge without explicit maintainer authorization.
+- Non-goals: new mathematical semantics, broad plugin-system rewrite, dynamic GUI packaging/unload, and unrelated AUTO-GUI-003 migrations.
 - Blockers: only genuine unforeseen semantic, irreversible persistence, ownership, ABI or security decision, or indispensable failing validation. Report precise blocker; do not mark partial implementation complete.
 - Completion: all milestones and acceptance evidence complete; merge into WorkInProgress is explicitly authorized by the maintainer on 2026-11-13, subject to the required PR review and validation gates.
-- Current checkpoint: G0, A1–A5, B1–B5, C1–C6 and D1–D5 implemented and validated. GUI app build, full tests-unit (2,109 executed), full tests-kernel-unit (2,111 executed), runnable smoke tests (3/3), final focused EFSM regressions, and both affected manuals are validated. Four configured-disabled tests in each unit suite were not run. PR integration is authorized; see `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md`.
+- Completion checkpoint: all milestones and acceptance evidence are complete; PR #577 merged at `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb`. All 19 final-head hosted checks passed, including unit (2,109 executed; four disabled), kernel-unit (2,111 executed; four disabled), smoke (3/3 runnable), GUI builds, documentation, Debian packaging/Lintian and package lifecycle. The branch `WiP20261112/modal_model_gui` remains available for continued work. See `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md`.
