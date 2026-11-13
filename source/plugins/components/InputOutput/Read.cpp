@@ -106,13 +106,21 @@ ReadDestination::ReadDestination(std::string destination, bool attributeNotVaria
 }
 
 ReadDestination::~ReadDestination() {
-    if (_ownerModel != nullptr) {
-        for (SimulationControl* control : *_controls->list()) {
-            _ownerModel->getControls()->remove(control);
-            delete control;
-        }
+    _unregisterSimulationControls();
+    for (SimulationControl* control : *_controls->list()) {
+        delete control;
     }
     delete _controls;
+}
+
+void ReadDestination::_unregisterSimulationControls() {
+    if (_ownerModel == nullptr || !_controlsRegistered) return;
+    for (SimulationControl* control : *_controls->list()) {
+        _ownerModel->getControls()->remove(control);
+    }
+    // Retain the controls for a possibly active GUI binding, but remove all
+    // global model registrations as soon as the destination is retired.
+    _controlsRegistered = false;
 }
 
 std::string ReadDestination::getName() const { return _destination; }
@@ -133,7 +141,19 @@ List<SimulationControl*>* ReadDestination::getSimulationControls() const {
     return _controls;
 }
 void ReadDestination::ensureSimulationControls(Model* model) {
-    if (model == nullptr || _controls->size() != 0) return;
+    if (model == nullptr) return;
+    if (_controls->size() != 0) {
+        if (_ownerModel != model) {
+            throw std::invalid_argument("ReadDestination cannot move between models");
+        }
+        if (!_controlsRegistered) {
+            for (SimulationControl* control : *_controls->list()) {
+                model->getControls()->insert(control);
+            }
+            _controlsRegistered = true;
+        }
+        return;
+    }
     _ownerModel = model;
     auto* name = new SimulationControlGeneric<std::string>(
         std::bind(&ReadDestination::getDestination, this),
@@ -147,6 +167,7 @@ void ReadDestination::ensureSimulationControls(Model* model) {
     model->getControls()->insert(type);
     _controls->insert(name);
     _controls->insert(type);
+    _controlsRegistered = true;
 }
 
 std::string Read::convertEnumToStr(ReadFromType type) {
@@ -207,11 +228,15 @@ List<ReadDestination*>* Read::getDestinations() const {
 void Read::addDestination(ReadDestination* destination) {
     if (destination == nullptr ||
         _destinations->find(destination) != _destinations->list()->end()) return;
+    if (destination->_ownerRead != nullptr && destination->_ownerRead != this) {
+        throw std::invalid_argument("ReadDestination already belongs to another Read component");
+    }
+    _prepareDestination(destination);
+    _destinations->insert(destination);
+    destination->_ownerRead = this;
     _removedDestinations.erase(
         std::remove(_removedDestinations.begin(), _removedDestinations.end(), destination),
         _removedDestinations.end());
-    _prepareDestination(destination);
-    _destinations->insert(destination);
     _createEditableDataDefinitions();
 }
 void Read::removeDestination(ReadDestination* destination) {
@@ -219,6 +244,7 @@ void Read::removeDestination(ReadDestination* destination) {
         _destinations->find(destination) == _destinations->list()->end()) return;
     destination->setChangeCallback(nullptr);
     _destinations->remove(destination);
+    destination->_unregisterSimulationControls();
     // Keep the object alive if a GUI editor still refers to it. This component
     // retains ownership and destroys retired items on teardown.
     _removedDestinations.push_back(destination);
