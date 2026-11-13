@@ -1,5 +1,7 @@
 ---
 document_type: implementation-progress-evidence
+authority: informative
+owner: project-maintainer
 tracks: HUM-MODAL-003,AUTO-MODAL-005
 branch: WiP20261112/modal_model_gui
 base_commit: 6b0facf40e4225c80b4d77cc31f212f5b3a8844e
@@ -401,3 +403,10 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - Added `Edit EFSM Transition...` to the graphical context menu when exactly one transition is selected; it invokes the existing properties dialog and undoable property command.
 - Regression test opens that context action's dialog, changes the guard expression and verifies the model value. The existing MainWindow action test continues to verify undo.
 - `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.CreateTransitionAppearsInContextMenuForSelectedStates:EFSMNetworkEditor.SelectedTransitionCanBeEditedAndUndoneThroughTheMainWindowAction'` — PASS, 2/2.
+
+### Integration authorization and manual closeout
+
+- On 2026-11-13 the maintainer explicitly authorized a PR and merge of this branch into `WorkInProgress`, superseding the plan's earlier no-automatic-merge boundary for this candidate only. Merge remains subject to final-head PR checks and repository gates.
+- Updated the user EFSM guide for Property Editor association, generic `Open Network`, state/transition creation, and contextual transition editing. Updated the Developer Manual's Modal Network architecture section to remove stale branch-status claims and describe current extension/editor boundaries.
+- `cd docs/developers/ManualGenESyS_subrepo && ./make.sh` — PASS; regenerated `docs/ManualGenESyS.pdf` (398 pages).
+- `./validate_figure_specs.sh` — PASS. No undefined-reference/fatal LaTeX diagnostics were found; Developer Manual pages 250–251 were visually inspected for the updated section.
