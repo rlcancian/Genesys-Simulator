@@ -167,6 +167,31 @@ TEST_F(ReadFixture, PropertyEditorDefaultCreationAllowsChildNamingAndReordering)
     EXPECT_EQ(read->getDestinations()->getAtRank(0)->getDestination(), "FirstInput");
 }
 
+TEST_F(ReadFixture, DestinationKindAcceptsQtBooleanTextInBothDirections) {
+    auto* read = reader();
+    addAttribute(read, "ReversibleDestination");
+    ASSERT_EQ(read->getDestinations()->size(), 1u);
+    auto* destination = read->getDestinations()->getAtRank(0);
+    ASSERT_NE(destination, nullptr);
+    SimulationControl* kind = nullptr;
+    for (SimulationControl* control : *destination->getSimulationControls()->list()) {
+        if (control->getName() == "AttributeNotVariable") kind = control;
+    }
+    ASSERT_NE(kind, nullptr);
+    ASSERT_TRUE(destination->isAttributeNotVariable());
+
+    kind->setValue("false");
+    EXPECT_FALSE(destination->isAttributeNotVariable());
+    kind->setValue("true");
+    EXPECT_TRUE(destination->isAttributeNotVariable());
+    kind->setValue("0");
+    EXPECT_FALSE(destination->isAttributeNotVariable());
+    kind->setValue("1");
+    EXPECT_TRUE(destination->isAttributeNotVariable());
+    EXPECT_THROW(kind->setValue("invalid"), std::invalid_argument);
+    EXPECT_TRUE(destination->isAttributeNotVariable());
+}
+
 TEST_F(ReadFixture, FileRecordsAreConsumedInOrderAndRoutedAfterCompleteAssignments) {
     TemporaryInput file("# data\n\n10 25 3\n12 30 4\n15 28 2\n");
     auto* read = reader();
