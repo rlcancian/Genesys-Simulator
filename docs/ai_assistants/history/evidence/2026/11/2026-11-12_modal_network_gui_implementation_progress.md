@@ -32,6 +32,21 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 
 ## Executed changes
 
+### C1 responsibility map
+
+| Area | Current EFSM responsibility | Intended boundary |
+|---|---|---|
+| `mainwindow.cpp` | Builds EFSM actions; implements state/transition CRUD and dialogs; gates actions by EFSM casts; restores/captures network layouts; requests EFSM synchronization; serializer layout cleanup. | EFSM GUI extension/controller owns actions and editing; generic host provides model, scene, undo, navigation and serializer lifecycle hooks. |
+| `mainwindow.h` | EFSM action fields and handler declarations. | No EFSM-specific API or fields in the generic host. |
+| `GraphicalContextMenuController` | Maps EFSM transition graphics to semantic items. | Generic controller handles scene selection/context; extension receives the clicked graphic and contributes semantics/actions. |
+| `ModelGraphicsScene` | Owns a dedicated list of EFSM diagram items. | Scene owns generic extension graphics by lifetime or a formalism-neutral overlay registry. |
+| `EFSMNetworkDiagramProjection` | Builds/synchronizes state and transition graphics; called directly by builder, serializer and MainWindow. | EFSM extension registers projection and invokes it via a generic projection lifecycle. |
+| `EFSMNetworkDiagramCodec` / `GraphicalModelSerializer` | EFSM-specific `.gui` section parse/write and cached per-network layout; serializer has direct codec dispatch. | Keep file orchestration generic and register per-formalism section codecs; retain unknown records losslessly. |
+| EFSM undo commands | Dedicated commands mutate EFSM state membership, initial state, transitions and properties. | Remain GUI-only/domain-aware in the EFSM extension module and share the scene undo stack. |
+
+The first generic context-menu extension hook is implemented and tested. This
+map is a source inventory, not evidence that extraction is complete.
+
 - Removed `Create EFSM Network` and `Select EFSM Network` from the Model menu and
   ModalModelDefault context menu, including their MainWindow action handlers.
 - The shared open action is labeled `Open Network` for ModalModelDefault and
