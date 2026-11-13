@@ -9,6 +9,7 @@
 #include "kernel/simulator/model/ModelComponent.h"
 
 class Model;
+class Read;
 class SimulationControl;
 
 /**
@@ -36,11 +37,15 @@ public:
     List<SimulationControl*>* getSimulationControls() const;
 
 private:
+    friend class Read;
+    void _unregisterSimulationControls();
     std::string _destination;
     bool _attributeNotVariable = true;
     std::function<void()> _onChange;
     List<SimulationControl*>* _controls = new List<SimulationControl*>();
     Model* _ownerModel = nullptr;
+    Read* _ownerRead = nullptr; // sole owning component; retained through GUI removal
+    bool _controlsRegistered = false;
 };
 
 /**
