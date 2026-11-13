@@ -75,6 +75,7 @@
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QMenu>
+#include <QMessageBox>
 #include <QLocale>
 #include <QPlainTextEdit>
 #include <QSet>
@@ -106,6 +107,24 @@ void drainGuiEvents() {
     for (int i = 0; i < 8; ++i) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     }
+}
+
+void acceptModalModelNetworkSchemaConfirmation() {
+    QTimer::singleShot(0, []() {
+        auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        if (message != nullptr && message->button(QMessageBox::Yes) != nullptr) {
+            message->button(QMessageBox::Yes)->click();
+        }
+    });
+}
+
+void rejectModalModelNetworkSchemaConfirmation() {
+    QTimer::singleShot(0, []() {
+        auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        if (message != nullptr && message->button(QMessageBox::No) != nullptr) {
+            message->button(QMessageBox::No)->click();
+        }
+    });
 }
 
 class ScopedDefaultLocale {
@@ -1051,8 +1070,24 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
         drainGuiEvents();
         QComboBox* selector = browser.findChild<QComboBox*>();
         ASSERT_NE(selector, nullptr);
-        const int index = selector->findText(choice);
+        int index = selector->findText(choice);
         ASSERT_GE(index, 0) << choice.toStdString();
+        if (candidate == networks[1]) {
+            rejectModalModelNetworkSchemaConfirmation();
+            selector->setCurrentIndex(index);
+            drainGuiEvents();
+            EXPECT_EQ(component.getNetwork(), networks[0]);
+            item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+            ASSERT_NE(item, nullptr);
+            browser.setCurrentItem(item);
+            browser.editItem(item);
+            drainGuiEvents();
+            selector = browser.findChild<QComboBox*>();
+            ASSERT_NE(selector, nullptr);
+            index = selector->findText(choice);
+            ASSERT_GE(index, 0);
+        }
+        acceptModalModelNetworkSchemaConfirmation();
         selector->setCurrentIndex(index);
         drainGuiEvents();
         EXPECT_EQ(component.getNetwork(), candidate) << choice.toStdString();
@@ -1120,6 +1155,7 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
         .arg(createdNetwork->getId());
     const int reattachIndex = selector->findText(createdChoice);
     ASSERT_GE(reattachIndex, 0);
+    acceptModalModelNetworkSchemaConfirmation();
     selector->setCurrentIndex(reattachIndex);
     drainGuiEvents();
     EXPECT_EQ(component.getNetwork(), createdNetwork);
@@ -1139,6 +1175,7 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     ASSERT_NE(selector, nullptr);
     const int bindingNetworkIndex = selector->findText(bindingChoice);
     ASSERT_GE(bindingNetworkIndex, 0);
+    acceptModalModelNetworkSchemaConfirmation();
     selector->setCurrentIndex(bindingNetworkIndex);
     drainGuiEvents();
     EXPECT_EQ(component.getNetwork(), bindingNetwork);

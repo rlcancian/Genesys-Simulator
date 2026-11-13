@@ -166,6 +166,40 @@ void pushNetworkReferenceUndo(ModelGraphicsScene* scene, ObjectPropertyBrowser* 
     scene->getUndoStack()->push(new ModalModelNetworkReferenceUndoCommand(adapter, before, after, scene, browser));
 }
 
+DefaultNetwork* resolveNetworkChoice(ModalModelDefault* adapter, const std::string& choice) {
+    if (adapter == nullptr || adapter->getParentModel() == nullptr
+        || adapter->getParentModel()->getDataManager() == nullptr) return nullptr;
+    const std::size_t delimiter = choice.find("::");
+    const std::size_t identityStart = choice.rfind(" [#");
+    if (delimiter == std::string::npos || identityStart == std::string::npos
+        || identityStart <= delimiter + 2 || choice.empty() || choice.back() != ']') return nullptr;
+    try {
+        const auto id = static_cast<Util::identification>(std::stoul(
+            choice.substr(identityStart + 3, choice.size() - identityStart - 4)));
+        auto* definition = adapter->getParentModel()->getDataManager()->getDataDefinition(
+            choice.substr(0, delimiter), id);
+        auto* network = dynamic_cast<DefaultNetwork*>(definition);
+        if (network == nullptr) return nullptr;
+        const std::string expectedName = choice.substr(delimiter + 2, identityStart - delimiter - 2);
+        return network->getName() == expectedName ? network : nullptr;
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+bool hasDifferentPortSchema(const DefaultNetwork* first, const DefaultNetwork* second) {
+    if (first == nullptr || second == nullptr) return first != second;
+    if (first->getNumInputPorts() != second->getNumInputPorts()
+        || first->getNumOutputPorts() != second->getNumOutputPorts()) return true;
+    for (unsigned int i = 0; i < first->getNumInputPorts(); ++i) {
+        if (first->getInputPortName(i) != second->getInputPortName(i)) return true;
+    }
+    for (unsigned int i = 0; i < first->getNumOutputPorts(); ++i) {
+        if (first->getOutputPortName(i) != second->getOutputPortName(i)) return true;
+    }
+    return false;
+}
+
 constexpr int kSourceCodePreviewContentLines = 4;
 constexpr int kSourceCodeCompactEditorLines = 5;
 
@@ -2705,6 +2739,18 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
 
     auto* modalAdapter = dynamic_cast<ModalModelDefault*>(_modelObject);
     DefaultNetwork* previousNetwork = modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr;
+    DefaultNetwork* selectedNetwork = resolveNetworkChoice(modalAdapter, objectName.toStdString());
+    if (previousNetwork != nullptr && selectedNetwork != nullptr && previousNetwork != selectedNetwork
+        && hasDifferentPortSchema(previousNetwork, selectedNetwork)) {
+        const auto answer = QMessageBox::question(
+            this, tr("Replace Network with a different port schema?"),
+            tr("The selected Network has different input or output ports. Bindings will be reconciled by port name; unmatched default bindings may be initialized, and changes that would lose custom bindings or alter connected-port meaning will be rejected. Continue?"),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (answer != QMessageBox::Yes) {
+            _scheduleDeferredRebuild();
+            return false;
+        }
+    }
 
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
