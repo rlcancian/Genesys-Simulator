@@ -916,7 +916,9 @@ A task moves to `done` only after required validation is green, evidence is revi
 
 ### AUTO-GUI-004 — Extract concrete plugin-specific GUI logic before final graphical-plugin API
 
-- Priority: `P1`; Status: `running` (authorized 2026-11-13; first bounded slice implemented in draft PR #579, tests pending).
+- Priority: `P1`
+- Status: `running`
+- Authorization: maintainer request dated 2026-11-13 after ModalModel/Network integration; first bounded slice implemented in draft PR #579, tests pending.
 - Decision: `HUM-ARCH-006`; plan: [GUI_EXTENSIONS_EXTRACTION_PLAN.md](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md).
 - Environment: `github` for bounded source patch and CI evidence; `local` for interactive GUI smoke and optional focused debugging.
 - Branch: `WiP202611/gui-plugin-specific-extraction`, based on `WorkInProgress` `2ad98f96311e9c13d27078f9dd83bbffafdabe5d`; [PR #579](https://github.com/rlcancian/Genesys-Simulator/pull/579) targets `WorkInProgress`.

@@ -177,7 +177,8 @@ A decision recorded here is not implemented automatically unless a corresponding
 
 ### HUM-ARCH-006 — Extraction-first isolation of plugin-specific GUI behavior
 
-- Status: `decision-recorded`; priority: `P1`.
+- Priority: `P1`
+- Status: `decision-recorded`
 - Decision date: 2026-11-13, after integration of ModalModel/Network PRs #577 and #578.
 - Maintainer decision: **choose generic registry dispatch (alternative B)** over relocating code while retaining direct `MainWindow -> Decide` references. Reuse `source/applications/gui/genesys/extensions/plugins/` and the already-implemented GUI contributions; avoid another framework or new source-root `plugins/integrated_codes`.
 - Change in sequence: do not finalize a broad animation/window/renderer GUI-plugin API before extracting currently embedded domain-specific behavior from MainWindow, generic dialogs/controllers, Property Editor, scene and plugin tree. Catalogue the *actual* needs demonstrated by the extractions, then evolve shared contracts. The preceding G0–G7 execution strategy from the unmerged draft PR #575 is superseded as a work order, **not as an architectural invariant**.
