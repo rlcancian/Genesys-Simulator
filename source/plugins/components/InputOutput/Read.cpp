@@ -52,6 +52,12 @@ ReadDestination::ReadDestination(std::string destination, bool attributeNotVaria
 }
 
 ReadDestination::~ReadDestination() {
+    if (_ownerModel != nullptr) {
+        for (SimulationControl* control : *_controls->list()) {
+            _ownerModel->getControls()->remove(control);
+            delete control;
+        }
+    }
     delete _controls;
 }
 
@@ -74,6 +80,7 @@ List<SimulationControl*>* ReadDestination::getSimulationControls() const {
 }
 void ReadDestination::ensureSimulationControls(Model* model) {
     if (model == nullptr || _controls->size() != 0) return;
+    _ownerModel = model;
     auto* name = new SimulationControlGeneric<std::string>(
         std::bind(&ReadDestination::getDestination, this),
         std::bind(&ReadDestination::setDestination, this, std::placeholders::_1),
@@ -129,6 +136,10 @@ Read::~Read() {
         destination->setChangeCallback(nullptr);
         delete destination;
     }
+    for (ReadDestination* destination : _removedDestinations) {
+        destination->setChangeCallback(nullptr);
+        delete destination;
+    }
     delete _destinations;
 }
 
@@ -150,17 +161,22 @@ List<ReadDestination*>* Read::getDestinations() const {
 }
 void Read::addDestination(ReadDestination* destination) {
     if (destination == nullptr) return;
+    _removedDestinations.erase(
+        std::remove(_removedDestinations.begin(), _removedDestinations.end(), destination),
+        _removedDestinations.end());
     _prepareDestination(destination);
     _destinations->insert(destination);
     _createEditableDataDefinitions();
 }
 void Read::removeDestination(ReadDestination* destination) {
-    if (destination == nullptr) return;
+    if (destination == nullptr ||
+        _destinations->find(destination) == _destinations->list()->end()) return;
     destination->setChangeCallback(nullptr);
     _destinations->remove(destination);
+    // Keep the object alive if a GUI editor still refers to it. This component
+    // retains ownership and destroys retired items on teardown.
+    _removedDestinations.push_back(destination);
     _createEditableDataDefinitions();
-    // The list editor follows Assign: owner deletes removed elements on teardown.
-    // Removal transfers ownership to the caller/editor, as with Assign.
 }
 void Read::setKeyboardInputProvider(KeyboardInputProvider provider) {
     _keyboardInput = std::move(provider);
