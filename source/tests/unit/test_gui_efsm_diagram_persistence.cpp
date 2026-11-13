@@ -2995,6 +2995,27 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     EXPECT_EQ(networkTabIndex, tabs->indexOf(networkView));
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<EFSMNetwork>()), 1u);
 
+    tabs->setCurrentIndex(rootTabIndex);
+    QApplication::processEvents();
+    auto* networkItem = window.myScene()->findGraphicalModelDataDefinition(network);
+    if (networkItem == nullptr) {
+        Plugin* networkPlugin = simulator->getPluginManager()->find(Util::TypeOf<EFSMNetwork>());
+        ASSERT_NE(networkPlugin, nullptr);
+        networkItem = window.myScene()->addGraphicalModelDataDefinition(
+            networkPlugin, network, QPointF(520, 220));
+    }
+    ASSERT_NE(networkItem, nullptr);
+    window.myScene()->clearSelection();
+    networkItem->setSelected(true);
+    QApplication::processEvents();
+    EXPECT_EQ(openAction->text(), QStringLiteral("Open Network"));
+    ASSERT_TRUE(openAction->isEnabled());
+    openAction->trigger();
+    QApplication::processEvents();
+    EXPECT_EQ(tabs->count(), rootCount + 1);
+    EXPECT_EQ(tabs->currentWidget(), networkView);
+    EXPECT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
+
     ASSERT_TRUE(QMetaObject::invokeMethod(tabs, "tabCloseRequested", Qt::DirectConnection,
                                          Q_ARG(int, tabs->indexOf(networkView))));
     QApplication::processEvents();
