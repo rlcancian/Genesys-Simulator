@@ -205,7 +205,8 @@ List<ReadDestination*>* Read::getDestinations() const {
     return _destinations;
 }
 void Read::addDestination(ReadDestination* destination) {
-    if (destination == nullptr) return;
+    if (destination == nullptr ||
+        _destinations->find(destination) != _destinations->list()->end()) return;
     _removedDestinations.erase(
         std::remove(_removedDestinations.begin(), _removedDestinations.end(), destination),
         _removedDestinations.end());
