@@ -1969,57 +1969,7 @@ void MainWindow::_actualizeActions() {
                                                 && !simulationInteractionLocked
                                                 && _canOpenSubmodelFor(_selectedSubmodelOwner()));
     }
-    const bool efsmContext = opened && !simulationInteractionLocked && ui != nullptr
-                             && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr
-                             && ui->graphicsView->getScene()->hasModelLevelFilter()
-                             && ui->graphicsView->getScene()->modelLevelFilter() != 0
-                             && simulator->getModelManager()->current() != nullptr
-                             && simulator->getModelManager()->current()->getDataManager() != nullptr
-                             && simulator->getModelManager()->current()->getDataManager()->getDataDefinition(
-                                    Util::TypeOf<EFSMNetwork>(), ui->graphicsView->getScene()->modelLevelFilter()) != nullptr;
-    if (_actionCreateEfsmState != nullptr) {
-        _actionCreateEfsmState->setEnabled(efsmContext);
-    }
-    if (_actionCreateEfsmTransition != nullptr) {
-        _actionCreateEfsmTransition->setEnabled(efsmContext);
-    }
-    if (_actionEditEfsmTransition != nullptr) {
-        int selectedTransitionCount = 0;
-        if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr) {
-            for (QGraphicsItem* item : ui->graphicsView->getScene()->selectedItems()) {
-                if (dynamic_cast<EFSMTransitionGraphicsItem*>(item) != nullptr) {
-                    ++selectedTransitionCount;
-                }
-            }
-        }
-        _actionEditEfsmTransition->setEnabled(efsmContext && selectedTransitionCount == 1);
-    }
-    if (_actionSetEfsmInitialState != nullptr) {
-        int selectedStateCount = 0;
-        if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr) {
-            for (QGraphicsItem* item : ui->graphicsView->getScene()->selectedItems()) {
-                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
-                if (graphicalDefinition != nullptr
-                    && dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) != nullptr) {
-                    ++selectedStateCount;
-                }
-            }
-        }
-        _actionSetEfsmInitialState->setEnabled(efsmContext && selectedStateCount == 1);
-    }
-    if (_actionEditEfsmState != nullptr) {
-        int selectedStateCount = 0;
-        if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr) {
-            for (QGraphicsItem* item : ui->graphicsView->getScene()->selectedItems()) {
-                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
-                if (graphicalDefinition != nullptr
-                    && dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) != nullptr) {
-                    ++selectedStateCount;
-                }
-            }
-        }
-        _actionEditEfsmState->setEnabled(efsmContext && selectedStateCount == 1);
-    }
+    _efsmNetworkEditorController->actualizeActions(opened, simulationInteractionLocked);
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.
     ui->toolBarEdit->setEnabled(opened && !simulationInteractionLocked);

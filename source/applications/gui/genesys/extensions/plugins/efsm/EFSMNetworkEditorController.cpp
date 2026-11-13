@@ -365,3 +365,57 @@ void EFSMNetworkEditorController::editState() {
     _host->_graphicalModelHasChanged = true;
     _host->_actualizeActions();
 }
+
+void EFSMNetworkEditorController::actualizeActions(bool opened, bool simulationInteractionLocked) {
+    const bool efsmContext = opened && !simulationInteractionLocked && _host->ui != nullptr
+                             && _host->ui->graphicsView != nullptr && _host->ui->graphicsView->getScene() != nullptr
+                             && _host->ui->graphicsView->getScene()->hasModelLevelFilter()
+                             && _host->ui->graphicsView->getScene()->modelLevelFilter() != 0
+                             && _host->simulator->getModelManager()->current() != nullptr
+                             && _host->simulator->getModelManager()->current()->getDataManager() != nullptr
+                             && _host->simulator->getModelManager()->current()->getDataManager()->getDataDefinition(
+                                    Util::TypeOf<EFSMNetwork>(), _host->ui->graphicsView->getScene()->modelLevelFilter()) != nullptr;
+    if (_host->_actionCreateEfsmState != nullptr) {
+        _host->_actionCreateEfsmState->setEnabled(efsmContext);
+    }
+    if (_host->_actionCreateEfsmTransition != nullptr) {
+        _host->_actionCreateEfsmTransition->setEnabled(efsmContext);
+    }
+    if (_host->_actionEditEfsmTransition != nullptr) {
+        int selectedTransitionCount = 0;
+        if (_host->ui != nullptr && _host->ui->graphicsView != nullptr && _host->ui->graphicsView->getScene() != nullptr) {
+            for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
+                if (dynamic_cast<EFSMTransitionGraphicsItem*>(item) != nullptr) {
+                    ++selectedTransitionCount;
+                }
+            }
+        }
+        _host->_actionEditEfsmTransition->setEnabled(efsmContext && selectedTransitionCount == 1);
+    }
+    if (_host->_actionSetEfsmInitialState != nullptr) {
+        int selectedStateCount = 0;
+        if (_host->ui != nullptr && _host->ui->graphicsView != nullptr && _host->ui->graphicsView->getScene() != nullptr) {
+            for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
+                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+                if (graphicalDefinition != nullptr
+                    && dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) != nullptr) {
+                    ++selectedStateCount;
+                }
+            }
+        }
+        _host->_actionSetEfsmInitialState->setEnabled(efsmContext && selectedStateCount == 1);
+    }
+    if (_host->_actionEditEfsmState != nullptr) {
+        int selectedStateCount = 0;
+        if (_host->ui != nullptr && _host->ui->graphicsView != nullptr && _host->ui->graphicsView->getScene() != nullptr) {
+            for (QGraphicsItem* item : _host->ui->graphicsView->getScene()->selectedItems()) {
+                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+                if (graphicalDefinition != nullptr
+                    && dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) != nullptr) {
+                    ++selectedStateCount;
+                }
+            }
+        }
+        _host->_actionEditEfsmState->setEnabled(efsmContext && selectedStateCount == 1);
+    }
+}

@@ -12,6 +12,7 @@ public:
     void editTransition();
     void setInitialState();
     void editState();
+    void actualizeActions(bool opened, bool simulationInteractionLocked);
 
 private:
     MainWindow* _host = nullptr;
