@@ -220,6 +220,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
         test_gui_gmdd_layout.cpp
         test_gui_submodel_level.cpp
         test_gui_property_editor.cpp
+        test_gui_expression_builder.cpp
         test_gui_efsm_diagram_persistence.cpp
         test_gui_model_save_diagnostics.cpp
         ${GENESYS_QT_GUI_TEST_SOURCES}
