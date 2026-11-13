@@ -73,6 +73,27 @@ public:
 private:
     Read* _owner;
 };
+
+// The GUI serializes booleans as "true"/"false", whereas the legacy generic
+// boolean control parses only numeric 0/1. Scope the conversion to Read.
+class ReadBooleanControl final : public SimulationControlGeneric<bool> {
+public:
+    using SimulationControlGeneric<bool>::SimulationControlGeneric;
+
+    void setValue(std::string value, bool remove = false) override {
+        value = trimCopy(value);
+        std::transform(value.begin(), value.end(), value.begin(), [](unsigned char ch) {
+            return static_cast<char>(std::tolower(ch));
+        });
+        if (value == "true" || value == "1") {
+            SimulationControlGeneric<bool>::setValue("1", remove);
+        } else if (value == "false" || value == "0") {
+            SimulationControlGeneric<bool>::setValue("0", remove);
+        } else {
+            throw std::invalid_argument("Read boolean property requires true, false, 1 or 0");
+        }
+    }
+};
 } // namespace
 
 ReadDestination::ReadDestination(Model* model, std::string destination, bool attributeNotVariable)
@@ -118,7 +139,7 @@ void ReadDestination::ensureSimulationControls(Model* model) {
         std::bind(&ReadDestination::getDestination, this),
         std::bind(&ReadDestination::setDestination, this, std::placeholders::_1),
         Util::TypeOf<ReadDestination>(), getName(), "Destination", "Attribute or Variable name; optional [index].");
-    auto* type = new SimulationControlGeneric<bool>(
+    auto* type = new ReadBooleanControl(
         std::bind(&ReadDestination::isAttributeNotVariable, this),
         std::bind(&ReadDestination::setAttributeNotVariable, this, std::placeholders::_1),
         Util::TypeOf<ReadDestination>(), getName(), "AttributeNotVariable", "True: entity attribute; false: model variable.");
