@@ -266,6 +266,11 @@ bool Read::_validIndex(const std::string& index) {
     });
     if (!numeric) return true;
 
+    // SparseValueStore materializes numeric indices as a dense vector. An
+    // otherwise valid index such as [4294967294] would attempt a multi-GB
+    // allocation. Keep Read input bounded without changing global stores.
+    constexpr std::size_t kMaxNumericIndexCells = 1'000'000;
+    std::size_t minimumCells = 1;
     std::istringstream parts(index);
     std::string part;
     while (std::getline(parts, part, ',')) {
@@ -280,6 +285,12 @@ bool Read::_validIndex(const std::string& index) {
             value == std::numeric_limits<unsigned int>::max()) {
             return false;
         }
+        const std::size_t extent = static_cast<std::size_t>(value) + 1u;
+        if (extent > kMaxNumericIndexCells ||
+            minimumCells > kMaxNumericIndexCells / extent) {
+            return false;
+        }
+        minimumCells *= extent;
     }
     // A trailing comma would be ignored by std::getline but is not a valid
     // sparse multidimensional key.
@@ -360,8 +371,14 @@ bool Read::_getRecord(std::string& record, std::string& error) {
         std::string prompt = "Read \"" + getName() + "\" - enter " +
             std::to_string(_destinations->size()) + " numeric value(s), separated by spaces: ";
         if (_keyboardInput) {
-            if (_keyboardInput(prompt, record)) return true;
-            error = "keyboard input cancelled or unavailable";
+            try {
+                if (_keyboardInput(prompt, record)) return true;
+                error = "keyboard input cancelled or unavailable";
+            } catch (const std::exception& e) {
+                error = "keyboard input provider failed: " + std::string(e.what());
+            } catch (...) {
+                error = "keyboard input provider failed with an unknown exception";
+            }
             return false;
         }
         if (!terminalInputAvailable()) {
