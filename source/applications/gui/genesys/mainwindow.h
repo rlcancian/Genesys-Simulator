@@ -44,6 +44,7 @@ class SceneToolController;
 class GraphicalContextMenuController;
 class DialogUtilityController;
 class GuiExtensionManager;
+class EFSMNetworkEditorController;
 class QAction;
 class QMenu;
 class QTabWidget;
@@ -77,6 +78,7 @@ class MainWindow : public QMainWindow {
 
     // Allow the Phase 4 event controller to register private compatibility handlers.
     friend class SimulationEventController;
+    friend class EFSMNetworkEditorController;
 
 public:
     /** @brief Builds the composition root, wiring controllers/services and legacy Qt surface. */
@@ -483,13 +485,6 @@ private: // opened-model document state
     void _openSelectedSubmodel();
     /** @brief Returns the selected ModalModelDefault adapter, if any. */
     ModalModelDefault* _selectedModalModelDefault() const;
-    /** @brief Creates one FSMState in the active EFSM Network context. */
-    void _createEfsmState();
-    /** @brief Creates one EFSMTransition between two selected states. */
-    void _createEfsmTransition();
-    void _editEfsmTransition();
-    void _setEfsmInitialState();
-    void _editEfsmState();
     void _refreshRecentModelsMenu();
     bool _openRecentModelFile(const QString& fileName);
     /** @brief Stores the active editor/dirty state before switching away from the current model. */
@@ -558,6 +553,7 @@ private: // interface and model main elements to join
     QAction* _actionEditEfsmTransition = nullptr;
     QAction* _actionSetEfsmInitialState = nullptr;
     QAction* _actionEditEfsmState = nullptr;
+    std::unique_ptr<EFSMNetworkEditorController> _efsmNetworkEditorController;
     QMenu* _menuOpenRecent = nullptr;
     QList<QAction*> _recentModelActions;
     // Keep core simulation command gateway owned by MainWindow composition root.

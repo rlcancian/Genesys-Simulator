@@ -50,13 +50,9 @@
 #include "controllers/SceneToolController.h"
 // Add graphical context-menu controller include for canvas popup orchestration.
 #include "controllers/GraphicalContextMenuController.h"
+#include "extensions/plugins/efsm/EFSMNetworkEditorController.h"
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
-#include "actions/EFSMTransitionUndoCommand.h"
-#include "actions/EFSMTransitionPropertiesUndoCommand.h"
-#include "actions/EFSMInitialStateUndoCommand.h"
-#include "actions/EFSMStateMembershipUndoCommand.h"
-#include "actions/EFSMStatePropertiesUndoCommand.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "services/EFSMNetworkDiagramProjection.h"
 #include "extensions/GuiExtensionContracts.h"
@@ -337,16 +333,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _actionOpenSelectedSubmodel->setObjectName(QStringLiteral("actionOpenSelectedSubmodel"));
     _actionOpenSelectedSubmodel->setToolTip(tr("Open a graphical tab scoped to the selected item's internal model level."));
     connect(_actionOpenSelectedSubmodel, &QAction::triggered, this, [this]() { _openSelectedSubmodel(); });
+    _efsmNetworkEditorController = std::make_unique<EFSMNetworkEditorController>(this);
     _actionCreateEfsmState = new QAction(tr("Create EFSM State"), this);
-    connect(_actionCreateEfsmState, &QAction::triggered, this, [this]() { _createEfsmState(); });
+    connect(_actionCreateEfsmState, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->createState(); });
     _actionCreateEfsmTransition = new QAction(tr("Create EFSM Transition"), this);
-    connect(_actionCreateEfsmTransition, &QAction::triggered, this, [this]() { _createEfsmTransition(); });
+    connect(_actionCreateEfsmTransition, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->createTransition(); });
     _actionEditEfsmTransition = new QAction(tr("Edit EFSM Transition..."), this);
-    connect(_actionEditEfsmTransition, &QAction::triggered, this, [this]() { _editEfsmTransition(); });
+    connect(_actionEditEfsmTransition, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->editTransition(); });
     _actionSetEfsmInitialState = new QAction(tr("Set Selected EFSM State as Initial"), this);
-    connect(_actionSetEfsmInitialState, &QAction::triggered, this, [this]() { _setEfsmInitialState(); });
+    connect(_actionSetEfsmInitialState, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->setInitialState(); });
     _actionEditEfsmState = new QAction(tr("Edit EFSM State..."), this);
-    connect(_actionEditEfsmState, &QAction::triggered, this, [this]() { _editEfsmState(); });
+    connect(_actionEditEfsmState, &QAction::triggered, this, [this]() { _efsmNetworkEditorController->editState(); });
     _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
@@ -938,335 +935,15 @@ ModalModelDefault* MainWindow::_selectedModalModelDefault() const {
                : nullptr;
 }
 
-void MainWindow::_createEfsmState() {
-    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
-        || simulator == nullptr || simulator->getModelManager() == nullptr) {
-        return;
-    }
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0) {
-        return;
-    }
-    Model* model = simulator->getModelManager()->current();
-    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
-                                                    ? model->getDataManager()->getDataDefinition(
-                                                          Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
-                                                    : nullptr);
-    if (network == nullptr) {
-        return;
-    }
-    bool accepted = false;
-    const QString name = QInputDialog::getText(this, tr("Create EFSM State"), tr("State name:"),
-                                               QLineEdit::Normal, tr("State"), &accepted);
-    if (!accepted || name.trimmed().isEmpty()) {
-        return;
-    }
-    if (model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), name.toStdString()) != nullptr) {
-        QMessageBox::warning(this, tr("Create EFSM State"), tr("A state with that name already exists in this model."));
-        return;
-    }
-    auto state = std::make_unique<FSMState>(model, name.toStdString());
-    FSMState* statePointer = state.get();
-    QUndoStack* undoStack = scene->getUndoStack();
-    EFSMStateMembershipUndoCommand* command = nullptr;
-    if (undoStack != nullptr) {
-        command = new EFSMStateMembershipUndoCommand(model, network, std::move(state));
-        undoStack->push(command);
-    } else {
-        network->addState(state.release());
-    }
-    const bool stateIsRegistered = model->getDataManager()->getDataDefinition(
-        Util::TypeOf<FSMState>(), statePointer->getId()) == statePointer;
-    const bool stateIsInNetwork = network->getStates()->find(statePointer) != network->getStates()->list()->end();
-    if (!stateIsRegistered || !stateIsInNetwork) {
-        if (undoStack != nullptr && command != nullptr) {
-            command->setObsolete(true);
-            undoStack->undo();
-        } else {
-            network->removeState(statePointer);
-            model->getDataManager()->remove(statePointer);
-            delete statePointer;
-        }
-        QMessageBox::warning(this, tr("Create EFSM State"), tr("The state could not be registered in this Network."));
-        return;
-    }
-    _graphicalModelHasChanged = true;
-    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
-    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
-    _actualizeActions();
-}
 
-void MainWindow::_createEfsmTransition() {
-    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
-        || simulator == nullptr || simulator->getModelManager() == nullptr) {
-        return;
-    }
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0) {
-        return;
-    }
-    QList<FSMState*> selectedStates;
-    for (QGraphicsItem* item : scene->selectedItems()) {
-        if (auto* graphicalState = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
-            if (auto* state = dynamic_cast<FSMState*>(graphicalState->getDataDefinition())) {
-                selectedStates.append(state);
-            }
-        }
-    }
-    if (selectedStates.size() < 1 || selectedStates.size() > 2) {
-        QMessageBox::information(this, tr("Create EFSM Transition"),
-                                 tr("Select one state for a self-loop or two states for a directed transition."));
-        return;
-    }
-    const bool selfLoopOnly = selectedStates.size() == 1;
-    Model* model = simulator->getModelManager()->current();
-    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
-                                                    ? model->getDataManager()->getDataDefinition(
-                                                          Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
-                                                    : nullptr);
-    if (network == nullptr || network->getStates()->find(selectedStates.at(0)) == network->getStates()->list()->end()
-        || (!selfLoopOnly
-            && network->getStates()->find(selectedStates.at(1)) == network->getStates()->list()->end())) {
-        return;
-    }
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Create EFSM Transition"));
-    auto* form = new QFormLayout(&dialog);
-    auto* source = new QComboBox(&dialog);
-    auto* destination = new QComboBox(&dialog);
-    for (FSMState* state : selectedStates) {
-        const QString stateName = QString::fromStdString(state->getName());
-        source->addItem(stateName);
-        destination->addItem(stateName);
-    }
-    source->setEnabled(!selfLoopOnly);
-    destination->setEnabled(!selfLoopOnly);
-    auto* name = new QLineEdit(&dialog);
-    form->addRow(tr("Source"), source);
-    form->addRow(tr("Destination"), destination);
-    form->addRow(tr("Name"), name);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    form->addRow(buttons);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
-    const int sourceIndex = source->currentIndex();
-    const int destinationIndex = destination->currentIndex();
-    if (sourceIndex < 0 || sourceIndex >= selectedStates.size()
-        || destinationIndex < 0 || destinationIndex >= selectedStates.size()) {
-        return;
-    }
-    auto transition = std::make_unique<EFSMTransition>(selectedStates.at(sourceIndex),
-                                                       selectedStates.at(destinationIndex),
-                                                       name->text().toStdString());
-    EFSMTransition* transitionPointer = transition.get();
-    QUndoStack* undoStack = scene->getUndoStack();
-    EFSMTransitionUndoCommand* undoCommand = nullptr;
-    if (undoStack == nullptr) {
-        network->addTransition(transition.release());
-    } else {
-        undoCommand = new EFSMTransitionUndoCommand(network, std::move(transition));
-        undoStack->push(undoCommand);
-    }
-    const bool transitionIsRegistered = network->getTransitions()->find(transitionPointer)
-        != network->getTransitions()->list()->end();
-    if (!transitionIsRegistered) {
-        if (undoStack != nullptr && undoCommand != nullptr) {
-            undoCommand->setObsolete(true);
-            undoStack->undo();
-        } else {
-            network->removeTransition(transitionPointer);
-        }
-        QMessageBox::warning(this, tr("Create EFSM Transition"),
-                             tr("The transition could not be registered in this Network."));
-        return;
-    }
-    _graphicalModelHasChanged = true;
-    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
-    _actualizeActions();
-}
 
-void MainWindow::_editEfsmTransition() {
-    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
-        || simulator == nullptr || simulator->getModelManager() == nullptr) {
-        return;
-    }
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0 || scene->getUndoStack() == nullptr) {
-        return;
-    }
-    EFSMTransitionGraphicsItem* selectedItem = nullptr;
-    for (QGraphicsItem* item : scene->selectedItems()) {
-        auto* candidate = dynamic_cast<EFSMTransitionGraphicsItem*>(item);
-        if (candidate == nullptr) {
-            continue;
-        }
-        if (selectedItem != nullptr) {
-            return;
-        }
-        selectedItem = candidate;
-    }
-    Model* model = simulator->getModelManager()->current();
-    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
-        ? model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
-        : nullptr);
-    if (network == nullptr || selectedItem == nullptr || selectedItem->transition() == nullptr
-        || network->getTransitions()->find(selectedItem->transition()) == network->getTransitions()->list()->end()) {
-        return;
-    }
 
-    EFSMTransition* transition = selectedItem->transition();
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Edit EFSM Transition"));
-    auto* form = new QFormLayout(&dialog);
-    auto* name = new QLineEdit(QString::fromStdString(transition->getName()), &dialog);
-    auto* guard = new QLineEdit(QString::fromStdString(transition->getGuardExpression()), &dialog);
-    auto* output = new QLineEdit(QString::fromStdString(transition->getOutputExpression()), &dialog);
-    auto* input = new QLineEdit(QString::fromStdString(transition->getInputEvent()), &dialog);
-    auto* priority = new QSpinBox(&dialog);
-    priority->setRange(0, std::numeric_limits<int>::max());
-    priority->setValue(static_cast<int>(std::min<unsigned int>(transition->getPriority(), std::numeric_limits<int>::max())));
-    auto* trigger = new QLineEdit(QString::fromStdString(transition->getTriggerEvent()), &dialog);
-    auto* probability = new QLineEdit(QString::fromStdString(transition->getProbabilityExpression()), &dialog);
-    form->addRow(tr("Name"), name);
-    form->addRow(tr("Guard expression"), guard);
-    form->addRow(tr("Output expression"), output);
-    form->addRow(tr("Input event"), input);
-    form->addRow(tr("Priority"), priority);
-    form->addRow(tr("Trigger event"), trigger);
-    form->addRow(tr("Probability expression"), probability);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    form->addRow(buttons);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
 
-    EFSMTransitionPropertiesUndoCommand::Properties updated;
-    updated.name = name->text().toStdString();
-    updated.guardExpression = guard->text().toStdString();
-    updated.outputExpression = output->text().toStdString();
-    updated.inputEvent = input->text().toStdString();
-    updated.priority = static_cast<unsigned int>(priority->value());
-    updated.triggerEvent = trigger->text().toStdString();
-    updated.probabilityExpression = probability->text().toStdString();
-    scene->getUndoStack()->push(new EFSMTransitionPropertiesUndoCommand(network, transition, std::move(updated)));
-    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
-    _graphicalModelHasChanged = true;
-    _actualizeActions();
-}
 
-void MainWindow::_setEfsmInitialState() {
-    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
-        || simulator == nullptr || simulator->getModelManager() == nullptr) {
-        return;
-    }
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0 || scene->getUndoStack() == nullptr) {
-        return;
-    }
-    FSMState* selectedState = nullptr;
-    for (QGraphicsItem* item : scene->selectedItems()) {
-        auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
-        auto* state = graphicalDefinition != nullptr
-            ? dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) : nullptr;
-        if (state == nullptr) {
-            continue;
-        }
-        if (selectedState != nullptr) {
-            return;
-        }
-        selectedState = state;
-    }
-    Model* model = simulator->getModelManager()->current();
-    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
-        ? model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
-        : nullptr);
-    if (network == nullptr || selectedState == nullptr
-        || network->getStates()->find(selectedState) == network->getStates()->list()->end()) {
-        return;
-    }
-    scene->getUndoStack()->push(new EFSMInitialStateUndoCommand(network, selectedState));
-    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
-    _graphicalModelHasChanged = true;
-    _actualizeActions();
-}
 
-void MainWindow::_editEfsmState() {
-    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr
-        || simulator == nullptr || simulator->getModelManager() == nullptr) {
-        return;
-    }
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!scene->hasModelLevelFilter() || scene->modelLevelFilter() == 0 || scene->getUndoStack() == nullptr) {
-        return;
-    }
-    FSMState* state = nullptr;
-    for (QGraphicsItem* item : scene->selectedItems()) {
-        auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
-        auto* candidate = graphicalDefinition != nullptr
-            ? dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) : nullptr;
-        if (candidate == nullptr) {
-            continue;
-        }
-        if (state != nullptr) {
-            return;
-        }
-        state = candidate;
-    }
-    Model* model = simulator->getModelManager()->current();
-    auto* network = dynamic_cast<EFSMNetwork*>(model != nullptr && model->getDataManager() != nullptr
-        ? model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter())
-        : nullptr);
-    if (network == nullptr || state == nullptr
-        || network->getStates()->find(state) == network->getStates()->list()->end()) {
-        return;
-    }
 
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Edit EFSM State"));
-    auto* form = new QFormLayout(&dialog);
-    auto* name = new QLineEdit(QString::fromStdString(state->getName()), &dialog);
-    auto* entry = new QLineEdit(QString::fromStdString(state->getEntryActionExpression()), &dialog);
-    auto* exit = new QLineEdit(QString::fromStdString(state->getExitActionExpression()), &dialog);
-    auto* finalState = new QCheckBox(tr("Final state"), &dialog);
-    finalState->setChecked(state->isFinalNode());
-    form->addRow(tr("Name"), name);
-    form->addRow(tr("Entry action"), entry);
-    form->addRow(tr("Exit action"), exit);
-    form->addRow(finalState);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    form->addRow(buttons);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
-    const QString newName = name->text().trimmed();
-    if (newName.isEmpty()) {
-        QMessageBox::warning(this, tr("Edit EFSM State"), tr("State name cannot be empty."));
-        return;
-    }
-    ModelDataDefinition* sameName = model->getDataManager()->getDataDefinition(
-        Util::TypeOf<FSMState>(), newName.toStdString());
-    if (sameName != nullptr && sameName != state) {
-        QMessageBox::warning(this, tr("Edit EFSM State"), tr("A state with that name already exists."));
-        return;
-    }
-    EFSMStatePropertiesUndoCommand::Properties updated;
-    updated.name = newName.toStdString();
-    updated.entryActionExpression = entry->text().toStdString();
-    updated.exitActionExpression = exit->text().toStdString();
-    updated.finalNode = finalState->isChecked();
-    scene->getUndoStack()->push(new EFSMStatePropertiesUndoCommand(network, state, std::move(updated)));
-    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
-    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
-    _graphicalModelHasChanged = true;
-    _actualizeActions();
-}
+
+
 
 bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
     if (owner == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
