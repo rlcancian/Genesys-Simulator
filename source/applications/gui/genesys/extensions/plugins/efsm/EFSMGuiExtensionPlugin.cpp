@@ -7,6 +7,8 @@
 #include "../../../../../../plugins/data/ModalModel/EFSMNetwork.h"
 #include "kernel/util/Util.h"
 
+#include <QAction>
+#include <QMenu>
 #include <QTextStream>
 
 #include <any>
@@ -101,6 +103,25 @@ public:
         addAction(registry, "modal.efsm.edit-state", "Edit EFSM State...",
                   &EFSMNetworkEditorController::canEditState,
                   &EFSMNetworkEditorController::editState);
+
+        GuiContextMenuContribution transitionMenu;
+        transitionMenu.id = "modal.efsm.create-transition.context";
+        transitionMenu.isVisible = [](const GuiExtensionRuntimeContext& context, QGraphicsItem*) {
+            MainWindow* mainWindow = host(context);
+            if (mainWindow == nullptr) return false;
+            EFSMNetworkEditorController controller(mainWindow);
+            return controller.canCreateTransition();
+        };
+        transitionMenu.populate = [](QMenu* menu, const GuiExtensionRuntimeContext& context, QGraphicsItem*) {
+            MainWindow* mainWindow = host(context);
+            if (menu == nullptr || mainWindow == nullptr) return;
+            QAction* action = menu->addAction(QObject::tr("Create EFSM Transition"));
+            QObject::connect(action, &QAction::triggered, mainWindow, [mainWindow]() {
+                EFSMNetworkEditorController controller(mainWindow);
+                controller.createTransition();
+            });
+        };
+        registry->addContextMenu(std::move(transitionMenu));
     }
 
 private:

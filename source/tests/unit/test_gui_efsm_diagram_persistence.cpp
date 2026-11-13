@@ -270,6 +270,54 @@ TEST(GuiExtensionManager, ContextMenuContributionsAreDispatchedWithoutFormalismB
     EXPECT_TRUE(emptyMenu.actions().empty());
 }
 
+TEST(EFSMNetworkEditor, CreateTransitionAppearsInContextMenuForSelectedStates) {
+    MainWindow window;
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    Simulator* simulator = window.myScene()->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    simulator->getPluginManager()->autoInsertPlugins();
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+    auto* network = new EFSMNetwork(model, "ContextMenuNetwork");
+    auto* first = new FSMState(model, "ContextFirst");
+    auto* second = new FSMState(model, "ContextSecond");
+    network->addState(first);
+    network->addState(second);
+
+    auto* view = window.findChild<ModelGraphicsView*>();
+    ASSERT_NE(view, nullptr);
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    std::map<std::string, QColor> colors;
+    GraphicalModelBuilder builder(simulator, view, scene, &colors, nullptr);
+    builder.generateGraphicalModelFromModel();
+    auto* firstItem = scene->findGraphicalModelDataDefinition(first);
+    auto* secondItem = scene->findGraphicalModelDataDefinition(second);
+    ASSERT_NE(firstItem, nullptr);
+    ASSERT_NE(secondItem, nullptr);
+
+    GuiExtensionRuntimeContext context;
+    context.simulator = simulator;
+    context.mainWindow = &window;
+    context.graphicsView = view;
+    context.graphicsScene = scene;
+    GuiExtensionManager manager(&window);
+    manager.setLoadedModelPluginIds({Util::TypeOf<ModalModelDefault>()});
+    manager.setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
+    manager.rebuild(context);
+
+    QMenu menu;
+    manager.populateContextMenu(&menu, firstItem);
+    EXPECT_TRUE(menu.actions().empty());
+    firstItem->setSelected(true);
+    secondItem->setSelected(true);
+    manager.refreshActionStates(context);
+    manager.populateContextMenu(&menu, firstItem);
+    ASSERT_EQ(menu.actions().size(), 1);
+    EXPECT_EQ(menu.actions().front()->text(), QStringLiteral("Create EFSM Transition"));
+}
+
 TEST(GuiExtensionManager, NetworkCanvasAcceptsOnlyFormalismDataDefinitions) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();

@@ -379,3 +379,10 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - `cmake --build --preset tests-smoke -j 8` — PASS. `ctest --test-dir build/tests-smoke --output-on-failure -j 8 -E '_NOT_BUILT'` — PASS, 3/3 runnable smoke tests. The preset's other 48 registered entries are `_NOT_BUILT` placeholders and were excluded after building its declared smoke targets.
 - `GuiGmddLayout.SerializerRoundTripRestoresViewStateGeometriesAndGroups` failed in both the first full unit run and isolated reproduction: the `.gui` reader treated `0 GUI`/`0 Show` header directives as an unknown section, leaving visibility flags and zoom unchanged. Header directives are now retained as header data; isolated regression and the subsequent full `tests-unit` suite pass.
 - `git diff --check` — PASS before final commit. Final branch commit/push verification is recorded at closeout.
+
+### EFSM transition context-menu follow-up
+
+- User testing found `Create EFSM Transition` only in the Model menu, not the graphical context menu described in the interaction flow.
+- Registered a formalism-specific context-menu contribution that is visible when one or two EFSM states are selected and invokes the existing undoable transition creation handler.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS.
+- `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.*'` — PASS, 8/8, including the new context-menu visibility regression.
