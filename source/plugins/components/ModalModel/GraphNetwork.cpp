@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <queue>
@@ -151,6 +152,20 @@ bool GraphNetwork::removeEdge(GraphEdge* edge) {
 	}
 	_edges.erase(it);
 	_attachedDataRemove(graphAssociationKey("Edge", edge));
+	return true;
+}
+
+bool GraphNetwork::restoreEdge(GraphEdge* edge, unsigned int ordinal) {
+	if (edge == nullptr || containsEdge(edge) || edge->getSource() == nullptr || edge->getDestination() == nullptr
+		|| !containsNode(edge->getSource()) || !containsNode(edge->getDestination())) {
+		return false;
+	}
+	edge->setDirected(isDirected());
+	auto it = _edges.begin();
+	std::advance(it, std::min<std::size_t>(ordinal, _edges.size()));
+	_edges.insert(it, edge);
+	_attachedDataInsert(graphAssociationKey("Edge", edge), edge);
+	edge->setModelLevel(static_cast<unsigned int>(getId()));
 	return true;
 }
 

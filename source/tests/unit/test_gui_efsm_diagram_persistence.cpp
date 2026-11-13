@@ -319,6 +319,70 @@ TEST(GraphNetworkGuiExtension, ProjectsParallelAndSelfLoopEdgesFromTheNetworkTop
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 3);
 }
 
+TEST(GraphNetworkGuiExtension, RemovesNodeAndIncidentEdgesWithUndoRedoAndStableGeometry) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new DirectedGraphNetwork(model, "UndoNodeGraph");
+    auto* first = new GraphNode(model, "First");
+    auto* middle = new GraphNode(model, "Middle");
+    auto* last = new GraphNode(model, "Last");
+    ASSERT_TRUE(network->addNode(first));
+    ASSERT_TRUE(network->addNode(middle));
+    ASSERT_TRUE(network->addNode(last));
+    auto* firstEdge = new GraphEdge(model, first, middle, "FirstEdge");
+    auto* secondEdge = new GraphEdge(model, middle, last, "SecondEdge");
+    ASSERT_TRUE(network->addEdge(firstEdge));
+    ASSERT_TRUE(network->addEdge(secondEdge));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene.setNetworkEditorOwner(network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    Plugin* nodePlugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+    ASSERT_NE(nodePlugin, nullptr);
+    scene.addGraphicalModelDataDefinition(nodePlugin, first, QPointF(20, 40));
+    auto* middleItem = scene.addGraphicalModelDataDefinition(nodePlugin, middle, QPointF(220, 140));
+    scene.addGraphicalModelDataDefinition(nodePlugin, last, QPointF(420, 40));
+    const QPointF originalMiddlePosition = middleItem->pos();
+    middleItem->setSelected(true);
+
+    GuiActionContribution removeNode;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.graph.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.graph.remove-node") removeNode = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(removeNode.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(removeNode.isEnabled(context));
+    removeNode.trigger(context);
+    EXPECT_EQ(network->getNodes().size(), 2u);
+    EXPECT_TRUE(network->getEdges().empty());
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<GraphNode>()), 2u);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<GraphEdge>()), 0u);
+
+    undoStack.undo();
+    ASSERT_EQ(network->getNodes().size(), 3u);
+    ASSERT_EQ(network->getEdges().size(), 2u);
+    EXPECT_EQ(network->getEdges().at(0), firstEdge);
+    EXPECT_EQ(network->getEdges().at(1), secondEdge);
+    EXPECT_EQ(scene.findGraphicalModelDataDefinition(middle)->pos(), originalMiddlePosition);
+    undoStack.redo();
+    EXPECT_EQ(network->getNodes().size(), 2u);
+    EXPECT_TRUE(network->getEdges().empty());
+    undoStack.undo();
+    ASSERT_EQ(network->getNodes().size(), 3u);
+    EXPECT_EQ(network->getEdges().at(0), firstEdge);
+    EXPECT_EQ(network->getEdges().at(1), secondEdge);
+}
+
 TEST(GraphNetworkGuiExtension, ShowsBfsAnalysisAsStructuralHighlighting) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -818,6 +882,14 @@ TEST(ColoredPetriNetGuiExtension, ProjectsMarkingAndFiresSelectedTransitionWithU
         if (badge != nullptr) firedTransitionHighlighted = badge->pen().color() == QColor(225, 90, 35);
     }
     EXPECT_TRUE(firedTransitionHighlighted);
+    int firedArcCount = 0;
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui"))) {
+        auto* arc = dynamic_cast<QGraphicsPathItem*>(item);
+        if (arc != nullptr && arc->data(1).isValid() && arc->pen().color() == QColor(225, 90, 35)) {
+            ++firedArcCount;
+        }
+    }
+    EXPECT_EQ(firedArcCount, 2);
 }
 
 TEST(ColoredPetriNetGuiExtension, DroppedPlacesAndTransitionsJoinTheNetwork) {

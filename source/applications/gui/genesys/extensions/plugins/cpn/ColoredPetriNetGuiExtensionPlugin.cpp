@@ -122,12 +122,16 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
         path.lineTo(end);
         addArrow(path, end);
         auto* item = new QGraphicsPathItem(path);
-        item->setPen(QPen(QColor(90, 75, 115), 2.0));
+        const bool participatedInLastFiring = network->getLastFiredTransition() == arc->getTransition();
+        item->setPen(QPen(participatedInLastFiring ? QColor(225, 90, 35) : QColor(90, 75, 115),
+                          participatedInLastFiring ? 3.5 : 2.0));
         item->setBrush(Qt::NoBrush);
         item->setZValue(-1.0);
         item->setData(1, QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(arc)));
         item->setFlag(QGraphicsItem::ItemIsSelectable, true);
-        item->setToolTip(QString::fromStdString(arc->show()));
+        item->setToolTip(participatedInLastFiring
+            ? QObject::tr("Last firing: %1").arg(QString::fromStdString(arc->show()))
+            : QString::fromStdString(arc->show()));
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), item);
     }
 }

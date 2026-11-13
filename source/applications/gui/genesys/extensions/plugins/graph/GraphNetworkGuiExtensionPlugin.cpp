@@ -2,12 +2,14 @@
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../graphicals/GraphicalModelDataDefinition.h"
 #include "../../../graphicals/ModelGraphicsScene.h"
+#include "../../../services/GraphicalModelBuilder.h"
 
 #include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/data/ModalModel/GraphNode.h"
 #include "plugins/data/ModalModel/GraphEdge.h"
 #include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
 #include "kernel/util/Util.h"
+#include "kernel/simulator/model/Model.h"
 
 #include <QGraphicsPathItem>
 #include <QGraphicsEllipseItem>
@@ -153,6 +155,76 @@ private:
     GraphNetwork* _network;
     GraphEdge* _edge;
     QPointer<ModelGraphicsScene> _scene;
+};
+
+class RemoveGraphNodeUndoCommand final : public QUndoCommand {
+public:
+    RemoveGraphNodeUndoCommand(GraphNetwork* network, GraphNode* node, ModelGraphicsScene* scene)
+        : _network(network), _node(node), _scene(scene), _oldLevel(node != nullptr ? node->getLevel() : 0) {
+        setText(QObject::tr("Remove graph node"));
+        if (network == nullptr || node == nullptr) return;
+        const auto edges = network->getEdges();
+        for (std::size_t index = 0; index < edges.size(); ++index) {
+            GraphEdge* edge = edges[index];
+            if (edge != nullptr && (edge->getSource() == node || edge->getDestination() == node)) {
+                _incidentEdges.emplace_back(edge, static_cast<unsigned int>(index));
+            }
+        }
+        if (scene != nullptr) {
+            if (auto* item = scene->findGraphicalModelDataDefinition(node)) _position = item->pos();
+        }
+    }
+
+    void redo() override {
+        if (_scene == nullptr || _network == nullptr || _node == nullptr || !_network->containsNode(_node)) {
+            setObsolete(true);
+            return;
+        }
+        if (!_network->removeNode(_node)) { setObsolete(true); return; }
+        Model* model = _node->getParentModel();
+        if (model != nullptr) {
+            model->remove(_node);
+            for (const auto& edge : _incidentEdges) model->remove(edge.first);
+        }
+        synchronizeScene(false);
+    }
+
+    void undo() override {
+        if (_scene == nullptr || _network == nullptr || _node == nullptr || _network->containsNode(_node)) {
+            setObsolete(true);
+            return;
+        }
+        Model* model = _node->getParentModel();
+        if (model != nullptr) model->insert(_node);
+        _node->setModelLevel(_oldLevel);
+        if (!_network->addNode(_node)) { setObsolete(true); return; }
+        for (const auto& [edge, ordinal] : _incidentEdges) {
+            if (model != nullptr) model->insert(edge);
+            edge->setModelLevel(_oldLevel);
+            if (!_network->restoreEdge(edge, ordinal)) { setObsolete(true); return; }
+        }
+        synchronizeScene(true);
+    }
+
+private:
+    void synchronizeScene(bool restorePosition) {
+        if (_scene == nullptr) return;
+        GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_scene->getSimulator(), _scene);
+        if (restorePosition) {
+            if (auto* item = _scene->findGraphicalModelDataDefinition(_node)) {
+                item->setPos(_position);
+                item->setOldPosition(_position.x(), _position.y());
+            }
+        }
+        synchronizeGraphProjection(nullptr, _scene);
+    }
+
+    GraphNetwork* _network;
+    GraphNode* _node;
+    QPointer<ModelGraphicsScene> _scene;
+    unsigned int _oldLevel = 0;
+    QPointF _position;
+    std::vector<std::pair<GraphEdge*, unsigned int>> _incidentEdges;
 };
 
 class EditGraphEdgeWeightUndoCommand final : public QUndoCommand {
@@ -308,6 +380,21 @@ GraphNode* selectedGraphNode(const GuiExtensionRuntimeContext& context) {
     return nullptr;
 }
 
+bool canDeleteGraphNode(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
+        && selectedGraphNode(context) != nullptr;
+}
+
+void deleteSelectedGraphNode(const GuiExtensionRuntimeContext& context) {
+    if (!canDeleteGraphNode(context)) return;
+    auto* network = dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner());
+    GraphNode* node = selectedGraphNode(context);
+    if (network != nullptr && node != nullptr) {
+        context.graphicsScene->getUndoStack()->push(
+            new RemoveGraphNodeUndoCommand(network, node, context.graphicsScene));
+    }
+}
+
 bool canAnalyzeGraph(const GuiExtensionRuntimeContext& context) {
     return context.graphicsScene != nullptr && dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr
         && selectedGraphNode(context) != nullptr;
@@ -439,6 +526,18 @@ public:
         editEdgeWeight.isEnabled = canEditEdgeWeight;
         editEdgeWeight.trigger = editSelectedEdgeWeight;
         registry->addAction(std::move(editEdgeWeight));
+
+        GuiActionContribution removeNode;
+        removeNode.id = "modal.graph.remove-node";
+        removeNode.text = "Remove Selected Graph Node";
+        removeNode.menuPath = "Model";
+        removeNode.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        removeNode.isEnabled = canDeleteGraphNode;
+        removeNode.trigger = deleteSelectedGraphNode;
+        registry->addAction(std::move(removeNode));
 
         GuiActionContribution analyze;
         analyze.id = "modal.graph.analyze-traversal";
