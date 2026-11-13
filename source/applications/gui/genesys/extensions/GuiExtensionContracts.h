@@ -111,6 +111,11 @@ struct GuiNetworkEditorContribution {
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionRemoved;
 };
 
+struct GuiSimulationStartContribution {
+    std::string id;
+    std::function<void(Simulator*, QMainWindow*)> onSimulationStart;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAction(GuiActionContribution contribution) {
@@ -131,6 +136,10 @@ public:
 
 	void addDiagramProjection(GuiDiagramProjectionContribution contribution) {
 		_diagramProjections.push_back(std::move(contribution));
+	}
+
+	void addSimulationStart(GuiSimulationStartContribution contribution) {
+		_simulationStarts.push_back(std::move(contribution));
 	}
 
 	void addNetworkEditor(GuiNetworkEditorContribution contribution) {
@@ -157,6 +166,10 @@ public:
 		return _diagramProjections;
 	}
 
+	const std::vector<GuiSimulationStartContribution>& simulationStarts() const {
+		return _simulationStarts;
+	}
+
 	const std::vector<GuiNetworkEditorContribution>& networkEditors() const {
 		return _networkEditors;
 	}
@@ -168,6 +181,7 @@ public:
 		_contextMenus.clear();
 		_diagramProjections.clear();
 		_networkEditors.clear();
+		_simulationStarts.clear();
 	}
 
 private:
@@ -177,6 +191,7 @@ private:
 	std::vector<GuiContextMenuContribution> _contextMenus;
 	std::vector<GuiDiagramProjectionContribution> _diagramProjections;
 	std::vector<GuiNetworkEditorContribution> _networkEditors;
+	std::vector<GuiSimulationStartContribution> _simulationStarts;
 };
 
 class GuiExtensionPlugin {
