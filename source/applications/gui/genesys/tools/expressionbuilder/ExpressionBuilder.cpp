@@ -28,12 +28,21 @@ ExpressionBuilder::ExpressionBuilder(QWidget *parent) :
     parameterWidget->setLayout(parameterLayout);
     
     // Connect signals
-    connect(treeCategories, &QTreeWidget::itemClicked, this, &ExpressionBuilder::on_categorySelected);
-    connect(listExpressions, &QListWidget::itemClicked, this, &ExpressionBuilder::on_expressionSelected);
+    // Respond to keyboard and mouse selection, not just itemClicked.
+    connect(treeCategories, &QTreeWidget::currentItemChanged, this,
+            [this](QTreeWidgetItem* current, QTreeWidgetItem*) {
+                on_categorySelected(current, 0);
+            });
+    connect(listExpressions, &QListWidget::currentItemChanged, this,
+            [this](QListWidgetItem* current, QListWidgetItem*) {
+                on_expressionSelected(current);
+            });
     connect(btnCopyToClipboard, &QPushButton::clicked, this, &ExpressionBuilder::on_copyToClipboard_clicked);
     connect(btnClose, &QPushButton::clicked, this, &ExpressionBuilder::on_close_clicked);
     connect(ui->btnInsert, &QPushButton::clicked, this, &ExpressionBuilder::insertSelectedExpression);
-    connect(ui->btnValidate, &QPushButton::clicked, this, [this]() { validateCurrentExpression(); });
+    connect(ui->btnValidate, &QPushButton::clicked, this, [this]() {
+        (void)validateCurrentExpression();
+    });
     connect(ui->btnApply, &QPushButton::clicked, this, [this]() {
         if (validateCurrentExpression()) accept();
     });
@@ -216,7 +225,9 @@ QString ExpressionBuilder::buildExpression()
 
 void ExpressionBuilder::on_copyToClipboard_clicked()
 {
-    const QString expression = expressionText();
+    // Preserve the historical standalone function-copy workflow when no full
+    // expression has been entered in the new editor.
+    const QString expression = expressionText().isEmpty() ? buildExpression() : expressionText();
     if (expression.isEmpty()) {
         QMessageBox::warning(this, tr("Expression Builder"), tr("The expression is empty."));
         return;
