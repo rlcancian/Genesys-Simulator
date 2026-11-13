@@ -553,6 +553,42 @@ TEST(MarkovChainNetworkGuiExtension, GenericGuiPersistenceRestoresStateGeometryA
     EXPECT_EQ(restoredSecond->pos(), QPointF(270.75, 190.125));
 }
 
+TEST(ColoredPetriNetGuiExtension, ValidationActionReportsInvalidGuardExpressions) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ColoredPetriNetNetwork network(model, "InvalidGuardNetwork");
+    auto* place = new PetriPlace(model, "Input");
+    auto* transition = new CPNTransition(model, "BadGuard");
+    transition->setGuardExpression("(");
+    network.addPlace(place);
+    network.addTransition(transition);
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    GuiActionContribution validate;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions())
+            if (action.id == "modal.cpn.validate-network") validate = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(validate.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(validate.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        ASSERT_NE(message, nullptr);
+        EXPECT_NE(message->text().indexOf(QStringLiteral("CPN transition guard")), -1);
+        message->accept();
+    });
+    validate.trigger(context);
+}
+
 TEST(ColoredPetriNetGuiExtension, GenericGuiPersistenceRestoresNodeGeometryAndTopology) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();

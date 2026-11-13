@@ -21,6 +21,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QMainWindow>
+#include <QMessageBox>
 #include <QLineEdit>
 #include <QPainterPath>
 #include <QPointer>
@@ -530,6 +531,25 @@ bool canEditCpnTransition(const GuiExtensionRuntimeContext& context) {
         && selectedTransition(context) != nullptr;
 }
 
+bool canValidateCpnNetwork(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr
+        && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+}
+
+void validateCpnNetwork(const GuiExtensionRuntimeContext& context) {
+    auto* network = context.graphicsScene != nullptr
+        ? dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) : nullptr;
+    if (network == nullptr) return;
+    std::string diagnostic;
+    if (ModelDataDefinition::Check(network, diagnostic)) {
+        QMessageBox::information(context.mainWindow, QObject::tr("CPN Validation"),
+                                 QObject::tr("The colored Petri net is valid."));
+    } else {
+        QMessageBox::warning(context.mainWindow, QObject::tr("CPN Validation"),
+                             QString::fromStdString(diagnostic));
+    }
+}
+
 void editCpnTransition(const GuiExtensionRuntimeContext& context) {
     auto* transition = selectedTransition(context);
     if (transition == nullptr || context.graphicsScene->getUndoStack() == nullptr) return;
@@ -644,6 +664,14 @@ public:
         };
         projection.synchronize = synchronizeCpnProjection;
         registry->addDiagramProjection(std::move(projection));
+        GuiActionContribution validate;
+        validate.id = "modal.cpn.validate-network";
+        validate.text = "Validate Colored Petri Net...";
+        validate.menuPath = "Model";
+        validate.isVisible = canValidateCpnNetwork;
+        validate.isEnabled = canValidateCpnNetwork;
+        validate.trigger = validateCpnNetwork;
+        registry->addAction(std::move(validate));
         GuiNetworkEditorContribution editor;
         editor.id = kCpnExtensionId;
         editor.supports = [](ModelDataDefinition* definition) {
