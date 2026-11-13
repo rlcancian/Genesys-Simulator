@@ -39,6 +39,7 @@ Delay::Delay(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Delay::delayExpression, this), std::bind(&Delay::setDelayExpression, this, std::placeholders::_1, Util::TimeUnit::unknown),
 									Util::TypeOf<Delay>(), getName(), "DelayExpression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 //	SimulationControlGeneric<double>* propDelay = new SimulationControlGeneric<double>(
 //									std::bind(&Delay::delay, this), std::bind(&Delay::setDelay, this, std::placeholders::_1),
 //									Util::TypeOf<Delay>(), getName(), "Delay", "");
