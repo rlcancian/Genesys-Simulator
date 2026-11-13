@@ -206,4 +206,5 @@ map is a source inventory, not evidence that extraction is complete.
 - `2a1c27852` — `modal-gui(C1): add extension context menu contributions` (pushed).
 - `f104f4141` — `docs(modal-gui): map EFSM host responsibilities` (pushed).
 - `da9858712` — `modal-gui(C1): generalize extension scene overlays` (pushed).
-- Pending commit: EFSM handler extraction to extension-owned controller.
+- `16b43904b` — `modal-gui(C2): extract EFSM editing handlers` (pushed).
+- Pending commit: EFSM action enablement extraction to extension-owned controller.
