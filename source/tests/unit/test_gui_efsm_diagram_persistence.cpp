@@ -783,6 +783,39 @@ TEST(MarkovChainNetworkGuiExtension, DroppedMarkovStateJoinsTheNetworkAndScene) 
                   ->getDataDefinition(), network.getStates()->front());
 }
 
+TEST(MarkovChainNetworkGuiExtension, ValidationActionReportsInvalidProbabilityRows) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "InvalidMarkovRow");
+    auto* state = new MarkovState(model, "IncompleteRow");
+    network.addState(state);
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    GuiActionContribution validate;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.markov.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions())
+            if (action.id == "modal.markov.validate-network") validate = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(validate.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(validate.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        ASSERT_NE(message, nullptr);
+        EXPECT_NE(message->text().indexOf(QStringLiteral("must sum to 1.0")), -1);
+        message->accept();
+    });
+    validate.trigger(context);
+}
+
 TEST(MarkovChainNetworkGuiExtension, RemovesStateAndTransitionsWithUndoRedoAndStableGeometry) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();

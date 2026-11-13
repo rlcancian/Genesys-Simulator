@@ -17,6 +17,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QMainWindow>
+#include <QMessageBox>
 #include <QPainterPath>
 #include <QPointer>
 #include <QPen>
@@ -404,6 +405,25 @@ void setSelectedInitialState(const GuiExtensionRuntimeContext& context) {
             new SetMarkovInitialStateUndoCommand(network, context.graphicsScene, state));
 }
 
+bool canValidateMarkovNetwork(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr
+        && dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+}
+
+void validateMarkovNetwork(const GuiExtensionRuntimeContext& context) {
+    auto* network = context.graphicsScene != nullptr
+        ? dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) : nullptr;
+    if (network == nullptr) return;
+    std::string diagnostic;
+    if (ModelDataDefinition::Check(network, diagnostic)) {
+        QMessageBox::information(context.mainWindow, QObject::tr("Markov Network Validation"),
+                                 QObject::tr("The network is valid."));
+    } else {
+        QMessageBox::warning(context.mainWindow, QObject::tr("Markov Network Validation"),
+                             QString::fromStdString(diagnostic));
+    }
+}
+
 void createTransition(const GuiExtensionRuntimeContext& context) {
     if (!canCreateTransition(context)) return;
     auto* scene = context.graphicsScene;
@@ -464,6 +484,15 @@ public:
         };
         projection.synchronize = synchronizeMarkovProjection;
         registry->addDiagramProjection(std::move(projection));
+
+        GuiActionContribution validate;
+        validate.id = "modal.markov.validate-network";
+        validate.text = "Validate Markov Network Probabilities...";
+        validate.menuPath = "Model";
+        validate.isVisible = canValidateMarkovNetwork;
+        validate.isEnabled = canValidateMarkovNetwork;
+        validate.trigger = validateMarkovNetwork;
+        registry->addAction(std::move(validate));
 
         GuiNetworkEditorContribution editor;
         editor.id = kMarkovExtensionId;
