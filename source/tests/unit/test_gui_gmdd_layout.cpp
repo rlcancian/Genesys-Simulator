@@ -43,6 +43,9 @@
 #include "plugins/components/ModalModel/FSMState.h"
 
 #include <gtest/gtest.h>
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+
 
 #include <QApplication>
 #include <QAction>
@@ -1923,7 +1926,91 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
 
     bool foundEmptyGroup = false;
     for (QGraphicsItemGroup* graphicalGroup : *scene->getGraphicalGroups()) {
-        if (graphicalGroup != nullptr && graphicalGroup->childItems().isEmpty()) {
+        if (graphicalGroup != nullptr && graphicalGroup->childItems().i
+TEST(BioReactionContextMenuExtension, RegistersAndRejectsUnrelatedSelection) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+    GuiExtensionRegistry registry;
+    extension->registerContributions(&registry);
+    ASSERT_EQ(registry.contextMenus().size(), 1u);
+    const auto& contribution = registry.contextMenus().front();
+    EXPECT_EQ(contribution.id, "gui.bio.reaction.link-context");
+
+    GuiExtensionRuntimeContext context;
+    EXPECT_FALSE(contribution.isVisible(context, nullptr));
+    QMenu emptyMenu;
+    contribution.populate(&emptyMenu, context, nullptr);
+    EXPECT_TRUE(emptyMenu.actions().isEmpty());
+
+    ModelGraphicsScene scene(0, 0, 640, 480);
+    context.graphicsScene = &scene;
+    EXPECT_FALSE(contribution.isVisible(context, nullptr));
+}
+
+TEST(BioReactionContextMenuExtension, CreatesContextActionsAndDoesNotDuplicateRelations) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+    GuiExtensionRegistry registry;
+    extension->registerContributions(&registry);
+    ASSERT_EQ(registry.contextMenus().size(), 1u);
+    const auto& contribution = registry.contextMenus().front();
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BioReaction reaction(model, "ContextReaction");
+    BioSpecies species(model, "ContextSpecies");
+    ModelGraphicsScene scene(0, 0, 640, 480);
+    auto* reactionItem = new GraphicalModelDataDefinition(nullptr, &reaction, QPointF(80, 80));
+    auto* speciesItem = new GraphicalModelDataDefinition(nullptr, &species, QPointF(290, 80));
+    scene.addItem(reactionItem);
+    scene.addItem(speciesItem);
+    reactionItem->setSelected(true);
+    speciesItem->setSelected(true);
+
+    GuiExtensionRuntimeContext context;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(contribution.isVisible(context, reactionItem));
+
+    QMenu menu;
+    contribution.populate(&menu, context, reactionItem);
+    ASSERT_EQ(menu.actions().size(), 1);
+    QMenu* relationMenu = menu.actions().front()->menu();
+    ASSERT_NE(relationMenu, nullptr);
+    EXPECT_EQ(relationMenu->title(), QStringLiteral("Biochemical Relation"));
+    const QList<QAction*> actions = relationMenu->actions();
+    ASSERT_EQ(actions.size(), 3);
+    actions.at(0)->trigger();
+    actions.at(0)->trigger();
+    actions.at(1)->trigger();
+    actions.at(2)->trigger();
+    ASSERT_EQ(reaction.getReactants().size(), 1u);
+    ASSERT_EQ(reaction.getProducts().size(), 1u);
+    ASSERT_EQ(reaction.getModifiers().size(), 1u);
+    EXPECT_EQ(reaction.getReactants().front().speciesName, species.getName());
+    EXPECT_EQ(reaction.getProducts().front().speciesName, species.getName());
+    EXPECT_EQ(reaction.getModifiers().front(), species.getName());
+
+    speciesItem->setSelected(false);
+    EXPECT_FALSE(contribution.isVisible(context, reactionItem));
+    QMenu unrelatedMenu;
+    contribution.populate(&unrelatedMenu, context, reactionItem);
+    EXPECT_TRUE(unrelatedMenu.actions().isEmpty());
+}
+
+sEmpty()) {
             foundEmptyGroup = true;
             break;
         }
