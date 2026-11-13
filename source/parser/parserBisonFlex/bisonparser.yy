@@ -1,3 +1,5 @@
+// Semantic actions are disabled during syntax-only validation. Keep these guards
+// when regenerating GenesysParser.cpp from this authoritative grammar.
 %skeleton "lalr1.cc" /* -*- C++ -*- */
 %require "3.0.4"
 %defines
@@ -296,164 +298,164 @@ void copyVariableStore(genesyspp_driver& driver, const obj_t& destination, const
 %%
 
 input: 
-      expression    { driver.setResult($1.valor);}
+      expression    { if (!driver.isSyntaxOnly()) { driver.setResult($1.valor);} }
 //    | error '\n'        { yyerrok; }
     ;
 
 expression:
-      assigment                        {$$ = $1;}
-    | command                          {$$ = $1;}
-    | logicalOr                        {$$ = $1;}
-    | illegal                           {$$.valor = -1;}
+      assigment                        { if (!driver.isSyntaxOnly()) {$$ = $1;} }
+    | command                          { if (!driver.isSyntaxOnly()) {$$ = $1;} }
+    | logicalOr                        { if (!driver.isSyntaxOnly()) {$$ = $1;} }
+    | illegal                           { if (!driver.isSyntaxOnly()) {$$.valor = -1;} }
     ;
 
 logicalOr:
-      logicalOr oOR logicalXor          { $$.valor = (int)$1.valor || (int)$3.valor; }
-    | logicalXor                        { $$ = $1; }
+      logicalOr oOR logicalXor          { if (!driver.isSyntaxOnly()) { $$.valor = (int)$1.valor || (int)$3.valor; } }
+    | logicalXor                        { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 logicalXor:
-      logicalXor oXOR logicalAnd        { $$.valor = (!(int)$1.valor && (int)$3.valor) || ((int)$1.valor && !(int)$3.valor); }
-    | logicalAnd                        { $$ = $1; }
+      logicalXor oXOR logicalAnd        { if (!driver.isSyntaxOnly()) { $$.valor = (!(int)$1.valor && (int)$3.valor) || ((int)$1.valor && !(int)$3.valor); } }
+    | logicalAnd                        { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 logicalAnd:
-      logicalAnd oAND logicalNot        { $$.valor = (int)$1.valor && (int)$3.valor; }
-    | logicalAnd oNAND logicalNot       { $$.valor = !((int)$1.valor && (int)$3.valor); }
-    | logicalNot                        { $$ = $1; }
+      logicalAnd oAND logicalNot        { if (!driver.isSyntaxOnly()) { $$.valor = (int)$1.valor && (int)$3.valor; } }
+    | logicalAnd oNAND logicalNot       { if (!driver.isSyntaxOnly()) { $$.valor = !((int)$1.valor && (int)$3.valor); } }
+    | logicalNot                        { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 logicalNot:
-      oNOT logicalNot                   { $$.valor = !(int)$2.valor; }
-    | relational                        { $$ = $1; }
+      oNOT logicalNot                   { if (!driver.isSyntaxOnly()) { $$.valor = !(int)$2.valor; } }
+    | relational                        { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 relational:
-      relational LESS additive          { $$.valor = $1.valor < $3.valor ? 1 : 0; }
-    | relational GREATER additive       { $$.valor = $1.valor > $3.valor ? 1 : 0; }
-    | relational oLE additive           { $$.valor = $1.valor <= $3.valor ? 1 : 0; }
-    | relational oGE additive           { $$.valor = $1.valor >= $3.valor ? 1 : 0; }
-    | relational oEQ additive           { $$.valor = $1.valor == $3.valor ? 1 : 0; }
-    | relational oNE additive           { $$.valor = $1.valor != $3.valor ? 1 : 0; }
-    | additive                          { $$ = $1; }
+      relational LESS additive          { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor < $3.valor ? 1 : 0; } }
+    | relational GREATER additive       { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor > $3.valor ? 1 : 0; } }
+    | relational oLE additive           { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor <= $3.valor ? 1 : 0; } }
+    | relational oGE additive           { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor >= $3.valor ? 1 : 0; } }
+    | relational oEQ additive           { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor == $3.valor ? 1 : 0; } }
+    | relational oNE additive           { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor != $3.valor ? 1 : 0; } }
+    | additive                          { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 additive:
-      additive PLUS multiplicative      { $$.valor = $1.valor + $3.valor; }
-    | additive MINUS multiplicative     { $$.valor = $1.valor - $3.valor; }
-    | multiplicative                    { $$ = $1; }
+      additive PLUS multiplicative      { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor + $3.valor; } }
+    | additive MINUS multiplicative     { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor - $3.valor; } }
+    | multiplicative                    { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 multiplicative:
-      multiplicative STAR power         { $$.valor = $1.valor * $3.valor; }
-    | multiplicative SLASH power        { $$.valor = $1.valor / $3.valor; }
-    | power                             { $$ = $1; }
+      multiplicative STAR power         { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor * $3.valor; } }
+    | multiplicative SLASH power        { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor / $3.valor; } }
+    | power                             { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 power:
-      unary POWER power                 { $$.valor = pow($1.valor, $3.valor); }
-    | unary                             { $$ = $1; }
+      unary POWER power                 { if (!driver.isSyntaxOnly()) { $$.valor = pow($1.valor, $3.valor); } }
+    | unary                             { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 unary:
-      MINUS unary                        { $$.valor = -$2.valor; }
-    | PLUS unary                         { $$.valor = +$2.valor; }
-    | primary                            { $$ = $1; }
+      MINUS unary                        { if (!driver.isSyntaxOnly()) { $$.valor = -$2.valor; } }
+    | PLUS unary                         { if (!driver.isSyntaxOnly()) { $$.valor = +$2.valor; } }
+    | primary                            { if (!driver.isSyntaxOnly()) { $$ = $1; } }
     ;
 
 primary:
-      number                             {$$ = $1;}
-    | function                           {$$ = $1;}
-    | LPAREN expression RPAREN           {$$ = $2;}
-    | attribute                          {$$ = $1;}
-    | simulationResponse                 {$$ = $1;}
-    | simulationControl                  {$$ = $1;}
+      number                             { if (!driver.isSyntaxOnly()) {$$ = $1;} }
+    | function                           { if (!driver.isSyntaxOnly()) {$$ = $1;} }
+    | LPAREN expression RPAREN           { if (!driver.isSyntaxOnly()) {$$ = $2;} }
+    | attribute                          { if (!driver.isSyntaxOnly()) {$$ = $1;} }
+    | simulationResponse                 { if (!driver.isSyntaxOnly()) {$$ = $1;} }
+    | simulationControl                  { if (!driver.isSyntaxOnly()) {$$ = $1;} }
 
 /****begin_Expression_plugins****/
 
 	/**begin_Expression:Variable**/
-	| variable                            {$$ = $1;}
+	| variable                            { if (!driver.isSyntaxOnly()) {$$ = $1;} }
 	/**end_Expression:Variable**/
 
 	/**begin_Expression:Formula**/
-	| formula                             {$$ = $1;}
+	| formula                             { if (!driver.isSyntaxOnly()) {$$ = $1;} }
 	/**end_Expression:Formula**/
 
 /****end_Expression_plugins****/
     ;
 
 number:
-      NUMD                               { $$.valor = $1.valor;}
-    | NUMH                               { $$.valor = $1.valor;}
+      NUMD                               { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor;} }
+    | NUMH                               { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor;} }
     ;
 
 command:
-      commandIF	    { $$.valor = $1.valor; }
-    | commandFOR    { $$.valor = $1.valor; }
+      commandIF	    { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
+    | commandFOR    { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
     ;
 
 commandIF:
-      cIF "(" expression "," expression "," expression ")" { $$.valor = $3.valor != 0 ? $5.valor : $7.valor; }
-    | cIF "(" expression "," expression ")"                 { $$.valor = $3.valor != 0 ? $5.valor : 0; }
+      cIF "(" expression "," expression "," expression ")" { if (!driver.isSyntaxOnly()) { $$.valor = $3.valor != 0 ? $5.valor : $7.valor; } }
+    | cIF "(" expression "," expression ")"                 { if (!driver.isSyntaxOnly()) { $$.valor = $3.valor != 0 ? $5.valor : 0; } }
     ;
 
 // \todo: check for function/need, for now will let cout (these should be commands for program, not expression
 commandFOR: 
-     cFOR variable "=" expression cTO expression cDO assigment  {$$.valor = 0; }
-    | cFOR attribute "=" expression cTO expression cDO assigment  {$$.valor = 0; }
+     cFOR variable "=" expression cTO expression cDO assigment  { if (!driver.isSyntaxOnly()) {$$.valor = 0; } }
+    | cFOR attribute "=" expression cTO expression cDO assigment  { if (!driver.isSyntaxOnly()) {$$.valor = 0; } }
     ;
 
 function: 
-     mathFunction        { $$.valor = $1.valor; }
-    | trigonFunction     { $$.valor = $1.valor; }
-    | probFunction       { $$.valor = $1.valor; }
-    | kernelFunction     { $$.valor = $1.valor; }
-    | elementFunction    { $$.valor = $1.valor; }
-    | pluginFunction     { $$.valor = $1.valor; }
-    | userFunction       { $$.valor = $1.valor; }
+     mathFunction        { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
+    | trigonFunction     { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
+    | probFunction       { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
+    | kernelFunction     { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
+    | elementFunction    { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
+    | pluginFunction     { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
+    | userFunction       { if (!driver.isSyntaxOnly()) { $$.valor = $1.valor; } }
     ;
 
 kernelFunction:
-      fTNOW      { $$.valor = driver.getModel()->getSimulation()->getSimulatedTime();}
-    | fTFIN      { $$.valor = driver.getModel()->getSimulation()->getReplicationLength();}
-    | fMAXREP    { $$.valor = driver.getModel()->getSimulation()->getNumberOfReplications();}
-    | fNUMREP    { $$.valor = driver.getModel()->getSimulation()->getCurrentReplicationNumber();}
-    | fIDENT     { $$.valor = driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->getId();}
-	| simulEntitiesWIP  { $$.valor = driver.getModel()->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>());}
+      fTNOW      { if (!driver.isSyntaxOnly()) { $$.valor = driver.getModel()->getSimulation()->getSimulatedTime();} }
+    | fTFIN      { if (!driver.isSyntaxOnly()) { $$.valor = driver.getModel()->getSimulation()->getReplicationLength();} }
+    | fMAXREP    { if (!driver.isSyntaxOnly()) { $$.valor = driver.getModel()->getSimulation()->getNumberOfReplications();} }
+    | fNUMREP    { if (!driver.isSyntaxOnly()) { $$.valor = driver.getModel()->getSimulation()->getCurrentReplicationNumber();} }
+    | fIDENT     { if (!driver.isSyntaxOnly()) { $$.valor = driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->getId();} }
+	| simulEntitiesWIP  { if (!driver.isSyntaxOnly()) { $$.valor = driver.getModel()->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>());} }
 	;
 
 elementFunction:
     //| CSTAT		 { $$.valor = 0; }
-      fTAVG  "(" CSTAT ")"     {
+      fTAVG  "(" CSTAT ")"     { if (!driver.isSyntaxOnly()) {
                     StatisticsCollector* cstat = ((StatisticsCollector*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<StatisticsCollector>(), $3.id)));
                     double value = cstat->getStatistics()->average();
-                    $$.valor = value; }
-	| fCOUNT "(" COUNTER ")" {
+                    $$.valor = value; } }
+	| fCOUNT "(" COUNTER ")" { if (!driver.isSyntaxOnly()) {
 					Counter* counter = ((Counter*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Counter>(), $3.id)));
                     double value = counter->getCountValue();
-                    $$.valor = value; }
+                    $$.valor = value; } }
    ;
 
 trigonFunction:
-      fSIN   "(" expression ")"   { $$.valor = sin($3.valor); }
-    | fCOS   "(" expression ")"   { $$.valor = cos($3.valor); }
+      fSIN   "(" expression ")"   { if (!driver.isSyntaxOnly()) { $$.valor = sin($3.valor); } }
+    | fCOS   "(" expression ")"   { if (!driver.isSyntaxOnly()) { $$.valor = cos($3.valor); } }
     ;
 
 mathFunction:
-      fROUND "(" expression ")"		{ $$.valor = round($3.valor);}
-    | fFRAC  "(" expression ")"		{ $$.valor = $3.valor - (int) $3.valor;}
-    | fTRUNC "(" expression ")"		{ $$.valor = trunc($3.valor);}
-    | fEXP "(" expression ")"	    { $$.valor = exp($3.valor);}
-    | fSQRT "(" expression ")"	    { $$.valor = sqrt($3.valor);}
-    | fLOG "(" expression ")"	    { $$.valor = log10($3.valor);}
-    | fLN "(" expression ")"	    { $$.valor = log($3.valor);}
-    | fMOD   "(" expression "," expression ")" { $$.valor = (int) $3.valor % (int) $5.valor; }
-    | mathMIN "(" expression "," expression ")" { $$.valor = std::min($3.valor, $5.valor); }
-    | mathMAX "(" expression "," expression ")" { $$.valor = std::max($3.valor, $5.valor); }
+      fROUND "(" expression ")"		{ if (!driver.isSyntaxOnly()) { $$.valor = round($3.valor);} }
+    | fFRAC  "(" expression ")"		{ if (!driver.isSyntaxOnly()) { $$.valor = $3.valor - (int) $3.valor;} }
+    | fTRUNC "(" expression ")"		{ if (!driver.isSyntaxOnly()) { $$.valor = trunc($3.valor);} }
+    | fEXP "(" expression ")"	    { if (!driver.isSyntaxOnly()) { $$.valor = exp($3.valor);} }
+    | fSQRT "(" expression ")"	    { if (!driver.isSyntaxOnly()) { $$.valor = sqrt($3.valor);} }
+    | fLOG "(" expression ")"	    { if (!driver.isSyntaxOnly()) { $$.valor = log10($3.valor);} }
+    | fLN "(" expression ")"	    { if (!driver.isSyntaxOnly()) { $$.valor = log($3.valor);} }
+    | fMOD   "(" expression "," expression ")" { if (!driver.isSyntaxOnly()) { $$.valor = (int) $3.valor % (int) $5.valor; } }
+    | mathMIN "(" expression "," expression ")" { if (!driver.isSyntaxOnly()) { $$.valor = std::min($3.valor, $5.valor); } }
+    | mathMAX "(" expression "," expression ")" { if (!driver.isSyntaxOnly()) { $$.valor = std::max($3.valor, $5.valor); } }
     ;
 
 probFunction:
-	  fRND1					     {
+	  fRND1					     { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleUniform(0.0,1.0); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("rnd", e.what());
@@ -471,8 +473,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fEXPO  "(" expression ")"  {
+	} }
+	| fEXPO  "(" expression ")"  { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleExponential($3.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("expo", e.what());
@@ -490,8 +492,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fNORM  "(" expression "," expression ")"  {
+	} }
+	| fNORM  "(" expression "," expression ")"  { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleNormal($3.valor,$5.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("norm", e.what());
@@ -509,8 +511,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fUNIF  "(" expression "," expression ")"  {
+	} }
+	| fUNIF  "(" expression "," expression ")"  { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleUniform($3.valor,$5.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("unif", e.what());
@@ -528,8 +530,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fWEIB  "(" expression "," expression ")"  {
+	} }
+	| fWEIB  "(" expression "," expression ")"  { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleWeibull($3.valor,$5.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("weib", e.what());
@@ -547,8 +549,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fLOGN  "(" expression "," expression ")"  {
+	} }
+	| fLOGN  "(" expression "," expression ")"  { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleLogNormal($3.valor,$5.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("logn", e.what());
@@ -566,8 +568,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fGAMM  "(" expression "," expression ")"  {
+	} }
+	| fGAMM  "(" expression "," expression ")"  { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleGamma($3.valor,$5.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("gamm", e.what());
@@ -585,8 +587,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fERLA  "(" expression "," expression ")"  {
+	} }
+	| fERLA  "(" expression "," expression ")"  { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleErlang($3.valor,$5.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("erla", e.what());
@@ -604,8 +606,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fTRIA  "(" expression "," expression "," expression ")"   {
+	} }
+	| fTRIA  "(" expression "," expression "," expression ")"   { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleTriangular($3.valor,$5.valor,$7.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("tria", e.what());
@@ -623,8 +625,8 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fBETA  "(" expression "," expression "," expression "," expression ")"  {
+	} }
+	| fBETA  "(" expression "," expression "," expression "," expression ")"  { if (!driver.isSyntaxOnly()) {
 		try { $$.valor = driver.getSampler()->sampleBeta($3.valor,$5.valor,$7.valor,$9.valor); }
 		catch (const std::exception& e) {
 			std::string msg = buildProbError("beta", e.what());
@@ -642,30 +644,30 @@ probFunction:
 			if (driver.getThrowsException()) throw std::string(msg);
 			YYERROR;
 		}
-	}
-	| fDISC  "(" listaparm ")"                  { $$.valor = driver.getSampler()->sampleDiscrete(0,0); /*@TODO: NOT IMPLEMENTED YET*/ }
+	} }
+	| fDISC  "(" listaparm ")"                  { if (!driver.isSyntaxOnly()) { $$.valor = driver.getSampler()->sampleDiscrete(0,0); /*@TODO: NOT IMPLEMENTED YET*/ } }
     ;
 
 
 //Maybe user defined functions, check if continues on the parser, for now returns the value of expression
 userFunction: 
-      "USER" "(" expression ")"         { $$.valor = $3.valor; }
+      "USER" "(" expression ")"         { if (!driver.isSyntaxOnly()) { $$.valor = $3.valor; } }
     ;
 
 //Probably returns parameters for something, check if continues on the parser, for now does nothing
 listaparm: 
-      listaparm "," expression "," expression    {/*@TODO: NOT IMPLEMENTED YET*/}
-    | expression "," expression                  {/*@TODO: NOT IMPLEMENTED YET*/}
+      listaparm "," expression "," expression    { if (!driver.isSyntaxOnly()) {/*@TODO: NOT IMPLEMENTED YET*/} }
+    | expression "," expression                  { if (!driver.isSyntaxOnly()) {/*@TODO: NOT IMPLEMENTED YET*/} }
     ;
 
 indexList:
-      expression                                  { $$ = parserIndexPart($1.valor); }
-    | indexList COMMA expression                  { $$ = appendParserIndex($1, $3.valor); }
+      expression                                  { if (!driver.isSyntaxOnly()) { $$ = parserIndexPart($1.valor); } }
+    | indexList COMMA expression                  { if (!driver.isSyntaxOnly()) { $$ = appendParserIndex($1, $3.valor); } }
     ;
 
 //If illegal token, verifies if throws exception or set error message
 illegal: 
-	ILLEGAL           {
+	ILLEGAL           { if (!driver.isSyntaxOnly()) {
 		driver.setResult(-1);
 		std::string lexema = $1.tipo;
 		bool hasLexema = !lexema.empty();
@@ -684,13 +686,13 @@ illegal:
 				driver.setErrorMessage(caracterMsg);
 			}
 		}
-	}
+	} }
 	;
 
 
 // 20181003  ATRIB now returns the attribute ID not the attribute value anymore. So, now get the attribute value for the current entity
 	attribute:
-	ATRIB      {  
+	ATRIB      { if (!driver.isSyntaxOnly()) {  
 		double attributeValue = 0.0;
 		//std::cout << "Tentando..." << std::endl;
 		if (driver.getModel()->getSimulation()->getCurrentEvent() != nullptr) {
@@ -701,8 +703,8 @@ illegal:
 		$$.valor = attributeValue;
 		$$.isReference = true;
 		$$.isAttributeReference = true;
-	}
-	| ATRIB LBRACKET indexList RBRACKET  {
+	} }
+	| ATRIB LBRACKET indexList RBRACKET  { if (!driver.isSyntaxOnly()) {
 		double attributeValue = 0.0;
 		if (driver.getModel()->getSimulation()->getCurrentEvent() != nullptr) {
 			// it could crach because there may be no current entity, if the parse is running before simulation and therefore there is no CurrentEntity
@@ -711,96 +713,96 @@ illegal:
 		$$.valor = attributeValue;
 		$$.isReference = false;
 		$$.isAttributeReference = true;
-	}
+	} }
 	;
 
 simulationResponse:
-	SIMRESP    {
+	SIMRESP    { if (!driver.isSyntaxOnly()) {
 		$$.valor = driver.getSimulationResponseValueAsDouble($1.tipo);
-	}
+	} }
 	;
 
 simulationControl:
-	SIMCTRL    {
+	SIMCTRL    { if (!driver.isSyntaxOnly()) {
 		$$.valor = driver.getSimulationControlValueAsDouble($1.tipo);
-	}
+	} }
 	;
 
 /****begin_ExpressionProdution_plugins****/
 
 	/**begin_ExpressionProdution:Variable**/
-	variable    : VARI  {
+	variable    : VARI  { if (!driver.isSyntaxOnly()) {
 					$$.valor = ((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->getValue();
 					$$.isReference = true;
 					$$.isAttributeReference = false;
-				} 
-				| VARI LBRACKET indexList RBRACKET	    {
+				} } 
+				| VARI LBRACKET indexList RBRACKET	    { if (!driver.isSyntaxOnly()) {
 					$$.valor = ((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->getValue($3);
 					$$.isReference = false;
 					$$.isAttributeReference = false;
-				}
+				} }
 				;
 	/**end_ExpressionProdution:Variable**/
 
 	/**begin_ExpressionProdution:Formula**/
 	// \todo: THERE IS A SERIOUS PROBLEM WITH FORMULA: TO EVALUATE THE FORMULA EXPRESSION, PARSER IS REINVOKED, AND THEN IT CRASHES (NO REENTRACE?)
-	formula     : FORM	    { 
+	formula     : FORM	    { if (!driver.isSyntaxOnly()) { 
 					std::string index = "";
 					Formula* formula = dynamic_cast<Formula*>(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Formula>(), $1.id));
 					std::string expression = formula->getExpression(index);
 					//std::cout << "Formula["<< index <<"]="<< expression << std::endl;
 					double value = 0.0; //@TODO: Can't parse the epression!  //formula->getValue(index);
-					$$.valor = value;}
-				| FORM LBRACKET expression RBRACKET {
+					$$.valor = value;} }
+				| FORM LBRACKET expression RBRACKET { if (!driver.isSyntaxOnly()) {
 					std::string index = std::to_string(static_cast<unsigned int>($3.valor));
 					Formula* formula = dynamic_cast<Formula*>(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Formula>(), $1.id));
 					std::string expression = formula->getExpression(index);
 					//std::cout << "Formula["<< index <<"]="<< expression << std::endl;
 					double value = 0.0; //@TODO: Can't parse the epression!  //formula->getValue(index);
-					$$.valor = value;}
-				| FORM LBRACKET expression "," expression RBRACKET {
+					$$.valor = value;} }
+				| FORM LBRACKET expression "," expression RBRACKET { if (!driver.isSyntaxOnly()) {
 					std::string index = std::to_string(static_cast<unsigned int>($3.valor)) +","+std::to_string(static_cast<unsigned int>($5.valor));
 					Formula* formula = dynamic_cast<Formula*>(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Formula>(), $1.id));
 					std::string expression = formula->getExpression(index);
 					//std::cout << "Formula["<< index <<"]="<< expression << std::endl;
 					double value = 0.0; //@TODO: Can't parse the epression!  //formula->getValue(index);
-					$$.valor = value;}
-				| FORM LBRACKET expression "," expression "," expression RBRACKET {
+					$$.valor = value;} }
+				| FORM LBRACKET expression "," expression "," expression RBRACKET { if (!driver.isSyntaxOnly()) {
 					std::string index = std::to_string(static_cast<unsigned int>($3.valor)) +","+std::to_string(static_cast<unsigned int>($5.valor))+","+std::to_string(static_cast<unsigned int>($7.valor));
 					Formula* formula = dynamic_cast<Formula*>(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Formula>(), $1.id));
 					std::string expression = formula->getExpression(index);
 					//std::cout << "Formula["<< index <<"]="<< expression << std::endl;
 					double value = 0.0; //@TODO: Can't parse the epression!  //formula->getValue(index);
-					$$.valor = value;}
+					$$.valor = value;} }
 				;
 	/**end_ExpressionProdution:Formula**/
 	/****end_ExpressionProdution_plugins****/
 
 	//Check if want to set the attribute or variable with expression or just return the expression value, for now just returns expression value
-	assigment  : ATRIB ASSIGN expression    { 
+	assigment  : ATRIB ASSIGN expression    { if (!driver.isSyntaxOnly()) { 
 					// @TODO: getCurrentEvent()->getEntity() may be nullptr if simulation hasn't started yet
 					if ($3.isReference && $3.isAttributeReference) {
 						copyAttributeStore(driver, $1, $3);
 					} else {
 						driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->setAttributeValue($1.id, $3.valor);
 					}
-					$$.valor = $3.valor; }
-				| ATRIB LBRACKET indexList RBRACKET ASSIGN expression    {
+					$$.valor = $3.valor; } }
+				| ATRIB LBRACKET indexList RBRACKET ASSIGN expression    { if (!driver.isSyntaxOnly()) {
 					driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->setAttributeValue($1.id, $6.valor, $3);
-					$$.valor = $6.valor; }
+					$$.valor = $6.valor; } }
 	/****begin_Assignment_plugins****/
 	/**begin_Assignment:Variable**/
-				| VARI ASSIGN expression        {
+				| VARI ASSIGN expression        { if (!driver.isSyntaxOnly()) {
 					if ($3.isReference && !$3.isAttributeReference) {
 						copyVariableStore(driver, $1, $3);
 					} else {
 						((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->setValue($3.valor);
 					}
 					$$.valor = $3.valor; 
-					}
-				| VARI LBRACKET indexList RBRACKET ASSIGN expression    {
+					} }
+				| VARI LBRACKET indexList RBRACKET ASSIGN expression    { if (!driver.isSyntaxOnly()) {
 					((Variable*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), $1.id)))->setValue($6.valor, $3);
-					$$.valor = $6.valor; }
+					$$.valor = $6.valor; } }
 	/**end_Assignment:Variable**/
 
 /****end_Assignment_plugins****/
@@ -808,38 +810,38 @@ simulationControl:
 
 
 pluginFunction  : 
-      CTEZERO                                        { $$.valor = 0; }
+      CTEZERO                                        { if (!driver.isSyntaxOnly()) { $$.valor = 0; } }
 /**begin_FunctionProdution_plugins**/
 /**begin_FunctionProdution:Queue**/
-    | fNQ       "(" QUEUE ")"	    {   //std::cout << "Queue ID: " << $3.id << ", Size: " << ((Queue*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), $3.id)))->size() << std::endl; 
-                                        $$.valor = ((Queue*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), $3.id)))->size();}
-    | fLASTINQ  "(" QUEUE ")"       {/*For now does nothing because need acces to list of QUEUE, or at least the last element*/ }
-    | fFIRSTINQ "(" QUEUE ")"       { 
+    | fNQ       "(" QUEUE ")"	    { if (!driver.isSyntaxOnly()) {   //std::cout << "Queue ID: " << $3.id << ", Size: " << ((Queue*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), $3.id)))->size() << std::endl; 
+                                        $$.valor = ((Queue*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), $3.id)))->size();} }
+    | fLASTINQ  "(" QUEUE ")"       { if (!driver.isSyntaxOnly()) {/*For now does nothing because need acces to list of QUEUE, or at least the last element*/ } }
+    | fFIRSTINQ "(" QUEUE ")"       { if (!driver.isSyntaxOnly()) { 
                 if (((Queue*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), $3.id)))->size() > 0){
                     //id da 1a entidade da fila, talvez pegar nome
                     $$.valor = ((Queue*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), $3.id)))->first()->getEntity()->getId();
                 }else{
                     $$.valor = 0;
-                } }
-    | fSAQUE "(" QUEUE "," ATRIB ")"   {   
+                } } }
+    | fSAQUE "(" QUEUE "," ATRIB ")"   { if (!driver.isSyntaxOnly()) {   
                 //Util::identification queueID = $3.id;
                 Util::identification attrID = $5.id;
                 double sum = ((Queue*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), $3.id)))->sumAttributesFromWaiting(attrID);
-                $$.valor = sum; }
-    | fAQUE "(" QUEUE "," NUMD "," ATRIB ")" {
+                $$.valor = sum; } }
+    | fAQUE "(" QUEUE "," NUMD "," ATRIB ")" { if (!driver.isSyntaxOnly()) {
                 //Util::identification queueID = $3.id;
                 Util::identification attrID = $7.id;
                 double value = ((Queue*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), $3.id)))->getAttributeFromWaitingRank($5.valor-1, attrID); // rank starts on 0 in genesys
-                $$.valor = value; }
+                $$.valor = value; } }
 /**end_FunctionProdution:Queue**/
 
 /**begin_FunctionProdution:Resource**/
-    | fMR        "(" RESOURCE ")"	{ $$.valor = ((Resource*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), $3.id))->getCapacity();}
-    | fNR        "(" RESOURCE ")"        { $$.valor = ((Resource*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), $3.id))->getNumberBusy();}
-    | fRESSEIZES "(" RESOURCE ")"        { /*\TODO: For now does nothing because needs get Seizes, check with teacher*/}
-    | fSTATE     "(" RESOURCE ")"        {  $$.valor = static_cast<int>(((Resource*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), $3.id))->getResourceState()); }
-    | fIRF       "(" RESOURCE ")"        { $$.valor = ((Resource*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), $3.id))->getResourceState() == Resource::ResourceState::FAILED ? 1 : 0; }
-    | fSETSUM    "(" SET ")"  {
+    | fMR        "(" RESOURCE ")"	{ if (!driver.isSyntaxOnly()) { $$.valor = ((Resource*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), $3.id))->getCapacity();} }
+    | fNR        "(" RESOURCE ")"        { if (!driver.isSyntaxOnly()) { $$.valor = ((Resource*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), $3.id))->getNumberBusy();} }
+    | fRESSEIZES "(" RESOURCE ")"        { if (!driver.isSyntaxOnly()) { /*\TODO: For now does nothing because needs get Seizes, check with teacher*/} }
+    | fSTATE     "(" RESOURCE ")"        { if (!driver.isSyntaxOnly()) {  $$.valor = static_cast<int>(((Resource*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), $3.id))->getResourceState()); } }
+    | fIRF       "(" RESOURCE ")"        { if (!driver.isSyntaxOnly()) { $$.valor = ((Resource*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), $3.id))->getResourceState() == Resource::ResourceState::FAILED ? 1 : 0; } }
+    | fSETSUM    "(" SET ")"  { if (!driver.isSyntaxOnly()) {
                 unsigned int count=0;
                 Resource* res;
                 List<ModelDataDefinition*>* setList = ((Set*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Set>(),$3.id))->getElementSet(); 
@@ -851,11 +853,11 @@ pluginFunction  :
                         }
                     }
                 }
-                $$.valor = count; }
+                $$.valor = count; } }
 /**end_FunctionProdution:Resource**/
 
 /**begin_FunctionProdution:Set**/
-    | fNUMSET    "(" SET ")"	{ $$.valor = ((Set*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Set>(),$3.id))->getElementSet()->size(); }
+    | fNUMSET    "(" SET ")"	{ if (!driver.isSyntaxOnly()) { $$.valor = ((Set*)driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Set>(),$3.id))->getElementSet()->size(); } }
 
 /**end_FunctionProdution:Set**/
 /****end_FunctionProdution_plugins****/
