@@ -25,6 +25,7 @@
 #include "services/GraphicalModelSerializer.h"
 
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelDataManager.h"
@@ -84,6 +85,25 @@
 namespace {
 
 constexpr const char* kEFSMGuiExtensionId = "modal.efsm.gui";
+
+class ReferencePersistenceRuntime final : public Persistence_if {
+public:
+    bool save(std::string) override { return false; }
+    bool load(std::string) override { return false; }
+    bool hasChanged() override { return false; }
+    void setHasChanged(bool) override {}
+    bool getOption(Persistence_if::Options) override { return false; }
+    void setOption(Persistence_if::Options, bool) override {}
+    std::string getFormatedField(PersistenceRecord*) override { return {}; }
+};
+
+class ModalModelDefaultPersistenceProbe final : public ModalModelDefault {
+public:
+    using ModalModelDefault::ModalModelDefault;
+    using ModalModelDefault::_loadInstance;
+    using ModalModelDefault::_saveInstance;
+    using ModalModelDefault::_check;
+};
 
 void setEFSMNetworkDiagramLayout(GraphicalModelSerializer* serializer, Model* model,
                                  unsigned long networkId, const EFSMNetworkDiagramLayout& layout) {
@@ -1974,6 +1994,27 @@ TEST(ModalNetworkReferencePersistence, GenRoundTripKeepsTheExactTypeAndId) {
     ASSERT_NE(loadedEfsm, nullptr);
     EXPECT_EQ(loadedAdapter->getNetwork(), loadedGraph);
     EXPECT_NE(loadedAdapter->getNetwork(), loadedEfsm);
+}
+
+TEST(ModalNetworkReferencePersistence, DamagedTypedIdentityFailsClosedWithDiagnostic) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new GraphNetwork(model, "TypedReferenceTarget");
+    ModalModelDefaultPersistenceProbe source(model, "TypedReferenceSource");
+    source.setNetwork(network);
+    ReferencePersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source._saveInstance(&fields, true);
+    fields.saveField("networkId", static_cast<int>(network->getId() + 10000), 0, true);
+
+    ModalModelDefaultPersistenceProbe loaded(model, "DamagedTypedReference");
+    ASSERT_TRUE(loaded._loadInstance(&fields));
+    EXPECT_EQ(loaded.getNetwork(), nullptr);
+    std::string diagnostic;
+    EXPECT_FALSE(loaded._check(diagnostic));
+    EXPECT_NE(diagnostic.find("missing or mismatched Network"), std::string::npos);
 }
 
 TEST(ModalNetworkReferencePersistence, LegacyNameOnlyReferenceResolvesOnlyWhenUnambiguous) {
