@@ -30,9 +30,11 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | C2 | Pass (focused) | EFSM state/transition handlers and selection predicates are in `extensions/plugins/efsm/EFSMNetworkEditorController`; GUI build and focused edit/undo/reopen tests pass. |
 | C3 | Pass (focused) | `EFSMGuiExtensionPlugin` registers five actions through the existing registry with stable IDs. Manager refreshes current-context visibility/enabled state and dispatches against the live context. Root/Network visibility and handler tests pass. |
 | C4 | Pass (focused) | Projection synchronization, layout capture/restore, and `.gui` codec parse/write dispatch through registered diagram contributions. Generic MainWindow/serializer no longer include EFSM layout/codec types or name EFSM for tab titles/persistence detection. The existing EFSM section format remains unchanged; legacy sections load safely, and unknown diagram sections survive load/save. Focused projection, persistence, shared-tab, and save/reopen execution tests pass. |
-| C5 | In progress | Added the minimal `GuiNetworkEditorContribution` contract and formalism-owned drop predicate. EFSM registers accepted mathematical data-definition types; other network extensions still need registration as their editors are implemented. |
-| C6 | Not started | Optional/static integration and extension-unavailable behavior still need validation. |
-| D1–D5 | In progress | The scene insertion boundary now rejects process-component drops in Network contexts before model mutation; EFSM permits only FSMState data-definition drops. Graph/Markov/CPN editing, topology constraints, persistence, undo/redo and animation remain. |
+| C5 | Pass (focused) | The shared `GuiNetworkEditorContribution` supports formalism identity, allowed drops, action predicates, projection refresh, and generic persistence integration. EFSM and Graph register concrete editor policies/actions without MainWindow formalism branches. Focused static registration and dispatch coverage passes. |
+| C6 | In progress | EFSM and Graph extensions are statically registered and the GUI/test targets link them. Unknown `.gui` diagram records round-trip. A no-extension build/runtime and optional-dependency regression remain. |
+| D1 | In progress | Network scene insertion enforces formalism-owned allowed-drop policy at the mutation boundary. EFSM permits FSMState and Graph permits GraphNode; process components and wrong formalism data are rejected. Markov/CPN editors and broader tool/context coverage remain. |
+| D2 | In progress | Graph extension renders directed/undirected topology including parallel/self-loop edges, accepts GraphNode drops into network membership, creates edges from selected nodes, and supports edge removal plus undo/redo. Node/edge editing, node deletion/undo, edge attributes, broader geometric/persistence checks, and full DAG constraints remain. |
+| D3–D5 | Not started | Markov/CPN editors, mathematical-state visuals, and graph analysis visualization remain. No simulation-time traversal is fabricated for GraphNetwork. |
 
 ## Executed changes
 
@@ -243,3 +245,11 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after the drop policy integration.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.NetworkCanvas*'` — PASS, 2 tests; accepted EFSM mathematical data definition, rejected component/unrelated type, and actual scene drop rejection before model mutation.
 - `git diff --check` — PASS after the drop policy integration.
+
+- Added a statically registered Graph GUI extension. It projects existing graph topology into scene-owned edge overlays, including directed arrows, parallel-edge separation, self-loops, and weight tooltips. Node position remains in the generic graphical data-definition layer; domain membership and topology remain in GraphNetwork/GraphEdge.
+- GraphNetwork accepts GraphNode drops only; the drop callback registers the new node with the Network before adding its graphical item. A shared editor action connects exactly two selected GraphNodes. Graph-edge add/remove commands use the scene undo stack and refresh the projection.
+- The edge action is disabled when its scene has no undo stack. The initial test fixture omitted the stack and crashed inside Qt `QUndoStack::push`; configuring a real stack and guarding the action fixed the repro.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS with the Graph extension linked statically.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.*:GraphNetworkGuiExtension.*:EFSMNetworkDiagramPersistence.*:EFSMNetworkDiagramProjection.*:EFSMNetworkEditor.SharedNetworkOpensOneSubmodelTabFromMultipleAdapters:EFSMNetworkEditor.MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM'` — PASS, 29 tests. Covers EFSM persistence/editor regressions, contextual drop acceptance/rejection, Graph node membership, Graph edge rendering, and edge add/remove undo/redo.
+- `git diff --check` — PASS for the current D2 increment.

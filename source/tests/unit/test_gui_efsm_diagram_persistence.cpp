@@ -40,7 +40,9 @@
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/ModalModel/GraphNetwork.h"
+#include "plugins/data/ModalModel/GraphEdge.h"
 #include "plugins/data/ModalModel/GraphNode.h"
+#include "plugins/data/ModalModel/DirectedGraphNetwork.h"
 #include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 
 #include <gtest/gtest.h>
@@ -66,6 +68,7 @@
 #include <QMessageBox>
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsRectItem>
+#include <QGraphicsPathItem>
 #include <QMainWindow>
 #include <QMenu>
 #include <QSpinBox>
@@ -261,6 +264,147 @@ TEST(GuiExtensionManager, NetworkCanvasRejectsProcessComponentBeforeModelMutatio
     EXPECT_FALSE(event.isAccepted());
     EXPECT_EQ(model->getComponentManager()->getAllComponents()->size(), initialComponents);
     EXPECT_TRUE(scene.graphicalModelComponentItems().isEmpty());
+
+    Plugin* statePlugin = simulator.getPluginManager()->find(Util::TypeOf<FSMState>());
+    ASSERT_NE(statePlugin, nullptr);
+    draggedItem.setWhatsThis(0, QString::fromStdString(statePlugin->getPluginInfo()->getPluginTypename()));
+    QGraphicsSceneDragDropEvent allowedEvent(QEvent::GraphicsSceneDrop);
+    allowedEvent.setScenePos(QPointF(120, 80));
+    scene.dropEvent(&allowedEvent);
+    EXPECT_EQ(network.getStates()->size(), 1u);
+    EXPECT_EQ(scene.getGraphicalModelDataDefinitions()->size(), 1);
+}
+
+TEST(GraphNetworkGuiExtension, ProjectsParallelAndSelfLoopEdgesFromTheNetworkTopology) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    DirectedGraphNetwork network(model, "DirectedProjection");
+    auto* first = new GraphNode(model, "First");
+    auto* second = new GraphNode(model, "Second");
+    ASSERT_TRUE(network.addNode(first));
+    ASSERT_TRUE(network.addNode(second));
+    auto* parallelA = new GraphEdge(model, first, second, "ParallelA");
+    auto* parallelB = new GraphEdge(model, first, second, "ParallelB");
+    auto* selfLoop = new GraphEdge(model, first, first, "SelfLoop");
+    ASSERT_TRUE(network.addEdge(parallelA));
+    ASSERT_TRUE(network.addEdge(parallelB));
+    ASSERT_TRUE(network.addEdge(selfLoop));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    Plugin* nodePlugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+    ASSERT_NE(nodePlugin, nullptr);
+    scene.addGraphicalModelDataDefinition(nodePlugin, first, QPointF(20, 20));
+    scene.addGraphicalModelDataDefinition(nodePlugin, second, QPointF(240, 120));
+
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    QList<QGraphicsItem*> projected = scene.extensionOverlayItems(QStringLiteral("modal.graph.gui"));
+    ASSERT_EQ(projected.size(), 3);
+    for (QGraphicsItem* item : projected) {
+        auto* pathItem = dynamic_cast<QGraphicsPathItem*>(item);
+        ASSERT_NE(pathItem, nullptr);
+        EXPECT_FALSE(pathItem->path().isEmpty());
+    }
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 3);
+}
+
+TEST(GraphNetworkGuiExtension, DroppedGraphNodeJoinsTheNetworkAndScene) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNetwork network(model, "DroppedNodeGraph");
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    scene.setNetworkEditorOwner(&network);
+    Plugin* nodePlugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+    ASSERT_NE(nodePlugin, nullptr);
+    QTreeWidgetItem draggedItem;
+    draggedItem.setWhatsThis(0, QString::fromStdString(nodePlugin->getPluginInfo()->getPluginTypename()));
+    scene.setObjectBeingDragged(&draggedItem);
+    QGraphicsSceneDragDropEvent event(QEvent::GraphicsSceneDrop);
+    event.setScenePos(QPointF(150, 90));
+    scene.dropEvent(&event);
+
+    ASSERT_EQ(network.getNodes().size(), 1u);
+    EXPECT_EQ(network.getNodes().front()->getLevel(), network.getId());
+    ASSERT_EQ(scene.getGraphicalModelDataDefinitions()->size(), 1);
+    EXPECT_EQ(dynamic_cast<GraphicalModelDataDefinition*>(scene.getGraphicalModelDataDefinitions()->front())
+                  ->getDataDefinition(), network.getNodes().front());
+}
+
+TEST(GraphNetworkGuiExtension, CreatesEdgesFromSelectedNodesWithUndoRedo) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    DirectedGraphNetwork network(model, "EditableDirectedGraph");
+    auto* first = new GraphNode(model, "Start");
+    auto* second = new GraphNode(model, "Finish");
+    ASSERT_TRUE(network.addNode(first));
+    ASSERT_TRUE(network.addNode(second));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    Plugin* nodePlugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+    ASSERT_NE(nodePlugin, nullptr);
+    auto* firstItem = scene.addGraphicalModelDataDefinition(nodePlugin, first, QPointF(20, 20));
+    auto* secondItem = scene.addGraphicalModelDataDefinition(nodePlugin, second, QPointF(220, 20));
+    firstItem->setSelected(true);
+    secondItem->setSelected(true);
+    ASSERT_EQ(scene.selectedItems().size(), 2);
+
+    GuiActionContribution createEdge;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.graph.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) {
+            if (action.id == "modal.graph.create-edge") createEdge = action;
+        }
+    }
+    ASSERT_TRUE(static_cast<bool>(createEdge.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(createEdge.isEnabled(context));
+    createEdge.trigger(context);
+    ASSERT_EQ(network.getEdges().size(), 1u);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 1);
+
+    scene.getUndoStack()->undo();
+    EXPECT_TRUE(network.getEdges().empty());
+    EXPECT_TRUE(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).isEmpty());
+    scene.getUndoStack()->redo();
+    EXPECT_EQ(network.getEdges().size(), 1u);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 1);
+
+    GuiActionContribution removeEdge;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.graph.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) {
+            if (action.id == "modal.graph.remove-edge") removeEdge = action;
+        }
+    }
+    ASSERT_TRUE(static_cast<bool>(removeEdge.trigger));
+    scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).front()->setSelected(true);
+    ASSERT_TRUE(removeEdge.isEnabled(context));
+    removeEdge.trigger(context);
+    EXPECT_TRUE(network.getEdges().empty());
+    scene.getUndoStack()->undo();
+    EXPECT_EQ(network.getEdges().size(), 1u);
 }
 
 TEST(GuiExtensionManager, ActionContributionsRefreshForTheCurrentRuntimeContext) {

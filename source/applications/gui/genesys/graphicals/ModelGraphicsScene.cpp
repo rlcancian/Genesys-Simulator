@@ -3469,6 +3469,10 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                 // Allow graphical authoring of data definitions by dropping them directly on the canvas.
                 ModelDataDefinition* dataDefinition = plugin->newInstance(_simulator->getModelManager()->current());
                 if (dataDefinition != nullptr) {
+                    if (hasModelLevelFilter()) {
+                        GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
+                            _networkEditorOwner, dataDefinition);
+                    }
                     event->setDropAction(Qt::IgnoreAction);
                     event->accept();
 

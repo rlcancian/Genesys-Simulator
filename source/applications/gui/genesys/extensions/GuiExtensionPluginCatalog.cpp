@@ -319,6 +319,24 @@ bool GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
 	return false;
 }
 
+void GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
+	ModelDataDefinition* owner, ModelDataDefinition* dropped) {
+	if (owner == nullptr || dropped == nullptr) return;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.acceptsDrop
+				&& editor.acceptsDrop(owner, dropped->getClassname(), false)
+				&& editor.onDataDefinitionDropped) {
+				editor.onDataDefinitionDropped(owner, dropped);
+				return;
+			}
+		}
+	}
+}
+
 void GuiExtensionPluginCatalog::restoreDiagramProjections(
 	Simulator* simulator, ModelDataDefinition* owner, ModelGraphicsScene* scene,
 	const std::function<std::any(const std::string&, unsigned long)>& layoutProvider) {

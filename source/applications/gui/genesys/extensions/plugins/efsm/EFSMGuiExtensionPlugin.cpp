@@ -75,6 +75,11 @@ public:
         networkEditor.acceptsDrop = [](ModelDataDefinition*, const std::string& pluginType, bool isComponent) {
             return !isComponent && pluginType == Util::TypeOf<FSMState>();
         };
+        networkEditor.onDataDefinitionDropped = [](ModelDataDefinition* owner, ModelDataDefinition* dropped) {
+            auto* network = dynamic_cast<EFSMNetwork*>(owner);
+            auto* state = dynamic_cast<FSMState*>(dropped);
+            if (network != nullptr && state != nullptr) network->addState(state);
+        };
         registry->addNetworkEditor(std::move(networkEditor));
         addAction(registry, "modal.efsm.create-state", "Create EFSM State",
                   &EFSMNetworkEditorController::canCreateState,
