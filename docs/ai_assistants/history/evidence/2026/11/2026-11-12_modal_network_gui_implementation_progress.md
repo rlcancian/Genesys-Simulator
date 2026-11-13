@@ -30,8 +30,9 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | C2 | Pass (focused) | EFSM state/transition handlers and selection predicates are in `extensions/plugins/efsm/EFSMNetworkEditorController`; GUI build and focused edit/undo/reopen tests pass. |
 | C3 | Pass (focused) | `EFSMGuiExtensionPlugin` registers five actions through the existing registry with stable IDs. Manager refreshes current-context visibility/enabled state and dispatches against the live context. Root/Network visibility and handler tests pass. |
 | C4 | Pass (focused) | Projection synchronization, layout capture/restore, and `.gui` codec parse/write dispatch through registered diagram contributions. Generic MainWindow/serializer no longer include EFSM layout/codec types or name EFSM for tab titles/persistence detection. The existing EFSM section format remains unchanged; legacy sections load safely, and unknown diagram sections survive load/save. Focused projection, persistence, shared-tab, and save/reopen execution tests pass. |
-| C5–C6 | Not started | Minimal shared editor contribution contract and static integration/lifetime verification remain. |
-| D1–D5 | Not started | Context-specific editors, formalism topology, persistence, undo/redo and animation. |
+| C5 | In progress | Added the minimal `GuiNetworkEditorContribution` contract and formalism-owned drop predicate. EFSM registers accepted mathematical data-definition types; other network extensions still need registration as their editors are implemented. |
+| C6 | Not started | Optional/static integration and extension-unavailable behavior still need validation. |
+| D1–D5 | In progress | The scene insertion boundary now rejects process-component drops in Network contexts before model mutation; EFSM permits only FSMState data-definition drops. Graph/Markov/CPN editing, topology constraints, persistence, undo/redo and animation remain. |
 
 ## Executed changes
 
@@ -235,3 +236,10 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - `5ca1431aa` — progress-log commit recording the C2 enablement extraction (pushed).
 - `5158f456c` — `modal-gui(C3): register EFSM actions as extension contributions` (pushed).
 - C4 generic capture/restore/codec dispatch, unknown-section round-trip regression, and serializer test adaptation are validated and pending commit.
+
+- Added a minimal `GuiNetworkEditorContribution` to the existing extension registry/catalog. Network scenes retain their non-owning formalism owner; the actual drop insertion boundary asks the registered editor policy before constructing any model object. Root process canvases keep their existing unrestricted behavior.
+- EFSM registers FSMState as its current allowed palette drop; process components and unrelated data definitions are rejected for that Network.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after the drop policy integration.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after the drop policy integration.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.NetworkCanvas*'` — PASS, 2 tests; accepted EFSM mathematical data definition, rejected component/unrelated type, and actual scene drop rejection before model mutation.
+- `git diff --check` — PASS after the drop policy integration.

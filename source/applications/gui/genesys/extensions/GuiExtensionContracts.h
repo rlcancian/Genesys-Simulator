@@ -19,6 +19,7 @@ class ModelGraphicsView;
 class ModelGraphicsScene;
 class Model;
 class ModelDataDefinition;
+class Plugin;
 
 using GuiDiagramLayouts = std::map<unsigned long, std::any>;
 using GuiDiagramLayoutsByExtension = std::unordered_map<std::string, GuiDiagramLayouts>;
@@ -85,6 +86,12 @@ struct GuiDiagramProjectionContribution {
 	std::function<GuiDiagramLayouts(Model*, const QStringList&)> parseLayouts;
 };
 
+struct GuiNetworkEditorContribution {
+	std::string id;
+	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<bool(ModelDataDefinition*, const std::string&, bool)> acceptsDrop;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAction(GuiActionContribution contribution) {
@@ -107,6 +114,10 @@ public:
 		_diagramProjections.push_back(std::move(contribution));
 	}
 
+	void addNetworkEditor(GuiNetworkEditorContribution contribution) {
+		_networkEditors.push_back(std::move(contribution));
+	}
+
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
 	}
@@ -127,12 +138,17 @@ public:
 		return _diagramProjections;
 	}
 
+	const std::vector<GuiNetworkEditorContribution>& networkEditors() const {
+		return _networkEditors;
+	}
+
 	void clear() {
 		_actions.clear();
 		_docks.clear();
 		_windows.clear();
 		_contextMenus.clear();
 		_diagramProjections.clear();
+		_networkEditors.clear();
 	}
 
 private:
@@ -141,6 +157,7 @@ private:
 	std::vector<GuiWindowContribution> _windows;
 	std::vector<GuiContextMenuContribution> _contextMenus;
 	std::vector<GuiDiagramProjectionContribution> _diagramProjections;
+	std::vector<GuiNetworkEditorContribution> _networkEditors;
 };
 
 class GuiExtensionPlugin {

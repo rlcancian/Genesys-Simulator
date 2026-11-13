@@ -55,6 +55,7 @@
 #include "dialogs/DialogTimerConfigure.h"
 #include "animations/AnimationQueue.h"
 #include "services/GraphicalModelBuilder.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
@@ -3147,6 +3148,14 @@ unsigned int ModelGraphicsScene::modelLevelFilter() const {
     return _modelLevelFilter;
 }
 
+void ModelGraphicsScene::setNetworkEditorOwner(ModelDataDefinition* owner) {
+    _networkEditorOwner = owner;
+}
+
+ModelDataDefinition* ModelGraphicsScene::networkEditorOwner() const {
+    return _networkEditorOwner;
+}
+
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {
     return _graphicalGroups;
 }
@@ -3437,6 +3446,13 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
             QString pluginname = treeItem->whatsThis(0);
             Plugin* plugin = _simulator->getPluginManager()->find(pluginname.toStdString());
             if (plugin != nullptr) {
+                if (hasModelLevelFilter()
+                    && !GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+                        _networkEditorOwner, plugin->getPluginInfo()->getPluginTypename(),
+                        plugin->getPluginInfo()->isComponent())) {
+                    event->ignore();
+                    return;
+                }
                 if (plugin->getPluginInfo()->isComponent()) {
                     event->setDropAction(Qt::IgnoreAction);
                     event->accept();

@@ -304,6 +304,21 @@ std::vector<GuiDiagramProjectionContribution> GuiExtensionPluginCatalog::diagram
 	return projections;
 }
 
+bool GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+	ModelDataDefinition* owner, const std::string& pluginType, bool isComponent) {
+	if (owner == nullptr || pluginType.empty() || isComponent) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.acceptsDrop
+				&& editor.acceptsDrop(owner, pluginType, isComponent)) return true;
+		}
+	}
+	return false;
+}
+
 void GuiExtensionPluginCatalog::restoreDiagramProjections(
 	Simulator* simulator, ModelDataDefinition* owner, ModelGraphicsScene* scene,
 	const std::function<std::any(const std::string&, unsigned long)>& layoutProvider) {

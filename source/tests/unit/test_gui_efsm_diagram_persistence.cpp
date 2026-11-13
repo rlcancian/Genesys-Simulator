@@ -18,6 +18,7 @@
 #include "mainwindow.h"
 #include "extensions/GuiExtensionContracts.h"
 #include "extensions/GuiExtensionManager.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 #include "services/EFSMNetworkDiagramCodec.h"
 #include "services/EFSMNetworkDiagramProjection.h"
 #include "services/GraphicalModelBuilder.h"
@@ -39,6 +40,7 @@
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/ModalModel/GraphNetwork.h"
+#include "plugins/data/ModalModel/GraphNode.h"
 #include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 
 #include <gtest/gtest.h>
@@ -95,6 +97,7 @@ public:
     ExposedModelGraphicsScene() : ModelGraphicsScene(-1000, -1000, 4000, 4000) {}
     using ModelGraphicsScene::mousePressEvent;
     using ModelGraphicsScene::mouseReleaseEvent;
+    using ModelGraphicsScene::dropEvent;
 };
 
 // Minimal widget/action bundle required by GraphicalModelSerializer's
@@ -216,6 +219,48 @@ TEST(GuiExtensionManager, ContextMenuContributionsAreDispatchedWithoutFormalismB
     QMenu emptyMenu;
     manager.populateContextMenu(&emptyMenu, nullptr);
     EXPECT_TRUE(emptyMenu.actions().empty());
+}
+
+TEST(GuiExtensionManager, NetworkCanvasAcceptsOnlyFormalismDataDefinitions) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "DropPolicyNetwork");
+
+    EXPECT_TRUE(GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+        &network, Util::TypeOf<FSMState>(), false));
+    EXPECT_FALSE(GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+        &network, Util::TypeOf<Create>(), true));
+    EXPECT_FALSE(GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+        &network, Util::TypeOf<GraphNode>(), false));
+    EXPECT_FALSE(GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+        nullptr, Util::TypeOf<FSMState>(), false));
+}
+
+TEST(GuiExtensionManager, NetworkCanvasRejectsProcessComponentBeforeModelMutation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "DropBoundaryNetwork");
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    scene.setNetworkEditorOwner(&network);
+
+    Plugin* componentPlugin = simulator.getPluginManager()->find(Util::TypeOf<Create>());
+    ASSERT_NE(componentPlugin, nullptr);
+    QTreeWidgetItem draggedItem;
+    draggedItem.setWhatsThis(0, QString::fromStdString(componentPlugin->getPluginInfo()->getPluginTypename()));
+    scene.setObjectBeingDragged(&draggedItem);
+    const unsigned int initialComponents = model->getComponentManager()->getAllComponents()->size();
+    QGraphicsSceneDragDropEvent event(QEvent::GraphicsSceneDrop);
+    scene.dropEvent(&event);
+
+    EXPECT_FALSE(event.isAccepted());
+    EXPECT_EQ(model->getComponentManager()->getAllComponents()->size(), initialComponents);
+    EXPECT_TRUE(scene.graphicalModelComponentItems().isEmpty());
 }
 
 TEST(GuiExtensionManager, ActionContributionsRefreshForTheCurrentRuntimeContext) {

@@ -5,6 +5,7 @@
 #include "../../../services/EFSMNetworkDiagramCodec.h"
 #include "EFSMNetworkEditorController.h"
 #include "../../../../../../plugins/data/ModalModel/EFSMNetwork.h"
+#include "kernel/util/Util.h"
 
 #include <QTextStream>
 
@@ -66,6 +67,15 @@ public:
             return layouts;
         };
         registry->addDiagramProjection(std::move(diagram));
+        GuiNetworkEditorContribution networkEditor;
+        networkEditor.id = "modal.efsm.gui";
+        networkEditor.supports = [](ModelDataDefinition* definition) {
+            return dynamic_cast<EFSMNetwork*>(definition) != nullptr;
+        };
+        networkEditor.acceptsDrop = [](ModelDataDefinition*, const std::string& pluginType, bool isComponent) {
+            return !isComponent && pluginType == Util::TypeOf<FSMState>();
+        };
+        registry->addNetworkEditor(std::move(networkEditor));
         addAction(registry, "modal.efsm.create-state", "Create EFSM State",
                   &EFSMNetworkEditorController::canCreateState,
                   &EFSMNetworkEditorController::createState);

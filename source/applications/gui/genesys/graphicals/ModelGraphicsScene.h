@@ -442,6 +442,10 @@ public:
     bool hasModelLevelFilter() const;
     /** @brief Returns the active level used by rebuild services when the filter is enabled. */
     unsigned int modelLevelFilter() const;
+    /** @brief Associates this scoped scene with the non-owning formalism Network it edits. */
+    void setNetworkEditorOwner(ModelDataDefinition* owner);
+    /** @brief Returns the non-owning formalism Network associated with this scene, if any. */
+    ModelDataDefinition* networkEditorOwner() const;
     /** @brief Shows or hides internal data definitions. */
     void setShowInternalDataDefinitions(bool show);
     /** @brief Returns whether internal data definitions are visible. */
@@ -599,6 +603,7 @@ private:
     // static graphical synchronization calls can keep the same scope as the active view.
     bool _hasModelLevelFilter = false;
     unsigned int _modelLevelFilter = 0;
+    ModelDataDefinition* _networkEditorOwner = nullptr;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

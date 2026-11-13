@@ -716,6 +716,7 @@ MainWindow::GraphicalModelViewContext* MainWindow::_ensureRootModelViewContext(M
     context->graphicsView = graphicsView;
     if (graphicsView->getScene() != nullptr) {
         graphicsView->getScene()->setModelLevelFilter(context->modelLevel);
+        graphicsView->getScene()->setNetworkEditorOwner(nullptr);
     }
     _rootViewContextsByModel[model] = context;
     return context;
@@ -762,6 +763,7 @@ ModelGraphicsView* MainWindow::_ensureSubmodelViewContext(ModelDataDefinition* o
     context->graphicsView = graphicsView;
     if (graphicsView->getScene() != nullptr) {
         graphicsView->getScene()->setModelLevelFilter(context->modelLevel);
+        graphicsView->getScene()->setNetworkEditorOwner(owner);
     }
     GraphicalModelViewContext* rawContext = context.get();
     _viewContextsByGraphicsView.emplace(graphicsView, std::move(context));
