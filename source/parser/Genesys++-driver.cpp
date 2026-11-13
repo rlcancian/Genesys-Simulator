@@ -385,7 +385,9 @@ void genesyspp_driver::error(const yy::location& l, const std::string& m) {
 	erro.append(" from line "+ std::to_string(l.begin.line) + " column "+std::to_string(l.begin.column));
 	erro.append(" to line "+std::to_string(l.end.line)+" column "+std::to_string(l.end.column));
 	erro.append("\n");
-	setErrorMessage(m);
+	// Preserve existing runtime diagnostics; expose token locations only in the
+	// non-executing syntax editor, where they help users repair expressions.
+	setErrorMessage(_syntaxOnly ? erro : m);
 	setResult(-1);
 }
 
