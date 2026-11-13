@@ -82,6 +82,7 @@ protected:
 
 private:
     static bool _splitDestination(const std::string& text, std::string& base, std::string& index);
+    static bool _validIndex(const std::string& index);
     void _prepareDestination(ReadDestination* destination);
     bool _getRecord(std::string& record, std::string& error);
     bool _parseRecord(const std::string& record, std::vector<double>& values, std::string& error) const;
