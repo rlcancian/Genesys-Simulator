@@ -2,6 +2,8 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../systempreferences.h"
 #include "kernel/simulator/model/ModelDataDefinition.h"
+#include "kernel/simulator/model/ModelComponent.h"
+#include "../graphicals/GraphicalModelComponent.h"
 
 #include <algorithm>
 #include <cctype>
@@ -517,6 +519,53 @@ void GuiExtensionPluginCatalog::restoreDiagramProjections(
 		diagram.restoreLayout(simulator, owner, scene,
 		                     layoutProvider(diagram.id, static_cast<unsigned long>(owner->getId())));
 	}
+}
+
+void GuiExtensionPluginCatalog::configureComponentVisualization(GraphicalModelComponent* component) {
+	if (component == nullptr || component->getComponent() == nullptr) return;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.configure) {
+				contribution.configure(component);
+				return;
+			}
+		}
+	}
+}
+
+bool GuiExtensionPluginCatalog::animateComponentArrival(ModelGraphicsScene* scene, GraphicalModelComponent* component, bool visible) {
+	if (scene == nullptr || component == nullptr || component->getComponent() == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateArrival) {
+				contribution.animateArrival(scene, component, visible);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::animateComponentDeparture(ModelGraphicsScene* scene, GraphicalModelComponent* component) {
+	if (scene == nullptr || component == nullptr || component->getComponent() == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateDeparture) {
+				contribution.animateDeparture(scene, component);
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 GuiExtensionPluginAutoRegistrar::GuiExtensionPluginAutoRegistrar(const GuiExtensionPlugin* plugin) {

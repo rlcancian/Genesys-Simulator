@@ -44,6 +44,9 @@ public:
 	static void restoreDiagramProjections(
 		Simulator* simulator, ModelDataDefinition* owner, ModelGraphicsScene* scene,
 		const std::function<std::any(const std::string&, unsigned long)>& layoutProvider);
+	static void configureComponentVisualization(GraphicalModelComponent* component);
+	static bool animateComponentArrival(ModelGraphicsScene* scene, GraphicalModelComponent* component, bool visible);
+	static bool animateComponentDeparture(ModelGraphicsScene* scene, GraphicalModelComponent* component);
 };
 
 class GuiExtensionPluginAutoRegistrar {

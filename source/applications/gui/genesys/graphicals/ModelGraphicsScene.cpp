@@ -53,7 +53,6 @@
 #include "dialogs/DialogSelectCounter.h"
 #include "dialogs/DialogSelectVariable.h"
 #include "dialogs/DialogTimerConfigure.h"
-#include "animations/AnimationQueue.h"
 #include "services/GraphicalModelBuilder.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
 #include "../../../../kernel/simulator/model/Model.h"
@@ -1392,7 +1391,8 @@ void ModelGraphicsScene::saveDataDefinitions() {
     QList<GraphicalModelComponent*> components = this->graphicalModelComponentItems();
 
     for (GraphicalModelComponent* component : components) {
-        component->verifyQueue();
+        component->resetAnimationTracks();
+        GuiExtensionPluginCatalog::configureComponentVisualization(component);
 
         if (component->getInternalData()->empty() || component->getAttachedData()->empty()) {
             std::map<std::string, ModelDataDefinition*>* internalsData = component->getComponent()->getInternalData();
@@ -2133,26 +2133,12 @@ void ModelGraphicsScene::handleAnimationStateChanged(QAbstractAnimation::State n
     if (loop) loop->quit();
 }
 
-void ModelGraphicsScene::animateQueueInsert(ModelComponent* component, bool visivible) {
-    // Cria a animação
-    AnimationQueue* animationQueue = new AnimationQueue(this, component);
-
-    // Adiciona uma imagem na fila
-    animationQueue->addAnimationQueue(visivible);
-
-    // Libera o espaço de memória alocado pela animação
-    delete animationQueue;
+void ModelGraphicsScene::animateEntityArrival(ModelComponent* component, bool visible) {
+    if (component != nullptr) GuiExtensionPluginCatalog::animateComponentArrival(this, findGraphicalModelComponent(component->getId()), visible);
 }
 
-void ModelGraphicsScene::animateQueueRemove(ModelComponent* component) {
-    // Cria a animação
-    AnimationQueue* animationQueue = new AnimationQueue(this, component);
-
-    // Remove uma imagem da fila
-    animationQueue->removeAnimationQueue();
-
-    // Libera o espaço de memória alocado pela animação
-    delete animationQueue;
+void ModelGraphicsScene::animateEntityDeparture(ModelComponent* component) {
+    if (component != nullptr) GuiExtensionPluginCatalog::animateComponentDeparture(this, findGraphicalModelComponent(component->getId()));
 }
 
 
@@ -2284,7 +2270,7 @@ void ModelGraphicsScene::clearAnimationsQueue() {
     QList<GraphicalModelComponent*>* componentes = getAllComponents();
 
     for (GraphicalModelComponent* componente : *componentes) {
-        componente->clearQueues();
+        componente->clearAnimationTracks();
     }
 }
 

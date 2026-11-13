@@ -29,6 +29,7 @@
 #include "../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/Transfer/PickStation.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Create.h"
@@ -818,6 +819,44 @@ TEST(GuiGmddLayout, SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRow
         sharedQueueAGmdd,
         sharedQueueBGmdd
     }));
+}
+
+TEST(GuiDiscreteProcessingVisualization, ExtensionConfiguresGenericQueueTracksAndPickStationTrack) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* queue = new Queue(model, "VisualizationQueue");
+    auto* seize = new Seize(model, "VisualizationSeize");
+    (*seize->getAttachedData())[queue->getName()] = queue;
+    Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
+    ASSERT_NE(seizePlugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 800, 600);
+    scene.setSimulator(&simulator);
+    GraphicalModelComponent graphicalSeize(seizePlugin, seize, QPointF(0, 0), Qt::blue);
+    scene.addItem(&graphicalSeize);
+
+    GuiExtensionPluginCatalog::configureComponentVisualization(&graphicalSeize);
+    ASSERT_TRUE(graphicalSeize.hasAnimationTracks());
+    ASSERT_TRUE(graphicalSeize.getAnimationTrackMap()->contains(queue));
+    EXPECT_EQ(graphicalSeize.getAnimationTrackIndex(queue), 0u);
+    EXPECT_EQ(graphicalSeize.getAnimationTrackSize(queue), 0u);
+    ASSERT_TRUE(GuiExtensionPluginCatalog::animateComponentArrival(&scene, &graphicalSeize, true));
+    ASSERT_EQ(graphicalSeize.getAnimationTracks()->at(0)->size(), 1);
+    ASSERT_TRUE(GuiExtensionPluginCatalog::animateComponentDeparture(&scene, &graphicalSeize));
+    EXPECT_TRUE(graphicalSeize.getAnimationTracks()->at(0)->isEmpty());
+
+    auto* pickStation = new PickStation(model, "VisualizationPickStation");
+    Plugin* pickPlugin = pluginManager->find(Util::TypeOf<PickStation>());
+    ASSERT_NE(pickPlugin, nullptr);
+    GraphicalModelComponent graphicalPickStation(pickPlugin, pickStation, QPointF(100, 0), Qt::blue);
+    GuiExtensionPluginCatalog::configureComponentVisualization(&graphicalPickStation);
+    ASSERT_TRUE(graphicalPickStation.hasAnimationTracks());
+    EXPECT_TRUE(graphicalPickStation.getAnimationTrackMap()->isEmpty());
+    ASSERT_EQ(graphicalPickStation.getAnimationTracks()->size(), 1);
 }
 
 TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsEditable) {

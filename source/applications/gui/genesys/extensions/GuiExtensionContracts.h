@@ -20,6 +20,8 @@ class ModelGraphicsView;
 class ModelGraphicsScene;
 class Model;
 class ModelDataDefinition;
+class ModelComponent;
+class GraphicalModelComponent;
 class ObjectPropertyBrowser;
 class Plugin;
 
@@ -142,6 +144,14 @@ struct GuiModelReferenceContribution {
 		ModelGraphicsScene*, ObjectPropertyBrowser*)> propertyChanged;
 };
 
+struct GuiComponentVisualizationContribution {
+	std::string id;
+	std::function<bool(ModelComponent*)> supports;
+	std::function<void(GraphicalModelComponent*)> configure;
+	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*, bool)> animateArrival;
+	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*)> animateDeparture;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAction(GuiActionContribution contribution) {
@@ -180,6 +190,10 @@ public:
 		_modelReferences.push_back(std::move(contribution));
 	}
 
+	void addComponentVisualization(GuiComponentVisualizationContribution contribution) {
+		_componentVisualizations.push_back(std::move(contribution));
+	}
+
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
 	}
@@ -216,6 +230,10 @@ public:
 		return _modelReferences;
 	}
 
+	const std::vector<GuiComponentVisualizationContribution>& componentVisualizations() const {
+		return _componentVisualizations;
+	}
+
 	void clear() {
 		_actions.clear();
 		_docks.clear();
@@ -226,6 +244,7 @@ public:
 		_propertyLists.clear();
 		_editingContexts.clear();
 		_modelReferences.clear();
+		_componentVisualizations.clear();
 	}
 
 private:
@@ -238,6 +257,7 @@ private:
 	std::vector<GuiPropertyListContribution> _propertyLists;
 	std::vector<GuiEditingContextContribution> _editingContexts;
 	std::vector<GuiModelReferenceContribution> _modelReferences;
+	std::vector<GuiComponentVisualizationContribution> _componentVisualizations;
 };
 
 class GuiExtensionPlugin {

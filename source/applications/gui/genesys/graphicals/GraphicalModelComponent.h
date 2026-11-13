@@ -20,7 +20,6 @@
 #include "../../../../kernel/simulator/Simulator.h"
 #include "../../../../plugins/data/Logic/Variable.h"
 #include "kernel/simulator/Plugin.h"
-#include "plugins/data/DiscreteProcessing/Queue.h"
 #include "graphicals/GraphicalImageAnimation.h"
 #include "GraphicalComponentPort.h"
 #include "GraphicalModelDataDefinition.h"
@@ -129,48 +128,29 @@ private:
 
 private:
     QString _animationImageName = "default.png";
-    // Map que mapeia o ponteiro da fila do componente para seu índice (caso tiver mais de uma) e tamanho (usado para animação)
-    QMap<Queue *, QPair<unsigned int, unsigned int>> *_mapQueue = new QMap<Queue *, QPair<unsigned int, unsigned int>>();
-    // Irá conter referência para as imagens usadas para mostrar a fila do componente
-    QList<QList<GraphicalImageAnimation *> *> *_imagesQueue = new QList<QList<GraphicalImageAnimation *> *>;
-    bool _hasQueue = false;
+    QMap<ModelDataDefinition *, QPair<unsigned int, unsigned int>> *_animationTrackMap = new QMap<ModelDataDefinition *, QPair<unsigned int, unsigned int>>();
+    QList<QList<GraphicalImageAnimation *> *> *_animationTracks = new QList<QList<GraphicalImageAnimation *> *>;
+    bool _hasAnimationTracks = false;
 
 public:
     /** @brief Returns the animation image identifier used for queue visualization. */
     QString getAnimationImageName();
     /** @brief Updates the animation image identifier used by the renderer. */
     void setAnimationImageName(QString name);
-    /** @brief Returns the queue-to-metadata map used by the queue overlay renderer. */
-    QMap<Queue *, QPair<unsigned int, unsigned int>>* getMapQueue();
-    /** @brief Returns the grouped queue image lists used by the renderer. */
-    QList<QList<GraphicalImageAnimation *> *>* getImagesQueue();
-
-    /** @brief Verifies whether the component currently references a queue animation context. */
-    void verifyQueue();
-    /** @brief Returns true when a queue animation context is available. */
-    bool hasQueue();
-    /** @brief Compares queues by identifier so queue overlays can be ordered deterministically. */
-    static bool compareQueuesById(const Queue* a, const Queue* b);
-    /** @brief Returns the queue index assigned during queue-overlay population. */
-    unsigned int getIndexQueue(Queue *queue);
-    /** @brief Returns the queue size recorded during queue-overlay population. */
-    unsigned int getSizeQueue(Queue *queue);
-    /** @brief Populates the queue overlay metadata from the supplied queue list. */
-    void populateMapQueue(QList<Queue *> queues);
-    /** @brief Inserts one animation image entry for the given queue. */
-    bool insertImageQueue(Queue *queue, GraphicalImageAnimation *image);
-    /** @brief Removes a batch of animation images for the given queue. */
-    QList<GraphicalImageAnimation *> *removeImageQueue(Queue *queue, unsigned int quantityRemoved);
-    /** @brief Inserts one animation image using the current queue context. */
-    bool insertImageQueue(GraphicalImageAnimation *image);
-    /** @brief Removes the most recently inserted queue animation image. */
-    GraphicalImageAnimation *removeImageQueue();
-    /** @brief Refreshes the queue metadata after the queue model changes. */
-    void actualizeMapQueue(Queue *queue);
-    /** @brief Shows or hides the queue image overlay. */
-    void visivibleImageQueue(bool visivible);
-    /** @brief Clears the cached queue overlay state. */
-    void clearQueues();
+    QMap<ModelDataDefinition *, QPair<unsigned int, unsigned int>>* getAnimationTrackMap();
+    QList<QList<GraphicalImageAnimation *> *>* getAnimationTracks();
+    void resetAnimationTracks();
+    void addAnimationTrack(ModelDataDefinition* source, unsigned int index, unsigned int currentSize);
+    void addUnmappedAnimationTrack();
+    bool hasAnimationTracks() const;
+    unsigned int getAnimationTrackIndex(ModelDataDefinition* source) const;
+    unsigned int getAnimationTrackSize(ModelDataDefinition* source) const;
+    bool insertAnimationImage(ModelDataDefinition* source, GraphicalImageAnimation* image, unsigned int newSize);
+    QList<GraphicalImageAnimation*>* removeAnimationImages(ModelDataDefinition* source, unsigned int quantityRemoved, unsigned int newSize);
+    bool insertAnimationImage(GraphicalImageAnimation* image);
+    GraphicalImageAnimation* removeAnimationImage();
+    void setAnimationTracksVisible(bool visible);
+    void clearAnimationTracks();
 };
 
 #endif /* MODELCOMPONENTGRAPHICITEM_H */

@@ -481,15 +481,15 @@ void AnimationTransition::onAnimationFinished() {
 
     // Insert queue animation only when destination queue graphics infrastructure is initialized.
     bool shouldAnimateQueueInsert = false;
-    if (_graphicalEndComponent != nullptr && _graphicalEndComponent->hasQueue()) {
-        QList<QList<GraphicalImageAnimation*>*>* imagesQueue = _graphicalEndComponent->getImagesQueue();
+    if (_graphicalEndComponent != nullptr && _graphicalEndComponent->hasAnimationTracks()) {
+        QList<QList<GraphicalImageAnimation*>*>* imagesQueue = _graphicalEndComponent->getAnimationTracks();
         shouldAnimateQueueInsert = (imagesQueue != nullptr && !imagesQueue->empty() && imagesQueue->at(0) != nullptr);
     }
     qInfo() << "GUI AnimationTransition onAnimationFinished queueInsertDecision="
         << (shouldAnimateQueueInsert ? "insert" : "skip")
         << "destinationId=" << (_graphicalEndComponent ? _graphicalEndComponent->getComponent()->getId() : 0);
     if (_myScene != nullptr && _graphicalEndComponent != nullptr && shouldAnimateQueueInsert) {
-        _myScene->animateQueueInsert(_graphicalEndComponent->getComponent(), _viewSimulation);
+        _myScene->animateEntityArrival(_graphicalEndComponent->getComponent(), _viewSimulation);
     }
 
     // Remove image only when it is valid and still attached to this scene.
