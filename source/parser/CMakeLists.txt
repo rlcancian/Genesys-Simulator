@@ -9,8 +9,9 @@ if(GENESYS_PARSER_REGENERATE)
         ${CMAKE_CURRENT_SOURCE_DIR}/parserBisonFlex/bisonparser.yy
         ${CMAKE_CURRENT_SOURCE_DIR}/GenesysParser.cpp
         DEFINES_FILE ${CMAKE_CURRENT_SOURCE_DIR}/GenesysParser.h
+        VERBOSE
         REPORT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/parserBisonFlex/bisonparser.report
-        OPTIONS --locations --debug --feature=caret -Wall --verbose
+        COMPILE_FLAGS "--locations --debug --feature=caret -Wall"
     )
 
     FLEX_TARGET(
@@ -18,6 +19,7 @@ if(GENESYS_PARSER_REGENERATE)
         ${CMAKE_CURRENT_SOURCE_DIR}/parserBisonFlex/lexerparser.ll
         ${CMAKE_CURRENT_SOURCE_DIR}/Genesys++-scanner.cpp
     )
+    ADD_FLEX_BISON_DEPENDENCY(GenesysScanner GenesysParser)
 endif()
 
 file(GLOB GENESYS_PARSER_SOURCES CONFIGURE_DEPENDS
@@ -29,7 +31,12 @@ add_library(genesys_parser STATIC
 )
 
 if(GENESYS_PARSER_REGENERATE)
-    add_dependencies(genesys_parser ${BISON_GenesysParser_TARGET} ${FLEX_GenesysScanner_TARGET})
+    # BISON_TARGET/FLEX_TARGET define custom commands and output files, not
+    # CMake targets. Listing the generated outputs wires the build dependencies.
+    target_sources(genesys_parser PRIVATE
+        ${BISON_GenesysParser_OUTPUTS}
+        ${FLEX_GenesysScanner_OUTPUTS}
+    )
 endif()
 
 target_include_directories(genesys_parser
