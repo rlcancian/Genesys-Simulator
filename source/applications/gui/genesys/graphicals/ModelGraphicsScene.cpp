@@ -57,7 +57,6 @@
 #include "services/GraphicalModelBuilder.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
 #include "../../../../kernel/simulator/model/Model.h"
-#include "../../../../plugins/data/ModalModel/DefaultNetwork.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
@@ -3542,7 +3541,7 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
             QString pluginname = treeItem->whatsThis(0);
             Plugin* plugin = _simulator->getPluginManager()->find(pluginname.toStdString());
             if (plugin != nullptr) {
-                const bool isNetworkEditor = dynamic_cast<DefaultNetwork*>(_networkEditorOwner) != nullptr;
+                const bool isNetworkEditor = GuiExtensionPluginCatalog::hasEditingContext(_networkEditorOwner);
                 if (isNetworkEditor
                     && !GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
                         _networkEditorOwner, plugin->getPluginInfo()->getPluginTypename(),

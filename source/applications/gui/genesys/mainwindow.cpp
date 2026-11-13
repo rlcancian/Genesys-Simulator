@@ -22,9 +22,6 @@
 #include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../kernel/simulator/model/ModelComponentManager.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"// GUI
-#include "plugins/components/ModalModel/Submodel.h"
-#include "plugins/components/ModalModel/FSMState.h"
-#include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
@@ -908,18 +905,6 @@ bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
 
     if (_guiExtensionManager != nullptr && _guiExtensionManager->hasEditingContext(owner)) {
         return _guiExtensionManager->canOpenEditingContext(model, owner);
-    }
-
-    if (dynamic_cast<Submodel*>(owner) != nullptr) {
-        if (model->getComponentManager() == nullptr) {
-            return false;
-        }
-        for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
-            if (component == owner) {
-                return true;
-            }
-        }
-        return false;
     }
 
     const unsigned int submodelLevel = static_cast<unsigned int>(owner->getId());
@@ -1866,14 +1851,8 @@ void MainWindow::_actualizeActions() {
             canCutCopyDelete = !userOperableSelection.isEmpty();
             if (!canCutCopyDelete && scene->hasModelLevelFilter() && scene->modelLevelFilter() != 0
                 && selectedItems.size() == 1) {
-                auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(selectedItems.first());
-                auto* selectedState = graphicalDefinition != nullptr
-                    ? dynamic_cast<FSMState*>(graphicalDefinition->getDataDefinition()) : nullptr;
-                auto* network = dynamic_cast<EFSMNetwork*>(simulator->getModelManager()->current()->getDataManager()
-                    ->getDataDefinition(Util::TypeOf<EFSMNetwork>(), scene->modelLevelFilter()));
-                canCutCopyDelete = selectedState != nullptr && network != nullptr
-                    && network->getStates()->size() > 1u
-                    && network->getStates()->find(selectedState) != network->getStates()->list()->end();
+                canCutCopyDelete = GuiExtensionPluginCatalog::canDeleteNetworkElement(
+                    scene->networkEditorOwner(), selectedItems.first());
             }
             canPaste = !_draw_copy->empty() || !_gmc_copies->empty() || !_group_copy->empty() || !_ports_copies->empty();
 

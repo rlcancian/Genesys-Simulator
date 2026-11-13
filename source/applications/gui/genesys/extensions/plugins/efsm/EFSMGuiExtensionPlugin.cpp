@@ -88,6 +88,14 @@ public:
             return network != nullptr && state != nullptr && network->getStates() != nullptr
                 && network->getStates()->find(state) != network->getStates()->list()->end();
         };
+        networkEditor.canDeleteElement = [](ModelDataDefinition* owner, QGraphicsItem* item) {
+            auto* network = dynamic_cast<EFSMNetwork*>(owner);
+            auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
+            auto* state = graphical != nullptr ? dynamic_cast<FSMState*>(graphical->getDataDefinition()) : nullptr;
+            return network != nullptr && state != nullptr && network->getStates() != nullptr
+                && network->getStates()->size() > 1u
+                && network->getStates()->find(state) != network->getStates()->list()->end();
+        };
         networkEditor.createDataDefinitionPropertyCommand = [](
             ModelDataDefinition* owner, ModelDataDefinition* candidate,
             const std::string& propertyName, const std::string& value) -> QUndoCommand* {

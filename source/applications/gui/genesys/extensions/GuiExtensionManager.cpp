@@ -77,6 +77,7 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	_contextMenuContributions = registry.contextMenus();
 	_propertyListContributions = registry.propertyLists();
 	_editingContextContributions = registry.editingContexts();
+	_modelReferenceContributions = registry.modelReferences();
 }
 
 void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) const {
@@ -136,6 +137,46 @@ bool GuiExtensionManager::canOpenEditingContext(Model* model, ModelDataDefinitio
 	return false;
 }
 
+ModelDataDefinition* GuiExtensionManager::currentModelReference(ModelDataDefinition* owner) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.currentReference) return c.currentReference(owner);
+	return nullptr;
+}
+
+ModelDataDefinition* GuiExtensionManager::resolveModelReferenceChoice(ModelDataDefinition* owner, const std::string& choice) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.resolveChoice) return c.resolveChoice(owner, choice);
+	return nullptr;
+}
+
+std::string GuiExtensionManager::formatModelReferenceChoice(ModelDataDefinition* owner, const std::string& property,
+	ModelDataDefinition* ref) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.formatChoice) return c.formatChoice(owner, property, ref);
+	return {};
+}
+
+bool GuiExtensionManager::confirmModelReferenceChange(ModelDataDefinition* owner, ModelDataDefinition* before,
+	ModelDataDefinition* after, QWidget* parent) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.confirmChange) return c.confirmChange(owner, before, after, parent);
+	return true;
+}
+
+void GuiExtensionManager::notifyModelReferenceChanged(ModelDataDefinition* owner, ModelDataDefinition* before,
+	ModelDataDefinition* after, ModelGraphicsScene* scene, ObjectPropertyBrowser* browser) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.referenceChanged) c.referenceChanged(owner, before, after, scene, browser);
+}
+
+void GuiExtensionManager::notifyModelPropertyChanged(ModelDataDefinition* owner, const std::string& property,
+	const std::string& before, const std::string& after, ModelGraphicsScene* scene,
+	ObjectPropertyBrowser* browser) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.propertyChanged)
+			c.propertyChanged(owner, property, before, after, scene, browser);
+}
+
 void GuiExtensionManager::refreshActionStates(const GuiExtensionRuntimeContext& context) {
 	_runtimeContext = context;
 	for (const auto& entry : _actionContributions) {
@@ -168,6 +209,7 @@ void GuiExtensionManager::clear() {
 	_contextMenuContributions.clear();
 	_propertyListContributions.clear();
 	_editingContextContributions.clear();
+	_modelReferenceContributions.clear();
 	_runtimeContext = GuiExtensionRuntimeContext{};
 }
 

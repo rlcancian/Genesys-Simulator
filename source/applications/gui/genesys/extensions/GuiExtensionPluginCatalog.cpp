@@ -323,6 +323,43 @@ std::vector<GuiDiagramProjectionContribution> GuiExtensionPluginCatalog::diagram
 	return projections;
 }
 
+bool GuiExtensionPluginCatalog::hasNetworkEditor(ModelDataDefinition* owner) {
+	if (owner == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors())
+			if (editor.supports && editor.supports(owner)) return true;
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::hasEditingContext(ModelDataDefinition* owner) {
+	if (owner == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiEditingContextContribution& context : registry.editingContexts())
+			if (context.supports && context.supports(owner)) return true;
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::canDeleteNetworkElement(ModelDataDefinition* owner, QGraphicsItem* element) {
+	if (owner == nullptr || element == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors())
+			if (editor.supports && editor.supports(owner) && editor.canDeleteElement
+				&& editor.canDeleteElement(owner, element)) return true;
+	}
+	return false;
+}
+
 bool GuiExtensionPluginCatalog::ownsEditableNetworkDataDefinition(
 	ModelDataDefinition* owner, ModelDataDefinition* candidate) {
 	if (owner == nullptr || candidate == nullptr) return false;

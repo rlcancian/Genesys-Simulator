@@ -29,6 +29,16 @@ public:
 	ModelDataDefinition* resolveEditingContextOwner(ModelDataDefinition* owner) const;
 	bool isNetworkEditingContext(ModelDataDefinition* owner) const;
 	bool canOpenEditingContext(Model* model, ModelDataDefinition* owner) const;
+	ModelDataDefinition* currentModelReference(ModelDataDefinition* owner) const;
+	ModelDataDefinition* resolveModelReferenceChoice(ModelDataDefinition* owner, const std::string& choice) const;
+	std::string formatModelReferenceChoice(ModelDataDefinition* owner, const std::string& property, ModelDataDefinition* ref) const;
+	bool confirmModelReferenceChange(ModelDataDefinition* owner, ModelDataDefinition* before,
+		ModelDataDefinition* after, QWidget* parent) const;
+	void notifyModelReferenceChanged(ModelDataDefinition* owner, ModelDataDefinition* before,
+		ModelDataDefinition* after, ModelGraphicsScene* scene, ObjectPropertyBrowser* browser) const;
+	void notifyModelPropertyChanged(ModelDataDefinition* owner, const std::string& property,
+		const std::string& before, const std::string& after, ModelGraphicsScene* scene,
+		ObjectPropertyBrowser* browser) const;
 	void clear();
 
 private:
@@ -50,6 +60,7 @@ private:
 	std::vector<GuiContextMenuContribution> _contextMenuContributions;
 	std::vector<GuiPropertyListContribution> _propertyListContributions;
 	std::vector<GuiEditingContextContribution> _editingContextContributions;
+	std::vector<GuiModelReferenceContribution> _modelReferenceContributions;
 	GuiExtensionRuntimeContext _runtimeContext;
 };
 

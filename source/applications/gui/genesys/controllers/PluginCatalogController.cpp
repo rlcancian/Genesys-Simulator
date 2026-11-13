@@ -5,7 +5,6 @@
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
-#include "plugins/data/ModalModel/DefaultNetwork.h"
 
 #include <QBrush>
 #include <QAction>
@@ -65,7 +64,7 @@ void PluginCatalogController::insertPluginUI(Plugin* plugin, ModelDataDefinition
     if (plugin == nullptr || !plugin->isIsValidPlugin() || _pluginsTree == nullptr) {
         return;
     }
-    if (dynamic_cast<DefaultNetwork*>(networkEditorOwner) != nullptr) {
+    if (GuiExtensionPluginCatalog::hasEditingContext(networkEditorOwner)) {
         if (plugin->getPluginInfo()->isComponent()
             || !GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
                 networkEditorOwner, plugin->getPluginInfo()->getPluginTypename(), false)) {

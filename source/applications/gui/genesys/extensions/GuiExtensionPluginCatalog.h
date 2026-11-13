@@ -22,6 +22,9 @@ public:
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
 	static std::vector<GuiDiagramProjectionContribution> diagramProjectionContributions();
 	static bool ownsEditableNetworkDataDefinition(ModelDataDefinition* owner, ModelDataDefinition* candidate);
+	static bool hasNetworkEditor(ModelDataDefinition* owner);
+	static bool hasEditingContext(ModelDataDefinition* owner);
+	static bool canDeleteNetworkElement(ModelDataDefinition* owner, QGraphicsItem* element);
 	static QUndoCommand* createNetworkDataDefinitionPropertyCommand(
 		ModelDataDefinition* owner, ModelDataDefinition* candidate,
 		const std::string& propertyName, const std::string& value);
