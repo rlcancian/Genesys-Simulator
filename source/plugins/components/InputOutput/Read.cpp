@@ -7,6 +7,8 @@
 #include "plugins/data/Logic/Variable.h"
 
 #include <algorithm>
+#include <charconv>
+#include <limits>
 #include <cmath>
 #include <cctype>
 #include <iostream>
@@ -255,6 +257,34 @@ bool Read::_splitDestination(const std::string& input, std::string& base, std::s
     index = trimCopy(text.substr(open + 1, close - open - 1));
     return !base.empty() && !index.empty();
 }
+bool Read::_validIndex(const std::string& index) {
+    if (index.empty()) return true;
+    // SparseValueStore treats nonnumeric keys as text. Only its numeric-key
+    // path uses std::stoul and dimension arithmetic, so preflight that path.
+    const bool numeric = std::all_of(index.begin(), index.end(), [](unsigned char ch) {
+        return std::isdigit(ch) || ch == ',' || ch == ' ' || ch == '\t';
+    });
+    if (!numeric) return true;
+
+    std::istringstream parts(index);
+    std::string part;
+    while (std::getline(parts, part, ',')) {
+        part = trimCopy(part);
+        if (part.empty()) return false;
+        unsigned int value = 0;
+        const char* const begin = part.data();
+        const char* const end = begin + part.size();
+        const auto parsed = std::from_chars(begin, end, value);
+        // SparseValueStore grows a dimension using (value + 1).
+        if (parsed.ec != std::errc{} || parsed.ptr != end ||
+            value == std::numeric_limits<unsigned int>::max()) {
+            return false;
+        }
+    }
+    // A trailing comma would be ignored by std::getline but is not a valid
+    // sparse multidimensional key.
+    return index.back() != ',';
+}
 void Read::_prepareDestination(ReadDestination* destination) {
     if (destination == nullptr) return;
     destination->ensureSimulationControls(_parentModel);
@@ -307,7 +337,7 @@ bool Read::_check(std::string& errorMessage) {
             continue;
         }
         std::string base, index;
-        if (!_splitDestination(destination->getDestination(), base, index)) {
+        if (!_splitDestination(destination->getDestination(), base, index) || !_validIndex(index)) {
             errorMessage += "Read destination is empty or has invalid [index] syntax. ";
             valid = false;
             continue;
@@ -417,7 +447,8 @@ void Read::_onDispatchEvent(Entity* entity, unsigned int) {
         if (destination == nullptr) { _fail("null destination"); return; }
         Target target;
         target.attribute = destination->isAttributeNotVariable();
-        if (!_splitDestination(destination->getDestination(), target.base, target.index)) {
+        if (!_splitDestination(destination->getDestination(), target.base, target.index) ||
+            !_validIndex(target.index)) {
             _fail("invalid destination: " + destination->getDestination());
             return;
         }
