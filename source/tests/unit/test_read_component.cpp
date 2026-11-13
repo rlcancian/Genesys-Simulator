@@ -88,6 +88,13 @@ TEST_F(ReadFixture, MetadataAndStaticPluginRegistration) {
     EXPECT_NE(simulator.getPluginManager()->find("Read"), nullptr);
 }
 
+TEST(ReadPluginIntrospectionRegression, EmptyRecordTemplateCompletionIsNotReportedAsError) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    ASSERT_NE(simulator.getPluginManager()->find("Read"), nullptr);
+    EXPECT_TRUE(simulator.getTraceManager()->errorMessages()->empty());
+}
+
 TEST_F(ReadFixture, FileRecordsAreConsumedInOrderAndRoutedAfterCompleteAssignments) {
     TemporaryInput file("# data\n\n10 25 3\n12 30 4\n15 28 2\n");
     auto* read = reader();
