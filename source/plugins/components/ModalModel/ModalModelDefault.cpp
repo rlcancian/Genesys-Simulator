@@ -184,6 +184,7 @@ void ModalModelDefault::setNetwork(DefaultNetwork* network) {
 	_networkName = network != nullptr ? network->getName() : "";
 	_networkReferenceType = network != nullptr ? network->getClassname() : "";
 	_networkReferenceId = network != nullptr ? static_cast<int>(network->getId()) : 0;
+	_networkReferenceIssue.clear();
 	if (_network != nullptr) {
 		// The adapter references a model-managed Network without owning it.
 		_attachedDataInsert(kNetworkAssociationKey, _network);
@@ -201,6 +202,7 @@ void ModalModelDefault::setNetworkName(const std::string& networkName) {
 	_networkName = networkName;
 	_networkReferenceType.clear();
 	_networkReferenceId = 0;
+	_networkReferenceIssue.clear();
 	_network = nullptr;
 	_resolveNetworkReference();
 	_syncBindingsToNetwork();
@@ -283,7 +285,9 @@ bool ModalModelDefault::_check(std::string& errorMessage) {
 	if (network == nullptr) {
 		errorMessage += "ModalModelDefault \"" + getName() + "\" requires an attached DefaultNetwork";
 		if (_networkName != "") {
-			errorMessage += " (unknown reference \"" + _networkName + "\")";
+			errorMessage += " (" + (_networkReferenceIssue.empty()
+				? "unknown reference \"" + _networkName + "\""
+				: _networkReferenceIssue) + ")";
 		}
 		errorMessage += ". ";
 		return false;
@@ -358,9 +362,13 @@ DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
 	if (_network != nullptr || _networkName == "") {
 		return _network;
 	}
+	_networkReferenceIssue.clear();
 	if (!_networkReferenceType.empty() || _networkReferenceId != 0) {
 		if (_networkReferenceType.empty() || _networkReferenceId == 0 || _parentModel == nullptr
-		    || _parentModel->getDataManager() == nullptr) return nullptr;
+		    || _parentModel->getDataManager() == nullptr) {
+			_networkReferenceIssue = "invalid typed reference identity for \"" + _networkName + "\"";
+			return nullptr;
+		}
 		auto* candidate = dynamic_cast<DefaultNetwork*>(
 			_parentModel->getDataManager()->getDataDefinition(_networkReferenceType, _networkReferenceId));
 		if (candidate != nullptr && candidate->getName() == _networkName) {
@@ -368,6 +376,8 @@ DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
 			_attachedDataInsert(kNetworkAssociationKey, _network);
 			return _network;
 		}
+		_networkReferenceIssue = "missing or mismatched Network " + _networkReferenceType + " [#"
+			+ std::to_string(_networkReferenceId) + "] named \"" + _networkName + "\"";
 		return nullptr;
 	}
 	DefaultNetwork* match = nullptr;
@@ -376,12 +386,16 @@ DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
 		for (ModelDataDefinition* definition : *definitions->list()) {
 			DefaultNetwork* candidate = dynamic_cast<DefaultNetwork*>(definition);
 			if (candidate != nullptr && candidate->getName() == _networkName) {
-				if (match != nullptr) return nullptr;
+				if (match != nullptr) {
+					_networkReferenceIssue = "ambiguous legacy Network name \"" + _networkName + "\"";
+					return nullptr;
+				}
 				match = candidate;
 			}
 		}
 	}
 	if (match != nullptr) setNetwork(match);
+	else _networkReferenceIssue = "unknown legacy Network name \"" + _networkName + "\"";
 	return match;
 }
 

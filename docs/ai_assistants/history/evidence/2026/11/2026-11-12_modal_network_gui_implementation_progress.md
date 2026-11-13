@@ -21,7 +21,8 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | A3 | Pass (focused) | Plugin metadata records direct data-definition base types; PluginManager discovers transitive compatible factories. Property Editor creates and attaches an explicitly selected subtype and offers no inert base type. |
 | A4 | Pass (focused) | Property Editor now offers explicit reference removal and permits reattaching an existing Network. A detached Network remains model-managed. The focused property and EFSM GUI tests pass. |
 | A5 | Not started | Remaining acceptance items in the plan. |
-| B1–B2 | In progress | ModalModelDefault persists concrete Network type and model ID alongside the legacy name. Exact lookup validates type, ID and name; ambiguous legacy name-only references fail closed. Exact typed `.gen` round-trip test passes. Broader legacy compatibility and identity coverage remain. |
+| B1 | Pass (focused) | Identity audit is covered by six concrete subtype choices with duplicate display names, exact identity selection, unique legacy name resolution and ambiguous legacy name rejection. |
+| B2 | In progress | ModalModelDefault persists concrete Network type and model ID alongside the legacy name. Exact lookup validates type, ID and name; invalid, missing and ambiguous legacy references fail closed with explicit diagnostics. Exact typed `.gen` round-trip passes; damaged-reference and broader compatibility coverage remain. |
 | B3–B5 | Not started | Safe replacement reconciliation, lifetime audit and structural placement gates. |
 | C1–C6 | Not started | EFSM GUI isolation and extension registration. |
 | D1–D5 | Not started | Context-specific editors, formalism topology, persistence, undo/redo and animation. |
@@ -54,6 +55,9 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
   unique across all DefaultNetwork subtypes.
 - Added a `.gen` round-trip regression asserting that the adapter resolves to
   the original concrete GraphNetwork by type and ID.
+- Added legacy-reference regressions: a unique name resolves, while the same
+  name shared by GraphNetwork and EFSMNetwork is rejected and reported as
+  ambiguous during model validation.
 
 ## Validation
 
@@ -68,6 +72,8 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='PropertyEditorModelDataReference.*:EFSMNetworkEditor.*'` — PASS, 28 tests, including association, typed creation, shared opening and EFSM save/reopen/activation.
 - `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after A4/B2.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='PropertyEditorModelDataReference.*:ModalNetworkReferencePersistence.*:EFSMNetworkEditor.*'` — PASS, 29 tests.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after legacy identity diagnostics.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='ModalNetworkReferencePersistence.*'` — PASS, 2 tests.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after A4/B2.
 - Full GUI regression suite — UNKNOWN/not run. Existing tests for the removed
   create/select actions must be migrated to the Property Editor in A2/A3.
@@ -77,4 +83,5 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 - `c3f97a9e30866e5ae3b8cc670cce867c96a0d823` — `modal-gui(A1): replace EFSM menu actions with Open Network` (pushed to `origin/WiP20261112/modal_model_gui`).
 - `67ee70abfc066da4916db55953616ada985aa15f` — `modal-gui(A2): select typed network references by identity` (pushed to `origin/WiP20261112/modal_model_gui`).
 - `e9feaae618581bb032d6f91251f1191897f99500` — `modal-gui(A3): create explicitly typed network references` (pushed to `origin/WiP20261112/modal_model_gui`).
-- A4 and initial B2 changes are validated and pending commit.
+- `f08fe0e0f` — `modal-gui(A4,B2): preserve typed network references` (pushed to `origin/WiP20261112/modal_model_gui`).
+- Legacy identity diagnostics and tests are validated and pending commit.

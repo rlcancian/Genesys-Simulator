@@ -549,6 +549,29 @@ TEST(ModalNetworkReferencePersistence, GenRoundTripKeepsTheExactTypeAndId) {
     EXPECT_NE(loadedAdapter->getNetwork(), loadedEfsm);
 }
 
+TEST(ModalNetworkReferencePersistence, LegacyNameOnlyReferenceResolvesOnlyWhenUnambiguous) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* graph = new GraphNetwork(model, "SharedLegacyName");
+    auto* efsm = new EFSMNetwork(model, "SharedLegacyName");
+    auto* uniqueGraph = new GraphNetwork(model, "UniqueLegacyName");
+    ASSERT_NE(graph, nullptr);
+    ASSERT_NE(efsm, nullptr);
+    auto* adapter = new ModalModelDefault(model, "LegacyAdapter");
+
+    adapter->setNetworkName("SharedLegacyName");
+    EXPECT_EQ(adapter->getNetwork(), nullptr);
+    std::string errorMessage;
+    EXPECT_FALSE(ModelDataDefinition::Check(adapter, errorMessage));
+    EXPECT_NE(errorMessage.find("ambiguous legacy Network name"), std::string::npos);
+
+    adapter->setNetworkName(uniqueGraph->getName());
+    ASSERT_NE(adapter->getNetwork(), nullptr);
+    EXPECT_EQ(adapter->getNetwork(), uniqueGraph);
+}
+
 TEST(EFSMNetworkDiagramPersistence, RoundTripIsDeterministicAcrossRepeatedSaves) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();

@@ -84,6 +84,7 @@ private:
 	std::string _networkName = "";
 	std::string _networkReferenceType;
 	int _networkReferenceId = 0;
+	std::string _networkReferenceIssue;
 	std::vector<std::string> _inputBindings;
 	std::vector<std::string> _outputBindings;
 };
