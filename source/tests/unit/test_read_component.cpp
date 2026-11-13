@@ -396,6 +396,62 @@ TEST_F(ReadFixture, PersistenceRestoresSourceFileAndOrderedDestinations) {
     EXPECT_EQ(loaded->getDestinations()->getAtRank(0)->getSimulationControls()->size(), 2u);
 }
 
+TEST_F(ReadFixture, FullSimulationRewindsFileAcrossTwoReplications) {
+    TemporaryInput file("11\n22\n");
+    auto* source = new Create(model, "TwoReplicationSource");
+    auto* read = new Read(model, "TwoReplicationReader");
+    auto* sink = new Dispose(model, "TwoReplicationSink");
+    auto* entityType = new EntityType(model, "TwoReplicationEntityType");
+    source->setEntityType(entityType);
+    source->setFirstCreation(0.0);
+    source->setTimeBetweenCreationsExpression("1.0");
+    source->setMaxCreations(2);
+    read->setFilename(file.path.string());
+    addVariable(read, "LastValue");
+    source->connectTo(read);
+    read->connectTo(sink);
+    model->getSimulation()->setReplicationLength(10.0, Util::TimeUnit::second);
+    model->getSimulation()->setNumberOfReplications(2);
+    ASSERT_TRUE(model->check());
+    model->getSimulation()->start();
+    ASSERT_NE(variable("LastValue"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("LastValue")->getValue(), 22.0);
+    EXPECT_EQ(model->getSimulation()->getCurrentReplicationNumber(), 3u);
+    EXPECT_TRUE(model->getTracer()->errorMessages()->empty());
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>()), 0u);
+}
+
+TEST_F(ReadFixture, FullKeyboardSimulationConsumesProviderInputInEventOrder) {
+    auto* source = new Create(model, "KeyboardSource");
+    auto* read = new Read(model, "KeyboardReader");
+    auto* sink = new Dispose(model, "KeyboardSink");
+    auto* entityType = new EntityType(model, "KeyboardEntityType");
+    source->setEntityType(entityType);
+    source->setFirstCreation(0.0);
+    source->setTimeBetweenCreationsExpression("1.0");
+    source->setMaxCreations(2);
+    read->setReadFromType(Read::ReadFromType::KEYBOARD);
+    addVariable(read, "KeyboardValue");
+    std::vector<std::string> lines{"18", "27"};
+    std::size_t position = 0;
+    read->setKeyboardInputProvider([&](const std::string&, std::string& line) {
+        if (position >= lines.size()) return false;
+        line = lines[position++];
+        return true;
+    });
+    source->connectTo(read);
+    read->connectTo(sink);
+    model->getSimulation()->setReplicationLength(10.0, Util::TimeUnit::second);
+    model->getSimulation()->setNumberOfReplications(1);
+    ASSERT_TRUE(model->check());
+    model->getSimulation()->start();
+    EXPECT_EQ(position, 2u);
+    ASSERT_NE(variable("KeyboardValue"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("KeyboardValue")->getValue(), 27.0);
+    EXPECT_TRUE(model->getTracer()->errorMessages()->empty());
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>()), 0u);
+}
+
 TEST_F(ReadFixture, CreateReadDisposeModelRunsToCompletion) {
     TemporaryInput file("11\n22\n");
     auto* source = new Create(model, "CreateReadEntities");
