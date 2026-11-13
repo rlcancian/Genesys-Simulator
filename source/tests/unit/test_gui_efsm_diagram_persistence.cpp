@@ -313,16 +313,16 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
 
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
     ASSERT_EQ(scene->getGraphicalModelDataDefinitions()->size(), 2);
-    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 3);
+    ASSERT_EQ(scene->extensionOverlayItems(QStringLiteral("efsm")).size(), 3);
     EXPECT_NE(scene->findGraphicalModelDataDefinition(&idle)->getColor(),
               scene->findGraphicalModelDataDefinition(&done)->getColor());
 
-    auto* first = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(0));
+    auto* first = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(QStringLiteral("efsm")).at(0));
     ASSERT_NE(first, nullptr);
     EXPECT_EQ(first->ordinal(), 0);
     EXPECT_EQ(first->transitionLabel(), QStringLiteral("on arrive [ready == 1] / result = 1"));
     EXPECT_EQ(first->toolTip(), first->transitionLabel());
-    auto* parallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(1));
+    auto* parallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(QStringLiteral("efsm")).at(1));
     ASSERT_NE(parallel, nullptr);
     EXPECT_EQ(parallel->ordinal(), 1);
     EXPECT_NE(first->path(), parallel->path());
@@ -333,13 +333,13 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
 
     // Rebuilding the same context replaces only the projection layer.
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
-    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 3);
+    ASSERT_EQ(scene->extensionOverlayItems(QStringLiteral("efsm")).size(), 3);
     EXPECT_EQ(scene->getGraphicalModelDataDefinitions()->size(), 2);
 
     EFSMNetwork empty(model, "EmptyViewerNetwork");
     scene->setModelLevelFilter(static_cast<unsigned int>(empty.getId()));
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
-    EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
+    EXPECT_TRUE(scene->extensionOverlayItems(QStringLiteral("efsm")).isEmpty());
     EXPECT_TRUE(scene->getGraphicalModelDataDefinitions()->isEmpty());
 
     EFSMNetwork singleStateNetwork(model, "SingleStateViewerNetwork");
@@ -349,7 +349,7 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
     EFSMNetworkDiagramProjection::synchronize(&simulator, scene);
     EXPECT_EQ(scene->getGraphicalModelDataDefinitions()->size(), 1);
-    EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
+    EXPECT_TRUE(scene->extensionOverlayItems(QStringLiteral("efsm")).isEmpty());
 }
 
 TEST(EFSMNetworkDiagramProjection, MovingAStateRefreshesItsFormalTransitionGeometry) {
@@ -373,8 +373,8 @@ TEST(EFSMNetworkDiagramProjection, MovingAStateRefreshesItsFormalTransitionGeome
     EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
     auto* sourceItem = scene.findGraphicalModelDataDefinition(&source);
     ASSERT_NE(sourceItem, nullptr);
-    ASSERT_EQ(scene.getEFSMNetworkDiagramItems()->size(), 1);
-    auto* edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.getEFSMNetworkDiagramItems()->first());
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    auto* edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.extensionOverlayItems(QStringLiteral("efsm")).first());
     ASSERT_NE(edgeItem, nullptr);
     const QPointF before = edgeItem->path().pointAtPercent(0.5);
 
@@ -392,22 +392,22 @@ TEST(EFSMNetworkDiagramProjection, MovingAStateRefreshesItsFormalTransitionGeome
     release.setScenePos(sourceItem->sceneBoundingRect().center());
     scene.mouseReleaseEvent(&release);
 
-    ASSERT_EQ(scene.getEFSMNetworkDiagramItems()->size(), 1);
-    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.getEFSMNetworkDiagramItems()->first());
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.extensionOverlayItems(QStringLiteral("efsm")).first());
     ASSERT_NE(edgeItem, nullptr);
     const QPointF moved = edgeItem->path().pointAtPercent(0.5);
     EXPECT_NE(moved, before);
     EXPECT_EQ(network.getTransitions()->size(), 1u);
     ASSERT_EQ(movementUndoStack.count(), 1);
     movementUndoStack.undo();
-    ASSERT_EQ(scene.getEFSMNetworkDiagramItems()->size(), 1);
-    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.getEFSMNetworkDiagramItems()->first());
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.extensionOverlayItems(QStringLiteral("efsm")).first());
     ASSERT_NE(edgeItem, nullptr);
     EXPECT_NEAR(edgeItem->path().pointAtPercent(0.5).x(), before.x(), 0.01);
     EXPECT_NEAR(edgeItem->path().pointAtPercent(0.5).y(), before.y(), 0.01);
     movementUndoStack.redo();
-    ASSERT_EQ(scene.getEFSMNetworkDiagramItems()->size(), 1);
-    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.getEFSMNetworkDiagramItems()->first());
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    edgeItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene.extensionOverlayItems(QStringLiteral("efsm")).first());
     ASSERT_NE(edgeItem, nullptr);
     EXPECT_NE(edgeItem->path().pointAtPercent(0.5), before);
 }
@@ -436,11 +436,11 @@ TEST(EFSMNetworkUndo, DeleteActionAndUndoRefreshTheSharedSceneProjection) {
     QUndoStack undoStack;
     scene->setUndoStack(&undoStack);
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
-    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 2);
+    ASSERT_EQ(scene->extensionOverlayItems(QStringLiteral("efsm")).size(), 2);
 
-    auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->front());
+    auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(QStringLiteral("efsm")).front());
     ASSERT_NE(graphicalTransition, nullptr);
-    auto* graphicalParallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(1));
+    auto* graphicalParallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(QStringLiteral("efsm")).at(1));
     ASSERT_NE(graphicalParallel, nullptr);
     graphicalTransition->setSelected(true);
     graphicalParallel->setSelected(true);
@@ -448,23 +448,23 @@ TEST(EFSMNetworkUndo, DeleteActionAndUndoRefreshTheSharedSceneProjection) {
     editController.onActionEditDeleteTriggered();
 
     EXPECT_EQ(network.getTransitions()->size(), 0u);
-    EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
+    EXPECT_TRUE(scene->extensionOverlayItems(QStringLiteral("efsm")).isEmpty());
     ASSERT_EQ(undoStack.count(), 1);
     editController.onActionEditUndoTriggered();
     ASSERT_EQ(network.getTransitions()->size(), 2u);
     EXPECT_EQ(network.getTransitions()->front(), transition);
     EXPECT_EQ(network.getTransitions()->getAtRank(1), parallel);
-    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 2);
-    auto* restored = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->front());
+    ASSERT_EQ(scene->extensionOverlayItems(QStringLiteral("efsm")).size(), 2);
+    auto* restored = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(QStringLiteral("efsm")).front());
     ASSERT_NE(restored, nullptr);
     EXPECT_EQ(restored->transition(), transition);
-    auto* restoredParallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->at(1));
+    auto* restoredParallel = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(QStringLiteral("efsm")).at(1));
     ASSERT_NE(restoredParallel, nullptr);
     EXPECT_EQ(restoredParallel->transition(), parallel);
 
     editController.onActionEditRedoTriggered();
     EXPECT_TRUE(network.getTransitions()->empty());
-    EXPECT_TRUE(scene->getEFSMNetworkDiagramItems()->isEmpty());
+    EXPECT_TRUE(scene->extensionOverlayItems(QStringLiteral("efsm")).isEmpty());
 }
 
 TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTransitionOrdinals) {
@@ -1415,8 +1415,8 @@ TEST(EFSMNetworkEditor, SelectedTransitionCanBeEditedAndUndoneThroughTheMainWind
     scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
     EFSMNetworkDiagramProjection::synchronize(simulator, scene);
-    ASSERT_EQ(scene->getEFSMNetworkDiagramItems()->size(), 1);
-    auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->getEFSMNetworkDiagramItems()->first());
+    ASSERT_EQ(scene->extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(QStringLiteral("efsm")).first());
     ASSERT_NE(graphicalTransition, nullptr);
     graphicalTransition->setSelected(true);
 
@@ -1515,7 +1515,7 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     ASSERT_TRUE(networkView->getScene()->hasModelLevelFilter());
     EXPECT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
     EXPECT_NE(networkView->getScene()->findGraphicalModelDataDefinition(state), nullptr);
-    EXPECT_EQ(networkView->getScene()->getEFSMNetworkDiagramItems()->size(), 0);
+    EXPECT_EQ(networkView->getScene()->extensionOverlayItems(QStringLiteral("efsm")).size(), 0);
     QAction* createStateAction = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
         if (action->text() == QStringLiteral("Create EFSM State")) createStateAction = action;

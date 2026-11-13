@@ -8,7 +8,6 @@
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"
 #include "../graphicals/GraphicalDiagramConnection.h"
-#include "../graphicals/EFSMTransitionGraphicsItem.h"
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -168,9 +167,6 @@ QGraphicsItem* GraphicalContextMenuController::semanticItemFor(QGraphicsItem* it
         if (dynamic_cast<GraphicalDiagramConnection*>(current) != nullptr) {
             return current;
         }
-        if (dynamic_cast<EFSMTransitionGraphicsItem*>(current) != nullptr) {
-            return current;
-        }
         if (dynamic_cast<QGraphicsItemGroup*>(current) != nullptr) {
             return current;
         }
@@ -180,7 +176,9 @@ QGraphicsItem* GraphicalContextMenuController::semanticItemFor(QGraphicsItem* it
         }
         current = current->parentItem();
     }
-    return nullptr;
+    // Unknown/formalism-owned graphics keep their own identity for extension
+    // context-menu contributions; the generic controller does not classify them.
+    return item;
 }
 
 void GraphicalContextMenuController::synchronizeSelectionForContext(QGraphicsItem* item) const {

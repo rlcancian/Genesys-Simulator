@@ -198,9 +198,8 @@ ModelGraphicsScene::ModelGraphicsScene(qreal x, qreal y, qreal width, qreal heig
 }
 
 ModelGraphicsScene::~ModelGraphicsScene() {
-    // Projection items are scene-owned, while their EFSM objects belong to the model.
-    // Remove the projection explicitly before the base QGraphicsScene destructor runs.
-    clearEFSMNetworkDiagramItems();
+    // Extension overlays are scene-owned; clear tracked handles before base destruction.
+    clearExtensionOverlayItems();
 
     // Release transient drawing items that may still be detached from normal commit flow.
     if (_currentRectangle != nullptr) {
@@ -331,12 +330,10 @@ ModelGraphicsScene::~ModelGraphicsScene() {
     _graphicalEntities = nullptr;
     delete _graphicalGroups;
     _graphicalGroups = nullptr;
-    delete _efsmNetworkDiagramItems;
-    _efsmNetworkDiagramItems = nullptr;
 }
 
 void ModelGraphicsScene::clear() {
-    clearEFSMNetworkDiagramItems();
+    clearExtensionOverlayItems();
     QGraphicsScene::clear();
 }
 
@@ -3818,12 +3815,8 @@ GraphicalModelDataDefinition* ModelGraphicsScene::findGraphicalModelDataDefiniti
     return nullptr;
 }
 
-void ModelGraphicsScene::clearEFSMNetworkDiagramItems() {
-    if (_efsmNetworkDiagramItems == nullptr) {
-        return;
-    }
-    const QList<QGraphicsItem*> itemsToRemove = *_efsmNetworkDiagramItems;
-    _efsmNetworkDiagramItems->clear();
+void ModelGraphicsScene::clearExtensionOverlayItems(const QString& extensionId) {
+    const QList<QGraphicsItem*> itemsToRemove = _extensionOverlayItems.take(extensionId);
     for (QGraphicsItem* item : itemsToRemove) {
         if (item != nullptr && item->scene() == this) {
             removeItem(item);
@@ -3832,17 +3825,24 @@ void ModelGraphicsScene::clearEFSMNetworkDiagramItems() {
     }
 }
 
-void ModelGraphicsScene::addEFSMNetworkDiagramItem(QGraphicsItem* item) {
-    if (item == nullptr || _efsmNetworkDiagramItems == nullptr) {
+void ModelGraphicsScene::addExtensionOverlayItem(const QString& extensionId, QGraphicsItem* item) {
+    if (extensionId.isEmpty() || item == nullptr) {
         delete item;
         return;
     }
     addItem(item);
-    _efsmNetworkDiagramItems->append(item);
+    _extensionOverlayItems[extensionId].append(item);
 }
 
-QList<QGraphicsItem*>* ModelGraphicsScene::getEFSMNetworkDiagramItems() const {
-    return _efsmNetworkDiagramItems;
+QList<QGraphicsItem*> ModelGraphicsScene::extensionOverlayItems(const QString& extensionId) const {
+    return _extensionOverlayItems.value(extensionId);
+}
+
+void ModelGraphicsScene::clearExtensionOverlayItems() {
+    const QStringList extensionIds = _extensionOverlayItems.keys();
+    for (const QString& extensionId : extensionIds) {
+        clearExtensionOverlayItems(extensionId);
+    }
 }
 
 void ModelGraphicsScene::clearAnimationsValues() {

@@ -46,7 +46,7 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
     if (scene == nullptr) {
         return;
     }
-    scene->clearEFSMNetworkDiagramItems();
+    scene->clearExtensionOverlayItems(QStringLiteral("efsm"));
     EFSMNetwork* network = contextNetwork(simulator, scene);
     if (network == nullptr || network->getTransitions() == nullptr) {
         return;
@@ -82,7 +82,7 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
 
         auto* item = new EFSMTransitionGraphicsItem(transition, ordinal);
         item->setGeometry(stateCenter(scene, source), stateCenter(scene, destination), rank, count);
-        scene->addEFSMNetworkDiagramItem(item);
+        scene->addExtensionOverlayItem(QStringLiteral("efsm"), item);
     }
 
     // Highlight initial and final states in the projection only; no domain property is changed.

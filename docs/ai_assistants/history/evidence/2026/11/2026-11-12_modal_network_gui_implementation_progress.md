@@ -26,7 +26,7 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | B3 | Pass (focused) | Bindings remap by stable port names; new ports receive defaults; port-name metadata persists while detached. Unsafe custom-binding/connection changes reject transactionally. Property Editor confirms schema-changing replacements before mutation; cancellation preserves the old association. Binding rows are exposed in the Property Editor; the EFSM bindings dialog/action is removed. Undo/redo covers binding edits and Network reference changes, including graphical port synchronization. |
 | B4 | Pass (focused) | ModelDataManager remains the Network owner; adapter detach and replacement do not delete an unshared or shared Network. Existing GUI coverage also proves reference removal leaves the Network selectable for reattachment. Focused adapter suite: 14/14 PASS. Broader close/delete lifetime audit remains in final validation. |
 | B5 | Pass | Reviewed ModalModel implementation/header placement and Network data-definition headers/implementations. The existing split keeps GUI-independent mathematical implementations in plugin translation units and data contracts under `data/ModalModel`; no source relocation is justified. GUI app build passes. |
-| C1 | In progress | Added a formalism-neutral context-menu contribution contract and dispatch through the existing extension registry/manager and generic scene controller. Focused dispatch test and GUI app build pass. Remaining: complete the responsibility map and move EFSM handlers, projection, persistence and semantic dispatch out of the generic host. |
+| C1 | In progress | Responsibility map is recorded. Added formalism-neutral context-menu dispatch and extension-owned scene overlay tracking; removed EFSM-named overlay APIs and EFSM item classification from generic scene/controller. Focused EFSM projection/editor tests and GUI app build pass. Remaining: generic serializer/projection registration and MainWindow action/handler dispatch. |
 | C2–C6 | Not started | EFSM GUI extraction, registration and isolation remain. |
 | D1–D5 | Not started | Context-specific editors, formalism topology, persistence, undo/redo and animation. |
 
@@ -118,6 +118,12 @@ map is a source inventory, not evidence that extraction is complete.
   generic callback after its built-in menu population, and MainWindow connects
   that callback to the manager without formalism-specific branching. A focused
   fake-plugin regression verifies selected-item dispatch and visibility.
+- Replaced the scene's EFSM-specific overlay list/API with a generic registry
+  keyed by GUI extension ID. The EFSM projection now registers and clears its
+  transition graphics through the `efsm` key; `ModelGraphicsScene` has no EFSM
+  type, member, or API. Removed the EFSM graphics type check from the generic
+  context-menu controller; unknown graphics items retain their identity for
+  extensions to interpret.
 
 ## Validation
 
@@ -168,6 +174,10 @@ map is a source inventory, not evidence that extraction is complete.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.ContextMenuContributionsAreDispatchedWithoutFormalismBranches'` — PASS, 1 test.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after extension-menu dispatch.
 - `git diff --check` — PASS after extension-menu dispatch.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after generic overlay tracking.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkDiagramProjection.*:EFSMNetworkEditor.*:GuiExtensionManager.ContextMenuContributionsAreDispatchedWithoutFormalismBranches'` — PASS, 10 tests.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after generic overlay/context dispatch.
+- `git diff --check` and `rg -n 'EFSM'` over generic scene/context-menu controller sources — PASS (no EFSM references).
 
 - `c3f97a9e30866e5ae3b8cc670cce867c96a0d823` — `modal-gui(A1): replace EFSM menu actions with Open Network` (pushed to `origin/WiP20261112/modal_model_gui`).
 - `67ee70abfc066da4916db55953616ada985aa15f` — `modal-gui(A2): select typed network references by identity` (pushed to `origin/WiP20261112/modal_model_gui`).
@@ -176,4 +186,6 @@ map is a source inventory, not evidence that extraction is complete.
 - `31296e77f` — `modal-gui(B2): diagnose ambiguous legacy network references` (pushed to `origin/WiP20261112/modal_model_gui`).
 - B3 replacement, binding-schema persistence, graphical port synchronization, Property Editor binding edits, cancellation/acceptance confirmation, and undo/redo are validated for the cases listed above and pending commit.
 - B4 focused ownership evidence: detach/replacement does not remove Network objects from their model manager, including when a second adapter still references the shared object. Full destruction/scene-close audit remains a final-validation item.
-- Pending commit: `modal-gui(C1): add extension context menu contributions`.
+- `2a1c27852` — `modal-gui(C1): add extension context menu contributions` (pushed).
+- `f104f4141` — `docs(modal-gui): map EFSM host responsibilities` (pushed).
+- Pending commit: generic scene overlay ownership and generic semantic context dispatch.

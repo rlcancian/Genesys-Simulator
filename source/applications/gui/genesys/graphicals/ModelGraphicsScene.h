@@ -38,6 +38,9 @@
 #include <QTreeWidgetItem>
 #include <QUndoStack>
 #include <QAction>
+#include <QHash>
+#include <QList>
+#include <QString>
 #include <QEventLoop>
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalComponentPort.h"
@@ -226,12 +229,14 @@ public: // editing graphic model
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
     /** @brief Finds one graphical data definition by kernel pointer. */
     GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
-    /** @brief Removes all read-only EFSM transition graphics from this scene. */
-    void clearEFSMNetworkDiagramItems();
-    /** @brief Adds one scene-owned read-only EFSM transition graphic. */
-    void addEFSMNetworkDiagramItem(QGraphicsItem* item);
-    /** @brief Returns the scene-owned EFSM transition graphics. */
-    QList<QGraphicsItem*>* getEFSMNetworkDiagramItems() const;
+    /** @brief Clears scene-owned graphical overlays contributed by one GUI extension. */
+    void clearExtensionOverlayItems(const QString& extensionId);
+    /** @brief Adds a scene-owned graphical overlay item for one GUI extension. */
+    void addExtensionOverlayItem(const QString& extensionId, QGraphicsItem* item);
+    /** @brief Returns the currently registered overlay items for one GUI extension. */
+    QList<QGraphicsItem*> extensionOverlayItems(const QString& extensionId) const;
+    /** @brief Clears all extension overlays before the scene clears its owned items. */
+    void clearExtensionOverlayItems();
     /** @brief Resolves the source component associated with one graphical connection. */
     GraphicalModelComponent* resolveSourceComponent(GraphicalConnection* connection) const;
     /** @brief Resolves the destination component associated with one graphical connection. */
@@ -575,7 +580,7 @@ private:
     QList<QGraphicsItem*>* _graphicalModelDataDefinitions = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalConnections = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalDiagramConnections = new QList<QGraphicsItem*>();
-    QList<QGraphicsItem*>* _efsmNetworkDiagramItems = new QList<QGraphicsItem*>();
+    QHash<QString, QList<QGraphicsItem*>> _extensionOverlayItems;
     QList<QGraphicsItem*>* _graphicalAssociations = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalGeometries = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalAnimations = new QList<QGraphicsItem*>();
