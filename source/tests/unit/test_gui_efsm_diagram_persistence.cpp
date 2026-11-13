@@ -316,6 +316,48 @@ TEST(EFSMNetworkEditor, CreateTransitionAppearsInContextMenuForSelectedStates) {
     manager.populateContextMenu(&menu, firstItem);
     ASSERT_EQ(menu.actions().size(), 1);
     EXPECT_EQ(menu.actions().front()->text(), QStringLiteral("Create EFSM Transition"));
+
+    network->addTransition(new EFSMTransition(first, second, "ContextEdge"));
+    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
+    ASSERT_EQ(scene->extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    auto* transitionItem = dynamic_cast<EFSMTransitionGraphicsItem*>(
+        scene->extensionOverlayItems(QStringLiteral("efsm")).front());
+    ASSERT_NE(transitionItem, nullptr);
+    scene->clearSelection();
+    transitionItem->setSelected(true);
+    manager.refreshActionStates(context);
+    QMenu transitionMenu;
+    manager.populateContextMenu(&transitionMenu, transitionItem);
+    ASSERT_EQ(transitionMenu.actions().size(), 1);
+    QAction* editTransition = transitionMenu.actions().front();
+    EXPECT_EQ(editTransition->text(), QStringLiteral("Edit EFSM Transition..."));
+
+    bool editDialogHandled = false;
+    QTimer editDialogDriver;
+    QTimer editDialogWatchdog;
+    editDialogWatchdog.setSingleShot(true);
+    QObject::connect(&editDialogWatchdog, &QTimer::timeout, []() {
+        if (auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget())) dialog->reject();
+    });
+    QObject::connect(&editDialogDriver, &QTimer::timeout, [&]() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        const auto edits = dialog->findChildren<QLineEdit*>();
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        if (edits.size() >= 6 && buttons.size() == 1) {
+            edits.at(1)->setText(QStringLiteral("ready == 1"));
+            editDialogHandled = true;
+            editDialogDriver.stop();
+            buttons.front()->button(QDialogButtonBox::Ok)->click();
+        }
+    });
+    editDialogDriver.start(5);
+    editDialogWatchdog.start(5000);
+    editTransition->trigger();
+    editDialogDriver.stop();
+    editDialogWatchdog.stop();
+    ASSERT_TRUE(editDialogHandled);
+    EXPECT_EQ(network->getTransitions()->front()->getGuardExpression(), "ready == 1");
 }
 
 TEST(GuiExtensionManager, NetworkCanvasAcceptsOnlyFormalismDataDefinitions) {

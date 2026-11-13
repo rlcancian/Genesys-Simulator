@@ -110,16 +110,26 @@ public:
             MainWindow* mainWindow = host(context);
             if (mainWindow == nullptr) return false;
             EFSMNetworkEditorController controller(mainWindow);
-            return controller.canCreateTransition();
+            return controller.canCreateTransition() || controller.canEditTransition();
         };
         transitionMenu.populate = [](QMenu* menu, const GuiExtensionRuntimeContext& context, QGraphicsItem*) {
             MainWindow* mainWindow = host(context);
             if (menu == nullptr || mainWindow == nullptr) return;
-            QAction* action = menu->addAction(QObject::tr("Create EFSM Transition"));
-            QObject::connect(action, &QAction::triggered, mainWindow, [mainWindow]() {
-                EFSMNetworkEditorController controller(mainWindow);
-                controller.createTransition();
-            });
+            EFSMNetworkEditorController controller(mainWindow);
+            if (controller.canCreateTransition()) {
+                QAction* action = menu->addAction(QObject::tr("Create EFSM Transition"));
+                QObject::connect(action, &QAction::triggered, mainWindow, [mainWindow]() {
+                    EFSMNetworkEditorController currentController(mainWindow);
+                    currentController.createTransition();
+                });
+            }
+            if (controller.canEditTransition()) {
+                QAction* action = menu->addAction(QObject::tr("Edit EFSM Transition..."));
+                QObject::connect(action, &QAction::triggered, mainWindow, [mainWindow]() {
+                    EFSMNetworkEditorController currentController(mainWindow);
+                    currentController.editTransition();
+                });
+            }
         };
         registry->addContextMenu(std::move(transitionMenu));
     }

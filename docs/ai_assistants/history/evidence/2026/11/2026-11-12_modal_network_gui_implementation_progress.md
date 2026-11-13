@@ -395,3 +395,9 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - EFSM transition click regression plus existing state-move/undo regression — PASS, 2/2.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS.
 - `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.*:EFSMNetworkDiagramProjection.*'` — PASS, 11 tests.
+
+### EFSM transition contextual editing follow-up
+
+- Added `Edit EFSM Transition...` to the graphical context menu when exactly one transition is selected; it invokes the existing properties dialog and undoable property command.
+- Regression test opens that context action's dialog, changes the guard expression and verifies the model value. The existing MainWindow action test continues to verify undo.
+- `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.CreateTransitionAppearsInContextMenuForSelectedStates:EFSMNetworkEditor.SelectedTransitionCanBeEditedAndUndoneThroughTheMainWindowAction'` — PASS, 2/2.
