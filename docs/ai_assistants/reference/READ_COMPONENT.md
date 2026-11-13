@@ -36,11 +36,11 @@ The first eligible record is consumed at the first arriving entity; subsequent a
 
 The host application may supply a non-persistent `Read::KeyboardInputProvider` callback, which returns one complete record using the same parsing rules as FILE mode. Automated tests inject this provider. If no provider exists, a POSIX terminal running with an interactive stdin TTY can read one line from `std::cin`. Without a TTY or provider, input fails without blocking on a pipe.
 
-The Qt6 GUI binds the provider via a GUI extension at simulation start; it opens a modal text prompt on the GUI thread. Qt is not used by the simulation component or kernel. A non-GUI-thread invocation, a cancelled dialog, or a closing window rejects input. The synchronous prompt uses the Qt dialog event loop; it **does not** implement asynchronous event suspension or cross-thread marshalling. This is intentionally a limited interaction contract.
+The Qt6 GUI binds the provider via a GUI extension at simulation start; it opens a modal text prompt on the GUI thread. Qt is not used by the simulation component or kernel. A non-GUI-thread invocation, a cancelled dialog, a closing window, or an exception from a host-supplied input callback rejects input and stops the current simulation. The synchronous prompt uses the Qt dialog event loop; it **does not** implement asynchronous event suspension or cross-thread marshalling. This is intentionally a limited interaction contract.
 
 ## Destination semantics
 
-Destinations may be scalar names (`ProcessingTime`) or names suffixed by an existing index representation (`Load[3]`). Attribute names address the entity entering Read; Variable names address the model-wide data definition. The ordered list editor supports creating, removing, changing kind/name, and reordering entries. Like `Assign`, the component declares these definitions if they are not present while preparing model data. `Read` does not evaluate arbitrary expressions in incoming text.
+Destinations may be scalar names (`ProcessingTime`) or names suffixed by an existing index representation (`Load[3]`). Numeric indexed destinations are preflighted and limited to a dense-array lower bound of **1,000,000 elements** (product of `index+1` across dimensions). This avoids unbounded allocations by the underlying dense `SparseValueStore`; indices larger than that limit are rejected before any field is written. This is a Read-specific safety bound, not a global change to Variable or Attribute. Attribute names address the entity entering Read; Variable names address the model-wide data definition. The ordered list editor supports creating, removing, changing kind/name, and reordering entries. Like `Assign`, the component declares these definitions if they are not present while preparing model data. `Read` does not evaluate arbitrary expressions in incoming text.
 
 Before applying a record, `Read` parses all fields, checks their count, and resolves each destination. It then assigns each field in order. Errors (bad/missing file, EOF, invalid/incomplete record, inaccessible keyboard, cancellation, or unresolved destination) are traced and request simulation stop. **The arriving entity is not forwarded** and the fields from a malformed record are not applied. This does not roll back prior entities or previously consumed records.
 
@@ -50,7 +50,7 @@ Serialized fields: `readFromType`, `filename`, `readDestinations` and pairs `rea
 
 ## Known limits
 
-- Only finite numeric `double` values; no string values, dates, or typed records.
+- Only finite numeric `double` values; no string values, dates, or typed records.\n- Numeric indexed destinations have a Read-specific dense-array safety bound of 1,000,000 cells. An index can still be invalid because the target data definition has incompatible dimensions; do not treat this bound as an exhaustive resource/memory guarantee.
 - No CSV, binary, SQL, ADO, Excel, XML, or complex Arena records.
 - Only one logical reader cursor per component instance. Two `Read` components pointed at the same file each start from the beginning.
 - No retry/skip/alternate output on a malformed input; the simulation is stopped.
