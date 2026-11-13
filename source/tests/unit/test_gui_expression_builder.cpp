@@ -14,6 +14,8 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QListWidget>
+#include <QContextMenuEvent>
+#include <QMenu>
 #include <QTreeWidget>
 #include <QCoreApplication>
 #include <QEventLoop>
@@ -213,6 +215,57 @@ TEST(ExpressionBuilderPropertyTest, CancelDoesNotMutateDelayExpression) {
     openSelectedExpressionEditor(browser);
     QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     EXPECT_TRUE(opened);
+    EXPECT_EQ(delay.delayExpression(), original);
+}
+
+
+TEST(ExpressionBuilderPropertyTest, ContextMenuOpensExpressionBuilderAndCancelIsSafe) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Delay delay(model, "ContextExpressionDelay");
+    const std::string original = delay.delayExpression();
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    showEditableDelay(browser, delay);
+    QtBrowserItem* item = findExpressionProperty(browser.topLevelItems());
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    bool foundAction = false;
+    bool foundDialog = false;
+    QTimer::singleShot(0, [&]() {
+        auto* menu = qobject_cast<QMenu*>(QApplication::activePopupWidget());
+        if (menu == nullptr) return;
+        QAction* builderAction = nullptr;
+        for (QAction* action : menu->actions()) {
+            if (action->text() == QStringLiteral("Build expression...")) {
+                builderAction = action;
+                break;
+            }
+        }
+        foundAction = builderAction != nullptr;
+        if (builderAction == nullptr) { menu->close(); return; }
+        QTimer::singleShot(0, [&]() {
+            auto* dialog = qobject_cast<ExpressionBuilder*>(QApplication::activeModalWidget());
+            if (dialog == nullptr) return;
+            foundDialog = true;
+            dialog->reject();
+        });
+        menu->setActiveAction(builderAction);
+        QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(menu, &enter);
+    });
+    QTimer::singleShot(1000, &browser, []() {
+        if (auto* widget = QApplication::activeModalWidget()) widget->close();
+        if (auto* menu = QApplication::activePopupWidget()) menu->close();
+    });
+    QContextMenuEvent event(QContextMenuEvent::Mouse, QPoint(5, 5),
+                            browser.mapToGlobal(QPoint(5, 5)));
+    QApplication::sendEvent(&browser, &event);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    EXPECT_TRUE(foundAction);
+    EXPECT_TRUE(foundDialog);
     EXPECT_EQ(delay.delayExpression(), original);
 }
 
