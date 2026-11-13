@@ -200,7 +200,11 @@ ModelDataDefinition* Read::NewInstance(Model* model, std::string name) {
 ModelComponent* Read::LoadInstance(Model* model, PersistenceRecord* fields) {
     auto* component = new Read(model);
     try {
-        if (!component->_loadInstance(fields)) component->traceError("Failed to load Read instance");
+        // Plugin-template introspection calls loaders with an empty record.
+        // ModelComponent::_loadInstance returns false for records without an
+        // ID; this is expected during introspection and must not emit an error.
+        // Match Write::LoadInstance by reporting exceptions only.
+        component->_loadInstance(fields);
     } catch (const std::exception& e) {
         component->traceError("Failed to load Read instance: " + std::string(e.what()));
     }
