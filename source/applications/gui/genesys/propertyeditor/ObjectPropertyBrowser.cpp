@@ -13,6 +13,7 @@
 #include "../services/GraphicalModelBuilder.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
 
 #include <map>
 #include <set>
@@ -85,6 +86,85 @@ private:
     int _to;
     std::function<void(int, int)> _apply;
 };
+
+class ModalModelBindingUndoCommand final : public QUndoCommand {
+public:
+    ModalModelBindingUndoCommand(ModalModelDefault* adapter, DefaultNetwork* network,
+                                 bool output, unsigned int port, std::string before,
+                                 std::string after, ObjectPropertyBrowser* browser)
+        : _adapter(adapter), _network(network), _output(output), _port(port),
+          _before(std::move(before)), _after(std::move(after)), _browser(browser) {
+        setText(QObject::tr("Edit Network binding"));
+        if (_adapter == nullptr || _network == nullptr || _adapter->getNetwork() != _network) {
+            setObsolete(true);
+        }
+    }
+
+    void undo() override { _apply(_before); }
+    void redo() override { _apply(_after); }
+
+private:
+    void _apply(const std::string& value) {
+        if (_adapter == nullptr || _network == nullptr || _adapter->getNetwork() != _network) {
+            setObsolete(true);
+            return;
+        }
+        if (_output) _adapter->setOutputBinding(_port, value);
+        else _adapter->setInputBinding(_port, value);
+        if (_browser != nullptr) _browser->refreshAfterUndo();
+    }
+
+    ModalModelDefault* _adapter;
+    DefaultNetwork* _network;
+    bool _output;
+    unsigned int _port;
+    std::string _before;
+    std::string _after;
+    QPointer<ObjectPropertyBrowser> _browser;
+};
+
+class ModalModelNetworkReferenceUndoCommand final : public QUndoCommand {
+public:
+    ModalModelNetworkReferenceUndoCommand(ModalModelDefault* adapter, DefaultNetwork* before,
+                                          DefaultNetwork* after, ModelGraphicsScene* scene,
+                                          ObjectPropertyBrowser* browser)
+        : _adapter(adapter), _before(before), _after(after), _scene(scene), _browser(browser) {
+        setText(QObject::tr("Change ModalModel Network"));
+    }
+    void undo() override { _apply(_before); }
+    void redo() override { _apply(_after); }
+
+private:
+    void _apply(DefaultNetwork* network) {
+        if (_adapter == nullptr) { setObsolete(true); return; }
+        try {
+            _adapter->setNetwork(network);
+        } catch (const std::exception& e) {
+            qWarning() << "[PropertyEditor] cannot restore Network reference:" << e.what();
+            setObsolete(true);
+            return;
+        }
+        if (_scene != nullptr) {
+            GraphicalModelComponent* graphical = _scene->findGraphicalModelComponent(_adapter->getId());
+            if (graphical != nullptr && graphical->getComponent() == _adapter) graphical->synchronizeDynamicPorts();
+            _scene->update();
+        }
+        if (_browser != nullptr) _browser->refreshAfterUndo();
+    }
+
+    ModalModelDefault* _adapter;
+    DefaultNetwork* _before;
+    DefaultNetwork* _after;
+    QPointer<ModelGraphicsScene> _scene;
+    QPointer<ObjectPropertyBrowser> _browser;
+};
+
+void pushNetworkReferenceUndo(ModelGraphicsScene* scene, ObjectPropertyBrowser* browser,
+                              ModalModelDefault* adapter, DefaultNetwork* before,
+                              DefaultNetwork* after) {
+    if (scene == nullptr || scene->getUndoStack() == nullptr || adapter == nullptr || before == after) return;
+    scene->getUndoStack()->push(new ModalModelNetworkReferenceUndoCommand(adapter, before, after, scene, browser));
+}
 
 constexpr int kSourceCodePreviewContentLines = 4;
 constexpr int kSourceCodeCompactEditorLines = 5;
@@ -529,6 +609,10 @@ void ObjectPropertyBrowser::setModelChangedCallback(ModelChangedCallback callbac
 
 void ObjectPropertyBrowser::setModelScene(ModelGraphicsScene* scene) {
     _modelScene = scene;
+}
+
+void ObjectPropertyBrowser::refreshAfterUndo() {
+    _notifyModelChangeApplied();
 }
 
 bool ObjectPropertyBrowser::isCommitPipelineBusy() const {
@@ -2565,6 +2649,8 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
         return false;
     }
 
+    auto* modalAdapter = dynamic_cast<ModalModelDefault*>(_modelObject);
+    DefaultNetwork* previousNetwork = modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr;
     ModelDataDefinition* referencedDataDefinition = nullptr;
     bool created = false;
     try {
@@ -2584,6 +2670,9 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
     if (!_isRegisteredModelDataDefinition(referencedDataDefinition)) {
         model->getDataManager()->insert(referencedDataDefinition);
     }
+
+    pushNetworkReferenceUndo(scene != nullptr ? scene : _modelScene.data(), this, modalAdapter,
+        previousNetwork, modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr);
 
     _materializeAffectedModelDataDefinitions(referencedDataDefinition);
     if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
@@ -2614,6 +2703,9 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
         return false;
     }
 
+    auto* modalAdapter = dynamic_cast<ModalModelDefault*>(_modelObject);
+    DefaultNetwork* previousNetwork = modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr;
+
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
         binding.control,
@@ -2631,6 +2723,11 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
         _scheduleDeferredRebuild();
         return false;
     }
+
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(
+        _graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    pushNetworkReferenceUndo(scene != nullptr ? scene : _modelScene.data(), this, modalAdapter,
+        previousNetwork, modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr);
 
     if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
         graphical != nullptr && graphical->getComponent() == _modelObject) {
@@ -2710,6 +2807,7 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
         return false;
     }
     Model* model = _modelObject != nullptr ? _modelObject->getParentModel() : nullptr;
+    auto* modalAdapter = dynamic_cast<ModalModelDefault*>(_modelObject);
 
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
@@ -2725,6 +2823,12 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
         _scheduleDeferredRebuild();
         return false;
     }
+
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(
+        _graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    pushNetworkReferenceUndo(scene != nullptr ? scene : _modelScene.data(), this, modalAdapter,
+        dynamic_cast<DefaultNetwork*>(referencedDataDefinition),
+        modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr);
 
     _materializeAffectedModelDataDefinitions();
     if (model != nullptr) {
@@ -3002,6 +3106,32 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         _scheduleDeferredRebuild();
         qWarning() << "[PropertyEditor] variant apply failed to apply value. Scheduled deferred rebuild";
         return false;
+    }
+
+    if (auto* adapter = dynamic_cast<ModalModelDefault*>(binding.owner); adapter != nullptr
+        && adapter->getNetwork() != nullptr) {
+        const std::string propertyName = binding.descriptor.displayName;
+        const std::string inputPrefix = "Input Binding ";
+        const std::string outputPrefix = "Output Binding ";
+        const bool output = propertyName.rfind(outputPrefix, 0) == 0;
+        const std::string& prefix = output ? outputPrefix : inputPrefix;
+        if (output || propertyName.rfind(inputPrefix, 0) == 0) {
+            const std::size_t end = propertyName.find_first_not_of("0123456789", prefix.size());
+            try {
+                const unsigned int port = static_cast<unsigned int>(
+                    std::stoul(propertyName.substr(prefix.size(), end - prefix.size())));
+                ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(
+                    _graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+                if (scene == nullptr) scene = _modelScene.data();
+                if (scene != nullptr && scene->getUndoStack() != nullptr) {
+                    scene->getUndoStack()->push(new ModalModelBindingUndoCommand(
+                        adapter, adapter->getNetwork(), output, port,
+                        binding.descriptor.currentValue, newValue, this));
+                }
+            } catch (const std::exception& e) {
+                qWarning() << "[PropertyEditor] cannot create Network binding undo command:" << e.what();
+            }
+        }
     }
 
     binding.descriptor.currentValue = newValue;

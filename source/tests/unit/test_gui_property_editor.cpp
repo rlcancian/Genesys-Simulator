@@ -442,6 +442,7 @@ TEST(PropertyEditorLists, MovesNonOwningDataDefinitionListsWithoutDeletingMember
     ASSERT_TRUE(undoStack.canUndo());
     undoStack.undo();
     drainGuiEvents();
+    drainGuiEvents();
     EXPECT_EQ(resourceSet.getElementSet()->getAtRank(0), first);
     EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "ListMemberSecond"), second);
 
@@ -518,6 +519,7 @@ TEST(PropertyEditorLists, ProcessMoveReconcilesInternalReleaseOrder) {
     EXPECT_EQ(release->getReleaseRequests()->getAtRank(0)->getResource(), firstResource);
     EXPECT_EQ(release->getReleaseRequests()->getAtRank(0), firstRelease);
     undoStack.redo();
+    drainGuiEvents();
     drainGuiEvents();
     EXPECT_EQ(process.getSeizeRequests()->getAtRank(0), second);
     EXPECT_EQ(release->getReleaseRequests()->getAtRank(0)->getResource(), secondResource);
@@ -1027,6 +1029,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     Plugin* adapterPlugin = simulator.getPluginManager()->find(Util::TypeOf<ModalModelDefault>());
     ASSERT_NE(adapterPlugin, nullptr);
     ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
     auto* graphical = new GraphicalModelComponent(adapterPlugin, &component, QPointF(100, 100), Qt::blue);
     scene.addItem(graphical);
     ObjectPropertyBrowser browser;
@@ -1055,6 +1059,18 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
         EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
         EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
     }
+    ASSERT_EQ(component.getNetwork(), networks.back());
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), networks[networks.size() - 2]);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+    undoStack.redo();
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), networks.back());
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
 
     const QString graphType = QString::fromStdString(Util::TypeOf<DirectedGraphNetwork>());
     const QString createLabel = QStringLiteral("Criar novo %1").arg(graphType);
@@ -1136,6 +1152,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     QtBrowserItem* outputBinding = findBrowserItemByName(item->children(), QStringLiteral("Output Binding 0 (fired)"));
     ASSERT_NE(inputBinding, nullptr);
     ASSERT_NE(outputBinding, nullptr);
+    const std::string previousInputBinding = component.getInputBinding(0);
+    const std::string previousOutputBinding = component.getOutputBinding(0);
     browser.setCurrentItem(inputBinding);
     browser.editItem(inputBinding);
     drainGuiEvents();
@@ -1154,6 +1172,15 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     bindingEditor = browser.findChild<QLineEdit*>();
     ASSERT_NE(bindingEditor, nullptr);
     commitTextWithEnter(bindingEditor, QStringLiteral("firedValue"));
+    EXPECT_EQ(component.getOutputBinding(0), "firedValue");
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    EXPECT_EQ(component.getOutputBinding(0), previousOutputBinding);
+    undoStack.undo();
+    EXPECT_EQ(component.getInputBinding(0), previousInputBinding);
+    undoStack.redo();
+    EXPECT_EQ(component.getInputBinding(0), "2");
+    undoStack.redo();
     EXPECT_EQ(component.getOutputBinding(0), "firedValue");
 }
 
