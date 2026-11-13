@@ -207,4 +207,5 @@ map is a source inventory, not evidence that extraction is complete.
 - `f104f4141` — `docs(modal-gui): map EFSM host responsibilities` (pushed).
 - `da9858712` — `modal-gui(C1): generalize extension scene overlays` (pushed).
 - `16b43904b` — `modal-gui(C2): extract EFSM editing handlers` (pushed).
-- Pending commit: EFSM action enablement extraction to extension-owned controller.
+- `55e15fbba` — `modal-gui(C2): isolate EFSM action enablement` (pushed).
+- `5ca1431aa` — progress-log commit recording the C2 enablement extraction (pushed).
