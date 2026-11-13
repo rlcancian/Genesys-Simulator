@@ -33,6 +33,7 @@
 #define MODELGRAPHICSSCENE_H
 
 #include <QGraphicsScene>
+#include <QMetaObject>
 #include <QGraphicsProxyWidget>
 #include <QGraphicsRectItem>
 #include <QTreeWidgetItem>
@@ -446,6 +447,9 @@ public:
     void setNetworkEditorOwner(ModelDataDefinition* owner);
     /** @brief Returns the non-owning formalism Network associated with this scene, if any. */
     ModelDataDefinition* networkEditorOwner() const;
+    bool beginNetworkRelationCreation(QGraphicsItem* source);
+    void cancelNetworkRelationCreation();
+    bool isNetworkRelationCreationActive() const;
     /** @brief Shows or hides internal data definitions. */
     void setShowInternalDataDefinitions(bool show);
     /** @brief Returns whether internal data definitions are visible. */
@@ -535,6 +539,7 @@ private:
     QList<GraphicalModelDataDefinition*> _allGraphicalModelDataDefinitions;
     QList<GraphicalDiagramConnection*> _allGraphicalDiagramConnections;
     QUndoStack *_undoStack = nullptr;
+    QMetaObject::Connection _undoProjectionRefreshConnection;
     QMap<QGraphicsItemGroup *, QList<GraphicalModelComponent *> > _listComponentsGroup;
     QMap<QGraphicsItem *, QPointF> _oldPositionsItems;
     QList<Counter *> *_counters = new QList<Counter *>();
@@ -604,6 +609,7 @@ private:
     bool _hasModelLevelFilter = false;
     unsigned int _modelLevelFilter = 0;
     ModelDataDefinition* _networkEditorOwner = nullptr;
+    QGraphicsItem* _networkRelationSource = nullptr;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

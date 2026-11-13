@@ -9,6 +9,7 @@
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 
 #include "../../../../kernel/simulator/model/ModelComponentManager.h"
 #include "kernel/simulator/GenesysPropertyIntrospection.h"
@@ -28,6 +29,13 @@
 #include <set>
 
 namespace {
+QString modelDataDefinitionIdentity(ModelDataDefinition* definition) {
+    if (definition == nullptr) return {};
+    return QStringLiteral("@model-object:%1:%2")
+        .arg(QString::fromStdString(definition->getClassname()))
+        .arg(static_cast<qulonglong>(definition->getId()));
+}
+
 /*! \brief Returns true for selection chrome that belongs to the scene infrastructure instead of a model object.
  *
  * Ports and diagram connections should not be treated as primary property-editor targets because they
@@ -210,6 +218,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
     }
 
     if (model->getDataManager() != nullptr) {
+        ModelDataDefinition* networkOwner = scene->networkEditorOwner();
         for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
             List<ModelDataDefinition*>* dataDefinitions = model->getDataManager()->getDataDefinitionList(dataTypename);
             if (dataDefinitions == nullptr) {
@@ -222,6 +231,9 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
                         names,
                         recursionPath
                         );
+                    if (GuiExtensionPluginCatalog::ownsEditableNetworkDataDefinition(networkOwner, dataDefinition)) {
+                        names.insert(modelDataDefinitionIdentity(dataDefinition));
+                    }
                 }
             }
         }
@@ -247,8 +259,11 @@ void refreshGraphicalDataDefinitionEditability(
         if (graphicalDataDefinition == nullptr || graphicalDataDefinition->getDataDefinition() == nullptr) {
             continue;
         }
-        const QString name = QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName());
-        graphicalDataDefinition->setEditableInPropertyEditor(editableDataDefinitions.contains(name));
+        ModelDataDefinition* definition = graphicalDataDefinition->getDataDefinition();
+        const QString name = QString::fromStdString(definition->getName());
+        graphicalDataDefinition->setEditableInPropertyEditor(
+            editableDataDefinitions.contains(name)
+            || editableDataDefinitions.contains(modelDataDefinitionIdentity(definition)));
     }
 }
 } // namespace

@@ -2,7 +2,7 @@
 document_type: implementation-progress-evidence
 authority: informative
 owner: project-maintainer
-tracks: HUM-MODAL-003,AUTO-MODAL-005
+tracks: HUM-MODAL-003,AUTO-MODAL-005,HUM-MODAL-004,AUTO-MODAL-006
 branch: WiP20261112/modal_model_gui
 base_commit: 6b0facf40e4225c80b4d77cc31f212f5b3a8844e
 status: in-progress
@@ -418,3 +418,22 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - All 19 final-head GitHub checks passed. This includes `tests-unit` (2,109 executed, four configured-disabled), `tests-kernel-unit` (2,111 executed, four configured-disabled), runnable smoke (3/3), GUI application build, focused GUI tests, manual build/governance, Debian package build with Lintian, and install/reinstall/remove/purge lifecycle validation.
 - `origin/WorkInProgress` verified at merge commit `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb`; `origin/WiP20261112/modal_model_gui` remains at candidate `b88984d7fd6d957ba87cff6f9382f9b1df73d427` for continued development.
 - Merge mode: merge commit; no squash/rebase; no source-branch deletion.
+
+## AUTO-MODAL-006 — Universal Network element editing (2026-11-13)
+
+### EFSM checkpoint implemented on the development branch
+
+- `FSMState` now exposes entry/exit action expressions and final/initial flags as Property Editor controls. Extension membership is checked by object identity within the active EFSM; base MDD controls and state-specific edits use undoable commands.
+- The extension contract now supports Network-owned mathematical element properties and relation creation without adding formalism classes to generic GUI code. Double-clicking a valid EFSM state starts a crosshair connection mode; clicking a destination creates the actual owned `EFSMTransition` via the extension command. Self-loops and parallel relations work. Esc, empty-canvas click and context change cancel the mode.
+- Selecting an EFSM relation presents Name, read-only source/destination, guard, output, input event, priority, trigger event and probability expression in the Property Editor. Changes target the real transition and use undo/redo. The redundant EFSM state/transition edit commands and their dialog implementations were removed.
+- `.gen` persistence omitted `Trigger Event`; the field is now read/written. Graphical projection refresh is linked to the undo stack so relation creation/edit/undo/redo stays synchronized with the diagram.
+- Gesture regression uses three states and verifies A→B, B→C and C→C, identity/topology, undo/redo projection updates, Esc and canvas cancellation. Additional tests cover state editability by Network membership identity, transition Property Editor fields, no legacy actions, context menu behavior, and GUI/model round-trip.
+- `cmake --build --preset tests-unit --target genesys_test_gui_gmdd_layout -j 4` — PASS.
+- Focused filter covering state selection/editing, EFSM gesture, transition Property Editor, context/action integration, main-window save/reopen and parallel-transition layout — PASS, 9/9.
+- `git diff --check` — PASS before checkpoint commit.
+
+### Remaining work
+
+- EFSM user-visible checkpoint has the required implementation and focused evidence; commit and publish it next.
+- Generalize the relation Property Editor and source/destination gesture to GraphNetwork, DirectedGraphNetwork and DAG, then MarkovChainNetwork and ColoredPetriNetNetwork. Replace their formalism-specific relation property dialogs/actions where the shared Property Editor provides equivalent domain coverage.
+- Add focused tests for each topology rule and verify `.gen`/`.gui` plus undo/redo at integration points. AUTO-MODAL-006 remains running until all requested formalism integrations are complete.

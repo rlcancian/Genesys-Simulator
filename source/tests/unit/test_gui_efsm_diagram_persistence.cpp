@@ -8,6 +8,7 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
+#include "propertyeditor/ObjectPropertyBrowser.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "actions/EFSMTransitionUndoCommand.h"
 #include "actions/EFSMTransitionPropertiesUndoCommand.h"
@@ -146,8 +147,166 @@ public:
     ExposedModelGraphicsScene() : ModelGraphicsScene(-1000, -1000, 4000, 4000) {}
     using ModelGraphicsScene::mousePressEvent;
     using ModelGraphicsScene::mouseReleaseEvent;
+    using ModelGraphicsScene::mouseDoubleClickEvent;
+    using ModelGraphicsScene::keyPressEvent;
     using ModelGraphicsScene::dropEvent;
 };
+
+TEST(EFSMNetworkRelationGesture, DoubleClickCreatesUndoableDirectedRelationsAndSupportsCancellation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "GestureNetwork");
+    FSMState source(model, "GestureSource");
+    FSMState destination(model, "GestureDestination");
+    FSMState third(model, "GestureThird");
+    network.addState(&source);
+    network.addState(&destination);
+    network.addState(&third);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    auto* sourceItem = scene.findGraphicalModelDataDefinition(&source);
+    auto* destinationItem = scene.findGraphicalModelDataDefinition(&destination);
+    auto* thirdItem = scene.findGraphicalModelDataDefinition(&third);
+    ASSERT_NE(sourceItem, nullptr);
+    ASSERT_NE(destinationItem, nullptr);
+    ASSERT_NE(thirdItem, nullptr);
+
+    auto doubleClick = [&](QGraphicsItem* item) {
+        QGraphicsSceneMouseEvent event(QEvent::GraphicsSceneMouseDoubleClick);
+        event.setButton(Qt::LeftButton);
+        event.setButtons(Qt::LeftButton);
+        event.setScenePos(item->sceneBoundingRect().center());
+        scene.mouseDoubleClickEvent(&event);
+    };
+    auto click = [&](QGraphicsItem* item) {
+        QGraphicsSceneMouseEvent event(QEvent::GraphicsSceneMousePress);
+        event.setButton(Qt::LeftButton);
+        event.setButtons(Qt::LeftButton);
+        event.setScenePos(item->sceneBoundingRect().center());
+        scene.mousePressEvent(&event);
+    };
+
+    doubleClick(sourceItem);
+    ASSERT_TRUE(scene.isNetworkRelationCreationActive());
+    EXPECT_TRUE(network.getTransitions()->empty());
+    click(destinationItem);
+    ASSERT_FALSE(scene.isNetworkRelationCreationActive());
+    ASSERT_EQ(network.getTransitions()->size(), 1u);
+    EXPECT_EQ(network.getTransitions()->front()->getSource(), &source);
+    EXPECT_EQ(network.getTransitions()->front()->getDestination(), &destination);
+    EXPECT_EQ(undoStack.count(), 1);
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    undoStack.undo();
+    EXPECT_TRUE(network.getTransitions()->empty());
+    EXPECT_TRUE(scene.extensionOverlayItems(QStringLiteral("efsm")).isEmpty());
+    undoStack.redo();
+    ASSERT_EQ(network.getTransitions()->size(), 1u);
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+
+    doubleClick(destinationItem);
+    click(thirdItem);
+    ASSERT_EQ(network.getTransitions()->size(), 2u);
+    EFSMTransition* secondTransition = network.getTransitions()->list()->back();
+    EXPECT_EQ(secondTransition->getSource(), &destination);
+    EXPECT_EQ(secondTransition->getDestination(), &third);
+
+    doubleClick(thirdItem);
+    click(thirdItem);
+    ASSERT_EQ(network.getTransitions()->size(), 3u);
+    EFSMTransition* selfLoop = network.getTransitions()->list()->back();
+    EXPECT_EQ(selfLoop->getSource(), &third);
+    EXPECT_EQ(selfLoop->getDestination(), &third);
+
+    doubleClick(thirdItem);
+    QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+    scene.keyPressEvent(&escape);
+    EXPECT_FALSE(scene.isNetworkRelationCreationActive());
+    doubleClick(sourceItem);
+    QGraphicsSceneMouseEvent emptyClick(QEvent::GraphicsSceneMousePress);
+    emptyClick.setButton(Qt::LeftButton);
+    emptyClick.setScenePos(QPointF(1500.0, 1500.0));
+    scene.mousePressEvent(&emptyClick);
+    EXPECT_FALSE(scene.isNetworkRelationCreationActive());
+}
+
+TEST(EFSMNetworkPropertyEditor, SelectedTransitionExposesMathematicalPropertiesAndUndoRedo) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "TransitionPropertyNetwork");
+    FSMState source(model, "TransitionPropertySource");
+    FSMState destination(model, "TransitionPropertyDestination");
+    network.addState(&source);
+    network.addState(&destination);
+    auto* transition = new EFSMTransition(&source, &destination, "EditableTransition");
+    network.addTransition(transition);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    ASSERT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
+    auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(
+        scene.extensionOverlayItems(QStringLiteral("efsm")).first());
+    ASSERT_NE(graphicalTransition, nullptr);
+
+    ObjectPropertyBrowser browser;
+    browser.setModelScene(&scene);
+    browser.setActiveGraphicsItem(graphicalTransition);
+    QApplication::processEvents();
+    auto findProperty = [&browser](const QString& name) {
+        for (QtBrowserItem* item : browser.topLevelItems()) {
+            if (item->property()->propertyName() == name) return item;
+            QList<QtBrowserItem*> pending = item->children();
+            while (!pending.isEmpty()) {
+                QtBrowserItem* child = pending.takeFirst();
+                if (child->property()->propertyName() == name) return child;
+                pending.append(child->children());
+            }
+        }
+        return static_cast<QtBrowserItem*>(nullptr);
+    };
+    for (const QString& name : {QStringLiteral("Name"), QStringLiteral("Source State"),
+                                 QStringLiteral("Destination State"), QStringLiteral("Guard Expression"),
+                                 QStringLiteral("Output Expression"), QStringLiteral("Input Event"),
+                                 QStringLiteral("Priority"), QStringLiteral("Trigger Event"),
+                                 QStringLiteral("Probability Expression")}) {
+        ASSERT_NE(findProperty(name), nullptr) << name.toStdString();
+    }
+    EXPECT_FALSE(findProperty(QStringLiteral("Source State"))->property()->isEnabled());
+    EXPECT_FALSE(findProperty(QStringLiteral("Destination State"))->property()->isEnabled());
+
+    QtBrowserItem* guard = findProperty(QStringLiteral("Guard Expression"));
+    browser.setCurrentItem(guard);
+    browser.editItem(guard);
+    QApplication::processEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    editor->setText(QStringLiteral("Counter.Value > 0"));
+    QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(editor, &enter);
+    QApplication::processEvents();
+    EXPECT_EQ(transition->getGuardExpression(), "Counter.Value > 0");
+    ASSERT_EQ(undoStack.count(), 1);
+    undoStack.undo();
+    EXPECT_TRUE(transition->getGuardExpression().empty());
+    undoStack.redo();
+    EXPECT_EQ(transition->getGuardExpression(), "Counter.Value > 0");
+}
 
 // Minimal widget/action bundle required by GraphicalModelSerializer's
 // constructor, mirroring the pattern already established by the
@@ -270,7 +429,7 @@ TEST(GuiExtensionManager, ContextMenuContributionsAreDispatchedWithoutFormalismB
     EXPECT_TRUE(emptyMenu.actions().empty());
 }
 
-TEST(EFSMNetworkEditor, CreateTransitionAppearsInContextMenuForSelectedStates) {
+TEST(EFSMNetworkEditor, ContextMenuStartsConnectionsFromOneSelectedStateOnly) {
     MainWindow window;
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
     Simulator* simulator = window.myScene()->getSimulator();
@@ -283,19 +442,20 @@ TEST(EFSMNetworkEditor, CreateTransitionAppearsInContextMenuForSelectedStates) {
     auto* second = new FSMState(model, "ContextSecond");
     network->addState(first);
     network->addState(second);
+    network->addTransition(new EFSMTransition(first, second, "Existing"));
 
     auto* view = window.findChild<ModelGraphicsView*>();
     ASSERT_NE(view, nullptr);
     ModelGraphicsScene* scene = window.myScene();
     ASSERT_NE(scene, nullptr);
+    scene->setNetworkEditorOwner(network);
     scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
     std::map<std::string, QColor> colors;
     GraphicalModelBuilder builder(simulator, view, scene, &colors, nullptr);
     builder.generateGraphicalModelFromModel();
+    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
     auto* firstItem = scene->findGraphicalModelDataDefinition(first);
-    auto* secondItem = scene->findGraphicalModelDataDefinition(second);
     ASSERT_NE(firstItem, nullptr);
-    ASSERT_NE(secondItem, nullptr);
 
     GuiExtensionRuntimeContext context;
     context.simulator = simulator;
@@ -307,57 +467,20 @@ TEST(EFSMNetworkEditor, CreateTransitionAppearsInContextMenuForSelectedStates) {
     manager.setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
     manager.rebuild(context);
 
-    QMenu menu;
-    manager.populateContextMenu(&menu, firstItem);
-    EXPECT_TRUE(menu.actions().empty());
     firstItem->setSelected(true);
-    secondItem->setSelected(true);
-    manager.refreshActionStates(context);
-    manager.populateContextMenu(&menu, firstItem);
-    ASSERT_EQ(menu.actions().size(), 1);
-    EXPECT_EQ(menu.actions().front()->text(), QStringLiteral("Create EFSM Transition"));
+    QMenu stateMenu;
+    manager.populateContextMenu(&stateMenu, firstItem);
+    ASSERT_EQ(stateMenu.actions().size(), 1);
+    EXPECT_EQ(stateMenu.actions().front()->text(), QStringLiteral("Create EFSM Transition"));
 
-    network->addTransition(new EFSMTransition(first, second, "ContextEdge"));
-    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
-    ASSERT_EQ(scene->extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
-    auto* transitionItem = dynamic_cast<EFSMTransitionGraphicsItem*>(
-        scene->extensionOverlayItems(QStringLiteral("efsm")).front());
+    auto* transitionItem = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(
+        QStringLiteral("efsm")).front());
     ASSERT_NE(transitionItem, nullptr);
+    QMenu relationMenu;
     scene->clearSelection();
     transitionItem->setSelected(true);
-    manager.refreshActionStates(context);
-    QMenu transitionMenu;
-    manager.populateContextMenu(&transitionMenu, transitionItem);
-    ASSERT_EQ(transitionMenu.actions().size(), 1);
-    QAction* editTransition = transitionMenu.actions().front();
-    EXPECT_EQ(editTransition->text(), QStringLiteral("Edit EFSM Transition..."));
-
-    bool editDialogHandled = false;
-    QTimer editDialogDriver;
-    QTimer editDialogWatchdog;
-    editDialogWatchdog.setSingleShot(true);
-    QObject::connect(&editDialogWatchdog, &QTimer::timeout, []() {
-        if (auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget())) dialog->reject();
-    });
-    QObject::connect(&editDialogDriver, &QTimer::timeout, [&]() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) return;
-        const auto edits = dialog->findChildren<QLineEdit*>();
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (edits.size() >= 6 && buttons.size() == 1) {
-            edits.at(1)->setText(QStringLiteral("ready == 1"));
-            editDialogHandled = true;
-            editDialogDriver.stop();
-            buttons.front()->button(QDialogButtonBox::Ok)->click();
-        }
-    });
-    editDialogDriver.start(5);
-    editDialogWatchdog.start(5000);
-    editTransition->trigger();
-    editDialogDriver.stop();
-    editDialogWatchdog.stop();
-    ASSERT_TRUE(editDialogHandled);
-    EXPECT_EQ(network->getTransitions()->front()->getGuardExpression(), "ready == 1");
+    manager.populateContextMenu(&relationMenu, transitionItem);
+    EXPECT_TRUE(relationMenu.actions().isEmpty());
 }
 
 TEST(GuiExtensionManager, NetworkCanvasAcceptsOnlyFormalismDataDefinitions) {
@@ -2261,7 +2384,11 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     // Two parallel transitions Idle->Busy plus one named one. Empty-name
     // identity is covered by the direct codec test below because the current
     // .gen loader materializes omitted empty names as T<ordinal> defaults.
-    network.addTransition(new EFSMTransition(&idle, &busy, "Parallel0"));
+    auto* parallel0 = new EFSMTransition(&idle, &busy, "Parallel0");
+    parallel0->setTriggerEvent("arrival");
+    parallel0->setProbabilityExpression("0.75");
+    parallel0->setGuardExpression("ready == 1");
+    network.addTransition(parallel0);
     network.addTransition(new EFSMTransition(&idle, &busy, "Parallel1"));
     network.addTransition(new EFSMTransition(&idle, &busy, "Go"));
     auto* adapter = new ModalModelDefault(model, "RoundTripAdapter");
@@ -2290,6 +2417,9 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     ASSERT_NE(loadedNetwork, nullptr);
     EXPECT_EQ(loadedNetwork->getStates()->size(), 2u);
     EXPECT_EQ(loadedNetwork->getTransitions()->size(), 3u);
+    EXPECT_EQ(loadedNetwork->getTransitions()->front()->getTriggerEvent(), "arrival");
+    EXPECT_EQ(loadedNetwork->getTransitions()->front()->getProbabilityExpression(), "0.75");
+    EXPECT_EQ(loadedNetwork->getTransitions()->front()->getGuardExpression(), "ready == 1");
 
     const EFSMNetworkDiagramLayout restored =
         efsmNetworkDiagramLayout(harness.serializer.get(), loadedModel, static_cast<unsigned long>(loadedNetwork->getId()));
@@ -3181,118 +3311,19 @@ TEST(EFSMNetworkUndo, StatePropertiesUndoRedoPreservesNameActionsAndFinalFlag) {
     EXPECT_TRUE(state->isFinalNode());
 }
 
-TEST(EFSMNetworkEditor, SelectedStateCanBeEditedAndUndoneThroughTheMainWindowAction) {
-    MainWindow window;
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
-    Simulator* simulator = window.myScene()->getSimulator();
-    ASSERT_NE(simulator, nullptr);
-    simulator->getPluginManager()->autoInsertPlugins();
-    Model* model = simulator->getModelManager()->current();
-    ASSERT_NE(model, nullptr);
-    auto* network = new EFSMNetwork(model, "InteractiveStateNetwork");
-    auto* state = new FSMState(model, "Working");
-    network->addState(state);
-
-    ModelGraphicsScene* scene = window.myScene();
-    scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
-    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
-    GraphicalModelDataDefinition* graphicalState = scene->findGraphicalModelDataDefinition(state);
-    ASSERT_NE(graphicalState, nullptr);
-    graphicalState->setSelected(true);
-
-    QAction* editAction = nullptr;
-    for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Edit EFSM State...")) {
-            editAction = action;
-            break;
+TEST(EFSMNetworkEditor, LegacyPropertyEditActionsAreNotRegistered) {
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr) continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) {
+            EXPECT_NE(action.id, "modal.efsm.edit-state");
+            EXPECT_NE(action.id, "modal.efsm.edit-transition");
+        }
+        for (const auto& menu : registry.contextMenus()) {
+            EXPECT_NE(menu.id, "modal.efsm.edit-transition.context");
         }
     }
-    ASSERT_NE(editAction, nullptr);
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) {
-            return;
-        }
-        const auto edits = dialog->findChildren<QLineEdit*>();
-        const auto checks = dialog->findChildren<QCheckBox*>();
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (edits.size() == 3 && checks.size() == 1 && buttons.size() == 1) {
-            edits.at(0)->setText(QStringLiteral("Complete"));
-            edits.at(1)->setText(QStringLiteral("entered = 1"));
-            edits.at(2)->setText(QStringLiteral("left = 1"));
-            checks.at(0)->setChecked(true);
-            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
-        }
-    });
-    editAction->trigger();
-    EXPECT_EQ(state->getName(), "Complete");
-    EXPECT_EQ(state->getEntryActionExpression(), "entered = 1");
-    EXPECT_TRUE(state->isFinalNode());
-
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
-    EXPECT_EQ(state->getName(), "Working");
-    EXPECT_FALSE(state->isFinalNode());
-}
-
-TEST(EFSMNetworkEditor, SelectedTransitionCanBeEditedAndUndoneThroughTheMainWindowAction) {
-    MainWindow window;
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
-    Simulator* simulator = window.myScene()->getSimulator();
-    ASSERT_NE(simulator, nullptr);
-    simulator->getPluginManager()->autoInsertPlugins();
-    Model* model = simulator->getModelManager()->current();
-    ASSERT_NE(model, nullptr);
-    auto* network = new EFSMNetwork(model, "InteractiveTransitionNetwork");
-    auto* source = new FSMState(model, "Source");
-    auto* destination = new FSMState(model, "Destination");
-    network->addState(source);
-    network->addState(destination);
-    auto* transition = new EFSMTransition(source, destination, "Before");
-    network->addTransition(transition);
-    ModelGraphicsScene* scene = window.myScene();
-    scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
-    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
-    EFSMNetworkDiagramProjection::synchronize(simulator, scene);
-    ASSERT_EQ(scene->extensionOverlayItems(QStringLiteral("efsm")).size(), 1);
-    auto* graphicalTransition = dynamic_cast<EFSMTransitionGraphicsItem*>(scene->extensionOverlayItems(QStringLiteral("efsm")).first());
-    ASSERT_NE(graphicalTransition, nullptr);
-    graphicalTransition->setSelected(true);
-
-    QAction* editAction = nullptr;
-    for (QAction* action : window.findChildren<QAction*>()) {
-        if (action->text() == QStringLiteral("Edit EFSM Transition...")) editAction = action;
-    }
-    ASSERT_NE(editAction, nullptr);
-    ASSERT_TRUE(editAction->isEnabled());
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) return;
-        const auto edits = dialog->findChildren<QLineEdit*>();
-        const auto priorities = dialog->findChildren<QSpinBox*>();
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (edits.size() >= 7 && priorities.size() == 1 && buttons.size() == 1) {
-            edits.at(0)->setText(QStringLiteral("After"));
-            edits.at(1)->setText(QStringLiteral("guard"));
-            edits.at(2)->setText(QStringLiteral("output"));
-            edits.at(3)->setText(QStringLiteral("input"));
-            edits.at(5)->setText(QStringLiteral("trigger"));
-            edits.at(6)->setText(QStringLiteral("probability"));
-            priorities.at(0)->setValue(7);
-            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
-        }
-    });
-    editAction->trigger();
-    EXPECT_EQ(transition->getName(), "After");
-    EXPECT_EQ(transition->getGuardExpression(), "guard");
-    EXPECT_EQ(transition->getOutputExpression(), "output");
-    EXPECT_EQ(transition->getInputEvent(), "input");
-    EXPECT_EQ(transition->getTriggerEvent(), "trigger");
-    EXPECT_EQ(transition->getProbabilityExpression(), "probability");
-    EXPECT_EQ(transition->getPriority(), 7u);
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
-    EXPECT_EQ(transition->getName(), "Before");
-    EXPECT_TRUE(transition->getGuardExpression().empty());
-    EXPECT_EQ(transition->getPriority(), 0u);
 }
 
 TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
@@ -3556,7 +3587,7 @@ TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
     EXPECT_EQ(adapter->getNetwork(), nullptr);
 }
 
-TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete) {
+TEST(EFSMNetworkEditor, CreateTransitionActionStartsGraphicalConnectionWithoutDialog) {
     MainWindow window;
     ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
     Simulator* simulator = window.myScene()->getSimulator();
@@ -3573,7 +3604,7 @@ TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete)
     GraphicalModelBuilder builder(simulator, view, window.myScene(), &colors, nullptr);
     builder.generateGraphicalModelFromModel();
     ModelGraphicsScene* scene = window.myScene();
-    ASSERT_NE(scene, nullptr);
+    scene->setNetworkEditorOwner(network);
     scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
 
     QAction* createState = nullptr;
@@ -3584,11 +3615,9 @@ TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete)
     }
     ASSERT_NE(createState, nullptr);
     ASSERT_NE(createTransition, nullptr);
-    // Isolate the action handler after installing its network context. The real
-    // navigation path and action-state synchronization have separate coverage.
     createState->setEnabled(true);
     createTransition->setEnabled(true);
-    auto enterText = [](QAction* action, const QString& value) {
+    auto enterStateName = [](QAction* action, const QString& value) {
         QTimer::singleShot(0, [value]() {
             auto* prompt = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
             if (prompt != nullptr) {
@@ -3598,82 +3627,23 @@ TEST(EFSMNetworkEditor, StatesAndTransitionsCanBeCreatedBeforeTheEFSMIsComplete)
         });
         action->trigger();
     };
-    enterText(createState, QStringLiteral("Idle"));
-    enterText(createState, QStringLiteral("Done"));
+    enterStateName(createState, QStringLiteral("Idle"));
+    enterStateName(createState, QStringLiteral("Done"));
     ASSERT_EQ(network->getStates()->size(), 2u);
-    auto* idle = dynamic_cast<FSMState*>(model->getDataManager()->getDataDefinition(
-        Util::TypeOf<FSMState>(), std::string("Idle")));
-    auto* done = dynamic_cast<FSMState*>(model->getDataManager()->getDataDefinition(
-        Util::TypeOf<FSMState>(), std::string("Done")));
+    auto* idle = findStateByName(network, "Idle");
+    auto* done = findStateByName(network, "Done");
     ASSERT_NE(idle, nullptr);
     ASSERT_NE(done, nullptr);
+    auto* idleItem = scene->findGraphicalModelDataDefinition(idle);
+    ASSERT_NE(idleItem, nullptr);
     scene->clearSelection();
-    ASSERT_NE(scene->findGraphicalModelDataDefinition(idle), nullptr);
-    ASSERT_NE(scene->findGraphicalModelDataDefinition(done), nullptr);
-    scene->findGraphicalModelDataDefinition(idle)->setSelected(true);
-    scene->findGraphicalModelDataDefinition(done)->setSelected(true);
-    ASSERT_EQ(scene->selectedItems().size(), 2);
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) return;
-        const auto combos = dialog->findChildren<QComboBox*>();
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (combos.size() == 2 && buttons.size() == 1) {
-            combos.at(0)->setCurrentIndex(combos.at(0)->findText(QStringLiteral("Idle")));
-            combos.at(1)->setCurrentIndex(combos.at(1)->findText(QStringLiteral("Done")));
-            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
-        }
-    });
+    idleItem->setSelected(true);
+    ASSERT_TRUE(scene->beginNetworkRelationCreation(idleItem));
+    scene->cancelNetworkRelationCreation();
     createTransition->trigger();
-
-    ASSERT_EQ(network->getTransitions()->size(), 1u);
-    EFSMTransition* transition = network->getTransitions()->front();
-    EXPECT_EQ(transition->getSource(), idle);
-    EXPECT_EQ(transition->getDestination(), done);
-    EXPECT_TRUE(transition->getName().empty());
-
-    scene->clearSelection();
-    scene->findGraphicalModelDataDefinition(idle)->setSelected(true);
-    scene->findGraphicalModelDataDefinition(done)->setSelected(true);
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) return;
-        const auto combos = dialog->findChildren<QComboBox*>();
-        const auto edits = dialog->findChildren<QLineEdit*>();
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (combos.size() == 2 && edits.size() == 1 && buttons.size() == 1) {
-            combos.at(0)->setCurrentIndex(combos.at(0)->findText(QStringLiteral("Idle")));
-            combos.at(1)->setCurrentIndex(combos.at(1)->findText(QStringLiteral("Done")));
-            edits.at(0)->setText(QStringLiteral("Parallel"));
-            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
-        }
-    });
-    createTransition->trigger();
-    ASSERT_EQ(network->getTransitions()->size(), 2u);
-    EFSMTransition* parallel = network->getTransitions()->list()->back();
-    EXPECT_EQ(parallel->getSource(), idle);
-    EXPECT_EQ(parallel->getDestination(), done);
-    EXPECT_EQ(parallel->getName(), "Parallel");
-
-    scene->clearSelection();
-    scene->findGraphicalModelDataDefinition(idle)->setSelected(true);
-    QTimer::singleShot(0, []() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) return;
-        const auto combos = dialog->findChildren<QComboBox*>();
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (combos.size() == 2 && buttons.size() == 1) {
-            EXPECT_FALSE(combos.at(0)->isEnabled());
-            EXPECT_FALSE(combos.at(1)->isEnabled());
-            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
-        }
-    });
-    createTransition->trigger();
-    ASSERT_EQ(network->getTransitions()->size(), 3u);
-    EFSMTransition* selfLoop = network->getTransitions()->list()->back();
-    EXPECT_EQ(selfLoop->getSource(), idle);
-    EXPECT_EQ(selfLoop->getDestination(), idle);
-    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), network->getId()), network);
+    EXPECT_TRUE(scene->isNetworkRelationCreationActive());
+    EXPECT_TRUE(network->getTransitions()->empty());
+    scene->cancelNetworkRelationCreation();
 }
 
 TEST(EFSMNetworkEditor, AdapterBindingsHaveNoLegacyDialogAction) {
@@ -3786,17 +3756,14 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     QAction* createState = nullptr;
     QAction* createTransition = nullptr;
     QAction* setInitial = nullptr;
-    QAction* editTransition = nullptr;
     for (QAction* action : window.findChildren<QAction*>()) {
         if (action->text() == QStringLiteral("Create EFSM State")) createState = action;
         if (action->text() == QStringLiteral("Create EFSM Transition")) createTransition = action;
         if (action->text() == QStringLiteral("Set Selected EFSM State as Initial")) setInitial = action;
-        if (action->text() == QStringLiteral("Edit EFSM Transition...")) editTransition = action;
     }
     ASSERT_NE(createState, nullptr);
     ASSERT_NE(createTransition, nullptr);
     ASSERT_NE(setInitial, nullptr);
-    ASSERT_NE(editTransition, nullptr);
     enterStateName(createState, QStringLiteral("PersistedIdle"));
     enterStateName(createState, QStringLiteral("PersistedDone"));
     auto* idle = findStateByName(network, "PersistedIdle");
@@ -3812,88 +3779,39 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     setInitial->trigger();
     EXPECT_EQ(network->getInitialState(), idle);
     networkView->getScene()->clearSelection();
-    idleItem->setSelected(true);
-    doneItem->setSelected(true);
-    QApplication::processEvents();
-    EXPECT_EQ(networkView->getScene()->selectedItems().size(), 2);
-    ASSERT_TRUE(createTransition->isEnabled());
-    bool createTransitionDialogHandled = false;
-    QTimer createTransitionDialogDriver;
-    QTimer createTransitionDialogWatchdog;
-    createTransitionDialogWatchdog.setSingleShot(true);
-    QObject::connect(&createTransitionDialogWatchdog, &QTimer::timeout, []() {
-        if (auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget())) dialog->reject();
-    });
-    QObject::connect(&createTransitionDialogDriver, &QTimer::timeout, [&]() {
-        if (auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget())) {
-            createTransitionDialogHandled = true;
-            createTransitionDialogDriver.stop();
-            message->accept();
-            return;
-        }
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) return;
-        const auto combos = dialog->findChildren<QComboBox*>();
-        const auto edits = dialog->findChildren<QLineEdit*>();
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (combos.size() == 2 && !edits.isEmpty() && buttons.size() == 1) {
-            createTransitionDialogHandled = true;
-            createTransitionDialogDriver.stop();
-            combos.at(0)->setCurrentIndex(combos.at(0)->findText(QStringLiteral("PersistedIdle")));
-            combos.at(1)->setCurrentIndex(combos.at(1)->findText(QStringLiteral("PersistedDone")));
-            edits.at(0)->setText(QStringLiteral("Complete"));
-            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
-        }
-    });
-    createTransitionDialogDriver.start(5);
-    createTransitionDialogWatchdog.start(5000);
-    createTransition->trigger();
-    createTransitionDialogDriver.stop();
-    createTransitionDialogWatchdog.stop();
-    ASSERT_TRUE(createTransitionDialogHandled);
+    auto* createCommand = GuiExtensionPluginCatalog::createNetworkRelationCommand(network, idleItem, doneItem);
+    ASSERT_NE(createCommand, nullptr);
+    ASSERT_NE(networkView->getScene()->getUndoStack(), nullptr);
+    networkView->getScene()->getUndoStack()->push(createCommand);
     ASSERT_EQ(network->getTransitions()->size(), 1u);
     auto* transition = network->getTransitions()->front();
     EXPECT_EQ(transition->getSource(), idle);
     EXPECT_EQ(transition->getDestination(), done);
-    EFSMTransitionGraphicsItem* transitionItem = nullptr;
-    for (QGraphicsItem* item : networkView->getScene()->items()) {
-        if (auto* candidate = dynamic_cast<EFSMTransitionGraphicsItem*>(item)) {
-            transitionItem = candidate;
-            break;
-        }
-    }
-    ASSERT_NE(transitionItem, nullptr);
-    networkView->getScene()->clearSelection();
-    transitionItem->setSelected(true);
-    QApplication::processEvents();
-    ASSERT_TRUE(editTransition->isEnabled());
-    bool transitionEditHandled = false;
-    QTimer editDialogDriver;
-    QObject::connect(&editDialogDriver, &QTimer::timeout, [&]() {
-        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
-        if (dialog == nullptr) return;
-        const auto edits = dialog->findChildren<QLineEdit*>();
-        const auto spins = dialog->findChildren<QSpinBox*>();
-        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
-        if (edits.size() >= 6 && spins.size() == 1 && buttons.size() == 1) {
-            edits.at(1)->setText(QStringLiteral("1"));
-            edits.at(2)->setText(QStringLiteral("91"));
-            spins.at(0)->setValue(7);
-            transitionEditHandled = true;
-            editDialogDriver.stop();
-            buttons.at(0)->button(QDialogButtonBox::Ok)->click();
-        }
-    });
-    editDialogDriver.start(5);
-    editTransition->trigger();
-    editDialogDriver.stop();
-    ASSERT_TRUE(transitionEditHandled);
+    auto* guardCommand = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
+        network, networkView->getScene()->extensionOverlayItems(QStringLiteral("efsm")).front(),
+        "Guard Expression", "1");
+    ASSERT_NE(guardCommand, nullptr);
+    networkView->getScene()->getUndoStack()->push(guardCommand);
+    auto* outputCommand = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
+        network, networkView->getScene()->extensionOverlayItems(QStringLiteral("efsm")).front(),
+        "Output Expression", "91");
+    ASSERT_NE(outputCommand, nullptr);
+    networkView->getScene()->getUndoStack()->push(outputCommand);
+    auto* priorityCommand = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
+        network, networkView->getScene()->extensionOverlayItems(QStringLiteral("efsm")).front(),
+        "Priority", "7");
+    ASSERT_NE(priorityCommand, nullptr);
+    networkView->getScene()->getUndoStack()->push(priorityCommand);
     EXPECT_EQ(transition->getGuardExpression(), "1");
     EXPECT_EQ(transition->getOutputExpression(), "91");
     EXPECT_EQ(transition->getPriority(), 7u);
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
+    networkView->getScene()->getUndoStack()->undo();
+    networkView->getScene()->getUndoStack()->undo();
+    networkView->getScene()->getUndoStack()->undo();
     EXPECT_TRUE(transition->getGuardExpression().empty());
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditRedo_triggered", Qt::DirectConnection));
+    networkView->getScene()->getUndoStack()->redo();
+    networkView->getScene()->getUndoStack()->redo();
+    networkView->getScene()->getUndoStack()->redo();
     EXPECT_EQ(transition->getGuardExpression(), "1");
 
     QAction* deleteSelection = nullptr;
@@ -3904,29 +3822,6 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
         }
     }
     ASSERT_NE(deleteSelection, nullptr);
-    networkView->getScene()->clearSelection();
-    transitionItem = nullptr;
-    for (QGraphicsItem* item : networkView->getScene()->items()) {
-        if (auto* candidate = dynamic_cast<EFSMTransitionGraphicsItem*>(item)) {
-            transitionItem = candidate;
-            break;
-        }
-    }
-    ASSERT_NE(transitionItem, nullptr);
-    transitionItem->setSelected(true);
-    QApplication::processEvents();
-    ASSERT_TRUE(deleteSelection->isEnabled());
-    deleteSelection->trigger();
-    EXPECT_TRUE(network->getTransitions()->empty());
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
-    ASSERT_EQ(network->getTransitions()->size(), 1u);
-    EXPECT_EQ(network->getTransitions()->front(), transition);
-    EXPECT_EQ(transition->getGuardExpression(), "1");
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditRedo_triggered", Qt::DirectConnection));
-    EXPECT_TRUE(network->getTransitions()->empty());
-    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionEditUndo_triggered", Qt::DirectConnection));
-    ASSERT_EQ(network->getTransitions()->front(), transition);
-
     networkView->getScene()->clearSelection();
     doneItem = networkView->getScene()->findGraphicalModelDataDefinition(done);
     ASSERT_NE(doneItem, nullptr);
@@ -4041,7 +3936,7 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     ASSERT_EQ(restoredNetwork->getTransitions()->size(), 1u);
     ASSERT_NE(restoredNetwork->getInitialState(), nullptr);
     EXPECT_EQ(restoredNetwork->getInitialState()->getName(), "PersistedIdle");
-    EXPECT_EQ(restoredNetwork->getTransitions()->front()->getName(), "Complete");
+    EXPECT_EQ(restoredNetwork->getTransitions()->front()->getName(), "T0");
     EXPECT_EQ(restoredNetwork->getTransitions()->front()->getGuardExpression(), "1");
     EXPECT_EQ(restoredNetwork->getTransitions()->front()->getOutputExpression(), "91");
     EXPECT_EQ(restoredNetwork->getTransitions()->front()->getPriority(), 7u);

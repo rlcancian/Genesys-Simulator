@@ -28,6 +28,7 @@
 #include "plugins/components/Continuous/DiffEquations.h"
 #include "plugins/components/Continuous/LSODE.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/data/ModalModel/DirectedGraphNetwork.h"
 #include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
@@ -222,6 +223,66 @@ void commitTextWithEnter(QLineEdit* lineEdit, const QString& text) {
     QKeyEvent release(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
     QApplication::sendEvent(lineEdit, &release);
     drainGuiEvents();
+}
+
+TEST(EFSMStatePropertyEditor, ExposesAndEditsStateExpressionsAndFinalFlag) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    FSMState state(model, "PropertyEditorState");
+    EFSMNetwork network(model, "PropertyEditorNetwork");
+    network.addState(&state);
+    ModelGraphicsScene scene(0.0, 0.0, 100.0, 100.0);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    scene.setNetworkEditorOwner(&network);
+
+    ObjectPropertyBrowser browser;
+    browser.setModelScene(&scene);
+    bindEditableKernelObject(browser, &state);
+
+    for (const QString& propertyName : {QStringLiteral("Name"), QStringLiteral("Label"),
+                                         QStringLiteral("Report Statistics"), QStringLiteral("Trace Level"),
+                                         QStringLiteral("Entry Action Expression"),
+                                         QStringLiteral("Exit Action Expression"), QStringLiteral("Final Node"),
+                                         QStringLiteral("Initial Node")}) {
+        QtBrowserItem* property = findBrowserItemByName(browser.topLevelItems(), propertyName);
+        ASSERT_NE(property, nullptr) << propertyName.toStdString();
+        EXPECT_TRUE(property->property()->isEnabled()) << propertyName.toStdString();
+    }
+
+    QtBrowserItem* entryAction = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("Entry Action Expression"));
+    ASSERT_NE(entryAction, nullptr);
+    browser.setCurrentItem(entryAction);
+    browser.editItem(entryAction);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("Counter.Value = Counter.Value + 1"));
+    EXPECT_EQ(state.getEntryActionExpression(), "Counter.Value = Counter.Value + 1");
+    ASSERT_NE(scene.getUndoStack(), nullptr);
+    scene.getUndoStack()->undo();
+    EXPECT_TRUE(state.getEntryActionExpression().empty());
+    scene.getUndoStack()->redo();
+    EXPECT_EQ(state.getEntryActionExpression(), "Counter.Value = Counter.Value + 1");
+
+    QtBrowserItem* finalNode = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Final Node"));
+    ASSERT_NE(finalNode, nullptr);
+    auto* finalNodeProperty = dynamic_cast<QtVariantProperty*>(finalNode->property());
+    ASSERT_NE(finalNodeProperty, nullptr);
+    finalNodeProperty->setValue(true);
+    drainGuiEvents();
+    EXPECT_TRUE(state.isFinalNode());
+
+    QtBrowserItem* initialNode = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Initial Node"));
+    ASSERT_NE(initialNode, nullptr);
+    auto* initialNodeProperty = dynamic_cast<QtVariantProperty*>(initialNode->property());
+    ASSERT_NE(initialNodeProperty, nullptr);
+    initialNodeProperty->setValue(true);
+    drainGuiEvents();
+    EXPECT_EQ(network.getInitialState(), &state);
 }
 
 void selectListItemAction(ObjectPropertyBrowser& browser, const QString& listName,

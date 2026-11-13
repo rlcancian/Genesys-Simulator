@@ -59,6 +59,7 @@
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../extensions/GuiExtensionPluginCatalog.h"
 #include "../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -700,15 +701,24 @@ void ObjectPropertyBrowser::setActiveObject(
         auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(obj);
         if (graphicalDataDefinition != nullptr) {
             if (graphicalDataDefinition->getDataDefinition() != nullptr) {
-                const QString name = QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName());
-                graphicalDataDefinition->setEditableInPropertyEditor(_editableModelObjects.contains(name));
+                ModelDataDefinition* definition = graphicalDataDefinition->getDataDefinition();
+                const QString name = QString::fromStdString(definition->getName());
+                const QString identity = QStringLiteral("@model-object:%1:%2")
+                    .arg(QString::fromStdString(definition->getClassname()))
+                    .arg(static_cast<qulonglong>(definition->getId()));
+                graphicalDataDefinition->setEditableInPropertyEditor(
+                    _editableModelObjects.contains(name) || _editableModelObjects.contains(identity));
             }
             _activeKernelObjectReadOnly = !graphicalDataDefinition->isEditableInPropertyEditor();
         } else if (mdd != nullptr) {
             // Inspector-driven editing may target a hidden GMDD, so read-only enforcement must
             // also work when there is no graphical QObject backing the selected data definition.
             const QString name = QString::fromStdString(mdd->getName());
-            _activeKernelObjectReadOnly = !_editableModelObjects.contains(name);
+            const QString identity = QStringLiteral("@model-object:%1:%2")
+                .arg(QString::fromStdString(mdd->getClassname()))
+                .arg(static_cast<qulonglong>(mdd->getId()));
+            _activeKernelObjectReadOnly = !_editableModelObjects.contains(name)
+                && !_editableModelObjects.contains(identity);
         }
     }
     _propertyEditor = peg;
@@ -1876,6 +1886,62 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
 void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
     if (item == nullptr) {
         return;
+    }
+
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    ModelDataDefinition* networkOwner = networkScene != nullptr ? networkScene->networkEditorOwner() : nullptr;
+    const auto networkProperties = GuiExtensionPluginCatalog::networkElementProperties(networkOwner, item);
+    if (!networkProperties.empty()) {
+        QtProperty* elementGroup = _groupManager->addProperty("Network Element");
+        addProperty(elementGroup);
+        for (const auto& descriptor : networkProperties) {
+            const QString propertyName = QString::fromStdString(descriptor.name);
+            auto setter = [this, networkScene, networkOwner, item, propertyName, kind = descriptor.kind](const QVariant& value) {
+                if (networkScene == nullptr || networkScene->networkEditorOwner() != networkOwner
+                    || networkScene->getUndoStack() == nullptr) return;
+                QString serialized;
+                switch (kind) {
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Boolean:
+                    serialized = value.toBool() ? QStringLiteral("true") : QStringLiteral("false");
+                    break;
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Integer:
+                    serialized = QString::number(value.toLongLong());
+                    break;
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Double:
+                    serialized = QString::number(value.toDouble(), 'g', 17);
+                    break;
+                default:
+                    serialized = value.toString();
+                    break;
+                }
+                QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
+                    networkOwner, item, propertyName.toStdString(), serialized.toStdString());
+                if (command != nullptr) networkScene->getUndoStack()->push(command);
+            };
+            switch (descriptor.kind) {
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Boolean:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::Bool, descriptor.value == "true" || descriptor.value == "1",
+                    std::move(setter), false, descriptor.editable));
+                break;
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Integer:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::Int, QString::fromStdString(descriptor.value).toInt(),
+                    std::move(setter), false, descriptor.editable));
+                break;
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Double:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::Double, QString::fromStdString(descriptor.value).toDouble(),
+                    std::move(setter), false, descriptor.editable));
+                break;
+            case GuiNetworkEditorContribution::ElementProperty::Kind::String:
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Enumeration:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::String, QString::fromStdString(descriptor.value),
+                    std::move(setter), true, descriptor.editable));
+                break;
+            }
+        }
     }
 
     QtProperty* graphicsGroup = _groupManager->addProperty("Graphics");
@@ -3149,6 +3215,19 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         return true;
     }
 
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    if (networkScene != nullptr && networkScene->networkEditorOwner() != nullptr
+        && networkScene->getUndoStack() != nullptr) {
+        if (QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
+                networkScene->networkEditorOwner(), binding.owner,
+                binding.descriptor.displayName, newValue)) {
+            networkScene->getUndoStack()->push(command);
+            binding.descriptor.currentValue = newValue;
+            _notifyModelChangeApplied();
+            return true;
+        }
+    }
+
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
         binding.control,
@@ -3405,6 +3484,18 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         newValue = std::to_string(value);
     } else {
         return;
+    }
+
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    if (networkScene != nullptr && networkScene->networkEditorOwner() != nullptr
+        && networkScene->getUndoStack() != nullptr) {
+        if (QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
+                networkScene->networkEditorOwner(), binding.owner,
+                binding.descriptor.displayName, newValue)) {
+            networkScene->getUndoStack()->push(command);
+            _notifyModelChangeApplied();
+            return;
+        }
     }
 
     std::string errorMessage;
