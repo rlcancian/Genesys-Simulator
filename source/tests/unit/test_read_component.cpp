@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <stdexcept>
 #include <limits>
 #include <string>
 #include <vector>
@@ -254,6 +255,67 @@ TEST_F(ReadFixture, MalformedNumericIndexCannotPartiallyAssignEarlierFields) {
     read->dispatch(entity);
     EXPECT_TRUE(model->getFutureEvents()->empty());
     EXPECT_DOUBLE_EQ(entity->getAttributeValue("FirstField"), 0.0);
+}
+
+TEST_F(ReadFixture, LargeButRepresentableIndexCannotExhaustMemoryOrPartiallyAssign) {
+    // UINT_MAX-1 passed the previous overflow-only guard, but the dense
+    // SparseValueStore would try to allocate billions of double values.
+    TemporaryInput file("12 34\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addAttribute(read, "Untouched");
+    addVariable(read, "HugeIndex[" +
+        std::to_string(std::numeric_limits<unsigned int>::max() - 1u) + "]");
+    std::string error;
+    EXPECT_FALSE(read->check(error));
+    EXPECT_NE(error.find("invalid [index]"), std::string::npos);
+    Entity* entity = model->createEntity("HugeIndexEntity", true);
+    read->dispatch(entity);
+    EXPECT_EQ(model->getFutureEvents()->size(), 0u);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Untouched"), 0.0);
+}
+
+TEST_F(ReadFixture, MultidimensionalIndexProductIsBoundedBeforeWrites) {
+    TemporaryInput file("9 10\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addAttribute(read, "Untouched");
+    addVariable(read, "HugeMatrix[9999,9999]");
+    std::string error;
+    EXPECT_FALSE(read->check(error));
+    Entity* entity = model->createEntity("HugeMatrixEntity", true);
+    read->dispatch(entity);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Untouched"), 0.0);
+}
+
+TEST_F(ReadFixture, KeyboardProviderExceptionStopsInsteadOfEscapingDispatch) {
+    auto* read = reader();
+    read->setReadFromType(Read::ReadFromType::KEYBOARD);
+    addVariable(read, "Value");
+    read->setKeyboardInputProvider([](const std::string&, std::string&) -> bool {
+        throw std::runtime_error("input bridge unavailable");
+    });
+    EXPECT_NO_THROW(read->dispatch(model->createEntity("ProviderException", true)));
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+    ASSERT_NE(variable("Value"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("Value")->getValue(), 0.0);
+    const auto* errors = model->getTracer()->errorMessages();
+    ASSERT_NE(errors, nullptr);
+    EXPECT_FALSE(errors->empty());
+}
+
+TEST_F(ReadFixture, RemovedDestinationControlsAreReleasedOnComponentTeardown) {
+    const auto controlsBefore = model->getControls()->size();
+    auto* read = new Read(model, "ControlLifetime");
+    auto* destination = new ReadDestination("", false);
+    read->addDestination(destination);
+    EXPECT_EQ(model->getControls()->size(), controlsBefore + 5u);
+    read->removeDestination(destination);
+    // Intentionally retained while a GUI editor could still have bindings.
+    EXPECT_EQ(model->getControls()->size(), controlsBefore + 5u);
+    delete read;
+    EXPECT_EQ(model->getControls()->size(), controlsBefore);
 }
 
 TEST_F(ReadFixture, EndOfFileDoesNotForwardAnExtraEntity) {
