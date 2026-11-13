@@ -1807,6 +1807,26 @@ TEST(GuiExtensionManager, NetworkProjectionRefreshIsQueuedToTheSceneThread) {
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 1);
 }
 
+TEST(GuiExtensionManager, QueuedNetworkProjectionIsDiscardedWhenSceneCloses) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNetwork network(model, "ClosingProjectionScene");
+    auto* scene = new ExposedModelGraphicsScene();
+    scene->setSimulator(&simulator);
+    scene->setNetworkEditorOwner(&network);
+    QPointer<ModelGraphicsScene> guardedScene(scene);
+
+    std::thread worker([&simulator, scene]() {
+        GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(&simulator, scene);
+    });
+    worker.join();
+    delete scene;
+    EXPECT_TRUE(guardedScene.isNull());
+    QCoreApplication::processEvents();
+}
+
 TEST(EFSMNetworkDiagramPersistence, EmptyLayoutProducesNoEntriesAndLeavesOtherSectionsIntact) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();

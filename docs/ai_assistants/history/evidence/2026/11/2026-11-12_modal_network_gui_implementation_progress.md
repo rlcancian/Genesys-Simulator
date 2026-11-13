@@ -36,7 +36,7 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | D2 | Pass (focused) | Graph extension renders directed/undirected topology including parallel/self-loop edges, accepts GraphNode drops, creates edges with explicit endpoints, supports edge weight/removal undo/redo, rejects DAG cycles, and shows BFS/DFS structural-analysis overlays without implying simulation events. Selected GraphNode deletion removes incident edges; undo restores the same node/edge identities, edge order and node position. Generic `.gui` round-trip restores node positions by identity; Graph nodes/edges remain associated with the Network during model checks. The inherited GraphNode `Name` control is present in the Property Editor. GUI and mathematical Graph test filters pass. |
 | D3 | Pass (focused) | Static Markov editor accepts MarkovState drops, projects initial/current-state markers and directed probability-labelled transitions, and supports transition create/edit/remove plus initial-state selection with undo/redo. Selected-state removal also removes incident transitions; undo restores transition identities/order, initial/current states and state geometry. Runtime exposes the sampled transition; scene-thread projection refresh highlights the actual sampled transition. References survive model checks; `.gui` round-trip verifies topology, initial state, probability and state positions. The editor exposes diagnostics for malformed stochastic rows. Focused GUI and kernel tests pass, including seeded reproducibility and replication reset. |
 | D4 | Pass (focused) | Static CPN extension accepts place/transition drops; projects bipartite arcs, current colored marking and enabled transitions; supports arc create/edit/remove, initial marking editing, transition guard/priority editing, firing and node removal with undo/redo. Node removal restores incident arcs/order, initial marking, current tokens, last-fired transition and geometry. Runtime highlights the actual firing path; aggregate inscription validation and model associations are covered. `.gui` round-trip verifies topology/marking/positions. Validation action surfaces kernel guard/topology diagnostics. Focused GUI and kernel tests pass. |
-| D5 | In progress | Runtime exposes real EFSM/Markov/CPN state changes and queues diagram refresh to the scene thread; EFSM current state/fired transition, Markov sampled state/transition, and CPN fired transition plus its incident arcs are visually highlighted. Graph BFS/DFS is explicitly structural analysis. MainWindow now marshals off-thread event projection refresh onto the GUI thread and guards window/scene teardown. Full lifecycle/restart and integrated GUI validation remain. |
+| D5 | In progress | Runtime exposes real EFSM/Markov/CPN state changes and queues diagram refresh to the scene thread; EFSM current state/fired transition, Markov sampled state/transition, and CPN fired transition plus its incident arcs are visually highlighted. Graph BFS/DFS is explicitly structural analysis. MainWindow marshals off-thread projection refresh onto the GUI thread and guards teardown. New controller tests cover start/pause/resume/end and a repeated run; a queued scene refresh is safely discarded after close. Full simulation replication/step and integrated GUI validation remain. |
 
 ## Executed changes
 
@@ -351,3 +351,18 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - `ctest --test-dir build/tests-unit --output-on-failure -R 'MarkovChainNetworkTest|ColoredPetriNetNetworkTest'` — PASS, 27/27. Includes stochastic-row checks, seeded Markov replication reproducibility, CPN bipartite topology, firing, reset and persistence.
 - `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.NetworkProjectionRefreshIsQueuedToTheSceneThread:GraphNetworkGuiExtension.*:MarkovChainNetworkGuiExtension.*:ColoredPetriNetGuiExtension.*:GraphNodePropertyEditor.*'` — PASS, 22/22. Includes Markov probability/initial-state editing and CPN marking/arc/guard editing, firing, undo/redo and graphical persistence.
 - Both formalism editors pass focused GUI and kernel gates; whole-application lifecycle validation remains in D5/final integration.
+
+### D5 simulation lifecycle and close-path increment
+
+- Added observable read-only animation lifecycle state and a controller regression
+  covering simulation start, pause, resume, end, and a second start/end cycle.
+  The test confirms start clears stale pause state, enables animation, and end
+  stops animation, clears pause, and resets the model-check latch.
+- Added a worker-thread projection test that destroys the Network scene before
+  the queued refresh runs; the guarded scene expires and the pending refresh is
+  safely discarded.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after the animation lifecycle API update.
+- `QT_QPA_PLATFORM=offscreen build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='SimulationEventController.*:GuiExtensionManager.NetworkProjectionRefreshIsQueuedToTheSceneThread:GuiExtensionManager.QueuedNetworkProjectionIsDiscardedWhenSceneCloses'` — PASS, 3/3.
+- Combined focused Graph/Markov/CPN, Property Editor, lifecycle and close-path filter — PASS, 24/24.
+- Full simulation-driven step/replication and integrated GUI lifecycle checks remain outstanding.

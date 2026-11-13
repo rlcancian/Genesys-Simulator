@@ -5,6 +5,8 @@
 #include "graphicals/ModelGraphicsView.h"
 #include "controllers/PropertyEditorController.h"
 #include "controllers/PluginCatalogController.h"
+#include "controllers/SimulationEventController.h"
+#include "animations/AnimationTransition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "codeeditor/CodeEditor.h"
 #include "services/GraphicalModelBuilder.h"
@@ -50,16 +52,20 @@
 #include <QGraphicsTextItem>
 #include <QList>
 #include <QPlainTextEdit>
+#include <QProgressBar>
 #include <QRectF>
 #include <QScrollBar>
 #include <QSlider>
 #include <QTemporaryDir>
 #include <QTextEdit>
+#include <QTabWidget>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QUndoStack>
 #include <QPushButton>
 #include <QKeyEvent>
+#include <QLabel>
+#include <QTableWidget>
 
 #include <algorithm>
 #include <functional>
@@ -395,6 +401,56 @@ TEST(GraphNodePropertyEditor, ExposesTheInheritedNodeNameProperty) {
     }
     ASSERT_NE(name, nullptr);
     EXPECT_FALSE(browser.items(name).isEmpty());
+}
+
+TEST(SimulationEventController, StartPauseResumeAndEndKeepAnimationLifecycleConsistent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    QLabel replicationLabel;
+    QProgressBar progressBar;
+    QTableWidget eventsTable;
+    QTableWidget entitiesTable;
+    QTableWidget variablesTable;
+    QTextEdit simulationText;
+    QTextEdit reportsText;
+    QTabWidget centralTabs;
+    QAction graphicalSimulation;
+    QAction animationsEnabled;
+    animationsEnabled.setCheckable(true);
+    animationsEnabled.setChecked(true);
+    bool modelChecked = true;
+    int actionRefreshCount = 0;
+    SimulationEventController controller(
+        &simulator, graphicsView.getScene(), &graphicsView, &replicationLabel, &progressBar,
+        &eventsTable, &entitiesTable, &variablesTable, &simulationText, &reportsText,
+        &centralTabs, &graphicalSimulation, &animationsEnabled, &modelChecked, 0,
+        SimulationEventController::Callbacks{
+            [&actionRefreshCount]() { ++actionRefreshCount; },
+            {}, {}, {}, {}});
+
+    AnimationTransition::setPause(true);
+    AnimationTransition::setRunning(false);
+    controller.onSimulationStartHandler(nullptr);
+    EXPECT_TRUE(AnimationTransition::isRunning());
+    EXPECT_FALSE(AnimationTransition::isPaused());
+
+    controller.onSimulationPausedHandler(nullptr);
+    controller.onSimulationResumeHandler(nullptr);
+    EXPECT_GE(actionRefreshCount, 3);
+
+    AnimationTransition::setPause(true);
+    controller.onSimulationEndHandler(nullptr);
+    EXPECT_FALSE(AnimationTransition::isRunning());
+    EXPECT_FALSE(AnimationTransition::isPaused());
+    EXPECT_FALSE(modelChecked);
+
+    controller.onSimulationStartHandler(nullptr);
+    EXPECT_TRUE(AnimationTransition::isRunning());
+    controller.onSimulationEndHandler(nullptr);
+    EXPECT_FALSE(AnimationTransition::isRunning());
 }
 
 TEST(SourceCodePropertyEditor, ApplyCommitsCodeWithoutClosingTheEditor) {
