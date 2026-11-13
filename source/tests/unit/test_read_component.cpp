@@ -3,6 +3,7 @@
 #include "kernel/simulator/Event.h"
 #include "kernel/simulator/PluginInformation.h"
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/essentialPlugins/EntityType.h"
 #include "kernel/simulator/model/Model.h"
@@ -93,6 +94,28 @@ TEST(ReadPluginIntrospectionRegression, EmptyRecordTemplateCompletionIsNotReport
     simulator.getPluginManager()->autoInsertPlugins();
     ASSERT_NE(simulator.getPluginManager()->find("Read"), nullptr);
     EXPECT_TRUE(simulator.getTraceManager()->errorMessages()->empty());
+}
+
+TEST_F(ReadFixture, PropertyEditorCreatesNamedDestinationsAndExposesChildControls) {
+    auto* read = reader();
+    SimulationControl* destinationsControl = nullptr;
+    for (SimulationControl* control : *read->getSimulationControls()->list()) {
+        if (control->getName() == "Destinations") {
+            destinationsControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(destinationsControl, nullptr);
+    ASSERT_TRUE(destinationsControl->supportsListEditor());
+    ASSERT_TRUE(destinationsControl->supportsNewListElementCreation());
+    ASSERT_TRUE(destinationsControl->createNewListElement("Measurement"));
+    ASSERT_EQ(read->getDestinations()->size(), 1u);
+    auto* destination = read->getDestinations()->getAtRank(0);
+    ASSERT_NE(destination, nullptr);
+    EXPECT_EQ(destination->getDestination(), "Measurement");
+    ASSERT_NE(destinationsControl->getChildSimulationControls(0), nullptr);
+    EXPECT_EQ(destinationsControl->getChildSimulationControls(0)->size(), 2u);
+    EXPECT_EQ(destinationsControl->getStrValues()->getAtRank(0), "Measurement");
 }
 
 TEST_F(ReadFixture, FileRecordsAreConsumedInOrderAndRoutedAfterCompleteAssignments) {
