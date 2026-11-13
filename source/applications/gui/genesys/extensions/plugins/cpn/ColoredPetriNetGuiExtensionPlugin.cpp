@@ -8,30 +8,26 @@
 #include "plugins/components/ModalModel/PetriPlace.h"
 #include "plugins/data/ModalModel/CPNTransition.h"
 #include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/TraceManager.h"
 #include "plugins/data/ModalModel/CPNArc.h"
 #include "kernel/util/Util.h"
 
-#include <QComboBox>
 #include <QDialog>
-#include <QDialogButtonBox>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsSimpleTextItem>
-#include <QInputDialog>
-#include <QLabel>
 #include <QMainWindow>
 #include <QMessageBox>
-#include <QLineEdit>
 #include <QPainterPath>
 #include <QPointer>
 #include <QPen>
-#include <QVBoxLayout>
-#include <QSpinBox>
 #include <QUndoCommand>
 #include <QUndoStack>
 
 #include <cmath>
+#include <charconv>
+#include <sstream>
 #include <map>
 #include <memory>
 #include <utility>
@@ -243,17 +239,20 @@ private:
 class EditCpnArcInscriptionUndoCommand final : public QUndoCommand {
 public:
     EditCpnArcInscriptionUndoCommand(ColoredPetriNetNetwork* network, CPNArc* arc, ModelGraphicsScene* scene,
-                                     std::map<std::string, unsigned int> after)
-        : _network(network), _arc(arc), _scene(scene), _before(arc->getInscriptions()), _after(std::move(after)) {
+                                     std::map<std::string, unsigned int> after, std::string name = {})
+        : _network(network), _arc(arc), _scene(scene), _before(arc->getInscriptions()), _after(std::move(after)),
+          _beforeName(arc->getName()), _afterName(name.empty() ? arc->getName() : std::move(name)) {
         setText(QObject::tr("Edit CPN arc inscription"));
     }
-    void redo() override { apply(_after); }
-    void undo() override { apply(_before); }
+    void redo() override { apply(_after, _afterName); }
+    void undo() override { apply(_before, _beforeName); }
 private:
-    void apply(const std::map<std::string, unsigned int>& inscription) {
-        if (_network == nullptr || _arc == nullptr) { setObsolete(true); return; }
+    void apply(const std::map<std::string, unsigned int>& inscription, const std::string& name) {
+        if (_network == nullptr || _arc == nullptr
+            || _network->getArcs()->find(_arc) == _network->getArcs()->list()->end()) { setObsolete(true); return; }
         _arc->clearInscriptions();
         for (const auto& [color, quantity] : inscription) _arc->setInscription(color, quantity);
+        _arc->setName(name);
         synchronizeCpnProjection(nullptr, _scene);
     }
     ColoredPetriNetNetwork* _network;
@@ -261,6 +260,8 @@ private:
     QPointer<ModelGraphicsScene> _scene;
     std::map<std::string, unsigned int> _before;
     std::map<std::string, unsigned int> _after;
+    std::string _beforeName;
+    std::string _afterName;
 };
 
 CPNArc* selectedArc(const GuiExtensionRuntimeContext& context) {
@@ -282,61 +283,24 @@ void removeSelectedArc(const GuiExtensionRuntimeContext& context) {
     context.graphicsScene->getUndoStack()->push(new RemoveCpnArcUndoCommand(network, arc, context.graphicsScene));
 }
 
-void editSelectedArcInscription(const GuiExtensionRuntimeContext& context) {
-    auto* arc = selectedArc(context);
-    if (arc == nullptr || context.graphicsScene->getUndoStack() == nullptr) return;
-    QString color = QStringLiteral("default");
-    unsigned int quantity = 1;
-    if (!arc->getInscriptions().empty()) {
-        color = QString::fromStdString(arc->getInscriptions().begin()->first);
-        quantity = arc->getInscriptions().begin()->second;
-    }
-    QDialog dialog(context.mainWindow);
-    dialog.setWindowTitle(QObject::tr("Edit CPN Arc Inscription"));
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* colorInput = new QLineEdit(color, &dialog);
-    colorInput->setObjectName(QStringLiteral("cpnInscriptionColor"));
-    auto* quantityInput = new QSpinBox(&dialog);
-    quantityInput->setRange(1, 1000000);
-    quantityInput->setValue(static_cast<int>(quantity));
-    layout->addWidget(new QLabel(QObject::tr("Token color:"), &dialog));
-    layout->addWidget(colorInput);
-    layout->addWidget(new QLabel(QObject::tr("Quantity:"), &dialog));
-    layout->addWidget(quantityInput);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    layout->addWidget(buttons);
-    if (dialog.exec() != QDialog::Accepted || colorInput->text().trimmed().isEmpty()) return;
-    std::map<std::string, unsigned int> inscription;
-    inscription[colorInput->text().trimmed().toStdString()] = static_cast<unsigned int>(quantityInput->value());
-    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
-    context.graphicsScene->getUndoStack()->push(new EditCpnArcInscriptionUndoCommand(
-        network, arc, context.graphicsScene, std::move(inscription)));
-}
-
-class SetCpnInitialTokensUndoCommand final : public QUndoCommand {
+class SetCpnInitialMarkingUndoCommand final : public QUndoCommand {
 public:
-    SetCpnInitialTokensUndoCommand(ColoredPetriNetNetwork* network, PetriPlace* place,
-                                   ModelGraphicsScene* scene, std::string color, unsigned int value)
-        : _network(network), _place(place), _scene(scene), _color(std::move(color)),
-          _before(network->getInitialTokens(place, _color)), _after(value) {
+    SetCpnInitialMarkingUndoCommand(ColoredPetriNetNetwork* network, PetriPlace* place,
+                                    ModelGraphicsScene* scene, std::map<std::string, unsigned int> after)
+        : _network(network), _place(place), _scene(scene), _before(network->getInitialMarking(place)), _after(std::move(after)) {
         setText(QObject::tr("Edit CPN initial marking"));
     }
     void redo() override { apply(_after); }
     void undo() override { apply(_before); }
 private:
-    void apply(unsigned int value) {
-        if (_network == nullptr || _place == nullptr) { setObsolete(true); return; }
-        _network->setInitialTokens(_place, _color, value);
+    void apply(const std::map<std::string, unsigned int>& marking) {
+        if (_network == nullptr || _place == nullptr
+            || _network->getPlaces()->find(_place) == _network->getPlaces()->list()->end()) { setObsolete(true); return; }
+        _network->setInitialMarking(_place, marking);
         synchronizeCpnProjection(nullptr, _scene);
     }
-    ColoredPetriNetNetwork* _network;
-    PetriPlace* _place;
-    QPointer<ModelGraphicsScene> _scene;
-    std::string _color;
-    unsigned int _before;
-    unsigned int _after;
+    ColoredPetriNetNetwork* _network; PetriPlace* _place; QPointer<ModelGraphicsScene> _scene;
+    std::map<std::string, unsigned int> _before, _after;
 };
 
 class EditCpnTransitionUndoCommand final : public QUndoCommand {
@@ -363,6 +327,31 @@ private:
     unsigned int _beforePriority;
     std::string _afterGuard;
     unsigned int _afterPriority;
+};
+
+class EditCpnNodeBasePropertiesUndoCommand final : public QUndoCommand {
+public:
+    struct Values { std::string name, label; std::uint32_t trace = 0; bool report = false; };
+    EditCpnNodeBasePropertiesUndoCommand(ColoredPetriNetNetwork* network, ModelDataDefinition* node,
+                                         bool isPlace, Values after)
+        : _network(network), _node(node), _isPlace(isPlace), _before{node->getName(), node->getLabel(),
+            static_cast<std::uint32_t>(node->getTraceLevelSpecific()), node->isReportStatistics()},
+          _after(std::move(after)) { setText(QObject::tr("Edit CPN node")); }
+    void redo() override { apply(_after); }
+    void undo() override { apply(_before); }
+private:
+    void apply(const Values& v) {
+        if (_network == nullptr || _node == nullptr) { setObsolete(true); return; }
+        bool member = false;
+        if (_isPlace) { auto* p = dynamic_cast<PetriPlace*>(_node); member = p != nullptr && _network->getPlaces()->find(p) != _network->getPlaces()->list()->end(); }
+        else { auto* t = dynamic_cast<CPNTransition*>(_node); member = t != nullptr && _network->getTransitions()->find(t) != _network->getTransitions()->list()->end(); }
+        if (!member) { setObsolete(true); return; }
+        _node->setName(v.name); _node->setLabel(v.label);
+        _node->setTraceLevelSpecific(static_cast<TraceManager::Level>(v.trace));
+        _node->setReportStatistics(v.report);
+    }
+    ColoredPetriNetNetwork* _network; ModelDataDefinition* _node; bool _isPlace;
+    Values _before, _after;
 };
 
 PetriPlace* selectedPlace(const GuiExtensionRuntimeContext& context) {
@@ -500,37 +489,6 @@ bool canEditInitialTokens(const GuiExtensionRuntimeContext& context) {
         && selectedPlace(context) != nullptr;
 }
 
-void editInitialTokens(const GuiExtensionRuntimeContext& context) {
-    auto* place = selectedPlace(context);
-    if (place == nullptr || context.graphicsScene->getUndoStack() == nullptr) return;
-    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
-    QDialog dialog(context.mainWindow);
-    dialog.setWindowTitle(QObject::tr("Edit CPN Initial Marking"));
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* color = new QLineEdit(QStringLiteral("default"), &dialog);
-    color->setObjectName(QStringLiteral("cpnInitialColor"));
-    auto* quantity = new QSpinBox(&dialog);
-    quantity->setRange(0, 1000000);
-    quantity->setValue(static_cast<int>(network->getInitialTokens(place, "default")));
-    layout->addWidget(new QLabel(QObject::tr("Token color:"), &dialog));
-    layout->addWidget(color);
-    layout->addWidget(new QLabel(QObject::tr("Initial quantity:"), &dialog));
-    layout->addWidget(quantity);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    layout->addWidget(buttons);
-    if (dialog.exec() == QDialog::Accepted && !color->text().trimmed().isEmpty())
-        context.graphicsScene->getUndoStack()->push(new SetCpnInitialTokensUndoCommand(
-            network, place, context.graphicsScene, color->text().trimmed().toStdString(),
-            static_cast<unsigned int>(quantity->value())));
-}
-
-bool canEditCpnTransition(const GuiExtensionRuntimeContext& context) {
-    return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
-        && selectedTransition(context) != nullptr;
-}
-
 bool canValidateCpnNetwork(const GuiExtensionRuntimeContext& context) {
     return context.graphicsScene != nullptr
         && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
@@ -550,89 +508,32 @@ void validateCpnNetwork(const GuiExtensionRuntimeContext& context) {
     }
 }
 
-void editCpnTransition(const GuiExtensionRuntimeContext& context) {
-    auto* transition = selectedTransition(context);
-    if (transition == nullptr || context.graphicsScene->getUndoStack() == nullptr) return;
-    QDialog dialog(context.mainWindow);
-    dialog.setWindowTitle(QObject::tr("Edit CPN Transition"));
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* guard = new QLineEdit(QString::fromStdString(transition->getGuardExpression()), &dialog);
-    guard->setObjectName(QStringLiteral("cpnTransitionGuard"));
-    auto* priority = new QSpinBox(&dialog);
-    priority->setRange(0, 1000000);
-    priority->setValue(static_cast<int>(transition->getPriority()));
-    layout->addWidget(new QLabel(QObject::tr("Guard expression:"), &dialog));
-    layout->addWidget(guard);
-    layout->addWidget(new QLabel(QObject::tr("Priority:"), &dialog));
-    layout->addWidget(priority);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    layout->addWidget(buttons);
-    if (dialog.exec() == QDialog::Accepted) {
-        auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
-        context.graphicsScene->getUndoStack()->push(new EditCpnTransitionUndoCommand(
-            network, transition, context.graphicsScene, guard->text().toStdString(),
-            static_cast<unsigned int>(priority->value())));
-    }
-}
-
 bool canCreateCpnArc(const GuiExtensionRuntimeContext& context) {
     if (context.graphicsScene == nullptr || context.graphicsScene->getUndoStack() == nullptr
         || dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) == nullptr) return false;
-    PetriPlace* place = nullptr;
-    CPNTransition* transition = nullptr;
+    int count = 0;
     for (QGraphicsItem* item : context.graphicsScene->selectedItems()) {
         auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
-        if (graphical == nullptr) continue;
-        if (auto* candidate = dynamic_cast<PetriPlace*>(graphical->getDataDefinition())) place = candidate;
-        if (auto* candidate = dynamic_cast<CPNTransition*>(graphical->getDataDefinition())) transition = candidate;
+        if (graphical != nullptr && (dynamic_cast<PetriPlace*>(graphical->getDataDefinition())
+            || dynamic_cast<CPNTransition*>(graphical->getDataDefinition()))) ++count;
     }
-    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
-    return place != nullptr && transition != nullptr
-        && network->getPlaces()->find(place) != network->getPlaces()->list()->end()
-        && network->getTransitions()->find(transition) != network->getTransitions()->list()->end();
+    return count == 1;
 }
 
 void createCpnArc(const GuiExtensionRuntimeContext& context) {
-    if (!canCreateCpnArc(context) || context.simulator == nullptr) return;
+    if (!canCreateCpnArc(context)) return;
     auto* scene = context.graphicsScene;
     auto* network = dynamic_cast<ColoredPetriNetNetwork*>(scene->networkEditorOwner());
-    PetriPlace* place = nullptr;
-    CPNTransition* transition = nullptr;
     for (QGraphicsItem* item : scene->selectedItems()) {
         auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
-        if (graphical == nullptr) continue;
-        if (auto* candidate = dynamic_cast<PetriPlace*>(graphical->getDataDefinition())) place = candidate;
-        if (auto* candidate = dynamic_cast<CPNTransition*>(graphical->getDataDefinition())) transition = candidate;
+        auto* place = graphical != nullptr ? dynamic_cast<PetriPlace*>(graphical->getDataDefinition()) : nullptr;
+        auto* transition = graphical != nullptr ? dynamic_cast<CPNTransition*>(graphical->getDataDefinition()) : nullptr;
+        if (graphical != nullptr && ((place != nullptr && network->getPlaces()->find(place) != network->getPlaces()->list()->end())
+            || (transition != nullptr && network->getTransitions()->find(transition) != network->getTransitions()->list()->end()))) {
+            scene->beginNetworkRelationCreation(graphical);
+            return;
+        }
     }
-    if (network == nullptr || place == nullptr || transition == nullptr || network->getParentModel() == nullptr) return;
-    QDialog dialog(context.mainWindow);
-    dialog.setWindowTitle(QObject::tr("Create Colored Petri Net Arc"));
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* direction = new QComboBox(&dialog);
-    direction->addItem(QObject::tr("Place to transition (input)"), static_cast<int>(CPNArc::Direction::PlaceToTransition));
-    direction->addItem(QObject::tr("Transition to place (output)"), static_cast<int>(CPNArc::Direction::TransitionToPlace));
-    auto* color = new QLineEdit(QStringLiteral("default"), &dialog);
-    color->setObjectName(QStringLiteral("cpnArcColor"));
-    auto* quantity = new QSpinBox(&dialog);
-    quantity->setRange(1, 1000000);
-    quantity->setValue(1);
-    layout->addWidget(new QLabel(QObject::tr("Direction:"), &dialog));
-    layout->addWidget(direction);
-    layout->addWidget(new QLabel(QObject::tr("Token color:"), &dialog));
-    layout->addWidget(color);
-    layout->addWidget(new QLabel(QObject::tr("Inscription quantity:"), &dialog));
-    layout->addWidget(quantity);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    layout->addWidget(buttons);
-    if (dialog.exec() != QDialog::Accepted || color->text().trimmed().isEmpty()) return;
-    const auto arcDirection = static_cast<CPNArc::Direction>(direction->currentData().toInt());
-    auto* arc = new CPNArc(network->getParentModel(), place, transition, arcDirection);
-    arc->setInscription(color->text().trimmed().toStdString(), static_cast<unsigned int>(quantity->value()));
-    scene->getUndoStack()->push(new ToggleCpnArcUndoCommand(network, arc, scene));
 }
 
 bool canFireSelectedTransition(const GuiExtensionRuntimeContext& context) {
@@ -677,6 +578,155 @@ public:
         editor.supports = [](ModelDataDefinition* definition) {
             return dynamic_cast<ColoredPetriNetNetwork*>(definition) != nullptr;
         };
+        editor.ownsEditableDataDefinition = [](ModelDataDefinition* definition, ModelDataDefinition* candidate) {
+            auto* network = dynamic_cast<ColoredPetriNetNetwork*>(definition);
+            if (network == nullptr || candidate == nullptr) return false;
+            if (auto* place = dynamic_cast<PetriPlace*>(candidate)) return network->getPlaces()->find(place) != network->getPlaces()->list()->end();
+            if (auto* transition = dynamic_cast<CPNTransition*>(candidate)) return network->getTransitions()->find(transition) != network->getTransitions()->list()->end();
+            return false;
+        };
+        editor.createDataDefinitionPropertyCommand = [](ModelDataDefinition* definition, ModelDataDefinition* candidate,
+            const std::string& property, const std::string& value) -> QUndoCommand* {
+            auto* network = dynamic_cast<ColoredPetriNetNetwork*>(definition);
+            if (network == nullptr || candidate == nullptr) return nullptr;
+            if (auto* transition = dynamic_cast<CPNTransition*>(candidate)) {
+                if (network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) return nullptr;
+                EditCpnNodeBasePropertiesUndoCommand::Values base{transition->getName(), transition->getLabel(),
+                    static_cast<std::uint32_t>(transition->getTraceLevelSpecific()), transition->isReportStatistics()};
+                if (property == "Name") base.name = value;
+                else if (property == "Label") base.label = value;
+                else if (property == "Report Statistics") base.report = value == "true" || value == "1";
+                else if (property == "Trace Level") {
+                    const auto [end, ec] = std::from_chars(value.data(), value.data()+value.size(), base.trace);
+                    if (ec != std::errc{} || end != value.data()+value.size()) return nullptr;
+                } else {
+                    if (property == "Guard Expression") return new EditCpnTransitionUndoCommand(network, transition, nullptr, value, transition->getPriority());
+                    if (property == "Priority") {
+                        unsigned int priority = 0; const auto [end, ec] = std::from_chars(value.data(), value.data()+value.size(), priority);
+                        if (ec != std::errc{} || end != value.data()+value.size()) return nullptr;
+                        return new EditCpnTransitionUndoCommand(network, transition, nullptr, transition->getGuardExpression(), priority);
+                    }
+                    return nullptr;
+                }
+                return new EditCpnNodeBasePropertiesUndoCommand(network, transition, false, std::move(base));
+            }
+            if (auto* place = dynamic_cast<PetriPlace*>(candidate)) {
+                if (network->getPlaces()->find(place) == network->getPlaces()->list()->end()) return nullptr;
+                if (property == "Initial Marking") {
+                    std::map<std::string, unsigned int> marking;
+                    std::istringstream input(value); std::string token;
+                    while (std::getline(input, token, ';')) {
+                        if (token.empty()) continue;
+                        const auto eq = token.find('='); if (eq == std::string::npos || eq == 0 || eq + 1 == token.size()) return nullptr;
+                        unsigned int count = 0; const std::string number = token.substr(eq + 1);
+                        const auto [end, ec] = std::from_chars(number.data(), number.data()+number.size(), count);
+                        if (ec != std::errc{} || end != number.data()+number.size()
+                            || !marking.emplace(token.substr(0, eq), count).second) return nullptr;
+                    }
+                    return new SetCpnInitialMarkingUndoCommand(network, place, nullptr, std::move(marking));
+                }
+                EditCpnNodeBasePropertiesUndoCommand::Values base{place->getName(), place->getLabel(),
+                    static_cast<std::uint32_t>(place->getTraceLevelSpecific()), place->isReportStatistics()};
+                if (property == "Name") base.name = value;
+                else if (property == "Label") base.label = value;
+                else if (property == "Report Statistics") base.report = value == "true" || value == "1";
+                else if (property == "Trace Level") {
+                    const auto [end, ec] = std::from_chars(value.data(), value.data()+value.size(), base.trace);
+                    if (ec != std::errc{} || end != value.data()+value.size()) return nullptr;
+                } else return nullptr;
+                return new EditCpnNodeBasePropertiesUndoCommand(network, place, true, std::move(base));
+            }
+            return nullptr;
+        };
+        editor.canStartRelationCreation = [](ModelDataDefinition* definition, QGraphicsItem* item) {
+            auto* network = dynamic_cast<ColoredPetriNetNetwork*>(definition);
+            auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
+            if (network == nullptr || graphical == nullptr) return false;
+            auto* data = graphical->getDataDefinition();
+            if (auto* place = dynamic_cast<PetriPlace*>(data)) return network->getPlaces()->find(place) != network->getPlaces()->list()->end();
+            if (auto* transition = dynamic_cast<CPNTransition*>(data)) return network->getTransitions()->find(transition) != network->getTransitions()->list()->end();
+            return false;
+        };
+        editor.createRelationCommand = [](ModelDataDefinition* definition, QGraphicsItem* sourceItem,
+                                           QGraphicsItem* destinationItem) -> QUndoCommand* {
+            auto* network = dynamic_cast<ColoredPetriNetNetwork*>(definition);
+            auto* sourceGraphic = dynamic_cast<GraphicalModelDataDefinition*>(sourceItem);
+            auto* destinationGraphic = dynamic_cast<GraphicalModelDataDefinition*>(destinationItem);
+            auto* sourcePlace = sourceGraphic != nullptr ? dynamic_cast<PetriPlace*>(sourceGraphic->getDataDefinition()) : nullptr;
+            auto* destinationPlace = destinationGraphic != nullptr ? dynamic_cast<PetriPlace*>(destinationGraphic->getDataDefinition()) : nullptr;
+            auto* sourceTransition = sourceGraphic != nullptr ? dynamic_cast<CPNTransition*>(sourceGraphic->getDataDefinition()) : nullptr;
+            auto* destinationTransition = destinationGraphic != nullptr ? dynamic_cast<CPNTransition*>(destinationGraphic->getDataDefinition()) : nullptr;
+            PetriPlace* place = sourcePlace != nullptr ? sourcePlace : destinationPlace;
+            CPNTransition* transition = sourceTransition != nullptr ? sourceTransition : destinationTransition;
+            if (network == nullptr || place == nullptr || transition == nullptr
+                || (sourcePlace != nullptr && destinationPlace != nullptr)
+                || (sourceTransition != nullptr && destinationTransition != nullptr)
+                || network->getPlaces()->find(place) == network->getPlaces()->list()->end()
+                || network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) return nullptr;
+            const auto direction = sourcePlace != nullptr ? CPNArc::Direction::PlaceToTransition : CPNArc::Direction::TransitionToPlace;
+            const std::string name = "A" + std::to_string(network->getArcs()->size());
+            auto* arc = new CPNArc(network->getParentModel(), place, transition, direction, name);
+            arc->setInscription("default", 1);
+            return new ToggleCpnArcUndoCommand(network, arc, sourceGraphic->scene() != nullptr
+                ? dynamic_cast<ModelGraphicsScene*>(sourceGraphic->scene()) : nullptr);
+        };
+        editor.elementProperties = [](ModelDataDefinition* definition, QGraphicsItem* item) {
+            std::vector<GuiNetworkEditorContribution::ElementProperty> result;
+            auto* network = dynamic_cast<ColoredPetriNetNetwork*>(definition);
+            if (network == nullptr || item == nullptr) return result;
+            using P = GuiNetworkEditorContribution::ElementProperty;
+            if (dynamic_cast<QGraphicsPathItem*>(item) != nullptr && item->data(1).isValid()) {
+                auto* arc = reinterpret_cast<CPNArc*>(static_cast<quintptr>(item->data(1).toULongLong()));
+                if (arc == nullptr || network->getArcs()->find(arc) == network->getArcs()->list()->end()) return result;
+                std::ostringstream inscription; bool first = true;
+                for (const auto& [color, quantity] : arc->getInscriptions()) { if (!first) inscription << ";"; first = false; inscription << color << "=" << quantity; }
+                result.push_back(P{"Name", arc->getName(), {}, P::Kind::String, true});
+                result.push_back(P{"Place", arc->getPlaceName(), {}, P::Kind::String, false});
+                result.push_back(P{"Transition", arc->getTransitionName(), {}, P::Kind::String, false});
+                result.push_back(P{"Direction", arc->isInputArc() ? "Place to transition" : "Transition to place", {}, P::Kind::String, false});
+                result.push_back(P{"Inscription", inscription.str(), {}, P::Kind::String, true});
+                return result;
+            }
+            auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
+            auto* data = graphical != nullptr ? graphical->getDataDefinition() : nullptr;
+            if (auto* transition = dynamic_cast<CPNTransition*>(data)) {
+                if (network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) return result;
+                result.push_back(P{"Guard Expression", transition->getGuardExpression(), {}, P::Kind::String, true});
+                result.push_back(P{"Priority", std::to_string(transition->getPriority()), {}, P::Kind::Integer, true});
+            } else if (auto* place = dynamic_cast<PetriPlace*>(data)) {
+                if (network->getPlaces()->find(place) == network->getPlaces()->list()->end()) return result;
+                std::ostringstream marking; bool first = true;
+                for (const auto& [color, quantity] : network->getInitialMarking(place)) {
+                    if (!first) marking << ";"; first = false; marking << color << "=" << quantity;
+                }
+                result.push_back(P{"Initial Marking", marking.str(), {}, P::Kind::String, true});
+            }
+            return result;
+        };
+        editor.createElementPropertyCommand = [](ModelDataDefinition* definition, QGraphicsItem* item,
+            const std::string& property, const std::string& value) -> QUndoCommand* {
+            auto* network = dynamic_cast<ColoredPetriNetNetwork*>(definition);
+            if (network == nullptr || item == nullptr || dynamic_cast<QGraphicsPathItem*>(item) == nullptr || !item->data(1).isValid()) return nullptr;
+            auto* arc = reinterpret_cast<CPNArc*>(static_cast<quintptr>(item->data(1).toULongLong()));
+            if (arc == nullptr || network->getArcs()->find(arc) == network->getArcs()->list()->end()
+                || (property != "Inscription" && property != "Name")) return nullptr;
+            std::map<std::string, unsigned int> inscription;
+            if (property == "Name") inscription = arc->getInscriptions();
+            else {
+                std::istringstream input(value); std::string token;
+                while (std::getline(input, token, ';')) {
+                    if (token.empty()) continue;
+                    const auto eq = token.find('='); if (eq == std::string::npos || eq == 0 || eq + 1 == token.size()) return nullptr;
+                    unsigned int count = 0; const std::string number = token.substr(eq + 1);
+                    const auto [end, ec] = std::from_chars(number.data(), number.data()+number.size(), count);
+                    if (ec != std::errc{} || end != number.data()+number.size() || count == 0
+                        || !inscription.emplace(token.substr(0, eq), count).second) return nullptr;
+                }
+            }
+            return new EditCpnArcInscriptionUndoCommand(network, arc,
+                dynamic_cast<ModelGraphicsScene*>(item->scene()), std::move(inscription),
+                property == "Name" ? value : arc->getName());
+        };
         editor.acceptsDrop = acceptsCpnDrop;
         editor.onDataDefinitionDropped = addCpnNode;
         editor.onDataDefinitionRemoved = [](ModelDataDefinition* owner, ModelDataDefinition* dropped) {
@@ -710,18 +760,6 @@ public:
         addArc.trigger = createCpnArc;
         registry->addAction(std::move(addArc));
 
-        GuiActionContribution editMarking;
-        editMarking.id = "modal.cpn.edit-initial-marking";
-        editMarking.text = "Edit Selected Place Initial Marking...";
-        editMarking.menuPath = "Model";
-        editMarking.isVisible = [](const GuiExtensionRuntimeContext& context) {
-            return context.graphicsScene != nullptr
-                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
-        };
-        editMarking.isEnabled = canEditInitialTokens;
-        editMarking.trigger = editInitialTokens;
-        registry->addAction(std::move(editMarking));
-
         GuiActionContribution removeArc;
         removeArc.id = "modal.cpn.remove-arc";
         removeArc.text = "Remove Selected CPN Arc";
@@ -736,33 +774,6 @@ public:
         };
         removeArc.trigger = removeSelectedArc;
         registry->addAction(std::move(removeArc));
-
-        GuiActionContribution editArc;
-        editArc.id = "modal.cpn.edit-arc-inscription";
-        editArc.text = "Edit Selected CPN Arc Inscription...";
-        editArc.menuPath = "Model";
-        editArc.isVisible = [](const GuiExtensionRuntimeContext& context) {
-            return context.graphicsScene != nullptr
-                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
-        };
-        editArc.isEnabled = [](const GuiExtensionRuntimeContext& context) {
-            return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
-                && selectedArc(context) != nullptr;
-        };
-        editArc.trigger = editSelectedArcInscription;
-        registry->addAction(std::move(editArc));
-
-        GuiActionContribution editTransition;
-        editTransition.id = "modal.cpn.edit-transition";
-        editTransition.text = "Edit Selected CPN Transition Guard and Priority...";
-        editTransition.menuPath = "Model";
-        editTransition.isVisible = [](const GuiExtensionRuntimeContext& context) {
-            return context.graphicsScene != nullptr
-                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
-        };
-        editTransition.isEnabled = canEditCpnTransition;
-        editTransition.trigger = editCpnTransition;
-        registry->addAction(std::move(editTransition));
 
         GuiActionContribution removeNode;
         removeNode.id = "modal.cpn.remove-node";
