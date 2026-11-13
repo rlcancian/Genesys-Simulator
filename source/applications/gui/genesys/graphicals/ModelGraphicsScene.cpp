@@ -56,6 +56,7 @@
 #include "animations/AnimationQueue.h"
 #include "services/GraphicalModelBuilder.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
+#include "../../../../kernel/simulator/model/Model.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
@@ -82,8 +83,10 @@ namespace {
         void undo() override {
             if (_scene.isNull() || _owner == nullptr || _graphicalItem == nullptr
                 || _graphicalItem->getDataDefinition() == nullptr) return;
-            GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionRemoved(
-                _owner, _graphicalItem->getDataDefinition());
+            ModelDataDefinition* definition = _graphicalItem->getDataDefinition();
+            GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionRemoved(_owner, definition);
+            if (Model* model = definition->getParentModel()) model->remove(definition);
+            definition->setModelLevel(0);
             _scene->detachGraphicalModelDataDefinition(_graphicalItem);
             GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
                 _scene->getSimulator(), _scene.data());
@@ -96,8 +99,9 @@ namespace {
             }
             if (_scene.isNull() || _owner == nullptr || _graphicalItem == nullptr
                 || _graphicalItem->getDataDefinition() == nullptr) return;
-            GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
-                _owner, _graphicalItem->getDataDefinition());
+            ModelDataDefinition* definition = _graphicalItem->getDataDefinition();
+            if (Model* model = definition->getParentModel()) model->insert(definition);
+            GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(_owner, definition);
             _scene->restoreGraphicalModelDataDefinition(_graphicalItem);
             GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
                 _scene->getSimulator(), _scene.data());

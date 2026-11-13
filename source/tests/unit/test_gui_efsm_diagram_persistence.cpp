@@ -1323,10 +1323,14 @@ TEST(GraphNetworkGuiExtension, DroppedGraphNodeCanBeUndoneAndRedone) {
     EXPECT_TRUE(network.getNodes().empty());
     EXPECT_EQ(graphical->scene(), nullptr);
     EXPECT_EQ(scene.findGraphicalModelDataDefinition(node), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(
+                  nodePlugin->getPluginInfo()->getPluginTypename(), node->getId()), nullptr);
 
     undoStack.redo();
     ASSERT_EQ(network.getNodes().size(), 1u);
     EXPECT_EQ(network.getNodes().front(), node);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(
+                  nodePlugin->getPluginInfo()->getPluginTypename(), node->getId()), node);
     EXPECT_EQ(scene.findGraphicalModelDataDefinition(node), graphical);
     EXPECT_EQ(graphical->pos(), originalPosition);
 }
