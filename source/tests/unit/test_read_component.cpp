@@ -23,6 +23,7 @@
 #include <limits>
 #include <string>
 #include <vector>
+#include <type_traits>
 #include <unistd.h>
 
 namespace {
@@ -426,6 +427,97 @@ TEST_F(ReadFixture, PersistenceRestoresSourceFileAndOrderedDestinations) {
     EXPECT_EQ(loaded->getDestinations()->getAtRank(1)->getDestination(), "Load");
     EXPECT_FALSE(loaded->getDestinations()->getAtRank(1)->isAttributeNotVariable());
     EXPECT_EQ(loaded->getDestinations()->getAtRank(0)->getSimulationControls()->size(), 2u);
+}
+
+TEST(ReadDestinationOwnership, DisallowsShallowCopiesOfOwnedSimulationControls) {
+    static_assert(!std::is_copy_constructible_v<ReadDestination>);
+    static_assert(!std::is_copy_assignable_v<ReadDestination>);
+    static_assert(!std::is_move_constructible_v<ReadDestination>);
+    static_assert(!std::is_move_assignable_v<ReadDestination>);
+    SUCCEED();
+}
+
+TEST_F(ReadFixture, SourceEnumControlMatchesPropertyEditorIndexEncoding) {
+    auto* read = reader();
+    SimulationControl* source = nullptr;
+    for (SimulationControl* control : *read->getSimulationControls()->list()) {
+        if (control->getName() == "ReadFromType") source = control;
+    }
+    ASSERT_NE(source, nullptr);
+    EXPECT_EQ(source->getValue(), "FILE");
+    source->setValue("1");
+    EXPECT_EQ(source->getValue(), "KEYBOARD");
+    EXPECT_EQ(read->readFromType(), Read::ReadFromType::KEYBOARD);
+    source->setValue("0");
+    EXPECT_EQ(source->getValue(), "FILE");
+    EXPECT_EQ(read->readFromType(), Read::ReadFromType::FILE);
+}
+
+TEST_F(ReadFixture, ChangingFilenameResetsFileCursor) {
+    TemporaryInput firstFile("1\\n2\\n");
+    TemporaryInput secondFile("7\\n8\\n");
+    auto* read = reader();
+    read->setFilename(firstFile.path.string());
+    addVariable(read, "LastValue");
+    read->dispatch(model->createEntity("FirstFile", true));
+    ASSERT_NE(variable("LastValue"), nullptr);
+    EXPECT_DOUBLE_EQ(variable("LastValue")->getValue(), 1);
+    read->setFilename(secondFile.path.string());
+    read->dispatch(model->createEntity("SecondFile", true));
+    EXPECT_DOUBLE_EQ(variable("LastValue")->getValue(), 7);
+    EXPECT_EQ(model->getFutureEvents()->size(), 2u);
+}
+
+TEST_F(ReadFixture, IndependentReadersMaintainIndependentFileCursors) {
+    TemporaryInput dataFile("4\\n6\\n");
+    auto* first = reader("ReaderA");
+    auto* second = reader("ReaderB");
+    first->setFilename(dataFile.path.string());
+    second->setFilename(dataFile.path.string());
+    addVariable(first, "A");
+    addVariable(second, "B");
+    first->dispatch(model->createEntity("A1", true));
+    second->dispatch(model->createEntity("B1", true));
+    EXPECT_DOUBLE_EQ(variable("A")->getValue(), 4);
+    EXPECT_DOUBLE_EQ(variable("B")->getValue(), 4);
+    first->dispatch(model->createEntity("A2", true));
+    second->dispatch(model->createEntity("B2", true));
+    EXPECT_DOUBLE_EQ(variable("A")->getValue(), 6);
+    EXPECT_DOUBLE_EQ(variable("B")->getValue(), 6);
+    EXPECT_EQ(model->getFutureEvents()->size(), 4u);
+}
+
+TEST_F(ReadFixture, ExtraNumericFieldCannotPartiallyAssign) {
+    TemporaryInput file("2 3 4\\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addAttribute(read, "NotChanged");
+    addVariable(read, "AlsoNotChanged");
+    auto* entity = model->createEntity("ExtraField", true);
+    read->dispatch(entity);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("NotChanged"), 0);
+    EXPECT_DOUBLE_EQ(variable("AlsoNotChanged")->getValue(), 0);
+}
+
+TEST_F(ReadFixture, KeyboardSourceAndOrderedDestinationsSurvivePersistence) {
+    auto* read = reader("KeyboardPersist");
+    read->setReadFromType(Read::ReadFromType::KEYBOARD);
+    addAttribute(read, "CurrentEntityValue");
+    addVariable(read, "SharedValue");
+    TemporaryInput serialized("", ".gen");
+    ASSERT_TRUE(model->save(serialized.path.string()));
+    Model* restored = simulator.getModelManager()->newModel();
+    ASSERT_NE(restored, nullptr);
+    ASSERT_TRUE(restored->load(serialized.path.string()));
+    auto* loaded = dynamic_cast<Read*>(restored->getComponentManager()->find("KeyboardPersist"));
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->readFromType(), Read::ReadFromType::KEYBOARD);
+    ASSERT_EQ(loaded->getDestinations()->size(), 2u);
+    EXPECT_EQ(loaded->getDestinations()->getAtRank(0)->getDestination(), "CurrentEntityValue");
+    EXPECT_TRUE(loaded->getDestinations()->getAtRank(0)->isAttributeNotVariable());
+    EXPECT_EQ(loaded->getDestinations()->getAtRank(1)->getDestination(), "SharedValue");
+    EXPECT_FALSE(loaded->getDestinations()->getAtRank(1)->isAttributeNotVariable());
 }
 
 TEST_F(ReadFixture, FullSimulationRewindsFileAcrossTwoReplications) {
