@@ -259,3 +259,8 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after the same Graph editor changes.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.*:GraphNetworkGuiExtension.*:EFSMNetworkDiagramPersistence.*:EFSMNetworkDiagramProjection.*:EFSMNetworkEditor.SharedNetworkOpensOneSubmodelTabFromMultipleAdapters:EFSMNetworkEditor.MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM'` — PASS, 30 tests, including DAG cycle rejection without orphan GraphEdge creation and graph edge add/remove/weight undo/redo.
 - `git diff --check` — PASS for this Graph editor increment.
+
+- Source/destination selection is now explicit in the edge creation dialog; the orientation no longer depends on Qt's scene selection ordering. DAG cycle validation is exercised through the real editor action and confirms no extra GraphEdge is allocated/registered on rejection.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS (up to date after the final D2 orientation/cycle checks).
+- Focused integration filter covering `GuiExtensionManager`, `GraphNetworkGuiExtension`, EFSM diagram persistence/projection and shared/reopened EFSM execution — PASS, 30 tests.
+- `git diff --check` — PASS after explicit orientation and DAG cycle regression.
