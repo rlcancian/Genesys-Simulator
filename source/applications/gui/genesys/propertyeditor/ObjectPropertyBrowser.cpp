@@ -1156,6 +1156,10 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
                 : QString::fromStdString(referencedDataDefinition->getName());
             choices[0] = currentName;
             seenLabels.insert(currentName);
+            if (desc.supportsReferenceRemoval) {
+                choices << QStringLiteral("Remover referência");
+                actions.push_back(ModelObjectAction{ModelObjectAction::Kind::RemoveReference, "", ""});
+            }
         }
         for (const std::string& choiceValue : desc.choices) {
             const QString choiceLabel = QString::fromStdString(choiceValue);

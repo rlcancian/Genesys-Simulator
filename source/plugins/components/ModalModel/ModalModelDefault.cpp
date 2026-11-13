@@ -58,6 +58,8 @@ public:
 		       && !plugins->getDataDefinitionPluginTypenamesAssignableTo(Util::TypeOf<DefaultNetwork>()).empty();
 	}
 
+	bool supportsReferenceRemoval() const override { return true; }
+
 	List<std::string>* getCreatableReferenceTypes() override {
 		auto* types = new List<std::string>();
 		PluginManager* plugins = _model != nullptr && _model->getParentSimulator() != nullptr
@@ -180,6 +182,8 @@ void ModalModelDefault::setNetwork(DefaultNetwork* network) {
 	_attachedDataRemove(kNetworkAssociationKey);
 	_network = network;
 	_networkName = network != nullptr ? network->getName() : "";
+	_networkReferenceType = network != nullptr ? network->getClassname() : "";
+	_networkReferenceId = network != nullptr ? static_cast<int>(network->getId()) : 0;
 	if (_network != nullptr) {
 		// The adapter references a model-managed Network without owning it.
 		_attachedDataInsert(kNetworkAssociationKey, _network);
@@ -195,6 +199,8 @@ void ModalModelDefault::setNetworkName(const std::string& networkName) {
 	_mandatoryAttachedAttributesClear();
 	_attachedDataRemove(kNetworkAssociationKey);
 	_networkName = networkName;
+	_networkReferenceType.clear();
+	_networkReferenceId = 0;
 	_network = nullptr;
 	_resolveNetworkReference();
 	_syncBindingsToNetwork();
@@ -229,6 +235,8 @@ bool ModalModelDefault::_loadInstance(PersistenceRecord* fields) {
 		_timeDelayExpressionPerDispatch = fields->loadField("timeDelayExpressionPerDispatch", DEFAULT.timeDelayExpressionPerDispatch);
 		_timeDelayPerDispatchTimeUnit = fields->loadField("timeDelayPerDispatchTimeUnit", DEFAULT.timeDelayPerDispatchTimeUnit);
 		_networkName = fields->loadField("networkName", std::string(""));
+		_networkReferenceType = fields->loadField("networkType", std::string(""));
+		_networkReferenceId = fields->loadField("networkId", 0);
 		_network = nullptr;
 		_resolveNetworkReference();
 		_syncBindingsToNetwork();
@@ -254,8 +262,12 @@ void ModalModelDefault::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 	                  DEFAULT.timeDelayPerDispatchTimeUnit, saveDefaultValues);
 	if (_network != nullptr) {
 		_networkName = _network->getName();
+		_networkReferenceType = _network->getClassname();
+		_networkReferenceId = static_cast<int>(_network->getId());
 	}
 	fields->saveField("networkName", _networkName, std::string(""), saveDefaultValues);
+	fields->saveField("networkType", _networkReferenceType, std::string(""), saveDefaultValues);
+	fields->saveField("networkId", _networkReferenceId, 0, saveDefaultValues);
 	fields->saveField("inputBindings", static_cast<unsigned int>(_inputBindings.size()), 0u, saveDefaultValues);
 	for (unsigned int bindingIndex = 0; bindingIndex < _inputBindings.size(); bindingIndex++) {
 		fields->saveField("inputBinding" + Util::StrIndex(bindingIndex), _inputBindings[bindingIndex], std::string("1"), saveDefaultValues);
@@ -346,18 +358,31 @@ DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
 	if (_network != nullptr || _networkName == "") {
 		return _network;
 	}
+	if (!_networkReferenceType.empty() || _networkReferenceId != 0) {
+		if (_networkReferenceType.empty() || _networkReferenceId == 0 || _parentModel == nullptr
+		    || _parentModel->getDataManager() == nullptr) return nullptr;
+		auto* candidate = dynamic_cast<DefaultNetwork*>(
+			_parentModel->getDataManager()->getDataDefinition(_networkReferenceType, _networkReferenceId));
+		if (candidate != nullptr && candidate->getName() == _networkName) {
+			_network = candidate;
+			_attachedDataInsert(kNetworkAssociationKey, _network);
+			return _network;
+		}
+		return nullptr;
+	}
+	DefaultNetwork* match = nullptr;
 	for (const std::string& className : _parentModel->getDataManager()->getDataDefinitionClassnames()) {
 		List<ModelDataDefinition*>* definitions = _parentModel->getDataManager()->getDataDefinitionList(className);
 		for (ModelDataDefinition* definition : *definitions->list()) {
 			DefaultNetwork* candidate = dynamic_cast<DefaultNetwork*>(definition);
 			if (candidate != nullptr && candidate->getName() == _networkName) {
-				_network = candidate;
-				_attachedDataInsert(kNetworkAssociationKey, _network);
-				return _network;
+				if (match != nullptr) return nullptr;
+				match = candidate;
 			}
 		}
 	}
-	return nullptr;
+	if (match != nullptr) setNetwork(match);
+	return match;
 }
 
 void ModalModelDefault::_syncBindingsToNetwork() {

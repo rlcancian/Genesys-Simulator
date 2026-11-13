@@ -37,6 +37,7 @@
 #include "kernel/simulator/essentialPlugins/EntityType.h"
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/ModalModel/GraphNetwork.h"
 
 #include <gtest/gtest.h>
 
@@ -518,6 +519,34 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     EXPECT_EQ(parallelOrdinal0, 0);
     EXPECT_EQ(parallelOrdinal1, 1);
     EXPECT_EQ(namedOrdinal, 2);
+}
+
+TEST(ModalNetworkReferencePersistence, GenRoundTripKeepsTheExactTypeAndId) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* efsm = new EFSMNetwork(model, "OtherNetworkName");
+    auto* graph = new GraphNetwork(model, "SameNetworkName");
+    auto* adapter = new ModalModelDefault(model, "IdentityAdapter");
+    adapter->setNetwork(graph);
+
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const std::string path = temporaryDir.filePath("typed_network_reference.gen").toStdString();
+    ASSERT_TRUE(model->save(path));
+    Model* loaded = simulator.getModelManager()->loadModel(path);
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedAdapter = dynamic_cast<ModalModelDefault*>(loaded->getComponentManager()->find("IdentityAdapter"));
+    ASSERT_NE(loadedAdapter, nullptr);
+    auto* loadedGraph = dynamic_cast<GraphNetwork*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<GraphNetwork>(), graph->getId()));
+    auto* loadedEfsm = dynamic_cast<EFSMNetwork*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<EFSMNetwork>(), efsm->getId()));
+    ASSERT_NE(loadedGraph, nullptr);
+    ASSERT_NE(loadedEfsm, nullptr);
+    EXPECT_EQ(loadedAdapter->getNetwork(), loadedGraph);
+    EXPECT_NE(loadedAdapter->getNetwork(), loadedEfsm);
 }
 
 TEST(EFSMNetworkDiagramPersistence, RoundTripIsDeterministicAcrossRepeatedSaves) {

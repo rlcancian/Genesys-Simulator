@@ -1057,6 +1057,36 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     auto* createdNetwork = dynamic_cast<DirectedGraphNetwork*>(component.getNetwork());
     ASSERT_NE(createdNetwork, nullptr);
     EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int removeIndex = selector->findText(QStringLiteral("Remover referência"));
+    ASSERT_GE(removeIndex, 0);
+    selector->setCurrentIndex(removeIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const QString createdChoice = QStringLiteral("%1::%2 [#%3]")
+        .arg(graphType, QString::fromStdString(createdNetwork->getName()))
+        .arg(createdNetwork->getId());
+    const int reattachIndex = selector->findText(createdChoice);
+    ASSERT_GE(reattachIndex, 0);
+    selector->setCurrentIndex(reattachIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), createdNetwork);
 }
 
 TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {

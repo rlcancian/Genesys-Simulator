@@ -39,6 +39,7 @@ struct GenesysPropertyDescriptor {
     bool supportsInlineExpansion = false;
     bool supportsListEditor = false;
     bool supportsExistingObjectSelection = false;
+    bool supportsReferenceRemoval = false;
     bool keepsExistingObjectChoicesWhenSet = false;
     bool supportsObjectCreation = false;
     bool supportsNewListElementCreation = false;

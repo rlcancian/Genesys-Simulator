@@ -234,6 +234,7 @@ public:
     }
     // This method exposes whether the property supports choosing an existing object instance.
     virtual bool supportsExistingObjectSelection() const { return false; }
+    virtual bool supportsReferenceRemoval() const { return false; }
     virtual bool keepsExistingObjectChoicesWhenSet() const { return false; }
     // This method exposes whether the property supports creating a new object instance.
     virtual bool supportsObjectCreation() const { return false; }

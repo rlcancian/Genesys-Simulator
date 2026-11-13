@@ -82,6 +82,8 @@ private:
 private:
 	DefaultNetwork* _network = nullptr;
 	std::string _networkName = "";
+	std::string _networkReferenceType;
+	int _networkReferenceId = 0;
 	std::vector<std::string> _inputBindings;
 	std::vector<std::string> _outputBindings;
 };
