@@ -333,7 +333,7 @@ TEST_F(ReadFixture, KeyboardProviderExceptionStopsInsteadOfEscapingDispatch) {
     EXPECT_TRUE(model->getFutureEvents()->empty());
     ASSERT_NE(variable("Value"), nullptr);
     EXPECT_DOUBLE_EQ(variable("Value")->getValue(), 0.0);
-    const auto* errors = model->getTracer()->errorMessages();
+    auto* errors = model->getTracer()->errorMessages();
     ASSERT_NE(errors, nullptr);
     EXPECT_FALSE(errors->empty());
 }
