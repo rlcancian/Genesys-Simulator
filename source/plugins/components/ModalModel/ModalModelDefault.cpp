@@ -11,12 +11,14 @@
 #include "../../../kernel/simulator/Simulator.h"
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
+#include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
+#include <memory>
 #include "kernel/simulator/model/ModelDataManager.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -91,7 +93,20 @@ public:
 				  }
 				  return types;
 			  }, true),
-		  _model(model), _adapter(adapter), _getter(std::move(getter)), _setter(std::move(setter)) {}
+		  _model(model), _adapter(adapter), _getter(std::move(getter)), _setter(std::move(setter)) {
+		_capabilityControl = std::make_unique<SimulationControlString>(
+			[this]() {
+				DefaultNetwork* current = _getter();
+				if (current == nullptr) return std::string();
+				if (dynamic_cast<GraphNetwork*>(current) != nullptr) {
+					return std::string("Structural graph; no simulation-time activation events");
+				}
+				if (current->getClassname() == Util::TypeOf<DefaultNetwork>()) {
+					return std::string("Generic inert Network; no custom activation");
+				}
+				return std::string();
+			}, nullptr, Util::TypeOf<ModalModelDefault>(), "", "Execution Capability");
+	}
 
 	bool supportsObjectCreation() const override {
 		PluginManager* plugins = _model != nullptr && _model->getParentSimulator() != nullptr
@@ -112,6 +127,9 @@ public:
 			for (SimulationControl* control : *network->getSimulationControls()->list()) {
 				_children.insert(control);
 			}
+		}
+		if (_capabilityControl != nullptr && !_capabilityControl->getValue().empty()) {
+			_children.insert(_capabilityControl.get());
 		}
 		for (SimulationControl* control : _adapter->getNetworkBindingControls()) {
 			if (control != nullptr) _children.insert(control);
@@ -148,6 +166,7 @@ private:
 	GetterGeneric<DefaultNetwork*> _getter;
 	SetterGeneric<DefaultNetwork*> _setter;
 	List<SimulationControl*> _children;
+	std::unique_ptr<SimulationControl> _capabilityControl;
 };
 
 std::string networkChoice(DefaultNetwork* network) {

@@ -20,12 +20,12 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | A2 | Pass (focused) | `Network` choices enumerate registered `DefaultNetwork` subtypes and resolve by concrete class plus model ID. Focused test selects EFSM, Graph, Directed Graph, DAG, Markov and CPN objects with the same name. |
 | A3 | Pass (focused) | Plugin metadata records direct data-definition base types; PluginManager discovers transitive compatible factories. Property Editor creates and attaches an explicitly selected subtype and offers no inert base type. |
 | A4 | Pass (focused) | Property Editor now offers explicit reference removal and permits reattaching an existing Network. A detached Network remains model-managed. The focused property and EFSM GUI tests pass. |
-| A5 | Not started | Remaining acceptance items in the plan. |
+| A5 | Pass (focused) | Property Editor choices expose concrete type/name/ID; association editing and `Network Details` provide separate mathematical properties/binding rows, while Open Network remains contextual. Graph and DAG disclose their structural/no-activation semantics, and the generic base Network is labeled inert. Focused GUI coverage exercises typed creation, selection across all six concrete families, binding editing/undo, and a Create→ModalModelDefault→Dispose connection fixture for each family. |
 | B1 | Pass (focused) | Identity audit is covered by six concrete subtype choices with duplicate display names, exact identity selection, unique legacy name resolution and ambiguous legacy name rejection. |
 | B2 | In progress | ModalModelDefault persists concrete Network type and model ID alongside the legacy name. Exact lookup validates type, ID and name; invalid, missing and ambiguous legacy references fail closed with explicit diagnostics. Exact typed `.gen` round-trip passes; damaged-reference and broader compatibility coverage remain. |
 | B3 | Pass (focused) | Bindings remap by stable port names; new ports receive defaults; port-name metadata persists while detached. Unsafe custom-binding/connection changes reject transactionally. Property Editor confirms schema-changing replacements before mutation; cancellation preserves the old association. Binding rows are exposed in the Property Editor; the EFSM bindings dialog/action is removed. Undo/redo covers binding edits and Network reference changes, including graphical port synchronization. |
 | B4 | Pass (focused) | ModelDataManager remains the Network owner; adapter detach and replacement do not delete an unshared or shared Network. Existing GUI coverage also proves reference removal leaves the Network selectable for reattachment. Focused adapter suite: 14/14 PASS. Broader close/delete lifetime audit remains in final validation. |
-| B5 | Not started | Bounded source/include review remains; no physical restructuring has been justified so far. |
+| B5 | Pass | Reviewed ModalModel implementation/header placement and Network data-definition headers/implementations. The existing split keeps GUI-independent mathematical implementations in plugin translation units and data contracts under `data/ModalModel`; no source relocation is justified. GUI app build passes. |
 | C1–C6 | Not started | EFSM GUI isolation and extension registration. |
 | D1–D5 | Not started | Context-specific editors, formalism topology, persistence, undo/redo and animation. |
 
@@ -87,6 +87,14 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
   name-based mapping and that unsafe loss of custom bindings or connected-port
   meaning is still rejected by the transactional kernel operation. Cancellation
   leaves the old reference intact and refreshes the Property Editor.
+- Added read-only `Execution Capability` detail for GraphNetwork (including
+  directed/DAG subclasses) and direct generic DefaultNetwork references. It
+  describes the former as structural with no simulation-time activation events
+  and the latter as inert; other formalisms receive no invented capability text.
+- The A5 Property Editor regression selects all six network families, creates a
+  typed network, removes/reattaches references, edits bindings, exercises
+  reference/binding undo/redo and verifies Create→adapter→Dispose connection
+  fixtures for each family.
 
 ## Validation
 
@@ -120,6 +128,11 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='PropertyEditorModelDataReference.ModalModelSelectsPolymorphicNetworkByTypeAndIdentity'` — PASS; exercises schema-change cancellation, acceptance, reference undo/redo, binding edits and binding undo/redo.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after replacement confirmation.
 - `git diff --check` — PASS after replacement confirmation.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after A5 capability display and per-family process-flow coverage.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='PropertyEditorModelDataReference.ModalModelSelectsPolymorphicNetworkByTypeAndIdentity'` — PASS; verifies capability display, Property Editor operations, undo/redo, and all six subtype flow fixtures.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after A5 capability display.
+- `git diff --check` — PASS after A5.
+- B5 bounded review: `rg` found no GUI/Qt includes in the ModalModel component/data directories; cross-directory includes follow the existing data-contract/component-implementation split. No physical moves made.
 - `cmake --build build/tests-unit --target genesys_test_modal_model_default_network -j 8` — PASS after shared Network lifetime coverage.
 - `./build/tests-unit/source/tests/genesys_test_modal_model_default_network` — PASS, 14 tests, including shared-reference detach/replacement retention.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after A4/B2.

@@ -146,6 +146,15 @@ private:
         }
         if (_scene != nullptr) {
             GraphicalModelComponent* graphical = _scene->findGraphicalModelComponent(_adapter->getId());
+            if (graphical == nullptr) {
+                for (QGraphicsItem* item : _scene->items()) {
+                    auto* candidate = dynamic_cast<GraphicalModelComponent*>(item);
+                    if (candidate != nullptr && candidate->getComponent() == _adapter) {
+                        graphical = candidate;
+                        break;
+                    }
+                }
+            }
             if (graphical != nullptr && graphical->getComponent() == _adapter) graphical->synchronizeDynamicPorts();
             _scene->update();
         }

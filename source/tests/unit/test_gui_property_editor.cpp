@@ -10,6 +10,7 @@
 #include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "propertyeditor/qtpropertybrowser/qtvariantproperty.h"
 #include "services/ModelLanguageSynchronizer.h"
 
 #include "kernel/simulator/PluginManager.h"
@@ -1028,22 +1029,32 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     ASSERT_NE(model, nullptr);
 
     auto* network = new EFSMNetwork(model, "SharedNetworkName_PropertyEditor");
+    network->addInputPort("Trigger");
+    network->addOutputPort("Result");
     auto* graphNetwork = new GraphNetwork(model, "SharedNetworkName_PropertyEditor");
-    graphNetwork->addInputPort("GraphInput0");
+    graphNetwork->addInputPort("Trigger");
     graphNetwork->addInputPort("GraphInput1");
-    graphNetwork->addOutputPort("GraphOutput0");
+    graphNetwork->addOutputPort("Result");
     graphNetwork->addOutputPort("GraphOutput1");
     graphNetwork->addOutputPort("GraphOutput2");
+    auto* directedGraph = new DirectedGraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    directedGraph->addInputPort("Trigger");
+    directedGraph->addOutputPort("Result");
+    auto* dag = new DirectedAcyclicGraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    dag->addInputPort("Trigger");
+    dag->addOutputPort("Result");
+    auto* markov = new MarkovChainNetwork(model, "SharedNetworkName_PropertyEditor");
+    markov->addInputPort("Trigger");
+    markov->addOutputPort("Result");
+    auto* cpn = new ColoredPetriNetNetwork(model, "SharedNetworkName_PropertyEditor");
     std::vector<DefaultNetwork*> networks{
         network,
         graphNetwork,
-        new DirectedGraphNetwork(model, "SharedNetworkName_PropertyEditor"),
-        new DirectedAcyclicGraphNetwork(model, "SharedNetworkName_PropertyEditor"),
-        new MarkovChainNetwork(model, "SharedNetworkName_PropertyEditor"),
-        new ColoredPetriNetNetwork(model, "SharedNetworkName_PropertyEditor")
+        directedGraph,
+        dag,
+        markov,
+        cpn
     };
-    networks.back()->addInputPort("fire");
-    networks.back()->addOutputPort("fired");
     ModalModelDefault component(model, "ModalAdapter_PropertyEditor");
     Plugin* adapterPlugin = simulator.getPluginManager()->find(Util::TypeOf<ModalModelDefault>());
     ASSERT_NE(adapterPlugin, nullptr);
@@ -1093,6 +1104,19 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
         EXPECT_EQ(component.getNetwork(), candidate) << choice.toStdString();
         EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
         EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+        if (candidate == graphNetwork) {
+            QtBrowserItem* details = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+            ASSERT_NE(details, nullptr);
+            browser.setExpanded(details, true);
+            drainGuiEvents();
+            QtBrowserItem* capability = findBrowserItemByName(details->children(), QStringLiteral("Execution Capability"));
+            ASSERT_NE(capability, nullptr);
+            auto* capabilityProperty = dynamic_cast<QtVariantProperty*>(capability->property());
+            ASSERT_NE(capabilityProperty, nullptr);
+            EXPECT_EQ(capabilityProperty->value().toString(),
+                QStringLiteral("Structural graph; no simulation-time activation events"));
+            EXPECT_FALSE(capability->property()->isEnabled());
+        }
     }
     ASSERT_EQ(component.getNetwork(), networks.back());
     ASSERT_TRUE(undoStack.canUndo());
@@ -1179,7 +1203,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     selector->setCurrentIndex(bindingNetworkIndex);
     drainGuiEvents();
     EXPECT_EQ(component.getNetwork(), bindingNetwork);
-    ASSERT_EQ(component.getNetworkBindingControls().size(), 2u);
+    ASSERT_EQ(component.getNetworkBindingControls().size(),
+        static_cast<std::size_t>(component.getDynamicInputPortCount() + component.getDynamicOutputPortCount()));
 
     item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
     ASSERT_NE(item, nullptr);
@@ -1219,6 +1244,17 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     EXPECT_EQ(component.getInputBinding(0), "2");
     undoStack.redo();
     EXPECT_EQ(component.getOutputBinding(0), "firedValue");
+
+    for (std::size_t index = 0; index < networks.size(); ++index) {
+        auto* adapter = new ModalModelDefault(model, "ProcessAdapter_" + std::to_string(index));
+        auto* processSource = new Create(model, "ProcessSource_" + std::to_string(index));
+        auto* processSink = new Dispose(model, "ProcessSink_" + std::to_string(index));
+        adapter->setNetwork(networks[index]);
+        processSource->getConnectionManager()->insert(adapter);
+        adapter->getConnectionManager()->insert(processSink);
+        EXPECT_EQ(processSource->getConnectionManager()->size(), 1u);
+        EXPECT_EQ(adapter->getConnectionManager()->size(), 1u);
+    }
 }
 
 TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {
