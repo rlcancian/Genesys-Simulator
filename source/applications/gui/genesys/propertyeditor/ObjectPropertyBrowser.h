@@ -101,7 +101,8 @@ private:
             CreateNew,
             SetCurrentType,
             MoveUp,
-            MoveDown
+            MoveDown,
+            Remove
         };
 
         Kind kind = Kind::None;
@@ -157,6 +158,7 @@ private:
     void _materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition = nullptr) const;
     bool _createNewListElementForProperty(QtProperty* property, const std::string& typeName = "");
     bool _moveListItem(QtProperty* property, int destination);
+    bool _removeListItem(QtProperty* property);
     void _applyPositionalListChange();
     bool _setCurrentListElementTypeForProperty(QtProperty* property, const std::string& typeName);
     bool _createModelObjectForProperty(QtProperty* property, const std::string& typeName = "");
