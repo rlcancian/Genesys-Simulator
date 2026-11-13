@@ -111,8 +111,9 @@ Recommended user interaction:
 2. A `ModalModelDefault` appears as a process component with ordinary
    process-flow input/output ports.
 3. The component context menu includes `Open Network...`.
-4. Double-clicking a `ModalModelDefault` should also open the attached network
-   when a network exists; otherwise it should offer to create one.
+4. Double-clicking may open only a valid attached network. When there is no
+   network, it must focus the `Network` property and must not create or select
+   one through a second UI flow.
 5. Opening a network creates a new editor level in the same main window, using a
    tab or breadcrumb stack:
 
@@ -363,12 +364,15 @@ Required UI elements:
 - tab title including network name and formalism;
 - minimap for large networks;
 - synchronized model inspector tree;
-- context menu on `ModalModelDefault` with `Open Network...`,
-  `Attach Existing Network...`, `Create EFSM Network...`,
-  `Create Markov Chain...`, `Create CPN...`, `Create Graph...`.
+- the single Network-related context action `Open Network`, enabled only for a
+  live, registered Network reference. The same action is available on a
+  graphical Network data definition.
 
-If a `ModalModelDefault` has no network, the first open action should display a
-network creation chooser rather than silently creating a default formalism.
+Network assignment is performed in the Property Editor: choose an existing
+compatible Network, create one after explicitly selecting its concrete type,
+replace or detach the reference, and edit the Network's mathematical properties
+separately from opening its graphical context. This preserves shared Network
+objects and prevents navigation from mutating the model.
 
 ## 10. Property Editing
 

@@ -1,83 +1,61 @@
 # Editing an EFSM Network in the graphical interface
 
-This guide describes the EFSM Network editor integrated into the GenESyS Qt6
-GUI. Menu labels below are the English labels in the current GUI. The editor
-uses the model's existing
-`ModalModelDefault`, `EFSMNetwork`, states, and transitions; EFSM relations are
-not process-flow connections.
+This guide describes the EFSM Network editor in the GenESyS Qt6 GUI. An EFSM
+Network, its states, and its transitions are mathematical model objects. A
+transition is a directed EFSM relation between states, not a process-flow
+connection.
 
-## Create or attach a Network
+## Associate and open a Network
 
-1. Open a process model and select a `ModalModelDefault` component in its
-   graphics view.
-2. From the **Model** menu, choose **Create EFSM Network** and enter a unique
-   Network name. Canceling the dialog leaves the model unchanged.
-3. To attach an existing Network instead, choose **Select EFSM Network** and
-   select the entry identified by its name and model ID. Selecting a new
-   Network replaces the adapter's association; the previously registered
-   Network remains in the model.
-4. With the adapter selected, choose **Open EFSM Network**. The Network opens
-   in a tab titled `Model > EFSM Network: NetworkName`. Adapters that refer to
-   the same Network open the same context.
+1. Select a `ModalModelDefault` in the process-model view.
+2. In the Property Editor, expand its `Network` property. Choose an existing
+   compatible Network, or create one after explicitly choosing its concrete
+   type. Use the same property to replace or remove the association. Creating
+   an association does not duplicate a Network that is shared by other
+   adapters.
+3. Select the adapter and choose **Open Network** from its context menu. The
+   Network opens in a tab in the same main window. The action is enabled only
+   when the adapter refers to a valid Network. A graphical Network data
+   definition can also be opened with **Open Network**.
 
-An attached Network may be opened before it contains any states. Creating a new
-Network opens its empty editing tab automatically after the dialog is accepted;
-canceling the dialog does not change the model. When an adapter has no Network,
-**Open EFSM Network** remains disabled. **Create EFSM Network** is available for
-that adapter, while **Select EFSM Network** is available only when the current
-model already contains a Network that can be associated.
-
-An empty `Submodel` can likewise be opened as a valid editing tab. Components
-created or dropped in that tab remain in the Submodel editing context and retain
-that context when the model is saved and reloaded. This is a graphical editing
-context; it does not add a separate hierarchical execution implementation to the
-`Submodel` plugin.
+An attached Network can be opened before it contains states. Opening it does
+not create or change the mathematical model. Network properties and adapter
+bindings are edited in the Property Editor.
 
 ## Add states and transitions
 
 1. In the Network tab, choose **Model > Create EFSM State** and enter a unique
-   state name. Repeat for each state.
-2. Select one state to create a self-loop, or select two states to create a
-   directed relation. Choose **Model > Create EFSM Transition**, then select
-   the source and destination in the dialog. The same source/destination pair
-   can have parallel transitions; a transition name may be left empty.
-3. Move a state by dragging it. This changes its diagram position and updates
-   the drawn edges.
-4. Select a state and use **Model > Set Selected EFSM State as Initial** to
-   change the initial state.
-5. Select one state and choose **Model > Edit EFSM State...** to change its
-   name, entry action, exit action, or final-state flag. Select one transition
-   and choose **Model > Edit EFSM Transition...** to edit its name, guard,
-   output, input event, priority, trigger event, or probability expression.
-6. In a Network tab, the normal **Edit > Delete** action removes selected EFSM
-   items. Removing a state also removes its incident transitions. Undo/redo
-   applies to supported EFSM creation, deletion, movement, and property edits.
+   state name. Repeat for each state, or drag `FSMState` from the component tree
+   into the Network canvas.
+2. Select one state to create a self-loop, or select two states for a directed
+   transition. To select both, keep `Ctrl` pressed while selecting the second
+   state. Right-click a selected state and choose **Create EFSM Transition**.
+   For two states, choose the source and destination in the dialog and enter a
+   name. Parallel transitions between the same states are allowed.
+3. To edit a transition, right-click its drawn path and choose
+   **Edit EFSM Transition...**. The dialog edits its name, guard expression,
+   output expression, input event, priority, trigger event, and probability
+   expression.
+4. Drag a state to change its diagram position; connected transition paths
+   follow it. Select a state and choose **Model > Set Selected EFSM State as
+   Initial** to set the initial state. Use **Model > Edit EFSM State...** to
+   edit a state's name, entry action, exit action, or final-state flag.
+5. Use **Edit > Delete** to remove selected EFSM items. Removing a state also
+   removes its incident transitions. Supported creation, deletion, movement,
+   and property edits participate in undo/redo.
 
-The expression fields are stored by the domain APIs. This editor does not add
-a parse-only syntax check; the current expression parser can evaluate an
-expression, so the GUI does not execute it merely to validate input.
-
-## Edit adapter bindings
-
-Return to the process-model tab, select the `ModalModelDefault`, and choose
-**Model > Edit EFSM Bindings...** to edit the Network's supported input and
-output bindings. The binding dialog is available only when an EFSM Network is
-attached.
+The transition dialog stores expressions through the domain API. The GUI does
+not parse or execute an expression merely to validate it.
 
 ## Save and reopen
 
-Save the model using the graphical `.gui` format to keep both the mathematical
-model and its diagram layout. The `.gen` data remains authoritative for the
-Network, states, transitions, and their properties; `.gui` stores graphical
-positions and edge presentation. Reopen the `.gui` file and use **Open EFSM
-Network** again to restore the diagram. Older `.gui` files without EFSM layout
-data remain loadable; the editor assigns deterministic positions when saved
-positions are unavailable.
+Save the model in `.gen` format for its mathematical objects and use `.gui` to
+retain diagram layout. Reopen the `.gui` file and use **Open Network** to reopen
+the EFSM diagram. Older `.gui` files without EFSM layout data remain loadable;
+the editor assigns deterministic positions when saved positions are absent.
 
-## Current scope
+## Scope
 
-The integrated editor provides a diagram editor for EFSM Networks. It does not provide a
-separate EFSM execution animation or a new runtime. Simulation semantics remain
-in the existing GenESyS kernel. The guide records the tested menu and dialog
-workflow; it does not claim that every possible expression is syntactically or
-semantically validated by the GUI.
+The editor presents EFSM states and transitions and highlights state and
+transition information exposed by actual Network execution. It does not add a
+separate simulation runtime or infer mathematical events from diagram drawing.

@@ -9,7 +9,6 @@
 #include <QMetaObject>
 #include <Qt>
 
-#include "DataComponentProperty.h"
 #include "ComboBoxEnum.h"
 
 DataComponentEditor::DataComponentEditor(
@@ -156,8 +155,7 @@ void DataComponentEditor::editProperty(SimulationControl* property) {
     for (auto prop : *nestedProperties->list()) {
         if (index == selectedRow) {
             if (prop->getIsList()) {
-                auto* newList = new DataComponentProperty(_editor, prop, true, _afterChange);
-                newList->open_window();
+                return;
             } else if (prop->getIsEnum()) {
                 auto* box = new ComboBoxEnum(_editor, prop, _afterChange);
                 box->open_box();
@@ -198,8 +196,7 @@ void DataComponentEditor::editProperty(List<SimulationControl*>* properties) {
     for (auto prop : *properties->list()) {
         if (index == selectedRow) {
             if (prop->getIsList()) {
-                auto* newList = new DataComponentProperty(_editor, prop, true, _afterChange);
-                newList->open_window();
+                return;
             } else if (prop->getIsEnum()) {
                 auto* box = new ComboBoxEnum(_editor, prop, _afterChange);
                 box->open_box();

@@ -115,7 +115,7 @@ int countDifferentPixels(const QImage& left, const QImage& right) {
 } // namespace
 
 TEST(GuiRenderStrategy, SelectsStrategyFromInterfaceStylePreference) {
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     EXPECT_STREQ("classic", GraphicalModelItemRenderer::currentStrategy().name());
 
     SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Modern);
@@ -126,7 +126,7 @@ TEST(GuiRenderStrategy, ClassicAndOrganicStrategiesHaveDifferentHitShapes) {
     const auto dataContext = baseContext(GraphicalModelItemRenderContext::ItemKind::DataDefinition);
     const auto componentContext = baseContext(GraphicalModelItemRenderContext::ItemKind::Component);
 
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     const QPainterPath classicDataShape = GraphicalModelItemRenderer::shape(dataContext);
     const QPainterPath classicComponentShape = GraphicalModelItemRenderer::shape(componentContext);
 
@@ -146,7 +146,7 @@ TEST(GuiRenderStrategy, ClassicAndOrganicStrategiesHaveDifferentHitShapes) {
 TEST(GuiRenderStrategy, OrganicRenderingIsNonBlankAndVisiblyDifferentFromClassic) {
     const auto context = baseContext(GraphicalModelItemRenderContext::ItemKind::Component);
 
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     const QImage classicImage = render(context);
 
     SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Modern);
@@ -161,7 +161,7 @@ TEST(GuiRenderStrategy, GeneticCircuitPartUsesSpecializedGlyphInClassicAndOrgani
     const auto genericContext = baseContext(GraphicalModelItemRenderContext::ItemKind::DataDefinition);
     const auto promoterContext = geneticPartContext(QStringLiteral("Promoter"));
 
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     const QPainterPath genericClassicShape = GraphicalModelItemRenderer::shape(genericContext);
     const QPainterPath promoterClassicShape = GraphicalModelItemRenderer::shape(promoterContext);
     const QImage genericClassicImage = render(genericContext);
@@ -187,7 +187,7 @@ TEST(GuiRenderStrategy, GeneticRegulationUsesSpecializedGlyphInClassicAndOrganic
     const auto activationContext = geneticRegulationContext(QStringLiteral("Activation"));
     const auto repressionContext = geneticRegulationContext(QStringLiteral("Repression"));
 
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     const QPainterPath genericClassicShape = GraphicalModelItemRenderer::shape(genericContext);
     const QPainterPath activationClassicShape = GraphicalModelItemRenderer::shape(activationContext);
     const QPainterPath repressionClassicShape = GraphicalModelItemRenderer::shape(repressionContext);

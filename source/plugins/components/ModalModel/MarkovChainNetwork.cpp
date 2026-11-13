@@ -23,6 +23,10 @@ std::string doubleToPersistentString(double value) {
 	return stream.str();
 }
 
+std::string markovStateAssociationKey(const MarkovState* state) {
+	return "MarkovChainNetwork.State." + std::to_string(state != nullptr ? state->getId() : 0);
+}
+
 }
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -91,6 +95,7 @@ ModelDataDefinition* MarkovChainNetwork::NewInstance(Model* model, std::string n
 PluginInformation* MarkovChainNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<MarkovChainNetwork>(), &MarkovChainNetwork::LoadInstance, &MarkovChainNetwork::NewInstance);
 	info->setCategory("ModalModel");
+	info->setDataDefinitionBaseTypeName(Util::TypeOf<DefaultNetwork>());
 	info->setDescriptionHelp("Finite time-homogeneous DTMC network. One activation samples exactly one transition from the current state.");
 	return info;
 }
@@ -108,6 +113,7 @@ ModelDataDefinition* MarkovChainNetwork::LoadInstance(Model* model, PersistenceR
 void MarkovChainNetwork::addState(MarkovState* state) {
 	if (state != nullptr && _states->find(state) == _states->list()->end()) {
 		_states->insert(state);
+		_attachedDataInsert(markovStateAssociationKey(state), state);
 		// Keep programmatic creation consistent with the Network reload path.
 		state->setModelLevel(static_cast<unsigned int>(getId()));
 		if (_initialState == nullptr || state->isInitialNode()) {
@@ -121,6 +127,7 @@ void MarkovChainNetwork::removeState(MarkovState* state) {
 	if (state == nullptr) {
 		return;
 	}
+	_attachedDataRemove(markovStateAssociationKey(state));
 	for (auto it = _transitions->list()->begin(); it != _transitions->list()->end();) {
 		MarkovTransition* transition = *it;
 		if (transition != nullptr && (transition->getSource() == state || transition->getDestination() == state)) {
@@ -150,11 +157,32 @@ void MarkovChainNetwork::addTransition(MarkovTransition* transition) {
 }
 
 void MarkovChainNetwork::removeTransition(MarkovTransition* transition) {
-	if (transition == nullptr) {
-		return;
-	}
-	_transitions->remove(transition);
-	delete transition;
+	(void)detachTransition(transition);
+}
+
+std::unique_ptr<MarkovChainNetwork::MarkovTransition> MarkovChainNetwork::detachTransition(
+	MarkovTransition* transition, unsigned int* ordinal) {
+	if (transition == nullptr || _transitions == nullptr) return {};
+	auto* entries = _transitions->list();
+	auto it = std::find(entries->begin(), entries->end(), transition);
+	if (it == entries->end()) return {};
+	if (_lastTransition == transition) _lastTransition = nullptr;
+	if (ordinal != nullptr) *ordinal = static_cast<unsigned int>(std::distance(entries->begin(), it));
+	entries->erase(it);
+	return std::unique_ptr<MarkovTransition>(transition);
+}
+
+bool MarkovChainNetwork::restoreTransition(MarkovTransition* transition, unsigned int ordinal) {
+	if (transition == nullptr || _transitions == nullptr
+		|| _transitions->find(transition) != _transitions->list()->end()) return false;
+	if (transition->getSource() == nullptr || transition->getDestination() == nullptr
+		|| _states->find(transition->getSource()) == _states->list()->end()
+		|| _states->find(transition->getDestination()) == _states->list()->end()) return false;
+	auto* entries = _transitions->list();
+	auto it = entries->begin();
+	std::advance(it, std::min<std::size_t>(ordinal, entries->size()));
+	entries->insert(it, transition);
+	return true;
 }
 
 List<MarkovChainNetwork::MarkovTransition*>* MarkovChainNetwork::getTransitions() const {
@@ -172,12 +200,12 @@ std::vector<MarkovChainNetwork::MarkovTransition*> MarkovChainNetwork::getOutgoi
 }
 
 void MarkovChainNetwork::setInitialState(MarkovState* state) {
+	if (state != nullptr) addState(state);
+	for (MarkovState* candidate : *_states->list()) {
+		if (candidate != nullptr) candidate->setInitialNode(candidate == state);
+	}
 	_initialState = state;
 	_currentState = state;
-	if (state != nullptr) {
-		state->setInitialNode(true);
-		addState(state);
-	}
 }
 
 MarkovState* MarkovChainNetwork::getInitialState() const {
@@ -193,6 +221,10 @@ void MarkovChainNetwork::setCurrentState(MarkovState* state) {
 
 MarkovState* MarkovChainNetwork::getCurrentState() const {
 	return _currentState;
+}
+
+MarkovChainNetwork::MarkovTransition* MarkovChainNetwork::getLastTransition() const {
+	return _lastTransition;
 }
 
 unsigned int MarkovChainNetwork::getStateIndex(MarkovState* state) const {
@@ -415,11 +447,13 @@ bool MarkovChainNetwork::_check(std::string& errorMessage) {
 void MarkovChainNetwork::_initBetweenReplications() {
 	DefaultNetwork::_initBetweenReplications();
 	_currentState = _resolveInitialState();
+	_lastTransition = nullptr;
 	resetSampler();
 }
 
 NetworkActivationResult MarkovChainNetwork::_activate(const NetworkActivationFrame& frame) {
 	(void)frame;
+	_lastTransition = nullptr;
 	NetworkActivationResult result(getNumOutputPorts());
 	if (_currentState == nullptr) {
 		_currentState = _resolveInitialState();
@@ -438,6 +472,7 @@ NetworkActivationResult MarkovChainNetwork::_activate(const NetworkActivationFra
 	if (selectedTransition == nullptr || selectedTransition->getDestination() == nullptr) {
 		return result;
 	}
+	_lastTransition = selectedTransition;
 	_currentState = selectedTransition->getDestination();
 	if (getNumOutputPorts() > 0) {
 		const unsigned int stateIndex = getStateIndex(_currentState);
@@ -452,6 +487,7 @@ void MarkovChainNetwork::_destroyOwnedTransitions() {
 	if (_transitions == nullptr) {
 		return;
 	}
+	_lastTransition = nullptr;
 	for (MarkovTransition* transition : *_transitions->list()) {
 		delete transition;
 	}

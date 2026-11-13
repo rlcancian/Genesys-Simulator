@@ -15,6 +15,7 @@
 #include "controllers/SimulationEventController.h"
 // Include the Phase 5 controller used by plugin-catalog compatibility wrappers.
 #include "controllers/PluginCatalogController.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 
 
 //-------------------------
@@ -64,6 +65,9 @@ void MainWindow::_onReplicationStartHandler(SimulationEvent * re) {
     // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
     if (_simulationEventController != nullptr) {
         _simulationEventController->onReplicationStartHandler(re);
+    }
+    if (myScene() != nullptr) {
+        GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(myScene()->getSimulator(), myScene());
     }
 }
 

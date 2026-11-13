@@ -1,4 +1,5 @@
 #include "PersistenceDefaultImpl2.h"
+#include "ConnectionPersistence.h"
 
 #include <cassert>
 #include <cstdio>
@@ -302,9 +303,16 @@ bool PersistenceDefaultImpl2::load(std::string filename) {
 			}
 			// then set up its connections
 			unsigned short nextSize = fields->loadField("nexts", 1);
-			for (unsigned short i = 0; i < nextSize; i++) {
+			const auto outputPorts = nextSize == 0 ? std::vector<unsigned int>{} : connectionOutputPorts(*fields);
+			if (outputPorts.size() != nextSize) {
+				_model->getTracer()->traceError("Unable to restore connections: source component id="
+					+ std::to_string(id) + ", connection count does not match saved ports");
+				ok = false;
+				break;
+			}
+			for (unsigned int outputPort : outputPorts) {
 				// target id
-				Util::identification nextId = fields->loadField("nextId" + Util::StrIndex(i), 0);
+				Util::identification nextId = fields->loadField("nextId" + Util::StrIndex(outputPort), 0);
 				if (nextSize == 1) nextId = fields->loadField("nextId", static_cast<unsigned int> (nextId));
 				// id -> component
 				ModelComponent* nextComponent = cm->find(nextId);
@@ -316,10 +324,10 @@ bool PersistenceDefaultImpl2::load(std::string filename) {
 					break;
 				}
 				// target port
-				unsigned short nextPort = fields->loadField("nextinputPortNumber" + Util::StrIndex(i), 0);
+				unsigned short nextPort = fields->loadField("nextinputPortNumber" + Util::StrIndex(outputPort), 0);
 				// connect
-				component->getConnectionManager()->insert(nextComponent, nextPort);
-				_model->getTracer()->trace(component->getName() + "<" + std::to_string(i) + ">" + " --> " + nextComponent->getName() + "<" + std::to_string(nextPort) + ">");
+				component->getConnectionManager()->insertAtPort(outputPort, new Connection{nextComponent, {nextPort, ""}});
+				_model->getTracer()->trace(component->getName() + "<" + std::to_string(outputPort) + ">" + " --> " + nextComponent->getName() + "<" + std::to_string(nextPort) + ">");
 			}
 		}
 		Util::DecIndent();

@@ -2,6 +2,10 @@
 
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/model/ModelDataManager.h"
+#include "kernel/simulator/TraceManager.h"
+#include "kernel/util/Util.h"
 
 #include <utility>
 
@@ -20,9 +24,13 @@ EFSMStatePropertiesUndoCommand::Properties EFSMStatePropertiesUndoCommand::_read
     Properties properties;
     if (state != nullptr) {
         properties.name = state->getName();
+        properties.label = state->getLabel();
         properties.entryActionExpression = state->getEntryActionExpression();
         properties.exitActionExpression = state->getExitActionExpression();
+        properties.traceLevel = static_cast<std::uint32_t>(state->getTraceLevelSpecific());
+        properties.reportStatistics = state->isReportStatistics();
         properties.finalNode = state->isFinalNode();
+        properties.initialNode = state->isInitialNode();
     }
     return properties;
 }
@@ -32,10 +40,29 @@ bool EFSMStatePropertiesUndoCommand::_apply(const Properties& properties) {
         || _network->getStates()->find(_state) == _network->getStates()->list()->end()) {
         return false;
     }
+    const std::string normalizedName = Util::StrReplace(properties.name, " ", "_");
+    Model* model = _state->getParentModel();
+    ModelDataManager* dataManager = model != nullptr ? model->getDataManager() : nullptr;
+    ModelDataDefinition* nameConflict = dataManager != nullptr
+        ? dataManager->getDataDefinition(Util::TypeOf<FSMState>(), normalizedName) : nullptr;
+    if (normalizedName.empty() || (nameConflict != nullptr && nameConflict != _state)) {
+        return false;
+    }
     _state->setName(properties.name);
+    _state->setLabel(properties.label);
     _state->setEntryActionExpression(properties.entryActionExpression);
     _state->setExitActionExpression(properties.exitActionExpression);
+    _state->setTraceLevelSpecific(static_cast<TraceManager::Level>(properties.traceLevel));
+    _state->setReportStatistics(properties.reportStatistics);
     _state->setFinalNode(properties.finalNode);
+    for (FSMState* state : *_network->getStates()->list()) {
+        if (state != nullptr) state->setInitialNode(state == _state && properties.initialNode);
+    }
+    if (properties.initialNode) {
+        _network->setInitialState(_state);
+    } else if (_network->getInitialState() == _state) {
+        _network->setInitialState(nullptr);
+    }
     return true;
 }
 

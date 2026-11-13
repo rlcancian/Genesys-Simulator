@@ -8,7 +8,6 @@
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"
 #include "../graphicals/GraphicalDiagramConnection.h"
-#include "../graphicals/EFSMTransitionGraphicsItem.h"
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -112,17 +111,15 @@ bool reactionAlreadyContainsModifier(BioReaction* reaction, const std::string& s
 GraphicalContextMenuController::GraphicalContextMenuController(ModelGraphicsView* graphicsView,
                                                                Ui::MainWindow* ui,
                                                                QAction* openSubmodelAction,
-                                                               QAction* createModalNetworkAction,
-                                                               QAction* selectModalNetworkAction,
                                                                std::function<ModelGraphicsScene*()> currentScene,
-                                                               std::function<void()> actualizeActions)
+                                                               std::function<void()> actualizeActions,
+                                                               ExtensionMenuPopulator populateExtensionMenu)
     : _graphicsView(graphicsView),
       _ui(ui),
       _openSubmodelAction(openSubmodelAction),
-      _createModalNetworkAction(createModalNetworkAction),
-      _selectModalNetworkAction(selectModalNetworkAction),
       _currentScene(std::move(currentScene)),
-      _actualizeActions(std::move(actualizeActions)) {
+      _actualizeActions(std::move(actualizeActions)),
+      _populateExtensionMenu(std::move(populateExtensionMenu)) {
 }
 
 void GraphicalContextMenuController::handleGraphicsViewContextMenu(QContextMenuEvent* event) {
@@ -146,6 +143,7 @@ void GraphicalContextMenuController::handleGraphicsViewContextMenu(QContextMenuE
     } else {
         populateItemMenu(&menu, contextKind, clickedItem);
     }
+    if (_populateExtensionMenu) _populateExtensionMenu(&menu, clickedItem);
 
     if (!menu.actions().isEmpty()) {
         event->accept();
@@ -169,9 +167,6 @@ QGraphicsItem* GraphicalContextMenuController::semanticItemFor(QGraphicsItem* it
         if (dynamic_cast<GraphicalDiagramConnection*>(current) != nullptr) {
             return current;
         }
-        if (dynamic_cast<EFSMTransitionGraphicsItem*>(current) != nullptr) {
-            return current;
-        }
         if (dynamic_cast<QGraphicsItemGroup*>(current) != nullptr) {
             return current;
         }
@@ -181,7 +176,9 @@ QGraphicsItem* GraphicalContextMenuController::semanticItemFor(QGraphicsItem* it
         }
         current = current->parentItem();
     }
-    return nullptr;
+    // Unknown/formalism-owned graphics keep their own identity for extension
+    // context-menu contributions; the generic controller does not classify them.
+    return item;
 }
 
 void GraphicalContextMenuController::synchronizeSelectionForContext(QGraphicsItem* item) const {
@@ -279,10 +276,6 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
             menu->addAction(_ui->actionGModelComponentBreakpoint);
             if (_openSubmodelAction != nullptr) {
                 menu->addAction(_openSubmodelAction);
-            }
-            if (dynamic_cast<ModalModelDefault*>(modelDataDefinitionFor(clickedItem)) != nullptr) {
-                menu->addAction(_createModalNetworkAction);
-                menu->addAction(_selectModalNetworkAction);
             }
             menu->addSeparator();
             addShowMenu(menu);

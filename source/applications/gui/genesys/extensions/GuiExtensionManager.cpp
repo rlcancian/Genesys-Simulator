@@ -49,6 +49,7 @@ void GuiExtensionManager::setLoadedModelPluginIds(std::vector<std::string> model
 
 void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	clear();
+	_runtimeContext = context;
 	if (_mainWindow == nullptr) {
 		return;
 	}
@@ -73,6 +74,29 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	for (const GuiDockContribution& dock : registry.docks()) {
 		_applyDockContribution(dock, context);
 	}
+	_contextMenuContributions = registry.contextMenus();
+}
+
+void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) const {
+	if (menu == nullptr) return;
+	for (const GuiContextMenuContribution& contribution : _contextMenuContributions) {
+		if (!contribution.populate) continue;
+		if (contribution.isVisible && !contribution.isVisible(_runtimeContext, item)) continue;
+		contribution.populate(menu, _runtimeContext, item);
+	}
+}
+
+void GuiExtensionManager::refreshActionStates(const GuiExtensionRuntimeContext& context) {
+	_runtimeContext = context;
+	for (const auto& entry : _actionContributions) {
+		QAction* action = entry.first;
+		const GuiActionContribution& contribution = entry.second;
+		if (action == nullptr) continue;
+		const bool visible = !contribution.isVisible || contribution.isVisible(_runtimeContext);
+		action->setVisible(visible);
+		if (contribution.isEnabled) action->setEnabled(visible && contribution.isEnabled(_runtimeContext));
+		else action->setEnabled(visible);
+	}
 }
 
 void GuiExtensionManager::clear() {
@@ -80,6 +104,7 @@ void GuiExtensionManager::clear() {
 		delete action;
 	}
 	_createdActions.clear();
+	_actionContributions.clear();
 
 	for (QDockWidget* dock : _createdDocks) {
 		delete dock;
@@ -90,6 +115,8 @@ void GuiExtensionManager::clear() {
 		delete *it;
 	}
 	_createdMenuActions.clear();
+	_contextMenuContributions.clear();
+	_runtimeContext = GuiExtensionRuntimeContext{};
 }
 
 bool GuiExtensionManager::_isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const {
@@ -206,9 +233,6 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	if (_mainWindow == nullptr) {
 		return;
 	}
-	if (contribution.isVisible && !contribution.isVisible(context)) {
-		return;
-	}
 	if (!contribution.trigger) {
 		return;
 	}
@@ -226,8 +250,10 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	if (contribution.isEnabled) {
 		action->setEnabled(contribution.isEnabled(context));
 	}
-	QObject::connect(action, &QAction::triggered, _mainWindow, [contribution, context](bool) {
-		contribution.trigger(context);
+	QObject::connect(action, &QAction::triggered, _mainWindow, [this, contribution](bool) {
+		if (contribution.isVisible && !contribution.isVisible(_runtimeContext)) return;
+		if (contribution.isEnabled && !contribution.isEnabled(_runtimeContext)) return;
+		contribution.trigger(_runtimeContext);
 	});
 
 	if (QMenu* menu = _resolveMenuPath(contribution.menuPath)) {
@@ -238,6 +264,8 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	}
 
 	_createdActions.push_back(action);
+	_actionContributions.emplace_back(action, contribution);
+	action->setVisible(!contribution.isVisible || contribution.isVisible(context));
 }
 
 void GuiExtensionManager::_applyWindowContribution(const GuiWindowContribution& contribution, const GuiExtensionRuntimeContext& context) {

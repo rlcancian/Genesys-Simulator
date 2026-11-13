@@ -110,6 +110,57 @@ TEST(MarkovChainNetworkTest, ProgrammaticStatesBelongToNetworkEditingLevel) {
 	EXPECT_EQ(network.getStates()->size(), 2u);
 }
 
+TEST(MarkovChainNetworkTest, SettingInitialStateKeepsExactlyOneNodeMarked) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	MarkovChainNetwork network(model, "UniqueInitial");
+	MarkovState first(model, "First");
+	MarkovState second(model, "Second");
+	network.addState(&first);
+	network.addState(&second);
+	network.setInitialState(&first);
+	ASSERT_TRUE(first.isInitialNode());
+	network.setInitialState(&second);
+	EXPECT_FALSE(first.isInitialNode());
+	EXPECT_TRUE(second.isInitialNode());
+	EXPECT_EQ(network.getInitialState(), &second);
+}
+
+TEST(MarkovChainNetworkTest, TransitionDetachAndRestorePreserveOwnershipAndOrdinal) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	MarkovChainNetwork network(model, "UndoableChain");
+	MarkovState a(model, "A");
+	MarkovState b(model, "B");
+	MarkovState c(model, "C");
+	network.addState(&a);
+	network.addState(&b);
+	network.addState(&c);
+	auto* first = transition(&a, &b, 0.3, "first");
+	auto* middle = transition(&a, &a, 0.4, "middle");
+	auto* last = transition(&a, &c, 0.3, "last");
+	network.addTransition(first);
+	network.addTransition(middle);
+	network.addTransition(last);
+
+	unsigned int ordinal = 99;
+	auto detached = network.detachTransition(middle, &ordinal);
+	ASSERT_TRUE(detached);
+	EXPECT_EQ(ordinal, 1u);
+	ASSERT_EQ(network.getTransitions()->size(), 2u);
+	EXPECT_EQ(network.getTransitions()->list()->front(), first);
+	EXPECT_EQ(network.getTransitions()->list()->back(), last);
+	ASSERT_TRUE(network.restoreTransition(detached.get(), ordinal));
+	detached.release();
+	ASSERT_EQ(network.getTransitions()->size(), 3u);
+	auto it = network.getTransitions()->list()->begin();
+	EXPECT_EQ(*it++, first);
+	EXPECT_EQ(*it++, middle);
+	EXPECT_EQ(*it, last);
+}
+
 TEST(MarkovChainNetworkTest, ConstructionCreatesStepAndStatePorts) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -177,12 +228,15 @@ TEST(MarkovChainNetworkTest, ActivationPerformsExactlyOneDeterministicStepAndPub
 	NetworkActivationResult first = network.activate(NetworkActivationFrame(network.getNumInputPorts()));
 	ASSERT_TRUE(first.isPresent(0));
 	EXPECT_EQ(network.getCurrentState(), &b);
+	ASSERT_NE(network.getLastTransition(), nullptr);
+	EXPECT_EQ(network.getLastTransition()->getName(), "AB");
 	EXPECT_DOUBLE_EQ(first.getValue(0), 1.0);
 	EXPECT_DOUBLE_EQ(network.getActivationCount(), 1.0);
 
 	NetworkActivationResult second = network.activate(NetworkActivationFrame(network.getNumInputPorts()));
 	ASSERT_TRUE(second.isPresent(0));
 	EXPECT_EQ(network.getCurrentState(), &c);
+	EXPECT_EQ(network.getLastTransition()->getName(), "BC");
 	EXPECT_DOUBLE_EQ(second.getValue(0), 2.0);
 	EXPECT_DOUBLE_EQ(network.getActivationCount(), 2.0);
 }
@@ -425,6 +479,7 @@ TEST(MarkovChainNetworkTest, ModelFileRoundTripPreservesStatesProbabilitiesIdent
 
 	Model* loadedModel = simulator.getModelManager()->newModel();
 	ASSERT_TRUE(loadedModel->load(filename));
+	(void)loadedModel->check();
 
 	MarkovChainNetwork* loadedNetwork = dynamic_cast<MarkovChainNetwork*>(
 		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovChainNetwork>(), "FileChain"));

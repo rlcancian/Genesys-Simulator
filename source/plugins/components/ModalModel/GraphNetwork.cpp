@@ -9,10 +9,17 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <queue>
 #include <set>
+
+namespace {
+std::string graphAssociationKey(const char* kind, const ModelDataDefinition* definition) {
+	return std::string("GraphNetwork.") + kind + "." + std::to_string(definition != nullptr ? definition->getId() : 0);
+}
+}
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
@@ -64,6 +71,7 @@ ModelDataDefinition* GraphNetwork::NewInstance(Model* model, std::string name) {
 PluginInformation* GraphNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GraphNetwork>(), &GraphNetwork::LoadInstance, &GraphNetwork::NewInstance);
 	info->setCategory("ModalModel");
+	info->setDataDefinitionBaseTypeName(Util::TypeOf<DefaultNetwork>());
 	info->setDescriptionHelp("Undirected mathematical graph network with topology and graph algorithms; not a process Connection network.");
 	return info;
 }
@@ -87,6 +95,7 @@ bool GraphNetwork::addNode(GraphNode* node) {
 		return false;
 	}
 	_nodes.push_back(node);
+	_attachedDataInsert(graphAssociationKey("Node", node), node);
 	node->setModelLevel(static_cast<unsigned int>(getId()));
 	return true;
 }
@@ -97,6 +106,7 @@ bool GraphNetwork::removeNode(GraphNode* node) {
 		return false;
 	}
 	_removeIncidentEdges(node);
+	_attachedDataRemove(graphAssociationKey("Node", node));
 	_nodes.erase(it);
 	return true;
 }
@@ -130,6 +140,7 @@ bool GraphNetwork::addEdge(GraphEdge* edge) {
 	}
 	edge->setDirected(isDirected());
 	_edges.push_back(edge);
+	_attachedDataInsert(graphAssociationKey("Edge", edge), edge);
 	edge->setModelLevel(static_cast<unsigned int>(getId()));
 	return true;
 }
@@ -140,6 +151,21 @@ bool GraphNetwork::removeEdge(GraphEdge* edge) {
 		return false;
 	}
 	_edges.erase(it);
+	_attachedDataRemove(graphAssociationKey("Edge", edge));
+	return true;
+}
+
+bool GraphNetwork::restoreEdge(GraphEdge* edge, unsigned int ordinal) {
+	if (edge == nullptr || containsEdge(edge) || edge->getSource() == nullptr || edge->getDestination() == nullptr
+		|| !containsNode(edge->getSource()) || !containsNode(edge->getDestination())) {
+		return false;
+	}
+	edge->setDirected(isDirected());
+	auto it = _edges.begin();
+	std::advance(it, std::min<std::size_t>(ordinal, _edges.size()));
+	_edges.insert(it, edge);
+	_attachedDataInsert(graphAssociationKey("Edge", edge), edge);
+	edge->setModelLevel(static_cast<unsigned int>(getId()));
 	return true;
 }
 
@@ -610,9 +636,15 @@ GraphNode* GraphNetwork::_oppositeNode(GraphEdge* edge, GraphNode* node) const {
 }
 
 void GraphNetwork::_removeIncidentEdges(GraphNode* node) {
-	_edges.erase(std::remove_if(_edges.begin(), _edges.end(), [node](GraphEdge* edge) {
-		return edge != nullptr && (edge->getSource() == node || edge->getDestination() == node);
-	}), _edges.end());
+	for (auto it = _edges.begin(); it != _edges.end();) {
+		GraphEdge* edge = *it;
+		if (edge != nullptr && (edge->getSource() == node || edge->getDestination() == node)) {
+			_attachedDataRemove(graphAssociationKey("Edge", edge));
+			it = _edges.erase(it);
+		} else {
+			++it;
+		}
+	}
 }
 
 bool GraphNetwork::_hasNegativeWeight(std::string& errorMessage) const {

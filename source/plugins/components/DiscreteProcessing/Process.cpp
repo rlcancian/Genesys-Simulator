@@ -14,6 +14,7 @@
 #include "plugins/components/DiscreteProcessing/Process.h"
 
 #include <memory>
+#include <iterator>
 
 #include "kernel/simulator/Simulator.h"
 
@@ -60,6 +61,7 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 									Util::TypeOf<Process>(), getName(), "SeizeRequests", "", true, true, false,
                                     [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); },
                                     [](Model* model) { return new SeizableItem(model, "", "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });					
+	propSeizeRequests->setListMoveHandler([this](int from, int to) { _moveSeizeRequest(from, to); });
 
 	_parentModel->getControls()->insert(propPriority);
 	_parentModel->getControls()->insert(propPriorityExpression);
@@ -109,6 +111,42 @@ Util::AllocationType Process::getAllocationType() const {
 
 List<SeizableItem*>* Process::getSeizeRequests() const {
 	return _seize->getSeizeRequests();
+}
+
+void Process::_moveSeizeRequest(int from, int to) {
+	auto* seizeItems = _seize->getSeizeRequests()->list();
+	auto* releaseItems = _release->getReleaseRequests()->list();
+	bool needsReconciliation = seizeItems->size() != releaseItems->size();
+	if (!needsReconciliation) {
+		auto releaseItem = releaseItems->begin();
+		for (SeizableItem* seizeItem : *seizeItems) {
+			SeizableItem* paired = *releaseItem++;
+			if (seizeItem == nullptr || paired == nullptr || seizeItem->getSeizableType() != paired->getSeizableType()
+				|| seizeItem->getName() != paired->getName() || seizeItem->getSeizable() != paired->getSeizable()
+				|| seizeItem->getQuantityExpression() != paired->getQuantityExpression()
+				|| seizeItem->getIndex() != paired->getIndex() || seizeItem->getSaveAttribute() != paired->getSaveAttribute()
+				|| seizeItem->getSaveAttribute().empty() || paired->getSelectionRule() != SeizableItem::SelectionRule::SPECIFICMEMBER
+				|| seizeItem->getLastMemberSeized() != paired->getLastMemberSeized()
+				|| seizeItem->getLastPreferedOrder() != paired->getLastPreferedOrder()) {
+				needsReconciliation = true;
+				break;
+			}
+		}
+	}
+	if (needsReconciliation) _reconcileInternalComponents();
+	if (from < 0 || to < 0 || static_cast<std::size_t>(from) >= seizeItems->size()
+		|| static_cast<std::size_t>(to) >= seizeItems->size() || seizeItems->size() != releaseItems->size()) {
+		throw std::out_of_range("process request index");
+	}
+	if (from == to) return;
+	for (auto* items : {seizeItems, releaseItems}) {
+		auto source = std::next(items->begin(), from);
+		auto destination = std::next(items->begin(), to);
+		if (from < to) ++destination;
+		items->splice(destination, *items, source);
+	}
+	ModelDataDefinition::CreateInternalData(_seize);
+	ModelDataDefinition::CreateInternalData(_release);
 }
 
 void Process::addSeizeRequest(SeizableItem* newRequest) {

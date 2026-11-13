@@ -95,6 +95,7 @@ public:
 
 	virtual bool addEdge(GraphEdge* edge);
 	virtual bool removeEdge(GraphEdge* edge);
+	bool restoreEdge(GraphEdge* edge, unsigned int ordinal);
 	bool containsEdge(GraphEdge* edge) const;
 	GraphEdge* findEdgeByName(const std::string& name) const;
 	std::vector<GraphEdge*> getEdges() const;

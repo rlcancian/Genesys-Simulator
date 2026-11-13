@@ -216,6 +216,14 @@ void AnimationTransition::setRunning(bool running) {
     _running = running;
 }
 
+bool AnimationTransition::isPaused() {
+    return _pause;
+}
+
+bool AnimationTransition::isRunning() {
+    return _running;
+}
+
 // Outros
 void AnimationTransition::startAnimation() {
     // Log start request with transition correlation keys and runtime invariants.

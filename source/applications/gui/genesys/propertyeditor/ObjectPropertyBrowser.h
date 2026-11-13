@@ -24,7 +24,8 @@
 #include "qtpropertybrowser/qtpropertymanager.h"
 #include "qtpropertybrowser/qteditorfactory.h"
 
-#include "DataComponentProperty.h"
+class DataComponentProperty;
+class ModelGraphicsScene;
 #include "DataComponentEditor.h"
 #include "ComboBoxEnum.h"
 
@@ -53,7 +54,9 @@ public:
 
     void clearCurrentlyConnectedObject();
     void setModelChangedCallback(ModelChangedCallback callback);
+    void setModelScene(ModelGraphicsScene* scene);
     bool isCommitPipelineBusy() const;
+    void refreshAfterUndo();
 
 private:
     enum class ActiveMode {
@@ -76,7 +79,9 @@ private:
         bool isObjectSelector = false;
         bool isModelObjectAction = false;
         bool isObjectListAction = false;
+        bool isListItemAction = false;
         bool isMultilineTextAction = false;
+        int listElementIndex = -1;
         QGraphicsItem* graphicsItem = nullptr;
         bool graphicsRequiresCommit = false;
         std::function<void(const QVariant&)> graphicsVariantSetter;
@@ -94,7 +99,9 @@ private:
         enum class Kind {
             None,
             CreateNew,
-            SetCurrentType
+            SetCurrentType,
+            MoveUp,
+            MoveDown
         };
 
         Kind kind = Kind::None;
@@ -149,6 +156,8 @@ private:
     bool _isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const;
     void _materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition = nullptr) const;
     bool _createNewListElementForProperty(QtProperty* property, const std::string& typeName = "");
+    bool _moveListItem(QtProperty* property, int destination);
+    void _applyPositionalListChange();
     bool _setCurrentListElementTypeForProperty(QtProperty* property, const std::string& typeName);
     bool _createModelObjectForProperty(QtProperty* property, const std::string& typeName = "");
     bool _setModelObjectReferenceForProperty(QtProperty* property, const QString& objectName);
@@ -222,6 +231,7 @@ private:
 private:
     // Track the selected graphical object safely in case Qt destroys it during callbacks.
     QPointer<QObject> _graphicalObject = nullptr;
+    QPointer<ModelGraphicsScene> _modelScene = nullptr;
     QGraphicsItem* _graphicalItem = nullptr;
     ModelDataDefinition* _modelObject = nullptr;
     ActiveMode _activeMode = ActiveMode::None;
@@ -246,6 +256,8 @@ private:
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
     QMap<QtProperty*, std::vector<ObjectListAction>> _objectListActions;
+    SimulationControl* _pendingListSelection = nullptr;
+    int _pendingListSelectionIndex = -1;
     QMap<QtProperty*, std::vector<ModelObjectAction>> _modelObjectActions;
     ModelChangedCallback _modelChangedCallback;
 

@@ -106,7 +106,7 @@ void DialogSystemPreferences::savePreferencesFromUi() {
                                           : SystemPreferences::VisualTheme::Light);
     SystemPreferences::setInterfaceStyle(ui->comboBoxInterfaceStyle->currentIndex() == 1
                                              ? SystemPreferences::InterfaceStyle::Modern
-                                             : SystemPreferences::InterfaceStyle::Classic);
+                                             : SystemPreferences::InterfaceStyle::Arena);
     SystemPreferences::setApplicationFontPointSize(ui->spinBoxFontPointSize->value());
     SystemPreferences::setDiagramUsesThemeColors(ui->checkBoxDiagramUsesThemeColors->isChecked());
     SystemPreferences::setRecentModelFilesLimit(static_cast<unsigned int>(ui->spinBoxRecentModelsLimit->value()));

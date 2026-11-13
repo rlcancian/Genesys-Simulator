@@ -320,15 +320,16 @@ Three GUI subsystems deserve separate mention because they are still coupled to 
 
 That boundary is deliberately conservative. The GUI still uses scene-selection callbacks, direct widget refreshes, and a few legacy slots, but the meaningful logic is already in controller classes where it can be tested and reasoned about more locally.
 
-\section{Hierarchical editing contexts for model data (development branch)}
+\section{Hierarchical editing contexts and Modal Networks}
 \label{sec:gui-hierarchical-editing-contexts}
 
-The GenESyS development branch
-\texttt{WiP20261029/modalmodel-architecture} adopts a shared submodel editor
-for process components and mathematical Networks. As of 2026-10-30, the branch
-contains an EFSM diagram projection and initial editing actions. This is an
-active implementation checkpoint, not a claim that the complete editor or its
-end-to-end workflow is ready for general use.
+The GUI uses a shared model-scene host for process submodels and mathematical
+Networks. A Network is opened in a tab in the existing main window, and multiple
+adapters that refer to the same Network reuse the same editing context. The
+generic host owns navigation, selection, scene lifecycle, and undo/redo. A
+registered GUI extension contributes formalism-specific palette restrictions,
+context actions, diagram projection, and graphical persistence. The extensions
+are statically registered in this implementation.
 
 The \texttt{ModelDataDefinition::getLevel()} value identifies an editing
 context rather than an ordinal depth. Level zero is the root context.
@@ -341,7 +342,7 @@ This level key is not a transfer of ownership and must not be interpreted
 as a process \texttt{Connection} or an instruction to dispatch entities.
 
 The \texttt{GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer()}
-implementation on this development branch discovers data definitions registered
+implementation discovers data definitions registered
 at a selected non-root level even when there are no process components
 or attached/internal process links in that level. Such direct context members
 remain visible independently of the process association visibility switches.
@@ -349,21 +350,40 @@ The root model's original association-driven data-definition behavior remains
 unchanged. Newly encountered data definitions without a graphical anchor receive
 a deterministic, collision-avoiding fallback position; existing positions are
 preserved. These behaviors are covered by focused, offscreen Qt6 Google Tests
-in \path{source/tests/unit/test_gui_submodel_level.cpp}; executable test results
-must be recorded for the final branch commit before integration.
+in \path{source/tests/unit/test_gui_submodel_level.cpp}; the final branch
+validation results are recorded in the implementation evidence below.
 
-The shared scene projects states using the existing data-definition graphics
-and formal transitions using non-owning directed path items, including
-parallel relations and self-loops. Initial and final states receive distinct
-visual styling. New states without saved positions use deterministic,
-collision-avoiding fallback placement. Moving a state refreshes its formal
-edges, and the existing move undo command refreshes them on undo and redo.
-The graphical EFSM persistence seam is now implemented by
+The Property Editor is the surface for associating, replacing, detaching, and
+editing a Network. The
+single contextual navigation action, \texttt{Open Network}, is enabled only
+for a valid reference. Navigation does not create or mutate a Network.
+
+The EFSM extension projects states with the existing data-definition graphics
+and transitions with non-owning directed path items, including parallel edges
+and self-loops. Selecting a state or transition and using its context menu
+provides creation or property editing; transitions remain domain
+\texttt{EFSMTransition} objects and are not process-flow connections. Initial,
+final, current, and last-fired indications derive from the actual EFSM model
+state. State movement updates transition geometry and remains undoable. The
+transition item is a visual projection of a mathematical relation, not the
+relation's owner.
+
+Graph, directed graph, and DAG contexts accept only their corresponding graph
+objects and enforce directed-edge and acyclic constraints at the editing
+boundary. Markov contexts edit states, probabilities, and initial state; their
+runtime projection highlights the state and transition sampled by the model.
+Colored Petri Net contexts edit places, transitions, and arcs; markings,
+guards, priorities, and inscriptions remain domain properties, and the
+projection highlights the transition and arcs involved in actual firing.
+Structural Graph analysis is not presented as simulated runtime activity.
+
+The graphical EFSM persistence seam is implemented by
 \texttt{EFSMNetworkDiagramCodec}, integrated into
-\texttt{GraphicalModelSerializer}. It writes a version-1
-\texttt{Graphical EFSM Network Diagrams} section in the existing \texttt{.gui}
-overlay. The section stores only presentation data: the Network identity,
-state IDs and positions, and optional transition control/label points.
+\texttt{GraphicalModelSerializer}. It writes a versioned
+\texttt{Graphical EFSM Network Diagrams} section in the \texttt{.gui} overlay.
+The section stores presentation data: Network identity, state IDs and
+positions, and optional transition control/label points. The mathematical
+Network, states, transitions, and their properties remain in the model data.
 
 Before saving, \texttt{MainWindow} captures positions from every open EFSM
 context belonging to the root model being saved. Closing a Network tab also
@@ -390,37 +410,21 @@ Network and state references used by orphan detection are non-owning
 object and a Network without an adapter remains subject to the existing orphan
 policy. Older \texttt{.gui} files without this section continue to load.
 
-The existing submodel-tab flow resolves a selected \texttt{ModalModelDefault}
-to its attached Network ID; adapters sharing one Network reuse the same tab
-context. With a ModalModelDefault selected, the shared menu action is labeled
-\texttt{Open EFSM Network}; other submodel owners retain the generic
-\texttt{Open Submodel} label. The Network tab title identifies both the root
-model and its domain, in the form
-\texttt{Model > EFSM Network: NetworkName}. A MainWindow regression verifies
-the adapter-specific action label and the resulting tab title for a shared
-Network. The Model menu exposes Network create/select, adapter binding edits,
-state/transition creation, state and transition property edits, and setting the
-initial state. State deletion also detaches incident transitions and supports
-undo/redo. Transition creation asks for source and destination explicitly,
-because graphics-scene selection order is not a direction contract. These
-actions call the mathematical domain APIs and do not create process
-\texttt{Connection}s for formal transitions. Global \texttt{Model::check()} is
-not run after each edit because an EFSM is often incomplete while it is being
-constructed; local object registration and membership are checked instead.
+Network association, replacement, and removal are performed in the Property
+Editor, which preserves shared Network objects and reconciles adapter ports
+and bindings. The extension registry keeps formalism-specific rules out of
+the generic scene host. Scene projection and layout codecs are selected by
+registered contributions, while unknown graphical records remain round-trip
+preserved. EFSM, Graph, Markov, and Colored Petri Net editors share the host
+but retain their own domain editing operations and runtime projections.
 
-Expression fields are stored through the existing domain API; this GUI slice
-does not provide a new expression parser or guarantee expression validity.
-Root-model teardown with an open Network tab, switching between root models,
-focused sanitizer runs and full unit/kernel/smoke baselines are covered by the
-current continuation evidence. An automated MainWindow test exercises the
-actual GUI actions for Network creation, state and transition creation,
-initial-state selection, transition-property editing, undo/redo, and file
-save/close/reopen. It confirms restoration of the EFSM layout and domain
-properties. Separate manual mouse/keyboard verification and final hosted CI
-remain pending.
-This is not yet a completed EFSM editor. See the approved plan
-\path{docs/ai_assistants/reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md}
-for acceptance gates and current limitations.
+Focused Qt tests cover context actions, editing and undo/redo, invalid drops,
+formalism constraints, diagram persistence, and runtime-backed animation
+projections. Full unit, kernel-unit, smoke, and Qt GUI builds are recorded in
+the implementation evidence at
+\path{docs/ai_assistants/history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md}.
+Build and test success do not by themselves establish scientific validity of
+mathematical expressions or every possible model.
 
 \section{Current limitations}
 \label{sec:gui-architecture-limitations}

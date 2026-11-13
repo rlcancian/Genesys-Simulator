@@ -1,6 +1,5 @@
 #include "GraphicalModelSerializer.h"
-#include "EFSMNetworkDiagramProjection.h"
-#include "EFSMNetworkDiagramCodec.h"
+#include "../extensions/GuiExtensionPluginCatalog.h"
 #include "GraphicalModelBuilder.h"
 
 #include "../TraitsGUI.h"
@@ -230,19 +229,28 @@ bool parsePersistedBool(const QString& text) {
 }
 
 bool containsPersistenceMarkers(const QString& text) {
-    return text.contains("# Genesys Simulation Model")
-           || text.contains("# Genesys Graphic Model")
-           || text.contains("# 0 Show")
-           || text.contains("# 0 GUI")
-           || text.contains("# Draws")
-           || text.contains("# Animations")
-           || text.contains("# Graphical Plugins")
-           || text.contains("# Graphical Model Data Definitions")
-           || text.contains("# Graphical Model Components")
-           || text.contains("# Graphical EFSM Network Diagrams")
-           || text.contains("# Groups")
-           || text.contains("# Model Data Definitions")
-           || text.contains("# Model Components");
+    if (text.contains("# Genesys Simulation Model")
+        || text.contains("# Genesys Graphic Model")
+        || text.contains("# 0 Show")
+        || text.contains("# 0 GUI")
+        || text.contains("# Draws")
+        || text.contains("# Animations")
+        || text.contains("# Graphical Plugins")
+        || text.contains("# Graphical Model Data Definitions")
+        || text.contains("# Graphical Model Components")
+        || text.contains("# Groups")
+        || text.contains("# Model Data Definitions")
+        || text.contains("# Model Components")) {
+        return true;
+    }
+    for (const GuiDiagramProjectionContribution& diagram
+         : GuiExtensionPluginCatalog::diagramProjectionContributions()) {
+        if (!diagram.sectionName.empty()
+            && text.contains(QStringLiteral("# ") + QString::fromStdString(diagram.sectionName))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 QString recoverFromUtf16Mojibake(const QString& mojibakeText) {
@@ -354,7 +362,8 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
                                                    std::function<void()> applyShowInternalElements,
                                                    std::function<void()> applyShowEditableElements,
                                                    std::function<void()> applyShowAttachedElements,
-                                                   std::shared_ptr<EFSMNetworkDiagramLayoutsByModel> efsmNetworkDiagramLayouts)
+                                                   std::shared_ptr<GuiDiagramLayoutsByModel> diagramLayoutsByModel,
+                                                   std::shared_ptr<GuiUnknownDiagramSectionsByModel> unknownDiagramSectionsByModel)
     : _simulator(simulator),
       _ownerWidget(ownerWidget),
       _modelTextEditor(modelTextEditor),
@@ -375,38 +384,38 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
       _applyShowInternalElements(std::move(applyShowInternalElements)),
       _applyShowEditableElements(std::move(applyShowEditableElements)),
       _applyShowAttachedElements(std::move(applyShowAttachedElements)),
-      _efsmNetworkDiagramLayouts(efsmNetworkDiagramLayouts != nullptr
-                                     ? std::move(efsmNetworkDiagramLayouts)
-                                     : std::make_shared<EFSMNetworkDiagramLayoutsByModel>()) {}
+      _diagramLayoutsByModel(diagramLayoutsByModel != nullptr
+                                 ? std::move(diagramLayoutsByModel)
+                                 : std::make_shared<GuiDiagramLayoutsByModel>()),
+      _unknownDiagramSectionsByModel(unknownDiagramSectionsByModel != nullptr
+                                         ? std::move(unknownDiagramSectionsByModel)
+                                         : std::make_shared<GuiUnknownDiagramSectionsByModel>()) {}
 
-/**
- * @brief Sets the GUI-only EFSM diagram layout to persist for the given network.
- */
-void GraphicalModelSerializer::setEFSMNetworkDiagramLayout(
-    Model* model, unsigned long networkId, const EFSMNetworkDiagramLayout& layout) {
-    if (model == nullptr) {
-        return;
-    }
-    auto& modelLayouts = (*_efsmNetworkDiagramLayouts)[model];
-    if (layout.isEmpty()) {
-        modelLayouts.remove(networkId);
-        if (modelLayouts.isEmpty()) {
-            _efsmNetworkDiagramLayouts->remove(model);
-        }
-        return;
-    }
-    modelLayouts.insert(networkId, layout);
+void GraphicalModelSerializer::setNetworkDiagramLayout(
+    Model* model, const std::string& extensionId, unsigned long networkId, std::any layout) {
+    if (model == nullptr || extensionId.empty()) return;
+    auto& layoutsByExtension = (*_diagramLayoutsByModel)[model];
+    auto& layouts = layoutsByExtension[extensionId];
+    if (!layout.has_value()) layouts.erase(networkId);
+    else layouts.insert_or_assign(networkId, std::move(layout));
+    if (layouts.empty()) layoutsByExtension.erase(extensionId);
+    if (layoutsByExtension.empty()) _diagramLayoutsByModel->erase(model);
 }
 
-/**
- * @brief Returns the EFSM diagram layout currently held for the given network.
- */
-EFSMNetworkDiagramLayout GraphicalModelSerializer::efsmNetworkDiagramLayout(Model* model, unsigned long networkId) const {
-    return _efsmNetworkDiagramLayouts->value(model).value(networkId);
+std::any GraphicalModelSerializer::networkDiagramLayout(
+    Model* model, const std::string& extensionId, unsigned long networkId) const {
+    if (model == nullptr) return {};
+    const auto modelIt = _diagramLayoutsByModel->find(model);
+    if (modelIt == _diagramLayoutsByModel->end()) return {};
+    const auto extensionIt = modelIt->second.find(extensionId);
+    if (extensionIt == modelIt->second.end()) return {};
+    const auto layoutIt = extensionIt->second.find(networkId);
+    return layoutIt != extensionIt->second.end() ? layoutIt->second : std::any{};
 }
 
-void GraphicalModelSerializer::forgetEFSMNetworkLayouts(Model* model) {
-    _efsmNetworkDiagramLayouts->remove(model);
+void GraphicalModelSerializer::forgetNetworkDiagramLayouts(Model* model) {
+    _diagramLayoutsByModel->erase(model);
+    _unknownDiagramSectionsByModel->erase(model);
 }
 
 /**
@@ -954,11 +963,42 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             }
             out << sectionFooterLine();
 
-            out << sectionHeaderLine(EFSMNetworkDiagramCodec::kSectionName);
             Model* currentModel = _simulator->getModelManager()->current();
-            EFSMNetworkDiagramCodec::writeSection(out, _simulator,
-                                                  _efsmNetworkDiagramLayouts->value(currentModel));
-            out << sectionFooterLine();
+            std::set<QString> emittedDiagramSections;
+            for (const GuiDiagramProjectionContribution& diagram
+                 : GuiExtensionPluginCatalog::diagramProjectionContributions()) {
+                if (diagram.sectionName.empty() || !diagram.serializeLayouts) continue;
+                const QString sectionName = QString::fromStdString(diagram.sectionName);
+                emittedDiagramSections.insert(sectionName);
+                GuiDiagramLayouts layouts;
+                const auto modelIt = _diagramLayoutsByModel->find(currentModel);
+                if (modelIt != _diagramLayoutsByModel->end()) {
+                    const auto extensionIt = modelIt->second.find(diagram.id);
+                    if (extensionIt != modelIt->second.end()) layouts = extensionIt->second;
+                }
+                const QStringList records = diagram.serializeLayouts(_simulator, layouts);
+                auto& unknownSections = (*_unknownDiagramSectionsByModel)[currentModel];
+                if (records.isEmpty()) unknownSections.erase(sectionName);
+                else unknownSections[sectionName] = records;
+                out << sectionHeaderLine(sectionName);
+                for (const QString& record : records) {
+                    out << record << Qt::endl;
+                }
+                out << sectionFooterLine();
+            }
+            const auto unknownModelIt = _unknownDiagramSectionsByModel->find(currentModel);
+            if (unknownModelIt != _unknownDiagramSectionsByModel->end()) {
+                for (const auto& [sectionName, records] : unknownModelIt->second) {
+                    if (emittedDiagramSections.find(sectionName) != emittedDiagramSections.end()) continue;
+                    out << sectionHeaderLine(sectionName);
+                    for (const QString& record : records) out << record << Qt::endl;
+                    out << sectionFooterLine();
+                }
+            }
+            if (_unknownDiagramSectionsByModel->contains(currentModel)
+                && _unknownDiagramSectionsByModel->at(currentModel).empty()) {
+                _unknownDiagramSectionsByModel->erase(currentModel);
+            }
 
         }
 
@@ -1024,7 +1064,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     if (extension.compare("gui", Qt::CaseInsensitive) != 0) {
         model = _simulator->getModelManager()->loadModel(file.fileName().toStdString());
         if (model != nullptr) {
-            _efsmNetworkDiagramLayouts->remove(model);
+            _diagramLayoutsByModel->erase(model);
+            _unknownDiagramSectionsByModel->erase(model);
             _rebuildGraphicalModelFromModel();
         }
         return model;
@@ -1045,7 +1086,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QStringList groups;
     QStringList dataDefinitions;
     QStringList components;
-    QStringList efsmNetworkDiagrams;
+    QHash<QString, QStringList> diagramSections;
+    GuiUnknownDiagramSections unknownDiagramSections;
 
     enum class GuiSection {
         Header,
@@ -1054,7 +1096,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         Plugins,
         DataDefinitions,
         Components,
-        EFSMNetworkDiagrams,
+        DiagramExtension,
+        UnknownDiagram,
         Groups,
         LegacyCounters,
         LegacyVariables,
@@ -1067,6 +1110,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
     bool guiBlockStarted = false;
     GuiSection activeSection = GuiSection::Header;
+    QString activeDiagramExtensionId;
+    QString activeDiagramSectionName;
+    QString activeUnknownDiagramSection;
+    const auto diagramContributions = GuiExtensionPluginCatalog::diagramProjectionContributions();
 
     for (const QString& line : lines) {
         const QString normalized = stripGuiCommentPrefix(line);
@@ -1109,12 +1156,30 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             activeSection = GuiSection::Components;
             continue;
         }
-        if (normalized.compare(EFSMNetworkDiagramCodec::kSectionName, Qt::CaseInsensitive) == 0) {
-            activeSection = GuiSection::EFSMNetworkDiagrams;
+        bool matchedDiagramSection = false;
+        for (const GuiDiagramProjectionContribution& diagram : diagramContributions) {
+            if (!diagram.sectionName.empty()
+                && normalized.compare(QString::fromStdString(diagram.sectionName), Qt::CaseInsensitive) == 0) {
+                activeSection = GuiSection::DiagramExtension;
+                activeDiagramExtensionId = QString::fromStdString(diagram.id);
+                activeDiagramSectionName = QString::fromStdString(diagram.sectionName);
+                matchedDiagramSection = true;
+                break;
+            }
+        }
+        if (matchedDiagramSection) {
             continue;
         }
         if (normalized.compare("Groups", Qt::CaseInsensitive) == 0) {
             activeSection = GuiSection::Groups;
+            continue;
+        }
+
+        // View-state directives are header records, not section comments. Keep
+        // them in the header collection so zoom and visibility flags restore.
+        if (activeSection == GuiSection::Header
+            && QRegularExpression("^0\\s+(GUI|Show|View)\\s+").match(normalized).hasMatch()) {
+            gui.append(normalized);
             continue;
         }
 
@@ -1144,6 +1209,13 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             continue;
         }
 
+        if (line.trimmed().startsWith('#') && !normalized.contains('\t')) {
+            activeSection = GuiSection::UnknownDiagram;
+            activeUnknownDiagramSection = normalized;
+            unknownDiagramSections[activeUnknownDiagramSection];
+            continue;
+        }
+
         switch (activeSection) {
             case GuiSection::Draws:
                 geometries.append(normalized);
@@ -1159,8 +1231,12 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             case GuiSection::Components:
                 components.append(normalized);
                 break;
-            case GuiSection::EFSMNetworkDiagrams:
-                efsmNetworkDiagrams.append(normalized);
+            case GuiSection::DiagramExtension:
+                diagramSections[activeDiagramExtensionId].append(normalized);
+                unknownDiagramSections[activeDiagramSectionName].append(line);
+                break;
+            case GuiSection::UnknownDiagram:
+                unknownDiagramSections[activeUnknownDiagramSection].append(line);
                 break;
             case GuiSection::Groups:
                 groups.append(normalized);
@@ -1528,11 +1604,18 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         // Persisted GMDD positions are restored immediately after this synchronization pass.
         GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, scene);
 
-        // Resolve and cache GUI-only EFSM diagram layouts against the just-loaded
-        // model. This never creates or mutates kernel objects; unresolved or
-        // malformed entries are dropped by EFSMNetworkDiagramCodec::parseSection().
-        _efsmNetworkDiagramLayouts->insert(
-            model, EFSMNetworkDiagramCodec::parseSection(efsmNetworkDiagrams, model));
+        auto& modelLayouts = (*_diagramLayoutsByModel)[model];
+        for (const GuiDiagramProjectionContribution& diagram
+             : GuiExtensionPluginCatalog::diagramProjectionContributions()) {
+            if (diagram.sectionName.empty() || !diagram.parseLayouts) continue;
+            const GuiDiagramLayouts layouts = diagram.parseLayouts(
+                model, diagramSections.value(QString::fromStdString(diagram.id)));
+            if (layouts.empty()) modelLayouts.erase(diagram.id);
+            else modelLayouts.insert_or_assign(diagram.id, layouts);
+        }
+        if (modelLayouts.empty()) _diagramLayoutsByModel->erase(model);
+        if (unknownDiagramSections.empty()) _unknownDiagramSectionsByModel->erase(model);
+        else _unknownDiagramSectionsByModel->insert_or_assign(model, std::move(unknownDiagramSections));
 
         if (!dataDefinitions.empty()) {
             // Parse persisted data definition layout metadata for id-based and fallback lookup.
@@ -2355,7 +2438,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         // Recompute diagram-arrow endpoints after all persisted positions and groups are restored.
         // Without this pass, arrows can remain anchored to pre-restore coordinates.
         scene->actualizeDiagramArrows();
-        EFSMNetworkDiagramProjection::synchronize(_simulator, scene);
+        GuiExtensionPluginCatalog::synchronizeDiagramProjections(_simulator, scene);
 
         if (hasPersistedViewState) {
             QPointer<ModelGraphicsView> targetView(_graphicsView);

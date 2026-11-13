@@ -1,11 +1,12 @@
 #ifndef GRAPHICALMODELSERIALIZER_H
 #define GRAPHICALMODELSERIALIZER_H
 
-#include "EFSMNetworkDiagramLayout.h"
+#include "../extensions/GuiExtensionContracts.h"
 
 #include <QHash>
 
 #include <functional>
+#include <any>
 #include <memory>
 #include <string>
 
@@ -61,7 +62,8 @@ public:
                              std::function<void()> applyShowInternalElements,
                              std::function<void()> applyShowEditableElements,
                              std::function<void()> applyShowAttachedElements,
-                             std::shared_ptr<EFSMNetworkDiagramLayoutsByModel> efsmNetworkDiagramLayouts = nullptr);
+                             std::shared_ptr<GuiDiagramLayoutsByModel> diagramLayoutsByModel = nullptr,
+                             std::shared_ptr<GuiUnknownDiagramSectionsByModel> unknownDiagramSectionsByModel = nullptr);
 
     /**
      * @brief Saves textual model language using the established compatibility format.
@@ -79,20 +81,14 @@ public:
      */
     Model* loadGraphicalModel(const std::string& filename) const;
 
-    /**
-     * @brief Sets the GUI-only EFSM diagram layout for a root model and Network
-     * on the next `saveGraphicalModel()` call. An empty layout removes any
-     * previously stored entry for that model/network pair. This never touches kernel
-     * mathematical state; see `EFSMNetworkDiagramLayout`.
-     */
-    void setEFSMNetworkDiagramLayout(Model* model, unsigned long networkId, const EFSMNetworkDiagramLayout& layout);
-    /**
-     * @brief Returns the EFSM diagram layout held for this model and Network id.
-     * Returns a default-constructed (empty) layout when none is known.
-     */
-    EFSMNetworkDiagramLayout efsmNetworkDiagramLayout(Model* model, unsigned long networkId) const;
-    /** @brief Drops cached GUI layouts when their owning root model is closed. */
-    void forgetEFSMNetworkLayouts(Model* model);
+    /** @brief Stores a GUI-only formalism layout payload for a model, extension and Network ID. */
+    void setNetworkDiagramLayout(Model* model, const std::string& extensionId,
+                                 unsigned long networkId, std::any layout);
+    /** @brief Returns one opaque GUI-only layout payload, or an empty value when absent. */
+    std::any networkDiagramLayout(Model* model, const std::string& extensionId,
+                                  unsigned long networkId) const;
+    /** @brief Drops cached extension layouts when their owning root model is closed. */
+    void forgetNetworkDiagramLayouts(Model* model);
 
 private:
     // Encode free text fields into a tab-safe persisted value.
@@ -122,11 +118,10 @@ private:
     std::function<void()> _applyShowEditableElements;
     std::function<void()> _applyShowAttachedElements;
 
-    // GUI-only EFSM diagram layouts keyed by root model and EFSMNetwork id. Mutable because
-    // Shared with MainWindow because serializer instances are rebuilt when the
-    // active graphics view changes. loadGraphicalModel() refreshes this cache
-    // from the persisted GUI section without retaining widget state.
-    std::shared_ptr<EFSMNetworkDiagramLayoutsByModel> _efsmNetworkDiagramLayouts;
+    // Type-erased extension layouts keyed by root model, extension ID and Network ID.
+    // Shared because serializer instances are rebuilt when the active view changes.
+    std::shared_ptr<GuiDiagramLayoutsByModel> _diagramLayoutsByModel;
+    std::shared_ptr<GuiUnknownDiagramSectionsByModel> _unknownDiagramSectionsByModel;
 };
 
 #endif // GRAPHICALMODELSERIALIZER_H

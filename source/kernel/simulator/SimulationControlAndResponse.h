@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <functional>
+#include <iterator>
 #include <list>
 #include <vector>
 #include <stdexcept>
@@ -212,6 +213,13 @@ public:
     // This method exposes whether the property should be edited by the dedicated list editor.
     virtual bool supportsListEditor() const { return getIsList(); }
     virtual bool supportsPositionalListEditing() const { return false; }
+    virtual std::string getListElementLabel() const { return "Item"; }
+    virtual bool supportsListElementMove() const { return false; }
+    virtual bool handlesListMoveReconciliation() const { return false; }
+    virtual void moveListElement(int from, int to) {
+        (void)from; (void)to;
+        throw std::logic_error("List movement is not supported");
+    }
     virtual void insertListValueAt(int index, const std::string& value) {
         (void)index; (void)value;
         throw std::logic_error("Positional list insertion is not supported");
@@ -226,6 +234,7 @@ public:
     }
     // This method exposes whether the property supports choosing an existing object instance.
     virtual bool supportsExistingObjectSelection() const { return false; }
+    virtual bool supportsReferenceRemoval() const { return false; }
     virtual bool keepsExistingObjectChoicesWhenSet() const { return false; }
     // This method exposes whether the property supports creating a new object instance.
     virtual bool supportsObjectCreation() const { return false; }
@@ -253,6 +262,9 @@ public:
     virtual bool isInlineObjectProperty() const {
         return supportsInlineExpansion() && !isModelDataDefinitionReference();
     }
+    // Opt-in for reference properties whose referenced object's controls should
+    // appear beneath the reference in the Property Editor.
+    virtual bool supportsReferenceChildEditing() const { return false; }
     // This method provides an explicit object-creation operation for class-like properties.
     virtual bool createObjectInstance(const std::string& value = "") {
         (void)value;
@@ -1048,6 +1060,39 @@ public:
     }
     // This method marks scalar lists as editable through the list editor in the universal contract.
     virtual bool supportsListEditor() const override { return true; }
+    virtual bool supportsPositionalListEditing() const override { return std::is_same_v<T, std::string> && !_readonly; }
+    virtual bool supportsListElementMove() const override { return !_readonly; }
+    virtual void moveListElement(int from, int to) override {
+        _ensureWritable("move list element for");
+        auto* values = _getter()->list();
+        if (from < 0 || to < 0 || static_cast<std::size_t>(from) >= values->size() || static_cast<std::size_t>(to) >= values->size()) throw std::out_of_range("list index");
+        if (from == to) return;
+        auto source = std::next(values->begin(), from);
+        auto destination = std::next(values->begin(), to);
+        if (from < to) ++destination;
+        values->splice(destination, *values, source);
+    }
+    virtual bool supportsNewListElementCreation() const override { return supportsPositionalListEditing(); }
+    virtual bool createNewListElement(const std::string& value = "") override {
+        if constexpr (std::is_same_v<T, std::string>) {
+            _ensureWritable("create list element for");
+            _adder(value);
+            return true;
+        }
+        return false;
+    }
+    virtual void replaceListValueAt(int index, const std::string& value) override {
+        if constexpr (std::is_same_v<T, std::string>) {
+            _ensureWritable("edit list element for");
+            List<T>* values = _getter();
+            if (index < 0 || static_cast<std::size_t>(index) >= values->size()) {
+                throw std::out_of_range("list index");
+            }
+            values->setAtRank(index, value);
+        } else {
+            SimulationControl::replaceListValueAt(index, value);
+        }
+    }
 
 private:
 	M _model;
@@ -1060,6 +1105,7 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericListPointer: public SimulationControl {
 public:
     using Creator = std::function<T(M, const std::string&)>;
+    using ListMoveHandler = std::function<void(int, int)>;
     using TypedCreator = std::function<T(M)>;
     using ElementTypeNamesGetter = std::function<std::vector<std::string>()>;
     using CurrentElementTypeGetter = std::function<std::string()>;
@@ -1121,6 +1167,23 @@ public:
     };
     // This method marks pointer lists as editable through the list editor in the universal contract.
     virtual bool supportsListEditor() const override { return true; }
+    virtual bool supportsListElementMove() const override { return !_readonly; }
+    virtual bool handlesListMoveReconciliation() const override { return static_cast<bool>(_listMoveHandler); }
+    void setListMoveHandler(ListMoveHandler handler) { _listMoveHandler = std::move(handler); }
+    virtual void moveListElement(int from, int to) override {
+        _ensureWritable("move list element for");
+        auto* values = _getter()->list();
+        if (from < 0 || to < 0 || static_cast<std::size_t>(from) >= values->size() || static_cast<std::size_t>(to) >= values->size()) throw std::out_of_range("list index");
+        if (from == to) return;
+        if (_listMoveHandler) {
+            _listMoveHandler(from, to);
+            return;
+        }
+        auto source = std::next(values->begin(), from);
+        auto destination = std::next(values->begin(), to);
+        if (from < to) ++destination;
+        values->splice(destination, *values, source);
+    }
     // This method marks pointer lists as supporting explicit typed element creation when writable.
     virtual bool supportsNewListElementCreation() const override { return !_readonly; }
     // This method exposes concrete types for polymorphic pointer lists such as Set members.
@@ -1257,6 +1320,7 @@ private:
 
 private:
     M _model;
+	ListMoveHandler _listMoveHandler;
 	GetterGeneric<List<T>*> _getter;
 	AdderGeneric<T> _adder;
     RemoverGeneric<T> _remover;

@@ -37,6 +37,17 @@ public:
 		} else insertListValueAt(static_cast<int>(_owner->getConditions()->size()), value);
 	}
 	bool supportsPositionalListEditing() const override { return true; }
+	bool supportsListElementMove() const override { return true; }
+	void moveListElement(int from, int to) override {
+		if (from < 0 || to < 0) throw std::out_of_range("condition index");
+		_owner->moveCondition(static_cast<unsigned int>(from), static_cast<unsigned int>(to));
+	}
+	std::string getListElementLabel() const override { return "Condition"; }
+	bool supportsNewListElementCreation() const override { return true; }
+	bool createNewListElement(const std::string& value = "") override {
+		insertListValueAt(static_cast<int>(_owner->getConditions()->size()), value);
+		return true;
+	}
 	void insertListValueAt(int index, const std::string& value) override {
 		if (index < 0) throw std::out_of_range("condition index");
 		_owner->editConditionInsertAt(static_cast<unsigned int>(index), value);
@@ -134,6 +145,28 @@ void Decide::insertConditionAt(unsigned int index, std::string condition) {
 void Decide::replaceConditionAt(unsigned int index, std::string condition) {
 	if (index >= _conditions->size()) throw std::out_of_range("condition index");
 	_conditions->setAtRank(index, std::move(condition));
+}
+
+void Decide::moveCondition(unsigned int from, unsigned int to) {
+	if (from >= _conditions->size() || to >= _conditions->size()) throw std::out_of_range("condition index");
+	if (from == to) return;
+	auto* values = _conditions->list();
+	auto source = values->begin();
+	std::advance(source, from);
+	auto destination = values->begin();
+	std::advance(destination, to);
+	if (from < to) ++destination;
+	values->splice(destination, *values, source);
+	auto* connections = _connections->connections();
+	std::map<unsigned int, Connection*> reordered;
+	for (const auto& [port, connection] : *connections) {
+		unsigned int target = port;
+		if (port == from) target = to;
+		else if (from < to && port > from && port <= to) target = port - 1;
+		else if (to < from && port >= to && port < from) target = port + 1;
+		reordered.emplace(target, connection);
+	}
+	*connections = std::move(reordered);
 }
 
 void Decide::removeConditionAt(unsigned int index) {

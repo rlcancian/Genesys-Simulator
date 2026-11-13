@@ -1,9 +1,34 @@
 #include "plugins/components/ModalModel/FSMState.h"
 #include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/model/Model.h"
 
 FSMState::FSMState(Model* model, std::string name) : DefaultNode(model, Util::TypeOf<FSMState>(), name) {
-	std::string classname = Util::TypeOf<FSMState>();
+	const std::string classname = Util::TypeOf<FSMState>();
+	auto* entryAction = new SimulationControlGeneric<std::string>(
+		[this]() { return getEntryActionExpression(); },
+		[this](const std::string& value) { setEntryActionExpression(value); },
+		classname, getName(), "Entry Action Expression", "Expression evaluated when entering this state.");
+	auto* exitAction = new SimulationControlGeneric<std::string>(
+		[this]() { return getExitActionExpression(); },
+		[this](const std::string& value) { setExitActionExpression(value); },
+		classname, getName(), "Exit Action Expression", "Expression evaluated when leaving this state.");
+	auto* finalNode = new SimulationControlBool(
+		[this]() { return isFinalNode(); },
+		[this](bool value) { setFinalNode(value); },
+		classname, getName(), "Final Node", "Whether this state is a final state.");
+	auto* initialNode = new SimulationControlBool(
+		[this]() { return isInitialNode(); },
+		[this](bool value) { setInitialNode(value); },
+		classname, getName(), "Initial Node", "Whether this state is the initial state of its Network.");
+	_parentModel->getControls()->insert(entryAction);
+	_addSimulationControl(entryAction);
+	_parentModel->getControls()->insert(exitAction);
+	_addSimulationControl(exitAction);
+	_parentModel->getControls()->insert(finalNode);
+	_addSimulationControl(finalNode);
+	_parentModel->getControls()->insert(initialNode);
+	_addSimulationControl(initialNode);
 }
 
 void FSMState::setEntryActionExpression(std::string expression) {

@@ -256,6 +256,8 @@ public: // public virtual methods
 	 * \return Human-readable summary used by traces and debug output.
 	 */
 	virtual std::string show();
+	/** True when this model-managed definition remains a root without references. */
+	virtual bool isModelDataRoot() const { return false; }
 	/*! Returns a list of keys (names) of internal ModelDatas, cuch as Counters, StatisticsCollectors and others. ChildrenElements are ModelDatas used by this ModelDataDefinition thar are needed before model checking */
 
 protected:

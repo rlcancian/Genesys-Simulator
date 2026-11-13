@@ -23,16 +23,16 @@ class MainWindow;
  */
 class GraphicalContextMenuController {
 public:
+    using ExtensionMenuPopulator = std::function<void(QMenu*, QGraphicsItem*)>;
     /**
      * @brief Creates the controller without taking ownership of UI or scene objects.
      */
     GraphicalContextMenuController(ModelGraphicsView* graphicsView,
                                    Ui::MainWindow* ui,
                                    QAction* openSubmodelAction,
-                                   QAction* createModalNetworkAction,
-                                   QAction* selectModalNetworkAction,
                                    std::function<ModelGraphicsScene*()> currentScene,
-                                   std::function<void()> actualizeActions);
+                                   std::function<void()> actualizeActions,
+                                   ExtensionMenuPopulator populateExtensionMenu = {});
 
     /**
      * @brief Shows the context menu matching the item or background under the mouse.
@@ -124,10 +124,9 @@ private:
     ModelGraphicsView* _graphicsView;
     Ui::MainWindow* _ui;
     QAction* _openSubmodelAction;
-    QAction* _createModalNetworkAction;
-    QAction* _selectModalNetworkAction;
     std::function<ModelGraphicsScene*()> _currentScene;
     std::function<void()> _actualizeActions;
+    ExtensionMenuPopulator _populateExtensionMenu;
 };
 
 #endif // GRAPHICALCONTEXTMENUCONTROLLER_H

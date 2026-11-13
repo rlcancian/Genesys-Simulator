@@ -46,7 +46,7 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
     if (scene == nullptr) {
         return;
     }
-    scene->clearEFSMNetworkDiagramItems();
+    scene->clearExtensionOverlayItems(QStringLiteral("efsm"));
     EFSMNetwork* network = contextNetwork(simulator, scene);
     if (network == nullptr || network->getTransitions() == nullptr) {
         return;
@@ -82,7 +82,8 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
 
         auto* item = new EFSMTransitionGraphicsItem(transition, ordinal);
         item->setGeometry(stateCenter(scene, source), stateCenter(scene, destination), rank, count);
-        scene->addEFSMNetworkDiagramItem(item);
+        item->setFired(network->getLastTransition() == transition);
+        scene->addExtensionOverlayItem(QStringLiteral("efsm"), item);
     }
 
     // Highlight initial and final states in the projection only; no domain property is changed.
@@ -90,7 +91,9 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
         if (GraphicalModelDataDefinition* item = scene->findGraphicalModelDataDefinition(state)) {
             const bool initial = state == network->getInitialState();
             const bool final = state->isFinalNode();
-            item->setColor(initial && final ? QColor(111, 190, 188)
+            const bool current = state == network->getCurrentState();
+            item->setColor(current ? QColor(105, 165, 240)
+                              : initial && final ? QColor(111, 190, 188)
                               : initial ? QColor(135, 210, 155)
                               : final ? QColor(245, 195, 125)
                                        : QColor(220, 220, 220));

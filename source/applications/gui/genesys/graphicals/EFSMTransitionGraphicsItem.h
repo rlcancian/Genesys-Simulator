@@ -19,6 +19,8 @@ public:
     EFSMTransition* transition() const;
     int ordinal() const;
     QString transitionLabel() const;
+    void setFired(bool fired);
+    bool isFired() const;
     void setGeometry(const QPointF& sourceCenter, const QPointF& destinationCenter, int parallelRank,
                      int parallelCount);
 
@@ -28,6 +30,7 @@ protected:
 private:
     EFSMTransition* _transition = nullptr;
     int _ordinal = -1;
+    bool _fired = false;
 };
 
 #endif

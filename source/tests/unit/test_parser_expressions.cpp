@@ -330,6 +330,25 @@ TEST_F(ParserExpressionsTest, ProbabilisticFunctionsValidExpressionsWithThrowsEx
     EXPECT_GE(weibValue, 0.0);
 }
 
+TEST_F(ParserExpressionsTest, UniformConditionExpressionEvaluatesAsBoolean) {
+    bool success = false;
+    std::string errorMessage;
+    unsigned int trueCount = 0;
+    constexpr unsigned int samples = 100;
+
+    for (unsigned int i = 0; i < samples; ++i) {
+        errorMessage.clear();
+        const double value = model->parseExpression("unif(0,1) < 0.5", success, errorMessage);
+        ASSERT_TRUE(success) << errorMessage;
+        ASSERT_TRUE(errorMessage.empty());
+        ASSERT_TRUE(value == 0.0 || value == 1.0);
+        trueCount += value != 0.0 ? 1u : 0u;
+    }
+
+    EXPECT_GT(trueCount, 0u);
+    EXPECT_LT(trueCount, samples);
+}
+
 TEST_F(ParserExpressionsTest, AdditionalProbabilisticFunctionsValidExpressionsWithThrowsExceptionTrue) {
     bool success = false;
     std::string errorMessage;

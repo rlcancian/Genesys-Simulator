@@ -4,6 +4,8 @@
 #include "kernel/simulator/PluginInformation.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
 
 #include <QBrush>
 #include <QAction>
@@ -59,13 +61,19 @@ PluginCatalogController::PluginCatalogController(Simulator* simulator,
 }
 
 // Preserve legacy plugin insertion behavior while keeping MainWindow thin.
-void PluginCatalogController::insertPluginUI(Plugin* plugin) const {
+void PluginCatalogController::insertPluginUI(Plugin* plugin, ModelDataDefinition* networkEditorOwner) const {
     if (plugin == nullptr || !plugin->isIsValidPlugin() || _pluginsTree == nullptr) {
         return;
     }
-    // The main model canvas palette creates process components. DataDefinitions
-    // stay registered in the kernel and are exposed by their specialized editors.
-    if (!plugin->getPluginInfo()->isComponent()) {
+    if (dynamic_cast<DefaultNetwork*>(networkEditorOwner) != nullptr) {
+        if (plugin->getPluginInfo()->isComponent()
+            || !GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+                networkEditorOwner, plugin->getPluginInfo()->getPluginTypename(), false)) {
+            return;
+        }
+    } else if (!plugin->getPluginInfo()->isComponent()) {
+        // Process canvases retain the ModelComponent palette. Mathematical
+        // definitions appear only when the active Network extension accepts them.
         return;
     }
 
@@ -142,7 +150,7 @@ void PluginCatalogController::insertPluginUI(Plugin* plugin) const {
     treeRootItem->setExpanded(true);
 }
 
-void PluginCatalogController::reloadFromPluginManager() const {
+void PluginCatalogController::reloadFromPluginManager(ModelDataDefinition* networkEditorOwner) const {
     if (_pluginsTree == nullptr || _simulator == nullptr || _simulator->getPluginManager() == nullptr) {
         return;
     }
@@ -150,7 +158,7 @@ void PluginCatalogController::reloadFromPluginManager() const {
     // Rebuild the palette from kernel plugin state after plugin-manager mutations.
     _pluginsTree->clear();
     for (unsigned int i = 0; i < _simulator->getPluginManager()->size(); i++) {
-        insertPluginUI(_simulator->getPluginManager()->getAtRank(i));
+        insertPluginUI(_simulator->getPluginManager()->getAtRank(i), networkEditorOwner);
     }
     applyTopLevelCategoryOrder();
     applyCategoryExpansionPolicy();

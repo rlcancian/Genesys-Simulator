@@ -423,7 +423,7 @@ QString SystemPreferences::visualThemeToString(VisualTheme value) {
 }
 
 SystemPreferences::InterfaceStyle SystemPreferences::interfaceStyleFromString(const QString& value) {
-    return value.trimmed().toLower() == "modern" ? InterfaceStyle::Modern : InterfaceStyle::Classic;
+    return value.trimmed().toLower() == "modern" ? InterfaceStyle::Modern : InterfaceStyle::Arena;
 }
 
 QString SystemPreferences::interfaceStyleToString(InterfaceStyle value) {

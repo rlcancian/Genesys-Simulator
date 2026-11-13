@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-11-11
+last_updated: 2026-11-13
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -913,3 +913,31 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Acceptance: a new optional GUI extension adds its animation/tool without modifying generic GUI, kernel or parser; dependency absence preserves simulation; event delivery is consistent; graphical state survives save/reload and missing-extension round-trip; alternate providers are deterministic; targeted GUI tests, unit/kernel/smoke as affected, and safety diagnostics on ownership paths pass.
 - Stop gates: uncertain event semantics, model binding, unknown-extension data retention, ownership, concurrent GUI modifications, unstable C++/Qt ABI or any request to implement dynamic loading without explicit scope approval.
 - Rollback: per-phase reviewable merge commits and current-format compatibility fixtures. No release-branch promotion.
+
+## 11. Authorized full ModalNetwork GUI implementation
+
+### AUTO-MODAL-005 — Execute complete ModalModel/DefaultNetwork GUI evolution
+
+- Priority: P1.
+- Status: **done_confirmed** (integrated by PR #577 on 2026-11-13).
+- Environment: local Ubuntu plus GitHub Actions; merge commit `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb` on `WorkInProgress`.
+- Source and full acceptance: [MODAL_NETWORK_GUI_EVOLUTION_PLAN.md](reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md), decision HUM-MODAL-003.
+- Integration base: synchronize the latest origin/WorkInProgress; branch example WiP20261112/modal_model_gui. Never develop directly on WorkInProgress.
+- Authorization: execute ALL milestones G0, A1–A5, B1–B5, C1–C6 and D1–D5 sequentially and autonomously, including fully functional contextual Graph/Markov/CPN GUI editors and faithful graphical animation of actual supported Network behavior. No intermediate approval for plan-covered decisions.
+- Scope/acceptance: all gates and end-to-end scenarios in the plan, small traceable commits, short persistent progress log, essential targeted validation throughout, final appropriate CMake/CTest/Qt verification. Focus on complete functional delivery, avoid excessive or repetitive audits/tests.
+- Non-goals: new mathematical semantics, broad plugin-system rewrite, dynamic GUI packaging/unload, and unrelated AUTO-GUI-003 migrations.
+- Blockers: only genuine unforeseen semantic, irreversible persistence, ownership, ABI or security decision, or indispensable failing validation. Report precise blocker; do not mark partial implementation complete.
+- Completion: all milestones and acceptance evidence complete; merge into WorkInProgress is explicitly authorized by the maintainer on 2026-11-13, subject to the required PR review and validation gates.
+- Completion checkpoint: all milestones and acceptance evidence are complete; PR #577 merged at `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb`. All 19 final-head hosted checks passed, including unit (2,109 executed; four disabled), kernel-unit (2,111 executed; four disabled), smoke (3/3 runnable), GUI builds, documentation, Debian packaging/Lintian and package lifecycle. The branch `WiP20261112/modal_model_gui` remains available for continued work. See `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md`.
+
+### AUTO-MODAL-006 — Universal Network node/relation editing
+
+- Priority: P1.
+- Status: **done_confirmed** (integrated by PR #578 on 2026-11-13).
+- Environment: local Ubuntu; branch `WiP20261112/modal_model_gui`, based on the current `origin/WorkInProgress` integration line.
+- Authorization: HUM-MODAL-004 and the maintainer's explicit implementation mandate dated 2026-11-13.
+- Scope: extend the shared extension and Property Editor contracts to mathematical nodes and relations; complete EFSM (state/transition editing, mouse relation creation, undo/redo, `.gen`/`.gui` persistence, removal of EFSM edit dialogs) as the first testable checkpoint; then apply the same mechanisms to Graph, DirectedGraph, DAG, Markov and CPN while preserving each domain's topology and ownership rules.
+- Acceptance: selected elements expose their actual domain properties in the existing Property Editor; relation creation requires no dialog and validates before mutation; invalid graphs remain unchanged; operations update the projection and undo/redo; persisted models reopen with topology and properties intact. Focused tests and affected CMake targets pass at each checkpoint.
+- Non-goals: kernel Qt dependencies, proxy ModelDataDefinitions, and invented formalism semantics.
+- Progress evidence: `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md`.
+- Completion evidence (2026-11-13): EFSM, Graph/DirectedGraph/DAG, Markov and CPN implementations were integrated by PR #578 at merge commit `0624d84b462919b235e31a625bdd75de3876ff72`; all 18 final-head hosted checks passed. Locally, the GUI test target passed 155/155 on rerun, formalism kernel/model-file tests passed 45/45, GUI app build and documentation governance passed. Interactive desktop smoke remains unperformed. See the progress evidence for commits and validation details.

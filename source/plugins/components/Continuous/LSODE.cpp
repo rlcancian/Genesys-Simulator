@@ -17,6 +17,14 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 
+namespace {
+class DiffEquationsControl final : public SimulationControlGenericList<std::string, Model*, std::string> {
+public:
+	using SimulationControlGenericList<std::string, Model*, std::string>::SimulationControlGenericList;
+	std::string getListElementLabel() const override { return "DiffEquation"; }
+};
+}
+
 #ifdef PLUGINCONNECT_DYNAMIC
 
 extern "C" StaticGetPluginInformation GetPluginInformation() {
@@ -43,7 +51,7 @@ LSODE::LSODE(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propFileName = new SimulationControlGeneric<std::string>(
 									std::bind(&LSODE::getFileName, this), std::bind(&LSODE::setFilename, this, std::placeholders::_1),
 									Util::TypeOf<LSODE>(), getName(), "FileName", "");
-	SimulationControlGenericList<std::string, Model*, std::string>* propDiffEquations = new SimulationControlGenericList<std::string, Model*, std::string> (
+	SimulationControlGenericList<std::string, Model*, std::string>* propDiffEquations = new DiffEquationsControl (
 									_parentModel,
                                     std::bind(&LSODE::getDiffEquations, this), std::bind(&LSODE::addDiffEquation, this, std::placeholders::_1), std::bind(&LSODE::removeDiffEquation, this, std::placeholders::_1),
 									Util::TypeOf<LSODE>(), getName(), "DiffEquations", "");								

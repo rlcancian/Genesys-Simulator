@@ -19,6 +19,7 @@ ModelDataDefinition* DirectedAcyclicGraphNetwork::NewInstance(Model* model, std:
 PluginInformation* DirectedAcyclicGraphNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<DirectedAcyclicGraphNetwork>(), &DirectedAcyclicGraphNetwork::LoadInstance, &DirectedAcyclicGraphNetwork::NewInstance);
 	info->setCategory("ModalModel");
+	info->setDataDefinitionBaseTypeName(Util::TypeOf<DirectedGraphNetwork>());
 	info->setDescriptionHelp("Directed acyclic mathematical graph network with cycle validation and topological ordering.");
 	return info;
 }

@@ -72,6 +72,7 @@ public:
 	void setInitialState(FSMState* state);
 	FSMState* getInitialState() const;
 	FSMState* getCurrentState() const;
+	EFSMTransition* getLastTransition() const;
 	void setCurrentState(FSMState* state);
 	void setConflictPolicy(ConflictPolicy policy);
 	ConflictPolicy getConflictPolicy() const;
@@ -97,6 +98,7 @@ private:
 	List<EFSMTransition*>* _transitions = new List<EFSMTransition*>();
 	FSMState* _initialState = nullptr;
 	FSMState* _currentState = nullptr;
+	EFSMTransition* _lastTransition = nullptr;
 	ConflictPolicy _conflictPolicy = ConflictPolicy::DETERMINISTIC_PRIORITY;
 	Sampler_if* _sampler = nullptr;
 };

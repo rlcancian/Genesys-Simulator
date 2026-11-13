@@ -693,7 +693,7 @@ void Model::_clearOrphanedDataDefinitions() {
         std::list<std::string> allTypes = _modeldataManager->getDataDefinitionClassnames();
         for (std::string ddtypename : allTypes) {
             for (ModelDataDefinition* element : *_modeldataManager->getDataDefinitionList(ddtypename)->list()) {
-                orphaned.insert(element);
+                if (element != nullptr && !element->isModelDataRoot()) orphaned.insert(element);
             }
         }
         // Remove every referenced data definition from orphan candidates while preserving trace semantics.

@@ -58,6 +58,8 @@ public:
 	/** @brief Returns the output ports generated for this component. */
 	QList<GraphicalComponentPort *> getGraphicalOutputPorts() const;
 	void applyDecideConditionPortEdit(unsigned int index, bool inserted);
+	void moveDecideConditionPort(unsigned int from, unsigned int to);
+	void synchronizeDynamicPorts();
     /** @brief Returns the component color used by the renderer. */
     QColor getColor() const;
     /** @brief Updates the component color used by the renderer. */

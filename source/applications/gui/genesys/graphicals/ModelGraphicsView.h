@@ -40,7 +40,7 @@
 #include <QContextMenuEvent>
 #include <QPainter>
 #include "graphicals/ModelGraphicsScene.h"
-#include "propertyeditor/DataComponentProperty.h"
+class DataComponentProperty;
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"

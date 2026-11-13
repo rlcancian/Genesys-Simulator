@@ -12,6 +12,8 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../services/GraphicalModelBuilder.h"
 #include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
 
 #include <map>
 #include <set>
@@ -38,6 +40,8 @@
 #include <QStringList>
 #include <QVariant>
 #include <QMenu>
+#include <QComboBox>
+#include <QStandardItemModel>
 #include <QDebug>
 #include <QEvent>
 #include <QMetaObject>
@@ -55,10 +59,157 @@
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../extensions/GuiExtensionPluginCatalog.h"
 #include "../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
 
 namespace {
+class ListAwareEnumEditorFactory final : public QtEnumEditorFactory {
+public:
+    explicit ListAwareEnumEditorFactory(QObject* parent) : QtEnumEditorFactory(parent) {}
+    std::function<void(QtProperty*, QComboBox*)> configureEditor;
+protected:
+    QWidget* createEditor(QtEnumPropertyManager* manager, QtProperty* property, QWidget* parent) override {
+        QWidget* editor = QtEnumEditorFactory::createEditor(manager, property, parent);
+        if (configureEditor) configureEditor(property, qobject_cast<QComboBox*>(editor));
+        return editor;
+    }
+};
+
+class ListMoveUndoCommand final : public QUndoCommand {
+public:
+    ListMoveUndoCommand(int from, int to, std::function<void(int, int)> apply)
+        : _from(from), _to(to), _apply(std::move(apply)) { setText(QStringLiteral("Mover item da lista")); }
+    void undo() override { _apply(_to, _from); }
+    void redo() override { _apply(_from, _to); }
+private:
+    int _from;
+    int _to;
+    std::function<void(int, int)> _apply;
+};
+
+class ModalModelBindingUndoCommand final : public QUndoCommand {
+public:
+    ModalModelBindingUndoCommand(ModalModelDefault* adapter, DefaultNetwork* network,
+                                 bool output, unsigned int port, std::string before,
+                                 std::string after, ObjectPropertyBrowser* browser)
+        : _adapter(adapter), _network(network), _output(output), _port(port),
+          _before(std::move(before)), _after(std::move(after)), _browser(browser) {
+        setText(QObject::tr("Edit Network binding"));
+        if (_adapter == nullptr || _network == nullptr || _adapter->getNetwork() != _network) {
+            setObsolete(true);
+        }
+    }
+
+    void undo() override { _apply(_before); }
+    void redo() override { _apply(_after); }
+
+private:
+    void _apply(const std::string& value) {
+        if (_adapter == nullptr || _network == nullptr || _adapter->getNetwork() != _network) {
+            setObsolete(true);
+            return;
+        }
+        if (_output) _adapter->setOutputBinding(_port, value);
+        else _adapter->setInputBinding(_port, value);
+        if (_browser != nullptr) _browser->refreshAfterUndo();
+    }
+
+    ModalModelDefault* _adapter;
+    DefaultNetwork* _network;
+    bool _output;
+    unsigned int _port;
+    std::string _before;
+    std::string _after;
+    QPointer<ObjectPropertyBrowser> _browser;
+};
+
+class ModalModelNetworkReferenceUndoCommand final : public QUndoCommand {
+public:
+    ModalModelNetworkReferenceUndoCommand(ModalModelDefault* adapter, DefaultNetwork* before,
+                                          DefaultNetwork* after, ModelGraphicsScene* scene,
+                                          ObjectPropertyBrowser* browser)
+        : _adapter(adapter), _before(before), _after(after), _scene(scene), _browser(browser) {
+        setText(QObject::tr("Change ModalModel Network"));
+    }
+    void undo() override { _apply(_before); }
+    void redo() override { _apply(_after); }
+
+private:
+    void _apply(DefaultNetwork* network) {
+        if (_adapter == nullptr) { setObsolete(true); return; }
+        try {
+            _adapter->setNetwork(network);
+        } catch (const std::exception& e) {
+            qWarning() << "[PropertyEditor] cannot restore Network reference:" << e.what();
+            setObsolete(true);
+            return;
+        }
+        if (_scene != nullptr) {
+            GraphicalModelComponent* graphical = _scene->findGraphicalModelComponent(_adapter->getId());
+            if (graphical == nullptr) {
+                for (QGraphicsItem* item : _scene->items()) {
+                    auto* candidate = dynamic_cast<GraphicalModelComponent*>(item);
+                    if (candidate != nullptr && candidate->getComponent() == _adapter) {
+                        graphical = candidate;
+                        break;
+                    }
+                }
+            }
+            if (graphical != nullptr && graphical->getComponent() == _adapter) graphical->synchronizeDynamicPorts();
+            _scene->update();
+        }
+        if (_browser != nullptr) _browser->refreshAfterUndo();
+    }
+
+    ModalModelDefault* _adapter;
+    DefaultNetwork* _before;
+    DefaultNetwork* _after;
+    QPointer<ModelGraphicsScene> _scene;
+    QPointer<ObjectPropertyBrowser> _browser;
+};
+
+void pushNetworkReferenceUndo(ModelGraphicsScene* scene, ObjectPropertyBrowser* browser,
+                              ModalModelDefault* adapter, DefaultNetwork* before,
+                              DefaultNetwork* after) {
+    if (scene == nullptr || scene->getUndoStack() == nullptr || adapter == nullptr || before == after) return;
+    scene->getUndoStack()->push(new ModalModelNetworkReferenceUndoCommand(adapter, before, after, scene, browser));
+}
+
+DefaultNetwork* resolveNetworkChoice(ModalModelDefault* adapter, const std::string& choice) {
+    if (adapter == nullptr || adapter->getParentModel() == nullptr
+        || adapter->getParentModel()->getDataManager() == nullptr) return nullptr;
+    const std::size_t delimiter = choice.find("::");
+    const std::size_t identityStart = choice.rfind(" [#");
+    if (delimiter == std::string::npos || identityStart == std::string::npos
+        || identityStart <= delimiter + 2 || choice.empty() || choice.back() != ']') return nullptr;
+    try {
+        const auto id = static_cast<Util::identification>(std::stoul(
+            choice.substr(identityStart + 3, choice.size() - identityStart - 4)));
+        auto* definition = adapter->getParentModel()->getDataManager()->getDataDefinition(
+            choice.substr(0, delimiter), id);
+        auto* network = dynamic_cast<DefaultNetwork*>(definition);
+        if (network == nullptr) return nullptr;
+        const std::string expectedName = choice.substr(delimiter + 2, identityStart - delimiter - 2);
+        return network->getName() == expectedName ? network : nullptr;
+    } catch (...) {
+        return nullptr;
+    }
+}
+
+bool hasDifferentPortSchema(const DefaultNetwork* first, const DefaultNetwork* second) {
+    if (first == nullptr || second == nullptr) return first != second;
+    if (first->getNumInputPorts() != second->getNumInputPorts()
+        || first->getNumOutputPorts() != second->getNumOutputPorts()) return true;
+    for (unsigned int i = 0; i < first->getNumInputPorts(); ++i) {
+        if (first->getInputPortName(i) != second->getInputPortName(i)) return true;
+    }
+    for (unsigned int i = 0; i < first->getNumOutputPorts(); ++i) {
+        if (first->getOutputPortName(i) != second->getOutputPortName(i)) return true;
+    }
+    return false;
+}
+
 constexpr int kSourceCodePreviewContentLines = 4;
 constexpr int kSourceCodeCompactEditorLines = 5;
 
@@ -432,8 +583,16 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
     }
 
     if (_enumFactory == nullptr) {
-        // Create the enum factory once for enum editor widgets.
-        _enumFactory = new QtEnumEditorFactory(this);
+        auto* listFactory = new ListAwareEnumEditorFactory(this);
+        listFactory->configureEditor = [this](QtProperty* property, QComboBox* editor) {
+            const auto binding = _bindings.constFind(property);
+            if (binding == _bindings.constEnd() || !binding->isListItemAction || editor == nullptr) return;
+            auto* model = qobject_cast<QStandardItemModel*>(editor->model());
+            if (model == nullptr || editor->count() != 3) return;
+            model->item(1)->setEnabled(binding->listElementIndex > 0);
+            model->item(2)->setEnabled(binding->listElementIndex + 1 < static_cast<int>(binding->descriptor.choices.size()));
+        };
+        _enumFactory = listFactory;
     }
 
     // Bind manager/factory pairs only once to keep browser infrastructure idempotent.
@@ -472,6 +631,8 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
     _editableModelObjects.clear();
     _activeKernelObjectReadOnly = false;
     _propertyEditor = nullptr;
+    _pendingListSelection = nullptr;
+    _pendingListSelectionIndex = -1;
     _isRebuildingProperties = false;
     _isNotifyingModelChange = false;
     _pendingRebuild = false;
@@ -488,6 +649,14 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
 
 void ObjectPropertyBrowser::setModelChangedCallback(ModelChangedCallback callback) {
     _modelChangedCallback = std::move(callback);
+}
+
+void ObjectPropertyBrowser::setModelScene(ModelGraphicsScene* scene) {
+    _modelScene = scene;
+}
+
+void ObjectPropertyBrowser::refreshAfterUndo() {
+    _notifyModelChangeApplied();
 }
 
 bool ObjectPropertyBrowser::isCommitPipelineBusy() const {
@@ -532,15 +701,24 @@ void ObjectPropertyBrowser::setActiveObject(
         auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(obj);
         if (graphicalDataDefinition != nullptr) {
             if (graphicalDataDefinition->getDataDefinition() != nullptr) {
-                const QString name = QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName());
-                graphicalDataDefinition->setEditableInPropertyEditor(_editableModelObjects.contains(name));
+                ModelDataDefinition* definition = graphicalDataDefinition->getDataDefinition();
+                const QString name = QString::fromStdString(definition->getName());
+                const QString identity = QStringLiteral("@model-object:%1:%2")
+                    .arg(QString::fromStdString(definition->getClassname()))
+                    .arg(static_cast<qulonglong>(definition->getId()));
+                graphicalDataDefinition->setEditableInPropertyEditor(
+                    _editableModelObjects.contains(name) || _editableModelObjects.contains(identity));
             }
             _activeKernelObjectReadOnly = !graphicalDataDefinition->isEditableInPropertyEditor();
         } else if (mdd != nullptr) {
             // Inspector-driven editing may target a hidden GMDD, so read-only enforcement must
             // also work when there is no graphical QObject backing the selected data definition.
             const QString name = QString::fromStdString(mdd->getName());
-            _activeKernelObjectReadOnly = !_editableModelObjects.contains(name);
+            const QString identity = QStringLiteral("@model-object:%1:%2")
+                .arg(QString::fromStdString(mdd->getClassname()))
+                .arg(static_cast<qulonglong>(mdd->getId()));
+            _activeKernelObjectReadOnly = !_editableModelObjects.contains(name)
+                && !_editableModelObjects.contains(identity);
         }
     }
     _propertyEditor = peg;
@@ -725,6 +903,22 @@ void ObjectPropertyBrowser::_rebuildProperties() {
     }
 
     _populateKernelProperties(_modelObject);
+    if (_pendingListSelection != nullptr) {
+        for (auto it = _bindings.cbegin(); it != _bindings.cend(); ++it) {
+            if (it.value().isListItemAction && it.value().control == _pendingListSelection
+                && it.value().listElementIndex == _pendingListSelectionIndex) {
+                const auto browserItems = items(it.key());
+                if (!browserItems.isEmpty()) {
+                    QtBrowserItem* selected = browserItems.first();
+                    for (QtBrowserItem* parent = selected->parent(); parent != nullptr; parent = parent->parent()) setExpanded(parent, true);
+                    setCurrentItem(selected);
+                }
+                break;
+            }
+        }
+        _pendingListSelection = nullptr;
+        _pendingListSelectionIndex = -1;
+    }
     qInfo() << "[PropertyEditor] _rebuildProperties exit";
 }
 
@@ -805,8 +999,7 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
 }
 
 bool ObjectPropertyBrowser::_hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const {
-    return desc.supportsListEditor
-        || desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
+    return desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
         || desc.editorHint == SimulationControlEditorHint::CodeEditor;
 }
 
@@ -961,7 +1154,7 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
                 }
             }
         } else {
-            choices << QString("Criar novo %1").arg(_modelObjectTypeName(desc));
+            choices << QString("Criar novo %1").arg(control->supportsPositionalListEditing() ? QString::fromStdString(control->getListElementLabel()) : _modelObjectTypeName(desc));
             actions.push_back(ObjectListAction{ObjectListAction::Kind::CreateNew, ""});
         }
     }
@@ -999,15 +1192,47 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
 
     recursionPath.insert(control);
     for (int index = 0; index < itemCount; ++index) {
-        const QString elementName = index < static_cast<int>(desc.choices.size())
-                                        ? QString::fromStdString(desc.choices[static_cast<std::size_t>(index)])
-                                        : QString();
-        const QString groupName = elementName.isEmpty()
-                                      ? QString("Item %1").arg(index + 1)
-                                      : QString("Item %1 - %2").arg(index + 1).arg(elementName);
-
-        QtProperty* elementGroup = _groupManager->addProperty(groupName);
+        const QString elementName = QString::fromStdString(desc.choices[static_cast<std::size_t>(index)]);
+        const QString label = control->supportsPositionalListEditing()
+            ? QString("%1 %2").arg(QString::fromStdString(control->getListElementLabel())).arg(index)
+            : (elementName.isEmpty() ? QString("Item %1").arg(index) : QString("Item %1 - %2").arg(index).arg(elementName));
+        QtProperty* elementGroup = _enumManager->addProperty(label);
+        QStringList itemChoices{QStringLiteral("Item")};
+        std::vector<ObjectListAction> itemActions{{ObjectListAction::Kind::None, ""}};
+        if (control->supportsListElementMove() && _isKernelEditingEnabled(desc)) {
+            itemChoices << QStringLiteral("Mover para cima") << QStringLiteral("Mover para baixo");
+            itemActions.push_back({ObjectListAction::Kind::MoveUp, ""});
+            itemActions.push_back({ObjectListAction::Kind::MoveDown, ""});
+        }
+        _enumNames[elementGroup] = itemChoices;
+        _objectListActions[elementGroup] = itemActions;
+        _enumManager->setEnumNames(elementGroup, itemChoices);
+        _enumManager->setValue(elementGroup, 0);
+        elementGroup->setEnabled(_isKernelEditingEnabled(desc));
+        Binding itemBinding;
+        itemBinding.owner = _modelObject;
+        itemBinding.control = control;
+        itemBinding.descriptor = desc;
+        itemBinding.isListItemAction = true;
+        itemBinding.listElementIndex = index;
+        _bindings[elementGroup] = itemBinding;
         property->addSubProperty(elementGroup);
+        if (control->supportsPositionalListEditing()) {
+            QtVariantProperty* element = _variantManager->addProperty(QVariant::String, QStringLiteral("Value"));
+            element->setValue(QString::fromStdString(desc.choices[static_cast<std::size_t>(index)]));
+            element->setEnabled(_isKernelEditingEnabled(desc));
+            Binding elementBinding;
+            elementBinding.owner = _modelObject;
+            elementBinding.control = control;
+            elementBinding.descriptor = desc;
+            elementBinding.descriptor.supportsListEditor = false;
+            elementBinding.descriptor.kind = GenesysPropertyKind::String;
+            elementBinding.descriptor.currentValue = desc.choices[static_cast<std::size_t>(index)];
+            elementBinding.listElementIndex = index;
+            _bindings[element] = elementBinding;
+            elementGroup->addSubProperty(element);
+            continue;
+        }
 
         List<SimulationControl*>* elementProperties = control->getEditableChildSimulationControls(index);
         if (elementProperties == nullptr) {
@@ -1058,9 +1283,20 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
         QSet<QString> seenLabels;
         if (objectExists && desc.keepsExistingObjectChoicesWhenSet) {
-            const QString currentName = QString::fromStdString(referencedDataDefinition->getName());
+            const bool identifyNetwork = desc.ownerClassName == Util::TypeOf<ModalModelDefault>()
+                                         && desc.displayName == "Network";
+            const QString currentName = identifyNetwork
+                ? QStringLiteral("%1::%2 [#%3]")
+                      .arg(QString::fromStdString(referencedDataDefinition->getClassname()),
+                           QString::fromStdString(referencedDataDefinition->getName()))
+                      .arg(referencedDataDefinition->getId())
+                : QString::fromStdString(referencedDataDefinition->getName());
             choices[0] = currentName;
             seenLabels.insert(currentName);
+            if (desc.supportsReferenceRemoval) {
+                choices << QStringLiteral("Remover referência");
+                actions.push_back(ModelObjectAction{ModelObjectAction::Kind::RemoveReference, "", ""});
+            }
         }
         for (const std::string& choiceValue : desc.choices) {
             const QString choiceLabel = QString::fromStdString(choiceValue);
@@ -1101,7 +1337,7 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
 }
 
 bool ObjectPropertyBrowser::_isObjectListProperty(const GenesysPropertyDescriptor& desc) const {
-    return desc.isList && desc.isClass && desc.supportsListEditor;
+    return desc.isList && desc.supportsListEditor && (desc.isClass || (desc.control != nullptr && desc.control->supportsPositionalListEditing()));
 }
 
 bool ObjectPropertyBrowser::_isKernelEditingEnabled(const GenesysPropertyDescriptor& desc) const {
@@ -1532,6 +1768,16 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
         if (reference != nullptr) {
             parent->addSubProperty(reference);
         }
+        if (_isModelObjectActionProperty(desc, control) && control->supportsReferenceChildEditing()) {
+            List<SimulationControl*>* children = control->getEditableChildSimulationControls();
+            if (children != nullptr && !children->empty()) {
+                QtProperty* details = _groupManager->addProperty(QString::fromStdString(desc.displayName + " Details"));
+                parent->addSubProperty(details);
+                for (SimulationControl* child : *children->list()) {
+                    _appendDescriptorRecursively(details, child, recursionPath, depth + 1);
+                }
+            }
+        }
         return;
     }
 
@@ -1640,6 +1886,62 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
 void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
     if (item == nullptr) {
         return;
+    }
+
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    ModelDataDefinition* networkOwner = networkScene != nullptr ? networkScene->networkEditorOwner() : nullptr;
+    const auto networkProperties = GuiExtensionPluginCatalog::networkElementProperties(networkOwner, item);
+    if (!networkProperties.empty()) {
+        QtProperty* elementGroup = _groupManager->addProperty("Network Element");
+        addProperty(elementGroup);
+        for (const auto& descriptor : networkProperties) {
+            const QString propertyName = QString::fromStdString(descriptor.name);
+            auto setter = [this, networkScene, networkOwner, item, propertyName, kind = descriptor.kind](const QVariant& value) {
+                if (networkScene == nullptr || networkScene->networkEditorOwner() != networkOwner
+                    || networkScene->getUndoStack() == nullptr) return;
+                QString serialized;
+                switch (kind) {
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Boolean:
+                    serialized = value.toBool() ? QStringLiteral("true") : QStringLiteral("false");
+                    break;
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Integer:
+                    serialized = QString::number(value.toLongLong());
+                    break;
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Double:
+                    serialized = QString::number(value.toDouble(), 'g', 17);
+                    break;
+                default:
+                    serialized = value.toString();
+                    break;
+                }
+                QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
+                    networkOwner, item, propertyName.toStdString(), serialized.toStdString());
+                if (command != nullptr) networkScene->getUndoStack()->push(command);
+            };
+            switch (descriptor.kind) {
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Boolean:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::Bool, descriptor.value == "true" || descriptor.value == "1",
+                    std::move(setter), false, descriptor.editable));
+                break;
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Integer:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::Int, QString::fromStdString(descriptor.value).toInt(),
+                    std::move(setter), false, descriptor.editable));
+                break;
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Double:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::Double, QString::fromStdString(descriptor.value).toDouble(),
+                    std::move(setter), false, descriptor.editable));
+                break;
+            case GuiNetworkEditorContribution::ElementProperty::Kind::String:
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Enumeration:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::String, QString::fromStdString(descriptor.value),
+                    std::move(setter), true, descriptor.editable));
+                break;
+            }
+        }
     }
 
     QtProperty* graphicsGroup = _groupManager->addProperty("Graphics");
@@ -2098,50 +2400,8 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         return false;
     }
 
-    auto refresh = [this]() {
-        Decide* editedDecide = nullptr;
-        GraphicalModelComponent* editedGraphical = nullptr;
-        ModelGraphicsScene* editedScene = nullptr;
-        Decide::ConditionEdit conditionEdit;
-        bool hasConditionEdit = false;
-        if (auto* decide = dynamic_cast<Decide*>(_modelObject)) {
-            editedDecide = decide;
-            editedGraphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
-            editedScene = editedGraphical == nullptr ? nullptr
-                : dynamic_cast<ModelGraphicsScene*>(editedGraphical->scene());
-            unsigned int index = 0;
-            bool inserted = false;
-            if (decide->takeConditionPortEdit(index, inserted)) {
-                if (editedGraphical != nullptr) {
-                    editedGraphical->applyDecideConditionPortEdit(index, inserted);
-                }
-            }
-            hasConditionEdit = decide->takeConditionEdit(conditionEdit);
-        }
-        this->_notifyModelChangeApplied();
-        if (hasConditionEdit && editedScene != nullptr && editedScene->getUndoStack() != nullptr) {
-            editedScene->getUndoStack()->push(
-                new DecideConditionUndoCommand(editedDecide, editedGraphical, std::move(conditionEdit)));
-        }
-    };
-
-    // This block opens the specialized list editor only when the explicit list-editor contract is enabled.
     if (binding.descriptor.supportsListEditor) {
-        if (_propertyEditor == nullptr) {
-            return false;
-        }
-        if (_propertyList != nullptr) {
-            auto found = _propertyList->find(control);
-            if (found == _propertyList->end() || found->second == nullptr) {
-                (*_propertyList)[control] =
-                    new DataComponentProperty(_propertyEditor, control, true, refresh);
-            }
-            (*_propertyList)[control]->open_window();
-        } else {
-            auto* editor = new DataComponentProperty(_propertyEditor, control, true, refresh);
-            editor->open_window();
-        }
-        return true;
+        return false;
     }
 
     if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
@@ -2154,6 +2414,49 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     return false;
+}
+
+void ObjectPropertyBrowser::_applyPositionalListChange() {
+        Decide* editedDecide = nullptr;
+        GraphicalModelComponent* editedGraphical = nullptr;
+        ModelGraphicsScene* editedScene = nullptr;
+        Decide::ConditionEdit conditionEdit;
+        bool hasConditionEdit = false;
+        if (auto* decide = dynamic_cast<Decide*>(_modelObject)) {
+            editedDecide = decide;
+            editedGraphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+            editedScene = editedGraphical == nullptr ? _modelScene.data()
+                : dynamic_cast<ModelGraphicsScene*>(editedGraphical->scene());
+            if (editedGraphical == nullptr && editedScene != nullptr) {
+                auto* candidate = editedScene->findGraphicalModelComponent(decide->getId());
+                if (candidate != nullptr && candidate->getComponent() == decide) {
+                    editedGraphical = candidate;
+                }
+            }
+            unsigned int index = 0;
+            bool inserted = false;
+            bool portsChanged = false;
+            // The list editor can queue several positional edits before the
+            // queued refresh callback runs. Apply every edit in order so the
+            // graphical ports continue to match Conditions (plus the Else port).
+            while (decide->takeConditionPortEdit(index, inserted)) {
+                if (editedGraphical != nullptr) {
+                    editedGraphical->applyDecideConditionPortEdit(index, inserted);
+                    portsChanged = true;
+                }
+            }
+            hasConditionEdit = decide->takeConditionEdit(conditionEdit);
+            if (portsChanged && editedScene != nullptr) {
+                editedScene->update();
+                editedScene->notifyGraphicalModelChange(GraphicalModelEvent::EventType::EDIT,
+                    GraphicalModelEvent::EventObjectType::COMPONENT, editedGraphical);
+            }
+        }
+        this->_notifyModelChangeApplied();
+        if (hasConditionEdit && editedScene != nullptr && editedScene->getUndoStack() != nullptr) {
+            editedScene->getUndoStack()->push(
+                new DecideConditionUndoCommand(editedDecide, editedGraphical, std::move(conditionEdit)));
+        }
 }
 
 bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding, bool compactEditor) {
@@ -2380,7 +2683,11 @@ bool ObjectPropertyBrowser::_createNewListElementForProperty(QtProperty* propert
     // asks which GMDDs should be visible.
     _materializeAffectedModelDataDefinitions();
     _synchronizeGraphicalModelDataDefinitionsNow();
-    _notifyModelChangeApplied();
+    if (binding.control->supportsPositionalListEditing()) {
+        _applyPositionalListChange();
+    } else {
+        _notifyModelChangeApplied();
+    }
     return true;
 }
 
@@ -2451,19 +2758,19 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
         return false;
     }
 
-    ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
-    bool created = referencedDataDefinition != nullptr;
-    if (referencedDataDefinition == nullptr) {
-        try {
-            const std::string defaultName = _defaultModelObjectName(binding.descriptor, typeName).toStdString();
-            created = typeName.empty()
-                          ? binding.control->createObjectInstance(defaultName)
-                          : binding.control->createObjectInstanceOfType(typeName, defaultName);
-        } catch (...) {
-            created = false;
-        }
-        referencedDataDefinition = _referencedModelDataDefinition(binding);
+    auto* modalAdapter = dynamic_cast<ModalModelDefault*>(_modelObject);
+    DefaultNetwork* previousNetwork = modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr;
+    ModelDataDefinition* referencedDataDefinition = nullptr;
+    bool created = false;
+    try {
+        const std::string defaultName = _defaultModelObjectName(binding.descriptor, typeName).toStdString();
+        created = typeName.empty()
+                      ? binding.control->createObjectInstance(defaultName)
+                      : binding.control->createObjectInstanceOfType(typeName, defaultName);
+    } catch (...) {
+        created = false;
     }
+    referencedDataDefinition = _referencedModelDataDefinition(binding);
 
     if (!created || referencedDataDefinition == nullptr) {
         return false;
@@ -2473,7 +2780,14 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
         model->getDataManager()->insert(referencedDataDefinition);
     }
 
+    pushNetworkReferenceUndo(scene != nullptr ? scene : _modelScene.data(), this, modalAdapter,
+        previousNetwork, modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr);
+
     _materializeAffectedModelDataDefinitions(referencedDataDefinition);
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
+    }
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -2498,6 +2812,21 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
         return false;
     }
 
+    auto* modalAdapter = dynamic_cast<ModalModelDefault*>(_modelObject);
+    DefaultNetwork* previousNetwork = modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr;
+    DefaultNetwork* selectedNetwork = resolveNetworkChoice(modalAdapter, objectName.toStdString());
+    if (previousNetwork != nullptr && selectedNetwork != nullptr && previousNetwork != selectedNetwork
+        && hasDifferentPortSchema(previousNetwork, selectedNetwork)) {
+        const auto answer = QMessageBox::question(
+            this, tr("Replace Network with a different port schema?"),
+            tr("The selected Network has different input or output ports. Bindings will be reconciled by port name; unmatched default bindings may be initialized, and changes that would lose custom bindings or alter connected-port meaning will be rejected. Continue?"),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (answer != QMessageBox::Yes) {
+            _scheduleDeferredRebuild();
+            return false;
+        }
+    }
+
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
         binding.control,
@@ -2509,10 +2838,22 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
     if (!ok) {
         qWarning() << "[PropertyEditor] failed to set model object reference:"
                    << QString::fromStdString(errorMessage);
+        QMessageBox::warning(this,
+                             tr("Reference was not changed"),
+                             QString::fromStdString(errorMessage));
         _scheduleDeferredRebuild();
         return false;
     }
 
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(
+        _graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    pushNetworkReferenceUndo(scene != nullptr ? scene : _modelScene.data(), this, modalAdapter,
+        previousNetwork, modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr);
+
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
+    }
     _materializeAffectedModelDataDefinitions(_referencedModelDataDefinition(binding));
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
@@ -2587,6 +2928,7 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
         return false;
     }
     Model* model = _modelObject != nullptr ? _modelObject->getParentModel() : nullptr;
+    auto* modalAdapter = dynamic_cast<ModalModelDefault*>(_modelObject);
 
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
@@ -2603,9 +2945,19 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
         return false;
     }
 
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(
+        _graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    pushNetworkReferenceUndo(scene != nullptr ? scene : _modelScene.data(), this, modalAdapter,
+        dynamic_cast<DefaultNetwork*>(referencedDataDefinition),
+        modalAdapter != nullptr ? modalAdapter->getNetwork() : nullptr);
+
     _materializeAffectedModelDataDefinitions();
     if (model != nullptr) {
         model->check();
+    }
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
     }
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
@@ -2683,6 +3035,10 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
                 return _createNewListElementForProperty(property, action.typeName);
             case ObjectListAction::Kind::SetCurrentType:
                 return _setCurrentListElementTypeForProperty(property, action.typeName);
+            case ObjectListAction::Kind::MoveUp:
+                return _moveListItem(property, it.value().listElementIndex - 1);
+            case ObjectListAction::Kind::MoveDown:
+                return _moveListItem(property, it.value().listElementIndex + 1);
             case ObjectListAction::Kind::None:
                 return true;
         }
@@ -2693,6 +3049,59 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
     }
 
     return false;
+}
+
+bool ObjectPropertyBrowser::_moveListItem(QtProperty* property, int destination) {
+    if (isCommitPipelineBusy()) return false;
+    auto it = _bindings.find(property);
+    if (it == _bindings.end() || !_hasValidActiveBindingContext(property)) return false;
+    const Binding binding = it.value();
+    const int from = binding.listElementIndex;
+    if (!binding.isListItemAction || binding.control == nullptr || !binding.control->supportsListElementMove()
+        || !_isKernelEditingEnabled(binding.descriptor) || from < 0 || destination < 0
+        || destination >= static_cast<int>(binding.descriptor.choices.size()) || destination == from) return false;
+
+    QPointer<ObjectPropertyBrowser> browser(this);
+    QPointer<QObject> graphicalObject = _graphicalObject;
+    QPointer<GraphicalModelComponent> graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+    ModelGraphicsScene* rawScene = _graphicalItem == nullptr ? _modelScene.data() : dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene());
+    if (graphical == nullptr && rawScene != nullptr && dynamic_cast<Decide*>(binding.owner) != nullptr) {
+        GraphicalModelComponent* candidate = rawScene->findGraphicalModelComponent(binding.owner->getId());
+        if (candidate != nullptr && candidate->getComponent() == binding.owner) {
+            graphical = candidate;
+            graphicalObject = candidate;
+        }
+    }
+    QPointer<ModelGraphicsScene> scene(rawScene);
+    SimulationControl* control = binding.control;
+    ModelDataDefinition* owner = binding.owner;
+    auto apply = [browser, graphicalObject, graphical, scene, control, owner](int source, int target) {
+        control->moveListElement(source, target);
+        if (graphical != nullptr && dynamic_cast<Decide*>(owner) != nullptr) {
+            graphical->moveDecideConditionPort(static_cast<unsigned int>(source), static_cast<unsigned int>(target));
+        } else if (owner != nullptr && !control->handlesListMoveReconciliation()) {
+            ModelDataDefinition::CreateInternalData(owner);
+        }
+        QGraphicsItem* graphicalItem = dynamic_cast<QGraphicsItem*>(graphicalObject.data());
+        if (scene != nullptr) {
+            scene->update();
+            scene->notifyGraphicalModelChange(GraphicalModelEvent::EventType::EDIT,
+                graphical != nullptr ? GraphicalModelEvent::EventObjectType::COMPONENT
+                                     : GraphicalModelEvent::EventObjectType::DATADEFINITION, graphicalItem);
+        }
+        if (browser != nullptr && browser->_modelObject == owner) {
+            browser->_pendingListSelection = control;
+            browser->_pendingListSelectionIndex = target;
+            browser->_synchronizeGraphicalModelDataDefinitionsNow();
+            browser->_notifyModelChangeApplied();
+        }
+    };
+    if (scene != nullptr && scene->getUndoStack() != nullptr) {
+        scene->getUndoStack()->push(new ListMoveUndoCommand(from, destination, std::move(apply)));
+    } else {
+        apply(from, destination);
+    }
+    return true;
 }
 
 bool ObjectPropertyBrowser::_applyModelObjectReferenceSelection(QtProperty* property, int value) {
@@ -2799,6 +3208,26 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         return false;
     }
 
+    if (binding.listElementIndex >= 0) {
+        binding.control->replaceListValueAt(binding.listElementIndex, newValue);
+        binding.descriptor.currentValue = newValue;
+        _applyPositionalListChange();
+        return true;
+    }
+
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    if (networkScene != nullptr && networkScene->networkEditorOwner() != nullptr
+        && networkScene->getUndoStack() != nullptr) {
+        if (QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
+                networkScene->networkEditorOwner(), binding.owner,
+                binding.descriptor.displayName, newValue)) {
+            networkScene->getUndoStack()->push(command);
+            binding.descriptor.currentValue = newValue;
+            _notifyModelChangeApplied();
+            return true;
+        }
+    }
+
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
         binding.control,
@@ -2811,6 +3240,32 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         _scheduleDeferredRebuild();
         qWarning() << "[PropertyEditor] variant apply failed to apply value. Scheduled deferred rebuild";
         return false;
+    }
+
+    if (auto* adapter = dynamic_cast<ModalModelDefault*>(binding.owner); adapter != nullptr
+        && adapter->getNetwork() != nullptr) {
+        const std::string propertyName = binding.descriptor.displayName;
+        const std::string inputPrefix = "Input Binding ";
+        const std::string outputPrefix = "Output Binding ";
+        const bool output = propertyName.rfind(outputPrefix, 0) == 0;
+        const std::string& prefix = output ? outputPrefix : inputPrefix;
+        if (output || propertyName.rfind(inputPrefix, 0) == 0) {
+            const std::size_t end = propertyName.find_first_not_of("0123456789", prefix.size());
+            try {
+                const unsigned int port = static_cast<unsigned int>(
+                    std::stoul(propertyName.substr(prefix.size(), end - prefix.size())));
+                ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(
+                    _graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+                if (scene == nullptr) scene = _modelScene.data();
+                if (scene != nullptr && scene->getUndoStack() != nullptr) {
+                    scene->getUndoStack()->push(new ModalModelBindingUndoCommand(
+                        adapter, adapter->getNetwork(), output, port,
+                        binding.descriptor.currentValue, newValue, this));
+                }
+            } catch (const std::exception& e) {
+                qWarning() << "[PropertyEditor] cannot create Network binding undo command:" << e.what();
+            }
+        }
     }
 
     binding.descriptor.currentValue = newValue;
@@ -2973,7 +3428,7 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         return;
     }
 
-    if (binding.isObjectListAction) {
+    if (binding.isObjectListAction || binding.isListItemAction) {
         _applyObjectListSelection(property, value);
         qInfo() << "[PropertyEditor] enumValueChanged exit";
         return;
@@ -3029,6 +3484,18 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         newValue = std::to_string(value);
     } else {
         return;
+    }
+
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    if (networkScene != nullptr && networkScene->networkEditorOwner() != nullptr
+        && networkScene->getUndoStack() != nullptr) {
+        if (QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
+                networkScene->networkEditorOwner(), binding.owner,
+                binding.descriptor.displayName, newValue)) {
+            networkScene->getUndoStack()->push(command);
+            _notifyModelChangeApplied();
+            return;
+        }
     }
 
     std::string errorMessage;
@@ -3106,6 +3573,18 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     const Binding binding = it.value();
     if (binding.control == nullptr) {
         QtTreePropertyBrowser::contextMenuEvent(event);
+        return;
+    }
+
+    if (binding.isListItemAction && binding.control->supportsListElementMove() && _isKernelEditingEnabled(binding.descriptor)) {
+        QMenu menu(this);
+        QAction* up = menu.addAction(QStringLiteral("Mover para cima"));
+        QAction* down = menu.addAction(QStringLiteral("Mover para baixo"));
+        up->setEnabled(binding.listElementIndex > 0);
+        down->setEnabled(binding.listElementIndex + 1 < static_cast<int>(binding.descriptor.choices.size()));
+        QAction* selected = menu.exec(event->globalPos());
+        if (selected == up) _moveListItem(item->property(), binding.listElementIndex - 1);
+        else if (selected == down) _moveListItem(item->property(), binding.listElementIndex + 1);
         return;
     }
 
