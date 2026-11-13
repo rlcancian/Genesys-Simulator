@@ -3527,7 +3527,7 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
             QString pluginname = treeItem->whatsThis(0);
             Plugin* plugin = _simulator->getPluginManager()->find(pluginname.toStdString());
             if (plugin != nullptr) {
-                const bool isNetworkEditor = GuiExtensionPluginCatalog::hasEditingContext(_networkEditorOwner);
+                const bool isNetworkEditor = GuiExtensionPluginCatalog::hasNetworkEditor(_networkEditorOwner);
                 if (isNetworkEditor
                     && !GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
                         _networkEditorOwner, plugin->getPluginInfo()->getPluginTypename(),
