@@ -447,3 +447,10 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - `cmake --build --preset gui-app --target genesys_gui -j 4` after final projection changes — PASS. `python3 scripts/validate-ai-docs.py` — PASS; `git diff --check` — PASS.
 - Three implementation checkpoints are published on `WiP20261112/modal_model_gui`: EFSM `762747215`, Graph/DAG `52236f2ad`, Markov/CPN `783531e92`, plus selection-lifetime fix `c189e11b5`. Branch is synchronized with origin and ready for maintainer review. No merge to WorkInProgress was performed.
 - Limit: no manual interactive desktop smoke was performed in this session. The gesture, cancellation, property commands, topology rejection, projection refresh, undo/redo and persistence coverage was exercised through the offscreen GUI test target and kernel/model-file persistence tests.
+
+### PR #578 integration closeout (2026-11-13)
+
+- PR #578 was merged into `WorkInProgress` at `0624d84b462919b235e31a625bdd75de3876ff72`; final candidate HEAD was `d4d7aac7e86c9777a890aa791f3d314df4aba580`.
+- All 18 final-head GitHub checks passed: unit, kernel-unit, smoke, GUI GMDD diagnostic, GUI app, documentation governance, plugin target/archive inspection, launcher, shell, worker, standalone tool integration, Xvfb starts for AI Assistant/Data Analyser/Optimizer, Debian package build/Lintian and package lifecycle.
+- Local evidence before merge: GUI test target 155/155 on rerun; Graph/DAG and Markov/CPN kernel persistence tests 18/18 and 27/27; `genesys_gui` build and AI documentation validator passed. The first full GUI test invocation had an intermittent SIGSEGV that did not reproduce on rerun.
+- `WorkInProgress` was fast-forwarded from `origin/WorkInProgress`; no force push or automatic source-branch deletion was used. Manual interactive desktop smoke remains unperformed.
