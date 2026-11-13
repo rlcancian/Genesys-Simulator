@@ -20,6 +20,11 @@ public:
     ReadDestination(Model* model, std::string destination, bool attributeNotVariable = true);
     ReadDestination(std::string destination = "", bool attributeNotVariable = true);
     ~ReadDestination();
+    // Owns registered SimulationControls; copying would double-delete them.
+    ReadDestination(const ReadDestination&) = delete;
+    ReadDestination& operator=(const ReadDestination&) = delete;
+    ReadDestination(ReadDestination&&) = delete;
+    ReadDestination& operator=(ReadDestination&&) = delete;
 
     std::string getName() const;
     std::string getDestination() const;
