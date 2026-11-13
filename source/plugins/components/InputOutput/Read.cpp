@@ -201,10 +201,13 @@ ModelComponent* Read::LoadInstance(Model* model, PersistenceRecord* fields) {
     auto* component = new Read(model);
     try {
         // Plugin-template introspection calls loaders with an empty record.
-        // ModelComponent::_loadInstance returns false for records without an
-        // ID; this is expected during introspection and must not emit an error.
-        // Match Write::LoadInstance by reporting exceptions only.
-        component->_loadInstance(fields);
+        // A missing ID in that specific case is expected, not a load failure.
+        // Malformed nonempty persisted records still produce diagnostics.
+        if (fields == nullptr) {
+            component->traceError("Failed to load Read instance: null persistence record");
+        } else if (!component->_loadInstance(fields) && fields->size() != 0) {
+            component->traceError("Failed to load Read instance: invalid persistence record");
+        }
     } catch (const std::exception& e) {
         component->traceError("Failed to load Read instance: " + std::string(e.what()));
     }
