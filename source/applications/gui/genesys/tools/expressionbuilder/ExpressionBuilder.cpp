@@ -122,6 +122,9 @@ void ExpressionBuilder::on_categorySelected(QTreeWidgetItem *item, int column)
 {
     if (!item) return;
     
+    currentExpression = nullptr;
+    updateParameterForm();
+    expressionPreview->clear();
     QString categoryName = item->data(0, Qt::UserRole).toString();
     
     // Find the category
