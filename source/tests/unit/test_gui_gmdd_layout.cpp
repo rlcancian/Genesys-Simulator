@@ -7,6 +7,7 @@
 #include "controllers/PluginCatalogController.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
 #include "controllers/SimulationEventController.h"
+#include "extensions/GuiExtensionManager.h"
 #include "animations/AnimationTransition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "codeeditor/CodeEditor.h"
@@ -60,6 +61,7 @@
 #include <QGraphicsTextItem>
 #include <QList>
 #include <QMenu>
+#include <QMainWindow>
 #include <QPlainTextEdit>
 #include <QProgressBar>
 #include <QRectF>
@@ -2016,6 +2018,68 @@ TEST(BioReactionContextMenuExtension, CreatesContextActionsAndDoesNotDuplicateRe
     QMenu unrelatedMenu;
     contribution.populate(&unrelatedMenu, context, reactionItem);
     EXPECT_TRUE(unrelatedMenu.actions().isEmpty());
+}
+
+TEST(BioReactionContextMenuExtension, ManagerUsesCurrentSceneAfterContextSwitch) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+
+    QMainWindow mainWindow;
+    GuiExtensionManager manager(&mainWindow);
+    manager.setPlugins({extension});
+    manager.setLoadedModelPluginIds({"BioReaction", "BioSpecies"});
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BioReaction reactionInFirstScene(model, "FirstSceneReaction");
+    BioSpecies speciesInFirstScene(model, "FirstSceneSpecies");
+    BioReaction reactionInSecondScene(model, "SecondSceneReaction");
+    BioSpecies speciesInSecondScene(model, "SecondSceneSpecies");
+
+    ModelGraphicsScene firstScene(0, 0, 640, 480);
+    auto* firstReactionItem = new GraphicalModelDataDefinition(nullptr, &reactionInFirstScene, QPointF(80, 80));
+    auto* firstSpeciesItem = new GraphicalModelDataDefinition(nullptr, &speciesInFirstScene, QPointF(290, 80));
+    firstScene.addItem(firstReactionItem);
+    firstScene.addItem(firstSpeciesItem);
+    firstReactionItem->setSelected(true);
+    firstSpeciesItem->setSelected(true);
+
+    ModelGraphicsScene secondScene(0, 0, 640, 480);
+    auto* secondReactionItem = new GraphicalModelDataDefinition(nullptr, &reactionInSecondScene, QPointF(80, 80));
+    auto* secondSpeciesItem = new GraphicalModelDataDefinition(nullptr, &speciesInSecondScene, QPointF(290, 80));
+    secondScene.addItem(secondReactionItem);
+    secondScene.addItem(secondSpeciesItem);
+
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.mainWindow = &mainWindow;
+    context.graphicsScene = &firstScene;
+    manager.rebuild(context);
+
+    QMenu firstMenu;
+    manager.populateContextMenu(&firstMenu, firstReactionItem);
+    ASSERT_EQ(firstMenu.actions().size(), 1);
+
+    context.graphicsScene = &secondScene;
+    manager.refreshActionStates(context);
+    QMenu emptySecondMenu;
+    manager.populateContextMenu(&emptySecondMenu, secondReactionItem);
+    EXPECT_TRUE(emptySecondMenu.actions().isEmpty());
+
+    secondReactionItem->setSelected(true);
+    secondSpeciesItem->setSelected(true);
+    manager.refreshActionStates(context);
+    QMenu secondMenu;
+    manager.populateContextMenu(&secondMenu, secondReactionItem);
+    ASSERT_EQ(secondMenu.actions().size(), 1);
+    EXPECT_EQ(secondMenu.actions().front()->text(), QStringLiteral("Biochemical Relation"));
 }
 
 int main(int argc, char** argv) {
