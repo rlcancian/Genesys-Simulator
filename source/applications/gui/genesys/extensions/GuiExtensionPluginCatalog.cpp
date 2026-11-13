@@ -284,6 +284,19 @@ void GuiExtensionPluginCatalog::registerPlugin(const GuiExtensionPlugin* plugin)
 	}
 }
 
+void GuiExtensionPluginCatalog::synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene) {
+	if (scene == nullptr) return;
+	const std::vector<const GuiExtensionPlugin*> activePlugins = resolvedPlugins();
+	for (const GuiExtensionPlugin* plugin : activePlugins) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiDiagramProjectionContribution& projection : registry.diagramProjections()) {
+			if (projection.synchronize) projection.synchronize(simulator, scene);
+		}
+	}
+}
+
 GuiExtensionPluginAutoRegistrar::GuiExtensionPluginAutoRegistrar(const GuiExtensionPlugin* plugin) {
 	GuiExtensionPluginCatalog::registerPlugin(plugin);
 }

@@ -61,6 +61,11 @@ struct GuiContextMenuContribution {
 	std::function<void(QMenu*, const GuiExtensionRuntimeContext&, QGraphicsItem*)> populate;
 };
 
+struct GuiDiagramProjectionContribution {
+	std::string id;
+	std::function<void(Simulator*, ModelGraphicsScene*)> synchronize;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAction(GuiActionContribution contribution) {
@@ -79,6 +84,10 @@ public:
 		_contextMenus.push_back(std::move(contribution));
 	}
 
+	void addDiagramProjection(GuiDiagramProjectionContribution contribution) {
+		_diagramProjections.push_back(std::move(contribution));
+	}
+
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
 	}
@@ -95,11 +104,16 @@ public:
 		return _contextMenus;
 	}
 
+	const std::vector<GuiDiagramProjectionContribution>& diagramProjections() const {
+		return _diagramProjections;
+	}
+
 	void clear() {
 		_actions.clear();
 		_docks.clear();
 		_windows.clear();
 		_contextMenus.clear();
+		_diagramProjections.clear();
 	}
 
 private:
@@ -107,6 +121,7 @@ private:
 	std::vector<GuiDockContribution> _docks;
 	std::vector<GuiWindowContribution> _windows;
 	std::vector<GuiContextMenuContribution> _contextMenus;
+	std::vector<GuiDiagramProjectionContribution> _diagramProjections;
 };
 
 class GuiExtensionPlugin {

@@ -1,6 +1,7 @@
 #include "../../GuiExtensionContracts.h"
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../mainwindow.h"
+#include "../../../services/EFSMNetworkDiagramProjection.h"
 #include "EFSMNetworkEditorController.h"
 
 class EFSMGuiExtensionPlugin final : public GuiExtensionPlugin {
@@ -12,6 +13,11 @@ public:
 
     void registerContributions(GuiExtensionRegistry* registry) const override {
         if (registry == nullptr) return;
+        registry->addDiagramProjection({
+            "modal.efsm.gui",
+            [](Simulator* simulator, ModelGraphicsScene* scene) {
+                EFSMNetworkDiagramProjection::synchronize(simulator, scene);
+            }});
         addAction(registry, "modal.efsm.create-state", "Create EFSM State",
                   &EFSMNetworkEditorController::canCreateState,
                   &EFSMNetworkEditorController::createState);

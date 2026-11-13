@@ -144,6 +144,12 @@ map is a source inventory, not evidence that extraction is complete.
   instances. EFSM context predicates live with the controller. The generic
   extension manager now updates contribution visibility/enabled state using
   the latest runtime context and invokes the latest context on trigger.
+- Added the first registered diagram-projection contribution. The EFSM plugin
+  registers its synchronizer; `GraphicalModelBuilder` and the serializer's
+  scene-rebuild path dispatch through `GuiExtensionPluginCatalog` and no longer
+  include or name `EFSMNetworkDiagramProjection`. MainWindow's explicit
+  persisted-layout restore and the serializer's `.gui` codec/cache remain
+  formalism-specific and are still C4 work.
 
 ## Validation
 
@@ -207,6 +213,11 @@ map is a source inventory, not evidence that extraction is complete.
 - `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after action contribution integration.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.*:EFSMNetworkEditor.*'` — PASS, 9 tests; includes dynamic contribution state/dispatch, stable EFSM action ID, hidden root context, enabled Network context, editing, undo and persistence/reopen execution.
 - `git diff --check` — PASS after action contribution integration.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after projection contribution dispatch.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after projection contribution dispatch.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkDiagramProjection.*:EFSMNetworkEditor.SharedNetworkOpensOneSubmodelTabFromMultipleAdapters:EFSMNetworkEditor.MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM'` — PASS, 4 tests; projection geometry, shared Network open, and saved/reopened EFSM execution remain intact.
+- `rg -n 'EFSMNetworkDiagramProjection'` on `GraphicalModelBuilder.cpp` and `GraphicalModelSerializer.cpp` — PASS, no direct type references.
+- `git diff --check` — PASS after projection contribution dispatch.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='EFSMNetworkEditor.SelectedStateCanBeEditedAndUndoneThroughTheMainWindowAction:EFSMNetworkEditor.SelectedTransitionCanBeEditedAndUndoneThroughTheMainWindowAction:EFSMNetworkEditor.MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM'` — PASS, 3 tests; confirms state/transition editing, undo and saved/reopened execution behavior remain.
 
 - `c3f97a9e30866e5ae3b8cc670cce867c96a0d823` — `modal-gui(A1): replace EFSM menu actions with Open Network` (pushed to `origin/WiP20261112/modal_model_gui`).
@@ -222,4 +233,5 @@ map is a source inventory, not evidence that extraction is complete.
 - `16b43904b` — `modal-gui(C2): extract EFSM editing handlers` (pushed).
 - `55e15fbba` — `modal-gui(C2): isolate EFSM action enablement` (pushed).
 - `5ca1431aa` — progress-log commit recording the C2 enablement extraction (pushed).
-- Pending commit: static EFSM GUI action contribution registration and current-context refresh.
+- `5158f456c` — `modal-gui(C3): register EFSM actions as extension contributions` (pushed).
+- Pending commit: registered diagram-projection dispatch through the extension catalog.

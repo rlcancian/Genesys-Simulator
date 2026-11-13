@@ -18,6 +18,7 @@ public:
 	static std::vector<const GuiExtensionPlugin*> resolvedPlugins();
 	static GuiExtensionPresentationMetadata presentationMetadata(const std::string& extensionId);
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
+	static void synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene);
 };
 
 class GuiExtensionPluginAutoRegistrar {
