@@ -4,6 +4,7 @@
 #include "kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/model/ModelComponent.h"
 #include "../graphicals/GraphicalModelComponent.h"
+#include "../graphicals/GraphicalModelItemRenderStrategy.h"
 
 #include <algorithm>
 #include <cctype>
@@ -561,6 +562,23 @@ bool GuiExtensionPluginCatalog::animateComponentDeparture(ModelGraphicsScene* sc
 		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
 			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateDeparture) {
 				contribution.animateDeparture(scene, component);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::configureDataDefinitionRendering(
+	ModelDataDefinition* definition, GraphicalModelItemRenderContext* context) {
+	if (definition == nullptr || context == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiDataDefinitionRenderingContribution& contribution : registry.dataDefinitionRenderings()) {
+			if (contribution.supports && contribution.supports(definition) && contribution.configure) {
+				contribution.configure(definition, context);
 				return true;
 			}
 		}

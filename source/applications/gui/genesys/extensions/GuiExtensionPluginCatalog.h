@@ -47,6 +47,7 @@ public:
 	static void configureComponentVisualization(GraphicalModelComponent* component);
 	static bool animateComponentArrival(ModelGraphicsScene* scene, GraphicalModelComponent* component, bool visible);
 	static bool animateComponentDeparture(ModelGraphicsScene* scene, GraphicalModelComponent* component);
+	static bool configureDataDefinitionRendering(ModelDataDefinition* definition, GraphicalModelItemRenderContext* context);
 };
 
 class GuiExtensionPluginAutoRegistrar {

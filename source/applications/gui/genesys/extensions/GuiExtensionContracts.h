@@ -22,6 +22,7 @@ class Model;
 class ModelDataDefinition;
 class ModelComponent;
 class GraphicalModelComponent;
+struct GraphicalModelItemRenderContext;
 class ObjectPropertyBrowser;
 class Plugin;
 
@@ -152,6 +153,12 @@ struct GuiComponentVisualizationContribution {
 	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*)> animateDeparture;
 };
 
+struct GuiDataDefinitionRenderingContribution {
+	std::string id;
+	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<void(ModelDataDefinition*, GraphicalModelItemRenderContext*)> configure;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAction(GuiActionContribution contribution) {
@@ -194,6 +201,10 @@ public:
 		_componentVisualizations.push_back(std::move(contribution));
 	}
 
+	void addDataDefinitionRendering(GuiDataDefinitionRenderingContribution contribution) {
+		_dataDefinitionRenderings.push_back(std::move(contribution));
+	}
+
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
 	}
@@ -234,6 +245,10 @@ public:
 		return _componentVisualizations;
 	}
 
+	const std::vector<GuiDataDefinitionRenderingContribution>& dataDefinitionRenderings() const {
+		return _dataDefinitionRenderings;
+	}
+
 	void clear() {
 		_actions.clear();
 		_docks.clear();
@@ -245,6 +260,7 @@ public:
 		_editingContexts.clear();
 		_modelReferences.clear();
 		_componentVisualizations.clear();
+		_dataDefinitionRenderings.clear();
 	}
 
 private:
@@ -258,6 +274,7 @@ private:
 	std::vector<GuiEditingContextContribution> _editingContexts;
 	std::vector<GuiModelReferenceContribution> _modelReferences;
 	std::vector<GuiComponentVisualizationContribution> _componentVisualizations;
+	std::vector<GuiDataDefinitionRenderingContribution> _dataDefinitionRenderings;
 };
 
 class GuiExtensionPlugin {

@@ -47,6 +47,8 @@
 #include <gtest/gtest.h>
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
+#include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
 
 
 #include <QApplication>
@@ -857,6 +859,27 @@ TEST(GuiDiscreteProcessingVisualization, ExtensionConfiguresGenericQueueTracksAn
     ASSERT_TRUE(graphicalPickStation.hasAnimationTracks());
     EXPECT_TRUE(graphicalPickStation.getAnimationTrackMap()->isEmpty());
     ASSERT_EQ(graphicalPickStation.getAnimationTracks()->size(), 1);
+}
+
+TEST(GuiGeneticRendering, RegisteredExtensionProvidesPartAndRegulationGlyphs) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GeneticCircuitPart part(model, "RenderingPart");
+    part.setPartType("Promoter");
+    GeneticRegulation regulation(model, "RenderingRegulation");
+    regulation.setRegulationType("Repression");
+
+    GraphicalModelDataDefinition partItem(nullptr, &part, QPointF(0, 0));
+    GraphicalModelDataDefinition regulationItem(nullptr, &regulation, QPointF(200, 0));
+    const QPainterPath partShape = partItem.shape();
+    const QPainterPath regulationShape = regulationItem.shape();
+    EXPECT_FALSE(partShape.isEmpty());
+    EXPECT_FALSE(regulationShape.isEmpty());
+    EXPECT_LT(partShape.boundingRect().width(), partItem.boundingRect().width());
+    EXPECT_LT(regulationShape.boundingRect().width(), regulationItem.boundingRect().width());
 }
 
 TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsEditable) {
