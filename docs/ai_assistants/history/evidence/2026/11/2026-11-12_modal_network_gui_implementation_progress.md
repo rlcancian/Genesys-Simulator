@@ -35,7 +35,7 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | D1 | In progress | Network scene insertion enforces formalism-owned allowed-drop policy at the mutation boundary. EFSM permits FSMState and Graph permits GraphNode; process components and wrong formalism data are rejected. Markov/CPN editors and broader tool/context coverage remain. |
 | D2 | In progress | Graph extension renders directed/undirected topology including parallel/self-loop edges, accepts GraphNode drops into network membership, creates edges from selected nodes with explicit source/destination choice, supports edge weight editing and edge removal with undo/redo, and rejects DAG cycles before creating a GraphEdge. Node attribute editing/deletion/undo and broader geometry/persistence checks remain. |
 | D3 | In progress | Static Markov editor accepts MarkovState drops, projects initial/current-state markers and directed probability-labelled transitions, and supports transition create/edit/remove plus initial-state selection with undo/redo. Focused GUI and kernel tests cover these paths and transition identity/ordinal preservation. Persistence integration, state selection/other edit workflows and runtime-driven state refresh remain. |
-| D4 | Not started | CPN editor and token/transition visual editing remain. |
+| D4 | In progress | Static CPN extension accepts place/transition drops; projects bipartite arcs, current colored marking, and enabled transitions; supports arc create/edit/remove, initial marking editing, transition guard/priority editing, and actual transition firing with marking undo/redo. Graphical save/reload and broader persisted firing/invalid-guard coverage remain. |
 | D5 | Not started | Mathematical-state animation/event refresh and final integration remain. No simulation-time traversal is fabricated for structural GraphNetwork. |
 
 ## Executed changes
@@ -278,3 +278,10 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='MarkovChainNetworkGuiExtension.*:GraphNetworkGuiExtension.*:GuiExtensionManager.*'` — PASS, 10 tests; Markov coverage includes add/edit/remove transition, initial-state selection, drops, and undo/redo.
 - `./build/tests-unit/source/tests/genesys_test_markov_chain_network` — PASS, 14 tests; includes transition detach/restore ordering and exactly-one-initial-state invariant.
 - `git diff --check` — PASS after Markov edit/removal controls.
+
+- Began D4 with a statically registered CPN editor. Place and CPNTransition drops become formal network members; the projection draws the bipartite arcs, place marking counts/colors, and enabled/disabled transition status from the actual CPN domain.
+- CPN GUI operations now create bipartite arcs with explicit direction and fixed inscription, edit/remove arcs, edit initial colored marking and transition guard/priority, and fire an enabled transition through `ColoredPetriNetNetwork::fire()`. Firing undo/redo restores captured place markings and reprojects the actual state.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS with the CPN extension linked statically.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS with CPN editor coverage.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='ColoredPetriNetGuiExtension.*'` — PASS, 3 tests; covers allowed place/transition drops, arc authoring/edit/remove undo/redo, transition guard/priority editing, initial marking edits, and firing/marking undo/redo.
+- `git diff --check` — PASS for the current CPN GUI increment.

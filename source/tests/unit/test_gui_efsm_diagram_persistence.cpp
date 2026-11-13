@@ -470,6 +470,269 @@ TEST(MarkovChainNetworkGuiExtension, DroppedMarkovStateJoinsTheNetworkAndScene) 
                   ->getDataDefinition(), network.getStates()->front());
 }
 
+TEST(ColoredPetriNetGuiExtension, ProjectsMarkingAndFiresSelectedTransitionWithUndoRedo) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ColoredPetriNetNetwork network(model, "EditableCPN");
+    auto* input = new PetriPlace(model, "Input");
+    auto* output = new PetriPlace(model, "Output");
+    input->setTokens(2, "red");
+    network.addPlace(input);
+    network.addPlace(output);
+    auto* transition = new CPNTransition(model, "MoveToken");
+    network.addTransition(transition);
+    auto* incoming = new CPNArc(model, input, transition, CPNArc::Direction::PlaceToTransition, "InputArc");
+    incoming->setInscription("red", 1);
+    auto* outgoing = new CPNArc(model, output, transition, CPNArc::Direction::TransitionToPlace, "OutputArc");
+    outgoing->setInscription("red", 1);
+    ASSERT_TRUE(network.addArc(incoming));
+    ASSERT_TRUE(network.addArc(outgoing));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    Plugin* placePlugin = simulator.getPluginManager()->find(Util::TypeOf<PetriPlace>());
+    Plugin* transitionPlugin = simulator.getPluginManager()->find(Util::TypeOf<CPNTransition>());
+    ASSERT_NE(placePlugin, nullptr);
+    ASSERT_NE(transitionPlugin, nullptr);
+    scene.addGraphicalModelDataDefinition(placePlugin, input, QPointF(20, 20));
+    scene.addGraphicalModelDataDefinition(transitionPlugin, transition, QPointF(220, 20));
+    scene.addGraphicalModelDataDefinition(placePlugin, output, QPointF(420, 20));
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui")).size(), 6);
+    ASSERT_TRUE(network.isEnabled(transition));
+
+    GuiActionContribution fire;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.cpn.fire-transition") fire = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(fire.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    auto* transitionItem = scene.findGraphicalModelDataDefinition(transition);
+    ASSERT_NE(transitionItem, nullptr);
+    transitionItem->setSelected(true);
+    GuiActionContribution editTransition;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.cpn.edit-transition") editTransition = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(editTransition.trigger));
+    ASSERT_TRUE(editTransition.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        auto* guard = dialog->findChild<QLineEdit*>(QStringLiteral("cpnTransitionGuard"));
+        const auto priorities = dialog->findChildren<QSpinBox*>();
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        ASSERT_NE(guard, nullptr);
+        ASSERT_EQ(priorities.size(), 1);
+        ASSERT_EQ(buttons.size(), 1);
+        guard->setText(QStringLiteral("1"));
+        priorities.front()->setValue(7);
+        buttons.front()->button(QDialogButtonBox::Ok)->click();
+    });
+    editTransition.trigger(context);
+    EXPECT_EQ(transition->getGuardExpression(), "1");
+    EXPECT_EQ(transition->getPriority(), 7u);
+    undoStack.undo();
+    EXPECT_TRUE(transition->getGuardExpression().empty());
+    EXPECT_EQ(transition->getPriority(), 0u);
+    undoStack.redo();
+    EXPECT_EQ(transition->getPriority(), 7u);
+    ASSERT_TRUE(fire.isEnabled(context));
+    fire.trigger(context);
+    EXPECT_EQ(input->getTokens("red"), 1u);
+    EXPECT_EQ(output->getTokens("red"), 1u);
+    undoStack.undo();
+    EXPECT_EQ(input->getTokens("red"), 2u);
+    EXPECT_EQ(output->getTokens("red"), 0u);
+    undoStack.redo();
+    EXPECT_EQ(input->getTokens("red"), 1u);
+    EXPECT_EQ(output->getTokens("red"), 1u);
+}
+
+TEST(ColoredPetriNetGuiExtension, DroppedPlacesAndTransitionsJoinTheNetwork) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ColoredPetriNetNetwork network(model, "DroppedCPNNodes");
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    scene.setNetworkEditorOwner(&network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto drop = [&](const std::string& pluginType) {
+        QTreeWidgetItem draggedItem;
+        draggedItem.setWhatsThis(0, QString::fromStdString(pluginType));
+        scene.setObjectBeingDragged(&draggedItem);
+        QGraphicsSceneDragDropEvent event(QEvent::GraphicsSceneDrop);
+        event.setScenePos(QPointF(150 + scene.getGraphicalModelDataDefinitions()->size() * 180, 90));
+        scene.dropEvent(&event);
+    };
+    drop(Util::TypeOf<PetriPlace>());
+    drop(Util::TypeOf<CPNTransition>());
+    EXPECT_EQ(network.getPlaces()->size(), 1u);
+    EXPECT_EQ(network.getTransitions()->size(), 1u);
+    EXPECT_EQ(scene.getGraphicalModelDataDefinitions()->size(), 2);
+    auto* place = network.getPlaces()->front();
+    auto* placeItem = scene.findGraphicalModelDataDefinition(place);
+    ASSERT_NE(placeItem, nullptr);
+    placeItem->setSelected(true);
+    GuiActionContribution editMarking;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.cpn.edit-initial-marking") editMarking = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(editMarking.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(editMarking.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        auto* color = dialog->findChild<QLineEdit*>(QStringLiteral("cpnInitialColor"));
+        const auto quantities = dialog->findChildren<QSpinBox*>();
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        ASSERT_NE(color, nullptr);
+        ASSERT_EQ(quantities.size(), 1);
+        ASSERT_EQ(buttons.size(), 1);
+        color->setText(QStringLiteral("green"));
+        quantities.front()->setValue(4);
+        buttons.front()->button(QDialogButtonBox::Ok)->click();
+    });
+    editMarking.trigger(context);
+    EXPECT_EQ(network.getInitialTokens(place, "green"), 4u);
+    undoStack.undo();
+    EXPECT_EQ(network.getInitialTokens(place, "green"), 0u);
+    undoStack.redo();
+    EXPECT_EQ(network.getInitialTokens(place, "green"), 4u);
+}
+
+TEST(ColoredPetriNetGuiExtension, CreatesInscribedBipartiteArcThroughEditorAction) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ColoredPetriNetNetwork network(model, "ArcEditorCPN");
+    auto* place = new PetriPlace(model, "P");
+    auto* transition = new CPNTransition(model, "T");
+    network.addPlace(place);
+    network.addTransition(transition);
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    scene.addGraphicalModelDataDefinition(simulator.getPluginManager()->find(Util::TypeOf<PetriPlace>()),
+                                          place, QPointF(20, 20));
+    scene.addGraphicalModelDataDefinition(simulator.getPluginManager()->find(Util::TypeOf<CPNTransition>()),
+                                          transition, QPointF(220, 20));
+    scene.findGraphicalModelDataDefinition(place)->setSelected(true);
+    scene.findGraphicalModelDataDefinition(transition)->setSelected(true);
+
+    GuiActionContribution addArc;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.cpn.create-arc") addArc = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(addArc.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(addArc.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        const auto choices = dialog->findChildren<QComboBox*>();
+        auto* color = dialog->findChild<QLineEdit*>(QStringLiteral("cpnArcColor"));
+        const auto quantities = dialog->findChildren<QSpinBox*>();
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        ASSERT_EQ(choices.size(), 1);
+        ASSERT_NE(color, nullptr);
+        ASSERT_EQ(quantities.size(), 1);
+        ASSERT_EQ(buttons.size(), 1);
+        choices.front()->setCurrentIndex(1);
+        color->setText(QStringLiteral("blue"));
+        quantities.front()->setValue(3);
+        buttons.front()->button(QDialogButtonBox::Ok)->click();
+    });
+    addArc.trigger(context);
+    ASSERT_EQ(network.getArcs()->size(), 1u);
+    CPNArc* arc = network.getArcs()->front();
+    EXPECT_TRUE(arc->isOutputArc());
+    EXPECT_EQ(arc->getInscription("blue"), 3u);
+    undoStack.undo();
+    EXPECT_TRUE(network.getArcs()->empty());
+    undoStack.redo();
+    ASSERT_EQ(network.getArcs()->size(), 1u);
+    EXPECT_EQ(network.getArcs()->front(), arc);
+    scene.clearSelection();
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui")))
+        if (dynamic_cast<QGraphicsPathItem*>(item) != nullptr && item->data(1).isValid()) item->setSelected(true);
+    GuiActionContribution removeArc;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.cpn.remove-arc") removeArc = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(removeArc.trigger));
+    ASSERT_TRUE(removeArc.isEnabled(context));
+    removeArc.trigger(context);
+    EXPECT_TRUE(network.getArcs()->empty());
+    undoStack.undo();
+    ASSERT_EQ(network.getArcs()->size(), 1u);
+    EXPECT_EQ(network.getArcs()->front(), arc);
+    scene.clearSelection();
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui")))
+        if (dynamic_cast<QGraphicsPathItem*>(item) != nullptr && item->data(1).isValid()) item->setSelected(true);
+    GuiActionContribution editArc;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.cpn.edit-arc-inscription") editArc = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(editArc.trigger));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        auto* color = dialog->findChild<QLineEdit*>(QStringLiteral("cpnInscriptionColor"));
+        const auto quantities = dialog->findChildren<QSpinBox*>();
+        const auto buttons = dialog->findChildren<QDialogButtonBox*>();
+        ASSERT_NE(color, nullptr);
+        ASSERT_EQ(quantities.size(), 1);
+        ASSERT_EQ(buttons.size(), 1);
+        color->setText(QStringLiteral("green"));
+        quantities.front()->setValue(2);
+        buttons.front()->button(QDialogButtonBox::Ok)->click();
+    });
+    editArc.trigger(context);
+    EXPECT_EQ(arc->getInscription("green"), 2u);
+    undoStack.undo();
+    EXPECT_EQ(arc->getInscription("blue"), 3u);
+    undoStack.redo();
+    EXPECT_EQ(arc->getInscription("green"), 2u);
+}
+
 TEST(GraphNetworkGuiExtension, DroppedGraphNodeJoinsTheNetworkAndScene) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
