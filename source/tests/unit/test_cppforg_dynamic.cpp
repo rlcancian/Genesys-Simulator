@@ -23,7 +23,7 @@ namespace fs = std::filesystem;
 class ScopedCppForGDirectory {
 public:
     ScopedCppForGDirectory() {
-        std::string pattern = (fs::temp_directory_path() / "genesys-cppforg-test-XXXXXX").string();
+        std::string pattern = (fs::temp_directory_path() / "genesys-cppforg test-XXXXXX").string();
         std::vector<char> chars(pattern.begin(), pattern.end());
         chars.push_back('\0');
         if (char* made = ::mkdtemp(chars.data())) _path = made;
@@ -39,6 +39,19 @@ private:
     fs::path _path;
 };
 
+class ScopedCurrentDirectory {
+public:
+    explicit ScopedCurrentDirectory(const fs::path& path) : _previous(fs::current_path()) {
+        fs::current_path(path);
+    }
+    ~ScopedCurrentDirectory() {
+        std::error_code error;
+        fs::current_path(_previous, error);
+    }
+private:
+    fs::path _previous;
+};
+
 unsigned countLines(const fs::path& filename) {
     unsigned lines = 0;
     std::ifstream input(filename);
@@ -50,6 +63,12 @@ unsigned countLines(const fs::path& filename) {
 std::string markerCode(const fs::path& filename) {
     return "std::ofstream stream(\"" + filename.string() +
         "\", std::ios::app); if (stream && entity) stream << \"hit\\n\";";
+}
+
+std::string entityApiCode(const fs::path& filename) {
+    return "entity->setAttributeValue(\"CppForG.TestValue\", 42.0, \"\", true); "
+        "std::ofstream stream(\"" + filename.string() +
+        "\"); if (stream && entity) stream << entity->getAttributeValue(\"CppForG.TestValue\");";
 }
 } // namespace
 
@@ -88,6 +107,88 @@ TEST(CppForGDynamicTest, CreateCppForGDisposeExecutesGeneratedCodeOnEntityArriva
     EXPECT_EQ(counter->getCountValue(), 1.0) << "Dispose must receive the forwarded entity";
     EXPECT_EQ(cpp->getCppCompiler()->getDynamicLibraryHandler(), handle)
         << "Model recheck must reuse the already loaded valid code";
+}
+
+TEST(CppForGDynamicTest, GeneratedCodeUsesEntityAttributeApiOnArrival) {
+    ScopedCppForGDirectory scratch;
+    ASSERT_FALSE(scratch.path().empty());
+    ScopedCurrentDirectory workingDirectory(scratch.path());
+    const auto observedValue = scratch.path() / "entity-value.txt";
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* create = new Create(model, "create");
+    auto* cpp = new CppForG(model, "cppforg_entity_api");
+    auto* dispose = new Dispose(model, "dispose");
+    create->getConnectionManager()->insert(cpp);
+    cpp->getConnectionManager()->insert(dispose);
+    create->setMaxCreations(1ul);
+    create->setEntitiesPerCreation(1);
+    create->setTimeBetweenCreationsExpression("10");
+    cpp->setIncludesCode("#include <fstream>\n");
+    cpp->setOnDispatchEventCode(entityApiCode(observedValue));
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(2);
+    model->getSimulation()->setShowReportsAfterReplication(false);
+    model->getSimulation()->setShowReportsAfterSimulation(false);
+    std::string checkError;
+    ASSERT_TRUE(ModelDataDefinition::Check(cpp, checkError)) << checkError;
+    model->getSimulation()->start();
+
+    std::ifstream input(observedValue);
+    double value = 0.0;
+    ASSERT_TRUE(input >> value);
+    EXPECT_DOUBLE_EQ(value, 42.0);
+    auto* counter = dynamic_cast<Counter*>(
+        model->getDataManager()->getDataDefinition("Counter", "dispose.CountNumberIn"));
+    ASSERT_NE(counter, nullptr);
+    EXPECT_DOUBLE_EQ(counter->getCountValue(), 1.0);
+}
+
+TEST(CppForGDynamicTest, ChangingUserCodeRebuildsAndReplacesLoadedLibrary) {
+    ScopedCppForGDirectory scratch;
+    ASSERT_FALSE(scratch.path().empty());
+    const auto marker = scratch.path() / "changed-code.txt";
+    const auto initializationMarker = scratch.path() / "initializations.txt";
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* create = new Create(model, "create");
+    auto* cpp = new CppForG(model, "cppforg_changed_code");
+    auto* dispose = new Dispose(model, "dispose");
+    create->getConnectionManager()->insert(cpp);
+    cpp->getConnectionManager()->insert(dispose);
+    create->setMaxCreations(1ul);
+    create->setEntitiesPerCreation(1);
+    create->setTimeBetweenCreationsExpression("10");
+    cpp->setIncludesCode("#include <fstream>\n");
+    cpp->setOnDispatchEventCode("(void)entity;");
+    cpp->setInitBetweenReplicationCode("std::ofstream stream(\"" + initializationMarker.string() +
+        "\", std::ios::app); if (stream) stream << \"initialized\\n\";");
+    ASSERT_TRUE(model->check());
+    ASSERT_NE(cpp->getCppCompiler()->getDynamicLibraryHandler(), nullptr);
+
+    cpp->setOnDispatchEventCode(markerCode(marker));
+    std::string error;
+    ASSERT_TRUE(ModelDataDefinition::Check(cpp, error)) << error;
+    ASSERT_NE(cpp->getCppCompiler()->getDynamicLibraryHandler(), nullptr);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(2);
+    model->getSimulation()->setShowReportsAfterReplication(false);
+    model->getSimulation()->setShowReportsAfterSimulation(false);
+    model->getSimulation()->start();
+    EXPECT_EQ(countLines(marker), 1u);
+    EXPECT_EQ(countLines(initializationMarker), 1u);
+    auto* counter = dynamic_cast<Counter*>(
+        model->getDataManager()->getDataDefinition("Counter", "dispose.CountNumberIn"));
+    ASSERT_NE(counter, nullptr);
+    EXPECT_DOUBLE_EQ(counter->getCountValue(), 1.0);
+
+    model->getSimulation()->start();
+    EXPECT_EQ(countLines(marker), 2u);
+    EXPECT_EQ(countLines(initializationMarker), 2u);
+    EXPECT_DOUBLE_EQ(counter->getCountValue(), 1.0);
 }
 
 TEST(CppForGDynamicTest, TwoComponentsUseIndependentGeneratedLibraries) {

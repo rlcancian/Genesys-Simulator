@@ -36,6 +36,8 @@ add_executable(genesys_gui_application
     ${GENESYS_QT_GUI_HEADERS}
     ${GENESYS_QT_GUI_RESOURCES}
 )
+# Runtime-compiled CppForG code resolves kernel methods from the host executable.
+set_target_properties(genesys_gui_application PROPERTIES ENABLE_EXPORTS ON)
 
 target_include_directories(genesys_gui_application
     PRIVATE

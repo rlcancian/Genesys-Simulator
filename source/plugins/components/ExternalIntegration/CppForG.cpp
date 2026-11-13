@@ -219,7 +219,7 @@ extern "C" void initBetweenReplications(Model* model) {
     std::string includeRoot;
     // CMake currently compiles the source with an absolute path; avoid requiring
     // the runtime working directory to equal the source-tree directory.
-    const fs::path sourceRoot = fs::path(__FILE__).parent_path().parent_path().parent_path();
+    const fs::path sourceRoot = fs::path(__FILE__).parent_path().parent_path().parent_path().parent_path();
     if (fs::exists(sourceRoot / "kernel/simulator/model/Model.h"))
         includeRoot = fs::absolute(sourceRoot).string();
 

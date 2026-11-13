@@ -40,6 +40,7 @@ genesys_add_unit_test(genesys_test_cppforg_dynamic
     genesys_kernel_simulator_runtime
     genesys_plugins_components_minimal
 )
+set_target_properties(genesys_test_cppforg_dynamic PROPERTIES ENABLE_EXPORTS ON)
 
 genesys_add_unit_test(genesys_test_cppcompiler_dynamic
     test_cppcompiler_dynamic.cpp
