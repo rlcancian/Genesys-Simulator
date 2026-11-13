@@ -217,10 +217,19 @@ extern "C" void initBetweenReplications(Model* model) {
     const std::string originalFlags = _cppCompiler->getFlagsGeneral();
     const std::string originalTempDir = _cppCompiler->getTempDir();
     std::string includeRoot;
-    // CMake currently compiles the source with an absolute path; avoid requiring
-    // the runtime working directory to equal the source-tree directory.
+    // Prefer headers installed relative to the running application. This keeps
+    // runtime compilation working in relocatable/source-less installations.
+    std::error_code executableError;
+    const fs::path executablePath = fs::read_symlink("/proc/self/exe", executableError);
+    if (!executableError) {
+        const fs::path installRoot = executablePath.parent_path().parent_path() /
+            GENESYS_CPPFORG_INSTALL_INCLUDE_ROOT;
+        if (fs::exists(installRoot / "kernel/simulator/model/Model.h"))
+            includeRoot = fs::absolute(installRoot).string();
+    }
+    // Development builds can use the source tree even when launched elsewhere.
     const fs::path sourceRoot = fs::path(__FILE__).parent_path().parent_path().parent_path().parent_path();
-    if (fs::exists(sourceRoot / "kernel/simulator/model/Model.h"))
+    if (includeRoot.empty() && fs::exists(sourceRoot / "kernel/simulator/model/Model.h"))
         includeRoot = fs::absolute(sourceRoot).string();
 
     const std::string signature = sourceCode + "\n" + originalFlags +

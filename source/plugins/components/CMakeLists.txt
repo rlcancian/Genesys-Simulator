@@ -18,6 +18,8 @@ target_link_libraries(genesys_plugins_components
 )
 
 target_compile_features(genesys_plugins_components PUBLIC cxx_std_23)
+target_compile_definitions(genesys_plugins_components PRIVATE
+    "GENESYS_CPPFORG_INSTALL_INCLUDE_ROOT=\"${CMAKE_INSTALL_DATADIR}/genesys/source\"")
 
 # Optional GLPK dependency for MetabolicFluxBalance and WholeCellModeling FBA.
 # Detection order: pkg-config first, then raw find_library fallback.
