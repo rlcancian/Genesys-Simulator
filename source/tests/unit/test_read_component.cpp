@@ -308,12 +308,13 @@ TEST_F(ReadFixture, KeyboardProviderExceptionStopsInsteadOfEscapingDispatch) {
 TEST_F(ReadFixture, RemovedDestinationControlsAreReleasedOnComponentTeardown) {
     const auto controlsBefore = model->getControls()->size();
     auto* read = new Read(model, "ControlLifetime");
+    const auto controlsWithComponent = model->getControls()->size();
     auto* destination = new ReadDestination("", false);
     read->addDestination(destination);
-    EXPECT_EQ(model->getControls()->size(), controlsBefore + 5u);
+    EXPECT_EQ(model->getControls()->size(), controlsWithComponent + 2u);
     read->removeDestination(destination);
     // Intentionally retained while a GUI editor could still have bindings.
-    EXPECT_EQ(model->getControls()->size(), controlsBefore + 5u);
+    EXPECT_EQ(model->getControls()->size(), controlsWithComponent + 2u);
     delete read;
     EXPECT_EQ(model->getControls()->size(), controlsBefore);
 }
