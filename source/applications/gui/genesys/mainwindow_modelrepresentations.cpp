@@ -52,6 +52,8 @@
 #include <QSignalBlocker>
 #include <QTimer>
 #include <QUrl>
+#include <QThread>
+#include <QPointer>
 
 void MainWindow::_actualizeModelSimLanguage() {
     // Keep this wrapper as part of the final compatibility façade for model-language synchronization.
@@ -256,12 +258,33 @@ void MainWindow::_actualizeModelDataDefinitions(bool force) {
 }
 
 void MainWindow::_actualizeGraphicalModel(SimulationEvent * re) {
+    if (re == nullptr) return;
+
+    // Simulation callbacks may be delivered by a worker thread. Keep all widget/scene
+    // access on the GUI thread, and make the queued callback harmless during shutdown.
+    if (QThread::currentThread() != thread()) {
+        QPointer<MainWindow> guardedWindow(this);
+        QMetaObject::invokeMethod(this, [guardedWindow]() {
+            if (guardedWindow == nullptr) return;
+            ModelGraphicsScene* scene = guardedWindow->myScene();
+            if (scene != nullptr && scene->getSimulator() != nullptr) {
+                GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
+                    scene->getSimulator(), scene);
+            }
+        }, Qt::QueuedConnection);
+        return;
+    }
+
     Event* event = re->getCurrentEvent();
-    if (event != nullptr) {
+    if (event != nullptr && ui != nullptr && ui->graphicsView != nullptr) {
         ui->graphicsView->selectModelComponent(event->getComponent());
     }
-    // Projection plugins reflect the mathematical state already produced by this real event.
-    GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(myScene()->getSimulator(), myScene());
+    // Projections reflect only mathematical state produced by this real event.
+    ModelGraphicsScene* scene = myScene();
+    if (scene != nullptr && scene->getSimulator() != nullptr) {
+        GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
+            scene->getSimulator(), scene);
+    }
 }
 
 void MainWindow::_generateGraphicalModelFromModel() {

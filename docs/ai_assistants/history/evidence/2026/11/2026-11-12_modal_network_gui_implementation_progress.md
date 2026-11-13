@@ -36,7 +36,7 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | D2 | In progress | Graph extension renders directed/undirected topology including parallel/self-loop edges, accepts GraphNode drops, creates edges with explicit endpoints, supports edge weight/removal undo/redo, rejects DAG cycles, and shows BFS/DFS structural-analysis overlays without implying simulation events. Selected GraphNode deletion removes incident edges; undo restores the same node/edge identities, edge order and node position. Generic `.gui` round-trip restores node positions by identity; Graph nodes/edges remain associated with the Network during model checks. Node attribute editing and broader geometry coverage remain. |
 | D3 | In progress | Static Markov editor accepts MarkovState drops, projects initial/current-state markers and directed probability-labelled transitions, and supports transition create/edit/remove plus initial-state selection with undo/redo. Selected-state removal also removes incident transitions; undo restores transition identities/order, initial/current states and state geometry. Runtime exposes the sampled transition; scene-thread projection refresh highlights the actual selection/reset. References survive model checks; `.gui` round-trip verifies topology, initial state, probability and state positions. The editor now exposes explicit validation feedback for malformed stochastic rows. Further property workflows remain. |
 | D4 | In progress | Static CPN extension accepts place/transition drops; projects bipartite arcs, current colored marking and enabled transitions; supports arc create/edit/remove, initial marking editing, transition guard/priority editing, firing and node removal with undo/redo. Node removal restores incident arcs/order, initial marking, current tokens, last-fired transition and geometry. Runtime highlights the actual firing path; aggregate inscription validation and model associations are covered. `.gui` round-trip verifies topology/marking/positions. The editor now exposes diagnostics from the kernel's guard and topology checks. Further property workflows remain. |
-| D5 | In progress | Runtime exposes real EFSM/Markov/CPN state changes and queues diagram refresh to the scene thread; EFSM current state/fired transition, Markov sampled state/transition, and CPN fired transition plus its incident arcs are visually highlighted. Graph BFS/DFS is explicitly structural analysis. Full lifecycle/restart and integrated GUI validation remain. |
+| D5 | In progress | Runtime exposes real EFSM/Markov/CPN state changes and queues diagram refresh to the scene thread; EFSM current state/fired transition, Markov sampled state/transition, and CPN fired transition plus its incident arcs are visually highlighted. Graph BFS/DFS is explicitly structural analysis. MainWindow now marshals off-thread event projection refresh onto the GUI thread and guards window/scene teardown. Full lifecycle/restart and integrated GUI validation remain. |
 
 ## Executed changes
 
@@ -321,3 +321,14 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - C6 disabled-extension integration: config disables `modal.markov.gui`; the static catalog omits its contribution, `.gui` node geometry survives load/save/reload, and loaded Markov DTMC activation still takes its actual self-transition — PASS, 1/1.
 - D1 contextual palette and submodel regression filter `GuiExtensionManager.*:EFSMNetworkEditor.SharedNetworkOpensOneSubmodelTabFromMultipleAdapters` — PASS, 8/8; covers per-formalism palette contents, model-root palette restoration, process component acceptance in ordinary Submodel, process component rejection in Network, and shared Network tab switching.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after contextual palette integration.
+
+### D5 GUI-thread refresh safety increment
+
+- `_actualizeGraphicalModel` marshals off-thread event projection refresh onto
+  the MainWindow Qt thread. The queued callback guards the MainWindow and looks
+  up the active scene only when it runs, so a closed window/scene cannot be
+  dereferenced during shutdown. GUI-thread event handling retains component
+  selection behavior.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS.
+- `build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='GuiExtensionManager.NetworkProjectionRefreshIsQueuedToTheSceneThread:GraphNetworkGuiExtension.*:ColoredPetriNetGuiExtension.*'` — PASS, 15/15.
+- `build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='MarkovChainNetworkGuiExtension.*'` — PASS, 5/5. Complete simulation lifecycle and integrated GUI validation remain pending.
