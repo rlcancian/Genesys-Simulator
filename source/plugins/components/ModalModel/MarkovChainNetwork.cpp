@@ -151,11 +151,31 @@ void MarkovChainNetwork::addTransition(MarkovTransition* transition) {
 }
 
 void MarkovChainNetwork::removeTransition(MarkovTransition* transition) {
-	if (transition == nullptr) {
-		return;
-	}
-	_transitions->remove(transition);
-	delete transition;
+	(void)detachTransition(transition);
+}
+
+std::unique_ptr<MarkovChainNetwork::MarkovTransition> MarkovChainNetwork::detachTransition(
+	MarkovTransition* transition, unsigned int* ordinal) {
+	if (transition == nullptr || _transitions == nullptr) return {};
+	auto* entries = _transitions->list();
+	auto it = std::find(entries->begin(), entries->end(), transition);
+	if (it == entries->end()) return {};
+	if (ordinal != nullptr) *ordinal = static_cast<unsigned int>(std::distance(entries->begin(), it));
+	entries->erase(it);
+	return std::unique_ptr<MarkovTransition>(transition);
+}
+
+bool MarkovChainNetwork::restoreTransition(MarkovTransition* transition, unsigned int ordinal) {
+	if (transition == nullptr || _transitions == nullptr
+		|| _transitions->find(transition) != _transitions->list()->end()) return false;
+	if (transition->getSource() == nullptr || transition->getDestination() == nullptr
+		|| _states->find(transition->getSource()) == _states->list()->end()
+		|| _states->find(transition->getDestination()) == _states->list()->end()) return false;
+	auto* entries = _transitions->list();
+	auto it = entries->begin();
+	std::advance(it, std::min<std::size_t>(ordinal, entries->size()));
+	entries->insert(it, transition);
+	return true;
 }
 
 List<MarkovChainNetwork::MarkovTransition*>* MarkovChainNetwork::getTransitions() const {

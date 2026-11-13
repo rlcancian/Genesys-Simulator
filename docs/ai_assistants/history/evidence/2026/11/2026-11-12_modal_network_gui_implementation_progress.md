@@ -34,7 +34,9 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | C6 | In progress | EFSM and Graph extensions are statically registered and the GUI/test targets link them. Unknown `.gui` diagram records round-trip. A no-extension build/runtime and optional-dependency regression remain. |
 | D1 | In progress | Network scene insertion enforces formalism-owned allowed-drop policy at the mutation boundary. EFSM permits FSMState and Graph permits GraphNode; process components and wrong formalism data are rejected. Markov/CPN editors and broader tool/context coverage remain. |
 | D2 | In progress | Graph extension renders directed/undirected topology including parallel/self-loop edges, accepts GraphNode drops into network membership, creates edges from selected nodes with explicit source/destination choice, supports edge weight editing and edge removal with undo/redo, and rejects DAG cycles before creating a GraphEdge. Node attribute editing/deletion/undo and broader geometry/persistence checks remain. |
-| D3–D5 | Not started | Markov/CPN editors, mathematical-state visuals, and graph analysis visualization remain. No simulation-time traversal is fabricated for GraphNetwork. |
+| D3 | In progress | Static Markov editor now accepts MarkovState drops, projects initial/current-state markers and directed probability-labelled transitions, and creates transitions with explicit endpoints and undo/redo ownership. Transition editing/removal, initial-state controls, persistence coverage and runtime-driven state refresh remain. |
+| D4 | Not started | CPN editor and token/transition visual editing remain. |
+| D5 | Not started | Mathematical-state animation/event refresh and final integration remain. No simulation-time traversal is fabricated for structural GraphNetwork. |
 
 ## Executed changes
 
@@ -264,3 +266,10 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS (up to date after the final D2 orientation/cycle checks).
 - Focused integration filter covering `GuiExtensionManager`, `GraphNetworkGuiExtension`, EFSM diagram persistence/projection and shared/reopened EFSM execution — PASS, 30 tests.
 - `git diff --check` — PASS after explicit orientation and DAG cycle regression.
+
+- Began D3 with a statically registered MarkovChain GUI extension. MarkovState palette drops become network members; the projection renders initial/current-state markers and probability-labelled directed transition overlays. The create-transition action requires explicit endpoints/probability and uses an owning detach/restore command so undo/redo preserves transition identity and ordinal.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS with the Markov editor linked into the application.
+- `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS with Markov GUI coverage.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='MarkovChainNetworkGuiExtension.*:GraphNetworkGuiExtension.*:GuiExtensionManager.*'` — PASS, 10 tests; covers Graph extension regressions, Markov state drop, Markov projection and transition create/undo/redo.
+- `cmake --build build/tests-unit --target genesys_test_markov_chain_network -j 8` and `./build/tests-unit/source/tests/genesys_test_markov_chain_network` — PASS, 13 tests, including detach/restore ownership and ordinal.
+- `git diff --check` — PASS for the Markov editor increment.

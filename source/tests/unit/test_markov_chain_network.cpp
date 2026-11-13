@@ -110,6 +110,40 @@ TEST(MarkovChainNetworkTest, ProgrammaticStatesBelongToNetworkEditingLevel) {
 	EXPECT_EQ(network.getStates()->size(), 2u);
 }
 
+TEST(MarkovChainNetworkTest, TransitionDetachAndRestorePreserveOwnershipAndOrdinal) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	MarkovChainNetwork network(model, "UndoableChain");
+	MarkovState a(model, "A");
+	MarkovState b(model, "B");
+	MarkovState c(model, "C");
+	network.addState(&a);
+	network.addState(&b);
+	network.addState(&c);
+	auto* first = transition(&a, &b, 0.3, "first");
+	auto* middle = transition(&a, &a, 0.4, "middle");
+	auto* last = transition(&a, &c, 0.3, "last");
+	network.addTransition(first);
+	network.addTransition(middle);
+	network.addTransition(last);
+
+	unsigned int ordinal = 99;
+	auto detached = network.detachTransition(middle, &ordinal);
+	ASSERT_TRUE(detached);
+	EXPECT_EQ(ordinal, 1u);
+	ASSERT_EQ(network.getTransitions()->size(), 2u);
+	EXPECT_EQ(network.getTransitions()->list()->front(), first);
+	EXPECT_EQ(network.getTransitions()->list()->back(), last);
+	ASSERT_TRUE(network.restoreTransition(detached.get(), ordinal));
+	detached.release();
+	ASSERT_EQ(network.getTransitions()->size(), 3u);
+	auto it = network.getTransitions()->list()->begin();
+	EXPECT_EQ(*it++, first);
+	EXPECT_EQ(*it++, middle);
+	EXPECT_EQ(*it, last);
+}
+
 TEST(MarkovChainNetworkTest, ConstructionCreatesStepAndStatePorts) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();

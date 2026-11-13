@@ -12,6 +12,7 @@
 #include "plugins/data/ModalModel/MarkovState.h"
 
 #include <string>
+#include <memory>
 #include <vector>
 
 class Sampler_if;
@@ -67,6 +68,8 @@ public:
 	List<MarkovState*>* getStates() const;
 	void addTransition(MarkovTransition* transition);
 	void removeTransition(MarkovTransition* transition);
+	std::unique_ptr<MarkovTransition> detachTransition(MarkovTransition* transition, unsigned int* ordinal = nullptr);
+	bool restoreTransition(MarkovTransition* transition, unsigned int ordinal);
 	List<MarkovTransition*>* getTransitions() const;
 	std::vector<MarkovTransition*> getOutgoingTransitions(MarkovState* state) const;
 	void setInitialState(MarkovState* state);

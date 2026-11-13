@@ -45,6 +45,8 @@
 #include "plugins/data/ModalModel/DirectedGraphNetwork.h"
 #include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
 #include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
+#include "plugins/data/ModalModel/MarkovChainNetwork.h"
+#include "plugins/data/ModalModel/MarkovState.h"
 
 #include <gtest/gtest.h>
 
@@ -313,6 +315,104 @@ TEST(GraphNetworkGuiExtension, ProjectsParallelAndSelfLoopEdgesFromTheNetworkTop
     }
     GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 3);
+}
+
+TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndoRedo) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "EditableMarkov");
+    auto* first = new MarkovState(model, "Start");
+    auto* second = new MarkovState(model, "Finish");
+    network.addState(first);
+    network.addState(second);
+    network.setInitialState(first);
+    network.setCurrentState(second);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    Plugin* statePlugin = simulator.getPluginManager()->find(Util::TypeOf<MarkovState>());
+    ASSERT_NE(statePlugin, nullptr);
+    auto* firstItem = scene.addGraphicalModelDataDefinition(statePlugin, first, QPointF(20, 20));
+    auto* secondItem = scene.addGraphicalModelDataDefinition(statePlugin, second, QPointF(220, 20));
+
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 2);
+    firstItem->setSelected(true);
+    secondItem->setSelected(true);
+    GuiActionContribution createTransition;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.markov.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) {
+            if (action.id == "modal.markov.create-transition") createTransition = action;
+        }
+    }
+    ASSERT_TRUE(static_cast<bool>(createTransition.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(createTransition.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        const auto choices = dialog->findChildren<QComboBox*>();
+        ASSERT_EQ(choices.size(), 2);
+        choices.at(0)->setCurrentText(QStringLiteral("Start"));
+        choices.at(1)->setCurrentText(QStringLiteral("Finish"));
+        dialog->accept();
+        QTimer::singleShot(0, []() {
+            auto* probability = qobject_cast<QInputDialog*>(QApplication::activeModalWidget());
+            ASSERT_NE(probability, nullptr);
+            probability->setDoubleValue(0.35);
+            probability->accept();
+        });
+    });
+    createTransition.trigger(context);
+    ASSERT_EQ(network.getTransitions()->size(), 1u);
+    auto* transition = network.getTransitions()->front();
+    EXPECT_EQ(transition->getSource(), first);
+    EXPECT_EQ(transition->getDestination(), second);
+    EXPECT_DOUBLE_EQ(transition->getProbability(), 0.35);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 4);
+    undoStack.undo();
+    EXPECT_TRUE(network.getTransitions()->empty());
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 2);
+    undoStack.redo();
+    ASSERT_EQ(network.getTransitions()->size(), 1u);
+    EXPECT_EQ(network.getTransitions()->front(), transition);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 4);
+}
+
+TEST(MarkovChainNetworkGuiExtension, DroppedMarkovStateJoinsTheNetworkAndScene) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "DroppedMarkovStateNetwork");
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    scene.setNetworkEditorOwner(&network);
+    Plugin* statePlugin = simulator.getPluginManager()->find(Util::TypeOf<MarkovState>());
+    ASSERT_NE(statePlugin, nullptr);
+    QTreeWidgetItem draggedItem;
+    draggedItem.setWhatsThis(0, QString::fromStdString(statePlugin->getPluginInfo()->getPluginTypename()));
+    scene.setObjectBeingDragged(&draggedItem);
+    QGraphicsSceneDragDropEvent event(QEvent::GraphicsSceneDrop);
+    event.setScenePos(QPointF(150, 90));
+    scene.dropEvent(&event);
+
+    ASSERT_EQ(network.getStates()->size(), 1u);
+    EXPECT_EQ(network.getStates()->front()->getLevel(), network.getId());
+    ASSERT_EQ(scene.getGraphicalModelDataDefinitions()->size(), 1);
+    EXPECT_EQ(dynamic_cast<GraphicalModelDataDefinition*>(scene.getGraphicalModelDataDefinitions()->front())
+                  ->getDataDefinition(), network.getStates()->front());
 }
 
 TEST(GraphNetworkGuiExtension, DroppedGraphNodeJoinsTheNetworkAndScene) {
