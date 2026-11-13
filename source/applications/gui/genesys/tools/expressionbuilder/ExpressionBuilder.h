@@ -20,6 +20,8 @@ namespace Ui {
 class ExpressionBuilder;
 }
 
+class Model;
+
 struct ExpressionParameter {
     QString name;
     QString defaultValue;
@@ -46,6 +48,11 @@ public:
     explicit ExpressionBuilder(QWidget *parent = nullptr);
     ~ExpressionBuilder();
 
+    // A property edit is transactional: no model value changes before accept().
+    void setExpressionContext(Model* model, const QString& currentExpression);
+    [[nodiscard]] QString expressionText() const;
+    [[nodiscard]] bool validateCurrentExpression();
+
 private slots:
     void on_categorySelected(QTreeWidgetItem *item, int column);
     void on_expressionSelected(QListWidgetItem *item);
@@ -54,6 +61,7 @@ private slots:
 
 private:
     Ui::ExpressionBuilder *ui;
+    Model* _model = nullptr;
     
     // Expression data
     QList<ExpressionCategory> categories;
@@ -78,6 +86,7 @@ private:
     void updateParameterForm();
     void updateExpressionPreview();
     QString buildExpression();
+    void insertSelectedExpression();
     
     // Extensibility: Register new categories and expressions
     void registerCategory(const ExpressionCategory &category);
