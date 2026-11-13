@@ -7,6 +7,7 @@
 #include "../actions/DeleteUndoCommand.h"
 #include "../actions/DecideConditionUndoCommand.h"
 #include "../codeeditor/CodeEditor.h"
+#include "../tools/expressionbuilder/ExpressionBuilder.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -1000,7 +1001,8 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
 
 bool ObjectPropertyBrowser::_hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const {
     return desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
-        || desc.editorHint == SimulationControlEditorHint::CodeEditor;
+        || desc.editorHint == SimulationControlEditorHint::CodeEditor
+        || desc.editorHint == SimulationControlEditorHint::ParserExpression;
 }
 
 QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropertyDescriptor& desc) const {
@@ -1015,6 +1017,8 @@ QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropert
     switch (desc.editorHint) {
     case SimulationControlEditorHint::CodeEditor:
         return "Edit source code...";
+    case SimulationControlEditorHint::ParserExpression:
+        return "Build expression...";
     case SimulationControlEditorHint::Default:
     case SimulationControlEditorHint::MultiLineText:
     default:
@@ -2376,6 +2380,33 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
     }
 }
 
+bool ObjectPropertyBrowser::_openExpressionBuilder(QtProperty* property, const Binding& binding) {
+    if (binding.control == nullptr || binding.owner == nullptr ||
+        !_isKernelEditingEnabled(binding.descriptor) || !_hasValidActiveBindingContext(property)) {
+        return false;
+    }
+
+    // The modal editor owns a private text buffer. Cancel never calls the
+    // control setter. Validation is syntax-only, not an expression evaluation.
+    ExpressionBuilder dialog(this);
+    dialog.setWindowTitle(tr("Expression Builder - %1")
+                          .arg(QString::fromStdString(binding.descriptor.displayName)));
+    dialog.setExpressionContext(binding.owner->getParentModel(),
+                                QString::fromStdString(binding.control->getValue()));
+    if (dialog.exec() != QDialog::Accepted || !_hasValidActiveBindingContext(property)) {
+        return false;
+    }
+
+    const QString proposedExpression = dialog.expressionText();
+    if (proposedExpression.toStdString() == binding.control->getValue()) {
+        return true;
+    }
+
+    // The existing kernel-property path performs validation, mutation,
+    // network undo routing and change notification exactly once.
+    return _applyVariantChange(property, proposedExpression, true, true);
+}
+
 bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     if (!_hasValidActiveBindingContext(property)) {
         qWarning() << "[PropertyEditor] openSpecializedEditor aborted due to invalid binding context";
@@ -2402,6 +2433,10 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
 
     if (binding.descriptor.supportsListEditor) {
         return false;
+    }
+
+    if (binding.descriptor.editorHint == SimulationControlEditorHint::ParserExpression) {
+        return _openExpressionBuilder(property, binding);
     }
 
     if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
@@ -3166,7 +3201,8 @@ bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) 
         || binding.descriptor.kind == GenesysPropertyKind::Unknown;
 }
 
-bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVariant& value, bool committed) {
+bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVariant& value, bool committed,
+                                               bool specializedEditorCommit) {
     qInfo() << "[PropertyEditor] _applyVariantChange property="
             << (property != nullptr ? property->propertyName() : QString("<null>"))
             << " committed=" << committed;
@@ -3191,7 +3227,8 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         return false;
     }
 
-    if (binding.descriptor.supportsInlineExpansion || _hasSpecializedEditor(binding.descriptor)
+    if (binding.descriptor.supportsInlineExpansion
+        || (_hasSpecializedEditor(binding.descriptor) && !specializedEditorCommit)
         || binding.descriptor.kind == GenesysPropertyKind::Enum
         || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
         return false;

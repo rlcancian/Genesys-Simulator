@@ -197,6 +197,7 @@ private:
     bool _openSpecializedEditor(QtProperty* property);
     bool _openTextDialogEditor(const Binding& binding, bool compactEditor);
     bool _openMultilineTextDialogEditor(const Binding& binding);
+    bool _openExpressionBuilder(QtProperty* property, const Binding& binding);
     bool _createObjectForProperty(QtProperty* property);
 
 protected:
@@ -263,7 +264,8 @@ private:
 
 private:
     bool _requiresCommitConfirmation(const Binding& binding) const;
-    bool _applyVariantChange(QtProperty* property, const QVariant& value, bool committed);
+    bool _applyVariantChange(QtProperty* property, const QVariant& value, bool committed,
+                             bool specializedEditorCommit = false);
     bool _applyGraphicsVariantChange(QtProperty* property, const QVariant& value, bool committed);
     bool _applyGraphicsEnumChange(QtProperty* property, int value);
 

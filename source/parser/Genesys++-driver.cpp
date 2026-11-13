@@ -1,4 +1,5 @@
 #include <string>
+#include <algorithm>
 #include <exception>
 #include <cerrno>
 #include <cstdlib>
@@ -46,7 +47,10 @@ genesyspp_driver::genesyspp_driver(const genesyspp_driver& other)
 	  file(other.file),
 	  str_to_parse(other.str_to_parse),
 	  throwsException(other.throwsException),
-	  errorMessage(other.errorMessage) {}
+	  errorMessage(other.errorMessage),
+	  _syntaxOnly(other._syntaxOnly),
+	  _syntaxUnresolvedIdentifiers(other._syntaxUnresolvedIdentifiers),
+	  _syntaxInvalidCharacters(other._syntaxInvalidCharacters) {}
 
 // Copy assignment replaces local registry with a deep-copied registry from the source driver.
 genesyspp_driver& genesyspp_driver::operator=(const genesyspp_driver& other) {
@@ -65,6 +69,9 @@ genesyspp_driver& genesyspp_driver::operator=(const genesyspp_driver& other) {
 	str_to_parse = other.str_to_parse;
 	throwsException = other.throwsException;
 	errorMessage = other.errorMessage;
+	_syntaxOnly = other._syntaxOnly;
+	_syntaxUnresolvedIdentifiers = other._syntaxUnresolvedIdentifiers;
+	_syntaxInvalidCharacters = other._syntaxInvalidCharacters;
 	return *this;
 }
 
@@ -78,12 +85,16 @@ genesyspp_driver::genesyspp_driver(genesyspp_driver&& other) noexcept
 	  file(std::move(other.file)),
 	  str_to_parse(std::move(other.str_to_parse)),
 	  throwsException(other.throwsException),
-	  errorMessage(std::move(other.errorMessage)) {
+	  errorMessage(std::move(other.errorMessage)),
+	  _syntaxOnly(other._syntaxOnly),
+	  _syntaxUnresolvedIdentifiers(std::move(other._syntaxUnresolvedIdentifiers)),
+	  _syntaxInvalidCharacters(std::move(other._syntaxInvalidCharacters)) {
 	other._model = nullptr;
 	other._sampler = nullptr;
 	other._referedDataElements = nullptr;
 	other._isRegisterReferedDataElements = false;
 	other.result = 0.0;
+	other._syntaxOnly = false;
 }
 
 // Move assignment safely releases current resources before taking over source ownership.
@@ -102,11 +113,15 @@ genesyspp_driver& genesyspp_driver::operator=(genesyspp_driver&& other) noexcept
 	str_to_parse = std::move(other.str_to_parse);
 	throwsException = other.throwsException;
 	errorMessage = std::move(other.errorMessage);
+	_syntaxOnly = other._syntaxOnly;
+	_syntaxUnresolvedIdentifiers = std::move(other._syntaxUnresolvedIdentifiers);
+	_syntaxInvalidCharacters = std::move(other._syntaxInvalidCharacters);
 	other._model = nullptr;
 	other._sampler = nullptr;
 	other._referedDataElements = nullptr;
 	other._isRegisterReferedDataElements = false;
 	other.result = 0.0;
+	other._syntaxOnly = false;
 	return *this;
 }
 
@@ -206,6 +221,65 @@ int genesyspp_driver::parse_str(const std::string &str) {
 	}
 	scan_end_str();
 	return res;
+}
+
+// Keep expression validation separate from evaluation. A fresh driver can be
+// used by a GUI without a sampler; semantic actions are suppressed by Bison.
+ExpressionSyntaxValidation genesyspp_driver::validateSyntax(const std::string& expression) {
+	ExpressionSyntaxValidation validation;
+	if (expression.find_first_not_of(" \t\r\n") == std::string::npos) {
+		validation.errorMessage = "Empty expression";
+		return validation;
+	}
+
+	const bool previousMode = _syntaxOnly;
+	const bool previousThrows = throwsException;
+	_syntaxOnly = true;
+	throwsException = false;
+	_syntaxUnresolvedIdentifiers.clear();
+	_syntaxInvalidCharacters.clear();
+
+	int parseStatus = -1;
+	try {
+		parseStatus = parse_str(expression);
+	} catch (...) {
+		_syntaxOnly = previousMode;
+		throwsException = previousThrows;
+		throw;
+	}
+
+	validation.unresolvedIdentifiers = _syntaxUnresolvedIdentifiers;
+	const std::string parserError = getErrorMessage();
+	if (!_syntaxInvalidCharacters.empty()) {
+		validation.errorMessage = "Invalid character: " + _syntaxInvalidCharacters.front();
+	} else if (!validation.unresolvedIdentifiers.empty()) {
+		validation.status = ExpressionSyntaxValidation::Status::UnresolvedIdentifiers;
+		validation.errorMessage = "Unresolved identifier: " + validation.unresolvedIdentifiers.front();
+		if (parseStatus != 0) {
+			validation.errorMessage += "; syntax cannot be determined until identifiers are resolved";
+		}
+	} else if (parseStatus == 0 && parserError.empty()) {
+		validation.status = ExpressionSyntaxValidation::Status::Valid;
+	} else {
+		validation.errorMessage = parserError.empty() ? "Invalid expression syntax" : parserError;
+	}
+
+	_syntaxOnly = previousMode;
+	throwsException = previousThrows;
+	return validation;
+}
+
+void genesyspp_driver::noteUnresolvedIdentifier(const std::string& identifier) {
+	if (_syntaxOnly && std::find(_syntaxUnresolvedIdentifiers.begin(),
+	                            _syntaxUnresolvedIdentifiers.end(), identifier) == _syntaxUnresolvedIdentifiers.end()) {
+		_syntaxUnresolvedIdentifiers.push_back(identifier);
+	}
+}
+
+void genesyspp_driver::noteInvalidCharacter(const std::string& character) {
+	if (_syntaxOnly) {
+		_syntaxInvalidCharacters.push_back(character);
+	}
 }
 
 void genesyspp_driver::setResult(double value) {
@@ -311,7 +385,9 @@ void genesyspp_driver::error(const yy::location& l, const std::string& m) {
 	erro.append(" from line "+ std::to_string(l.begin.line) + " column "+std::to_string(l.begin.column));
 	erro.append(" to line "+std::to_string(l.end.line)+" column "+std::to_string(l.end.column));
 	erro.append("\n");
-	setErrorMessage(m);
+	// Preserve existing runtime diagnostics; expose token locations only in the
+	// non-executing syntax editor, where they help users repair expressions.
+	setErrorMessage(_syntaxOnly ? erro : m);
 	setResult(-1);
 }
 

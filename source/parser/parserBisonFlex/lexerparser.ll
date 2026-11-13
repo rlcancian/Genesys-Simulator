@@ -239,7 +239,13 @@ L      [A-Za-z0-9_.]+
 [ \t\n]        ;
 
 {L}   {
-        ModelDataDefinition* datadef; 
+        ModelDataDefinition* datadef;
+        // Numeric expressions can be parsed without a model or an entity.
+        // A missing symbol is reported separately from a grammar error.
+        if (driver.isSyntaxOnly() && driver.getModel() == nullptr) {
+            driver.noteUnresolvedIdentifier(std::string(yytext));
+            return yy::genesyspp_parser::make_NUMD(obj_t(0, std::string(yytext)), loc);
+        } 
 
 		//std::cout << "Verificando o que é o Literal \""+std::string(yytext)+"\"\n";
 		//std::cout << driver.getModel()->getInfos()->getName() << std::endl;
@@ -347,10 +353,14 @@ L      [A-Za-z0-9_.]+
         //Case not found retturns a illegal token
 		//datadef = driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Set>(), std::string(yytext));
 		//std::cout << "NOT FOUND " << std::string(yytext) << std::endl;
+        if (driver.isSyntaxOnly()) {
+            driver.noteUnresolvedIdentifier(std::string(yytext));
+            return yy::genesyspp_parser::make_NUMD(obj_t(0, std::string(yytext)), loc);
+        }
         return yy::genesyspp_parser::make_ILLEGAL(obj_t(0, std::string(yytext)), loc);
       }
 
-.       {return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string(yytext)), loc);}
+.       {if (driver.isSyntaxOnly()) driver.noteInvalidCharacter(std::string(yytext)); return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string(yytext)), loc);}
 
 <<EOF>> {return yy::genesyspp_parser::make_END(loc);}
 

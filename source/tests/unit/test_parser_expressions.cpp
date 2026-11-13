@@ -579,3 +579,91 @@ TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerSameExternalPointerDoe
     EXPECT_FALSE(externalDestroyed);
     EXPECT_EQ(destroyedCounter, 1);
 }
+
+
+// Expression Builder prerequisite: validation must use the actual grammar but
+// must never execute reductions, access the current entity or sample RNGs.
+TEST_F(ParserExpressionsTest, SyntaxOnlyAcceptsGrammarWithoutEvaluatingFunctions) {
+    genesyspp_driver driver(model, nullptr, false); // any RNG call would be unsafe
+    const auto validation = driver.validateSyntax("unif(10,1) + norm(0,-1) + rnd + ident + tnow");
+    EXPECT_TRUE(validation.isValid()) << validation.errorMessage;
+    EXPECT_TRUE(validation.unresolvedIdentifiers.empty());
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyNeverAssignsToModelVariables) {
+    auto* variable = new Variable(model, "ParserSyntaxVariable");
+    ASSERT_NE(variable, nullptr);
+    variable->setValue(42.0);
+
+    genesyspp_driver driver(model, nullptr, false);
+    const auto scalar = driver.validateSyntax("ParserSyntaxVariable = norm(0,1)");
+    const auto indexed = driver.validateSyntax("ParserSyntaxVariable[1,2] = rnd");
+    EXPECT_TRUE(scalar.isValid()) << scalar.errorMessage;
+    EXPECT_TRUE(indexed.isValid()) << indexed.errorMessage;
+    EXPECT_DOUBLE_EQ(variable->getValue(), 42.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2"), 0.0);
+
+    delete variable;
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyAcceptsDangerousArithmeticWithoutExecutingIt) {
+    genesyspp_driver driver(model, nullptr, false);
+    EXPECT_TRUE(driver.validateSyntax("1/0").isValid());
+    EXPECT_TRUE(driver.validateSyntax("mod(5,0)").isValid());
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyReportsInvalidSyntaxAndCharacters) {
+    genesyspp_driver driver(model, nullptr, false);
+    for (const auto* expression : {"1+(", "norm(1)", "1+2)", "@"}) {
+        const auto validation = driver.validateSyntax(expression);
+        EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::InvalidSyntax)
+            << expression << ": " << validation.errorMessage;
+        EXPECT_FALSE(validation.errorMessage.empty());
+    }
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyDiagnosticsIncludeParserLocation) {
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax("1 + (");
+    EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::InvalidSyntax);
+    EXPECT_NE(validation.errorMessage.find("line"), std::string::npos);
+    EXPECT_NE(validation.errorMessage.find("column"), std::string::npos);
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlySeparatesUnknownIdentifiersFromGrammarErrors) {
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax("ParserUnknownSymbol + 2");
+    EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::UnresolvedIdentifiers);
+    ASSERT_EQ(validation.unresolvedIdentifiers.size(), 1u);
+    EXPECT_EQ(validation.unresolvedIdentifiers.front(), "ParserUnknownSymbol");
+    EXPECT_FALSE(validation.errorMessage.empty());
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyDoesNotNeedModelOrSamplerForPureExpressions) {
+    genesyspp_driver driver(nullptr, nullptr, false);
+    const auto validation = driver.validateSyntax("1 + exp(2) + rnd + tnow");
+    EXPECT_TRUE(validation.isValid()) << validation.errorMessage;
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyRejectsBlankInput) {
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax(" \t\n ");
+    EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::InvalidSyntax);
+    EXPECT_FALSE(validation.errorMessage.empty());
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyCanInspectAttributesWithoutCurrentEntity) {
+    auto* attribute = new Attribute(model, "ParserSyntaxAttribute");
+    ASSERT_NE(attribute, nullptr);
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax("ParserSyntaxAttribute[1,2] + 3");
+    EXPECT_TRUE(validation.isValid()) << validation.errorMessage;
+    delete attribute;
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyRestoresNormalEvaluationMode) {
+    genesyspp_driver driver(model, nullptr, false);
+    EXPECT_TRUE(driver.validateSyntax("1+2*3").isValid());
+    EXPECT_EQ(driver.parse_str("1+2*3"), 0);
+    EXPECT_DOUBLE_EQ(driver.getResult(), 7.0);
+}
