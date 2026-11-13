@@ -917,14 +917,16 @@ A task moves to `done` only after required validation is green, evidence is revi
 ### AUTO-GUI-004 — Extract concrete plugin-specific GUI logic before final graphical-plugin API
 
 - Priority: `P1`
-- Status: `running`
-- Authorization: maintainer request dated 2026-11-13 after ModalModel/Network integration; first bounded slice implemented in draft PR #579, tests pending.
+- Status: `running` (E0–E4B complete; E5 local checks pass; corrected-head hosted validation pending)
+- Authorization: maintainer request dated 2026-11-13 after ModalModel/Network integration; implementation executed in draft PR #579.
 - Decision: `HUM-ARCH-006`; plan: [GUI_EXTENSIONS_EXTRACTION_PLAN.md](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md).
 - Environment: `github` for bounded source patch and CI evidence; `local` for interactive GUI smoke and optional focused debugging.
 - Branch: `WiP202611/gui-plugin-specific-extraction`, based on `WorkInProgress` `2ad98f96311e9c13d27078f9dd83bbffafdabe5d`; [PR #579](https://github.com/rlcancian/Genesys-Simulator/pull/579) targets `WorkInProgress`.
 - Scope: E0 source revalidation after Modal/Network integration; E1 BioReaction menu extraction, E2 Decide Conditions/ports/undo coordination, E3 ModalModel/Network/Property Editor and plugin tree, E4 Queue/Station/genetic presentation specializations, E5 classify recurring contributions and propose only necessary general contracts.
-- First delivered code: registered `BioReactionContextMenuGuiExtensionPlugin` removes BioReaction/BioSpecies knowledge from `GraphicalContextMenuController`; two focused Google Tests; no kernel changes. Build/test `UNKNOWN` until PR #579 check results have been inspected.
-- Definition of each slice: functional behavior preserved, generic class no longer references *migrated* concrete domain classes, affected GUI builds, focused positive/negative test passes; do not repeatedly perform exhaustive G0/whole-tree audits during coding.
+- Implemented slices: E0 repaired test placement; E1 registered BioReaction context menu; E2 delegated Decide list/port reconciliation; E3 delegated ModalModel/Network context, tree and Property Editor operations; E4A extracted Queue/PickStation visualization; E4B extracted genetic glyph presentation. Commits and focused results are cataloged in [the execution plan](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md) and [closeout evidence](history/evidence/2026/11/2026-11-13_gui_plugin_extraction_closeout.md).
+- Current validation: GUI app and full `tests-unit` builds passed; CTest passed 2,121 active tests with four disabled. Focused GUI/renderer tests passed (renderer 11/11), and documentation governance passed. Initial CTest/hosted unit checks found the same regular-Submodel drop regression; `18a86f434` fixes it and local regression/full suite now pass. Hosted checks for that corrected/documented head are pending; do not treat prior-head red checks as current-head validation.
+- Residual host coupling: `GraphicalModelComponent` still initializes Decide's semantic ports by concrete type, and the generic scene retains a Queue placeholder for drawing-tool placeholder mode. These are explicitly outside the extracted runtime/list paths and remain candidates for a later bounded extraction.
+- E0–E4B local slice acceptance: implemented, affected GUI targets built and focused tests passed; E5 records the contribution catalog and executes the broader unit regression. Interactive manual desktop checks were not executed locally.
 - No dynamic plugin loading, ABI migration, global GUI rewrite, new framework, unsafe handling of model lifetimes, data deletion or unapproved `WorkInProgress` direct edits. Maintain rollback by small commits.
 - Previous unmerged [PR #575](https://github.com/rlcancian/Genesys-Simulator/pull/575) is historical documentation and **not** the active implementation workstream. `AUTO-GUI-003` general implementation remains deferred until extracted contracts establish concrete needs; avoid parallel execution.
 

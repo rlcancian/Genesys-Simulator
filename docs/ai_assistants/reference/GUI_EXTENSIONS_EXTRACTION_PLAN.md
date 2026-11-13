@@ -52,3 +52,29 @@ Not in this extraction effort: full registration/factory architecture, dynamic l
 The earlier unmerged [PR #575](https://github.com/rlcancian/Genesys-Simulator/pull/575) documents the former accelerated implementation roadmap and is *superseded as an implementation branch*, not part of this PR. Reconcile obsolete planning references during E5 rather than merging two inconsistent plans.
 
 Small reviewable commits; draft PR until focused evidence is available; no direct edits to `WorkInProgress` and no stable branch promotion.
+
+## 6. Execution record — PR #579
+
+The authorized extraction sequence has been implemented on `WiP202611/gui-plugin-specific-extraction`; this section records actual implementation and validation, not a claim of merge or final acceptance. Detailed evidence and residual boundaries are in [`2026-11-13_gui_plugin_extraction_closeout.md`](../history/evidence/2026/11/2026-11-13_gui_plugin_extraction_closeout.md).
+
+| Stage | State | Commit | Evidence / boundary |
+|---|---|---|---|
+| E0 | PASS | `7f36e9c` | Recovered syntactically broken test placement; focused GUI test and GUI target builds passed; bounded dependency inventory recorded. |
+| E1 | PASS | `c4e31ae4a` | BioReaction context actions use the existing contribution dispatch; focused menu tests, including active-scene switching, passed; GUI build passed. |
+| E2 | PASS | `2bb6dabc4` | Decide list/port reconciliation is delegated to `extensions/plugins/decide`; focused property/list undo tests passed. Generic `GraphicalModelComponent` still recognizes Decide to initialize semantic ports; that initial-shape path remains a documented extraction boundary. |
+| E3 | PASS | `690679ef8` | ModalModel and Network context, tree and Property Editor operations use registered contributions; focused context/property/undo tests and GUI build passed. |
+| E4A | PASS | `2c5239cea` | Queue/PickStation runtime visualization callbacks and Queue animation controller moved to `discrete_processing`; focused visualization and related GUI checks passed. The generic scene retains a Queue placeholder used by its drawing-tool placeholder mode. |
+| E4B | PASS | `b2910bfc9` | Genetic circuit glyph data moved behind registered rendering contribution; GUI and renderer targets built; focused extension and 11 renderer tests passed. |
+| E5 | PENDING HOSTED VALIDATION | `18a86f434` + documentation closeout | Contract catalog, governance reconciliation, GUI build and full local `tests-unit` passed (2,121 active tests, 4 disabled); hosted checks for the corrected/documented head remain pending. No merge is authorized by this plan. |
+
+### Observed contribution catalog
+
+| Domain / behavior | Source → destination | Dispatch contract | Tests/evidence | Remaining concrete host dependency |
+|---|---|---|---|---|
+| BioReaction menu and BioSpecies selection | `GraphicalContextMenuController` → `extensions/plugins/biochemical/BioReactionContextMenuGuiExtensionPlugin.cpp` | `GuiContextMenuContribution` | BioReaction menu tests, GUI build | None for migrated actions. |
+| Decide Conditions/ports reconciliation | Property Editor and graphical component → `extensions/plugins/decide/` integration | Existing property/list editing plus bounded Decide reconciliation contribution | list editing, port order/connections and undo/redo tests | `GraphicalModelComponent` retains Decide-specific initial port-shape setup. |
+| ModalModel/Network contexts, tree policy, graphical elements | MainWindow, Property Editor and plugin tree → `extensions/plugins/modal/`, `efsm/`, `graph/`, `markov/`, `cpn/` | Existing context, network-editor and diagram-projection contributions | focused context, property, relation, persistence and undo/redo tests | Formalism registrations remain statically linked by design. |
+| Queue/PickStation simulation visualization | Generic component/scene event handlers → `extensions/plugins/discrete_processing/` | `GuiComponentVisualizationContribution` | generic track/callback test and focused scene tests | Queue drawing-tool placeholder remains in generic scene. |
+| Genetic circuit glyph presentation | Generic data-definition renderer → `extensions/plugins/genetic/GeneticCircuitRenderingGuiExtensionPlugin.cpp` | `GuiDataDefinitionRenderingContribution` | extension glyph test; renderer suite 11/11 | None for migrated glyph specialization. |
+
+The two additional contracts were introduced only after concrete extraction use: `GuiComponentVisualizationContribution` isolates behavior tied to component simulation events, while `GuiDataDefinitionRenderingContribution` supplies formalism-specific glyph data to the existing renderer. Static registration, scene ownership, generic rendering/geometry and the existing Property Editor remain in place. This is extraction preparation, not completion of the future dynamic/general plugin architecture.
