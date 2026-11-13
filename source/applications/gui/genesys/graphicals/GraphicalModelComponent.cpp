@@ -145,7 +145,7 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	}
 }
 
-void GraphicalModelComponent::applyDecideConditionPortEdit(unsigned int index, bool inserted) {
+void GraphicalModelComponent::editOutputPort(unsigned int index, bool inserted) {
 	if (index > static_cast<unsigned int>(_graphicalOutputPorts.size())) return;
 	if (inserted) {
 		auto* port = new GraphicalComponentPort(this, false, index, nullptr);
@@ -184,7 +184,7 @@ void GraphicalModelComponent::applyDecideConditionPortEdit(unsigned int index, b
 	}
 }
 
-void GraphicalModelComponent::moveDecideConditionPort(unsigned int from, unsigned int to) {
+void GraphicalModelComponent::moveOutputPort(unsigned int from, unsigned int to) {
 	if (_graphicalOutputPorts.isEmpty() || from >= static_cast<unsigned int>(_graphicalOutputPorts.size() - 1)
 		|| to >= static_cast<unsigned int>(_graphicalOutputPorts.size() - 1) || from == to) return;
 	_graphicalOutputPorts.move(static_cast<int>(from), static_cast<int>(to));

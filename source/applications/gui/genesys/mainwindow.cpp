@@ -1796,6 +1796,9 @@ void MainWindow::_refreshGuiExtensions() {
     _guiExtensionManager->setLoadedModelPluginIds(collectLoadedModelPluginIds(simulator));
     _guiExtensionManager->setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
     _guiExtensionManager->rebuild(extensionContext);
+    if (ui->treeViewPropertyEditor != nullptr) {
+        ui->treeViewPropertyEditor->setGuiExtensionManager(_guiExtensionManager.get());
+    }
 }
 
 void MainWindow::_disconnectSceneSignals(const char* context) {

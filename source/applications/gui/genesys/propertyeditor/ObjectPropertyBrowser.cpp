@@ -5,13 +5,12 @@
 #include "../animations/AnimationTimer.h"
 #include "../animations/AnimationVariable.h"
 #include "../actions/DeleteUndoCommand.h"
-#include "../actions/DecideConditionUndoCommand.h"
 #include "../codeeditor/CodeEditor.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../services/GraphicalModelBuilder.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "../extensions/GuiExtensionManager.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 
@@ -653,6 +652,10 @@ void ObjectPropertyBrowser::setModelChangedCallback(ModelChangedCallback callbac
 
 void ObjectPropertyBrowser::setModelScene(ModelGraphicsScene* scene) {
     _modelScene = scene;
+}
+
+void ObjectPropertyBrowser::setGuiExtensionManager(GuiExtensionManager* manager) {
+    _guiExtensionManager = manager;
 }
 
 void ObjectPropertyBrowser::refreshAfterUndo() {
@@ -2417,46 +2420,16 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
 }
 
 void ObjectPropertyBrowser::_applyPositionalListChange() {
-        Decide* editedDecide = nullptr;
-        GraphicalModelComponent* editedGraphical = nullptr;
-        ModelGraphicsScene* editedScene = nullptr;
-        Decide::ConditionEdit conditionEdit;
-        bool hasConditionEdit = false;
-        if (auto* decide = dynamic_cast<Decide*>(_modelObject)) {
-            editedDecide = decide;
-            editedGraphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
-            editedScene = editedGraphical == nullptr ? _modelScene.data()
-                : dynamic_cast<ModelGraphicsScene*>(editedGraphical->scene());
-            if (editedGraphical == nullptr && editedScene != nullptr) {
-                auto* candidate = editedScene->findGraphicalModelComponent(decide->getId());
-                if (candidate != nullptr && candidate->getComponent() == decide) {
-                    editedGraphical = candidate;
-                }
+        ModelGraphicsScene* editedScene = _modelScene.data();
+        if (_graphicalObject != nullptr) {
+            if (auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(_graphicalObject.data())) {
+                if (graphical->scene() != nullptr) editedScene = dynamic_cast<ModelGraphicsScene*>(graphical->scene());
             }
-            unsigned int index = 0;
-            bool inserted = false;
-            bool portsChanged = false;
-            // The list editor can queue several positional edits before the
-            // queued refresh callback runs. Apply every edit in order so the
-            // graphical ports continue to match Conditions (plus the Else port).
-            while (decide->takeConditionPortEdit(index, inserted)) {
-                if (editedGraphical != nullptr) {
-                    editedGraphical->applyDecideConditionPortEdit(index, inserted);
-                    portsChanged = true;
-                }
-            }
-            hasConditionEdit = decide->takeConditionEdit(conditionEdit);
-            if (portsChanged && editedScene != nullptr) {
-                editedScene->update();
-                editedScene->notifyGraphicalModelChange(GraphicalModelEvent::EventType::EDIT,
-                    GraphicalModelEvent::EventObjectType::COMPONENT, editedGraphical);
-            }
+        }
+        if (_guiExtensionManager != nullptr) {
+            _guiExtensionManager->reconcilePropertyListChange(_modelObject, editedScene);
         }
         this->_notifyModelChangeApplied();
-        if (hasConditionEdit && editedScene != nullptr && editedScene->getUndoStack() != nullptr) {
-            editedScene->getUndoStack()->push(
-                new DecideConditionUndoCommand(editedDecide, editedGraphical, std::move(conditionEdit)));
-        }
 }
 
 bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding, bool compactEditor) {
@@ -3065,21 +3038,14 @@ bool ObjectPropertyBrowser::_moveListItem(QtProperty* property, int destination)
     QPointer<QObject> graphicalObject = _graphicalObject;
     QPointer<GraphicalModelComponent> graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
     ModelGraphicsScene* rawScene = _graphicalItem == nullptr ? _modelScene.data() : dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene());
-    if (graphical == nullptr && rawScene != nullptr && dynamic_cast<Decide*>(binding.owner) != nullptr) {
-        GraphicalModelComponent* candidate = rawScene->findGraphicalModelComponent(binding.owner->getId());
-        if (candidate != nullptr && candidate->getComponent() == binding.owner) {
-            graphical = candidate;
-            graphicalObject = candidate;
-        }
-    }
     QPointer<ModelGraphicsScene> scene(rawScene);
     SimulationControl* control = binding.control;
     ModelDataDefinition* owner = binding.owner;
     auto apply = [browser, graphicalObject, graphical, scene, control, owner](int source, int target) {
         control->moveListElement(source, target);
-        if (graphical != nullptr && dynamic_cast<Decide*>(owner) != nullptr) {
-            graphical->moveDecideConditionPort(static_cast<unsigned int>(source), static_cast<unsigned int>(target));
-        } else if (owner != nullptr && !control->handlesListMoveReconciliation()) {
+        const bool specializedMove = browser != nullptr && browser->_guiExtensionManager != nullptr
+            && browser->_guiExtensionManager->reconcilePropertyListMove(owner, scene.data(), source, target);
+        if (!specializedMove && owner != nullptr && !control->handlesListMoveReconciliation()) {
             ModelDataDefinition::CreateInternalData(owner);
         }
         QGraphicsItem* graphicalItem = dynamic_cast<QGraphicsItem*>(graphicalObject.data());

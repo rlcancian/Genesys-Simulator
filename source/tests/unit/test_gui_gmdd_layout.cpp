@@ -128,9 +128,9 @@ TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
     decide->addConditions("A > 0");
     EXPECT_EQ(countPorts(decide), 2);
     GraphicalModelComponent graphical(plugin, decide, QPointF(100, 100), QColor("#336699"));
-    graphical.applyDecideConditionPortEdit(1, true);
+    graphical.editOutputPort(1, true);
     EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 3);
-    graphical.applyDecideConditionPortEdit(1, false);
+    graphical.editOutputPort(1, false);
     EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 2);
     decide->addConditions("B > 0");
     decide->addConditions("C > 0");
@@ -156,7 +156,7 @@ TEST(DecideDynamicPortPresentation, AppliesQueuedConditionPortEditsInOrder) {
     unsigned int index = 0;
     bool inserted = false;
     while (decide->takeConditionPortEdit(index, inserted)) {
-        graphical.applyDecideConditionPortEdit(index, inserted);
+        graphical.editOutputPort(index, inserted);
     }
 
     ASSERT_EQ(decide->getConditions()->size(), 2u);
@@ -206,7 +206,7 @@ TEST(DecideConditionUndo, MoveKeepsGraphicalConnectionsAndElseThroughUndoRedo) {
     auto* graphicalConnection = firstPort->getConnections()->front();
 
     decide->moveCondition(0, 2);
-    graphical->moveDecideConditionPort(0, 2);
+    graphical->moveOutputPort(0, 2);
     Decide::ConditionEdit edit{Decide::ConditionEdit::Kind::Move, 0};
     edit.destinationIndex = 2;
     undoStack.push(new DecideConditionUndoCommand(decide, graphical, edit));
@@ -274,7 +274,7 @@ TEST(DecideConditionUndo, RemoveUndoRedoRestoresOnlyTheRemovedConnectionAndElse)
     ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
     EXPECT_EQ(changedIndex, 0u);
     EXPECT_FALSE(inserted);
-    graphicalDecide->applyDecideConditionPortEdit(changedIndex, inserted);
+    graphicalDecide->editOutputPort(changedIndex, inserted);
     Decide::ConditionEdit edit;
     ASSERT_TRUE(decide->takeConditionEdit(edit));
     undoStack.push(new DecideConditionUndoCommand(decide, graphicalDecide, edit));
@@ -320,7 +320,7 @@ TEST(DecideConditionUndo, InsertAndReplaceUndoRedoRestoreOrderedConditionTextAnd
     unsigned int changedIndex = 0;
     bool inserted = false;
     ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
-    graphical->applyDecideConditionPortEdit(changedIndex, inserted);
+    graphical->editOutputPort(changedIndex, inserted);
     Decide::ConditionEdit insertEdit;
     ASSERT_TRUE(decide->takeConditionEdit(insertEdit));
     undoStack.push(new DecideConditionUndoCommand(decide, graphical, insertEdit));
@@ -1240,7 +1240,7 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
     scene->addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(0),
         graphicalTarget->getGraphicalInputPorts().at(0), 0, 0);
     movedDecide->moveCondition(0, 1);
-    graphicalDecide->moveDecideConditionPort(0, 1);
+    graphicalDecide->moveOutputPort(0, 1);
     const QString expectedCategoryColor = QColor(Qt::darkGreen).name(QColor::HexRgb);
 
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);

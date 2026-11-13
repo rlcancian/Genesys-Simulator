@@ -10,6 +10,8 @@
 #include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "extensions/GuiExtensionManager.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 #include "propertyeditor/qtpropertybrowser/qtvariantproperty.h"
 #include "services/ModelLanguageSynchronizer.h"
 
@@ -109,6 +111,26 @@ void drainGuiEvents() {
     for (int i = 0; i < 8; ++i) {
         QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     }
+}
+
+void attachDecideGuiExtension(GuiExtensionManager& manager, QMainWindow& host,
+                              Simulator& simulator, ModelGraphicsScene* scene) {
+    const GuiExtensionPlugin* decideExtension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.decide") {
+            decideExtension = plugin;
+            break;
+        }
+    }
+    EXPECT_NE(decideExtension, nullptr);
+    if (decideExtension == nullptr) return;
+    manager.setPlugins({decideExtension});
+    manager.setLoadedModelPluginIds({"Decide"});
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.mainWindow = &host;
+    context.graphicsScene = scene;
+    manager.rebuild(context);
 }
 
 void acceptModalModelNetworkSchemaConfirmation() {
@@ -674,6 +696,10 @@ TEST(PropertyEditorLists, DecideMovesGraphicalPortsAndConnectionsWithUndoRedo) {
     ObjectPropertyBrowser browser;
     browser.resize(640, 480);
     browser.show();
+    QMainWindow extensionHost;
+    GuiExtensionManager extensionManager(&extensionHost);
+    attachDecideGuiExtension(extensionManager, extensionHost, simulator, &scene);
+    browser.setGuiExtensionManager(&extensionManager);
     browser.setActiveObject(graphical, decide, {}, {QString::fromStdString(decide->getName())});
     drainGuiEvents();
     selectListItemAction(browser, "Conditions", "Condition 0", "Mover para baixo");
@@ -848,6 +874,10 @@ TEST(PropertyEditorLists, DecideCreationUpdatesGraphicalPortsAndUndo) {
         ObjectPropertyBrowser browser;
         browser.resize(640, 480);
         browser.show();
+        QMainWindow extensionHost;
+        GuiExtensionManager extensionManager(&extensionHost);
+        attachDecideGuiExtension(extensionManager, extensionHost, simulator, &scene);
+        browser.setGuiExtensionManager(&extensionManager);
         browser.setModelScene(&scene);
         browser.setActiveObject(inspector ? nullptr : graphical, decide, {}, {QString::fromStdString(decide->getName())});
         drainGuiEvents();
@@ -914,6 +944,10 @@ TEST(PropertyEditorLists, DecideCreatesAndEditsConditionInPropertyTree) {
     ObjectPropertyBrowser browser;
     browser.resize(640, 480);
     browser.show();
+    QMainWindow extensionHost;
+    GuiExtensionManager extensionManager(&extensionHost);
+    attachDecideGuiExtension(extensionManager, extensionHost, simulator, nullptr);
+    browser.setGuiExtensionManager(&extensionManager);
     bindEditableKernelObject(browser, &decide);
 
     QtBrowserItem* conditions = findBrowserItemByName(browser.topLevelItems(), "Conditions");

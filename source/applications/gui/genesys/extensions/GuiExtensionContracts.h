@@ -111,6 +111,14 @@ struct GuiNetworkEditorContribution {
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionRemoved;
 };
 
+// Domain-specific reconciliation after the generic Property Editor changes a list.
+struct GuiPropertyListContribution {
+	std::string id;
+	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<void(ModelDataDefinition*, ModelGraphicsScene*)> reconcile;
+	std::function<bool(ModelDataDefinition*, ModelGraphicsScene*, int, int)> reconcileMove;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAction(GuiActionContribution contribution) {
@@ -137,6 +145,10 @@ public:
 		_networkEditors.push_back(std::move(contribution));
 	}
 
+	void addPropertyList(GuiPropertyListContribution contribution) {
+		_propertyLists.push_back(std::move(contribution));
+	}
+
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
 	}
@@ -161,6 +173,10 @@ public:
 		return _networkEditors;
 	}
 
+	const std::vector<GuiPropertyListContribution>& propertyLists() const {
+		return _propertyLists;
+	}
+
 	void clear() {
 		_actions.clear();
 		_docks.clear();
@@ -168,6 +184,7 @@ public:
 		_contextMenus.clear();
 		_diagramProjections.clear();
 		_networkEditors.clear();
+		_propertyLists.clear();
 	}
 
 private:
@@ -177,6 +194,7 @@ private:
 	std::vector<GuiContextMenuContribution> _contextMenus;
 	std::vector<GuiDiagramProjectionContribution> _diagramProjections;
 	std::vector<GuiNetworkEditorContribution> _networkEditors;
+	std::vector<GuiPropertyListContribution> _propertyLists;
 };
 
 class GuiExtensionPlugin {

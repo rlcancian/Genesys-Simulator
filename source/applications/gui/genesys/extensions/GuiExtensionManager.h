@@ -23,6 +23,8 @@ public:
 	void rebuild(const GuiExtensionRuntimeContext& context);
 	void refreshActionStates(const GuiExtensionRuntimeContext& context);
 	void populateContextMenu(QMenu* menu, QGraphicsItem* item) const;
+	void reconcilePropertyListChange(ModelDataDefinition* owner, ModelGraphicsScene* scene) const;
+	bool reconcilePropertyListMove(ModelDataDefinition* owner, ModelGraphicsScene* scene, int from, int to) const;
 	void clear();
 
 private:
@@ -42,6 +44,7 @@ private:
 	std::vector<QAction*> _createdMenuActions;
 	std::vector<QDockWidget*> _createdDocks;
 	std::vector<GuiContextMenuContribution> _contextMenuContributions;
+	std::vector<GuiPropertyListContribution> _propertyListContributions;
 	GuiExtensionRuntimeContext _runtimeContext;
 };
 

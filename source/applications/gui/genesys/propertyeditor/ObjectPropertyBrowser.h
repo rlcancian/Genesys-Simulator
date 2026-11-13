@@ -26,6 +26,7 @@
 
 class DataComponentProperty;
 class ModelGraphicsScene;
+class GuiExtensionManager;
 #include "DataComponentEditor.h"
 #include "ComboBoxEnum.h"
 
@@ -55,6 +56,7 @@ public:
     void clearCurrentlyConnectedObject();
     void setModelChangedCallback(ModelChangedCallback callback);
     void setModelScene(ModelGraphicsScene* scene);
+    void setGuiExtensionManager(GuiExtensionManager* manager);
     bool isCommitPipelineBusy() const;
     void refreshAfterUndo();
 
@@ -232,6 +234,7 @@ private:
     // Track the selected graphical object safely in case Qt destroys it during callbacks.
     QPointer<QObject> _graphicalObject = nullptr;
     QPointer<ModelGraphicsScene> _modelScene = nullptr;
+    GuiExtensionManager* _guiExtensionManager = nullptr;
     QGraphicsItem* _graphicalItem = nullptr;
     ModelDataDefinition* _modelObject = nullptr;
     ActiveMode _activeMode = ActiveMode::None;

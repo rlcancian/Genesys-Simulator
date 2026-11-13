@@ -75,6 +75,7 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 		_applyDockContribution(dock, context);
 	}
 	_contextMenuContributions = registry.contextMenus();
+	_propertyListContributions = registry.propertyLists();
 }
 
 void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) const {
@@ -84,6 +85,25 @@ void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) 
 		if (contribution.isVisible && !contribution.isVisible(_runtimeContext, item)) continue;
 		contribution.populate(menu, _runtimeContext, item);
 	}
+}
+
+void GuiExtensionManager::reconcilePropertyListChange(ModelDataDefinition* owner, ModelGraphicsScene* scene) const {
+	if (owner == nullptr) return;
+	for (const GuiPropertyListContribution& contribution : _propertyListContributions) {
+		if (contribution.reconcile && (!contribution.supports || contribution.supports(owner))) {
+			contribution.reconcile(owner, scene);
+		}
+	}
+}
+
+bool GuiExtensionManager::reconcilePropertyListMove(ModelDataDefinition* owner, ModelGraphicsScene* scene, int from, int to) const {
+	if (owner == nullptr) return false;
+	for (const GuiPropertyListContribution& contribution : _propertyListContributions) {
+		if (contribution.reconcileMove && (!contribution.supports || contribution.supports(owner))) {
+			if (contribution.reconcileMove(owner, scene, from, to)) return true;
+		}
+	}
+	return false;
 }
 
 void GuiExtensionManager::refreshActionStates(const GuiExtensionRuntimeContext& context) {
@@ -116,6 +136,7 @@ void GuiExtensionManager::clear() {
 	}
 	_createdMenuActions.clear();
 	_contextMenuContributions.clear();
+	_propertyListContributions.clear();
 	_runtimeContext = GuiExtensionRuntimeContext{};
 }
 
