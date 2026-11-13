@@ -59,6 +59,7 @@
 #include <QGraphicsLineItem>
 #include <QGraphicsTextItem>
 #include <QList>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QProgressBar>
 #include <QRectF>
@@ -1926,7 +1927,14 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
 
     bool foundEmptyGroup = false;
     for (QGraphicsItemGroup* graphicalGroup : *scene->getGraphicalGroups()) {
-        if (graphicalGroup != nullptr && graphicalGroup->childItems().i
+        if (graphicalGroup != nullptr && graphicalGroup->childItems().isEmpty()) {
+            foundEmptyGroup = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundEmptyGroup);
+}
+
 TEST(BioReactionContextMenuExtension, RegistersAndRejectsUnrelatedSelection) {
     const GuiExtensionPlugin* extension = nullptr;
     for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
@@ -2008,14 +2016,6 @@ TEST(BioReactionContextMenuExtension, CreatesContextActionsAndDoesNotDuplicateRe
     QMenu unrelatedMenu;
     contribution.populate(&unrelatedMenu, context, reactionItem);
     EXPECT_TRUE(unrelatedMenu.actions().isEmpty());
-}
-
-sEmpty()) {
-            foundEmptyGroup = true;
-            break;
-        }
-    }
-    EXPECT_TRUE(foundEmptyGroup);
 }
 
 int main(int argc, char** argv) {
