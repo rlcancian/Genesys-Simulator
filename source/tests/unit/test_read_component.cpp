@@ -454,8 +454,8 @@ TEST_F(ReadFixture, SourceEnumControlMatchesPropertyEditorIndexEncoding) {
 }
 
 TEST_F(ReadFixture, ChangingFilenameResetsFileCursor) {
-    TemporaryInput firstFile("1\\n2\\n");
-    TemporaryInput secondFile("7\\n8\\n");
+    TemporaryInput firstFile("1\n2\n");
+    TemporaryInput secondFile("7\n8\n");
     auto* read = reader();
     read->setFilename(firstFile.path.string());
     addVariable(read, "LastValue");
@@ -469,7 +469,7 @@ TEST_F(ReadFixture, ChangingFilenameResetsFileCursor) {
 }
 
 TEST_F(ReadFixture, IndependentReadersMaintainIndependentFileCursors) {
-    TemporaryInput dataFile("4\\n6\\n");
+    TemporaryInput dataFile("4\n6\n");
     auto* first = reader("ReaderA");
     auto* second = reader("ReaderB");
     first->setFilename(dataFile.path.string());
@@ -488,7 +488,7 @@ TEST_F(ReadFixture, IndependentReadersMaintainIndependentFileCursors) {
 }
 
 TEST_F(ReadFixture, ExtraNumericFieldCannotPartiallyAssign) {
-    TemporaryInput file("2 3 4\\n");
+    TemporaryInput file("2 3 4\n");
     auto* read = reader();
     read->setFilename(file.path.string());
     addAttribute(read, "NotChanged");
