@@ -65,7 +65,7 @@ The authorized extraction sequence has been implemented on `WiP202611/gui-plugin
 | E3 | PASS | `690679ef8` | ModalModel and Network context, tree and Property Editor operations use registered contributions; focused context/property/undo tests and GUI build passed. |
 | E4A | PASS | `2c5239cea` | Queue/PickStation runtime visualization callbacks and Queue animation controller moved to `discrete_processing`; focused visualization and related GUI checks passed. The generic scene retains a Queue placeholder used by its drawing-tool placeholder mode. |
 | E4B | PASS | `b2910bfc9` | Genetic circuit glyph data moved behind registered rendering contribution; GUI and renderer targets built; focused extension and 11 renderer tests passed. |
-| E5 | PENDING HOSTED VALIDATION | `18a86f434` + documentation closeout | Contract catalog, governance reconciliation, GUI build and full local `tests-unit` passed (2,121 active tests, 4 disabled); hosted checks for the corrected/documented head remain pending. No merge is authorized by this plan. |
+| E5 | PASS | `18a86f434` + `288c20e04` | Contract catalog/governance reconciliation, GUI build and full local `tests-unit` passed (2,121 active tests, 4 disabled); all hosted PR checks passed on HEAD `288c20e04ee790c8649e14c2c799fbf2978f3ce5`, including unit, kernel, smoke, GUI, tools, Debian build/lifecycle and documentation. No merge is authorized by this plan. |
 
 ### Observed contribution catalog
 

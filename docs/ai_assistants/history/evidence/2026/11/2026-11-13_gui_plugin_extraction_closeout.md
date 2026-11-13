@@ -5,7 +5,7 @@ owner: project-maintainer
 tracks: HUM-ARCH-006,AUTO-GUI-004
 branch: WiP202611/gui-plugin-specific-extraction
 base_commit: 2ad98f96311e9c13d27078f9dd83bbffafdabe5d
-status: validation-pending-hosted-checks
+status: local-and-hosted-validation-passed
 ---
 
 # Graphical plugin extraction E0–E5 closeout evidence
@@ -42,12 +42,15 @@ Final local integration commands and results:
 - `python3 scripts/validate-ai-docs.py` — **PASS**, 73 active Markdown files and 25 retained historical files checked.
 - Interactive desktop session — **UNKNOWN**; not performed locally.
 
-Hosted checks observed before the correction on published source HEAD `b2910bfc9ab2f510c8b9e773e60453cbefede2a6`:
+Hosted checks on the corrected/documented PR HEAD `288c20e04ee790c8649e14c2c799fbf2978f3ce5`:
 
-- Launcher and AI documentation governance — **PASS**.
-- Unit and kernel-unit — **FAIL**, due to the same regular-Submodel drop regression fixed in `18a86f434`; this source head is superseded.
-- Smoke, integrated-tools, GUI build, GUI test diagnosis — **PASS**; package build — **PENDING** at last inspection.
-- Hosted results for corrected head `18a86f434` plus E5 documentation are **PENDING** until the updated branch is pushed and its checks complete.
+- Configure/build/CTest `tests-unit` — **PASS** (run `43528254790`).
+- GUI GMDD diagnosis and Qt6/main-GUI build — **PASS** (run `43528254790`, `43528254967`).
+- Kernel-unit and smoke — **PASS** (run `43528254819`).
+- AI documentation governance — **PASS** (run `43528254911`).
+- Integrated tools and launcher — **PASS** (run `43528254784`, `43528254843`).
+- Debian package build, Lintian and package lifecycle — **PASS** (run `43528255078`).
+- The earlier failure on `b2910bfc9ab2f510c8b9e773e60453cbefede2a6` was the Submodel drop regression; it is corrected in `18a86f434` and passed locally and in the final hosted unit checks.
 
 ## Contribution catalog and boundaries
 
@@ -63,4 +66,4 @@ The visualization contribution carries component-specific event callbacks and th
 
 ## Final interpretation
 
-E0–E4B implementation is present in the branch with focused local evidence. Local E5 build, complete unit suite, correction regression and documentation governance are PASS. Hosted validation of the corrected/documented head remains pending. This work does not prove a manual desktop interaction session, does not remove the two documented generic host details, and does not complete the future graphical plugin architecture. Merge approval is not established by this record.
+E0–E4B implementation is present in the branch with focused local evidence. E5 GUI and unit builds, complete unit suite, correction regression, documentation governance and all hosted PR checks are PASS on the recorded HEAD. This work does not prove a manual desktop interaction session, does not remove the two documented generic host details, and does not complete the future graphical plugin architecture. Merge approval is not established by this record.
