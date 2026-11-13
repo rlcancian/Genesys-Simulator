@@ -29,15 +29,16 @@ public:
             if (model == nullptr || model->getComponentManager() == nullptr) return;
 
             QPointer<QMainWindow> guardedWindow(window);
+            QThread* const guiThread = window->thread();
             for (auto it = model->getComponentManager()->begin();
                  it != model->getComponentManager()->end(); ++it) {
                 auto* reader = dynamic_cast<Read*>(*it);
                 if (reader == nullptr) continue;
-                reader->setKeyboardInputProvider([guardedWindow](
+                reader->setKeyboardInputProvider([guardedWindow, guiThread](
                         const std::string& prompt, std::string& input) -> bool {
-                    // Never invoke Qt widgets from a non-GUI thread. In that case
-                    // Read aborts the event rather than hanging or reading stdin.
-                    if (!guardedWindow || QThread::currentThread() != guardedWindow->thread()) return false;
+                    // Check thread identity before accessing QPointer or widgets.
+                    // Off-thread Read events fail without blocking or touching Qt GUI objects.
+                    if (QThread::currentThread() != guiThread || !guardedWindow) return false;
                     bool accepted = false;
                     const QString response = QInputDialog::getText(
                         guardedWindow,
