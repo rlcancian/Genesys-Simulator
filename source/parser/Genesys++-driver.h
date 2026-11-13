@@ -3,6 +3,7 @@
 
 #include <string>
 #include <map>
+#include <vector>
 #include "GenesysParser.h"
 #include "../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
@@ -22,6 +23,17 @@ YY_DECL;
 // Conducting the whole scanning and parsing of Calc++.
 
 //namespace GenesysKernel {
+
+// The syntax-only parser accepts the same grammar as the evaluator, but never
+// runs semantic actions. Unresolved model symbols are reported separately.
+struct ExpressionSyntaxValidation {
+	enum class Status { Valid, InvalidSyntax, UnresolvedIdentifiers };
+	Status status = Status::InvalidSyntax;
+	std::string errorMessage;
+	std::vector<std::string> unresolvedIdentifiers;
+
+	[[nodiscard]] bool isValid() const noexcept { return status == Status::Valid; }
+};
 
 class genesyspp_driver {
 public:
@@ -43,6 +55,12 @@ public:
 	// Return 0 on success.
 	int parse_file(const std::string& f);
 	int parse_str(const std::string& str);
+
+	// Non-executing validation; does not sample distributions or mutate a model.
+	[[nodiscard]] ExpressionSyntaxValidation validateSyntax(const std::string& expression);
+	[[nodiscard]] bool isSyntaxOnly() const noexcept { return _syntaxOnly; }
+	void noteUnresolvedIdentifier(const std::string& identifier);
+	void noteInvalidCharacter(const std::string& character);
 
 	// Error handling.
 	void error(const yy::location& l, const std::string& m);
@@ -96,6 +114,9 @@ private:
 	std::string str_to_parse;
 	bool throwsException = true;
 	std::string errorMessage;
+	bool _syntaxOnly = false;
+	std::vector<std::string> _syntaxUnresolvedIdentifiers;
+	std::vector<std::string> _syntaxInvalidCharacters;
 };
 //}
 #endif // ! GENESYSPP_DRIVER_H
