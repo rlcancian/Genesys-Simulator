@@ -101,7 +101,39 @@ TEST(ExpressionBuilderDialogTest, FunctionInsertionRespectsExistingTextAndCursor
     EXPECT_GT(choices->count(), 0);
     input->moveCursor(QTextCursor::End);
     insert->click();
-    EXPECT_EQ(editor.expressionText(), QStringLiteral("2 + round(1)"));
+    EXPECT_EQ(editor.expressionText(), QStringLiteral("2 + round(3.7)"));
+    EXPECT_TRUE(editor.validateCurrentExpression());
+}
+
+TEST(ExpressionBuilderDialogTest, NestedCatalogExamplePreservesArgumentStructure) {
+    ExpressionBuilder editor;
+    editor.setExpressionContext(nullptr, QString());
+    auto* categories = editor.findChild<QTreeWidget*>(QStringLiteral("treeCategories"));
+    auto* functions = editor.findChild<QListWidget*>(QStringLiteral("listExpressions"));
+    auto* insert = editor.findChild<QPushButton*>(QStringLiteral("btnInsert"));
+    ASSERT_NE(categories, nullptr);
+    ASSERT_NE(functions, nullptr);
+    ASSERT_NE(insert, nullptr);
+    QTreeWidgetItem* math = nullptr;
+    for (int i = 0; i < categories->topLevelItemCount(); ++i) {
+        if (categories->topLevelItem(i)->text(0) == QStringLiteral("Math")) {
+            math = categories->topLevelItem(i);
+            break;
+        }
+    }
+    ASSERT_NE(math, nullptr);
+    categories->setCurrentItem(math);
+    QListWidgetItem* ln = nullptr;
+    for (int i = 0; i < functions->count(); ++i) {
+        if (functions->item(i)->text() == QStringLiteral("ln(expression)")) {
+            ln = functions->item(i);
+            break;
+        }
+    }
+    ASSERT_NE(ln, nullptr);
+    functions->setCurrentItem(ln);
+    insert->click();
+    EXPECT_EQ(editor.expressionText(), QStringLiteral("ln(exp(1))"));
     EXPECT_TRUE(editor.validateCurrentExpression());
 }
 
@@ -114,7 +146,7 @@ TEST(ExpressionBuilderDialogTest, StandaloneCopyUsesSelectedFunctionWhenExpressi
     ASSERT_NE(copy, nullptr);
     choices->setCurrentRow(0);
     copy->click();
-    EXPECT_EQ(QApplication::clipboard()->text(), QStringLiteral("round(1)"));
+    EXPECT_EQ(QApplication::clipboard()->text(), QStringLiteral("round(3.7)"));
 }
 
 TEST(ExpressionBuilderDialogTest, EditsExpressionAndRejectsInvalidSyntaxWithoutEvaluation) {
