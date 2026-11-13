@@ -154,7 +154,8 @@ public:
 enum class SimulationControlEditorHint {
     Default,
     CodeEditor,
-    MultiLineText
+    MultiLineText,
+    ParserExpression
 };
 
 /**
