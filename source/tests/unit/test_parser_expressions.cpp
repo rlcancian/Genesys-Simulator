@@ -622,6 +622,14 @@ TEST_F(ParserExpressionsTest, SyntaxOnlyReportsInvalidSyntaxAndCharacters) {
     }
 }
 
+TEST_F(ParserExpressionsTest, SyntaxOnlyDiagnosticsIncludeParserLocation) {
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax("1 + (");
+    EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::InvalidSyntax);
+    EXPECT_NE(validation.errorMessage.find("line"), std::string::npos);
+    EXPECT_NE(validation.errorMessage.find("column"), std::string::npos);
+}
+
 TEST_F(ParserExpressionsTest, SyntaxOnlySeparatesUnknownIdentifiersFromGrammarErrors) {
     genesyspp_driver driver(model, nullptr, false);
     const auto validation = driver.validateSyntax("ParserUnknownSymbol + 2");
