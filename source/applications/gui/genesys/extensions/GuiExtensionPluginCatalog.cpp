@@ -1,4 +1,5 @@
 #include "GuiExtensionPluginCatalog.h"
+#include "../graphicals/ModelGraphicsScene.h"
 #include "../systempreferences.h"
 #include "kernel/simulator/model/ModelDataDefinition.h"
 
@@ -17,6 +18,9 @@
 #include <QJsonValue>
 #include <QString>
 #include <QProcessEnvironment>
+#include <QMetaObject>
+#include <QPointer>
+#include <QThread>
 
 namespace {
 std::vector<const GuiExtensionPlugin*>& registryStorage() {
@@ -290,6 +294,21 @@ void GuiExtensionPluginCatalog::synchronizeDiagramProjections(Simulator* simulat
 	for (const GuiDiagramProjectionContribution& projection : diagramProjectionContributions()) {
 		if (projection.synchronize) projection.synchronize(simulator, scene);
 	}
+}
+
+void GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(Simulator* simulator,
+                                                                            ModelGraphicsScene* scene) {
+	if (scene == nullptr) return;
+	if (QThread::currentThread() == scene->thread()) {
+		synchronizeDiagramProjections(simulator, scene);
+		return;
+	}
+	QPointer<ModelGraphicsScene> guardedScene(scene);
+	QMetaObject::invokeMethod(scene, [guardedScene]() {
+		if (guardedScene != nullptr) {
+			synchronizeDiagramProjections(guardedScene->getSimulator(), guardedScene);
+		}
+	}, Qt::QueuedConnection);
 }
 
 std::vector<GuiDiagramProjectionContribution> GuiExtensionPluginCatalog::diagramProjectionContributions() {

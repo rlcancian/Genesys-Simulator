@@ -213,7 +213,8 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
         }
         addArrow(path, path.pointAtPercent(1.0));
         auto* edge = new QGraphicsPathItem(path);
-        edge->setPen(QPen(QColor(65, 75, 90), 2.0));
+        const bool sampled = network->getLastTransition() == transition;
+        edge->setPen(QPen(sampled ? QColor(225, 90, 35) : QColor(65, 75, 90), sampled ? 4.0 : 2.0));
         edge->setBrush(Qt::NoBrush);
         edge->setZValue(-1.0);
         edge->setData(1, QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(transition)));

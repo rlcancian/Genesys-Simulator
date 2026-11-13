@@ -98,11 +98,15 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
         auto* graphical = scene->findGraphicalModelDataDefinition(transition);
         if (graphical == nullptr) continue;
         auto* badge = new QGraphicsRectItem(graphical->sceneBoundingRect().adjusted(-5, -5, 5, 5));
-        badge->setPen(QPen(network->isEnabled(transition) ? QColor(45, 150, 90) : QColor(110, 110, 110), 2.0));
+        const bool fired = network->getLastFiredTransition() == transition;
+        badge->setPen(QPen(fired ? QColor(225, 90, 35)
+                                  : network->isEnabled(transition) ? QColor(45, 150, 90) : QColor(110, 110, 110),
+                              fired ? 4.0 : 2.0));
         badge->setBrush(Qt::NoBrush);
         badge->setZValue(-0.7);
-        badge->setToolTip(network->isEnabled(transition) ? QObject::tr("Enabled CPN transition")
-                                                        : QObject::tr("Disabled CPN transition"));
+        badge->setToolTip(fired ? QObject::tr("Last fired CPN transition")
+                                : network->isEnabled(transition) ? QObject::tr("Enabled CPN transition")
+                                                                 : QObject::tr("Disabled CPN transition"));
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), badge);
     }
     for (CPNArc* arc : *network->getArcs()->list()) {
@@ -155,20 +159,28 @@ CPNTransition* selectedTransition(const GuiExtensionRuntimeContext& context) {
 class FireCpnTransitionUndoCommand final : public QUndoCommand {
 public:
     FireCpnTransitionUndoCommand(ColoredPetriNetNetwork* network, CPNTransition* transition, ModelGraphicsScene* scene)
-        : _network(network), _transition(transition), _scene(scene), _before(captureMarking(network)) {
+        : _network(network), _transition(transition), _scene(scene), _before(captureMarking(network)),
+          _beforeLast(network != nullptr ? network->getLastFiredTransition() : nullptr) {
         setText(QObject::tr("Fire CPN transition"));
     }
     void redo() override {
         if (_network == nullptr || _transition == nullptr) { setObsolete(true); return; }
         if (_firstRedo) {
             _firstRedo = false;
-            if (!_network->fire(_transition)) { setObsolete(true); return; }
+            if (!_network->fire(_transition)) {
+                restoreMarking(_before);
+                _network->setLastFiredTransition(_beforeLast);
+                setObsolete(true);
+                return;
+            }
             _after = captureMarking(_network);
         } else restoreMarking(_after);
+        if (!_firstRedo) _network->setLastFiredTransition(_transition);
         synchronizeCpnProjection(nullptr, _scene);
     }
     void undo() override {
         restoreMarking(_before);
+        _network->setLastFiredTransition(_beforeLast);
         synchronizeCpnProjection(nullptr, _scene);
     }
 private:
@@ -177,6 +189,7 @@ private:
     QPointer<ModelGraphicsScene> _scene;
     Marking _before;
     Marking _after;
+    CPNTransition* _beforeLast;
     bool _firstRedo = true;
 };
 

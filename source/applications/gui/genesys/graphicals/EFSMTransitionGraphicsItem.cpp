@@ -55,6 +55,15 @@ QString EFSMTransitionGraphicsItem::transitionLabel() const {
     return parts.join(QLatin1Char(' '));
 }
 
+void EFSMTransitionGraphicsItem::setFired(bool fired) {
+    _fired = fired;
+    update();
+}
+
+bool EFSMTransitionGraphicsItem::isFired() const {
+    return _fired;
+}
+
 void EFSMTransitionGraphicsItem::setGeometry(const QPointF& sourceCenter, const QPointF& destinationCenter,
                                              int parallelRank, int parallelCount) {
     QPainterPath transitionPath;
@@ -89,7 +98,7 @@ void EFSMTransitionGraphicsItem::paint(QPainter* painter, const QStyleOptionGrap
     }
 
     painter->setRenderHint(QPainter::Antialiasing, true);
-    painter->setPen(QPen(QColor(45, 75, 130), 2.0));
+    painter->setPen(QPen(_fired ? QColor(225, 90, 35) : QColor(45, 75, 130), _fired ? 4.0 : 2.0));
     painter->setBrush(Qt::NoBrush);
     painter->drawPath(path());
 
@@ -102,7 +111,7 @@ void EFSMTransitionGraphicsItem::paint(QPainter* painter, const QStyleOptionGrap
                                       -std::sin(angle + M_PI / 6.0) * arrowLength);
     const QPointF right = end - QPointF(std::cos(angle - M_PI / 6.0) * arrowLength,
                                        -std::sin(angle - M_PI / 6.0) * arrowLength);
-    painter->setBrush(QColor(45, 75, 130));
+    painter->setBrush(_fired ? QColor(225, 90, 35) : QColor(45, 75, 130));
     painter->drawPolygon(QPolygonF() << end << left << right);
 
     const QString label = transitionLabel();

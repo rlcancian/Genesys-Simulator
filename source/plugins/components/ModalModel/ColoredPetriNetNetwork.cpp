@@ -5,8 +5,15 @@
 #include "kernel/simulator/model/Model.h"
 
 #include <algorithm>
+#include <limits>
 #include <memory>
 #include <unordered_map>
+
+namespace {
+std::string cpnAssociationKey(const char* kind, const ModelDataDefinition* definition) {
+	return std::string("ColoredPetriNetNetwork.") + kind + "." + std::to_string(definition != nullptr ? definition->getId() : 0);
+}
+}
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
@@ -51,6 +58,7 @@ ModelDataDefinition* ColoredPetriNetNetwork::LoadInstance(Model* model, Persiste
 void ColoredPetriNetNetwork::addPlace(PetriPlace* place) {
 	if (place != nullptr && !_hasPlace(place)) {
 		_places->insert(place);
+		_attachedDataInsert(cpnAssociationKey("Place", place), place);
 		place->setModelLevel(static_cast<unsigned int>(getId()));
 		if (_initialMarking.find(place) == _initialMarking.end()) {
 			_initialMarking[place] = *place->getAllTokens();
@@ -63,6 +71,7 @@ void ColoredPetriNetNetwork::removePlace(PetriPlace* place) {
 		return;
 	}
 	_removeIncidentArcs(place);
+	_attachedDataRemove(cpnAssociationKey("Place", place));
 	_initialMarking.erase(place);
 	_places->remove(place);
 }
@@ -74,6 +83,7 @@ List<PetriPlace*>* ColoredPetriNetNetwork::getPlaces() const {
 void ColoredPetriNetNetwork::addTransition(CPNTransition* transition) {
 	if (transition != nullptr && !_hasTransition(transition)) {
 		_transitions->insert(transition);
+		_attachedDataInsert(cpnAssociationKey("Transition", transition), transition);
 		transition->setModelLevel(static_cast<unsigned int>(getId()));
 	}
 }
@@ -83,7 +93,9 @@ void ColoredPetriNetNetwork::removeTransition(CPNTransition* transition) {
 		return;
 	}
 	_removeIncidentArcs(transition);
+	_attachedDataRemove(cpnAssociationKey("Transition", transition));
 	_transitions->remove(transition);
+	if (_lastFiredTransition == transition) _lastFiredTransition = nullptr;
 }
 
 List<CPNTransition*>* ColoredPetriNetNetwork::getTransitions() const {
@@ -95,12 +107,14 @@ bool ColoredPetriNetNetwork::addArc(CPNArc* arc) {
 		return false;
 	}
 	_arcs->insert(arc);
+	_attachedDataInsert(cpnAssociationKey("Arc", arc), arc);
 	arc->setModelLevel(static_cast<unsigned int>(getId()));
 	return true;
 }
 
 void ColoredPetriNetNetwork::removeArc(CPNArc* arc) {
 	_arcs->remove(arc);
+	if (arc != nullptr) _attachedDataRemove(cpnAssociationKey("Arc", arc));
 }
 
 List<CPNArc*>* ColoredPetriNetNetwork::getArcs() const {
@@ -131,17 +145,20 @@ bool ColoredPetriNetNetwork::isEnabled(CPNTransition* transition) const {
 	if (!_hasTransition(transition) || !_guardAllows(transition)) {
 		return false;
 	}
+	std::map<PetriPlace*, std::map<std::string, unsigned long long>> required;
 	for (CPNArc* arc : getInputArcs(transition)) {
 		PetriPlace* place = arc != nullptr ? arc->getPlace() : nullptr;
 		if (place == nullptr) {
 			return false;
 		}
 		for (const auto& inscription : arc->getInscriptions()) {
-			if (place->getTokens(inscription.first) < inscription.second) {
-				return false;
-			}
+			required[place][inscription.first] += inscription.second;
 		}
 	}
+	for (const auto& [place, colors] : required)
+		for (const auto& [color, quantity] : colors)
+			if (quantity > std::numeric_limits<unsigned int>::max()
+				|| place->getTokens(color) < quantity) return false;
 	return !getInputArcs(transition).empty() || !getOutputArcs(transition).empty();
 }
 
@@ -165,6 +182,20 @@ bool ColoredPetriNetNetwork::fire(CPNTransition* transition) {
 	if (!isEnabled(transition)) {
 		return false;
 	}
+	std::map<PetriPlace*, std::map<std::string, unsigned long long>> required;
+	std::map<PetriPlace*, std::map<std::string, unsigned long long>> produced;
+	for (CPNArc* arc : getInputArcs(transition))
+		for (const auto& inscription : arc->getInscriptions()) required[arc->getPlace()][inscription.first] += inscription.second;
+	for (CPNArc* arc : getOutputArcs(transition))
+		for (const auto& inscription : arc->getInscriptions()) produced[arc->getPlace()][inscription.first] += inscription.second;
+	for (const auto& [place, colors] : produced) {
+		for (const auto& [color, quantity] : colors) {
+			const unsigned long long available = place->getTokens(color);
+			const unsigned long long consume = required[place][color];
+			if (quantity > std::numeric_limits<unsigned int>::max()
+				|| available - consume + quantity > std::numeric_limits<unsigned int>::max()) return false;
+		}
+	}
 	for (CPNArc* arc : getInputArcs(transition)) {
 		PetriPlace* place = arc->getPlace();
 		for (const auto& inscription : arc->getInscriptions()) {
@@ -179,7 +210,16 @@ bool ColoredPetriNetNetwork::fire(CPNTransition* transition) {
 			place->addTokens(inscription.second, inscription.first);
 		}
 	}
+	_lastFiredTransition = transition;
 	return true;
+}
+
+CPNTransition* ColoredPetriNetNetwork::getLastFiredTransition() const {
+	return _lastFiredTransition;
+}
+
+void ColoredPetriNetNetwork::setLastFiredTransition(CPNTransition* transition) {
+	_lastFiredTransition = transition == nullptr || _hasTransition(transition) ? transition : nullptr;
 }
 
 void ColoredPetriNetNetwork::setInitialTokens(PetriPlace* place, std::string color, unsigned int quantity) {
@@ -246,6 +286,7 @@ bool ColoredPetriNetNetwork::_loadInstance(PersistenceRecord* fields) {
 		_places->clear();
 		_transitions->clear();
 		_arcs->clear();
+		_lastFiredTransition = nullptr;
 		_initialMarking.clear();
 		_firingMode = static_cast<FiringMode>(fields->loadField("firingMode", static_cast<unsigned int>(FiringMode::SingleDeterministic)));
 
@@ -473,6 +514,7 @@ bool ColoredPetriNetNetwork::_check(std::string& errorMessage) {
 void ColoredPetriNetNetwork::_initBetweenReplications() {
 	DefaultNetwork::_initBetweenReplications();
 	restoreInitialMarking();
+	_lastFiredTransition = nullptr;
 }
 
 NetworkActivationResult ColoredPetriNetNetwork::_activate(const NetworkActivationFrame& frame) {
@@ -508,6 +550,7 @@ void ColoredPetriNetNetwork::_removeIncidentArcs(PetriPlace* place) {
 	for (auto it = _arcs->list()->begin(); it != _arcs->list()->end();) {
 		CPNArc* arc = *it;
 		if (arc != nullptr && arc->getPlace() == place) {
+			_attachedDataRemove(cpnAssociationKey("Arc", arc));
 			it = _arcs->list()->erase(it);
 		} else {
 			++it;
@@ -519,6 +562,7 @@ void ColoredPetriNetNetwork::_removeIncidentArcs(CPNTransition* transition) {
 	for (auto it = _arcs->list()->begin(); it != _arcs->list()->end();) {
 		CPNArc* arc = *it;
 		if (arc != nullptr && arc->getTransition() == transition) {
+			_attachedDataRemove(cpnAssociationKey("Arc", arc));
 			it = _arcs->list()->erase(it);
 		} else {
 			++it;

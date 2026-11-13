@@ -39,6 +39,7 @@
 #include "kernel/simulator/essentialPlugins/EntityType.h"
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/ModalModel/NetworkActivation.h"
 #include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/data/ModalModel/GraphEdge.h"
 #include "plugins/data/ModalModel/GraphNode.h"
@@ -77,6 +78,7 @@
 #include <QSpinBox>
 
 #include <algorithm>
+#include <thread>
 
 namespace {
 
@@ -317,6 +319,122 @@ TEST(GraphNetworkGuiExtension, ProjectsParallelAndSelfLoopEdgesFromTheNetworkTop
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 3);
 }
 
+TEST(GraphNetworkGuiExtension, ShowsBfsAnalysisAsStructuralHighlighting) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNetwork network(model, "AnalysisGraph");
+    auto* first = new GraphNode(model, "A");
+    auto* second = new GraphNode(model, "B");
+    auto* third = new GraphNode(model, "C");
+    network.addNode(first);
+    network.addNode(second);
+    network.addNode(third);
+    ASSERT_TRUE(network.addEdge(new GraphEdge(model, first, second, "AB")));
+    ASSERT_TRUE(network.addEdge(new GraphEdge(model, second, third, "BC")));
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    Plugin* nodePlugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+    ASSERT_NE(nodePlugin, nullptr);
+    auto* firstItem = scene.addGraphicalModelDataDefinition(nodePlugin, first, QPointF(20, 20));
+    scene.addGraphicalModelDataDefinition(nodePlugin, second, QPointF(220, 20));
+    scene.addGraphicalModelDataDefinition(nodePlugin, third, QPointF(420, 20));
+    firstItem->setSelected(true);
+
+    GuiActionContribution analyze;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.graph.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.graph.analyze-traversal") analyze = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(analyze.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(analyze.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        const auto choices = dialog->findChildren<QComboBox*>();
+        ASSERT_EQ(choices.size(), 1);
+        choices.front()->setCurrentIndex(0);
+        dialog->accept();
+    });
+    analyze.trigger(context);
+
+    EXPECT_EQ(network.breadthFirstSearch(first).visitOrder.size(), 3u);
+    EXPECT_EQ(network.breadthFirstSearch(first).distanceTo(third), 2u);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.analysis")).size(), 8);
+    EXPECT_DOUBLE_EQ(network.getActivationCount(), 0.0);
+    bool sawBfsVisit = false;
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.graph.analysis"))) {
+        if (item->toolTip().contains(QStringLiteral("BFS visit"))) sawBfsVisit = true;
+    }
+    EXPECT_TRUE(sawBfsVisit);
+}
+
+TEST(GraphNetworkGuiExtension, GenericGuiPersistenceRestoresNodeGeometryByStableModelIdentity) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new DirectedGraphNetwork(model, "PersistedGraph");
+    auto* first = new GraphNode(model, "Source");
+    auto* second = new GraphNode(model, "Target");
+    ASSERT_TRUE(network->addNode(first));
+    ASSERT_TRUE(network->addNode(second));
+    ASSERT_TRUE(network->addEdge(new GraphEdge(model, first, second, "Arc")));
+    auto* adapter = new ModalModelDefault(model, "GraphPersistenceAdapter");
+    adapter->setNetwork(network);
+
+    SerializerHarness harness(&simulator);
+    ModelGraphicsScene* scene = harness.graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene->setNetworkEditorOwner(network);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    auto* firstItem = scene->findGraphicalModelDataDefinition(first);
+    auto* secondItem = scene->findGraphicalModelDataDefinition(second);
+    ASSERT_NE(firstItem, nullptr);
+    ASSERT_NE(secondItem, nullptr);
+    firstItem->setPos(17.25, 31.5);
+    secondItem->setPos(320.75, 241.125);
+
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const QString guiFilename = temporaryDir.filePath("graph_network.gui");
+    ASSERT_TRUE(harness.serializer->saveGraphicalModel(guiFilename));
+    Model* loadedModel = harness.serializer->loadGraphicalModel(guiFilename.toStdString());
+    ASSERT_NE(loadedModel, nullptr);
+    auto* loadedNetwork = dynamic_cast<DirectedGraphNetwork*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<DirectedGraphNetwork>(), std::string("PersistedGraph")));
+    ASSERT_NE(loadedNetwork, nullptr);
+    ASSERT_EQ(loadedNetwork->getNodes().size(), 2u);
+    ASSERT_EQ(loadedNetwork->getEdges().size(), 1u);
+    ASSERT_EQ(simulator.getModelManager()->current(), loadedModel);
+    ASSERT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<GraphNode>()), 2u);
+    ASSERT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<GraphEdge>()), 1u);
+    ASSERT_NE(simulator.getPluginManager()->find(Util::TypeOf<GraphNode>()), nullptr);
+    ASSERT_EQ(loadedNetwork->getNodes().front()->getLevel(), loadedNetwork->getId());
+    scene->setModelLevelFilter(static_cast<unsigned int>(loadedNetwork->getId()));
+    scene->setNetworkEditorOwner(loadedNetwork);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    ASSERT_EQ(scene->getGraphicalModelDataDefinitions()->size(), 3);
+    auto* restoredFirst = scene->findGraphicalModelDataDefinition(
+        loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<GraphNode>(), std::string("Source")));
+    auto* restoredSecond = scene->findGraphicalModelDataDefinition(
+        loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<GraphNode>(), std::string("Target")));
+    ASSERT_NE(restoredFirst, nullptr);
+    ASSERT_NE(restoredSecond, nullptr);
+    EXPECT_EQ(restoredFirst->pos(), QPointF(17.25, 31.5));
+    EXPECT_EQ(restoredSecond->pos(), QPointF(320.75, 241.125));
+    EXPECT_NE(loadedNetwork->getEdges().front()->getSource(), nullptr);
+    EXPECT_NE(loadedNetwork->getEdges().front()->getDestination(), nullptr);
+}
+
 TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndoRedo) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -442,6 +560,17 @@ TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndo
     EXPECT_EQ(network.getInitialState(), first);
     undoStack.redo();
     EXPECT_EQ(network.getInitialState(), second);
+    network.setCurrentState(first);
+    network.activate(NetworkActivationFrame(network.getNumInputPorts()));
+    ASSERT_EQ(network.getLastTransition(), transition);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    bool sampledTransitionHighlighted = false;
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui"))) {
+        auto* path = dynamic_cast<QGraphicsPathItem*>(item);
+        if (path != nullptr && path->data(1).isValid())
+            sampledTransitionHighlighted = path->pen().color() == QColor(225, 90, 35);
+    }
+    EXPECT_TRUE(sampledTransitionHighlighted);
 }
 
 TEST(MarkovChainNetworkGuiExtension, DroppedMarkovStateJoinsTheNetworkAndScene) {
@@ -557,9 +686,19 @@ TEST(ColoredPetriNetGuiExtension, ProjectsMarkingAndFiresSelectedTransitionWithU
     undoStack.undo();
     EXPECT_EQ(input->getTokens("red"), 2u);
     EXPECT_EQ(output->getTokens("red"), 0u);
+    EXPECT_EQ(network.getLastFiredTransition(), nullptr);
     undoStack.redo();
     EXPECT_EQ(input->getTokens("red"), 1u);
     EXPECT_EQ(output->getTokens("red"), 1u);
+    EXPECT_EQ(network.getLastFiredTransition(), transition);
+    scene.clearSelection();
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    bool firedTransitionHighlighted = false;
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui"))) {
+        auto* badge = dynamic_cast<QGraphicsRectItem*>(item);
+        if (badge != nullptr) firedTransitionHighlighted = badge->pen().color() == QColor(225, 90, 35);
+    }
+    EXPECT_TRUE(firedTransitionHighlighted);
 }
 
 TEST(ColoredPetriNetGuiExtension, DroppedPlacesAndTransitionsJoinTheNetwork) {
@@ -972,6 +1111,30 @@ TEST(GuiExtensionManager, ActionContributionsRefreshForTheCurrentRuntimeContext)
     EXPECT_EQ(plugin.lastTriggeredScene, &scene);
 }
 
+TEST(GuiExtensionManager, NetworkProjectionRefreshIsQueuedToTheSceneThread) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNetwork network(model, "ThreadBoundProjection");
+    auto* node = new GraphNode(model, "Loop");
+    ASSERT_TRUE(network.addNode(node));
+    ASSERT_TRUE(network.addEdge(new GraphEdge(model, node, node, "Self")));
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    Plugin* nodePlugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+    ASSERT_NE(nodePlugin, nullptr);
+    scene.addGraphicalModelDataDefinition(nodePlugin, node, QPointF(80, 80));
+
+    std::thread worker([&simulator, &scene]() {
+        GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(&simulator, &scene);
+    });
+    worker.join();
+    QCoreApplication::processEvents();
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.graph.gui")).size(), 1);
+}
+
 TEST(EFSMNetworkDiagramPersistence, EmptyLayoutProducesNoEntriesAndLeavesOtherSectionsIntact) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -1102,6 +1265,22 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     EXPECT_EQ(scene->getGraphicalConnections()->size(), 0);
     EXPECT_EQ(network.getStates()->size(), 2u);
     EXPECT_EQ(network.getTransitions()->size(), 3u);
+
+    guardedUnnamed->setGuardExpression("");
+    network.activate(NetworkActivationFrame(network.getNumInputPorts()));
+    EXPECT_EQ(network.getCurrentState(), &done);
+    EXPECT_EQ(network.getLastTransition(), guardedUnnamed);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, scene);
+    int firedTransitionCount = 0;
+    for (QGraphicsItem* item : scene->extensionOverlayItems(QStringLiteral("efsm"))) {
+        auto* transitionItem = dynamic_cast<EFSMTransitionGraphicsItem*>(item);
+        if (transitionItem != nullptr && transitionItem->isFired()) ++firedTransitionCount;
+    }
+    EXPECT_EQ(firedTransitionCount, 1);
+    const QColor currentStateColor = scene->findGraphicalModelDataDefinition(&done)->getColor();
+    EXPECT_EQ(currentStateColor.red(), 105);
+    EXPECT_EQ(currentStateColor.green(), 165);
+    EXPECT_EQ(currentStateColor.blue(), 240);
 
     // Rebuilding the same context replaces only the projection layer.
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);

@@ -56,6 +56,8 @@ public:
 	bool isEnabled(CPNTransition* transition) const;
 	CPNTransition* firstEnabledTransition() const;
 	bool fire(CPNTransition* transition);
+	CPNTransition* getLastFiredTransition() const;
+	void setLastFiredTransition(CPNTransition* transition);
 	void setInitialTokens(PetriPlace* place, std::string color, unsigned int quantity);
 	unsigned int getInitialTokens(PetriPlace* place, std::string color = "default") const;
 	void captureCurrentMarkingAsInitial();
@@ -85,6 +87,7 @@ private:
 	List<CPNArc*>* _arcs = new List<CPNArc*>();
 	std::map<PetriPlace*, std::map<std::string, unsigned int>> _initialMarking;
 	FiringMode _firingMode = FiringMode::SingleDeterministic;
+	CPNTransition* _lastFiredTransition = nullptr;
 };
 
 #endif /* COLOREDPETRINETNETWORK_H */

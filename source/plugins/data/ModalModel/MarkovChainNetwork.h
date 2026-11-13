@@ -76,6 +76,7 @@ public:
 	MarkovState* getInitialState() const;
 	void setCurrentState(MarkovState* state);
 	MarkovState* getCurrentState() const;
+	MarkovTransition* getLastTransition() const;
 	unsigned int getStateIndex(MarkovState* state) const;
 	MarkovState* getStateAt(unsigned int index) const;
 	double getProbabilityTolerance() const;
@@ -103,6 +104,7 @@ private:
 	List<MarkovTransition*>* _transitions = new List<MarkovTransition*>();
 	MarkovState* _initialState = nullptr;
 	MarkovState* _currentState = nullptr;
+	MarkovTransition* _lastTransition = nullptr;
 	Sampler_if* _sampler = nullptr;
 	double _probabilityTolerance = 1e-9;
 };

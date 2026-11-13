@@ -123,6 +123,7 @@ std::unique_ptr<EFSMTransition> EFSMNetwork::detachTransition(EFSMTransition* tr
 	if (it == entries->end()) {
 		return {};
 	}
+	if (_lastTransition == transition) _lastTransition = nullptr;
 	const auto position = static_cast<unsigned int>(std::distance(entries->begin(), it));
 	if (ordinal != nullptr) {
 		*ordinal = position;
@@ -174,6 +175,10 @@ FSMState* EFSMNetwork::getInitialState() const {
 
 FSMState* EFSMNetwork::getCurrentState() const {
 	return _currentState;
+}
+
+EFSMTransition* EFSMNetwork::getLastTransition() const {
+	return _lastTransition;
 }
 
 void EFSMNetwork::setCurrentState(FSMState* state) {
@@ -392,6 +397,7 @@ bool EFSMNetwork::_check(std::string& errorMessage) {
 void EFSMNetwork::_initBetweenReplications() {
 	DefaultNetwork::_initBetweenReplications();
 	_currentState = _resolveInitialState();
+	_lastTransition = nullptr;
 	if (auto* defaultSampler = dynamic_cast<SamplerDefaultImpl1*>(_sampler); defaultSampler != nullptr) {
 		defaultSampler->reset();
 	}
@@ -399,6 +405,7 @@ void EFSMNetwork::_initBetweenReplications() {
 
 NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& frame) {
 	(void)frame;
+	_lastTransition = nullptr;
 	NetworkActivationResult result(getNumOutputPorts());
 	if (_currentState == nullptr) {
 		_currentState = _resolveInitialState();
@@ -436,6 +443,7 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
 	if (chosen == nullptr) {
 		return result;
 	}
+	_lastTransition = chosen;
 	FSMState* source = dynamic_cast<FSMState*>(chosen->getSource());
 	FSMState* destination = dynamic_cast<FSMState*>(chosen->getDestination());
 	if (source != nullptr && source->getExitActionExpression() != "") {

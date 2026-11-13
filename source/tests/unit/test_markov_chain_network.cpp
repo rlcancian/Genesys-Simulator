@@ -228,12 +228,15 @@ TEST(MarkovChainNetworkTest, ActivationPerformsExactlyOneDeterministicStepAndPub
 	NetworkActivationResult first = network.activate(NetworkActivationFrame(network.getNumInputPorts()));
 	ASSERT_TRUE(first.isPresent(0));
 	EXPECT_EQ(network.getCurrentState(), &b);
+	ASSERT_NE(network.getLastTransition(), nullptr);
+	EXPECT_EQ(network.getLastTransition()->getName(), "AB");
 	EXPECT_DOUBLE_EQ(first.getValue(0), 1.0);
 	EXPECT_DOUBLE_EQ(network.getActivationCount(), 1.0);
 
 	NetworkActivationResult second = network.activate(NetworkActivationFrame(network.getNumInputPorts()));
 	ASSERT_TRUE(second.isPresent(0));
 	EXPECT_EQ(network.getCurrentState(), &c);
+	EXPECT_EQ(network.getLastTransition()->getName(), "BC");
 	EXPECT_DOUBLE_EQ(second.getValue(0), 2.0);
 	EXPECT_DOUBLE_EQ(network.getActivationCount(), 2.0);
 }
@@ -476,6 +479,7 @@ TEST(MarkovChainNetworkTest, ModelFileRoundTripPreservesStatesProbabilitiesIdent
 
 	Model* loadedModel = simulator.getModelManager()->newModel();
 	ASSERT_TRUE(loadedModel->load(filename));
+	(void)loadedModel->check();
 
 	MarkovChainNetwork* loadedNetwork = dynamic_cast<MarkovChainNetwork*>(
 		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<MarkovChainNetwork>(), "FileChain"));

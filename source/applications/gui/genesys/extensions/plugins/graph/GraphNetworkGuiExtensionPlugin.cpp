@@ -10,6 +10,8 @@
 #include "kernel/util/Util.h"
 
 #include <QGraphicsPathItem>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsSimpleTextItem>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -32,6 +34,7 @@
 namespace {
 
 constexpr auto kGraphExtensionId = "modal.graph.gui";
+constexpr auto kGraphAnalysisOverlayId = "modal.graph.analysis";
 void synchronizeGraphProjection(Simulator*, ModelGraphicsScene*);
 
 class AddGraphEdgeUndoCommand final : public QUndoCommand {
@@ -293,6 +296,81 @@ void deleteSelectedEdge(const GuiExtensionRuntimeContext& context) {
     }
 }
 
+GraphNode* selectedGraphNode(const GuiExtensionRuntimeContext& context) {
+    if (context.graphicsScene == nullptr) return nullptr;
+    auto* network = dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner());
+    if (network == nullptr) return nullptr;
+    for (QGraphicsItem* item : context.graphicsScene->selectedItems()) {
+        auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        auto* node = graphical != nullptr ? dynamic_cast<GraphNode*>(graphical->getDataDefinition()) : nullptr;
+        if (node != nullptr && network->containsNode(node)) return node;
+    }
+    return nullptr;
+}
+
+bool canAnalyzeGraph(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr && dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr
+        && selectedGraphNode(context) != nullptr;
+}
+
+void analyzeGraph(const GuiExtensionRuntimeContext& context) {
+    if (!canAnalyzeGraph(context)) return;
+    auto* scene = context.graphicsScene;
+    auto* network = dynamic_cast<GraphNetwork*>(scene->networkEditorOwner());
+    GraphNode* source = selectedGraphNode(context);
+    QDialog dialog(context.mainWindow);
+    dialog.setWindowTitle(QObject::tr("Graph Structure Analysis"));
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* algorithm = new QComboBox(&dialog);
+    algorithm->addItem(QObject::tr("Breadth-first search (BFS)"), QStringLiteral("bfs"));
+    algorithm->addItem(QObject::tr("Depth-first search (DFS)"), QStringLiteral("dfs"));
+    layout->addWidget(new QLabel(QObject::tr("Analysis from %1:").arg(QString::fromStdString(source->getName())), &dialog));
+    layout->addWidget(algorithm);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+    if (dialog.exec() != QDialog::Accepted) return;
+
+    scene->clearExtensionOverlayItems(QString::fromLatin1(kGraphAnalysisOverlayId));
+    const bool breadthFirst = algorithm->currentData().toString() == QStringLiteral("bfs");
+    const GraphTraversalResult result = breadthFirst
+        ? network->breadthFirstSearch(source) : network->depthFirstSearch(source);
+    for (std::size_t index = 0; index < result.visitOrder.size(); ++index) {
+        GraphNode* node = result.visitOrder[index];
+        auto* graphical = scene->findGraphicalModelDataDefinition(node);
+        if (graphical == nullptr) continue;
+        auto* ring = new QGraphicsEllipseItem(graphical->sceneBoundingRect().adjusted(-9, -9, 9, 9));
+        ring->setPen(QPen(QColor(220, 105, 35), 2.5));
+        ring->setBrush(Qt::NoBrush);
+        ring->setZValue(-0.4);
+        ring->setToolTip(QStringLiteral("%1 visit %2: %3")
+            .arg(breadthFirst ? QStringLiteral("BFS") : QStringLiteral("DFS"))
+            .arg(index + 1).arg(QString::fromStdString(node->getName())));
+        scene->addExtensionOverlayItem(QString::fromLatin1(kGraphAnalysisOverlayId), ring);
+        auto* order = new QGraphicsSimpleTextItem(QString::number(index + 1));
+        order->setBrush(QColor(180, 70, 20));
+        order->setPos(graphical->sceneBoundingRect().topLeft() + QPointF(-8, -20));
+        order->setZValue(-0.3);
+        scene->addExtensionOverlayItem(QString::fromLatin1(kGraphAnalysisOverlayId), order);
+    }
+    for (const auto& entry : result.tree) {
+        if (entry.predecessor == nullptr || entry.edge == nullptr) continue;
+        auto* parent = scene->findGraphicalModelDataDefinition(entry.predecessor);
+        auto* child = scene->findGraphicalModelDataDefinition(entry.node);
+        if (parent == nullptr || child == nullptr) continue;
+        QPainterPath path(parent->sceneBoundingRect().center());
+        path.lineTo(child->sceneBoundingRect().center());
+        auto* treeEdge = new QGraphicsPathItem(path);
+        treeEdge->setPen(QPen(QColor(235, 125, 35), 4.0, Qt::SolidLine, Qt::RoundCap));
+        treeEdge->setZValue(-1.2);
+        treeEdge->setToolTip(QObject::tr("%1 tree edge: %2 → %3")
+            .arg(breadthFirst ? QStringLiteral("BFS") : QStringLiteral("DFS"),
+                 QString::fromStdString(entry.predecessor->getName()), QString::fromStdString(entry.node->getName())));
+        scene->addExtensionOverlayItem(QString::fromLatin1(kGraphAnalysisOverlayId), treeEdge);
+    }
+}
+
 
 class GraphNetworkGuiExtensionPlugin final : public GuiExtensionPlugin {
 public:
@@ -361,6 +439,18 @@ public:
         editEdgeWeight.isEnabled = canEditEdgeWeight;
         editEdgeWeight.trigger = editSelectedEdgeWeight;
         registry->addAction(std::move(editEdgeWeight));
+
+        GuiActionContribution analyze;
+        analyze.id = "modal.graph.analyze-traversal";
+        analyze.text = "Show Graph BFS/DFS Analysis...";
+        analyze.menuPath = "Model";
+        analyze.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<GraphNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        analyze.isEnabled = canAnalyzeGraph;
+        analyze.trigger = analyzeGraph;
+        registry->addAction(std::move(analyze));
     }
 };
 

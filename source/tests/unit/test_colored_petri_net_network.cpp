@@ -181,6 +181,7 @@ TEST(ColoredPetriNetNetworkTest, FixedInscriptionsEnableAndFireAtomically) {
 	EXPECT_DOUBLE_EQ(result.getValue(0), 1.0);
 	EXPECT_EQ(input.getTokens("red"), 0u);
 	EXPECT_EQ(output.getTokens("blue"), 1u);
+	EXPECT_EQ(network.getLastFiredTransition(), &transition);
 	EXPECT_FALSE(network.isEnabled(&transition));
 	EXPECT_DOUBLE_EQ(network.getActivationCount(), 1.0);
 }
@@ -212,6 +213,29 @@ TEST(ColoredPetriNetNetworkTest, InsufficientTokensDoNotConsumePartialMarking) {
 	EXPECT_EQ(p1.getTokens("red"), 1u);
 	EXPECT_EQ(p2.getTokens("red"), 0u);
 	EXPECT_EQ(outPlace.getTokens("red"), 0u);
+}
+
+TEST(ColoredPetriNetNetworkTest, AggregatesRepeatedInputInscriptionsBeforeFiring) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	ColoredPetriNetNetwork network(model, "AggregateInput");
+	PetriPlace place(model, "P");
+	CPNTransition transition(model, "T");
+	network.addPlace(&place);
+	network.addTransition(&transition);
+	place.setTokens(3, "red");
+	auto* first = inputArc(model, &place, &transition, 2, "red", "FirstInput");
+	auto* second = inputArc(model, &place, &transition, 2, "red", "SecondInput");
+	ASSERT_TRUE(network.addArc(first));
+	ASSERT_TRUE(network.addArc(second));
+	EXPECT_FALSE(network.isEnabled(&transition));
+	EXPECT_FALSE(network.fire(&transition));
+	EXPECT_EQ(place.getTokens("red"), 3u);
+	place.setTokens(4, "red");
+	ASSERT_TRUE(network.isEnabled(&transition));
+	EXPECT_TRUE(network.fire(&transition));
+	EXPECT_EQ(place.getTokens("red"), 0u);
 }
 
 TEST(ColoredPetriNetNetworkTest, GuardAndPrioritySelectFirstEnabledTransitionDeterministically) {
@@ -407,6 +431,7 @@ TEST(ColoredPetriNetNetworkTest, ModelFileRoundTripPreservesTopologyMarkingIdent
 
 	Model* loadedModel = simulator.getModelManager()->newModel();
 	ASSERT_TRUE(loadedModel->load(filename));
+	(void)loadedModel->check();
 
 	ColoredPetriNetNetwork* loadedNetwork = dynamic_cast<ColoredPetriNetNetwork*>(
 		loadedModel->getDataManager()->getDataDefinition(Util::TypeOf<ColoredPetriNetNetwork>(), "FileCPN"));

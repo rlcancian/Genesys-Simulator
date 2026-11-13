@@ -260,6 +260,8 @@ void MainWindow::_actualizeGraphicalModel(SimulationEvent * re) {
     if (event != nullptr) {
         ui->graphicsView->selectModelComponent(event->getComponent());
     }
+    // Projection plugins reflect the mathematical state already produced by this real event.
+    GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(myScene()->getSimulator(), myScene());
 }
 
 void MainWindow::_generateGraphicalModelFromModel() {
