@@ -2,9 +2,11 @@
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../graphicals/GraphicalModelDataDefinition.h"
 #include "../../../graphicals/ModelGraphicsScene.h"
+#include "../../../services/GraphicalModelBuilder.h"
 
 #include "plugins/data/ModalModel/MarkovChainNetwork.h"
 #include "plugins/data/ModalModel/MarkovState.h"
+#include "kernel/simulator/model/Model.h"
 
 #include <QComboBox>
 #include <QDialog>
@@ -138,6 +140,97 @@ private:
     QPointer<ModelGraphicsScene> _scene;
     MarkovState* _before;
     MarkovState* _after;
+};
+
+class RemoveMarkovStateUndoCommand final : public QUndoCommand {
+public:
+    RemoveMarkovStateUndoCommand(MarkovChainNetwork* network, MarkovState* state, ModelGraphicsScene* scene)
+        : _network(network), _state(state), _scene(scene), _oldLevel(state != nullptr ? state->getLevel() : 0),
+          _previousInitial(network != nullptr ? network->getInitialState() : nullptr),
+          _previousCurrent(network != nullptr ? network->getCurrentState() : nullptr) {
+        setText(QObject::tr("Remove Markov state"));
+        if (network == nullptr || state == nullptr) return;
+        unsigned int ordinal = 0;
+        for (MarkovChainNetwork::MarkovTransition* transition : *network->getTransitions()->list()) {
+            if (transition != nullptr && (transition->getSource() == state || transition->getDestination() == state)) {
+                _transitions.push_back({transition, ordinal, {}});
+            }
+            ++ordinal;
+        }
+        if (scene != nullptr) {
+            if (auto* item = scene->findGraphicalModelDataDefinition(state)) _position = item->pos();
+        }
+    }
+
+    void redo() override {
+        if (_scene == nullptr || _network == nullptr || _state == nullptr
+            || _network->getStates()->find(_state) == _network->getStates()->list()->end()) {
+            setObsolete(true);
+            return;
+        }
+        for (auto& record : _transitions) {
+            unsigned int detachedOrdinal = 0;
+            record.owned = _network->detachTransition(record.transition, &detachedOrdinal);
+            if (!record.owned) { setObsolete(true); return; }
+        }
+        _network->removeState(_state);
+        if (Model* model = _state->getParentModel()) model->remove(_state);
+        _state->setModelLevel(0);
+        synchronizeScene(false);
+    }
+
+    void undo() override {
+        if (_scene == nullptr || _network == nullptr || _state == nullptr
+            || _network->getStates()->find(_state) != _network->getStates()->list()->end()) {
+            setObsolete(true);
+            return;
+        }
+        if (Model* model = _state->getParentModel()) model->insert(_state);
+        _state->setModelLevel(_oldLevel);
+        _network->addState(_state);
+        if (_previousInitial != nullptr
+            && _network->getStates()->find(_previousInitial) != _network->getStates()->list()->end())
+            _network->setInitialState(_previousInitial);
+        if (_previousCurrent != nullptr
+            && _network->getStates()->find(_previousCurrent) != _network->getStates()->list()->end())
+            _network->setCurrentState(_previousCurrent);
+        for (auto& record : _transitions) {
+            if (!record.owned || !_network->restoreTransition(record.owned.get(), record.ordinal)) {
+                setObsolete(true);
+                return;
+            }
+            record.owned.release();
+        }
+        synchronizeScene(true);
+    }
+
+private:
+    struct TransitionRecord {
+        MarkovChainNetwork::MarkovTransition* transition;
+        unsigned int ordinal;
+        std::unique_ptr<MarkovChainNetwork::MarkovTransition> owned;
+    };
+
+    void synchronizeScene(bool restorePosition) {
+        if (_scene == nullptr) return;
+        GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_scene->getSimulator(), _scene);
+        if (restorePosition) {
+            if (auto* item = _scene->findGraphicalModelDataDefinition(_state)) {
+                item->setPos(_position);
+                item->setOldPosition(_position.x(), _position.y());
+            }
+        }
+        synchronizeMarkovProjection(_scene->getSimulator(), _scene);
+    }
+
+    MarkovChainNetwork* _network;
+    MarkovState* _state;
+    QPointer<ModelGraphicsScene> _scene;
+    unsigned int _oldLevel;
+    MarkovState* _previousInitial;
+    MarkovState* _previousCurrent;
+    QPointF _position;
+    std::vector<TransitionRecord> _transitions;
 };
 
 void addArrow(QPainterPath& path, const QPointF& tip) {
@@ -286,6 +379,21 @@ MarkovState* selectedMarkovState(const GuiExtensionRuntimeContext& context) {
     return nullptr;
 }
 
+bool canRemoveMarkovState(const GuiExtensionRuntimeContext& context) {
+    auto* network = context.graphicsScene != nullptr
+        ? dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) : nullptr;
+    auto* state = selectedMarkovState(context);
+    return network != nullptr && context.graphicsScene->getUndoStack() != nullptr && state != nullptr
+        && network->getStates()->find(state) != network->getStates()->list()->end();
+}
+
+void removeSelectedMarkovState(const GuiExtensionRuntimeContext& context) {
+    if (!canRemoveMarkovState(context)) return;
+    auto* network = dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner());
+    context.graphicsScene->getUndoStack()->push(
+        new RemoveMarkovStateUndoCommand(network, selectedMarkovState(context), context.graphicsScene));
+}
+
 void setSelectedInitialState(const GuiExtensionRuntimeContext& context) {
     auto* network = context.graphicsScene != nullptr
         ? dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) : nullptr;
@@ -432,6 +540,18 @@ public:
         };
         setInitial.trigger = setSelectedInitialState;
         registry->addAction(std::move(setInitial));
+
+        GuiActionContribution removeState;
+        removeState.id = "modal.markov.remove-state";
+        removeState.text = "Remove Selected Markov State";
+        removeState.menuPath = "Model";
+        removeState.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<MarkovChainNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        removeState.isEnabled = canRemoveMarkovState;
+        removeState.trigger = removeSelectedMarkovState;
+        registry->addAction(std::move(removeState));
     }
 };
 

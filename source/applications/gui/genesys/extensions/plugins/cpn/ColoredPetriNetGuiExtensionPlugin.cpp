@@ -2,10 +2,12 @@
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../graphicals/GraphicalModelDataDefinition.h"
 #include "../../../graphicals/ModelGraphicsScene.h"
+#include "../../../services/GraphicalModelBuilder.h"
 
 #include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 #include "plugins/components/ModalModel/PetriPlace.h"
 #include "plugins/data/ModalModel/CPNTransition.h"
+#include "kernel/simulator/model/Model.h"
 #include "plugins/data/ModalModel/CPNArc.h"
 #include "kernel/util/Util.h"
 
@@ -374,6 +376,124 @@ PetriPlace* selectedPlace(const GuiExtensionRuntimeContext& context) {
     return nullptr;
 }
 
+class RemoveCpnNodeUndoCommand final : public QUndoCommand {
+public:
+    RemoveCpnNodeUndoCommand(ColoredPetriNetNetwork* network, PetriPlace* place, ModelGraphicsScene* scene)
+        : _network(network), _place(place), _node(place), _scene(scene),
+          _oldLevel(place != nullptr ? place->getLevel() : 0),
+          _initialMarking(network != nullptr ? network->getInitialMarking(place)
+                                             : std::map<std::string, unsigned int>{}),
+          _lastFired(network != nullptr ? network->getLastFiredTransition() : nullptr) {
+        initialize();
+    }
+
+    RemoveCpnNodeUndoCommand(ColoredPetriNetNetwork* network, CPNTransition* transition, ModelGraphicsScene* scene)
+        : _network(network), _transition(transition), _node(transition), _scene(scene),
+          _oldLevel(transition != nullptr ? transition->getLevel() : 0),
+          _lastFired(network != nullptr ? network->getLastFiredTransition() : nullptr) {
+        initialize();
+    }
+
+    void redo() override {
+        if (_scene == nullptr || _network == nullptr || _node == nullptr || !isMember()) {
+            setObsolete(true);
+            return;
+        }
+        for (const auto& [arc, ordinal] : _arcs) {
+            (void)ordinal;
+            _network->removeArc(arc);
+            if (Model* model = _node->getParentModel()) model->remove(arc);
+        }
+        if (_place != nullptr) _network->removePlace(_place);
+        else _network->removeTransition(_transition);
+        if (Model* model = _node->getParentModel()) model->remove(_node);
+        _node->setModelLevel(0);
+        synchronizeScene(false);
+    }
+
+    void undo() override {
+        if (_scene == nullptr || _network == nullptr || _node == nullptr || isMember()) {
+            setObsolete(true);
+            return;
+        }
+        if (Model* model = _node->getParentModel()) model->insert(_node);
+        _node->setModelLevel(_oldLevel);
+        if (_place != nullptr) {
+            _network->addPlace(_place);
+            _network->setInitialMarking(_place, _initialMarking);
+        } else {
+            _network->addTransition(_transition);
+        }
+        for (const auto& [arc, ordinal] : _arcs) {
+            if (Model* model = _node->getParentModel()) model->insert(arc);
+            arc->setModelLevel(_oldLevel);
+            if (!_network->restoreArc(arc, ordinal)) { setObsolete(true); return; }
+        }
+        _network->setLastFiredTransition(_lastFired);
+        synchronizeScene(true);
+    }
+
+private:
+    bool isMember() const {
+        if (_place != nullptr) return _network->getPlaces()->find(_place) != _network->getPlaces()->list()->end();
+        return _network->getTransitions()->find(_transition) != _network->getTransitions()->list()->end();
+    }
+
+    void initialize() {
+        if (_network == nullptr || _node == nullptr) return;
+        unsigned int ordinal = 0;
+        for (CPNArc* arc : *_network->getArcs()->list()) {
+            if (arc != nullptr && (_place == arc->getPlace() || _transition == arc->getTransition()))
+                _arcs.emplace_back(arc, ordinal);
+            ++ordinal;
+        }
+        if (_scene != nullptr) {
+            if (auto* item = _scene->findGraphicalModelDataDefinition(_node)) _position = item->pos();
+        }
+    }
+
+    void synchronizeScene(bool restorePosition) {
+        if (_scene == nullptr) return;
+        GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_scene->getSimulator(), _scene);
+        if (restorePosition) {
+            if (auto* item = _scene->findGraphicalModelDataDefinition(_node)) {
+                item->setPos(_position);
+                item->setOldPosition(_position.x(), _position.y());
+            }
+        }
+        synchronizeCpnProjection(_scene->getSimulator(), _scene);
+    }
+
+    ColoredPetriNetNetwork* _network;
+    PetriPlace* _place = nullptr;
+    CPNTransition* _transition = nullptr;
+    ModelDataDefinition* _node;
+    QPointer<ModelGraphicsScene> _scene;
+    unsigned int _oldLevel = 0;
+    std::map<std::string, unsigned int> _initialMarking;
+    CPNTransition* _lastFired = nullptr;
+    QPointF _position;
+    std::vector<std::pair<CPNArc*, unsigned int>> _arcs;
+};
+
+bool canRemoveCpnNode(const GuiExtensionRuntimeContext& context) {
+    auto* network = context.graphicsScene != nullptr
+        ? dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) : nullptr;
+    if (network == nullptr || context.graphicsScene->getUndoStack() == nullptr) return false;
+    return selectedPlace(context) != nullptr || selectedTransition(context) != nullptr;
+}
+
+void removeSelectedCpnNode(const GuiExtensionRuntimeContext& context) {
+    if (!canRemoveCpnNode(context)) return;
+    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
+    if (PetriPlace* place = selectedPlace(context)) {
+        context.graphicsScene->getUndoStack()->push(new RemoveCpnNodeUndoCommand(network, place, context.graphicsScene));
+    } else if (CPNTransition* transition = selectedTransition(context)) {
+        context.graphicsScene->getUndoStack()->push(
+            new RemoveCpnNodeUndoCommand(network, transition, context.graphicsScene));
+    }
+}
+
 bool canEditInitialTokens(const GuiExtensionRuntimeContext& context) {
     return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
         && selectedPlace(context) != nullptr;
@@ -609,6 +729,18 @@ public:
         editTransition.isEnabled = canEditCpnTransition;
         editTransition.trigger = editCpnTransition;
         registry->addAction(std::move(editTransition));
+
+        GuiActionContribution removeNode;
+        removeNode.id = "modal.cpn.remove-node";
+        removeNode.text = "Remove Selected CPN Place or Transition";
+        removeNode.menuPath = "Model";
+        removeNode.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        removeNode.isEnabled = canRemoveCpnNode;
+        removeNode.trigger = removeSelectedCpnNode;
+        registry->addAction(std::move(removeNode));
     }
 };
 

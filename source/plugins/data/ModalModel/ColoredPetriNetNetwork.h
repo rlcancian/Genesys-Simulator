@@ -50,6 +50,7 @@ public:
 	List<CPNTransition*>* getTransitions() const;
 	bool addArc(CPNArc* arc);
 	void removeArc(CPNArc* arc);
+	bool restoreArc(CPNArc* arc, unsigned int ordinal);
 	List<CPNArc*>* getArcs() const;
 	std::vector<CPNArc*> getInputArcs(CPNTransition* transition) const;
 	std::vector<CPNArc*> getOutputArcs(CPNTransition* transition) const;
@@ -60,6 +61,8 @@ public:
 	void setLastFiredTransition(CPNTransition* transition);
 	void setInitialTokens(PetriPlace* place, std::string color, unsigned int quantity);
 	unsigned int getInitialTokens(PetriPlace* place, std::string color = "default") const;
+	std::map<std::string, unsigned int> getInitialMarking(PetriPlace* place) const;
+	void setInitialMarking(PetriPlace* place, const std::map<std::string, unsigned int>& marking);
 	void captureCurrentMarkingAsInitial();
 	void restoreInitialMarking();
 	FiringMode getFiringMode() const;

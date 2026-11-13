@@ -5,6 +5,7 @@
 #include "kernel/simulator/model/Model.h"
 
 #include <algorithm>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <unordered_map>
@@ -115,6 +116,19 @@ bool ColoredPetriNetNetwork::addArc(CPNArc* arc) {
 void ColoredPetriNetNetwork::removeArc(CPNArc* arc) {
 	_arcs->remove(arc);
 	if (arc != nullptr) _attachedDataRemove(cpnAssociationKey("Arc", arc));
+}
+
+bool ColoredPetriNetNetwork::restoreArc(CPNArc* arc, unsigned int ordinal) {
+	if (arc == nullptr || _hasArc(arc) || !_hasPlace(arc->getPlace()) || !_hasTransition(arc->getTransition())) {
+		return false;
+	}
+	auto* entries = _arcs->list();
+	auto it = entries->begin();
+	std::advance(it, std::min<std::size_t>(ordinal, entries->size()));
+	entries->insert(it, arc);
+	_attachedDataInsert(cpnAssociationKey("Arc", arc), arc);
+	arc->setModelLevel(static_cast<unsigned int>(getId()));
+	return true;
 }
 
 List<CPNArc*>* ColoredPetriNetNetwork::getArcs() const {
@@ -238,6 +252,16 @@ unsigned int ColoredPetriNetNetwork::getInitialTokens(PetriPlace* place, std::st
 	}
 	auto colorIt = placeIt->second.find(color);
 	return colorIt != placeIt->second.end() ? colorIt->second : 0u;
+}
+
+std::map<std::string, unsigned int> ColoredPetriNetNetwork::getInitialMarking(PetriPlace* place) const {
+	const auto it = _initialMarking.find(place);
+	return it != _initialMarking.end() ? it->second : std::map<std::string, unsigned int>{};
+}
+
+void ColoredPetriNetNetwork::setInitialMarking(PetriPlace* place,
+												 const std::map<std::string, unsigned int>& marking) {
+	if (_hasPlace(place)) _initialMarking[place] = marking;
 }
 
 void ColoredPetriNetNetwork::captureCurrentMarkingAsInitial() {

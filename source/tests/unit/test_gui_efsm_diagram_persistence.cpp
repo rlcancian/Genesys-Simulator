@@ -78,6 +78,7 @@
 #include <QSpinBox>
 
 #include <algorithm>
+#include <iterator>
 #include <thread>
 
 namespace {
@@ -782,6 +783,72 @@ TEST(MarkovChainNetworkGuiExtension, DroppedMarkovStateJoinsTheNetworkAndScene) 
                   ->getDataDefinition(), network.getStates()->front());
 }
 
+TEST(MarkovChainNetworkGuiExtension, RemovesStateAndTransitionsWithUndoRedoAndStableGeometry) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new MarkovChainNetwork(model, "UndoMarkovState");
+    auto* first = new MarkovState(model, "First");
+    auto* middle = new MarkovState(model, "Middle");
+    auto* last = new MarkovState(model, "Last");
+    network->addState(first);
+    network->addState(middle);
+    network->addState(last);
+    network->setInitialState(first);
+    network->setCurrentState(middle);
+    auto* firstTransition = new MarkovChainNetwork::MarkovTransition(first, middle, 0.75, "FirstTransition");
+    auto* secondTransition = new MarkovChainNetwork::MarkovTransition(middle, last, 1.0, "SecondTransition");
+    network->addTransition(firstTransition);
+    network->addTransition(secondTransition);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene.setNetworkEditorOwner(network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    Plugin* statePlugin = simulator.getPluginManager()->find(Util::TypeOf<MarkovState>());
+    ASSERT_NE(statePlugin, nullptr);
+    scene.addGraphicalModelDataDefinition(statePlugin, first, QPointF(20, 40));
+    auto* middleItem = scene.addGraphicalModelDataDefinition(statePlugin, middle, QPointF(220, 140));
+    scene.addGraphicalModelDataDefinition(statePlugin, last, QPointF(420, 40));
+    const QPointF originalMiddlePosition = middleItem->pos();
+    middleItem->setSelected(true);
+
+    GuiActionContribution removeState;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.markov.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.markov.remove-state") removeState = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(removeState.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(removeState.isEnabled(context));
+    removeState.trigger(context);
+    EXPECT_EQ(network->getStates()->size(), 2u);
+    EXPECT_TRUE(network->getTransitions()->empty());
+    EXPECT_EQ(network->getCurrentState(), nullptr);
+
+    undoStack.undo();
+    ASSERT_EQ(network->getStates()->size(), 3u);
+    ASSERT_EQ(network->getTransitions()->size(), 2u);
+    EXPECT_EQ(network->getTransitions()->front(), firstTransition);
+    EXPECT_EQ(*std::next(network->getTransitions()->list()->begin()), secondTransition);
+    EXPECT_EQ(network->getInitialState(), first);
+    EXPECT_EQ(network->getCurrentState(), middle);
+    EXPECT_EQ(scene.findGraphicalModelDataDefinition(middle)->pos(), originalMiddlePosition);
+    undoStack.redo();
+    EXPECT_EQ(network->getStates()->size(), 2u);
+    EXPECT_TRUE(network->getTransitions()->empty());
+    undoStack.undo();
+    EXPECT_EQ(network->getTransitions()->front(), firstTransition);
+    EXPECT_EQ(*std::next(network->getTransitions()->list()->begin()), secondTransition);
+}
+
 TEST(ColoredPetriNetGuiExtension, ProjectsMarkingAndFiresSelectedTransitionWithUndoRedo) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -890,6 +957,73 @@ TEST(ColoredPetriNetGuiExtension, ProjectsMarkingAndFiresSelectedTransitionWithU
         }
     }
     EXPECT_EQ(firedArcCount, 2);
+}
+
+TEST(ColoredPetriNetGuiExtension, RemovesTransitionWithIncidentArcsAndUndoPreservesMarkingAndOrder) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new ColoredPetriNetNetwork(model, "UndoCpnTransition");
+    auto* input = new PetriPlace(model, "Input");
+    auto* output = new PetriPlace(model, "Output");
+    auto* transition = new CPNTransition(model, "Move");
+    input->setTokens(3, "red");
+    network->addPlace(input);
+    network->addPlace(output);
+    network->addTransition(transition);
+    network->setInitialTokens(input, "red", 3);
+    auto* incoming = new CPNArc(model, input, transition, CPNArc::Direction::PlaceToTransition, "Incoming");
+    auto* outgoing = new CPNArc(model, output, transition, CPNArc::Direction::TransitionToPlace, "Outgoing");
+    incoming->setInscription("red", 1);
+    outgoing->setInscription("red", 1);
+    ASSERT_TRUE(network->addArc(incoming));
+    ASSERT_TRUE(network->addArc(outgoing));
+    ASSERT_TRUE(network->fire(transition));
+    ASSERT_EQ(input->getTokens("red"), 2u);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene.setNetworkEditorOwner(network);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    Plugin* placePlugin = simulator.getPluginManager()->find(Util::TypeOf<PetriPlace>());
+    Plugin* transitionPlugin = simulator.getPluginManager()->find(Util::TypeOf<CPNTransition>());
+    ASSERT_NE(placePlugin, nullptr);
+    ASSERT_NE(transitionPlugin, nullptr);
+    scene.addGraphicalModelDataDefinition(placePlugin, input, QPointF(20, 40));
+    auto* transitionItem = scene.addGraphicalModelDataDefinition(transitionPlugin, transition, QPointF(220, 140));
+    scene.addGraphicalModelDataDefinition(placePlugin, output, QPointF(420, 40));
+    const QPointF originalPosition = transitionItem->pos();
+    transitionItem->setSelected(true);
+
+    GuiActionContribution removeNode;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions()) if (action.id == "modal.cpn.remove-node") removeNode = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(removeNode.trigger));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(removeNode.isEnabled(context));
+    removeNode.trigger(context);
+    EXPECT_EQ(network->getTransitions()->size(), 0u);
+    EXPECT_EQ(network->getArcs()->size(), 0u);
+    EXPECT_EQ(network->getLastFiredTransition(), nullptr);
+
+    undoStack.undo();
+    ASSERT_EQ(network->getTransitions()->size(), 1u);
+    ASSERT_EQ(network->getArcs()->size(), 2u);
+    EXPECT_EQ(network->getArcs()->front(), incoming);
+    EXPECT_EQ(*std::next(network->getArcs()->list()->begin()), outgoing);
+    EXPECT_EQ(network->getLastFiredTransition(), transition);
+    EXPECT_EQ(network->getInitialTokens(input, "red"), 3u);
+    EXPECT_EQ(input->getTokens("red"), 2u);
+    EXPECT_EQ(scene.findGraphicalModelDataDefinition(transition)->pos(), originalPosition);
 }
 
 TEST(ColoredPetriNetGuiExtension, DroppedPlacesAndTransitionsJoinTheNetwork) {
