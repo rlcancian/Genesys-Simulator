@@ -25,6 +25,10 @@ public:
 	void populateContextMenu(QMenu* menu, QGraphicsItem* item) const;
 	void reconcilePropertyListChange(ModelDataDefinition* owner, ModelGraphicsScene* scene) const;
 	bool reconcilePropertyListMove(ModelDataDefinition* owner, ModelGraphicsScene* scene, int from, int to) const;
+	bool hasEditingContext(ModelDataDefinition* owner) const;
+	ModelDataDefinition* resolveEditingContextOwner(ModelDataDefinition* owner) const;
+	bool isNetworkEditingContext(ModelDataDefinition* owner) const;
+	bool canOpenEditingContext(Model* model, ModelDataDefinition* owner) const;
 	void clear();
 
 private:
@@ -45,6 +49,7 @@ private:
 	std::vector<QDockWidget*> _createdDocks;
 	std::vector<GuiContextMenuContribution> _contextMenuContributions;
 	std::vector<GuiPropertyListContribution> _propertyListContributions;
+	std::vector<GuiEditingContextContribution> _editingContextContributions;
 	GuiExtensionRuntimeContext _runtimeContext;
 };
 

@@ -119,6 +119,14 @@ struct GuiPropertyListContribution {
 	std::function<bool(ModelDataDefinition*, ModelGraphicsScene*, int, int)> reconcileMove;
 };
 
+struct GuiEditingContextContribution {
+	std::string id;
+	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<ModelDataDefinition*(ModelDataDefinition*)> resolveOwner;
+	std::function<bool(ModelDataDefinition*)> isNetwork;
+	std::function<bool(Model*, ModelDataDefinition*)> canOpen;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAction(GuiActionContribution contribution) {
@@ -149,6 +157,10 @@ public:
 		_propertyLists.push_back(std::move(contribution));
 	}
 
+	void addEditingContext(GuiEditingContextContribution contribution) {
+		_editingContexts.push_back(std::move(contribution));
+	}
+
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
 	}
@@ -177,6 +189,10 @@ public:
 		return _propertyLists;
 	}
 
+	const std::vector<GuiEditingContextContribution>& editingContexts() const {
+		return _editingContexts;
+	}
+
 	void clear() {
 		_actions.clear();
 		_docks.clear();
@@ -185,6 +201,7 @@ public:
 		_diagramProjections.clear();
 		_networkEditors.clear();
 		_propertyLists.clear();
+		_editingContexts.clear();
 	}
 
 private:
@@ -195,6 +212,7 @@ private:
 	std::vector<GuiDiagramProjectionContribution> _diagramProjections;
 	std::vector<GuiNetworkEditorContribution> _networkEditors;
 	std::vector<GuiPropertyListContribution> _propertyLists;
+	std::vector<GuiEditingContextContribution> _editingContexts;
 };
 
 class GuiExtensionPlugin {

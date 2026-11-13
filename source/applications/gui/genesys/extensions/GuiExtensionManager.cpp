@@ -76,6 +76,7 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	}
 	_contextMenuContributions = registry.contextMenus();
 	_propertyListContributions = registry.propertyLists();
+	_editingContextContributions = registry.editingContexts();
 }
 
 void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) const {
@@ -102,6 +103,35 @@ bool GuiExtensionManager::reconcilePropertyListMove(ModelDataDefinition* owner, 
 		if (contribution.reconcileMove && (!contribution.supports || contribution.supports(owner))) {
 			if (contribution.reconcileMove(owner, scene, from, to)) return true;
 		}
+	}
+	return false;
+}
+
+bool GuiExtensionManager::hasEditingContext(ModelDataDefinition* owner) const {
+	return std::any_of(_editingContextContributions.begin(), _editingContextContributions.end(),
+		[owner](const auto& c) { return c.supports && c.supports(owner); });
+}
+
+ModelDataDefinition* GuiExtensionManager::resolveEditingContextOwner(ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.resolveOwner) {
+			ModelDataDefinition* resolved = c.resolveOwner(owner);
+			return resolved != nullptr ? resolved : owner;
+		}
+	}
+	return owner;
+}
+
+bool GuiExtensionManager::isNetworkEditingContext(ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.isNetwork) return c.isNetwork(owner);
+	}
+	return false;
+}
+
+bool GuiExtensionManager::canOpenEditingContext(Model* model, ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.canOpen) return c.canOpen(model, owner);
 	}
 	return false;
 }
@@ -137,6 +167,7 @@ void GuiExtensionManager::clear() {
 	_createdMenuActions.clear();
 	_contextMenuContributions.clear();
 	_propertyListContributions.clear();
+	_editingContextContributions.clear();
 	_runtimeContext = GuiExtensionRuntimeContext{};
 }
 

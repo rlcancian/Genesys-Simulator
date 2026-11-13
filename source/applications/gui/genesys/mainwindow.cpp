@@ -22,10 +22,8 @@
 #include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../kernel/simulator/model/ModelComponentManager.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"// GUI
-#include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/ModalModel/Submodel.h"
 #include "plugins/components/ModalModel/FSMState.h"
-#include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
@@ -61,7 +59,6 @@
 #include "services/CppModelExporter.h"
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
-#include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "UtilGUI.h"
 #include "guithememanager.h"
 // PropEditor
@@ -887,44 +884,17 @@ ModelDataDefinition* MainWindow::_selectedSubmodelOwner() const {
 
     QGraphicsItem* item = selectedItems.first();
     if (auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(item)) {
-        ModelComponent* component = graphicalComponent->getComponent();
-        // A ModalModelDefault is an adapter to a formal Network, not the
-        // owner of a process submodel. Open the shared Network context so
-        // multiple adapters resolve to the same mathematical object.
-        if (auto* modalModel = dynamic_cast<ModalModelDefault*>(component)) {
-            return modalModel->getNetwork();
-        }
-        return component;
+        ModelDataDefinition* owner = graphicalComponent->getComponent();
+        return _guiExtensionManager != nullptr
+            ? _guiExtensionManager->resolveEditingContextOwner(owner) : owner;
     }
     if (auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
-        return graphicalDataDefinition->getDataDefinition();
+        ModelDataDefinition* owner = graphicalDataDefinition->getDataDefinition();
+        return _guiExtensionManager != nullptr
+            ? _guiExtensionManager->resolveEditingContextOwner(owner) : owner;
     }
     return nullptr;
 }
-
-ModalModelDefault* MainWindow::_selectedModalModelDefault() const {
-    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr) {
-        return nullptr;
-    }
-    const QList<QGraphicsItem*> selectedItems = ui->graphicsView->getScene()->selectedItems();
-    if (selectedItems.size() != 1) {
-        return nullptr;
-    }
-    auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(selectedItems.first());
-    return graphicalComponent != nullptr
-               ? dynamic_cast<ModalModelDefault*>(graphicalComponent->getComponent())
-               : nullptr;
-}
-
-
-
-
-
-
-
-
-
-
 
 bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
     if (owner == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
@@ -936,14 +906,8 @@ bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
         return false;
     }
 
-    // A Network is itself the owner of an editing context.  Its states may be
-    // empty, so checking only for children would incorrectly disable opening a
-    // valid empty Network.
-    if (auto* network = dynamic_cast<DefaultNetwork*>(owner)) {
-        if (model->getDataManager() == nullptr) {
-            return false;
-        }
-        return model->getDataManager()->getDataDefinition(network->getClassname(), network->getId()) == network;
+    if (_guiExtensionManager != nullptr && _guiExtensionManager->hasEditingContext(owner)) {
+        return _guiExtensionManager->canOpenEditingContext(model, owner);
     }
 
     if (dynamic_cast<Submodel*>(owner) != nullptr) {
@@ -1368,7 +1332,8 @@ void MainWindow::_reloadPluginCatalogForCurrentContext() {
         || ui->graphicsView->getScene() == nullptr) return;
     ModelDataDefinition* editorOwner = ui->graphicsView->getScene()->networkEditorOwner();
     _pluginCatalogController->reloadFromPluginManager(
-        dynamic_cast<DefaultNetwork*>(editorOwner) != nullptr ? editorOwner : nullptr);
+        _guiExtensionManager != nullptr && _guiExtensionManager->isNetworkEditingContext(editorOwner)
+            ? editorOwner : nullptr);
 }
 
 ModelGraphicsView* MainWindow::_ensureModelTab(Model* model) {
@@ -1959,8 +1924,8 @@ void MainWindow::_actualizeActions() {
         _actionModelNext->setEnabled(opened && simulator->getModelManager()->canGoNext() && !simulationInteractionLocked);
     }
     if (_actionOpenSelectedSubmodel != nullptr) {
-        const bool selectedNetwork = _selectedModalModelDefault() != nullptr
-                                     || dynamic_cast<DefaultNetwork*>(_selectedSubmodelOwner()) != nullptr;
+        const bool selectedNetwork = _guiExtensionManager != nullptr
+            && _guiExtensionManager->isNetworkEditingContext(_selectedSubmodelOwner());
         _actionOpenSelectedSubmodel->setText(selectedNetwork ? tr("Open Network") : tr("Open Submodel"));
         _actionOpenSelectedSubmodel->setToolTip(selectedNetwork
             ? tr("Open the selected Network's graphical context.")
