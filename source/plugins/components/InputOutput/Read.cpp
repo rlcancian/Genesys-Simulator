@@ -42,6 +42,37 @@ bool terminalInputAvailable() {
     return false;
 #endif
 }
+// Keep list deletion scoped to Read rather than changing every plugin list.
+class ReadDestinationsControl final
+    : public SimulationControlGenericListPointer<ReadDestination*, Model*, ReadDestination> {
+public:
+    using Base = SimulationControlGenericListPointer<ReadDestination*, Model*, ReadDestination>;
+
+    ReadDestinationsControl(Read* owner, Model* model)
+        : Base(model,
+               [owner]() { return owner->getDestinations(); },
+               [owner](ReadDestination* destination) { owner->addDestination(destination); },
+               [owner](ReadDestination* destination) { owner->removeDestination(destination); },
+               Util::TypeOf<Read>(), owner->getName(), "Destinations",
+               "Ordered destinations for numeric input fields.",
+               true, true, false,
+               [](Model* m, const std::string& name) { return new ReadDestination(m, name); }),
+          _owner(owner) {
+    }
+
+    bool supportsListElementRemoval() const override { return true; }
+
+    bool removeListElementAt(int index) override {
+        _ensureWritable("remove list element from");
+        auto* destinations = _owner->getDestinations();
+        if (index < 0 || static_cast<std::size_t>(index) >= destinations->size()) return false;
+        _owner->removeDestination(destinations->getAtRank(static_cast<unsigned int>(index)));
+        return true;
+    }
+
+private:
+    Read* _owner;
+};
 } // namespace
 
 ReadDestination::ReadDestination(Model* model, std::string destination, bool attributeNotVariable)
@@ -115,15 +146,7 @@ Read::Read(Model* model, std::string name)
         std::bind(&Read::readFromType, this),
         std::bind(&Read::setReadFromType, this, std::placeholders::_1),
         Util::TypeOf<Read>(), getName(), "ReadFromType", "FILE or KEYBOARD.");
-    auto* destinationsControl =
-        new SimulationControlGenericListPointer<ReadDestination*, Model*, ReadDestination>(
-            _parentModel,
-            std::bind(&Read::getDestinations, this),
-            std::bind(&Read::addDestination, this, std::placeholders::_1),
-            std::bind(&Read::removeDestination, this, std::placeholders::_1),
-            Util::TypeOf<Read>(), getName(), "Destinations", "Ordered destinations for numeric input fields.",
-            true, true, false,
-            [](Model* model, const std::string& name) { return new ReadDestination(model, name); });
+    auto* destinationsControl = new ReadDestinationsControl(this, _parentModel);
     for (SimulationControl* control : {static_cast<SimulationControl*>(filenameControl),
                                        static_cast<SimulationControl*>(sourceControl),
                                        static_cast<SimulationControl*>(destinationsControl)}) {
