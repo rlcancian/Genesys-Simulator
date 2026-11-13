@@ -460,6 +460,12 @@ bool Read::_parseRecord(const std::string& record, std::vector<double>& values, 
     fields.imbue(std::locale::classic());
     std::string token;
     while (fields >> token) {
+        // Fail as soon as there are too many fields; do not keep growing a
+        // vector for a malformed record with an unbounded token count.
+        if (values.size() >= _destinations->size()) {
+            error = "record contains more fields than configured destinations";
+            return false;
+        }
         std::istringstream number(token);
         number.imbue(std::locale::classic());
         double value = 0.0;
