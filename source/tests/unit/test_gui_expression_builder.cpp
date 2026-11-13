@@ -5,6 +5,7 @@
 #include "applications/gui/genesys/tools/expressionbuilder/ParserFunctionCatalog.h"
 #include "parser/Genesys++-driver.h"
 #include "applications/gui/genesys/tools/expressionbuilder/ExpressionBuilder.h"
+#include "applications/gui/genesys/graphicals/ModelGraphicsScene.h"
 #include "applications/gui/genesys/propertyeditor/ObjectPropertyBrowser.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
