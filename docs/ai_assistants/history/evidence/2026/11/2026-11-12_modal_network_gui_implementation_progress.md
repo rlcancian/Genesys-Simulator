@@ -2,7 +2,7 @@
 document_type: implementation-progress-evidence
 authority: informative
 owner: project-maintainer
-tracks: HUM-MODAL-003,AUTO-MODAL-005
+tracks: HUM-MODAL-003,AUTO-MODAL-005,HUM-MODAL-004,AUTO-MODAL-006
 branch: WiP20261112/modal_model_gui
 base_commit: 6b0facf40e4225c80b4d77cc31f212f5b3a8844e
 status: in-progress
@@ -418,3 +418,32 @@ non-EFSM formalism work remain in C5 and D1–D5.
 - All 19 final-head GitHub checks passed. This includes `tests-unit` (2,109 executed, four configured-disabled), `tests-kernel-unit` (2,111 executed, four configured-disabled), runnable smoke (3/3), GUI application build, focused GUI tests, manual build/governance, Debian package build with Lintian, and install/reinstall/remove/purge lifecycle validation.
 - `origin/WorkInProgress` verified at merge commit `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb`; `origin/WiP20261112/modal_model_gui` remains at candidate `b88984d7fd6d957ba87cff6f9382f9b1df73d427` for continued development.
 - Merge mode: merge commit; no squash/rebase; no source-branch deletion.
+
+## AUTO-MODAL-006 — Universal Network element editing (2026-11-13)
+
+### EFSM checkpoint implemented on the development branch
+
+- `FSMState` now exposes entry/exit action expressions and final/initial flags as Property Editor controls. Extension membership is checked by object identity within the active EFSM; base MDD controls and state-specific edits use undoable commands.
+- The extension contract now supports Network-owned mathematical element properties and relation creation without adding formalism classes to generic GUI code. Double-clicking a valid EFSM state starts a crosshair connection mode; clicking a destination creates the actual owned `EFSMTransition` via the extension command. Self-loops and parallel relations work. Esc, empty-canvas click and context change cancel the mode.
+- Selecting an EFSM relation presents Name, read-only source/destination, guard, output, input event, priority, trigger event and probability expression in the Property Editor. Changes target the real transition and use undo/redo. The redundant EFSM state/transition edit commands and their dialog implementations were removed.
+- `.gen` persistence omitted `Trigger Event`; the field is now read/written. Graphical projection refresh is linked to the undo stack so relation creation/edit/undo/redo stays synchronized with the diagram.
+- Gesture regression uses three states and verifies A→B, B→C and C→C, identity/topology, undo/redo projection updates, Esc and canvas cancellation. Additional tests cover state editability by Network membership identity, transition Property Editor fields, no legacy actions, context menu behavior, and GUI/model round-trip.
+- `cmake --build --preset tests-unit --target genesys_test_gui_gmdd_layout -j 4` — PASS.
+- Focused filter covering state selection/editing, EFSM gesture, transition Property Editor, context/action integration, main-window save/reopen and parallel-transition layout — PASS, 9/9.
+- `git diff --check` — PASS before checkpoint commit.
+
+### Functional implementation and validation
+
+- EFSM user-visible checkpoint: commit `762747215`, published on `origin/WiP20261112/modal_model_gui`.
+- GraphNetwork/DirectedGraph/DAG now use the shared source-selection and relation-creation API. GraphNodes expose base properties through the active network editor; selected GraphEdges expose Name and Weight in the Property Editor, with endpoints read-only. The old edge weight dialog action was removed.
+- DAG rejects self-loops and cycle-forming edges before allocating a GraphEdge. Directedness remains assigned by the concrete GraphNetwork specialization.
+- Graph-focused build — PASS. `GraphNetworkGuiExtension.*` — PASS, 9/9, including gesture-driven directed edge creation, Property Editor descriptors/weight edit undo-redo, DAG cycle/self-loop rejection without allocation, existing projection, persistence geometry and node-removal regressions.
+- MarkovChainNetwork now creates owned `MarkovTransition` relations through the shared gesture, exposes transition Name/endpoints/Probability and state Initial State in Property Editor descriptors, and edits probabilities without normalizing the matrix. Its relation/state membership uses identity and existing network ownership.
+- ColoredPetriNetNetwork now creates real `CPNArc` relations through the shared gesture, choosing input/output from click order and rejecting non-bipartite pairs before construction. It exposes arc inscription/name/endpoints/direction, transition guard/priority, place initial marking (multi-color `color=count;...`) and standard MDD fields through Property Editor commands. Redundant marking, arc inscription and transition guard dialogs/actions were removed; firing, validation and removal actions remain.
+- Markov + CPN + Graph focused GUI tests, plus EFSM relation/property focused tests — PASS, 22/22 after the latest changes. The test covers multi-color inscriptions/marking, bidirectional CPN arc semantics, Markov probability property undo/redo, DAG rejection, graph projection and existing persistence geometry.
+- Projection refreshes for Graph edges, Markov transitions and CPN arcs now carry selection forward by domain-object identity. A regression verifies that editing an arc keeps the same mathematical arc selected after overlay recreation; this avoids leaving the Property Editor attached to a discarded graphical item.
+- `cmake --build --preset gui-app --target genesys_gui -j 4` — PASS. The unit test target rebuilt after the selection-preservation change; focused Graph/Markov/CPN/EFSM relation checks — PASS, 22/22 before the added selection-preservation assertion, and the three directly affected gesture/property tests — PASS, 3/3 afterward.
+- Final integration validation: full `genesys_test_gui_gmdd_layout` — PASS, 155/155. Its first invocation ended in an intermittent SIGSEGV without a diagnostic; an immediate rerun completed all 155 tests successfully. Graph/DAG kernel and persistence tests through CTest — PASS, 18/18; Markov and CPN kernel/persistence tests — PASS, 27/27.
+- `cmake --build --preset gui-app --target genesys_gui -j 4` after final projection changes — PASS. `python3 scripts/validate-ai-docs.py` — PASS; `git diff --check` — PASS.
+- Three implementation checkpoints are published on `WiP20261112/modal_model_gui`: EFSM `762747215`, Graph/DAG `52236f2ad`, Markov/CPN `783531e92`, plus selection-lifetime fix `c189e11b5`. Branch is synchronized with origin and ready for maintainer review. No merge to WorkInProgress was performed.
+- Limit: no manual interactive desktop smoke was performed in this session. The gesture, cancellation, property commands, topology rejection, projection refresh, undo/redo and persistence coverage was exercised through the offscreen GUI test target and kernel/model-file persistence tests.

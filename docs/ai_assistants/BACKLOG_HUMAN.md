@@ -80,6 +80,15 @@ A decision recorded here is not implemented automatically unless a corresponding
 - Execution task: AUTO-MODAL-005 in BACKLOG_AUTONOMOUS.md; local development branch, suggested WiP20261112/modal_model_gui, target review then human-controlled merge to WorkInProgress.
 - Human stop gates: only genuine unforeseen substantive architectural/scientific/persistence/security decision or execution blocker. No automatic final merge.
 
+### HUM-MODAL-004 — Universal Network element editing in Property Editor (2026-11-13)
+
+- Priority: P1.
+- Status: decision-recorded; implementation expressly authorized.
+- Decision: mathematical nodes and relations in topological Networks must be selectable and editable through the shared Property Editor; relation creation uses a common source-double-click/destination-click gesture with formalism validation and undo/redo.
+- Scope: finish EFSM first, including state and transition properties, graphical transition creation, persistence and removal of EFSM edit dialogs; then apply the shared capabilities to Graph/DirectedGraph/DAG, Markov and CPN without fabricating domain types or simulation semantics.
+- Constraints: retain real domain ownership and identity, preserve formalism topology and persistence, reject invalid operations before mutation, and keep Qt out of kernel classes.
+- Execution task: AUTO-MODAL-006 in BACKLOG_AUTONOMOUS.md on `WiP20261112/modal_model_gui`; no automatic merge to WorkInProgress.
+
 ### HUM-ARCH-001 — Static component target consolidation
 
 - Priority: `P1`

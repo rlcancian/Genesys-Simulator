@@ -3,6 +3,7 @@
 
 #include <QUndoCommand>
 #include <string>
+#include <cstdint>
 
 class EFSMNetwork;
 class FSMState;
@@ -11,9 +12,13 @@ class EFSMStatePropertiesUndoCommand final : public QUndoCommand {
 public:
     struct Properties {
         std::string name;
+        std::string label;
         std::string entryActionExpression;
         std::string exitActionExpression;
+        std::uint32_t traceLevel = 0;
+        bool reportStatistics = true;
         bool finalNode = false;
+        bool initialNode = false;
     };
 
     EFSMStatePropertiesUndoCommand(EFSMNetwork* network, FSMState* state,

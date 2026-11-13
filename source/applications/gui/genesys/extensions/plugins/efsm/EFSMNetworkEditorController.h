@@ -9,14 +9,10 @@ public:
     explicit EFSMNetworkEditorController(MainWindow* host);
     void createState();
     void createTransition();
-    void editTransition();
     void setInitialState();
-    void editState();
     bool hasNetworkContext() const;
     bool canCreateState() const;
     bool canCreateTransition() const;
-    bool canEditTransition() const;
-    bool canEditState() const;
     bool canSetInitialState() const;
 
 private:

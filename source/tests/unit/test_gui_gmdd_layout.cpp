@@ -5,6 +5,7 @@
 #include "graphicals/ModelGraphicsView.h"
 #include "controllers/PropertyEditorController.h"
 #include "controllers/PluginCatalogController.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 #include "controllers/SimulationEventController.h"
 #include "animations/AnimationTransition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
@@ -38,6 +39,8 @@
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/Synchronization/SignalData.h"
 #include "plugins/data/ModalModel/GraphNode.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/components/ModalModel/FSMState.h"
 
 #include <gtest/gtest.h>
 
@@ -875,6 +878,54 @@ TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsE
     controller.sceneSelectionChanged();
 
     EXPECT_TRUE(queueGmdd->isEditableInPropertyEditor());
+}
+
+TEST(GuiGmddLayout, EFSMNetworkMemberSelectionEnablesStatePropertiesByIdentity) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "IdentityEditableNetwork");
+    FSMState state(model, "IdentityEditableState");
+    network.addState(&state);
+    ASSERT_TRUE(GuiExtensionPluginCatalog::ownsEditableNetworkDataDefinition(&network, &state));
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setNetworkEditorOwner(&network);
+    scene->setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    GraphicalModelDataDefinition* graphicalState = findGraphicalDataDefinition(*scene, &state);
+    ASSERT_NE(graphicalState, nullptr);
+
+    ObjectPropertyBrowser propertyBrowser;
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    PropertyEditorController controller(
+        &propertyBrowser, &graphicsView, &propertyEditor, &propertyList,
+        &propertyEditorUi, &propertyCombo, {}, {}, {}, {}, {}, {}, {});
+
+    graphicalState->setSelected(true);
+    controller.sceneSelectionChanged();
+    QApplication::processEvents();
+    EXPECT_TRUE(graphicalState->isEditableInPropertyEditor());
+    std::function<QtBrowserItem*(const QList<QtBrowserItem*>&)> findProperty =
+        [&](const QList<QtBrowserItem*>& items) -> QtBrowserItem* {
+            for (QtBrowserItem* item : items) {
+                if (item->property()->propertyName() == QStringLiteral("Entry Action Expression")) {
+                    return item;
+                }
+                if (QtBrowserItem* child = findProperty(item->children())) return child;
+            }
+            return nullptr;
+        };
+    QtBrowserItem* entryAction = findProperty(propertyBrowser.topLevelItems());
+    ASSERT_NE(entryAction, nullptr);
+    EXPECT_TRUE(entryAction->property()->isEnabled());
 }
 
 TEST(GuiGmddLayout, ComponentLoadRestoresEditableAuxiliaryItemControlsAndResourceEditability) {

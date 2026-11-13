@@ -21,6 +21,18 @@ public:
 	static GuiExtensionPresentationMetadata presentationMetadata(const std::string& extensionId);
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
 	static std::vector<GuiDiagramProjectionContribution> diagramProjectionContributions();
+	static bool ownsEditableNetworkDataDefinition(ModelDataDefinition* owner, ModelDataDefinition* candidate);
+	static QUndoCommand* createNetworkDataDefinitionPropertyCommand(
+		ModelDataDefinition* owner, ModelDataDefinition* candidate,
+		const std::string& propertyName, const std::string& value);
+	static bool canStartNetworkRelationCreation(ModelDataDefinition* owner, QGraphicsItem* source);
+	static QUndoCommand* createNetworkRelationCommand(
+		ModelDataDefinition* owner, QGraphicsItem* source, QGraphicsItem* destination);
+	static std::vector<GuiNetworkEditorContribution::ElementProperty> networkElementProperties(
+		ModelDataDefinition* owner, QGraphicsItem* element);
+	static QUndoCommand* createNetworkElementPropertyCommand(
+		ModelDataDefinition* owner, QGraphicsItem* element,
+		const std::string& propertyName, const std::string& value);
 	static bool acceptsNetworkEditorDrop(ModelDataDefinition* owner, const std::string& pluginType, bool isComponent);
 	static void notifyNetworkEditorDataDefinitionDrop(ModelDataDefinition* owner, ModelDataDefinition* dropped);
 	static void notifyNetworkEditorDataDefinitionRemoved(ModelDataDefinition* owner, ModelDataDefinition* dropped);

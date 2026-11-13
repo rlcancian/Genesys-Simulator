@@ -15,6 +15,7 @@ class QMainWindow;
 class QWidget;
 class QGraphicsItem;
 class QMenu;
+class QUndoCommand;
 class ModelGraphicsView;
 class ModelGraphicsScene;
 class Model;
@@ -89,6 +90,22 @@ struct GuiDiagramProjectionContribution {
 struct GuiNetworkEditorContribution {
 	std::string id;
 	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<bool(ModelDataDefinition*, ModelDataDefinition*)> ownsEditableDataDefinition;
+	std::function<QUndoCommand*(ModelDataDefinition*, ModelDataDefinition*, const std::string&, const std::string&)> createDataDefinitionPropertyCommand;
+	// Builds a real domain relation between two selected graphical nodes.
+	std::function<bool(ModelDataDefinition*, QGraphicsItem*)> canStartRelationCreation;
+	std::function<QUndoCommand*(ModelDataDefinition*, QGraphicsItem*, QGraphicsItem*)> createRelationCommand;
+	struct ElementProperty {
+		enum class Kind { String, Boolean, Integer, Double, Enumeration };
+		std::string name;
+		std::string value;
+		std::vector<std::string> choices;
+		Kind kind = Kind::String;
+		bool editable = false;
+	};
+	std::function<std::vector<ElementProperty>(ModelDataDefinition*, QGraphicsItem*)> elementProperties;
+	std::function<QUndoCommand*(ModelDataDefinition*, QGraphicsItem*, const std::string&, const std::string&)>
+		createElementPropertyCommand;
 	std::function<bool(ModelDataDefinition*, const std::string&, bool)> acceptsDrop;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionDropped;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionRemoved;

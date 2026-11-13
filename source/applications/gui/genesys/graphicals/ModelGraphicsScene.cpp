@@ -2352,7 +2352,15 @@ Simulator* ModelGraphicsScene::getSimulator() {
 }
 
 void ModelGraphicsScene::setUndoStack(QUndoStack* undo) {
+    if (_undoProjectionRefreshConnection) QObject::disconnect(_undoProjectionRefreshConnection);
     _undoStack = undo;
+    if (_undoStack != nullptr) {
+        _undoProjectionRefreshConnection = QObject::connect(
+            _undoStack, &QUndoStack::indexChanged, this, [this](int) {
+                GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(_simulator, this);
+                requestGraphicalDataDefinitionsSync();
+            });
+    }
 }
 
 
@@ -2769,6 +2777,28 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) {
 
     if (mouseEvent->button() == Qt::LeftButton) {
         QGraphicsItem* item = this->itemAt(mouseEvent->scenePos(), QTransform());
+        if (isNetworkRelationCreationActive()) {
+            if (item == nullptr) {
+                cancelNetworkRelationCreation();
+                mouseEvent->accept();
+                return;
+            }
+            if (!items().contains(_networkRelationSource) || _networkEditorOwner == nullptr) {
+                cancelNetworkRelationCreation();
+                mouseEvent->accept();
+                return;
+            }
+            QUndoCommand* relationCommand = GuiExtensionPluginCatalog::createNetworkRelationCommand(
+                _networkEditorOwner, _networkRelationSource, item);
+            cancelNetworkRelationCreation();
+            if (relationCommand != nullptr && _undoStack != nullptr) {
+                _undoStack->push(relationCommand);
+                GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(_simulator, this);
+                requestGraphicalDataDefinitionsSync();
+                mouseEvent->accept();
+                return;
+            }
+        }
         GraphicalComponentPort* clickedPort = dynamic_cast<GraphicalComponentPort*>(item);
 
         if (_connectingStep > 0) {
@@ -3003,6 +3033,11 @@ void ModelGraphicsScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEv
     }
 
     QGraphicsItem* item = this->itemAt(mouseEvent->scenePos(), QTransform());
+    if (isNetworkRelationCreationActive()) cancelNetworkRelationCreation();
+    if (mouseEvent->button() == Qt::LeftButton && beginNetworkRelationCreation(item)) {
+        mouseEvent->accept();
+        return;
+    }
     GraphicalComponentPort* port = dynamic_cast<GraphicalComponentPort*>(item);
 
     if (port != nullptr) {
@@ -3190,11 +3225,31 @@ unsigned int ModelGraphicsScene::modelLevelFilter() const {
 }
 
 void ModelGraphicsScene::setNetworkEditorOwner(ModelDataDefinition* owner) {
+    if (_networkEditorOwner != owner) cancelNetworkRelationCreation();
     _networkEditorOwner = owner;
 }
 
 ModelDataDefinition* ModelGraphicsScene::networkEditorOwner() const {
     return _networkEditorOwner;
+}
+
+bool ModelGraphicsScene::beginNetworkRelationCreation(QGraphicsItem* source) {
+    if (source == nullptr || !items().contains(source) || _networkEditorOwner == nullptr
+        || !GuiExtensionPluginCatalog::canStartNetworkRelationCreation(_networkEditorOwner, source)) {
+        return false;
+    }
+    _networkRelationSource = source;
+    if (ModelGraphicsView* view = sceneParentModelGraphicsView(this)) view->setCursor(Qt::CrossCursor);
+    return true;
+}
+
+void ModelGraphicsScene::cancelNetworkRelationCreation() {
+    _networkRelationSource = nullptr;
+    if (ModelGraphicsView* view = sceneParentModelGraphicsView(this)) view->unsetCursor();
+}
+
+bool ModelGraphicsScene::isNetworkRelationCreationActive() const {
+    return _networkRelationSource != nullptr;
 }
 
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {
@@ -3618,6 +3673,11 @@ void ModelGraphicsScene::dragMoveEvent(QGraphicsSceneDragDropEvent* event) {
 void ModelGraphicsScene::keyPressEvent(QKeyEvent* keyEvent) {
     if (checkIgnoreEvent()) {
         keyEvent->ignore();
+        return;
+    }
+    if (keyEvent->key() == Qt::Key_Escape && isNetworkRelationCreationActive()) {
+        cancelNetworkRelationCreation();
+        keyEvent->accept();
         return;
     }
     QGraphicsScene::keyPressEvent(keyEvent);
