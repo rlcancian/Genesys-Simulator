@@ -1007,19 +1007,31 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     ASSERT_NE(model, nullptr);
 
     auto* network = new EFSMNetwork(model, "SharedNetworkName_PropertyEditor");
+    auto* graphNetwork = new GraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    graphNetwork->addInputPort("GraphInput0");
+    graphNetwork->addInputPort("GraphInput1");
+    graphNetwork->addOutputPort("GraphOutput0");
+    graphNetwork->addOutputPort("GraphOutput1");
+    graphNetwork->addOutputPort("GraphOutput2");
     std::vector<DefaultNetwork*> networks{
         network,
-        new GraphNetwork(model, "SharedNetworkName_PropertyEditor"),
+        graphNetwork,
         new DirectedGraphNetwork(model, "SharedNetworkName_PropertyEditor"),
         new DirectedAcyclicGraphNetwork(model, "SharedNetworkName_PropertyEditor"),
         new MarkovChainNetwork(model, "SharedNetworkName_PropertyEditor"),
         new ColoredPetriNetNetwork(model, "SharedNetworkName_PropertyEditor")
     };
     ModalModelDefault component(model, "ModalAdapter_PropertyEditor");
+    Plugin* adapterPlugin = simulator.getPluginManager()->find(Util::TypeOf<ModalModelDefault>());
+    ASSERT_NE(adapterPlugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    auto* graphical = new GraphicalModelComponent(adapterPlugin, &component, QPointF(100, 100), Qt::blue);
+    scene.addItem(graphical);
     ObjectPropertyBrowser browser;
     browser.resize(640, 480);
     browser.show();
-    bindEditableKernelObject(browser, &component);
+    browser.setActiveObject(graphical, &component, {}, {QString::fromStdString(component.getName())});
+    drainGuiEvents();
 
     QtBrowserItem* item = nullptr;
     for (DefaultNetwork* candidate : networks) {
@@ -1038,6 +1050,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
         selector->setCurrentIndex(index);
         drainGuiEvents();
         EXPECT_EQ(component.getNetwork(), candidate) << choice.toStdString();
+        EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
     }
 
     const QString graphType = QString::fromStdString(Util::TypeOf<DirectedGraphNetwork>());
@@ -1057,6 +1071,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     auto* createdNetwork = dynamic_cast<DirectedGraphNetwork*>(component.getNetwork());
     ASSERT_NE(createdNetwork, nullptr);
     EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
 
     item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
     ASSERT_NE(item, nullptr);
@@ -1070,6 +1086,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     selector->setCurrentIndex(removeIndex);
     drainGuiEvents();
     EXPECT_EQ(component.getNetwork(), nullptr);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
     EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
 
     item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
@@ -1087,6 +1105,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     selector->setCurrentIndex(reattachIndex);
     drainGuiEvents();
     EXPECT_EQ(component.getNetwork(), createdNetwork);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
 }
 
 TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {

@@ -23,7 +23,8 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 | A5 | Not started | Remaining acceptance items in the plan. |
 | B1 | Pass (focused) | Identity audit is covered by six concrete subtype choices with duplicate display names, exact identity selection, unique legacy name resolution and ambiguous legacy name rejection. |
 | B2 | In progress | ModalModelDefault persists concrete Network type and model ID alongside the legacy name. Exact lookup validates type, ID and name; invalid, missing and ambiguous legacy references fail closed with explicit diagnostics. Exact typed `.gen` round-trip passes; damaged-reference and broader compatibility coverage remain. |
-| B3–B5 | Not started | Safe replacement reconciliation, lifetime audit and structural placement gates. |
+| B3 | In progress | Bindings remap by stable port names; new ports receive defaults; port-name metadata persists while detached. Replacement rejects before mutation if a custom binding or process connection would lose/change meaning. The Property Editor reports the rejection, and graphical ports synchronize on select/create/remove. Focused tests pass. GUI confirmation for deliberate destructive replacement and undo/redo are still outstanding. |
+| B4–B5 | Not started | Lifetime validation and necessary physical-structure review remain. |
 | C1–C6 | Not started | EFSM GUI isolation and extension registration. |
 | D1–D5 | Not started | Context-specific editors, formalism topology, persistence, undo/redo and animation. |
 
@@ -58,6 +59,16 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 - Added legacy-reference regressions: a unique name resolves, while the same
   name shared by GraphNetwork and EFSMNetwork is rejected and reported as
   ambiguous during model validation.
+- Network replacement now maps input/output bindings by port name, initializes
+  added ports with defaults, and rejects replacements before mutation when a
+  custom binding or connected port would be lost or change meaning. Binding
+  port names persist across detach/reopen/reattach, including incomplete models.
+- Added dynamic port-count queries to ModelComponent and graphical port
+  synchronization so the Property Editor's select/create/remove actions update
+  the ModalModel diagram's input and output handles. Existing connected handles
+  remain represented.
+- The Property Editor presents the kernel's incompatibility reason when a
+  reference change is rejected.
 
 ## Validation
 
@@ -74,6 +85,10 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='PropertyEditorModelDataReference.*:ModalNetworkReferencePersistence.*:EFSMNetworkEditor.*'` — PASS, 29 tests.
 - `cmake --build build/tests-unit --target genesys_test_gui_gmdd_layout -j 8` — PASS after legacy identity diagnostics.
 - `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='ModalNetworkReferencePersistence.*'` — PASS, 2 tests.
+- `cmake --build build/tests-unit --target genesys_test_modal_model_default_network -j 8` — PASS; 13 adapter tests after B3.
+- `./build/tests-unit/source/tests/genesys_test_modal_model_default_network` — PASS, 13 tests, including name remapping, detached reattachment and transactional rejection for lost custom bindings or connected output meaning.
+- `QT_QPA_PLATFORM=offscreen ./build/tests-unit/source/tests/unit/genesys_test_gui_gmdd_layout --gtest_filter='PropertyEditorModelDataReference.ModalModelSelectsPolymorphicNetworkByTypeAndIdentity:ModalNetworkReferencePersistence.*:EFSMNetworkEditor.*'` — PASS, 11 tests; includes GUI port counts 0/1/2 input and 0/1/3 output across network choices, creation, removal and reattachment.
+- `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after dynamic port synchronization and replacement safeguards.
 - `cmake --build --preset gui-app --target genesys_gui -j 8` — PASS after A4/B2.
 - Full GUI regression suite — UNKNOWN/not run. Existing tests for the removed
   create/select actions must be migrated to the Property Editor in A2/A3.
@@ -84,4 +99,5 @@ acceptance criteria remain in `reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md`.
 - `67ee70abfc066da4916db55953616ada985aa15f` — `modal-gui(A2): select typed network references by identity` (pushed to `origin/WiP20261112/modal_model_gui`).
 - `e9feaae618581bb032d6f91251f1191897f99500` — `modal-gui(A3): create explicitly typed network references` (pushed to `origin/WiP20261112/modal_model_gui`).
 - `f08fe0e0f` — `modal-gui(A4,B2): preserve typed network references` (pushed to `origin/WiP20261112/modal_model_gui`).
-- Legacy identity diagnostics and tests are validated and pending commit.
+- `31296e77f` — `modal-gui(B2): diagnose ambiguous legacy network references` (pushed to `origin/WiP20261112/modal_model_gui`).
+- B3 replacement, binding-schema persistence and graphical port synchronization are validated for the cases listed above and pending commit. Confirmation-driven destructive replacement and undo/redo remain unimplemented.

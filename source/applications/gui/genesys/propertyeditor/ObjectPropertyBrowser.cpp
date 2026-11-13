@@ -2576,6 +2576,10 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
     }
 
     _materializeAffectedModelDataDefinitions(referencedDataDefinition);
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
+    }
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -2611,10 +2615,17 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
     if (!ok) {
         qWarning() << "[PropertyEditor] failed to set model object reference:"
                    << QString::fromStdString(errorMessage);
+        QMessageBox::warning(this,
+                             tr("Reference was not changed"),
+                             QString::fromStdString(errorMessage));
         _scheduleDeferredRebuild();
         return false;
     }
 
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
+    }
     _materializeAffectedModelDataDefinitions(_referencedModelDataDefinition(binding));
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
@@ -2708,6 +2719,10 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
     _materializeAffectedModelDataDefinitions();
     if (model != nullptr) {
         model->check();
+    }
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
     }
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();

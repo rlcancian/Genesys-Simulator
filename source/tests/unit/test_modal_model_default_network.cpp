@@ -435,7 +435,85 @@ TEST(ModalModelDefaultNetworkTest, SharedNetworkReferencesAndReplacementAreNonOw
 	EXPECT_EQ(model->getDataManager()->getDataDefinition("TestNetwork", "SecondSharedNetwork"), second);
 }
 
-TEST(ModalModelDefaultNetworkTest, NetworkWithoutAdapterRemainsSubjectToOrphanPolicy) {
+TEST(ModalModelDefaultNetworkTest, ReplacementRemapsBindingsByPortNameAndInitializesNewPorts) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	TestNetwork* first = new TestNetwork(model, "FirstSchema");
+	first->addInputPort("Trigger");
+	first->addOutputPort("Accepted");
+	first->addOutputPort("Rejected");
+	TestNetwork* second = new TestNetwork(model, "SecondSchema");
+	second->addInputPort("Trigger");
+	second->addInputPort("Reset");
+	second->addOutputPort("Rejected");
+	second->addOutputPort("Accepted");
+	ModalModelDefault* adapter = new ModalModelDefault(model, "SchemaAdapter");
+	adapter->setNetwork(first);
+	adapter->setInputBinding(0, "entity.Attribute");
+	adapter->setOutputBinding(0, "acceptedValue");
+	adapter->setOutputBinding(1, "rejectedValue");
+
+	EXPECT_NO_THROW(adapter->setNetwork(second));
+	EXPECT_EQ(adapter->getNetwork(), second);
+	EXPECT_EQ(adapter->getInputBinding(0), "entity.Attribute");
+	EXPECT_EQ(adapter->getInputBinding(1), "1");
+	EXPECT_EQ(adapter->getOutputBinding(0), "rejectedValue");
+	EXPECT_EQ(adapter->getOutputBinding(1), "acceptedValue");
+	adapter->setNetwork(nullptr);
+	EXPECT_EQ(adapter->getNetwork(), nullptr);
+	EXPECT_NO_THROW(adapter->setNetwork(first));
+	EXPECT_EQ(adapter->getNetwork(), first);
+	EXPECT_EQ(adapter->getInputBinding(0), "entity.Attribute");
+	EXPECT_EQ(adapter->getOutputBinding(0), "acceptedValue");
+	EXPECT_EQ(adapter->getOutputBinding(1), "rejectedValue");
+}
+
+TEST(ModalModelDefaultNetworkTest, ReplacementWithUnmatchedCustomBindingIsTransactional) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	TestNetwork* first = new TestNetwork(model, "FirstSchema");
+	first->addInputPort("Trigger");
+	first->addOutputPort("Accepted");
+	TestNetwork* second = new TestNetwork(model, "SecondSchema");
+	second->addInputPort("Reset");
+	second->addOutputPort("Rejected");
+	ModalModelDefault* adapter = new ModalModelDefault(model, "SchemaAdapter");
+	adapter->setNetwork(first);
+	adapter->setInputBinding(0, "entity.Attribute");
+	adapter->setOutputBinding(0, "acceptedValue");
+
+	EXPECT_THROW(adapter->setNetwork(second), std::invalid_argument);
+	EXPECT_EQ(adapter->getNetwork(), first);
+	EXPECT_EQ(adapter->getInputBinding(0), "entity.Attribute");
+	EXPECT_EQ(adapter->getOutputBinding(0), "acceptedValue");
+}
+
+TEST(ModalModelDefaultNetworkTest, ReplacementPreservesConnectedOutputOrRejectsBeforeMutation) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	TestNetwork* first = new TestNetwork(model, "FirstConnectedSchema");
+	first->addInputPort("Trigger");
+	first->addOutputPort("Accepted");
+	TestNetwork* second = new TestNetwork(model, "SecondConnectedSchema");
+	second->addInputPort("Trigger");
+	second->addOutputPort("Rejected");
+	ModalModelDefault* adapter = new ModalModelDefault(model, "ConnectedSchemaAdapter");
+	Dispose* target = new Dispose(model, "ConnectedSchemaTarget");
+	adapter->setNetwork(first);
+	adapter->connectTo(target);
+	Connection* existingConnection = adapter->getConnectionManager()->getConnectionAtPort(0);
+	ASSERT_NE(existingConnection, nullptr);
+
+	EXPECT_THROW(adapter->setNetwork(second), std::invalid_argument);
+	EXPECT_EQ(adapter->getNetwork(), first);
+	EXPECT_EQ(adapter->getConnectionManager()->getConnectionAtPort(0), existingConnection);
+	EXPECT_EQ(existingConnection->component, target);
+}
+
+TEST(ModalModelDefaultNetworkTest, NetworkWithoutAdapterRemainsModelManagedRoot) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -446,7 +524,7 @@ TEST(ModalModelDefaultNetworkTest, NetworkWithoutAdapterRemainsSubjectToOrphanPo
 
 	model->check();
 
-	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), "UnboundNetwork"), nullptr);
-	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "UnboundState"), nullptr);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<EFSMNetwork>(), "UnboundNetwork"), network);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "UnboundState"), state);
 }
 

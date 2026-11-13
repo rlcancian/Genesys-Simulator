@@ -35,6 +35,8 @@ public:
 	void setTimeDelayPerDispatchTimeUnit(const Util::TimeUnit time_delay_per_dispatch_time_unit);
 	DefaultNetwork* getNetwork() const;
 	void setNetwork(DefaultNetwork* network);
+	int getDynamicInputPortCount() const override;
+	int getDynamicOutputPortCount() const override;
 	std::string getNetworkName() const;
 	void setNetworkName(const std::string& networkName);
 	void setInputBinding(unsigned int port, const std::string& expression);
@@ -87,4 +89,6 @@ private:
 	std::string _networkReferenceIssue;
 	std::vector<std::string> _inputBindings;
 	std::vector<std::string> _outputBindings;
+	std::vector<std::string> _inputBindingPortNames;
+	std::vector<std::string> _outputBindingPortNames;
 };

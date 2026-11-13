@@ -38,6 +38,7 @@
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/ModalModel/GraphNetwork.h"
+#include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 
 #include <gtest/gtest.h>
 
@@ -570,6 +571,37 @@ TEST(ModalNetworkReferencePersistence, LegacyNameOnlyReferenceResolvesOnlyWhenUn
     adapter->setNetworkName(uniqueGraph->getName());
     ASSERT_NE(adapter->getNetwork(), nullptr);
     EXPECT_EQ(adapter->getNetwork(), uniqueGraph);
+}
+
+TEST(ModalNetworkReferencePersistence, DetachedBindingSchemaSurvivesGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* efsm = new EFSMNetwork(model, "DetachedSchemaEFSM");
+    auto* cpn = new ColoredPetriNetNetwork(model, "DetachedSchemaCPN");
+    auto* adapter = new ModalModelDefault(model, "DetachedSchemaAdapter");
+    adapter->setNetwork(efsm);
+    adapter->setInputBinding(0, "2");
+    adapter->setOutputBinding(0, "accepted");
+    adapter->setNetwork(nullptr);
+
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const std::string path = temporaryDir.filePath("detached_network_schema.gen").toStdString();
+    ASSERT_TRUE(model->save(path));
+    Model* loaded = simulator.getModelManager()->loadModel(path);
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedAdapter = dynamic_cast<ModalModelDefault*>(loaded->getComponentManager()->find("DetachedSchemaAdapter"));
+    auto* loadedCpn = dynamic_cast<ColoredPetriNetNetwork*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<ColoredPetriNetNetwork>(), cpn->getId()));
+    ASSERT_NE(loadedAdapter, nullptr);
+    ASSERT_NE(loadedCpn, nullptr);
+    EXPECT_EQ(loadedAdapter->getNetwork(), nullptr);
+    EXPECT_THROW(loadedAdapter->setNetwork(loadedCpn), std::invalid_argument);
+    EXPECT_EQ(loadedAdapter->getNetwork(), nullptr);
+    EXPECT_EQ(loadedAdapter->getInputBinding(0), "2");
+    EXPECT_EQ(loadedAdapter->getOutputBinding(0), "accepted");
 }
 
 TEST(EFSMNetworkDiagramPersistence, RoundTripIsDeterministicAcrossRepeatedSaves) {

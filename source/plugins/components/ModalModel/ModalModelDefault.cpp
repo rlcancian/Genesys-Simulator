@@ -15,6 +15,7 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 #include "kernel/simulator/model/ModelDataManager.h"
 
@@ -177,7 +178,104 @@ DefaultNetwork* ModalModelDefault::getNetwork() const {
 	return _network;
 }
 
+int ModalModelDefault::getDynamicInputPortCount() const {
+	return _network == nullptr ? 0 : static_cast<int>(_network->getNumInputPorts());
+}
+
+int ModalModelDefault::getDynamicOutputPortCount() const {
+	return _network == nullptr ? 0 : static_cast<int>(_network->getNumOutputPorts());
+}
+
 void ModalModelDefault::setNetwork(DefaultNetwork* network) {
+	std::vector<std::string> previousInputNames = _inputBindingPortNames;
+	std::vector<std::string> previousOutputNames = _outputBindingPortNames;
+	if (_network != nullptr && previousInputNames.empty()) {
+		for (unsigned int port = 0; port < _network->getNumInputPorts(); ++port) previousInputNames.push_back(_network->getInputPortName(port));
+	}
+	if (_network != nullptr && previousOutputNames.empty()) {
+		for (unsigned int port = 0; port < _network->getNumOutputPorts(); ++port) previousOutputNames.push_back(_network->getOutputPortName(port));
+	}
+	if (network != nullptr && previousInputNames.empty() && previousOutputNames.empty()) {
+		const bool hasUnmappedInput = std::any_of(_inputBindings.begin(), _inputBindings.end(), [](const std::string& value) {
+			return !value.empty() && value != "1";
+		});
+		const bool hasUnmappedOutput = std::any_of(_outputBindings.begin(), _outputBindings.end(), [](const std::string& value) {
+			return !value.empty();
+		});
+		if (hasUnmappedInput || hasUnmappedOutput) {
+			throw std::invalid_argument("Cannot attach Network: existing bindings have no saved port names and cannot be matched safely.");
+		}
+	}
+	if (network != nullptr && (_network != network || !_inputBindingPortNames.empty() || !_outputBindingPortNames.empty())
+	    && (!previousInputNames.empty() || !previousOutputNames.empty())) {
+		std::vector<std::string> remappedInputs(network->getNumInputPorts(), "1");
+		std::vector<std::string> remappedOutputs(network->getNumOutputPorts());
+		for (unsigned int port = 0; port < network->getNumOutputPorts(); ++port) {
+			remappedOutputs[port] = network->getOutputPortName(port);
+		}
+
+		for (unsigned int oldPort = 0; oldPort < previousInputNames.size(); ++oldPort) {
+			const std::string oldName = previousInputNames[oldPort];
+			const int newPort = network->getInputPortIndex(oldName);
+			const std::string binding = getInputBinding(oldPort);
+			if (newPort < 0) {
+				if (!binding.empty() && binding != "1") {
+					throw std::invalid_argument("Cannot replace Network: input binding for port '" + oldName
+					                            + "' has no matching port in the new Network.");
+				}
+				continue;
+			}
+			remappedInputs[static_cast<std::size_t>(newPort)] = binding;
+		}
+		for (unsigned int oldPort = 0; oldPort < previousOutputNames.size(); ++oldPort) {
+			const std::string oldName = previousOutputNames[oldPort];
+			const int newPort = network->getOutputPortIndex(oldName);
+			const std::string binding = getOutputBinding(oldPort);
+			if (newPort < 0) {
+				if (!binding.empty() && binding != oldName) {
+					throw std::invalid_argument("Cannot replace Network: output binding for port '" + oldName
+					                            + "' has no matching port in the new Network.");
+				}
+				if (getConnectionManager()->getConnectionAtPort(oldPort) != nullptr) {
+					throw std::invalid_argument("Cannot replace Network: output port '" + oldName
+					                            + "' has a process connection and no matching port in the new Network.");
+				}
+				continue;
+			}
+			remappedOutputs[static_cast<std::size_t>(newPort)] = binding;
+			if (getConnectionManager()->getConnectionAtPort(oldPort) != nullptr && newPort != static_cast<int>(oldPort)) {
+				throw std::invalid_argument("Cannot replace Network: connected output port '" + oldName
+				                            + "' would change its index.");
+			}
+		}
+		for (const auto& [connectedPort, connection] : *getConnectionManager()->connections()) {
+			if (connection == nullptr) continue;
+			if (connectedPort >= previousOutputNames.size() || connectedPort >= network->getNumOutputPorts()
+			    || previousOutputNames[connectedPort] != network->getOutputPortName(connectedPort)) {
+				throw std::invalid_argument("Cannot replace Network: an outgoing process connection would change output-port meaning.");
+			}
+		}
+
+		if (_parentModel != nullptr && _parentModel->getComponentManager() != nullptr) {
+			for (auto componentIt = _parentModel->getComponentManager()->begin();
+			     componentIt != _parentModel->getComponentManager()->end(); ++componentIt) {
+				ModelComponent* source = *componentIt;
+				if (source == nullptr || source == this || source->getConnectionManager() == nullptr) continue;
+				for (const auto& [sourcePort, connection] : *source->getConnectionManager()->connections()) {
+					(void)sourcePort;
+					if (connection == nullptr || connection->component != this) continue;
+					const unsigned int oldInputPort = connection->channel.portNumber;
+					if (oldInputPort >= previousInputNames.size()
+					    || oldInputPort >= network->getNumInputPorts()
+					    || previousInputNames[oldInputPort] != network->getInputPortName(oldInputPort)) {
+						throw std::invalid_argument("Cannot replace Network: an incoming process connection would change input-port meaning.");
+					}
+				}
+			}
+		}
+		_inputBindings = std::move(remappedInputs);
+		_outputBindings = std::move(remappedOutputs);
+	}
 	_mandatoryAttachedAttributesClear();
 	_attachedDataRemove(kNetworkAssociationKey);
 	_network = network;
@@ -190,6 +288,12 @@ void ModalModelDefault::setNetwork(DefaultNetwork* network) {
 		_attachedDataInsert(kNetworkAssociationKey, _network);
 	}
 	_syncBindingsToNetwork();
+	if (_network != nullptr) {
+		_inputBindingPortNames.clear();
+		_outputBindingPortNames.clear();
+		for (unsigned int port = 0; port < _network->getNumInputPorts(); ++port) _inputBindingPortNames.push_back(_network->getInputPortName(port));
+		for (unsigned int port = 0; port < _network->getNumOutputPorts(); ++port) _outputBindingPortNames.push_back(_network->getOutputPortName(port));
+	}
 }
 
 std::string ModalModelDefault::getNetworkName() const {
@@ -245,10 +349,16 @@ bool ModalModelDefault::_loadInstance(PersistenceRecord* fields) {
 		unsigned int inputBindings = fields->loadField("inputBindings", 0u);
 		for (unsigned int i = 0; i < inputBindings; i++) {
 			setInputBinding(i, fields->loadField("inputBinding" + Util::StrIndex(i), getInputBinding(i)));
+			if (_inputBindingPortNames.size() <= i) _inputBindingPortNames.resize(i + 1);
+			_inputBindingPortNames[i] = fields->loadField(
+				"inputBindingPortName" + Util::StrIndex(i), _inputBindingPortNames[i]);
 		}
 		unsigned int outputBindings = fields->loadField("outputBindings", 0u);
 		for (unsigned int i = 0; i < outputBindings; i++) {
 			setOutputBinding(i, fields->loadField("outputBinding" + Util::StrIndex(i), getOutputBinding(i)));
+			if (_outputBindingPortNames.size() <= i) _outputBindingPortNames.resize(i + 1);
+			_outputBindingPortNames[i] = fields->loadField(
+				"outputBindingPortName" + Util::StrIndex(i), _outputBindingPortNames[i]);
 		}
 	}
 	return res;
@@ -273,10 +383,16 @@ void ModalModelDefault::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 	fields->saveField("inputBindings", static_cast<unsigned int>(_inputBindings.size()), 0u, saveDefaultValues);
 	for (unsigned int bindingIndex = 0; bindingIndex < _inputBindings.size(); bindingIndex++) {
 		fields->saveField("inputBinding" + Util::StrIndex(bindingIndex), _inputBindings[bindingIndex], std::string("1"), saveDefaultValues);
+		fields->saveField("inputBindingPortName" + Util::StrIndex(bindingIndex),
+		                  bindingIndex < _inputBindingPortNames.size() ? _inputBindingPortNames[bindingIndex] : std::string(""),
+		                  std::string(""), saveDefaultValues);
 	}
 	fields->saveField("outputBindings", static_cast<unsigned int>(_outputBindings.size()), 0u, saveDefaultValues);
 	for (unsigned int bindingIndex = 0; bindingIndex < _outputBindings.size(); bindingIndex++) {
 		fields->saveField("outputBinding" + Util::StrIndex(bindingIndex), _outputBindings[bindingIndex], std::string(""), saveDefaultValues);
+		fields->saveField("outputBindingPortName" + Util::StrIndex(bindingIndex),
+		                  bindingIndex < _outputBindingPortNames.size() ? _outputBindingPortNames[bindingIndex] : std::string(""),
+		                  std::string(""), saveDefaultValues);
 	}
 }
 
@@ -402,6 +518,10 @@ DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
 void ModalModelDefault::_syncBindingsToNetwork() {
 	DefaultNetwork* network = _resolveNetworkReference();
 	if (network == nullptr) {
+		_connections->setMinInputConnections(0);
+		_connections->setMaxInputConnections(0);
+		_connections->setMinOutputConnections(0);
+		_connections->setMaxOutputConnections(0);
 		return;
 	}
 	_connections->setMinInputConnections(network->getNumInputPorts());
