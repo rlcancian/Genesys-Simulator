@@ -72,6 +72,24 @@
 
 namespace {
 
+constexpr const char* kEFSMGuiExtensionId = "modal.efsm.gui";
+
+void setEFSMNetworkDiagramLayout(GraphicalModelSerializer* serializer, Model* model,
+                                 unsigned long networkId, const EFSMNetworkDiagramLayout& layout) {
+    serializer->setNetworkDiagramLayout(model, kEFSMGuiExtensionId, networkId, layout);
+}
+
+EFSMNetworkDiagramLayout efsmNetworkDiagramLayout(GraphicalModelSerializer* serializer,
+                                                   Model* model, unsigned long networkId) {
+    const std::any layout = serializer->networkDiagramLayout(model, kEFSMGuiExtensionId, networkId);
+    if (const auto* efsm = std::any_cast<EFSMNetworkDiagramLayout>(&layout)) return *efsm;
+    return {};
+}
+
+void forgetEFSMNetworkLayouts(GraphicalModelSerializer* serializer, Model* model) {
+    serializer->forgetNetworkDiagramLayouts(model);
+}
+
 class ExposedModelGraphicsScene final : public ModelGraphicsScene {
 public:
     ExposedModelGraphicsScene() : ModelGraphicsScene(-1000, -1000, 4000, 4000) {}
@@ -269,7 +287,7 @@ TEST(EFSMNetworkDiagramPersistence, EmptyLayoutProducesNoEntriesAndLeavesOtherSe
     ASSERT_NE(loadedModel, nullptr);
     EFSMNetwork* loadedNetwork = findNetworkByName(loadedModel, "EmptyNetwork");
     ASSERT_NE(loadedNetwork, nullptr);
-    EXPECT_TRUE(harness.serializer->efsmNetworkDiagramLayout(
+    EXPECT_TRUE(efsmNetworkDiagramLayout(harness.serializer.get(),
         loadedModel, static_cast<unsigned long>(loadedNetwork->getId())).isEmpty());
 }
 
@@ -311,16 +329,16 @@ TEST(EFSMNetworkDiagramPersistence, CachedLayoutsStayScopedToTheirRootModel) {
     secondLayout.networkId = 123;
     secondLayout.networkName = QStringLiteral("SecondModelNetwork");
     secondLayout.states.append({1, QStringLiteral("B"), QPointF(30, 40)});
-    harness.serializer->setEFSMNetworkDiagramLayout(firstModel, 123, firstLayout);
-    harness.serializer->setEFSMNetworkDiagramLayout(secondModel, 123, secondLayout);
+    setEFSMNetworkDiagramLayout(harness.serializer.get(), firstModel, 123, firstLayout);
+    setEFSMNetworkDiagramLayout(harness.serializer.get(), secondModel, 123, secondLayout);
 
-    EXPECT_EQ(harness.serializer->efsmNetworkDiagramLayout(firstModel, 123).networkName,
+    EXPECT_EQ(efsmNetworkDiagramLayout(harness.serializer.get(), firstModel, 123).networkName,
               QStringLiteral("FirstModelNetwork"));
-    EXPECT_EQ(harness.serializer->efsmNetworkDiagramLayout(secondModel, 123).networkName,
+    EXPECT_EQ(efsmNetworkDiagramLayout(harness.serializer.get(), secondModel, 123).networkName,
               QStringLiteral("SecondModelNetwork"));
-    harness.serializer->forgetEFSMNetworkLayouts(firstModel);
-    EXPECT_TRUE(harness.serializer->efsmNetworkDiagramLayout(firstModel, 123).isEmpty());
-    EXPECT_EQ(harness.serializer->efsmNetworkDiagramLayout(secondModel, 123).networkName,
+    forgetEFSMNetworkLayouts(harness.serializer.get(), firstModel);
+    EXPECT_TRUE(efsmNetworkDiagramLayout(harness.serializer.get(), firstModel, 123).isEmpty());
+    EXPECT_EQ(efsmNetworkDiagramLayout(harness.serializer.get(), secondModel, 123).networkName,
               QStringLiteral("SecondModelNetwork"));
 }
 
@@ -535,7 +553,7 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     layout.transitions.append({"Idle", "Busy", "Parallel0", 0, {QPointF(50, 60)}, true, QPointF(70, 80)});
     layout.transitions.append({"Idle", "Busy", "Parallel1", 1, {}, false, QPointF()});
     layout.transitions.append({"Idle", "Busy", "Go", 2, {}, false, QPointF()});
-    harness.serializer->setEFSMNetworkDiagramLayout(model, layout.networkId, layout);
+    setEFSMNetworkDiagramLayout(harness.serializer.get(), model, layout.networkId, layout);
 
     QTemporaryDir temporaryDir;
     ASSERT_TRUE(temporaryDir.isValid());
@@ -550,7 +568,7 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     EXPECT_EQ(loadedNetwork->getTransitions()->size(), 3u);
 
     const EFSMNetworkDiagramLayout restored =
-        harness.serializer->efsmNetworkDiagramLayout(loadedModel, static_cast<unsigned long>(loadedNetwork->getId()));
+        efsmNetworkDiagramLayout(harness.serializer.get(), loadedModel, static_cast<unsigned long>(loadedNetwork->getId()));
     ASSERT_EQ(restored.states.size(), 2);
     ASSERT_EQ(restored.transitions.size(), 3);
 
@@ -700,7 +718,7 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripIsDeterministicAcrossRepeatedSaves)
     layout.states.append({static_cast<unsigned long>(a.getId()), "A", QPointF(1.0, 2.0)});
     layout.states.append({static_cast<unsigned long>(b.getId()), "B", QPointF(3.0, 4.0)});
     layout.transitions.append({"A", "B", "T", 0, {}, false, QPointF()});
-    harness.serializer->setEFSMNetworkDiagramLayout(model, layout.networkId, layout);
+    setEFSMNetworkDiagramLayout(harness.serializer.get(), model, layout.networkId, layout);
 
     QTemporaryDir temporaryDir;
     ASSERT_TRUE(temporaryDir.isValid());
@@ -757,8 +775,45 @@ TEST(EFSMNetworkDiagramPersistence, LegacyGuiFileWithoutEfsmSectionLoadsWithoutE
     EFSMNetwork* loadedNetwork = findNetworkByName(loadedModel, "Net");
     ASSERT_NE(loadedNetwork, nullptr);
     EXPECT_EQ(loadedNetwork->getStates()->size(), 1u);
-    EXPECT_TRUE(harness.serializer->efsmNetworkDiagramLayout(
+    EXPECT_TRUE(efsmNetworkDiagramLayout(harness.serializer.get(),
         loadedModel, static_cast<unsigned long>(loadedNetwork->getId())).isEmpty());
+}
+
+TEST(EFSMNetworkDiagramPersistence, UnknownDiagramSectionSurvivesLoadAndSave) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "Net");
+    FSMState state(model, "A");
+    network.addState(&state);
+
+    SerializerHarness harness(&simulator);
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const QString inputFilename = temporaryDir.filePath("with-unknown.gui");
+    const QString outputFilename = temporaryDir.filePath("round-trip.gui");
+    ASSERT_TRUE(harness.serializer->saveGraphicalModel(inputFilename));
+
+    QFile input(inputFilename);
+    ASSERT_TRUE(input.open(QIODevice::ReadOnly | QIODevice::Text));
+    QString content = QString::fromUtf8(input.readAll());
+    input.close();
+    const int insertionPoint = content.indexOf("\n# Groups");
+    ASSERT_NE(insertionPoint, -1);
+    content.insert(insertionPoint,
+                   "\n# Future Formalism Diagrams\nfuture-record\tstable-id=42\n");
+    ASSERT_TRUE(input.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text));
+    input.write(content.toUtf8());
+    input.close();
+
+    ASSERT_NE(harness.serializer->loadGraphicalModel(inputFilename.toStdString()), nullptr);
+    ASSERT_TRUE(harness.serializer->saveGraphicalModel(outputFilename));
+    QFile output(outputFilename);
+    ASSERT_TRUE(output.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString roundTrip = QString::fromUtf8(output.readAll());
+    EXPECT_TRUE(roundTrip.contains(
+        "# Future Formalism Diagrams\nfuture-record\tstable-id=42"));
 }
 
 TEST(EFSMNetworkDiagramPersistence, PlainGenLoadDoesNotDependOnGraphicalSection) {
@@ -782,7 +837,7 @@ TEST(EFSMNetworkDiagramPersistence, PlainGenLoadDoesNotDependOnGraphicalSection)
     ASSERT_NE(loadedModel, nullptr);
     EFSMNetwork* loadedNetwork = findNetworkByName(loadedModel, "Net");
     ASSERT_NE(loadedNetwork, nullptr);
-    EXPECT_TRUE(harness.serializer->efsmNetworkDiagramLayout(
+    EXPECT_TRUE(efsmNetworkDiagramLayout(harness.serializer.get(),
         loadedModel, static_cast<unsigned long>(loadedNetwork->getId())).isEmpty());
 }
 
@@ -1044,7 +1099,7 @@ TEST(EFSMNetworkDiagramPersistence, SaveAndLoadDoesNotChangeTopologyOrDuplicateO
     ASSERT_EQ(layout.states.size(), 2);
     EXPECT_EQ(layout.states.at(0).position, QPointF(11.5, 22.25));
     EXPECT_EQ(layout.states.at(1).position, QPointF(33.75, 44.125));
-    harness.serializer->setEFSMNetworkDiagramLayout(model, layout.networkId, layout);
+    setEFSMNetworkDiagramLayout(harness.serializer.get(), model, layout.networkId, layout);
 
     QTemporaryDir temporaryDir;
     ASSERT_TRUE(temporaryDir.isValid());
@@ -1066,7 +1121,7 @@ TEST(EFSMNetworkDiagramPersistence, SaveAndLoadDoesNotChangeTopologyOrDuplicateO
     ASSERT_NE(loadedTransition, nullptr);
     EXPECT_EQ(loadedTransition->getGuardExpression(), "");
     EXPECT_EQ(loadedTransition->getPriority(), 0u);
-    const EFSMNetworkDiagramLayout restoredLayout = harness.serializer->efsmNetworkDiagramLayout(
+    const EFSMNetworkDiagramLayout restoredLayout = efsmNetworkDiagramLayout(harness.serializer.get(),
         loadedModel, static_cast<unsigned long>(loadedNetwork->getId()));
     ASSERT_EQ(restoredLayout.states.size(), 2);
     EXPECT_EQ(restoredLayout.states.at(0).position, QPointF(11.5, 22.25));
@@ -1563,7 +1618,7 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     ASSERT_EQ(tabs->count(), rootCount + 1);
     auto* networkView = dynamic_cast<ModelGraphicsView*>(tabs->currentWidget());
     ASSERT_NE(networkView, nullptr);
-    EXPECT_TRUE(tabs->tabText(tabs->currentIndex()).contains(QStringLiteral("EFSM Network: SharedNavigationNetwork")));
+    EXPECT_TRUE(tabs->tabText(tabs->currentIndex()).contains(QStringLiteral("SharedNavigationNetwork")));
     ASSERT_TRUE(networkView->getScene()->hasModelLevelFilter());
     EXPECT_EQ(networkView->getScene()->modelLevelFilter(), static_cast<unsigned int>(network->getId()));
     EXPECT_NE(networkView->getScene()->findGraphicalModelDataDefinition(state), nullptr);

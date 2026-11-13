@@ -2,7 +2,14 @@
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../mainwindow.h"
 #include "../../../services/EFSMNetworkDiagramProjection.h"
+#include "../../../services/EFSMNetworkDiagramCodec.h"
 #include "EFSMNetworkEditorController.h"
+#include "../../../../../../plugins/data/ModalModel/EFSMNetwork.h"
+
+#include <QTextStream>
+
+#include <any>
+#include <utility>
 
 class EFSMGuiExtensionPlugin final : public GuiExtensionPlugin {
 public:
@@ -13,11 +20,52 @@ public:
 
     void registerContributions(GuiExtensionRegistry* registry) const override {
         if (registry == nullptr) return;
-        registry->addDiagramProjection({
-            "modal.efsm.gui",
-            [](Simulator* simulator, ModelGraphicsScene* scene) {
-                EFSMNetworkDiagramProjection::synchronize(simulator, scene);
-            }});
+        GuiDiagramProjectionContribution diagram;
+        diagram.id = "modal.efsm.gui";
+        diagram.sectionName = EFSMNetworkDiagramCodec::kSectionName;
+        diagram.supports = [](ModelDataDefinition* network) {
+            return dynamic_cast<EFSMNetwork*>(network) != nullptr;
+        };
+        diagram.synchronize = [](Simulator* simulator, ModelGraphicsScene* scene) {
+            EFSMNetworkDiagramProjection::synchronize(simulator, scene);
+        };
+        diagram.captureLayout = [](Simulator*, ModelDataDefinition* definition, ModelGraphicsScene* scene) {
+            auto* network = dynamic_cast<EFSMNetwork*>(definition);
+            EFSMNetworkDiagramLayout layout;
+            if (network != nullptr && EFSMNetworkDiagramProjection::captureLayout(network, scene, &layout)) {
+                return std::any(std::move(layout));
+            }
+            return std::any{};
+        };
+        diagram.restoreLayout = [](Simulator* simulator, ModelDataDefinition* definition,
+                                  ModelGraphicsScene* scene, const std::any& layout) {
+            auto* network = dynamic_cast<EFSMNetwork*>(definition);
+            const auto* efsmLayout = std::any_cast<EFSMNetworkDiagramLayout>(&layout);
+            if (network != nullptr && efsmLayout != nullptr) {
+                EFSMNetworkDiagramProjection::restoreLayout(simulator, network, scene, *efsmLayout);
+            }
+        };
+        diagram.serializeLayouts = [](Simulator* simulator, const GuiDiagramLayouts& layouts) {
+            QHash<unsigned long, EFSMNetworkDiagramLayout> typedLayouts;
+            for (const auto& [networkId, layout] : layouts) {
+                if (const auto* typed = std::any_cast<EFSMNetworkDiagramLayout>(&layout)) {
+                    typedLayouts.insert(networkId, *typed);
+                }
+            }
+            QString encoded;
+            QTextStream stream(&encoded);
+            EFSMNetworkDiagramCodec::writeSection(stream, simulator, typedLayouts);
+            return encoded.split('\n', Qt::SkipEmptyParts);
+        };
+        diagram.parseLayouts = [](Model* model, const QStringList& lines) {
+            GuiDiagramLayouts layouts;
+            const auto parsed = EFSMNetworkDiagramCodec::parseSection(lines, model);
+            for (auto it = parsed.cbegin(); it != parsed.cend(); ++it) {
+                layouts.emplace(it.key(), it.value());
+            }
+            return layouts;
+        };
+        registry->addDiagramProjection(std::move(diagram));
         addAction(registry, "modal.efsm.create-state", "Create EFSM State",
                   &EFSMNetworkEditorController::canCreateState,
                   &EFSMNetworkEditorController::createState);

@@ -5,6 +5,8 @@
 
 #include <string>
 #include <vector>
+#include <functional>
+#include <any>
 
 struct GuiExtensionPresentationMetadata {
 	std::string category;
@@ -18,7 +20,11 @@ public:
 	static std::vector<const GuiExtensionPlugin*> resolvedPlugins();
 	static GuiExtensionPresentationMetadata presentationMetadata(const std::string& extensionId);
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
+	static std::vector<GuiDiagramProjectionContribution> diagramProjectionContributions();
 	static void synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene);
+	static void restoreDiagramProjections(
+		Simulator* simulator, ModelDataDefinition* owner, ModelGraphicsScene* scene,
+		const std::function<std::any(const std::string&, unsigned long)>& layoutProvider);
 };
 
 class GuiExtensionPluginAutoRegistrar {

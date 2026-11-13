@@ -2,8 +2,13 @@
 #define GUIEXTENSIONCONTRACTS_H
 
 #include <functional>
+#include <any>
+#include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
+
+#include <QStringList>
 
 class Simulator;
 class QMainWindow;
@@ -12,6 +17,14 @@ class QGraphicsItem;
 class QMenu;
 class ModelGraphicsView;
 class ModelGraphicsScene;
+class Model;
+class ModelDataDefinition;
+
+using GuiDiagramLayouts = std::map<unsigned long, std::any>;
+using GuiDiagramLayoutsByExtension = std::unordered_map<std::string, GuiDiagramLayouts>;
+using GuiDiagramLayoutsByModel = std::unordered_map<Model*, GuiDiagramLayoutsByExtension>;
+using GuiUnknownDiagramSections = std::map<QString, QStringList>;
+using GuiUnknownDiagramSectionsByModel = std::unordered_map<Model*, GuiUnknownDiagramSections>;
 
 namespace Ui {
 class MainWindow;
@@ -63,7 +76,13 @@ struct GuiContextMenuContribution {
 
 struct GuiDiagramProjectionContribution {
 	std::string id;
+	std::string sectionName;
+	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<void(Simulator*, ModelGraphicsScene*)> synchronize;
+	std::function<std::any(Simulator*, ModelDataDefinition*, ModelGraphicsScene*)> captureLayout;
+	std::function<void(Simulator*, ModelDataDefinition*, ModelGraphicsScene*, const std::any&)> restoreLayout;
+	std::function<QStringList(Simulator*, const GuiDiagramLayouts&)> serializeLayouts;
+	std::function<GuiDiagramLayouts(Model*, const QStringList&)> parseLayouts;
 };
 
 class GuiExtensionRegistry {

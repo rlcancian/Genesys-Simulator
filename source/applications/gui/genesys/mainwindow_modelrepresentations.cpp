@@ -17,13 +17,12 @@
 #include "services/CppModelExporter.h"
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
-#include "services/EFSMNetworkDiagramProjection.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 
 // Kernel
 #include "kernel/simulator/SinkModelComponent.h"
 #include "kernel/simulator/model/ModelDataManager.h"
 #include "kernel/util/Util.h"
-#include "plugins/data/ModalModel/EFSMNetwork.h"
 
 #include <string>
 #include <fstream>
@@ -154,7 +153,7 @@ bool MainWindow::_saveGraphicalModel(QString filename)
                 (void)view;
                 GraphicalModelViewContext* context = ownedContext.get();
                 if (context != nullptr && context->rootModel == model) {
-                    _captureEFSMNetworkLayoutForContext(context);
+                    _captureNetworkDiagramLayoutForContext(context);
                 }
             }
         }
@@ -169,20 +168,21 @@ bool MainWindow::_saveGraphicalModel(QString filename)
     return saved;
 }
 
-void MainWindow::_captureEFSMNetworkLayoutForContext(GraphicalModelViewContext* context) {
-    if (_graphicalModelSerializer == nullptr || context == nullptr ||
-        context->kind != GraphicalModelViewContextKind::Submodel || context->rootModel == nullptr ||
-        context->rootModel->getDataManager() == nullptr || context->graphicsView == nullptr) {
+void MainWindow::_captureNetworkDiagramLayoutForContext(GraphicalModelViewContext* context) {
+    if (_graphicalModelSerializer == nullptr || context == nullptr
+        || context->kind != GraphicalModelViewContextKind::Submodel || context->rootModel == nullptr
+        || context->ownerDataDefinition == nullptr || context->graphicsView == nullptr
+        || context->graphicsView->getScene() == nullptr) {
         return;
     }
-
-    auto* network = dynamic_cast<EFSMNetwork*>(context->rootModel->getDataManager()->getDataDefinition(
-        Util::TypeOf<EFSMNetwork>(), context->modelLevel));
-    EFSMNetworkDiagramLayout layout;
-    if (network != nullptr && EFSMNetworkDiagramProjection::captureLayout(
-            network, context->graphicsView->getScene(), &layout)) {
-        _graphicalModelSerializer->setEFSMNetworkDiagramLayout(
-            context->rootModel, context->modelLevel, layout);
+    for (const GuiDiagramProjectionContribution& diagram
+         : GuiExtensionPluginCatalog::diagramProjectionContributions()) {
+        if (!diagram.supports || !diagram.supports(context->ownerDataDefinition) || !diagram.captureLayout) continue;
+        std::any layout = diagram.captureLayout(simulator, context->ownerDataDefinition,
+                                                context->graphicsView->getScene());
+        _graphicalModelSerializer->setNetworkDiagramLayout(
+            context->rootModel, diagram.id,
+            static_cast<unsigned long>(context->ownerDataDefinition->getId()), std::move(layout));
     }
 }
 

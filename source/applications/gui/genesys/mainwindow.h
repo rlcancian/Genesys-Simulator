@@ -18,7 +18,7 @@ class DataComponentProperty;
 #include "kernel/simulator/PropertyGenesys.h"
 #include "kernel/simulator/TraceManager.h"
 #include "graphicals/ModelGraphicsScene.h"
-#include "services/EFSMNetworkDiagramLayout.h"
+#include "extensions/GuiExtensionContracts.h"
 
 QT_BEGIN_NAMESPACE
 		namespace Ui {
@@ -460,8 +460,8 @@ private: // opened-model document state
     GraphicalModelViewContext* _contextForView(ModelGraphicsView* graphicsView) const;
     /** @brief Returns the root-model context for a kernel model. */
     GraphicalModelViewContext* _rootContextForModel(Model* model) const;
-    /** @brief Saves the current EFSM presentation snapshot before a Network view is discarded. */
-    void _captureEFSMNetworkLayoutForContext(GraphicalModelViewContext* context);
+    /** @brief Captures formalism-owned GUI layout before a Network view is discarded. */
+    void _captureNetworkDiagramLayoutForContext(GraphicalModelViewContext* context);
     /** @brief Creates or updates the root context backing a model tab. */
     GraphicalModelViewContext* _ensureRootModelViewContext(Model* model, ModelGraphicsView* graphicsView);
     /** @brief Opens or activates a submodel tab for the selected owner data definition/component. */
@@ -538,8 +538,10 @@ private: // interface and model main elements to join
     // Tracks graphical dirty state per opened model while legacy flags mirror only the active model.
     std::map<Model*, bool> _modelGraphicalHasChanged;
     // Serializer instances are rebuilt when the active graphical view changes.
-    std::shared_ptr<EFSMNetworkDiagramLayoutsByModel> _efsmNetworkDiagramLayouts =
-        std::make_shared<EFSMNetworkDiagramLayoutsByModel>();
+    std::shared_ptr<GuiDiagramLayoutsByModel> _diagramLayoutsByModel =
+        std::make_shared<GuiDiagramLayoutsByModel>();
+    std::shared_ptr<GuiUnknownDiagramSectionsByModel> _unknownDiagramSectionsByModel =
+        std::make_shared<GuiUnknownDiagramSectionsByModel>();
     // Tracks tabs being changed programmatically to avoid re-entrant model switching.
     bool _changingModelTabProgrammatically = false;
     // Runtime menu actions for navigating the opened-model list.

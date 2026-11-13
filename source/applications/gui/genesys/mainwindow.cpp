@@ -53,7 +53,6 @@
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
-#include "services/EFSMNetworkDiagramProjection.h"
 #include "extensions/GuiExtensionContracts.h"
 #include "extensions/GuiExtensionManager.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
@@ -779,12 +778,13 @@ ModelGraphicsView* MainWindow::_ensureSubmodelViewContext(ModelDataDefinition* o
     _activateModelGraphicsView(graphicsView);
     _generateGraphicalModelFromModel();
     if (_graphicalModelSerializer != nullptr && graphicsView->getScene() != nullptr) {
-        if (auto* network = dynamic_cast<EFSMNetwork*>(owner)) {
-            EFSMNetworkDiagramProjection::restoreLayout(
-                simulator, network, graphicsView->getScene(),
-                _graphicalModelSerializer->efsmNetworkDiagramLayout(
-                    rootModel, static_cast<unsigned long>(network->getId())));
-        }
+        GuiExtensionPluginCatalog::restoreDiagramProjections(
+            simulator, owner, graphicsView->getScene(),
+            [this, rootModel](const std::string& extensionId, unsigned long networkId) {
+                return _graphicalModelSerializer != nullptr
+                    ? _graphicalModelSerializer->networkDiagramLayout(rootModel, extensionId, networkId)
+                    : std::any{};
+            });
     }
     _updateModelTabs();
     _actualizeActions();
@@ -802,7 +802,7 @@ void MainWindow::_closeSubmodelViewContext(ModelGraphicsView* graphicsView) {
         return;
     }
 
-    _captureEFSMNetworkLayoutForContext(context);
+    _captureNetworkDiagramLayoutForContext(context);
 
     const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
     if (tabIndex >= 0) {
@@ -859,10 +859,6 @@ QString MainWindow::_viewContextTitle(const GraphicalModelViewContext& context) 
                                      QString::fromStdString(context.ownerComponent->getName()));
         }
         if (context.ownerDataDefinition != nullptr) {
-            if (dynamic_cast<EFSMNetwork*>(context.ownerDataDefinition) != nullptr) {
-                return tr("%1 > EFSM Network: %2").arg(_modelDisplayName(context.rootModel),
-                                                        QString::fromStdString(context.ownerDataDefinition->getName()));
-            }
             return tr("%1 > %2").arg(_modelDisplayName(context.rootModel),
                                      QString::fromStdString(context.ownerDataDefinition->getName()));
         }
@@ -1256,7 +1252,7 @@ bool MainWindow::_closeModel(Model* model) {
     _clearModelGraphicsViewForClose(closingView);
     _removeModelTab(model);
     if (_graphicalModelSerializer != nullptr) {
-        _graphicalModelSerializer->forgetEFSMNetworkLayouts(model);
+        _graphicalModelSerializer->forgetNetworkDiagramLayouts(model);
     }
     simulator->getModelManager()->remove(model);
     ui->progressBarSimulation->setValue(0);
@@ -1693,7 +1689,8 @@ void MainWindow::_rebuildViewDependentControllers() {
                                                                             [this]() { on_actionShowInternalElements_triggered(); },
                                                                             [this]() { on_actionShowEditableElements_triggered(); },
                                                                             [this]() { on_actionShowAttachedElements_triggered(); },
-                                                                            _efsmNetworkDiagramLayouts);
+                                                                            _diagramLayoutsByModel,
+                                                                            _unknownDiagramSectionsByModel);
     _propertyEditorController = std::make_unique<PropertyEditorController>(
         ui->treeViewPropertyEditor,
         ui->graphicsView,

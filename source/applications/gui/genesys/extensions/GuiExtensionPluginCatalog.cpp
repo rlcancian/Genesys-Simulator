@@ -1,5 +1,6 @@
 #include "GuiExtensionPluginCatalog.h"
 #include "../systempreferences.h"
+#include "kernel/simulator/model/ModelDataDefinition.h"
 
 #include <algorithm>
 #include <cctype>
@@ -286,14 +287,31 @@ void GuiExtensionPluginCatalog::registerPlugin(const GuiExtensionPlugin* plugin)
 
 void GuiExtensionPluginCatalog::synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene) {
 	if (scene == nullptr) return;
-	const std::vector<const GuiExtensionPlugin*> activePlugins = resolvedPlugins();
-	for (const GuiExtensionPlugin* plugin : activePlugins) {
+	for (const GuiDiagramProjectionContribution& projection : diagramProjectionContributions()) {
+		if (projection.synchronize) projection.synchronize(simulator, scene);
+	}
+}
+
+std::vector<GuiDiagramProjectionContribution> GuiExtensionPluginCatalog::diagramProjectionContributions() {
+	std::vector<GuiDiagramProjectionContribution> projections;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
 		GuiExtensionRegistry registry;
 		plugin->registerContributions(&registry);
-		for (const GuiDiagramProjectionContribution& projection : registry.diagramProjections()) {
-			if (projection.synchronize) projection.synchronize(simulator, scene);
-		}
+		const auto& registered = registry.diagramProjections();
+		projections.insert(projections.end(), registered.begin(), registered.end());
+	}
+	return projections;
+}
+
+void GuiExtensionPluginCatalog::restoreDiagramProjections(
+	Simulator* simulator, ModelDataDefinition* owner, ModelGraphicsScene* scene,
+	const std::function<std::any(const std::string&, unsigned long)>& layoutProvider) {
+	if (owner == nullptr || scene == nullptr || !layoutProvider) return;
+	for (const GuiDiagramProjectionContribution& diagram : diagramProjectionContributions()) {
+		if (!diagram.supports || !diagram.supports(owner) || !diagram.restoreLayout) continue;
+		diagram.restoreLayout(simulator, owner, scene,
+		                     layoutProvider(diagram.id, static_cast<unsigned long>(owner->getId())));
 	}
 }
 
