@@ -19,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <limits>
 #include <string>
 #include <vector>
 #include <unistd.h>
@@ -184,6 +185,37 @@ TEST_F(ReadFixture, IncompleteAndInvalidRecordsDoNotPartiallyAssignOrForward) {
     EXPECT_EQ(model->getFutureEvents()->size(), 1u);
     EXPECT_DOUBLE_EQ(second->getAttributeValue("X"), 0);
     EXPECT_DOUBLE_EQ(variable("Y")->getValue(), 2);
+}
+
+TEST_F(ReadFixture, OversizedNumericIndexCannotPartiallyAssignEarlierFields) {
+    TemporaryInput file("12 34\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addAttribute(read, "FirstField");
+    addVariable(read, "UnsafeIndex[" + std::to_string(std::numeric_limits<unsigned int>::max()) + "]");
+    std::string error;
+    EXPECT_FALSE(read->check(error));
+    EXPECT_NE(error.find("invalid [index]"), std::string::npos);
+
+    Entity* entity = model->createEntity("UnsafeIndexEntity", true);
+    read->dispatch(entity);
+    EXPECT_EQ(model->getFutureEvents()->size(), 0u);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("FirstField"), 0.0);
+}
+
+TEST_F(ReadFixture, MalformedNumericIndexCannotPartiallyAssignEarlierFields) {
+    TemporaryInput file("7 8\n");
+    auto* read = reader();
+    read->setFilename(file.path.string());
+    addAttribute(read, "FirstField");
+    addVariable(read, "MalformedIndex[1,,2]");
+    std::string error;
+    EXPECT_FALSE(read->check(error));
+
+    Entity* entity = model->createEntity("MalformedIndexEntity", true);
+    read->dispatch(entity);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("FirstField"), 0.0);
 }
 
 TEST_F(ReadFixture, EndOfFileDoesNotForwardAnExtraEntity) {
