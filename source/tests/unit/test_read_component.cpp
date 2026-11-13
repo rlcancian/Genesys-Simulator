@@ -353,6 +353,26 @@ TEST_F(ReadFixture, DuplicateDestinationPointerIsNotAdoptedTwice) {
     EXPECT_EQ(read->getDestinations()->size(), 1u);
 }
 
+TEST_F(ReadFixture, DestinationsCannotBeAdoptedByTwoComponents) {
+    auto* owner = reader("OwnerA");
+    auto* other = reader("OwnerB");
+    auto* destination = new ReadDestination("SharedPointer", false);
+    owner->addDestination(destination);
+    EXPECT_THROW(other->addDestination(destination), std::invalid_argument);
+    ASSERT_EQ(owner->getDestinations()->size(), 1u);
+    EXPECT_TRUE(other->getDestinations()->empty());
+}
+
+TEST_F(ReadFixture, DestinationControlsCannotMigrateAcrossModels) {
+    auto* destination = new ReadDestination(model, "FromFirstModel", true);
+    Model* secondModel = simulator.getModelManager()->newModel();
+    ASSERT_NE(secondModel, nullptr);
+    auto* read = new Read(secondModel, "OtherModelRead");
+    EXPECT_THROW(read->addDestination(destination), std::invalid_argument);
+    EXPECT_TRUE(read->getDestinations()->empty());
+    delete destination;
+}
+
 TEST_F(ReadFixture, RemovedDestinationControlsAreReleasedOnComponentTeardown) {
     const auto controlsBefore = model->getControls()->size();
     auto* read = new Read(model, "ControlLifetime");
@@ -361,8 +381,13 @@ TEST_F(ReadFixture, RemovedDestinationControlsAreReleasedOnComponentTeardown) {
     read->addDestination(destination);
     EXPECT_EQ(model->getControls()->size(), controlsWithComponent + 2u);
     read->removeDestination(destination);
-    // Intentionally retained while a GUI editor could still have bindings.
+    // The object survives an active GUI editor, but retired controls must
+    // disappear from the global Model control registry immediately.
+    EXPECT_EQ(model->getControls()->size(), controlsWithComponent);
+    read->addDestination(destination);
     EXPECT_EQ(model->getControls()->size(), controlsWithComponent + 2u);
+    read->removeDestination(destination);
+    EXPECT_EQ(model->getControls()->size(), controlsWithComponent);
     delete read;
     EXPECT_EQ(model->getControls()->size(), controlsBefore);
 }
