@@ -350,6 +350,11 @@ void ModelSimulation::_initSimulation() {
 	_replicationTimeScaleFactorToBase = Util::TimeUnitConvert(this->_replicationLengthTimeUnit, this->_replicationBaseTimeUnit);
 	// copy all CStats and Counters (used in a replication) to CStats and counters for the whole simulation
 	// @ToDo: (importante): Should not be CStats and Counters, but any modeldatum that generates report importation
+	// The simulation-level collectors are owned by this list, not the model's
+	// data manager. Destroy them before rebuilding the list for another run.
+	for (ModelDataDefinition* data : *_cstatsAndCountersSimulation->list()) {
+		delete data;
+	}
 	this->_cstatsAndCountersSimulation->clear();
 	StatisticsCollector* cstat;
     List<ModelDataDefinition*>* simulationStatistics = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());

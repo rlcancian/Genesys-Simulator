@@ -1249,8 +1249,9 @@ public:
         _saveInstance(fields, saveDefaultValues);
     }
 
-    CompilationResult InvokeCompilerProbe(const std::string& command) {
-        return _invokeCompiler(command);
+    CompilationResult InvokeCompilerProbe(const std::vector<std::string>& arguments,
+                                          const std::string& outputPath) {
+        return _invokeCompiler(arguments, outputPath);
     }
 };
 
@@ -7026,6 +7027,7 @@ TEST(SimulatorRuntimeTest, CppCompilerShowIncludesMainObservabilityFields) {
     compiler.setCompilerCommand("clang++");
     compiler.setOutputDir("out");
     compiler.setTempDir("tmp");
+    // A persisted flag must not claim a handle is loaded when dlopen failed.
     compiler.setLibraryLoaded(true);
 
     const std::string shown = compiler.show();
@@ -7034,7 +7036,7 @@ TEST(SimulatorRuntimeTest, CppCompilerShowIncludesMainObservabilityFields) {
     EXPECT_NE(shown.find("compilerCommand=\"clang++\""), std::string::npos);
     EXPECT_NE(shown.find("outputDir=\"out\""), std::string::npos);
     EXPECT_NE(shown.find("tempDir=\"tmp\""), std::string::npos);
-    EXPECT_NE(shown.find("libraryLoaded=true"), std::string::npos);
+    EXPECT_NE(shown.find("libraryLoaded=false"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, CppCompilerPersistenceRoundTripPreservesMainFields) {
@@ -7048,11 +7050,13 @@ TEST(SimulatorRuntimeTest, CppCompilerPersistenceRoundTripPreservesMainFields) {
     source.setCompilerCommand("clang++");
     source.setOutputDir("persist-out");
     source.setTempDir("persist-tmp");
-    source.setLibraryLoaded(true);
+    source.setLibraryLoaded(true); // No artifact exists, so the runtime state stays false.
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
+    // Old models may persist this UI flag, but no dlopen handle survives reload.
+    fields.saveField("libraryLoaded", true, false, true);
 
     CppCompilerProbe loaded(model, "CppCompilerPersistLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
@@ -7061,7 +7065,7 @@ TEST(SimulatorRuntimeTest, CppCompilerPersistenceRoundTripPreservesMainFields) {
     EXPECT_EQ(loaded.getCompilerCommand(), "clang++");
     EXPECT_EQ(loaded.getOutputDir(), "persist-out");
     EXPECT_EQ(loaded.getTempDir(), "persist-tmp");
-    EXPECT_TRUE(loaded.IsLibraryLoaded());
+    EXPECT_FALSE(loaded.IsLibraryLoaded());
 }
 
 TEST(SimulatorRuntimeTest, CppCompilerInvokeCompilerSeparatesStdoutAndStderrLogs) {
@@ -7080,15 +7084,19 @@ TEST(SimulatorRuntimeTest, CppCompilerInvokeCompilerSeparatesStdoutAndStderrLogs
     compiler.setTempDir(tempDir);
     const std::string outputPath = outputDir + Util::DirSeparator() + "invoke_result.bin";
     compiler.setOutputFilename(outputPath);
-    const std::string command = "sh -c \"echo STDOUT_LINE; echo STDERR_LINE 1>&2; touch " + outputPath + "\"";
-    CppCompiler::CompilationResult result = compiler.InvokeCompilerProbe(command);
+    const std::vector<std::string> command = {
+        "/usr/bin/python3", "-c",
+        "import pathlib,sys; print('STDOUT_LINE'); print('STDERR_LINE', file=sys.stderr); pathlib.Path(sys.argv[1]).touch()",
+        outputPath
+    };
+    CppCompiler::CompilationResult result = compiler.InvokeCompilerProbe(command, outputPath);
 
     EXPECT_TRUE(result.success);
     EXPECT_NE(result.compilationStdOutput.find("STDOUT_LINE"), std::string::npos);
     EXPECT_EQ(result.compilationStdOutput.find("STDERR_LINE"), std::string::npos);
     EXPECT_NE(result.compilationErrOutput.find("STDERR_LINE"), std::string::npos);
     EXPECT_EQ(result.compilationErrOutput.find("STDOUT_LINE"), std::string::npos);
-    EXPECT_EQ(result.destinationPath, tempDir + Util::DirSeparator());
+    EXPECT_EQ(result.destinationPath, outputPath);
 
     Util::FileDelete(outputPath);
     ::rmdir(outputDir.c_str());

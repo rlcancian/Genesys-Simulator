@@ -35,6 +35,19 @@ if(NOT TARGET genesys_tools)
     add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-unit-tests)
 endif()
 
+genesys_add_unit_test(genesys_test_cppforg_dynamic
+    test_cppforg_dynamic.cpp
+    genesys_kernel_simulator_runtime
+    genesys_plugins_components_minimal
+)
+set_target_properties(genesys_test_cppforg_dynamic PROPERTIES ENABLE_EXPORTS ON)
+
+genesys_add_unit_test(genesys_test_cppcompiler_dynamic
+    test_cppcompiler_dynamic.cpp
+    genesys_kernel_simulator_runtime
+    genesys_plugins_components_minimal
+)
+
 genesys_add_unit_test(genesys_test_simulator_runtime
     test_simulator_runtime.cpp
     genesys_tools

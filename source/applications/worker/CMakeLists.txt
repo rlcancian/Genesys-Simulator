@@ -27,6 +27,8 @@ add_executable(genesys_worker_app
     main.cpp
     BaseGenesysWebApplication.cpp
 )
+# Runtime-compiled CppForG code resolves kernel methods from the host executable.
+set_target_properties(genesys_worker_app PROPERTIES ENABLE_EXPORTS ON)
 
 target_link_libraries(genesys_worker_app
     PRIVATE

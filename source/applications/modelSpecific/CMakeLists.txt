@@ -73,6 +73,8 @@ message(STATUS "GENESYS_MODELSPECIFIC_SELECTED_HEADER=${GENESYS_MODELSPECIFIC_SE
 add_executable(genesys_modelspecific_app
     ${GENESYS_MODELSPECIFIC_APP_SOURCES}
 )
+# Runtime-compiled CppForG code resolves kernel methods from the host executable.
+set_target_properties(genesys_modelspecific_app PROPERTIES ENABLE_EXPORTS ON)
 
 target_include_directories(genesys_modelspecific_app
     PRIVATE

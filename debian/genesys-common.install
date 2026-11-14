@@ -1,4 +1,5 @@
 usr/bin/genesys-mcp
 usr/libexec/genesys/genesys-launcher
 usr/libexec/genesys/genesys-dispatch
+usr/share/genesys/source
 etc/genesys/update.conf

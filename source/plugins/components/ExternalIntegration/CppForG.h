@@ -25,7 +25,7 @@ extern "C" typedef void (*onDispatchEvent_t)(Simulator* simulator, Model* model,
 class CppForG : public ModelComponent {
 public: // constructors
 	CppForG(Model* model, std::string name = "");
-	virtual ~CppForG() = default;
+	virtual ~CppForG() override;
 public: // virtual
 	virtual std::string show() override;
 public: // static
@@ -75,9 +75,11 @@ private: // attributes 1:1
 	std::string _sourceFilename;
 	std::string _outputFilename;
 	// pointers to functions on a shared libraty
-	onDispatchEvent_t dispatchEvent_SharedLibHandler;
-	initBetweenReplications_t initBetweenReplications_SharedLibHandler;
+	onDispatchEvent_t dispatchEvent_SharedLibHandler = nullptr;
+	initBetweenReplications_t initBetweenReplications_SharedLibHandler = nullptr;
 private: // internal (TODO: should be Attached??)
 	CppCompiler* _cppCompiler = nullptr;
+	std::string _workDirectory;
+	std::string _lastCompiledSignature;
 private: // attributes 1:n
 };
