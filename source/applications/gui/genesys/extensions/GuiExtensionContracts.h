@@ -20,6 +20,10 @@ class ModelGraphicsView;
 class ModelGraphicsScene;
 class Model;
 class ModelDataDefinition;
+class ModelComponent;
+class GraphicalModelComponent;
+struct GraphicalModelItemRenderContext;
+class ObjectPropertyBrowser;
 class Plugin;
 
 using GuiDiagramLayouts = std::map<unsigned long, std::any>;
@@ -91,6 +95,7 @@ struct GuiNetworkEditorContribution {
 	std::string id;
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<bool(ModelDataDefinition*, ModelDataDefinition*)> ownsEditableDataDefinition;
+	std::function<bool(ModelDataDefinition*, QGraphicsItem*)> canDeleteElement;
 	std::function<QUndoCommand*(ModelDataDefinition*, ModelDataDefinition*, const std::string&, const std::string&)> createDataDefinitionPropertyCommand;
 	// Builds a real domain relation between two selected graphical nodes.
 	std::function<bool(ModelDataDefinition*, QGraphicsItem*)> canStartRelationCreation;
@@ -109,6 +114,49 @@ struct GuiNetworkEditorContribution {
 	std::function<bool(ModelDataDefinition*, const std::string&, bool)> acceptsDrop;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionDropped;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionRemoved;
+};
+
+// Domain-specific reconciliation after the generic Property Editor changes a list.
+struct GuiPropertyListContribution {
+	std::string id;
+	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<void(ModelDataDefinition*, ModelGraphicsScene*)> reconcile;
+	std::function<bool(ModelDataDefinition*, ModelGraphicsScene*, int, int)> reconcileMove;
+};
+
+struct GuiEditingContextContribution {
+	std::string id;
+	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<ModelDataDefinition*(ModelDataDefinition*)> resolveOwner;
+	std::function<bool(ModelDataDefinition*)> isNetwork;
+	std::function<bool(Model*, ModelDataDefinition*)> canOpen;
+};
+
+struct GuiModelReferenceContribution {
+	std::string id;
+	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<ModelDataDefinition*(ModelDataDefinition*)> currentReference;
+	std::function<ModelDataDefinition*(ModelDataDefinition*, const std::string&)> resolveChoice;
+	std::function<std::string(ModelDataDefinition*, const std::string&, ModelDataDefinition*)> formatChoice;
+	std::function<bool(ModelDataDefinition*, ModelDataDefinition*, ModelDataDefinition*, QWidget*)> confirmChange;
+	std::function<void(ModelDataDefinition*, ModelDataDefinition*, ModelDataDefinition*, ModelGraphicsScene*, ObjectPropertyBrowser*)>
+		referenceChanged;
+	std::function<void(ModelDataDefinition*, const std::string&, const std::string&, const std::string&,
+		ModelGraphicsScene*, ObjectPropertyBrowser*)> propertyChanged;
+};
+
+struct GuiComponentVisualizationContribution {
+	std::string id;
+	std::function<bool(ModelComponent*)> supports;
+	std::function<void(GraphicalModelComponent*)> configure;
+	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*, bool)> animateArrival;
+	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*)> animateDeparture;
+};
+
+struct GuiDataDefinitionRenderingContribution {
+	std::string id;
+	std::function<bool(ModelDataDefinition*)> supports;
+	std::function<void(ModelDataDefinition*, GraphicalModelItemRenderContext*)> configure;
 };
 
 class GuiExtensionRegistry {
@@ -137,6 +185,26 @@ public:
 		_networkEditors.push_back(std::move(contribution));
 	}
 
+	void addPropertyList(GuiPropertyListContribution contribution) {
+		_propertyLists.push_back(std::move(contribution));
+	}
+
+	void addEditingContext(GuiEditingContextContribution contribution) {
+		_editingContexts.push_back(std::move(contribution));
+	}
+
+	void addModelReference(GuiModelReferenceContribution contribution) {
+		_modelReferences.push_back(std::move(contribution));
+	}
+
+	void addComponentVisualization(GuiComponentVisualizationContribution contribution) {
+		_componentVisualizations.push_back(std::move(contribution));
+	}
+
+	void addDataDefinitionRendering(GuiDataDefinitionRenderingContribution contribution) {
+		_dataDefinitionRenderings.push_back(std::move(contribution));
+	}
+
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
 	}
@@ -161,6 +229,26 @@ public:
 		return _networkEditors;
 	}
 
+	const std::vector<GuiPropertyListContribution>& propertyLists() const {
+		return _propertyLists;
+	}
+
+	const std::vector<GuiEditingContextContribution>& editingContexts() const {
+		return _editingContexts;
+	}
+
+	const std::vector<GuiModelReferenceContribution>& modelReferences() const {
+		return _modelReferences;
+	}
+
+	const std::vector<GuiComponentVisualizationContribution>& componentVisualizations() const {
+		return _componentVisualizations;
+	}
+
+	const std::vector<GuiDataDefinitionRenderingContribution>& dataDefinitionRenderings() const {
+		return _dataDefinitionRenderings;
+	}
+
 	void clear() {
 		_actions.clear();
 		_docks.clear();
@@ -168,6 +256,11 @@ public:
 		_contextMenus.clear();
 		_diagramProjections.clear();
 		_networkEditors.clear();
+		_propertyLists.clear();
+		_editingContexts.clear();
+		_modelReferences.clear();
+		_componentVisualizations.clear();
+		_dataDefinitionRenderings.clear();
 	}
 
 private:
@@ -177,6 +270,11 @@ private:
 	std::vector<GuiContextMenuContribution> _contextMenus;
 	std::vector<GuiDiagramProjectionContribution> _diagramProjections;
 	std::vector<GuiNetworkEditorContribution> _networkEditors;
+	std::vector<GuiPropertyListContribution> _propertyLists;
+	std::vector<GuiEditingContextContribution> _editingContexts;
+	std::vector<GuiModelReferenceContribution> _modelReferences;
+	std::vector<GuiComponentVisualizationContribution> _componentVisualizations;
+	std::vector<GuiDataDefinitionRenderingContribution> _dataDefinitionRenderings;
 };
 
 class GuiExtensionPlugin {

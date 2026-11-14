@@ -24,6 +24,10 @@ struct GraphicalModelItemRenderContext {
     QString tertiaryText;
     QString semanticClassName;
     QString semanticSubtype;
+    bool hasSpecializedGlyph = false;
+    QPainterPath specializedShape;
+    QPainterPath specializedDetails;
+    QColor specializedAccent;
     bool selected = false;
     bool breakpoint = false;
 

@@ -62,7 +62,7 @@ void DecideConditionUndoCommand::apply(bool after) {
 		const unsigned int from = performOriginal ? _edit.index : _edit.destinationIndex;
 		const unsigned int to = performOriginal ? _edit.destinationIndex : _edit.index;
 		_decide->moveCondition(from, to);
-		if (_graphical != nullptr) _graphical->moveDecideConditionPort(from, to);
+		if (_graphical != nullptr) _graphical->moveOutputPort(from, to);
 		break;
 	}
 	}
@@ -71,7 +71,7 @@ void DecideConditionUndoCommand::apply(bool after) {
 	bool inserted = false;
 	if (_edit.kind != Decide::ConditionEdit::Kind::Move
 		&& _decide->takeConditionPortEdit(changedIndex, inserted) && _graphical != nullptr) {
-		_graphical->applyDecideConditionPortEdit(changedIndex, inserted);
+		_graphical->editOutputPort(changedIndex, inserted);
 	}
 	Decide::ConditionEdit ignoredEdit;
 	if (_edit.kind != Decide::ConditionEdit::Kind::Move) _decide->takeConditionEdit(ignoredEdit);

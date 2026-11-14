@@ -1,17 +1,15 @@
-#ifndef ANIMATIONQUEUE_H
-#define ANIMATIONQUEUE_H
+#ifndef QUEUEANIMATIONCONTROLLER_H
+#define QUEUEANIMATIONCONTROLLER_H
 
 #include "graphicals/GraphicalModelComponent.h"
 
 class ModelGraphicsScene;
 
-class AnimationQueue
+class QueueAnimationController
 {
 public:
-    // Construtor
-    AnimationQueue(ModelGraphicsScene* myScene, ModelComponent* component);
-    // Destrutor
-    ~AnimationQueue();
+    QueueAnimationController(ModelGraphicsScene* myScene, GraphicalModelComponent* component);
+    ~QueueAnimationController();
 
     // Getters
     GraphicalModelComponent* getGraphicalComponent() const;
@@ -35,4 +33,4 @@ private:
     GraphicalModelComponent* _graphicalComponent;
 };
 
-#endif // ANIMATIONQUEUE_H
+#endif // QUEUEANIMATIONCONTROLLER_H

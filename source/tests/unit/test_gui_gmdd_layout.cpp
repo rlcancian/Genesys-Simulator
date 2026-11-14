@@ -7,6 +7,7 @@
 #include "controllers/PluginCatalogController.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
 #include "controllers/SimulationEventController.h"
+#include "extensions/GuiExtensionManager.h"
 #include "animations/AnimationTransition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "codeeditor/CodeEditor.h"
@@ -28,6 +29,7 @@
 #include "../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/Transfer/PickStation.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Create.h"
@@ -43,6 +45,11 @@
 #include "plugins/components/ModalModel/FSMState.h"
 
 #include <gtest/gtest.h>
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
+#include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
+
 
 #include <QApplication>
 #include <QAction>
@@ -56,6 +63,8 @@
 #include <QGraphicsLineItem>
 #include <QGraphicsTextItem>
 #include <QList>
+#include <QMenu>
+#include <QMainWindow>
 #include <QPlainTextEdit>
 #include <QProgressBar>
 #include <QRectF>
@@ -122,9 +131,9 @@ TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
     decide->addConditions("A > 0");
     EXPECT_EQ(countPorts(decide), 2);
     GraphicalModelComponent graphical(plugin, decide, QPointF(100, 100), QColor("#336699"));
-    graphical.applyDecideConditionPortEdit(1, true);
+    graphical.editOutputPort(1, true);
     EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 3);
-    graphical.applyDecideConditionPortEdit(1, false);
+    graphical.editOutputPort(1, false);
     EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 2);
     decide->addConditions("B > 0");
     decide->addConditions("C > 0");
@@ -150,7 +159,7 @@ TEST(DecideDynamicPortPresentation, AppliesQueuedConditionPortEditsInOrder) {
     unsigned int index = 0;
     bool inserted = false;
     while (decide->takeConditionPortEdit(index, inserted)) {
-        graphical.applyDecideConditionPortEdit(index, inserted);
+        graphical.editOutputPort(index, inserted);
     }
 
     ASSERT_EQ(decide->getConditions()->size(), 2u);
@@ -200,7 +209,7 @@ TEST(DecideConditionUndo, MoveKeepsGraphicalConnectionsAndElseThroughUndoRedo) {
     auto* graphicalConnection = firstPort->getConnections()->front();
 
     decide->moveCondition(0, 2);
-    graphical->moveDecideConditionPort(0, 2);
+    graphical->moveOutputPort(0, 2);
     Decide::ConditionEdit edit{Decide::ConditionEdit::Kind::Move, 0};
     edit.destinationIndex = 2;
     undoStack.push(new DecideConditionUndoCommand(decide, graphical, edit));
@@ -268,7 +277,7 @@ TEST(DecideConditionUndo, RemoveUndoRedoRestoresOnlyTheRemovedConnectionAndElse)
     ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
     EXPECT_EQ(changedIndex, 0u);
     EXPECT_FALSE(inserted);
-    graphicalDecide->applyDecideConditionPortEdit(changedIndex, inserted);
+    graphicalDecide->editOutputPort(changedIndex, inserted);
     Decide::ConditionEdit edit;
     ASSERT_TRUE(decide->takeConditionEdit(edit));
     undoStack.push(new DecideConditionUndoCommand(decide, graphicalDecide, edit));
@@ -314,7 +323,7 @@ TEST(DecideConditionUndo, InsertAndReplaceUndoRedoRestoreOrderedConditionTextAnd
     unsigned int changedIndex = 0;
     bool inserted = false;
     ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
-    graphical->applyDecideConditionPortEdit(changedIndex, inserted);
+    graphical->editOutputPort(changedIndex, inserted);
     Decide::ConditionEdit insertEdit;
     ASSERT_TRUE(decide->takeConditionEdit(insertEdit));
     undoStack.push(new DecideConditionUndoCommand(decide, graphical, insertEdit));
@@ -814,6 +823,65 @@ TEST(GuiGmddLayout, SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRow
     }));
 }
 
+TEST(GuiDiscreteProcessingVisualization, ExtensionConfiguresGenericQueueTracksAndPickStationTrack) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* queue = new Queue(model, "VisualizationQueue");
+    auto* seize = new Seize(model, "VisualizationSeize");
+    (*seize->getAttachedData())[queue->getName()] = queue;
+    Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
+    ASSERT_NE(seizePlugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 800, 600);
+    scene.setSimulator(&simulator);
+    GraphicalModelComponent graphicalSeize(seizePlugin, seize, QPointF(0, 0), Qt::blue);
+    scene.addItem(&graphicalSeize);
+
+    GuiExtensionPluginCatalog::configureComponentVisualization(&graphicalSeize);
+    ASSERT_TRUE(graphicalSeize.hasAnimationTracks());
+    ASSERT_TRUE(graphicalSeize.getAnimationTrackMap()->contains(queue));
+    EXPECT_EQ(graphicalSeize.getAnimationTrackIndex(queue), 0u);
+    EXPECT_EQ(graphicalSeize.getAnimationTrackSize(queue), 0u);
+    ASSERT_TRUE(GuiExtensionPluginCatalog::animateComponentArrival(&scene, &graphicalSeize, true));
+    ASSERT_EQ(graphicalSeize.getAnimationTracks()->at(0)->size(), 1);
+    ASSERT_TRUE(GuiExtensionPluginCatalog::animateComponentDeparture(&scene, &graphicalSeize));
+    EXPECT_TRUE(graphicalSeize.getAnimationTracks()->at(0)->isEmpty());
+
+    auto* pickStation = new PickStation(model, "VisualizationPickStation");
+    Plugin* pickPlugin = pluginManager->find(Util::TypeOf<PickStation>());
+    ASSERT_NE(pickPlugin, nullptr);
+    GraphicalModelComponent graphicalPickStation(pickPlugin, pickStation, QPointF(100, 0), Qt::blue);
+    GuiExtensionPluginCatalog::configureComponentVisualization(&graphicalPickStation);
+    ASSERT_TRUE(graphicalPickStation.hasAnimationTracks());
+    EXPECT_TRUE(graphicalPickStation.getAnimationTrackMap()->isEmpty());
+    ASSERT_EQ(graphicalPickStation.getAnimationTracks()->size(), 1);
+}
+
+TEST(GuiGeneticRendering, RegisteredExtensionProvidesPartAndRegulationGlyphs) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GeneticCircuitPart part(model, "RenderingPart");
+    part.setPartType("Promoter");
+    GeneticRegulation regulation(model, "RenderingRegulation");
+    regulation.setRegulationType("Repression");
+
+    GraphicalModelDataDefinition partItem(nullptr, &part, QPointF(0, 0));
+    GraphicalModelDataDefinition regulationItem(nullptr, &regulation, QPointF(200, 0));
+    const QPainterPath partShape = partItem.shape();
+    const QPainterPath regulationShape = regulationItem.shape();
+    EXPECT_FALSE(partShape.isEmpty());
+    EXPECT_FALSE(regulationShape.isEmpty());
+    EXPECT_LT(partShape.boundingRect().width(), partItem.boundingRect().width());
+    EXPECT_LT(regulationShape.boundingRect().width(), regulationItem.boundingRect().width());
+}
+
 TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsEditable) {
     Simulator simulator;
     PluginManager* pluginManager = simulator.getPluginManager();
@@ -1234,7 +1302,7 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
     scene->addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(0),
         graphicalTarget->getGraphicalInputPorts().at(0), 0, 0);
     movedDecide->moveCondition(0, 1);
-    graphicalDecide->moveDecideConditionPort(0, 1);
+    graphicalDecide->moveOutputPort(0, 1);
     const QString expectedCategoryColor = QColor(Qt::darkGreen).name(QColor::HexRgb);
 
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
@@ -1929,6 +1997,151 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
         }
     }
     EXPECT_TRUE(foundEmptyGroup);
+}
+
+TEST(BioReactionContextMenuExtension, RegistersAndRejectsUnrelatedSelection) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+    GuiExtensionRegistry registry;
+    extension->registerContributions(&registry);
+    ASSERT_EQ(registry.contextMenus().size(), 1u);
+    const auto& contribution = registry.contextMenus().front();
+    EXPECT_EQ(contribution.id, "gui.bio.reaction.link-context");
+
+    GuiExtensionRuntimeContext context;
+    EXPECT_FALSE(contribution.isVisible(context, nullptr));
+    QMenu emptyMenu;
+    contribution.populate(&emptyMenu, context, nullptr);
+    EXPECT_TRUE(emptyMenu.actions().isEmpty());
+
+    ModelGraphicsScene scene(0, 0, 640, 480);
+    context.graphicsScene = &scene;
+    EXPECT_FALSE(contribution.isVisible(context, nullptr));
+}
+
+TEST(BioReactionContextMenuExtension, CreatesContextActionsAndDoesNotDuplicateRelations) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+    GuiExtensionRegistry registry;
+    extension->registerContributions(&registry);
+    ASSERT_EQ(registry.contextMenus().size(), 1u);
+    const auto& contribution = registry.contextMenus().front();
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BioReaction reaction(model, "ContextReaction");
+    BioSpecies species(model, "ContextSpecies");
+    ModelGraphicsScene scene(0, 0, 640, 480);
+    auto* reactionItem = new GraphicalModelDataDefinition(nullptr, &reaction, QPointF(80, 80));
+    auto* speciesItem = new GraphicalModelDataDefinition(nullptr, &species, QPointF(290, 80));
+    scene.addItem(reactionItem);
+    scene.addItem(speciesItem);
+    reactionItem->setSelected(true);
+    speciesItem->setSelected(true);
+
+    GuiExtensionRuntimeContext context;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(contribution.isVisible(context, reactionItem));
+
+    QMenu menu;
+    contribution.populate(&menu, context, reactionItem);
+    ASSERT_EQ(menu.actions().size(), 1);
+    QMenu* relationMenu = menu.actions().front()->menu();
+    ASSERT_NE(relationMenu, nullptr);
+    EXPECT_EQ(relationMenu->title(), QStringLiteral("Biochemical Relation"));
+    const QList<QAction*> actions = relationMenu->actions();
+    ASSERT_EQ(actions.size(), 3);
+    actions.at(0)->trigger();
+    actions.at(0)->trigger();
+    actions.at(1)->trigger();
+    actions.at(2)->trigger();
+    ASSERT_EQ(reaction.getReactants().size(), 1u);
+    ASSERT_EQ(reaction.getProducts().size(), 1u);
+    ASSERT_EQ(reaction.getModifiers().size(), 1u);
+    EXPECT_EQ(reaction.getReactants().front().speciesName, species.getName());
+    EXPECT_EQ(reaction.getProducts().front().speciesName, species.getName());
+    EXPECT_EQ(reaction.getModifiers().front(), species.getName());
+
+    speciesItem->setSelected(false);
+    EXPECT_FALSE(contribution.isVisible(context, reactionItem));
+    QMenu unrelatedMenu;
+    contribution.populate(&unrelatedMenu, context, reactionItem);
+    EXPECT_TRUE(unrelatedMenu.actions().isEmpty());
+}
+
+TEST(BioReactionContextMenuExtension, ManagerUsesCurrentSceneAfterContextSwitch) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+
+    QMainWindow mainWindow;
+    GuiExtensionManager manager(&mainWindow);
+    manager.setPlugins({extension});
+    manager.setLoadedModelPluginIds({"BioReaction", "BioSpecies"});
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BioReaction reactionInFirstScene(model, "FirstSceneReaction");
+    BioSpecies speciesInFirstScene(model, "FirstSceneSpecies");
+    BioReaction reactionInSecondScene(model, "SecondSceneReaction");
+    BioSpecies speciesInSecondScene(model, "SecondSceneSpecies");
+
+    ModelGraphicsScene firstScene(0, 0, 640, 480);
+    auto* firstReactionItem = new GraphicalModelDataDefinition(nullptr, &reactionInFirstScene, QPointF(80, 80));
+    auto* firstSpeciesItem = new GraphicalModelDataDefinition(nullptr, &speciesInFirstScene, QPointF(290, 80));
+    firstScene.addItem(firstReactionItem);
+    firstScene.addItem(firstSpeciesItem);
+    firstReactionItem->setSelected(true);
+    firstSpeciesItem->setSelected(true);
+
+    ModelGraphicsScene secondScene(0, 0, 640, 480);
+    auto* secondReactionItem = new GraphicalModelDataDefinition(nullptr, &reactionInSecondScene, QPointF(80, 80));
+    auto* secondSpeciesItem = new GraphicalModelDataDefinition(nullptr, &speciesInSecondScene, QPointF(290, 80));
+    secondScene.addItem(secondReactionItem);
+    secondScene.addItem(secondSpeciesItem);
+
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.mainWindow = &mainWindow;
+    context.graphicsScene = &firstScene;
+    manager.rebuild(context);
+
+    QMenu firstMenu;
+    manager.populateContextMenu(&firstMenu, firstReactionItem);
+    ASSERT_EQ(firstMenu.actions().size(), 1);
+
+    context.graphicsScene = &secondScene;
+    manager.refreshActionStates(context);
+    QMenu emptySecondMenu;
+    manager.populateContextMenu(&emptySecondMenu, secondReactionItem);
+    EXPECT_TRUE(emptySecondMenu.actions().isEmpty());
+
+    secondReactionItem->setSelected(true);
+    secondSpeciesItem->setSelected(true);
+    manager.refreshActionStates(context);
+    QMenu secondMenu;
+    manager.populateContextMenu(&secondMenu, secondReactionItem);
+    ASSERT_EQ(secondMenu.actions().size(), 1);
+    EXPECT_EQ(secondMenu.actions().front()->text(), QStringLiteral("Biochemical Relation"));
 }
 
 int main(int argc, char** argv) {

@@ -2,6 +2,9 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../systempreferences.h"
 #include "kernel/simulator/model/ModelDataDefinition.h"
+#include "kernel/simulator/model/ModelComponent.h"
+#include "../graphicals/GraphicalModelComponent.h"
+#include "../graphicals/GraphicalModelItemRenderStrategy.h"
 
 #include <algorithm>
 #include <cctype>
@@ -323,6 +326,43 @@ std::vector<GuiDiagramProjectionContribution> GuiExtensionPluginCatalog::diagram
 	return projections;
 }
 
+bool GuiExtensionPluginCatalog::hasNetworkEditor(ModelDataDefinition* owner) {
+	if (owner == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors())
+			if (editor.supports && editor.supports(owner)) return true;
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::hasEditingContext(ModelDataDefinition* owner) {
+	if (owner == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiEditingContextContribution& context : registry.editingContexts())
+			if (context.supports && context.supports(owner)) return true;
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::canDeleteNetworkElement(ModelDataDefinition* owner, QGraphicsItem* element) {
+	if (owner == nullptr || element == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors())
+			if (editor.supports && editor.supports(owner) && editor.canDeleteElement
+				&& editor.canDeleteElement(owner, element)) return true;
+	}
+	return false;
+}
+
 bool GuiExtensionPluginCatalog::ownsEditableNetworkDataDefinition(
 	ModelDataDefinition* owner, ModelDataDefinition* candidate) {
 	if (owner == nullptr || candidate == nullptr) return false;
@@ -480,6 +520,70 @@ void GuiExtensionPluginCatalog::restoreDiagramProjections(
 		diagram.restoreLayout(simulator, owner, scene,
 		                     layoutProvider(diagram.id, static_cast<unsigned long>(owner->getId())));
 	}
+}
+
+void GuiExtensionPluginCatalog::configureComponentVisualization(GraphicalModelComponent* component) {
+	if (component == nullptr || component->getComponent() == nullptr) return;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.configure) {
+				contribution.configure(component);
+				return;
+			}
+		}
+	}
+}
+
+bool GuiExtensionPluginCatalog::animateComponentArrival(ModelGraphicsScene* scene, GraphicalModelComponent* component, bool visible) {
+	if (scene == nullptr || component == nullptr || component->getComponent() == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateArrival) {
+				contribution.animateArrival(scene, component, visible);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::animateComponentDeparture(ModelGraphicsScene* scene, GraphicalModelComponent* component) {
+	if (scene == nullptr || component == nullptr || component->getComponent() == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateDeparture) {
+				contribution.animateDeparture(scene, component);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::configureDataDefinitionRendering(
+	ModelDataDefinition* definition, GraphicalModelItemRenderContext* context) {
+	if (definition == nullptr || context == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry;
+		plugin->registerContributions(&registry);
+		for (const GuiDataDefinitionRenderingContribution& contribution : registry.dataDefinitionRenderings()) {
+			if (contribution.supports && contribution.supports(definition) && contribution.configure) {
+				contribution.configure(definition, context);
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 GuiExtensionPluginAutoRegistrar::GuiExtensionPluginAutoRegistrar(const GuiExtensionPlugin* plugin) {

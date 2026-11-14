@@ -75,6 +75,9 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 		_applyDockContribution(dock, context);
 	}
 	_contextMenuContributions = registry.contextMenus();
+	_propertyListContributions = registry.propertyLists();
+	_editingContextContributions = registry.editingContexts();
+	_modelReferenceContributions = registry.modelReferences();
 }
 
 void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) const {
@@ -84,6 +87,94 @@ void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) 
 		if (contribution.isVisible && !contribution.isVisible(_runtimeContext, item)) continue;
 		contribution.populate(menu, _runtimeContext, item);
 	}
+}
+
+void GuiExtensionManager::reconcilePropertyListChange(ModelDataDefinition* owner, ModelGraphicsScene* scene) const {
+	if (owner == nullptr) return;
+	for (const GuiPropertyListContribution& contribution : _propertyListContributions) {
+		if (contribution.reconcile && (!contribution.supports || contribution.supports(owner))) {
+			contribution.reconcile(owner, scene);
+		}
+	}
+}
+
+bool GuiExtensionManager::reconcilePropertyListMove(ModelDataDefinition* owner, ModelGraphicsScene* scene, int from, int to) const {
+	if (owner == nullptr) return false;
+	for (const GuiPropertyListContribution& contribution : _propertyListContributions) {
+		if (contribution.reconcileMove && (!contribution.supports || contribution.supports(owner))) {
+			if (contribution.reconcileMove(owner, scene, from, to)) return true;
+		}
+	}
+	return false;
+}
+
+bool GuiExtensionManager::hasEditingContext(ModelDataDefinition* owner) const {
+	return std::any_of(_editingContextContributions.begin(), _editingContextContributions.end(),
+		[owner](const auto& c) { return c.supports && c.supports(owner); });
+}
+
+ModelDataDefinition* GuiExtensionManager::resolveEditingContextOwner(ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.resolveOwner) {
+			ModelDataDefinition* resolved = c.resolveOwner(owner);
+			return resolved != nullptr ? resolved : owner;
+		}
+	}
+	return owner;
+}
+
+bool GuiExtensionManager::isNetworkEditingContext(ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.isNetwork) return c.isNetwork(owner);
+	}
+	return false;
+}
+
+bool GuiExtensionManager::canOpenEditingContext(Model* model, ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.canOpen) return c.canOpen(model, owner);
+	}
+	return false;
+}
+
+ModelDataDefinition* GuiExtensionManager::currentModelReference(ModelDataDefinition* owner) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.currentReference) return c.currentReference(owner);
+	return nullptr;
+}
+
+ModelDataDefinition* GuiExtensionManager::resolveModelReferenceChoice(ModelDataDefinition* owner, const std::string& choice) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.resolveChoice) return c.resolveChoice(owner, choice);
+	return nullptr;
+}
+
+std::string GuiExtensionManager::formatModelReferenceChoice(ModelDataDefinition* owner, const std::string& property,
+	ModelDataDefinition* ref) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.formatChoice) return c.formatChoice(owner, property, ref);
+	return {};
+}
+
+bool GuiExtensionManager::confirmModelReferenceChange(ModelDataDefinition* owner, ModelDataDefinition* before,
+	ModelDataDefinition* after, QWidget* parent) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.confirmChange) return c.confirmChange(owner, before, after, parent);
+	return true;
+}
+
+void GuiExtensionManager::notifyModelReferenceChanged(ModelDataDefinition* owner, ModelDataDefinition* before,
+	ModelDataDefinition* after, ModelGraphicsScene* scene, ObjectPropertyBrowser* browser) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.referenceChanged) c.referenceChanged(owner, before, after, scene, browser);
+}
+
+void GuiExtensionManager::notifyModelPropertyChanged(ModelDataDefinition* owner, const std::string& property,
+	const std::string& before, const std::string& after, ModelGraphicsScene* scene,
+	ObjectPropertyBrowser* browser) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.propertyChanged)
+			c.propertyChanged(owner, property, before, after, scene, browser);
 }
 
 void GuiExtensionManager::refreshActionStates(const GuiExtensionRuntimeContext& context) {
@@ -116,6 +207,9 @@ void GuiExtensionManager::clear() {
 	}
 	_createdMenuActions.clear();
 	_contextMenuContributions.clear();
+	_propertyListContributions.clear();
+	_editingContextContributions.clear();
+	_modelReferenceContributions.clear();
 	_runtimeContext = GuiExtensionRuntimeContext{};
 }
 
