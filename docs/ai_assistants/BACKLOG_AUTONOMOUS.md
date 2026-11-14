@@ -957,3 +957,17 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Non-goals: kernel Qt dependencies, proxy ModelDataDefinitions, and invented formalism semantics.
 - Progress evidence: `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md`.
 - Completion evidence (2026-11-13): EFSM, Graph/DirectedGraph/DAG, Markov and CPN implementations were integrated by PR #578 at merge commit `0624d84b462919b235e31a625bdd75de3876ff72`; all 18 final-head hosted checks passed. Locally, the GUI test target passed 155/155 on rerun, formalism kernel/model-file tests passed 45/45, GUI app build and documentation governance passed. Interactive desktop smoke remains unperformed. See the progress evidence for commits and validation details.
+
+## 12. Completed C++ runtime integration
+
+### AUTO-CPP-001 — Complete CppCompiler and CppForG dynamic runtime
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Environment: local Ubuntu/C++23/CMake/Ninja plus GitHub Actions.
+- Authorization: explicit maintainer scope and merge authorization in the 2026-11-13 request; review confirmed in conversation before integration.
+- Branch/PR: `WiP20261111/cppcompiler-cppforg-runtime`, [PR #576](https://github.com/rlcancian/Genesys-Simulator/pull/576), source head `4f3d2705ece5993ab5f65b7702c3598aaf2d3c80`, merge commit `ad62e3d05c18c0022f42ca266ddaad5eb6a6810d`.
+- Scope: reliable direct compiler invocation, shared-library loading/symbol lifetime, generated CppForG hooks, host-kernel symbol resolution and installed header lookup; bounded `DiffEquations` ownership compatibility and regressions.
+- Acceptance: generated C++ executes because an entity reaches `CppForG`, uses real `Entity` APIs, and forwards to `Dispose`; failures, recompilation, repeat simulation, multiple instances, persistence, dependent `DiffEquations`, and resource ownership are tested; required presets and final-head CI pass.
+- Validation: 14 focused dynamic runtime/persistence tests; local full CTest 2,127 passed plus 4 disabled; smoke 3/3; GUI, shell, worker and Smart_CppForG build; ASan/UBSan and LSan focused tests passed; every final-head hosted check passed, including package lifecycle. Details: [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
+- Security boundary: generated native code executes in-process and has no sandbox. Smart_CppForG was built but not launched because its startup writes a model file.
