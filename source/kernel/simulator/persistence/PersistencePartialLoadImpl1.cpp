@@ -1,4 +1,5 @@
 #include "PersistencePartialLoadImpl1.h"
+#include "LegacyPluginTypeAliases.h"
 #include "ConnectionPersistence.h"
 
 #include <exception>
@@ -125,7 +126,8 @@ bool PersistencePartialLoadImpl1::load(std::string filename) {
 			}
 
 			++expectedPayloadEntries;
-			item.plugin = _model->getParentSimulator()->getPluginManager()->find(item.type);
+			item.plugin = _model->getParentSimulator()->getPluginManager()->find(
+				currentPluginTypeForPersistedType(item.type));
 			if (item.plugin == nullptr) {
 				_model->getTracer()->traceError(
 						"Error loading item (" + itemLabel(item) + "): unknown typename \"" + item.type + "\"");

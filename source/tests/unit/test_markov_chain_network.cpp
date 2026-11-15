@@ -12,7 +12,7 @@
 #include "kernel/simulator/essentialPlugins/Entity.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponent.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/data/ModalModel/MarkovChainNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 
@@ -44,9 +44,9 @@ public:
 	void InitBetweenReplicationsProbe() { _initBetweenReplications(); }
 };
 
-class ModalModelDefaultProbe final : public ModalModelDefault {
+class ModalModelProbe final : public ModalModel {
 public:
-	ModalModelDefaultProbe(Model* model, const std::string& name) : ModalModelDefault(model, name) {}
+	ModalModelProbe(Model* model, const std::string& name) : ModalModel(model, name) {}
 
 	void dispatch(Entity* entity, unsigned int inputPortNumber = 0) {
 		_onDispatchEvent(entity, inputPortNumber);
@@ -425,8 +425,8 @@ TEST(MarkovChainNetworkTest, SharedChainActivatedThroughTwoModalModelsKeepsNetwo
 	network.addTransition(transition(&c, &c, 1.0, "CC"));
 	Attribute stateAttribute(model, "SharedState");
 
-	ModalModelDefaultProbe modalA(model, "ModalA");
-	ModalModelDefaultProbe modalB(model, "ModalB");
+	ModalModelProbe modalA(model, "ModalA");
+	ModalModelProbe modalB(model, "ModalB");
 	CollectorSinkComponentProbe sinkA(model, "SinkA");
 	CollectorSinkComponentProbe sinkB(model, "SinkB");
 	modalA.getConnectionManager()->insert(&sinkA);

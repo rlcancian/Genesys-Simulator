@@ -3,7 +3,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
@@ -21,7 +21,7 @@ int Smart_ModalModelFSM::main(int argc, char** argv) {
 
 	Create* create = plugins->newInstance<Create>(model);
 	create->setMaxCreations(1);
-	ModalModelDefault* modal = new ModalModelDefault(model, "TrafficFSM");
+	ModalModel* modal = new ModalModel(model, "TrafficFSM");
 	modal->setTimeDelayExpressionPerDispatch("1.0");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 

@@ -22,8 +22,8 @@ class Sampler_if;
  * \brief Extended finite-state-machine network specialization.
  *
  * `EFSMNetwork` owns the modal state machine semantics that used to live in
- * `ModalModelDefault`: the current state, the initial state, state nodes and
- * EFSM transitions. A `ModalModelDefault` only adapts process entities to this
+ * `ModalModel`: the current state, the initial state, state nodes and
+ * EFSM transitions. A `ModalModel` only adapts process entities to this
  * network through explicit input/output bindings.
  *
  * Transition ownership: `addTransition()` and persistence reload take exclusive

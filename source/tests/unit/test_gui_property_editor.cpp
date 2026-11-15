@@ -29,14 +29,14 @@
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"
 #include "plugins/components/Continuous/DiffEquations.h"
 #include "plugins/components/Continuous/LSODE.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/data/ModalModel/DirectedGraphNetwork.h"
 #include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
 #include "plugins/data/ModalModel/MarkovChainNetwork.h"
 #include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
-#include "plugins/components/Template/DummyComponent.h"
+#include "plugins/components/Template/TemplateComponent.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
@@ -61,7 +61,7 @@
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
 #include "plugins/data/ExternalIntegration/SPICERunner.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
-#include "plugins/data/Template/DummyElement.h"
+#include "plugins/data/Template/TemplateDataDefinition.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/Grouping/EntityGroup.h"
 
@@ -72,6 +72,7 @@
 #include <QComboBox>
 #include <QContextMenuEvent>
 #include <QCoreApplication>
+#include <QDir>
 #include <QDoubleSpinBox>
 #include <QEventLoop>
 #include <QFile>
@@ -1169,8 +1170,8 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
         markov,
         cpn
     };
-    ModalModelDefault component(model, "ModalAdapter_PropertyEditor");
-    Plugin* adapterPlugin = simulator.getPluginManager()->find(Util::TypeOf<ModalModelDefault>());
+    ModalModel component(model, "ModalAdapter_PropertyEditor");
+    Plugin* adapterPlugin = simulator.getPluginManager()->find(Util::TypeOf<ModalModel>());
     ASSERT_NE(adapterPlugin, nullptr);
     ModelGraphicsScene scene(0, 0, 1000, 800);
     QUndoStack undoStack;
@@ -1364,7 +1365,7 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     EXPECT_EQ(component.getOutputBinding(0), "firedValue");
 
     for (std::size_t index = 0; index < networks.size(); ++index) {
-        auto* adapter = new ModalModelDefault(model, "ProcessAdapter_" + std::to_string(index));
+        auto* adapter = new ModalModel(model, "ProcessAdapter_" + std::to_string(index));
         auto* processSource = new Create(model, "ProcessSource_" + std::to_string(index));
         auto* processSink = new Dispose(model, "ProcessSink_" + std::to_string(index));
         adapter->setNetwork(networks[index]);
@@ -1375,17 +1376,17 @@ TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByType
     }
 }
 
-TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefinitionForEditing) {
+TEST(PropertyEditorModelDataReference, TemplateComponentExposesItsAssociatedDataDefinitionForEditing) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyComponent component(model, "Dummy_PropertyEditor");
+    TemplateComponent component(model, "Dummy_PropertyEditor");
     ModelDataDefinition::CreateInternalData(&component);
     ASSERT_NE(component.getInternalDataDefinition(), nullptr);
     EXPECT_EQ(model->getDataManager()->getDataDefinition(
-                  Util::TypeOf<DummyElement>(), component.getInternalDataDefinition()->getName()),
+                  Util::TypeOf<TemplateDataDefinition>(), component.getInternalDataDefinition()->getName()),
               component.getInternalDataDefinition());
 
     ObjectPropertyBrowser browser;
@@ -1393,7 +1394,7 @@ TEST(PropertyEditorModelDataReference, DummyComponentExposesItsOwnedDataDefiniti
     browser.show();
     bindEditableKernelObject(browser, &component);
 
-    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("DummyElement"));
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("TemplateDataDefinition"));
     ASSERT_NE(item, nullptr);
     browser.setExpanded(item, true);
     drainGuiEvents();
@@ -1405,7 +1406,7 @@ TEST(PropertyEditorModelDataReference, OwnedRuntimeDefinitionsReattachOnGenLoadW
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
-    auto* dummy = new DummyComponent(model, "Dummy_InternalRoundTrip");
+    auto* dummy = new TemplateComponent(model, "Dummy_InternalRoundTrip");
     auto* python = new PythonForG(model, "Python_InternalRoundTrip");
     python->getPythonRuntime()->setPythonExecutable("custom-python");
     auto* r = new RSimulator(model, "R_InternalRoundTrip");
@@ -1419,14 +1420,14 @@ TEST(PropertyEditorModelDataReference, OwnedRuntimeDefinitionsReattachOnGenLoadW
     Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
     ASSERT_NE(loaded, nullptr);
 
-    auto* loadedDummy = dynamic_cast<DummyComponent*>(loaded->getComponentManager()->find("Dummy_InternalRoundTrip"));
+    auto* loadedDummy = dynamic_cast<TemplateComponent*>(loaded->getComponentManager()->find("Dummy_InternalRoundTrip"));
     auto* loadedPython = dynamic_cast<PythonForG*>(loaded->getComponentManager()->find("Python_InternalRoundTrip"));
     auto* loadedR = dynamic_cast<RSimulator*>(loaded->getComponentManager()->find("R_InternalRoundTrip"));
     ASSERT_NE(loadedDummy, nullptr);
     ASSERT_NE(loadedPython, nullptr);
     ASSERT_NE(loadedR, nullptr);
-    auto* dummyData = dynamic_cast<DummyElement*>(loaded->getDataManager()->getDataDefinition(
-        Util::TypeOf<DummyElement>(), "Dummy_InternalRoundTrip.DummyElement"));
+    auto* dummyData = dynamic_cast<TemplateDataDefinition*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<TemplateDataDefinition>(), "Dummy_InternalRoundTrip.TemplateDataDefinition"));
     auto* pythonRuntime = dynamic_cast<PythonRuntime*>(loaded->getDataManager()->getDataDefinition(
         Util::TypeOf<PythonRuntime>(), "Python_InternalRoundTrip.PythonRuntime"));
     auto* rRunner = dynamic_cast<RSimulatorRunner*>(loaded->getDataManager()->getDataDefinition(
@@ -1441,10 +1442,73 @@ TEST(PropertyEditorModelDataReference, OwnedRuntimeDefinitionsReattachOnGenLoadW
     EXPECT_EQ(rRunner->getRExecutable(), "custom-Rscript");
     EXPECT_EQ(rRunner->getPreludeScript(), "# prelude\nvalue <- 7\n");
     EXPECT_EQ(loadedR->getCommandList(), "result <- value + 1");
-    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<DummyElement>()), 1u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<TemplateDataDefinition>()), 1u);
     EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<PythonRuntime>()), 1u);
     EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<RSimulatorRunner>()), 1u);
     QFile::remove(path);
+}
+
+TEST(PersistencePluginTypeCompatibility, RenamedPluginsLoadLegacyIdsAndSaveCurrentIds) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* source = simulator.getModelManager()->newModel();
+    ASSERT_NE(source, nullptr);
+
+    auto* templateComponent = new TemplateComponent(source, "TemplateCompatibility");
+    ModelDataDefinition::CreateInternalData(templateComponent);
+    ASSERT_NE(templateComponent->getInternalDataDefinition(), nullptr);
+    templateComponent->getInternalDataDefinition()->setName("TemplateCompatibility.DummyElement");
+    templateComponent->getInternalDataDefinition()->setSomeString("legacy-round-trip");
+
+    auto* network = new EFSMNetwork(source, "CompatibilityNetwork");
+    auto* adapter = new ModalModel(source, "CompatibilityModal");
+    adapter->setNetwork(network);
+
+    const QString currentPath = QDir::temp().filePath(QStringLiteral("genesys_plugin_rename_current.gen"));
+    const QString legacyPath = QDir::temp().filePath(QStringLiteral("genesys_plugin_rename_legacy.gen"));
+    const QString resavedPath = QDir::temp().filePath(QStringLiteral("genesys_plugin_rename_resaved.gen"));
+    QFile::remove(currentPath);
+    QFile::remove(legacyPath);
+    QFile::remove(resavedPath);
+    ASSERT_TRUE(source->save(currentPath.toStdString()));
+
+    QFile currentFile(currentPath);
+    ASSERT_TRUE(currentFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QString legacyText = QString::fromUtf8(currentFile.readAll());
+    currentFile.close();
+    legacyText.replace(QStringLiteral("TemplateComponent"), QStringLiteral("DummyComponent"));
+    legacyText.replace(QStringLiteral("TemplateDataDefinition"), QStringLiteral("DummyElement"));
+    legacyText.replace(QStringLiteral("ModalModel "), QStringLiteral("ModalModelDefault "));
+    QFile legacyFile(legacyPath);
+    ASSERT_TRUE(legacyFile.open(QIODevice::WriteOnly | QIODevice::Text));
+    ASSERT_EQ(legacyFile.write(legacyText.toUtf8()), legacyText.toUtf8().size());
+    legacyFile.close();
+
+    Model* restored = simulator.getModelManager()->newModel();
+    ASSERT_NE(restored, nullptr);
+    ASSERT_TRUE(restored->load(legacyPath.toStdString()));
+    auto* restoredTemplate = dynamic_cast<TemplateComponent*>(
+        restored->getComponentManager()->find("TemplateCompatibility"));
+    auto* restoredModal = dynamic_cast<ModalModel*>(restored->getComponentManager()->find("CompatibilityModal"));
+    ASSERT_NE(restoredTemplate, nullptr);
+    ASSERT_NE(restoredModal, nullptr);
+    ASSERT_NE(restoredTemplate->getInternalDataDefinition(), nullptr);
+    EXPECT_EQ(restoredTemplate->getInternalDataDefinition()->getSomeString(), "legacy-round-trip");
+    EXPECT_EQ(restoredModal->getNetwork()->getName(), "CompatibilityNetwork");
+
+    ASSERT_TRUE(restored->save(resavedPath.toStdString()));
+    QFile resavedFile(resavedPath);
+    ASSERT_TRUE(resavedFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString resavedText = QString::fromUtf8(resavedFile.readAll());
+    EXPECT_NE(resavedText.indexOf(QStringLiteral("TemplateComponent")), -1);
+    EXPECT_NE(resavedText.indexOf(QStringLiteral("TemplateDataDefinition")), -1);
+    EXPECT_NE(resavedText.indexOf(QStringLiteral("ModalModel \"CompatibilityModal\"")), -1);
+    EXPECT_EQ(resavedText.indexOf(QStringLiteral("DummyComponent \"")), -1);
+    EXPECT_EQ(resavedText.indexOf(QStringLiteral("DummyElement \"")), -1);
+    EXPECT_EQ(resavedText.indexOf(QStringLiteral("ModalModelDefault")), -1);
+    QFile::remove(currentPath);
+    QFile::remove(legacyPath);
+    QFile::remove(resavedPath);
 }
 
 TEST(PropertyEditorModelDataReference, PythonForGExposesItsOwnedRuntimeConfiguration) {

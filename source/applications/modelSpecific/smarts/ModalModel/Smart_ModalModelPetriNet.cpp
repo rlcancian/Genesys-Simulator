@@ -3,7 +3,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/ModalModel/PetriPlace.h"
 #include "plugins/data/ModalModel/CPNArc.h"
 #include "plugins/data/ModalModel/CPNTransition.h"
@@ -20,7 +20,7 @@ int Smart_ModalModelPetriNet::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 
 	Create* create = plugins->newInstance<Create>(model);
-	ModalModelDefault* modal = new ModalModelDefault(model, "PetriFlow");
+	ModalModel* modal = new ModalModel(model, "PetriFlow");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
 	ColoredPetriNetNetwork* network = new ColoredPetriNetNetwork(model, "PetriNetwork");

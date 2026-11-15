@@ -44,12 +44,12 @@
 #include "plugins/components/AI/AIAssistant.h"
 #include "components/Logic/Create.h"
 #include "plugins/components/Decisions/Decide.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/Continuous/DiffEquations.h"
 #include "components/Logic/Dispose.h"
 #include "plugins/components/Decisions/DropOff.h"
-#include "plugins/components/Template/DummyComponent.h"
+#include "plugins/components/Template/TemplateComponent.h"
 #include "plugins/components/Transfer/Enter.h"
 #include "plugins/components/Transfer/Exit.h"
 #include "plugins/components/Transfer/Leave.h"
@@ -105,7 +105,7 @@
 #include "plugins/data/ExternalIntegration/PythonRuntime.h"
 #include "plugins/data/AI/AISupport.h"
 #include "plugins/data/Continuous/ODESolver.h"
-#include "plugins/data/Template/DummyElement.h"
+#include "plugins/data/Template/TemplateDataDefinition.h"
 #include "plugins/data/Grouping/EntityGroup.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
@@ -196,8 +196,8 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("buffer.so");
     filenames->insert("create.so");
     filenames->insert("dispose.so");
-    filenames->insert("dummy.so");
-    filenames->insert("dummyelement.so");
+	    filenames->insert("templatecomponent.so");
+	    filenames->insert("templatedatadefinition.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
     filenames->insert("defaultnetwork.so");
@@ -232,7 +232,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("biosimulatorrunner.so");
     filenames->insert("cellularautomata.so");
     filenames->insert("clone.so");
-    filenames->insert("ModalModelDefault.so");
+	    filenames->insert("ModalModel.so");
     filenames->insert("decide.so");
     filenames->insert("delay.so");
     filenames->insert("dropoff.so");
@@ -379,10 +379,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Create::GetPluginInformation;
     else if (fn == "dispose.so")
         GetInfo = &Dispose::GetPluginInformation;
-    else if (fn == "dummy.so")
-        GetInfo = &DummyComponent::GetPluginInformation;
-    else if (fn == "dummyelement.so")
-        GetInfo = &DummyElement::GetPluginInformation;
+	else if (fn == "templatecomponent.so" || fn == "dummy.so")
+        GetInfo = &TemplateComponent::GetPluginInformation;
+	else if (fn == "templatedatadefinition.so" || fn == "dummyelement.so")
+        GetInfo = &TemplateDataDefinition::GetPluginInformation;
     else if (fn == "entitygroup.so")
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")
@@ -451,8 +451,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &CellularAutomataComp::GetPluginInformation;
     else if (fn == "clone.so")
         GetInfo = &Clone::GetPluginInformation;
-    else if (fn == "ModalModelDefault.so")
-        GetInfo = &ModalModelDefault::GetPluginInformation;
+	else if (fn == "ModalModel.so" || fn == "ModalModelDefault.so")
+	    GetInfo = &ModalModel::GetPluginInformation;
     else if (fn == "decide.so")
         GetInfo = &Decide::GetPluginInformation;
     else if (fn == "delay.so")

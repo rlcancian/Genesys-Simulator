@@ -214,7 +214,7 @@ TEST(RuntimePluginManagerClassTest, SuccessfulRetryClearsStoredPluginLoadIssue) 
     EXPECT_EQ(connector->connectCalls, 1u);
 }
 
-TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins) {
+TEST(RuntimePluginManagerClassTest, StaticConnectorRegistersConcreteModelPlugins) {
     PluginConnectorDummyImpl1 connector;
     std::unique_ptr<List<std::string>> filenames(connector.find());
     ASSERT_NE(filenames, nullptr);
@@ -227,7 +227,8 @@ TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins)
         "conveyor.so",
         "defaultnode.so",
         "distance.so",
-        "dummyelement.so",
+        "templatecomponent.so",
+        "templatedatadefinition.so",
         "groprogram.so",
         "move.so",
         "old_odeelement.so",

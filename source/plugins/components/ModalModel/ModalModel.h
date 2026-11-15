@@ -1,5 +1,5 @@
 /*
- * File:    ModalModelDefault.h
+ * File:    ModalModel.h
  * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 01 de Julho de 2025, 14:26
@@ -21,10 +21,10 @@ class NetworkActivationResult;
  * component only maps entity arrivals to network activations and routes
  * network outputs back into the process model.
  */
-class ModalModelDefault : public ModelComponent {
+class ModalModel : public ModelComponent {
 public:
-	ModalModelDefault(Model* model, std::string name = "");
-	virtual ~ModalModelDefault() override = default;
+	ModalModel(Model* model, std::string name = "");
+	virtual ~ModalModel() override = default;
 
 public:
 	virtual void setMaxTransitionsPerDispatch(unsigned int maxTransitionsPerDispatch);

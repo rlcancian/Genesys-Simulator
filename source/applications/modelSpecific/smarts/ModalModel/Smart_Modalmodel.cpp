@@ -9,7 +9,7 @@
 
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/Logic/Create.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
@@ -26,7 +26,7 @@ int Smart_ModalModel::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 
 	Create* create1 = plugins->newInstance<Create>(model);
-	ModalModelDefault* modalmodel1 = plugins->newInstance<ModalModelDefault>(model);
+	ModalModel* modalmodel1 = plugins->newInstance<ModalModel>(model);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 
 	EFSMNetwork* network = new EFSMNetwork(model, "DemoNetwork");

@@ -62,7 +62,7 @@
 #include "plugins/components/WholeCellModeling/MetabolicStateProjectionComponent.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "../../plugins/data/Logic/AssignmentItem.h"
-#include "plugins/data/Template/DummyElement.h"
+#include "plugins/data/Template/TemplateDataDefinition.h"
 #include "kernel/util/Util.h"
 #include "tools/Biochemical/MassActionOdeSystem.h"
 #include "tools/Continuous/RungeKutta4OdeSolver.h"
@@ -363,9 +363,9 @@ public:
     }
 };
 
-class DummyElementProbe : public DummyElement {
+class TemplateDataDefinitionProbe : public TemplateDataDefinition {
 public:
-    DummyElementProbe(Model* model, const std::string& name = "") : DummyElement(model, name) {}
+    TemplateDataDefinitionProbe(Model* model, const std::string& name = "") : TemplateDataDefinition(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -4393,22 +4393,22 @@ TEST(SimulatorRuntimeTest, MoveSaveAndLoadPreserveTransporterAndStationExpressio
     EXPECT_EQ(loaded.getStationExpression(), std::to_string(destination.getId()));
 }
 
-TEST(SimulatorRuntimeTest, DummyElementDefaultsAreInitializedAsExpected) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionDefaultsAreInitializedAsExpected) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElement element(model, "DummyDefaults");
+    TemplateDataDefinition element(model, "DummyDefaults");
     EXPECT_EQ(element.getSomeString(), "Test");
     EXPECT_EQ(element.getSomeUint(), 1u);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementSettersAndGettersRemainCoherent) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionSettersAndGettersRemainCoherent) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElement element(model, "DummySetters");
+    TemplateDataDefinition element(model, "DummySetters");
     element.setSomeString("TemplateValue");
     element.setSomeUint(42u);
 
@@ -4416,12 +4416,12 @@ TEST(SimulatorRuntimeTest, DummyElementSettersAndGettersRemainCoherent) {
     EXPECT_EQ(element.getSomeUint(), 42u);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementCheckFailsForInvalidConfiguration) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionCheckFailsForInvalidConfiguration) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElementProbe element(model, "DummyInvalid");
+    TemplateDataDefinitionProbe element(model, "DummyInvalid");
     element.setSomeString("");
     element.setSomeUint(0u);
 
@@ -4431,12 +4431,12 @@ TEST(SimulatorRuntimeTest, DummyElementCheckFailsForInvalidConfiguration) {
     EXPECT_NE(errorMessage.find("SomeUint must be greater than zero"), std::string::npos);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementCheckPassesForValidConfiguration) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionCheckPassesForValidConfiguration) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElementProbe element(model, "DummyValid");
+    TemplateDataDefinitionProbe element(model, "DummyValid");
     element.setSomeString("Ok");
     element.setSomeUint(3u);
 
@@ -4445,12 +4445,12 @@ TEST(SimulatorRuntimeTest, DummyElementCheckPassesForValidConfiguration) {
     EXPECT_TRUE(errorMessage.empty());
 }
 
-TEST(SimulatorRuntimeTest, DummyElementShowIncludesMainConfiguredFields) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionShowIncludesMainConfiguredFields) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElement element(model, "DummyShow");
+    TemplateDataDefinition element(model, "DummyShow");
     element.setSomeString("Alpha");
     element.setSomeUint(8u);
 
@@ -4459,12 +4459,12 @@ TEST(SimulatorRuntimeTest, DummyElementShowIncludesMainConfiguredFields) {
     EXPECT_NE(info.find("someUint=8"), std::string::npos);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementSaveAndLoadRoundTripPreservesParameters) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionSaveAndLoadRoundTripPreservesParameters) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElementProbe source(model, "DummySource");
+    TemplateDataDefinitionProbe source(model, "DummySource");
     source.setSomeString("Persisted");
     source.setSomeUint(77u);
 
@@ -4472,18 +4472,18 @@ TEST(SimulatorRuntimeTest, DummyElementSaveAndLoadRoundTripPreservesParameters) 
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
 
-    DummyElementProbe loaded(model, "DummyLoaded");
+    TemplateDataDefinitionProbe loaded(model, "DummyLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
     EXPECT_EQ(loaded.getSomeString(), "Persisted");
     EXPECT_EQ(loaded.getSomeUint(), 77u);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementRegistersMainControlsAsOwnedProperties) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionRegistersMainControlsAsOwnedProperties) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElement element(model, "DummyProperties");
+    TemplateDataDefinition element(model, "DummyProperties");
     auto* controls = element.getSimulationControls();
     ASSERT_NE(controls, nullptr);
     EXPECT_GE(controls->size(), 2u);

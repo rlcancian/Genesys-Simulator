@@ -184,7 +184,7 @@ void Buffer::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 // protected virtual -- could be overriden
 
-//ParserChangesInformation* DummyElement::_getParserChangesInformation() {}
+//ParserChangesInformation* TemplateDataDefinition::_getParserChangesInformation() {}
 
 bool Buffer::_check(std::string& errorMessage) {
 	bool resultAll = true;

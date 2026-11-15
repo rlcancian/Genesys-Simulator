@@ -1,11 +1,11 @@
 /*
- * File:   ModalModelDefault.cpp
+ * File:   ModalModel.cpp
  * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 01 de Julho de 2025, 14:26
  */
 
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/PluginManager.h"
 #include "../../../kernel/simulator/Simulator.h"
@@ -23,20 +23,21 @@
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &ModalModelDefault::GetPluginInformation;
+	return &ModalModel::GetPluginInformation;
 }
 #endif
 
 namespace {
+// Keep this internal association key stable; older saved models use the same bridge.
 constexpr const char* kNetworkAssociationKey = "ModalModelDefault.Network";
 
 using ModalModelNetworkControlBase = SimulationControlGenericClass<DefaultNetwork*, Model*, DefaultNetwork>;
 
 class ModalModelBindingPropertyControl final : public SimulationControl {
 public:
-	ModalModelBindingPropertyControl(ModalModelDefault* adapter, bool output, unsigned int port,
+	ModalModelBindingPropertyControl(ModalModel* adapter, bool output, unsigned int port,
 	                                 const std::string& portName)
-		: SimulationControl(Util::TypeOf<ModalModelDefault>(), adapter->getName(), "", "", false, false, false),
+		: SimulationControl(Util::TypeOf<ModalModel>(), adapter->getName(), "", "", false, false, false),
 		  _adapter(adapter), _output(output), _port(port) {
 		_propertyType = Util::TypeOf<std::string>();
 		setPort(port, portName, true);
@@ -67,7 +68,7 @@ public:
 	bool isActive() const { return _active; }
 
 private:
-	ModalModelDefault* _adapter;
+	ModalModel* _adapter;
 	bool _output;
 	unsigned int _port;
 	bool _active = false;
@@ -75,11 +76,11 @@ private:
 
 class ModalModelNetworkControl final : public ModalModelNetworkControlBase {
 public:
-	ModalModelNetworkControl(Model* model, ModalModelDefault* adapter, GetterGeneric<DefaultNetwork*> getter,
+	ModalModelNetworkControl(Model* model, ModalModel* adapter, GetterGeneric<DefaultNetwork*> getter,
 	                         SetterGeneric<DefaultNetwork*> setter, NameResolver resolver,
 	                         ChoicesProvider choices)
 		: ModalModelNetworkControlBase(
-			  model, getter, setter, Util::TypeOf<ModalModelDefault>(), "", "Network", "",
+			  model, getter, setter, Util::TypeOf<ModalModel>(), "", "Network", "",
 			  false, true, false, nullptr, true, false, std::move(resolver), std::move(choices),
 			  [model]() {
 				  auto* types = new List<std::string>();
@@ -105,7 +106,7 @@ public:
 					return std::string("Generic inert Network; no custom activation");
 				}
 				return std::string();
-			}, nullptr, Util::TypeOf<ModalModelDefault>(), "", "Execution Capability");
+			}, nullptr, Util::TypeOf<ModalModel>(), "", "Execution Capability");
 	}
 
 	bool supportsObjectCreation() const override {
@@ -162,7 +163,7 @@ public:
 
 private:
 	Model* _model;
-	ModalModelDefault* _adapter;
+	ModalModel* _adapter;
 	GetterGeneric<DefaultNetwork*> _getter;
 	SetterGeneric<DefaultNetwork*> _setter;
 	List<SimulationControl*> _children;
@@ -174,8 +175,8 @@ std::string networkChoice(DefaultNetwork* network) {
 }
 }
 
-ModalModelDefault::ModalModelDefault(Model* model, std::string name)
-	: ModelComponent(model, Util::TypeOf<ModalModelDefault>(), name) {
+ModalModel::ModalModel(Model* model, std::string name)
+	: ModelComponent(model, Util::TypeOf<ModalModel>(), name) {
 	auto resolveNetworkChoice = [model](const std::string& choice) -> DefaultNetwork* {
 		const std::size_t delimiter = choice.find("::");
 		const std::size_t identityStart = choice.rfind(" [#");
@@ -204,30 +205,30 @@ ModalModelDefault::ModalModelDefault(Model* model, std::string name)
 	auto* networkControl = new ModalModelNetworkControl(
 		_parentModel,
 		this,
-		std::bind(&ModalModelDefault::getNetwork, this),
-		std::bind(&ModalModelDefault::setNetwork, this, std::placeholders::_1),
+		std::bind(&ModalModel::getNetwork, this),
+		std::bind(&ModalModel::setNetwork, this, std::placeholders::_1),
 		[resolveNetworkChoice](const std::string& value) { return resolveNetworkChoice(value); },
 		[networkChoices]() { return networkChoices(); });
 	_parentModel->getControls()->insert(networkControl);
 	_addSimulationControl(networkControl);
 }
 
-void ModalModelDefault::setMaxTransitionsPerDispatch(unsigned int maxTransitionsPerDispatch) {
+void ModalModel::setMaxTransitionsPerDispatch(unsigned int maxTransitionsPerDispatch) {
 	_maxTransitionsPerDispatch = maxTransitionsPerDispatch;
 }
 
-unsigned int ModalModelDefault::getMaxTransitionsPerDispatch() const {
+unsigned int ModalModel::getMaxTransitionsPerDispatch() const {
 	return _maxTransitionsPerDispatch;
 }
 
-std::string ModalModelDefault::show() {
+std::string ModalModel::show() {
 	return ModelComponent::show() +
 	       ", network=\"" + (_network != nullptr ? _network->getName() : _networkName) + "\"";
 }
 
-PluginInformation* ModalModelDefault::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<ModalModelDefault>(), &ModalModelDefault::LoadInstance,
-	                                                &ModalModelDefault::NewInstance);
+PluginInformation* ModalModel::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<ModalModel>(), &ModalModel::LoadInstance,
+	                                                &ModalModel::NewInstance);
 	info->setCategory("ModalModel");
 	info->setMaximumOutputs(2);
 	info->setDescriptionHelp(
@@ -235,8 +236,8 @@ PluginInformation* ModalModelDefault::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* ModalModelDefault::LoadInstance(Model* model, PersistenceRecord* fields) {
-	ModalModelDefault* newComponent = new ModalModelDefault(model);
+ModelComponent* ModalModel::LoadInstance(Model* model, PersistenceRecord* fields) {
+	ModalModel* newComponent = new ModalModel(model);
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
@@ -245,33 +246,33 @@ ModelComponent* ModalModelDefault::LoadInstance(Model* model, PersistenceRecord*
 	return newComponent;
 }
 
-ModelDataDefinition* ModalModelDefault::NewInstance(Model* model, std::string name) {
-	return new ModalModelDefault(model, name);
+ModelDataDefinition* ModalModel::NewInstance(Model* model, std::string name) {
+	return new ModalModel(model, name);
 }
 
-void ModalModelDefault::addOutputExpressionReference(ModelDataDefinition* expressionReference) {
+void ModalModel::addOutputExpressionReference(ModelDataDefinition* expressionReference) {
 	if (expressionReference != nullptr) {
 		_optionalEditableDataDefinitionInsert(expressionReference->getName(), expressionReference);
 	}
 }
 
-DefaultNetwork* ModalModelDefault::getNetwork() const {
+DefaultNetwork* ModalModel::getNetwork() const {
 	return _network;
 }
 
-int ModalModelDefault::getDynamicInputPortCount() const {
+int ModalModel::getDynamicInputPortCount() const {
 	return _network == nullptr ? 0 : static_cast<int>(_network->getNumInputPorts());
 }
 
-int ModalModelDefault::getDynamicOutputPortCount() const {
+int ModalModel::getDynamicOutputPortCount() const {
 	return _network == nullptr ? 0 : static_cast<int>(_network->getNumOutputPorts());
 }
 
-const std::vector<SimulationControl*>& ModalModelDefault::getNetworkBindingControls() const {
+const std::vector<SimulationControl*>& ModalModel::getNetworkBindingControls() const {
 	return _networkBindingControls;
 }
 
-void ModalModelDefault::setNetwork(DefaultNetwork* network) {
+void ModalModel::setNetwork(DefaultNetwork* network) {
 	std::vector<std::string> previousInputNames = _inputBindingPortNames;
 	std::vector<std::string> previousOutputNames = _outputBindingPortNames;
 	if (_network != nullptr && previousInputNames.empty()) {
@@ -382,7 +383,7 @@ void ModalModelDefault::setNetwork(DefaultNetwork* network) {
 	_rebuildNetworkBindingControls();
 }
 
-void ModalModelDefault::_rebuildNetworkBindingControls() {
+void ModalModel::_rebuildNetworkBindingControls() {
 	_networkBindingControls.clear();
 	const unsigned int inputCount = _network != nullptr ? _network->getNumInputPorts() : 0;
 	const unsigned int outputCount = _network != nullptr ? _network->getNumOutputPorts() : 0;
@@ -416,11 +417,11 @@ void ModalModelDefault::_rebuildNetworkBindingControls() {
 	update(_outputBindingControls, true, outputCount);
 }
 
-std::string ModalModelDefault::getNetworkName() const {
+std::string ModalModel::getNetworkName() const {
 	return _networkName;
 }
 
-void ModalModelDefault::setNetworkName(const std::string& networkName) {
+void ModalModel::setNetworkName(const std::string& networkName) {
 	_mandatoryAttachedAttributesClear();
 	_attachedDataRemove(kNetworkAssociationKey);
 	_networkName = networkName;
@@ -432,29 +433,29 @@ void ModalModelDefault::setNetworkName(const std::string& networkName) {
 	_syncBindingsToNetwork();
 }
 
-void ModalModelDefault::setInputBinding(unsigned int port, const std::string& expression) {
+void ModalModel::setInputBinding(unsigned int port, const std::string& expression) {
 	if (_inputBindings.size() <= port) {
 		_inputBindings.resize(port + 1, "1");
 	}
 	_inputBindings[port] = expression;
 }
 
-std::string ModalModelDefault::getInputBinding(unsigned int port) const {
+std::string ModalModel::getInputBinding(unsigned int port) const {
 	return port < _inputBindings.size() ? _inputBindings[port] : "";
 }
 
-void ModalModelDefault::setOutputBinding(unsigned int port, const std::string& attributeName) {
+void ModalModel::setOutputBinding(unsigned int port, const std::string& attributeName) {
 	if (_outputBindings.size() <= port) {
 		_outputBindings.resize(port + 1, "");
 	}
 	_outputBindings[port] = attributeName;
 }
 
-std::string ModalModelDefault::getOutputBinding(unsigned int port) const {
+std::string ModalModel::getOutputBinding(unsigned int port) const {
 	return port < _outputBindings.size() ? _outputBindings[port] : "";
 }
 
-bool ModalModelDefault::_loadInstance(PersistenceRecord* fields) {
+bool ModalModel::_loadInstance(PersistenceRecord* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		_maxTransitionsPerDispatch = fields->loadField("maxTransitionsPerDispatch", DEFAULT.maxTransitionsPerDispatch);
@@ -484,7 +485,7 @@ bool ModalModelDefault::_loadInstance(PersistenceRecord* fields) {
 	return res;
 }
 
-void ModalModelDefault::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
+void ModalModel::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("maxTransitionsPerDispatch", _maxTransitionsPerDispatch, DEFAULT.maxTransitionsPerDispatch,
 	                  saveDefaultValues);
@@ -516,10 +517,10 @@ void ModalModelDefault::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 	}
 }
 
-bool ModalModelDefault::_check(std::string& errorMessage) {
+bool ModalModel::_check(std::string& errorMessage) {
 	DefaultNetwork* network = _resolveNetworkReference();
 	if (network == nullptr) {
-		errorMessage += "ModalModelDefault \"" + getName() + "\" requires an attached DefaultNetwork";
+		errorMessage += "ModalModel \"" + getName() + "\" requires an attached DefaultNetwork";
 		if (_networkName != "") {
 			errorMessage += " (" + (_networkReferenceIssue.empty()
 				? "unknown reference \"" + _networkName + "\""
@@ -534,7 +535,7 @@ bool ModalModelDefault::_check(std::string& errorMessage) {
 	for (unsigned int i = 0; i < network->getNumInputPorts(); i++) {
 		const std::string binding = getInputBinding(i);
 		if (binding == "") {
-			errorMessage += "ModalModelDefault \"" + getName() + "\" input binding " + Util::StrIndex(i) + " is empty. ";
+			errorMessage += "ModalModel \"" + getName() + "\" input binding " + Util::StrIndex(i) + " is empty. ";
 			resultAll = false;
 		} else {
 			resultAll &= _parentModel->checkExpression(binding, "modal input binding[" + Util::StrIndex(i) + "]", errorMessage);
@@ -543,21 +544,21 @@ bool ModalModelDefault::_check(std::string& errorMessage) {
 	}
 	for (unsigned int i = 0; i < network->getNumOutputPorts(); i++) {
 		if (getOutputBinding(i) == "") {
-			errorMessage += "ModalModelDefault \"" + getName() + "\" output binding " + Util::StrIndex(i) + " is empty. ";
+			errorMessage += "ModalModel \"" + getName() + "\" output binding " + Util::StrIndex(i) + " is empty. ";
 			resultAll = false;
 		}
 		if (this->getConnectionManager()->getConnectionAtPort(i) == nullptr) {
-			errorMessage += "ModalModelDefault \"" + getName() + "\" output port " + Util::StrIndex(i) + " has no outgoing connection. ";
+			errorMessage += "ModalModel \"" + getName() + "\" output port " + Util::StrIndex(i) + " has no outgoing connection. ";
 			resultAll = false;
 		}
 	}
 	return resultAll;
 }
 
-void ModalModelDefault::_initBetweenReplications() {
+void ModalModel::_initBetweenReplications() {
 }
 
-void ModalModelDefault::_createAttachedAttributes() {
+void ModalModel::_createAttachedAttributes() {
 	_mandatoryAttachedAttributesClear();
 	_syncBindingsToNetwork();
 	std::vector<std::string> outputAttributes;
@@ -571,30 +572,30 @@ void ModalModelDefault::_createAttachedAttributes() {
 	}
 }
 
-std::string ModalModelDefault::getTimeDelayExpressionPerDispatch() {
+std::string ModalModel::getTimeDelayExpressionPerDispatch() {
 	return _timeDelayExpressionPerDispatch;
 }
 
-void ModalModelDefault::setTimeDelayExpressionPerDispatch(const std::string time_delay_expression_per_dispatch) {
+void ModalModel::setTimeDelayExpressionPerDispatch(const std::string time_delay_expression_per_dispatch) {
 	_timeDelayExpressionPerDispatch = time_delay_expression_per_dispatch;
 }
 
-Util::TimeUnit ModalModelDefault::getTimeDelayPerDispatchTimeUnit() {
+Util::TimeUnit ModalModel::getTimeDelayPerDispatchTimeUnit() {
 	return _timeDelayPerDispatchTimeUnit;
 }
 
-void ModalModelDefault::setTimeDelayPerDispatchTimeUnit(const Util::TimeUnit time_delay_per_dispatch_time_unit) {
+void ModalModel::setTimeDelayPerDispatchTimeUnit(const Util::TimeUnit time_delay_per_dispatch_time_unit) {
 	_timeDelayPerDispatchTimeUnit = time_delay_per_dispatch_time_unit;
 }
 
-void ModalModelDefault::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+void ModalModel::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (!_dispatchNetworkActivation(entity, inputPortNumber)) {
-		traceError("ModalModelDefault \"" + getName() + "\" could not activate its DefaultNetwork.");
+		traceError("ModalModel \"" + getName() + "\" could not activate its DefaultNetwork.");
 		_parentModel->removeEntity(entity);
 	}
 }
 
-DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
+DefaultNetwork* ModalModel::_resolveNetworkReference() {
 	if (_network != nullptr || _networkName == "") {
 		return _network;
 	}
@@ -635,7 +636,7 @@ DefaultNetwork* ModalModelDefault::_resolveNetworkReference() {
 	return match;
 }
 
-void ModalModelDefault::_syncBindingsToNetwork() {
+void ModalModel::_syncBindingsToNetwork() {
 	DefaultNetwork* network = _resolveNetworkReference();
 	if (network == nullptr) {
 		_connections->setMinInputConnections(0);
@@ -666,15 +667,15 @@ void ModalModelDefault::_syncBindingsToNetwork() {
 	}
 }
 
-bool ModalModelDefault::_dispatchNetworkActivation(Entity* entity, unsigned int inputPortNumber) {
+bool ModalModel::_dispatchNetworkActivation(Entity* entity, unsigned int inputPortNumber) {
 	DefaultNetwork* network = _resolveNetworkReference();
 	if (network == nullptr) {
-		traceError("ModalModelDefault \"" + getName() + "\" has no resolvable DefaultNetwork.");
+		traceError("ModalModel \"" + getName() + "\" has no resolvable DefaultNetwork.");
 		return false;
 	}
 	_syncBindingsToNetwork();
 	if (inputPortNumber >= network->getNumInputPorts()) {
-		traceError("ModalModelDefault \"" + getName() + "\" received input port " + Util::StrIndex(inputPortNumber) +
+		traceError("ModalModel \"" + getName() + "\" received input port " + Util::StrIndex(inputPortNumber) +
 		           " but attached network \"" + network->getName() + "\" has only " + Util::StrIndex(network->getNumInputPorts()) + " inputs.");
 		_parentModel->removeEntity(entity);
 		return true;
@@ -688,7 +689,7 @@ bool ModalModelDefault::_dispatchNetworkActivation(Entity* entity, unsigned int 
 	return true;
 }
 
-Entity* ModalModelDefault::_cloneEntity(Entity* entity) {
+Entity* ModalModel::_cloneEntity(Entity* entity) {
 	if (entity == nullptr) {
 		return nullptr;
 	}
@@ -702,14 +703,14 @@ Entity* ModalModelDefault::_cloneEntity(Entity* entity) {
 	return clone;
 }
 
-void ModalModelDefault::_writeOutputBinding(Entity* entity, unsigned int outputPort, double value) {
+void ModalModel::_writeOutputBinding(Entity* entity, unsigned int outputPort, double value) {
 	const std::string attributeName = getOutputBinding(outputPort);
 	if (attributeName != "") {
 		entity->setAttributeValue(attributeName, value, "", true);
 	}
 }
 
-void ModalModelDefault::_routeNetworkOutputs(Entity* entity, const NetworkActivationResult& result) {
+void ModalModel::_routeNetworkOutputs(Entity* entity, const NetworkActivationResult& result) {
 	if (result.countPresent() == 0) {
 		_parentModel->removeEntity(entity);
 		return;
@@ -728,7 +729,7 @@ void ModalModelDefault::_routeNetworkOutputs(Entity* entity, const NetworkActiva
 		_writeOutputBinding(outgoing, outputPort, result.getValue(outputPort));
 		Connection* connection = this->getConnectionManager()->getConnectionAtPort(outputPort);
 		if (connection == nullptr) {
-			traceError("ModalModelDefault \"" + getName() + "\" has no connection for present output port " + Util::StrIndex(outputPort) + ".");
+			traceError("ModalModel \"" + getName() + "\" has no connection for present output port " + Util::StrIndex(outputPort) + ".");
 			_parentModel->removeEntity(outgoing);
 		} else {
 			_parentModel->sendEntityToComponent(outgoing, connection);

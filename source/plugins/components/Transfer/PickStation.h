@@ -142,7 +142,7 @@ private: // attributes 1:1
 	bool _pickConditionNumberInQueue = DEFAULT.pickConditionNumberInQueue;
 	bool _pickConditionExpression = DEFAULT.pickConditionExpression;
 
-	//DummyElement* _internalDataDefinition = nullptr;
+	//TemplateDataDefinition* _internalDataDefinition = nullptr;
 private: // attributes 1:n
 	List<PickableStationItem*>* _pickableStationItens = new List<PickableStationItem*>();
 };
