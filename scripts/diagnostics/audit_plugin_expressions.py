@@ -8,8 +8,8 @@ CR=re.compile(r'\b(?:bool|void)\s+(?P<cls>\w+)::(?P<method>_check|checkSymbols)\
 PR=re.compile(r'\b(?:checkExpression|parseExpression|validate\w*Expression|check\w*Expression)\s*\(')
 SR=re.compile(r'new\s+SimulationControl(?:Generic\s*<\s*std::string\s*>|String)\s*\(')
 def clean(s):
-    without_blocks=re.sub(r'/\\*.*?\\*/',lambda m:'\\n'*m.group(0).count('\\n'),s,flags=re.S)
-    return re.sub(r'//[^\\n]*','',without_blocks)
+    without_blocks=re.sub(r'/\*.*?\*/',lambda m:'\n'*m.group(0).count('\n'),s,flags=re.S)
+    return re.sub(r'//[^\n]*','',without_blocks)
 
 def body(s,at):
     level=1; i=at+1; start=i; quote=''; escaped=False
