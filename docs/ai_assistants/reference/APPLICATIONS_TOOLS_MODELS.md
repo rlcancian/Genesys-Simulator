@@ -141,7 +141,12 @@ Reusable property-editing infrastructure should:
 - maintain persistence and undo/redo expectations where supported;
 - keep model ownership outside the editor.
 
-The Expression Builder/property-editor refactor remains an autonomous candidate only after its exact current code and consumers are revalidated.
+The proposed Expression Builder integration is implemented on the draft branch
+`WiP202611/expression-builder-syntax` (PR #581). It introduces an opt-in
+parser-expression editor hint, shared GUI function metadata and syntax-only
+validation before property commit. This remains **unintegrated work in progress**
+until CI, GUI tests, grammar regeneration, manual-impact review and maintainer
+approval pass. See [the developer guide](../../developers/ExpressionBuilder.md).
 
 ## 9. Data Analyser
 

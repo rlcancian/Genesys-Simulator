@@ -1,5 +1,11 @@
 #include "ExpressionBuilder.h"
 #include "ui_ExpressionBuilder.h"
+#include "ParserFunctionCatalog.h"
+#include "parser/Genesys++-driver.h"
+#include <QStringList>
+#include <QTextCursor>
+#include <algorithm>
+#include <iterator>
 #include <QMessageBox>
 
 ExpressionBuilder::ExpressionBuilder(QWidget *parent) :
@@ -22,10 +28,28 @@ ExpressionBuilder::ExpressionBuilder(QWidget *parent) :
     parameterWidget->setLayout(parameterLayout);
     
     // Connect signals
-    connect(treeCategories, &QTreeWidget::itemClicked, this, &ExpressionBuilder::on_categorySelected);
-    connect(listExpressions, &QListWidget::itemClicked, this, &ExpressionBuilder::on_expressionSelected);
+    // Respond to keyboard and mouse selection, not just itemClicked.
+    connect(treeCategories, &QTreeWidget::currentItemChanged, this,
+            [this](QTreeWidgetItem* current, QTreeWidgetItem*) {
+                on_categorySelected(current, 0);
+            });
+    connect(listExpressions, &QListWidget::currentItemChanged, this,
+            [this](QListWidgetItem* current, QListWidgetItem*) {
+                on_expressionSelected(current);
+            });
     connect(btnCopyToClipboard, &QPushButton::clicked, this, &ExpressionBuilder::on_copyToClipboard_clicked);
     connect(btnClose, &QPushButton::clicked, this, &ExpressionBuilder::on_close_clicked);
+    connect(ui->btnInsert, &QPushButton::clicked, this, &ExpressionBuilder::insertSelectedExpression);
+    connect(ui->btnValidate, &QPushButton::clicked, this, [this]() {
+        (void)validateCurrentExpression();
+    });
+    connect(ui->btnApply, &QPushButton::clicked, this, [this]() {
+        if (validateCurrentExpression()) accept();
+    });
+    connect(listExpressions, &QListWidget::itemDoubleClicked, this,
+            [this](QListWidgetItem*) { insertSelectedExpression(); });
+    connect(ui->expressionEditor, &QPlainTextEdit::textChanged, this,
+            [this]() { ui->validationStatus->setText(tr("Not validated")); });
     
     // Initialize expression categories
     initializeCategories();
@@ -38,6 +62,10 @@ ExpressionBuilder::ExpressionBuilder(QWidget *parent) :
     }
     
     treeCategories->expandAll();
+    if (treeCategories->topLevelItemCount() > 0) {
+        QTreeWidgetItem* firstCategory = treeCategories->topLevelItem(0);
+        treeCategories->setCurrentItem(firstCategory);
+    }
 }
 
 ExpressionBuilder::~ExpressionBuilder()
@@ -47,161 +75,95 @@ ExpressionBuilder::~ExpressionBuilder()
 
 void ExpressionBuilder::initializeCategories()
 {
-    // Math Category
-    ExpressionCategory mathCategory;
-    mathCategory.name = "Math";
-    
-    // abs(x)
-    ExpressionTemplate absExpr;
-    absExpr.name = "abs(x)";
-    absExpr.pattern = "abs({x})";
-    absExpr.description = "Absolute value of x";
-    absExpr.parameters.append({"x", "0", "Value"});
-    mathCategory.expressions.append(absExpr);
-    
-    // sqrt(x)
-    ExpressionTemplate sqrtExpr;
-    sqrtExpr.name = "sqrt(x)";
-    sqrtExpr.pattern = "sqrt({x})";
-    sqrtExpr.description = "Square root of x";
-    sqrtExpr.parameters.append({"x", "1", "Value"});
-    mathCategory.expressions.append(sqrtExpr);
-    
-    // pow(x, y)
-    ExpressionTemplate powExpr;
-    powExpr.name = "pow(x, y)";
-    powExpr.pattern = "pow({x}, {y})";
-    powExpr.description = "x raised to the power of y";
-    powExpr.parameters.append({"x", "1", "Base"});
-    powExpr.parameters.append({"y", "2", "Exponent"});
-    mathCategory.expressions.append(powExpr);
-    
-    // min(x, y)
-    ExpressionTemplate minExpr;
-    minExpr.name = "min(x, y)";
-    minExpr.pattern = "min({x}, {y})";
-    minExpr.description = "Minimum of x and y";
-    minExpr.parameters.append({"x", "0", "First value"});
-    minExpr.parameters.append({"y", "0", "Second value"});
-    mathCategory.expressions.append(minExpr);
-    
-    // max(x, y)
-    ExpressionTemplate maxExpr;
-    maxExpr.name = "max(x, y)";
-    maxExpr.pattern = "max({x}, {y})";
-    maxExpr.description = "Maximum of x and y";
-    maxExpr.parameters.append({"x", "0", "First value"});
-    maxExpr.parameters.append({"y", "0", "Second value"});
-    mathCategory.expressions.append(maxExpr);
-    
-    // sin(x)
-    ExpressionTemplate sinExpr;
-    sinExpr.name = "sin(x)";
-    sinExpr.pattern = "sin({x})";
-    sinExpr.description = "Sine of x (in radians)";
-    sinExpr.parameters.append({"x", "0", "Angle in radians"});
-    mathCategory.expressions.append(sinExpr);
-    
-    // cos(x)
-    ExpressionTemplate cosExpr;
-    cosExpr.name = "cos(x)";
-    cosExpr.pattern = "cos({x})";
-    cosExpr.description = "Cosine of x (in radians)";
-    cosExpr.parameters.append({"x", "0", "Angle in radians"});
-    mathCategory.expressions.append(cosExpr);
-    
-    // log(x)
-    ExpressionTemplate logExpr;
-    logExpr.name = "log(x)";
-    logExpr.pattern = "log({x})";
-    logExpr.description = "Natural logarithm of x";
-    logExpr.parameters.append({"x", "1", "Value"});
-    mathCategory.expressions.append(logExpr);
-    
-    // exp(x)
-    ExpressionTemplate expExpr;
-    expExpr.name = "exp(x)";
-    expExpr.pattern = "exp({x})";
-    expExpr.description = "e raised to the power of x";
-    expExpr.parameters.append({"x", "0", "Exponent"});
-    mathCategory.expressions.append(expExpr);
-    
-    categories.append(mathCategory);
-    
-    // Distributions Category
-    ExpressionCategory distCategory;
-    distCategory.name = "Distributions";
-    
-    // EXPO(mean)
-    ExpressionTemplate expoExpr;
-    expoExpr.name = "EXPO(mean)";
-    expoExpr.pattern = "EXPO({mean})";
-    expoExpr.description = "Exponential distribution";
-    expoExpr.parameters.append({"mean", "1.0", "Mean value"});
-    distCategory.expressions.append(expoExpr);
-    
-    // NORM(mean, stddev)
-    ExpressionTemplate normExpr;
-    normExpr.name = "NORM(mean, stddev)";
-    normExpr.pattern = "NORM({mean}, {stddev})";
-    normExpr.description = "Normal distribution";
-    normExpr.parameters.append({"mean", "0.0", "Mean value"});
-    normExpr.parameters.append({"stddev", "1.0", "Standard deviation"});
-    distCategory.expressions.append(normExpr);
-    
-    // UNIF(min, max)
-    ExpressionTemplate unifExpr;
-    unifExpr.name = "UNIF(min, max)";
-    unifExpr.pattern = "UNIF({min}, {max})";
-    unifExpr.description = "Uniform distribution";
-    unifExpr.parameters.append({"min", "0.0", "Minimum value"});
-    unifExpr.parameters.append({"max", "1.0", "Maximum value"});
-    distCategory.expressions.append(unifExpr);
-    
-    // TRIA(min, mode, max)
-    ExpressionTemplate triaExpr;
-    triaExpr.name = "TRIA(min, mode, max)";
-    triaExpr.pattern = "TRIA({min}, {mode}, {max})";
-    triaExpr.description = "Triangular distribution";
-    triaExpr.parameters.append({"min", "0.0", "Minimum value"});
-    triaExpr.parameters.append({"mode", "0.5", "Mode (most likely) value"});
-    triaExpr.parameters.append({"max", "1.0", "Maximum value"});
-    distCategory.expressions.append(triaExpr);
-    
-    // WEIB(alpha, beta)
-    ExpressionTemplate weibExpr;
-    weibExpr.name = "WEIB(alpha, beta)";
-    weibExpr.pattern = "WEIB({alpha}, {beta})";
-    weibExpr.description = "Weibull distribution";
-    weibExpr.parameters.append({"alpha", "1.0", "Shape parameter"});
-    weibExpr.parameters.append({"beta", "1.0", "Scale parameter"});
-    distCategory.expressions.append(weibExpr);
-    
-    // GAMM(alpha, beta)
-    ExpressionTemplate gammExpr;
-    gammExpr.name = "GAMM(alpha, beta)";
-    gammExpr.pattern = "GAMM({alpha}, {beta})";
-    gammExpr.description = "Gamma distribution";
-    gammExpr.parameters.append({"alpha", "1.0", "Shape parameter"});
-    gammExpr.parameters.append({"beta", "1.0", "Scale parameter"});
-    distCategory.expressions.append(gammExpr);
-    
-    // LOGN(mean, stddev)
-    ExpressionTemplate lognExpr;
-    lognExpr.name = "LOGN(mean, stddev)";
-    lognExpr.pattern = "LOGN({mean}, {stddev})";
-    lognExpr.description = "Lognormal distribution";
-    lognExpr.parameters.append({"mean", "0.0", "Mean of ln(X)"});
-    lognExpr.parameters.append({"stddev", "1.0", "Std dev of ln(X)"});
-    distCategory.expressions.append(lognExpr);
-    
-    categories.append(distCategory);
+    // The parser's function reference and this editor share one catalog.
+    // Exclude token-only/stub functions at its source, not individually here.
+    for (const ParserFunctionInfo& info : parserFunctionCatalog()) {
+        if (info.name == QStringLiteral("operators")) {
+            continue;
+        }
+
+        ExpressionTemplate expression;
+        expression.name = info.syntax;
+        expression.description = info.description;
+        const int opening = info.syntax.indexOf(QLatin1Char('('));
+        const int closing = info.syntax.lastIndexOf(QLatin1Char(')'));
+        if (opening < 0 || closing < opening) {
+            expression.pattern = info.syntax;
+        } else {
+            const QStringList parameters = info.syntax.mid(opening + 1, closing - opening - 1)
+                                               .split(QLatin1Char(','), Qt::SkipEmptyParts);
+            // Use the catalog's tested examples as editable argument defaults.
+            // A nested expression such as ln(exp(1)) must remain one argument.
+            QStringList exampleArguments;
+            const int exampleOpening = info.example.indexOf(QLatin1Char('('));
+            const int exampleClosing = info.example.lastIndexOf(QLatin1Char(')'));
+            if (exampleOpening >= 0 && exampleClosing > exampleOpening) {
+                const QString contents = info.example.mid(exampleOpening + 1,
+                    exampleClosing - exampleOpening - 1);
+                QString argument;
+                int nesting = 0;
+                for (const QChar character : contents) {
+                    if (character == QLatin1Char('(')) ++nesting;
+                    else if (character == QLatin1Char(')')) --nesting;
+                    if (character == QLatin1Char(',') && nesting == 0) {
+                        exampleArguments.append(argument.trimmed());
+                        argument.clear();
+                    } else {
+                        argument.append(character);
+                    }
+                }
+                exampleArguments.append(argument.trimmed());
+            }
+
+            QStringList placeholders;
+            for (int index = 0; index < parameters.size(); ++index) {
+                const QString key = QStringLiteral("arg%1").arg(index + 1);
+                const QString meaning = parameters.at(index).trimmed();
+                const QString defaultValue = exampleArguments.size() == parameters.size()
+                    ? exampleArguments.at(index) : QStringLiteral("1");
+                expression.parameters.append({key, defaultValue, meaning});
+                placeholders.append(QStringLiteral("{%1}").arg(key));
+            }
+            expression.pattern = info.name + QLatin1Char('(')
+                + placeholders.join(QStringLiteral(", ")) + QLatin1Char(')');
+        }
+
+        auto it = std::find_if(categories.begin(), categories.end(),
+            [&info](const ExpressionCategory& category) { return category.name == info.category; });
+        if (it == categories.end()) {
+            categories.append({info.category, {}});
+            it = std::prev(categories.end());
+        }
+        it->expressions.append(expression);
+    }
+
+    ExpressionCategory operators;
+    operators.name = tr("Operators");
+    for (const QString& symbol : {QStringLiteral("+"), QStringLiteral("-"),
+            QStringLiteral("*"), QStringLiteral("/"), QStringLiteral("^"),
+            QStringLiteral("<"), QStringLiteral(">"), QStringLiteral("<="),
+            QStringLiteral(">="), QStringLiteral("=="), QStringLiteral("!="),
+            QStringLiteral("and"), QStringLiteral("or"), QStringLiteral("nand"),
+            QStringLiteral("xor"), QStringLiteral("not"), QStringLiteral("="),
+            QStringLiteral("<>"), QStringLiteral("&&"), QStringLiteral("||"),
+            QStringLiteral("!"), QStringLiteral("("), QStringLiteral(")"),
+            QStringLiteral("["), QStringLiteral("]"), QStringLiteral(",")}) {
+        const bool delimiter = symbol == QLatin1String("(") || symbol == QLatin1String(")")
+            || symbol == QLatin1String("[") || symbol == QLatin1String("]")
+            || symbol == QLatin1String(",");
+        const QString insertedText = delimiter ? symbol : QStringLiteral(" ") + symbol + QStringLiteral(" ");
+        operators.expressions.append({symbol, insertedText, tr("Insert a grammar operator"), {}});
+    }
+    categories.append(operators);
 }
 
 void ExpressionBuilder::on_categorySelected(QTreeWidgetItem *item, int column)
 {
     if (!item) return;
     
+    currentExpression = nullptr;
+    updateParameterForm();
+    expressionPreview->clear();
     QString categoryName = item->data(0, Qt::UserRole).toString();
     
     // Find the category
@@ -227,24 +189,16 @@ void ExpressionBuilder::on_categorySelected(QTreeWidgetItem *item, int column)
 
 void ExpressionBuilder::on_expressionSelected(QListWidgetItem *item)
 {
-    if (!item) return;
-    
-    QString expressionName = item->data(Qt::UserRole).toString();
-    
-    // Find the expression
     currentExpression = nullptr;
-    for (auto &category : categories) {
-        for (auto &expression : category.expressions) {
-            if (expression.name == expressionName) {
-                currentExpression = &expression;
-                break;
-            }
+    if (item == nullptr || treeCategories->currentItem() == nullptr) return;
+    const QString categoryName = treeCategories->currentItem()->data(0, Qt::UserRole).toString();
+    const int row = listExpressions->row(item);
+    for (ExpressionCategory& category : categories) {
+        if (category.name == categoryName && row >= 0 && row < category.expressions.size()) {
+            currentExpression = &category.expressions[row];
+            break;
         }
-        if (currentExpression) break;
     }
-    
-    if (!currentExpression) return;
-    
     updateParameterForm();
     updateExpressionPreview();
 }
@@ -271,14 +225,14 @@ void ExpressionBuilder::updateParameterForm()
         connect(input, &QLineEdit::textChanged, this, &ExpressionBuilder::updateExpressionPreview);
         
         parameterInputs[param.name] = input;
-        parameterLayout->addRow(param.name + ":", input);
+        parameterLayout->addRow(param.description + ":", input);
     }
 }
 
 void ExpressionBuilder::updateExpressionPreview()
 {
     QString expression = buildExpression();
-    expressionPreview->setText("<b>Expression:</b> " + expression);
+    expressionPreview->setText("<b>Expression:</b> " + expression.toHtmlEscaped());
 }
 
 QString ExpressionBuilder::buildExpression()
@@ -301,21 +255,69 @@ QString ExpressionBuilder::buildExpression()
 
 void ExpressionBuilder::on_copyToClipboard_clicked()
 {
-    QString expression = buildExpression();
+    // Preserve the historical standalone function-copy workflow when no full
+    // expression has been entered in the new editor.
+    const QString expression = expressionText().isEmpty() ? buildExpression() : expressionText();
     if (expression.isEmpty()) {
-        QMessageBox::warning(this, "Expression Builder", "Please select an expression first.");
+        QMessageBox::warning(this, tr("Expression Builder"), tr("The expression is empty."));
         return;
     }
-    
-    QClipboard *clipboard = QApplication::clipboard();
-    clipboard->setText(expression);
-    
-    QMessageBox::information(this, "Expression Builder", "Expression copied to clipboard:\n" + expression);
+    QApplication::clipboard()->setText(expression);
 }
 
 void ExpressionBuilder::on_close_clicked()
 {
-    this->close();
+    reject();
+}
+
+void ExpressionBuilder::setExpressionContext(Model* model, const QString& currentExpression)
+{
+    _model = model;
+    ui->expressionEditor->setPlainText(currentExpression);
+    ui->btnClose->setText(tr("Cancel"));
+    ui->validationStatus->setText(tr("Not validated"));
+}
+
+QString ExpressionBuilder::expressionText() const
+{
+    return ui->expressionEditor->toPlainText();
+}
+
+bool ExpressionBuilder::validateCurrentExpression()
+{
+    try {
+        genesyspp_driver driver(_model, nullptr, false);
+        const ExpressionSyntaxValidation result = driver.validateSyntax(expressionText().toStdString());
+        if (result.isValid()) {
+            ui->validationStatus->setText(tr("Syntax valid (expression not evaluated)."));
+            return true;
+        }
+        if (result.status == ExpressionSyntaxValidation::Status::UnresolvedIdentifiers) {
+            ui->validationStatus->setText(tr("Unresolved model identifier: %1")
+                                          .arg(QString::fromStdString(result.errorMessage)));
+        } else {
+            ui->validationStatus->setText(tr("Invalid expression: %1")
+                                          .arg(QString::fromStdString(result.errorMessage)));
+        }
+    } catch (const std::exception& error) {
+        ui->validationStatus->setText(tr("Validation failed: %1").arg(QString::fromUtf8(error.what())));
+    } catch (const std::string& error) {
+        ui->validationStatus->setText(tr("Validation failed: %1").arg(QString::fromStdString(error)));
+    }
+    return false;
+}
+
+void ExpressionBuilder::insertSelectedExpression()
+{
+    if (currentExpression == nullptr) {
+        ui->validationStatus->setText(tr("Select a function or operator to insert."));
+        return;
+    }
+    const QString snippet = buildExpression();
+    QTextCursor cursor = ui->expressionEditor->textCursor();
+    cursor.insertText(snippet);
+    ui->expressionEditor->setTextCursor(cursor);
+    ui->expressionEditor->setFocus();
 }
 
 void ExpressionBuilder::registerCategory(const ExpressionCategory &category)
