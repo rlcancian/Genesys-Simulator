@@ -25,6 +25,7 @@ jobs:
           name: plugin-expression-audit
           path: |
             plugin-expression-inventory.csv
+            plugin-expression-matrix.csv
             plugin-expression-inventory.json
             plugin-expression-audit.log
           if-no-files-found: warn
