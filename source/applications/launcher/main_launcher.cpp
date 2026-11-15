@@ -97,6 +97,8 @@ public:
 int main(int argc, char* argv[]) {
     QApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("genesys-launcher"));
+    application.setApplicationVersion(QStringLiteral("261115"));
+    application.setProperty("versionName", QStringLiteral("inaiera"));
 
     QTextStream out(stdout);
     QTextStream err(stderr);

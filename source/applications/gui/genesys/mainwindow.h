@@ -81,6 +81,10 @@ class MainWindow : public QMainWindow {
 public:
     /** @brief Builds the composition root, wiring controllers/services and legacy Qt surface. */
 	MainWindow(QWidget *parent = nullptr);
+    /** @brief Returns this GUI application's author-defined version name. */
+    std::string getVersionName() const { return _versionName; }
+    /** @brief Returns this GUI application's date-coded version, independent of Simulator. */
+    unsigned int getVersionNumber() const { return _versionNumber; }
     /** @brief Releases UI resources while preserving existing Qt ownership semantics. */
 	~MainWindow();
     /** @brief Returns the current model graphics scene used by delegated controllers/services. */
@@ -634,6 +638,8 @@ private: // misc useful
     bool _firstClickShowConnection = true;
 
 private:
+	const std::string _versionName = "inaiera";
+	const unsigned int _versionNumber = 261115;
 
 	const struct TABINDEXES_STRUC {
 		const int TabCentralModelIndex = 0;

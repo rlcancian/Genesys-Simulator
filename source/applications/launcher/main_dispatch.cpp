@@ -6,6 +6,7 @@
 #include "RuntimeSelector.h"
 
 #include <QCoreApplication>
+#include <QVariant>
 #include <QTextStream>
 
 #ifndef GENESYS_LAUNCHER_VERSION
@@ -64,6 +65,8 @@ CommandLine parseCommandLine(const QStringList& arguments) {
 int main(int argc, char* argv[]) {
     QCoreApplication application(argc, argv);
     application.setApplicationName(QStringLiteral("genesys-dispatch"));
+    application.setApplicationVersion(QStringLiteral("261115"));
+    application.setProperty("versionName", QStringLiteral("inaiera"));
 
     QTextStream out(stdout);
     QTextStream err(stderr);

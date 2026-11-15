@@ -6,6 +6,7 @@
 #include "../../../kernel/simulator/SimulatorFacade.h"
 
 #include <QMainWindow>
+#include <string>
 
 class QAction;
 class QCheckBox;
@@ -26,6 +27,8 @@ class AIAssistantWindow : public QMainWindow {
 public:
     explicit AIAssistantWindow(Simulator* simulator, QWidget* parent = nullptr);
     ~AIAssistantWindow() override;
+    std::string getVersionName() const { return _versionName; }
+    unsigned int getVersionNumber() const { return _versionNumber; }
 
 private:
     void buildMenus();
@@ -56,6 +59,8 @@ private:
     QString providerKeyringAccount() const;
 
 private:
+    const std::string _versionName = "inaiera";
+    const unsigned int _versionNumber = 261115;
     Simulator*          _simulator = nullptr;
     SimulatorFacade     _facade;
     AIAssistantDefaultImpl _assistant;

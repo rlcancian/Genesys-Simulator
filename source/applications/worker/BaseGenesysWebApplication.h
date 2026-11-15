@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../GenesysApplication_if.h"
+#include <string>
 
 /**
  * @brief Entry point for the standalone Worker application flavor of Genesys.
@@ -11,6 +12,8 @@
  */
 class BaseGenesysWebApplication : public GenesysApplication_if {
 public:
+    std::string getVersionName() const { return _versionName; }
+    unsigned int getVersionNumber() const { return _versionNumber; }
     /**
      * @brief Parses command-line arguments, starts the HTTP server and runs the worker app.
      * @param argc Number of command-line arguments.
@@ -20,6 +23,8 @@ public:
     int main(int argc, char** argv) override;
 
 private:
+    const std::string _versionName = "inaiera";
+    const unsigned int _versionNumber = 261115;
     /**
      * @brief Reads the listening port from the command line.
      * @param argc Number of command-line arguments.
