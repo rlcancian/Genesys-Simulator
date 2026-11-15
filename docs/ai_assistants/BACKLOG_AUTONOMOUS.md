@@ -105,14 +105,16 @@ This is the only approved source for work an AI agent may execute without a new 
 ### AUTO-APP-004 — Clarify plugin template names and application version identities
 
 - Priority: `P2`
-- Status: `running`
+- Status: `done`
 - Environment: `local + GitHub`
 - Authorization: explicit maintainer instruction dated 2026-11-15.
-- Branch: `WiP20261115/minor_changes`
+- Branch: `WiP20261115/minor_changes` (merged)
 - Base: `origin/WorkInProgress` at `9ce86ecc27f57e04f6056c047011b69e54bda701`.
 - Scope: rename `DummyComponent`/`DummyElement` to `TemplateComponent`/`TemplateDataDefinition` and `ModalModelDefault` to `ModalModel`; preserve legacy persisted plugin IDs; assign independent `inaiera`/`261115` identities to production applications; change the simulation-dialog label to `Report Base Time Unit` without changing its binding or temporal behavior.
 - Non-goals: no kernel version change, launcher SemVer/distribution-contract change, simulation-time behavior change, or broad ModalModel/Network redesign.
 - Acceptance: relevant production application builds pass; legacy `.gen` identifiers load and resave under current IDs; ModalModel semantics and time-unit binding remain intact; unit, kernel-unit, smoke and GUI validation pass; manuals and evidence updated; PR checks satisfy governance before merge.
+- PR: #585, merged as `bbb73fae6d83b892515c5dceb849d7a0e6c94eb9`.
+- Validation: tests-unit 2,147 passed (+4 disabled); tests-kernel-unit 2,158 passed (+4 disabled); smoke 3/3; focused ModalModel 14/14, runtime 373 passed (+4 disabled), launcher 34/34; all 20 hosted checks passed, including GUI/app builds, manual, Debian package and lifecycle, plugin archive inspection, and documentation governance. Evidence: `history/evidence/2026/11/2026-11-15_minor_application_changes.md`.
 
 ### AUTO-APP-003 — Implement per-user runtime launcher and dispatcher
 

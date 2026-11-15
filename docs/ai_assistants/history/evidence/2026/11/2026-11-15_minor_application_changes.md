@@ -5,7 +5,7 @@ owner: project-maintainer
 tracks: AUTO-APP-004
 branch: WiP20261115/minor_changes
 base_commit: 9ce86ecc27f57e04f6056c047011b69e54bda701
-status: local-validation-passed-pending-hosted-checks
+status: merged-and-validated
 ---
 
 # Minor application and plugin naming changes
@@ -54,7 +54,8 @@ the pre-existing local `WorkInProgress` checkout and its commits were preserved.
 | Final `tests-unit` full CTest | PASS, 2,147 passed (+4 disabled) |
 | Manual rebuild (`docs/developers/ManualGenESyS_subrepo/./make.sh`) | PASS; updated `docs/ManualGenESyS.pdf` |
 | `python3 scripts/validate-ai-docs.py` | PASS |
-| Hosted PR checks and merge | PENDING |
+| Hosted PR checks (20 checks, including GUI/app builds, unit/kernel/smoke, Debian package/lifecycle, plugin archive checks, manuals and documentation governance) | PASS |
+| PR #585 merge | PASS; merge commit `bbb73fae6d83b892515c5dceb849d7a0e6c94eb9` |
 
 The first full `tests-unit` CTest run failed one stale assertion expecting
 `dummyelement.so`. The expectation was updated to current template plugin names;
@@ -64,7 +65,7 @@ reported and did not run.
 
 ## Remaining
 
-Complete final unit/manual/documentation validation, review the final diff,
-commit and push, open a PR to `WorkInProgress`, wait for required checks, and
-merge only when the governance conditions are met. Keep the original local
-`WorkInProgress` history intact while synchronizing after integration.
+All requested implementation and validation work is complete. The original
+local `WorkInProgress` history was retained on
+`preserved/WorkInProgress-local-40-commits-20261115`; the local
+`WorkInProgress` checkout was aligned with the merged remote HEAD.
