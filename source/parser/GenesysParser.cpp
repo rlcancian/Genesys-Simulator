@@ -1168,6 +1168,9 @@ namespace yy {
       try
 #endif // YY_EXCEPTIONS
         {
+          // Syntax-only mode still uses the Bison parse tables, but not
+          // the semantic reductions (samplers, assignments, model reads).
+          if (!driver.isSyntaxOnly()) {
           switch (yyn)
             {
   case 2: // input: expression
@@ -2196,6 +2199,7 @@ namespace yy {
             default:
               break;
             }
+          }
         }
 #if YY_EXCEPTIONS
       catch (const syntax_error& yyexc)

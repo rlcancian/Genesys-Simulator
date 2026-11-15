@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>800</width>
-    <height>500</height>
+    <height>640</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -97,6 +97,23 @@
     </widget>
    </item>
    <item>
+    <widget class="QLabel" name="labelExpressionEditor">
+     <property name="text"><string>Editable expression:</string></property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPlainTextEdit" name="expressionEditor">
+     <property name="minimumSize"><size><width>0</width><height>100</height></size></property>
+     <property name="placeholderText"><string>Build or type an expression</string></property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="validationStatus">
+     <property name="text"><string>Not validated</string></property>
+     <property name="wordWrap"><bool>true</bool></property>
+    </widget>
+   </item>
+   <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <spacer name="horizontalSpacer">
@@ -110,6 +127,21 @@
         </size>
        </property>
       </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnInsert">
+       <property name="text"><string>Insert</string></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnValidate">
+       <property name="text"><string>Validate</string></property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="btnApply">
+       <property name="text"><string>OK</string></property>
+      </widget>
      </item>
      <item>
       <widget class="QPushButton" name="btnCopyToClipboard">

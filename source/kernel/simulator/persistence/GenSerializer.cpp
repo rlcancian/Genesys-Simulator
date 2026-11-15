@@ -190,10 +190,13 @@ bool GenSerializer::dump(std::ostream& output) {
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
 		Plugin* plugin = _model->getParentSimulator()->getPluginManager()->find(type);
 		if (plugin == nullptr) {
-			_model->getTracer()->traceError("SERIALIZER_PLUGIN_NOT_FOUND category=unresolved pass=DataDefinitions"
+			_model->getTracer()->trace(TraceManager::Level::L4_warning, "SERIALIZER_PLUGIN_NOT_FOUND category=unresolved pass=DataDefinitions"
 				" stage=plugin_lookup typename=\"" + type + "\" id="
 				+ std::to_string(fields->loadField("id", 0u)));
-			return 1;
+			// Some model data definitions are transient runtime objects (for example
+			// Entity) and intentionally have no persistence plugin. Keep them alive
+			// in the running model, but omit their unsupported record from the save.
+			return 0;
 		}
 		if (plugin->getPluginInfo()->isComponent()) return 0;
 		_model->getTracer()->trace(linearize(fields.get()));
@@ -216,10 +219,11 @@ bool GenSerializer::dump(std::ostream& output) {
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
 		Plugin* plugin = _model->getParentSimulator()->getPluginManager()->find(type);
 		if (plugin == nullptr) {
-			_model->getTracer()->traceError("SERIALIZER_PLUGIN_NOT_FOUND category=unresolved pass=ModelComponents"
+			_model->getTracer()->trace(TraceManager::Level::L4_warning, "SERIALIZER_PLUGIN_NOT_FOUND category=unresolved pass=ModelComponents"
 				" stage=plugin_lookup typename=\"" + type + "\" id="
 				+ std::to_string(fields->loadField("id", 0u)));
-			return 1;
+			// Continue serializing the remaining components and data definitions.
+			return 0;
 		}
 		if (!plugin->getPluginInfo()->isComponent()) return 0;
 		_model->getTracer()->trace(linearize(fields.get()));

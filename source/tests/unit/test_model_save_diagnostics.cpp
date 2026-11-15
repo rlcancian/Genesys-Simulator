@@ -2,6 +2,7 @@
 // All filesystem mutations are confined to a private temporary directory.
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdlib>
 #include <filesystem>
@@ -17,6 +18,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/persistence/GenSerializer.h"
+#include "kernel/simulator/essentialPlugins/Entity.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Transfer/Label.h"
@@ -68,6 +70,11 @@ bool hasDiagnostic(Model* model, const std::string& code) {
         if (message.find(code) != std::string::npos) return true;
     }
     return false;
+}
+
+std::vector<std::string>* capturedTraceMessages = nullptr;
+void captureTraceMessage(TraceEvent event) {
+    if (capturedTraceMessages != nullptr) capturedTraceMessages->push_back(event.getText());
 }
 
 // Fault-injection probe: a Resource subtype that fails inside the existing
@@ -129,7 +136,7 @@ TEST(ModelSaveDiagnostics, RenameFailurePreservesExistingDestinationDirectory) {
     EXPECT_FALSE(fs::exists(destination.string() + ".tmp"));
 }
 
-TEST(ModelSaveDiagnostics, MissingPluginIsLogicalFailureNotFilesystemFailure) {
+TEST(ModelSaveDiagnostics, MissingPluginWarnsAndSaveContinues) {
     SaveSandbox sandbox;
     Simulator simulator;
     // Intentionally do not auto-register plugins: Resource exists in the model
@@ -139,11 +146,19 @@ TEST(ModelSaveDiagnostics, MissingPluginIsLogicalFailureNotFilesystemFailure) {
     new Resource(model, "WithoutRegisteredResourcePlugin");
     const fs::path destination = sandbox.root / "existing.gen";
     writeFile(destination, "PREVIOUS_VALID_SAVE");
-    EXPECT_FALSE(model->save(destination.string()));
-    EXPECT_TRUE(hasDiagnostic(model, "SERIALIZER_PLUGIN_NOT_FOUND"));
-    EXPECT_TRUE(hasDiagnostic(model, "SAVE_DIAGNOSTIC code=SERIALIZER_DUMP_FAILED"));
+    std::vector<std::string> warnings;
+    capturedTraceMessages = &warnings;
+    model->getTracer()->addTraceHandler(captureTraceMessage);
+    EXPECT_TRUE(model->save(destination.string()));
+    capturedTraceMessages = nullptr;
+    EXPECT_TRUE(std::any_of(warnings.begin(), warnings.end(), [](const std::string& message) {
+        return message.find("SERIALIZER_PLUGIN_NOT_FOUND") != std::string::npos;
+    }));
+    EXPECT_FALSE(hasDiagnostic(model, "SERIALIZER_PLUGIN_NOT_FOUND"));
+    EXPECT_FALSE(hasDiagnostic(model, "SAVE_DIAGNOSTIC code=SERIALIZER_DUMP_FAILED"));
     EXPECT_FALSE(hasDiagnostic(model, "SAVE_DIAGNOSTIC code=FILE_OPEN_FAILED"));
-    EXPECT_EQ(readFile(destination), "PREVIOUS_VALID_SAVE");
+    EXPECT_NE(readFile(destination), "PREVIOUS_VALID_SAVE");
+    EXPECT_EQ(readFile(destination).find("WithoutRegisteredResourcePlugin"), std::string::npos);
     EXPECT_FALSE(fs::exists(destination.string() + ".tmp"));
 }
 
@@ -157,9 +172,30 @@ TEST(ModelSaveDiagnostics, UnknownTypenameIsReportedByGenSerializer) {
     record->saveField("name", "unknown");
     ASSERT_TRUE(serializer.put("unknown", "DeliberatelyMissingPlugin", 999u, record.get()));
     std::ostringstream output;
-    EXPECT_FALSE(serializer.dump(output));
-    EXPECT_TRUE(output.good()) << "serializer failure is logical, not a stream failure";
-    EXPECT_TRUE(hasDiagnostic(model, "SERIALIZER_PLUGIN_NOT_FOUND"));
+    EXPECT_TRUE(serializer.dump(output));
+    EXPECT_TRUE(output.good()) << "an unknown plugin is a warning, not a stream failure";
+    EXPECT_FALSE(hasDiagnostic(model, "SERIALIZER_PLUGIN_NOT_FOUND"));
+}
+
+TEST(ModelSaveDiagnostics, SavingLiveModelOmitsButDoesNotDestroyTransientEntities) {
+    SaveSandbox sandbox;
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* resource = new Resource(model, "PersistedResource");
+    Entity* liveEntity = model->createEntity("TransientEntityDuringSave");
+    ASSERT_NE(liveEntity, nullptr);
+    const fs::path destination = sandbox.root / "active-simulation.gen";
+
+    ASSERT_TRUE(model->save(destination.string()));
+    const std::string contents = readFile(destination);
+    EXPECT_NE(contents.find("PersistedResource"), std::string::npos);
+    EXPECT_EQ(contents.find("TransientEntityDuringSave"), std::string::npos);
+    auto* entities = model->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
+    ASSERT_NE(entities, nullptr);
+    EXPECT_NE(std::find(entities->list()->begin(), entities->list()->end(), liveEntity), entities->list()->end());
+    EXPECT_EQ(model->getDataManager()->getDataDefinition("Resource", resource->getId()), resource);
 }
 
 TEST(ModelSaveDiagnostics, RejectedOutputStreamIsReportedAsWriteFailure) {

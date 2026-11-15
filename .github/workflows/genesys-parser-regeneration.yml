@@ -1,0 +1,89 @@
+name: GenESyS Parser Regeneration
+
+run-name: GenESyS Parser Regeneration | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  pull_request:
+    branches:
+      - WorkInProgress
+      - 20261
+      - 20262
+      - currentStable
+      - master
+    paths:
+      - 'source/parser/**'
+      - 'source/tests/unit/test_parser_expressions.cpp'
+      - '.github/workflows/genesys-parser-regeneration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-parser-regeneration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regenerated-parser-tests:
+    name: Regenerate Bison/Flex and run expression-parser tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+      CTEST_OUTPUT_ON_FAILURE: "1"
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install reproducible build dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build bison flex python3 python3-dev \
+            libsbml5-dev ngspice r-base octave \
+            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libgl1-mesa-dev
+
+      - name: Record provenance and generator versions
+        run: |
+          set -Eeuo pipefail
+          mkdir -p parser-regeneration-evidence
+          {
+            echo "HEAD=$(git rev-parse HEAD)"
+            echo "PR_HEAD=${{ github.event.pull_request.head.sha }}"
+            echo "GITHUB_SHA=${GITHUB_SHA}"
+            bison --version | head -n 1
+            flex --version
+            cmake --version | head -n 1
+            ninja --version
+            g++ --version | head -n 1
+          } | tee parser-regeneration-evidence/environment.txt
+
+      - name: Configure with authoritative Bison/Flex grammar
+        run: |
+          set -Eeuo pipefail
+          cmake --preset tests-unit -DGENESYS_PARSER_REGENERATE=ON \
+            2>&1 | tee parser-regeneration-evidence/configure.log
+
+      - name: Compile regenerated expression parser and its tests
+        run: |
+          set -Eeuo pipefail
+          cmake --build --preset tests-unit --target genesys_test_parser_expressions --parallel "$(nproc)" \
+            2>&1 | tee parser-regeneration-evidence/build.log
+          git diff --stat -- source/parser | tee parser-regeneration-evidence/generated-diff-stat.txt
+
+      - name: Execute parser regression suite against regenerated artifacts
+        run: |
+          set -Eeuo pipefail
+          ctest --preset tests-unit --output-on-failure -R '^ParserExpressionsTest\.' \
+            2>&1 | tee parser-regeneration-evidence/ctest.log
+
+      - name: Preserve reproduction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-parser-regeneration
+          path: parser-regeneration-evidence/
+          if-no-files-found: warn
+          retention-days: 14
