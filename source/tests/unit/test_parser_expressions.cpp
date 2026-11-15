@@ -606,6 +606,40 @@ TEST_F(ParserExpressionsTest, SyntaxOnlyNeverAssignsToModelVariables) {
     delete variable;
 }
 
+TEST_F(ParserExpressionsTest, SyntaxOnlyDoesNotRegisterReferedDataElements) {
+    auto* variable = new Variable(model, "ParserSyntaxDependencyVariable");
+    auto* attribute = new Attribute(model, "ParserSyntaxDependencyAttribute");
+    ASSERT_NE(variable, nullptr);
+    ASSERT_NE(attribute, nullptr);
+    variable->setValue(8.0);
+
+    genesyspp_driver driver(model, nullptr, false);
+    driver.setRegisterReferedDataElements(true);
+
+    const auto syntax = driver.validateSyntax(
+        "ParserSyntaxDependencyVariable + ParserSyntaxDependencyAttribute");
+    EXPECT_TRUE(syntax.isValid()) << syntax.errorMessage;
+    ASSERT_NE(driver.getReferedDataElements(), nullptr);
+    EXPECT_TRUE(driver.getReferedDataElements()->empty())
+        << "Syntax validation must not register model-element references";
+
+    // The previous setting must remain enabled: normal evaluation is still
+    // expected to register dependencies for orphan-data-element analysis.
+    EXPECT_TRUE(driver.getRegisterReferedDataElements());
+    EXPECT_EQ(driver.parse_str("ParserSyntaxDependencyVariable + 1"), 0);
+    EXPECT_DOUBLE_EQ(driver.getResult(), 9.0);
+
+    const auto* references = driver.getReferedDataElements();
+    const auto it = references->find(Util::TypeOf<Variable>());
+    ASSERT_NE(it, references->end());
+    ASSERT_NE(it->second, nullptr);
+    EXPECT_NE(std::find(it->second->begin(), it->second->end(),
+                        "ParserSyntaxDependencyVariable"), it->second->end());
+
+    delete attribute;
+    delete variable;
+}
+
 TEST_F(ParserExpressionsTest, SyntaxOnlyAcceptsDangerousArithmeticWithoutExecutingIt) {
     genesyspp_driver driver(model, nullptr, false);
     EXPECT_TRUE(driver.validateSyntax("1/0").isValid());
