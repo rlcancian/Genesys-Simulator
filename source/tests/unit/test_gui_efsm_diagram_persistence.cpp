@@ -34,7 +34,7 @@
 #include "kernel/simulator/model/ModelDataManager.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/components/ModalModel/FSMState.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/ModalModel/Submodel.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Create.h"
@@ -102,12 +102,12 @@ public:
     std::string getFormatedField(PersistenceRecord*) override { return {}; }
 };
 
-class ModalModelDefaultPersistenceProbe final : public ModalModelDefault {
+class ModalModelPersistenceProbe final : public ModalModel {
 public:
-    using ModalModelDefault::ModalModelDefault;
-    using ModalModelDefault::_loadInstance;
-    using ModalModelDefault::_saveInstance;
-    using ModalModelDefault::_check;
+    using ModalModel::ModalModel;
+    using ModalModel::_loadInstance;
+    using ModalModel::_saveInstance;
+    using ModalModel::_check;
 };
 
 class ScopedGuiExtensionConfig final {
@@ -463,7 +463,7 @@ TEST(EFSMNetworkEditor, ContextMenuStartsConnectionsFromOneSelectedStateOnly) {
     context.graphicsView = view;
     context.graphicsScene = scene;
     GuiExtensionManager manager(&window);
-    manager.setLoadedModelPluginIds({Util::TypeOf<ModalModelDefault>()});
+    manager.setLoadedModelPluginIds({Util::TypeOf<ModalModel>()});
     manager.setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
     manager.rebuild(context);
 
@@ -828,7 +828,7 @@ TEST(GraphNetworkGuiExtension, GenericGuiPersistenceRestoresNodeGeometryByStable
     ASSERT_TRUE(network->addNode(first));
     ASSERT_TRUE(network->addNode(second));
     ASSERT_TRUE(network->addEdge(new GraphEdge(model, first, second, "Arc")));
-    auto* adapter = new ModalModelDefault(model, "GraphPersistenceAdapter");
+    auto* adapter = new ModalModel(model, "GraphPersistenceAdapter");
     adapter->setNetwork(network);
 
     SerializerHarness harness(&simulator);
@@ -1849,7 +1849,7 @@ TEST(EFSMNetworkDiagramPersistence, EmptyLayoutProducesNoEntriesAndLeavesOtherSe
     EFSMNetwork network(model, "EmptyNetwork");
     FSMState a(model, "A");
     network.addState(&a);
-    auto* adapter = new ModalModelDefault(model, "EmptyAdapter");
+    auto* adapter = new ModalModel(model, "EmptyAdapter");
     adapter->setNetwork(&network);
 
     SerializerHarness harness(&simulator);
@@ -2192,7 +2192,7 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripRestoresStatePositionsAndParallelTr
     network.addTransition(parallel0);
     network.addTransition(new EFSMTransition(&idle, &busy, "Parallel1"));
     network.addTransition(new EFSMTransition(&idle, &busy, "Go"));
-    auto* adapter = new ModalModelDefault(model, "RoundTripAdapter");
+    auto* adapter = new ModalModel(model, "RoundTripAdapter");
     adapter->setNetwork(&network);
 
     SerializerHarness harness(&simulator);
@@ -2278,7 +2278,7 @@ TEST(ModalNetworkReferencePersistence, GenRoundTripKeepsTheExactTypeAndId) {
     ASSERT_NE(model, nullptr);
     auto* efsm = new EFSMNetwork(model, "OtherNetworkName");
     auto* graph = new GraphNetwork(model, "SameNetworkName");
-    auto* adapter = new ModalModelDefault(model, "IdentityAdapter");
+    auto* adapter = new ModalModel(model, "IdentityAdapter");
     adapter->setNetwork(graph);
 
     QTemporaryDir temporaryDir;
@@ -2287,7 +2287,7 @@ TEST(ModalNetworkReferencePersistence, GenRoundTripKeepsTheExactTypeAndId) {
     ASSERT_TRUE(model->save(path));
     Model* loaded = simulator.getModelManager()->loadModel(path);
     ASSERT_NE(loaded, nullptr);
-    auto* loadedAdapter = dynamic_cast<ModalModelDefault*>(loaded->getComponentManager()->find("IdentityAdapter"));
+    auto* loadedAdapter = dynamic_cast<ModalModel*>(loaded->getComponentManager()->find("IdentityAdapter"));
     ASSERT_NE(loadedAdapter, nullptr);
     auto* loadedGraph = dynamic_cast<GraphNetwork*>(loaded->getDataManager()->getDataDefinition(
         Util::TypeOf<GraphNetwork>(), graph->getId()));
@@ -2305,14 +2305,14 @@ TEST(ModalNetworkReferencePersistence, DamagedTypedIdentityFailsClosedWithDiagno
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
     auto* network = new GraphNetwork(model, "TypedReferenceTarget");
-    ModalModelDefaultPersistenceProbe source(model, "TypedReferenceSource");
+    ModalModelPersistenceProbe source(model, "TypedReferenceSource");
     source.setNetwork(network);
     ReferencePersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
     source._saveInstance(&fields, true);
     fields.saveField("networkId", static_cast<int>(network->getId() + 10000), 0, true);
 
-    ModalModelDefaultPersistenceProbe loaded(model, "DamagedTypedReference");
+    ModalModelPersistenceProbe loaded(model, "DamagedTypedReference");
     ASSERT_TRUE(loaded._loadInstance(&fields));
     EXPECT_EQ(loaded.getNetwork(), nullptr);
     std::string diagnostic;
@@ -2330,7 +2330,7 @@ TEST(ModalNetworkReferencePersistence, LegacyNameOnlyReferenceResolvesOnlyWhenUn
     auto* uniqueGraph = new GraphNetwork(model, "UniqueLegacyName");
     ASSERT_NE(graph, nullptr);
     ASSERT_NE(efsm, nullptr);
-    auto* adapter = new ModalModelDefault(model, "LegacyAdapter");
+    auto* adapter = new ModalModel(model, "LegacyAdapter");
 
     adapter->setNetworkName("SharedLegacyName");
     EXPECT_EQ(adapter->getNetwork(), nullptr);
@@ -2350,7 +2350,7 @@ TEST(ModalNetworkReferencePersistence, DetachedBindingSchemaSurvivesGenRoundTrip
     ASSERT_NE(model, nullptr);
     auto* efsm = new EFSMNetwork(model, "DetachedSchemaEFSM");
     auto* cpn = new ColoredPetriNetNetwork(model, "DetachedSchemaCPN");
-    auto* adapter = new ModalModelDefault(model, "DetachedSchemaAdapter");
+    auto* adapter = new ModalModel(model, "DetachedSchemaAdapter");
     adapter->setNetwork(efsm);
     adapter->setInputBinding(0, "2");
     adapter->setOutputBinding(0, "accepted");
@@ -2362,7 +2362,7 @@ TEST(ModalNetworkReferencePersistence, DetachedBindingSchemaSurvivesGenRoundTrip
     ASSERT_TRUE(model->save(path));
     Model* loaded = simulator.getModelManager()->loadModel(path);
     ASSERT_NE(loaded, nullptr);
-    auto* loadedAdapter = dynamic_cast<ModalModelDefault*>(loaded->getComponentManager()->find("DetachedSchemaAdapter"));
+    auto* loadedAdapter = dynamic_cast<ModalModel*>(loaded->getComponentManager()->find("DetachedSchemaAdapter"));
     auto* loadedCpn = dynamic_cast<ColoredPetriNetNetwork*>(loaded->getDataManager()->getDataDefinition(
         Util::TypeOf<ColoredPetriNetNetwork>(), cpn->getId()));
     ASSERT_NE(loadedAdapter, nullptr);
@@ -2385,7 +2385,7 @@ TEST(EFSMNetworkDiagramPersistence, RoundTripIsDeterministicAcrossRepeatedSaves)
     network.addState(&a);
     network.addState(&b);
     network.addTransition(new EFSMTransition(&a, &b, "T"));
-    auto* adapter = new ModalModelDefault(model, "DeterministicAdapter");
+    auto* adapter = new ModalModel(model, "DeterministicAdapter");
     adapter->setNetwork(&network);
 
     SerializerHarness harness(&simulator);
@@ -2423,7 +2423,7 @@ TEST(EFSMNetworkDiagramPersistence, LegacyGuiFileWithoutEfsmSectionLoadsWithoutE
     EFSMNetwork network(model, "Net");
     FSMState a(model, "A");
     network.addState(&a);
-    auto* adapter = new ModalModelDefault(model, "LegacyAdapter");
+    auto* adapter = new ModalModel(model, "LegacyAdapter");
     adapter->setNetwork(&network);
 
     SerializerHarness harness(&simulator);
@@ -2500,7 +2500,7 @@ TEST(EFSMNetworkDiagramPersistence, PlainGenLoadDoesNotDependOnGraphicalSection)
     EFSMNetwork network(model, "Net");
     FSMState a(model, "A");
     network.addState(&a);
-    auto* adapter = new ModalModelDefault(model, "PlainGenAdapter");
+    auto* adapter = new ModalModel(model, "PlainGenAdapter");
     adapter->setNetwork(&network);
 
     SerializerHarness harness(&simulator);
@@ -2756,7 +2756,7 @@ TEST(EFSMNetworkDiagramPersistence, SaveAndLoadDoesNotChangeTopologyOrDuplicateO
     network.addState(&busy);
     network.setInitialState(&idle);
     network.addTransition(new EFSMTransition(&idle, &busy, "Go"));
-    auto* adapter = new ModalModelDefault(model, "IntegrityAdapter");
+    auto* adapter = new ModalModel(model, "IntegrityAdapter");
     adapter->setNetwork(&network);
 
     SerializerHarness harness(&simulator);
@@ -2970,7 +2970,7 @@ TEST(EFSMNetworkUndo, StateDeletionUndoRedoRestoresIncidentTransitionsAndManager
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
     EFSMNetwork network(model, "StateDeleteNetwork");
-    auto* adapter = new ModalModelDefault(model, "StateDeleteAdapter");
+    auto* adapter = new ModalModel(model, "StateDeleteAdapter");
     adapter->setNetwork(&network);
     auto* sink = new Dispose(model, "StateDeleteSink");
     adapter->getConnectionManager()->insert(sink);
@@ -3022,7 +3022,7 @@ TEST(EFSMNetworkUndo, StateCreationUndoRedoKeepsModelManagerAndNetworkMembership
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
     EFSMNetwork network(model, "StateCreateNetwork");
-    auto* adapter = new ModalModelDefault(model, "StateCreateAdapter");
+    auto* adapter = new ModalModel(model, "StateCreateAdapter");
     adapter->setNetwork(&network);
     auto* sink = new Dispose(model, "StateCreateSink");
     adapter->getConnectionManager()->insert(sink);
@@ -3081,7 +3081,7 @@ TEST(EFSMNetworkUndo, StatePropertiesUndoRedoPreservesNameActionsAndFinalFlag) {
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
     EFSMNetwork network(model, "StatePropertiesNetwork");
-    auto* adapter = new ModalModelDefault(model, "StatePropertiesAdapter");
+    auto* adapter = new ModalModel(model, "StatePropertiesAdapter");
     adapter->setNetwork(&network);
     auto* state = new FSMState(model, "Working");
     network.addState(state);
@@ -3138,8 +3138,8 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     auto* network = new EFSMNetwork(model, "SharedNavigationNetwork");
     auto* state = new FSMState(model, "Idle");
     network->addState(state);
-    auto* firstAdapter = new ModalModelDefault(model, "FirstAdapter");
-    auto* secondAdapter = new ModalModelDefault(model, "SecondAdapter");
+    auto* firstAdapter = new ModalModel(model, "FirstAdapter");
+    auto* secondAdapter = new ModalModel(model, "SecondAdapter");
     firstAdapter->setNetwork(network);
     secondAdapter->setNetwork(network);
 
@@ -3153,7 +3153,7 @@ TEST(EFSMNetworkEditor, SharedNetworkOpensOneSubmodelTabFromMultipleAdapters) {
     const int rootCount = tabs->count();
     ASSERT_GE(rootCount, 1);
 
-    auto graphicalAdapter = [scene = window.myScene()](ModalModelDefault* adapter) {
+    auto graphicalAdapter = [scene = window.myScene()](ModalModel* adapter) {
         for (QGraphicsItem* item : scene->items()) {
             auto* graphical = dynamic_cast<GraphicalModelComponent*>(item);
             if (graphical != nullptr && graphical->getComponent() == adapter) {
@@ -3346,7 +3346,7 @@ TEST(EFSMNetworkEditor, AdapterWithoutNetworkCannotOpenASubmodelContext) {
     simulator->getPluginManager()->autoInsertPlugins();
     Model* model = simulator->getModelManager()->current();
     ASSERT_NE(model, nullptr);
-    auto* adapter = new ModalModelDefault(model, "UnattachedAdapter");
+    auto* adapter = new ModalModel(model, "UnattachedAdapter");
     auto* source = new Create(model, "UnattachedSource");
     auto* sink = new Dispose(model, "UnattachedSink");
     source->getConnectionManager()->insert(adapter);
@@ -3397,7 +3397,7 @@ TEST(EFSMNetworkEditor, CreateTransitionActionStartsGraphicalConnectionWithoutDi
     Model* model = simulator->getModelManager()->current();
     ASSERT_NE(model, nullptr);
     auto* network = new EFSMNetwork(model, "IncrementalNetwork");
-    auto* adapter = new ModalModelDefault(model, "IncrementalAdapter");
+    auto* adapter = new ModalModel(model, "IncrementalAdapter");
     adapter->setNetwork(network);
     auto* view = window.findChild<ModelGraphicsView*>();
     ASSERT_NE(view, nullptr);
@@ -3458,7 +3458,7 @@ TEST(EFSMNetworkEditor, AdapterBindingsHaveNoLegacyDialogAction) {
     auto* network = new EFSMNetwork(model, "BindingNetwork");
     network->addInputPort("Arrival");
     network->addOutputPort("Result");
-    auto* adapter = new ModalModelDefault(model, "BindingAdapter");
+    auto* adapter = new ModalModel(model, "BindingAdapter");
     adapter->setNetwork(network);
     adapter->setOutputBinding(0, "InitialResult");
     auto* source = new Create(model, "BindingSource");
@@ -3498,7 +3498,7 @@ TEST(EFSMNetworkEditor, MainWindowSaveCloseAndReopenRestoresAndExecutesEFSM) {
     Model* originalModel = simulator->getModelManager()->current();
     ASSERT_NE(originalModel, nullptr);
 
-    auto* adapter = new ModalModelDefault(originalModel, "PersistedGuiAdapter");
+    auto* adapter = new ModalModel(originalModel, "PersistedGuiAdapter");
     auto* network = new EFSMNetwork(originalModel, "PersistedGuiNetwork");
     adapter->setNetwork(network);
     auto* source = new Create(originalModel, "PersistedGuiSource");

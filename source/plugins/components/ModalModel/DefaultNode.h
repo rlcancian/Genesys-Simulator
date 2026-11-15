@@ -16,7 +16,7 @@
 #include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include <functional>
 #include <string>
-//#include "plugins/data/Template/DummyElement.h"
+//#include "plugins/data/Template/TemplateDataDefinition.h"
 
 class DefaultNode;
 class Model;
@@ -130,7 +130,7 @@ private: /// Attributes that should be loaded or saved with this component (Pers
 	List<DefaultNodeTransition*>* _transitions = new List<DefaultNodeTransition*>();
 
 private: /// internal DataElements (Composition)
-    //DummyElement* _internalDataDefinition = nullptr;
+    //TemplateDataDefinition* _internalDataDefinition = nullptr;
 
 private: /// attached DataElements (Agrregation)
 	// ...

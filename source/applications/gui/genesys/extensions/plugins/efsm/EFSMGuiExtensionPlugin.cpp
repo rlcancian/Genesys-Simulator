@@ -27,7 +27,7 @@ public:
     std::string extensionId() const override { return "modal.efsm.gui"; }
     std::string displayName() const override { return "EFSM Network Editor"; }
     std::string version() const override { return "1.0.0"; }
-    std::vector<std::string> requiredModelPlugins() const override { return {"ModalModelDefault"}; }
+    std::vector<std::string> requiredModelPlugins() const override { return {"ModalModel"}; }
 
     void registerContributions(GuiExtensionRegistry* registry) const override {
         if (registry == nullptr) return;

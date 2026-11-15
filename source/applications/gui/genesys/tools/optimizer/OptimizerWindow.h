@@ -5,6 +5,7 @@
 
 #include <QList>
 #include <QMainWindow>
+#include <string>
 #include <QString>
 #include <QVector>
 
@@ -29,8 +30,12 @@ class SimulationResponse;
 class OptimizerWindow : public QMainWindow {
 public:
     explicit OptimizerWindow(Simulator* simulator, QWidget* parent = nullptr);
+    std::string getVersionName() const { return _versionName; }
+    unsigned int getVersionNumber() const { return _versionNumber; }
 
 private:
+    const std::string _versionName = "inaiera";
+    const unsigned int _versionNumber = 261115;
     class ProgressPlot;
 
     void buildMenus();

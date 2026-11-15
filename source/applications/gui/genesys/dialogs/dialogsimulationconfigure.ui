@@ -61,7 +61,7 @@
          <item row="1" column="0">
           <widget class="QLabel" name="labelReplicationBaseTimeUnit">
            <property name="text">
-            <string>Replication Base Time Unit:</string>
+            <string>Report Base Time Unit:</string>
            </property>
            <property name="buddy">
             <cstring>comboBoxReplicationBaseTimeUnit</cstring>

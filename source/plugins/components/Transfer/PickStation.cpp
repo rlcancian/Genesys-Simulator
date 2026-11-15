@@ -286,7 +286,7 @@ void PickStation::_saveInstance(PersistenceRecord *fields, bool saveDefaultValue
 
 // protected virtual -- could be overriden 
 
-//ParserChangesInformation* DummyElement::_getParserChangesInformation() {}
+//ParserChangesInformation* TemplateDataDefinition::_getParserChangesInformation() {}
 
 bool PickStation::_check(std::string& errorMessage) {
 	bool resultAll = true;
@@ -362,7 +362,7 @@ void PickStation::_createEditableDataDefinitions() {
 	}
 	//if (_internalDataDefinition == nullptr) {
 	//	PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-	//	_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
+	//	_internalDataDefinition = pm->newInstance<TemplateDataDefinition>(_parentModel, getName() + "." + "JustaDummy");
 	//	_internalDataInsert("JustaDummy", _internalDataDefinition);
 	//}
 }

@@ -1,7 +1,7 @@
 #include "GraphicalContextMenuController.h"
 
 #include "../../../../kernel/simulator/model/Model.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "ui_mainwindow.h"
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"

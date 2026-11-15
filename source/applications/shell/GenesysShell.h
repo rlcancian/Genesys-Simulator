@@ -54,6 +54,8 @@ public:
 	virtual ~GenesysShell() = default;
 public:
 	virtual int main(int argc, char** argv) override;
+	std::string getVersionName() const { return _versionName; }
+	unsigned int getVersionNumber() const { return _versionNumber; }
 public: // commands
 	void cmdScript();
 	void cmdExecuteScript();
@@ -103,6 +105,8 @@ private:
 	bool parseTraceLevel(const std::string& text, TraceManager::Level& level) const;
 	bool parseTimeUnit(const std::string& text, Util::TimeUnit& timeUnit) const;
 private:
+	const std::string _versionName = "inaiera";
+	const unsigned int _versionNumber = 261115;
 	std::unique_ptr<Simulator> simulator;
 	SimulatorFacade facade;
 	Model* model = nullptr;

@@ -20,7 +20,7 @@
 
 // Model Components
 #include "plugins/components/Logic/Create.h"
-#include "plugins/components/Template/DummyComponent.h"
+#include "plugins/components/Template/TemplateComponent.h"
 #include "plugins/components/Logic/Dispose.h"
 
 Smart_Dummy::Smart_Dummy() {
@@ -38,7 +38,7 @@ int Smart_Dummy::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 	// create model
 	Create* create1 = plugins->newInstance<Create>(model);
-	DummyComponent* dummy1 = plugins->newInstance<DummyComponent>(model);
+	TemplateComponent* dummy1 = plugins->newInstance<TemplateComponent>(model);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
 	create1->connectTo(dummy1);

@@ -3,6 +3,7 @@
 
 #include <QList>
 #include <QMainWindow>
+#include <string>
 #include <QString>
 #include <QStringList>
 
@@ -24,8 +25,12 @@ class Simulator;
 class DataAnalyzerWindow : public QMainWindow {
 public:
     explicit DataAnalyzerWindow(Simulator* simulator, QString& lastDataAnalyzerPath, QWidget* parent = nullptr);
+    std::string getVersionName() const { return _versionName; }
+    unsigned int getVersionNumber() const { return _versionNumber; }
 
 private:
+    const std::string _versionName = "inaiera";
+    const unsigned int _versionNumber = 261115;
     struct DataSummary {
         int count = 0;
         double min = 0.0;

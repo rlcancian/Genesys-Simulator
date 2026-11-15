@@ -338,7 +338,7 @@ if(TARGET genesys_kernel_unit_tests_run)
     add_dependencies(genesys_kernel_unit_tests_run genesys_test_default_node_run)
 endif()
 
-# ModalModel/Network bridge: ModalModelDefault adapts process entities to an
+# ModalModel/Network bridge: ModalModel adapts process entities to an
 # attached DefaultNetwork through input/output bindings.
 add_executable(genesys_test_modal_model_default_network
     unit/test_modal_model_default_network.cpp

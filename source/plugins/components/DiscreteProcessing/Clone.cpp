@@ -116,7 +116,7 @@ void Clone::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 // protected virtual -- could be overriden 
 
-//ParserChangesInformation* DummyElement::_getParserChangesInformation() {}
+//ParserChangesInformation* TemplateDataDefinition::_getParserChangesInformation() {}
 
 bool Clone::_check(std::string& errorMessage) {
 	return _parentModel->checkExpression(_numClonesExpression, "Num clones", errorMessage);

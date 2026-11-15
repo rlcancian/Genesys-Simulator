@@ -12,7 +12,7 @@
 #include "kernel/simulator/essentialPlugins/Entity.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponent.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/ModalModel/PetriPlace.h"
 #include "plugins/data/ModalModel/CPNArc.h"
 #include "plugins/data/ModalModel/CPNTransition.h"
@@ -45,9 +45,9 @@ public:
 	void InitBetweenReplicationsProbe() { _initBetweenReplications(); }
 };
 
-class ModalModelDefaultProbe final : public ModalModelDefault {
+class ModalModelProbe final : public ModalModel {
 public:
-	ModalModelDefaultProbe(Model* model, const std::string& name) : ModalModelDefault(model, name) {}
+	ModalModelProbe(Model* model, const std::string& name) : ModalModel(model, name) {}
 
 	void dispatch(Entity* entity, unsigned int inputPortNumber = 0) {
 		_onDispatchEvent(entity, inputPortNumber);
@@ -375,8 +375,8 @@ TEST(ColoredPetriNetNetworkTest, SharedNetActivatedThroughTwoModalModelsKeepsNet
 	ASSERT_TRUE(network.addArc(inputArc(model, &p, &t, 1, "red", "In")));
 	Attribute firedAttribute(model, "Fired");
 
-	ModalModelDefaultProbe modalA(model, "ModalA");
-	ModalModelDefaultProbe modalB(model, "ModalB");
+	ModalModelProbe modalA(model, "ModalA");
+	ModalModelProbe modalB(model, "ModalB");
 	CollectorSinkComponentProbe sinkA(model, "SinkA");
 	CollectorSinkComponentProbe sinkB(model, "SinkB");
 	modalA.getConnectionManager()->insert(&sinkA);

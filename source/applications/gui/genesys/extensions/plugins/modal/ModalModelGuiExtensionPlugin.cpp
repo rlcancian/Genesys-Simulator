@@ -1,7 +1,7 @@
 #include "../../GuiExtensionContracts.h"
 #include "../../GuiExtensionPluginCatalog.h"
 
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/ModalModel/Submodel.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "kernel/simulator/model/Model.h"
@@ -22,7 +22,7 @@
 namespace {
 class ModalModelBindingUndoCommand final : public QUndoCommand {
 public:
-	ModalModelBindingUndoCommand(ModalModelDefault* adapter, DefaultNetwork* network, bool output,
+	ModalModelBindingUndoCommand(ModalModel* adapter, DefaultNetwork* network, bool output,
 		unsigned int port, std::string before, std::string after, ObjectPropertyBrowser* browser)
 		: _adapter(adapter), _network(network), _output(output), _port(port),
 		  _before(std::move(before)), _after(std::move(after)), _browser(browser) {
@@ -40,7 +40,7 @@ private:
 		else _adapter->setInputBinding(_port, value);
 		if (_browser != nullptr) _browser->refreshAfterUndo();
 	}
-	ModalModelDefault* _adapter;
+	ModalModel* _adapter;
 	DefaultNetwork* _network;
 	bool _output;
 	unsigned int _port;
@@ -51,7 +51,7 @@ private:
 
 class ModalModelNetworkReferenceUndoCommand final : public QUndoCommand {
 public:
-	ModalModelNetworkReferenceUndoCommand(ModalModelDefault* adapter, DefaultNetwork* before,
+	ModalModelNetworkReferenceUndoCommand(ModalModel* adapter, DefaultNetwork* before,
 		DefaultNetwork* after, ModelGraphicsScene* scene, ObjectPropertyBrowser* browser)
 		: _adapter(adapter), _before(before), _after(after), _scene(scene), _browser(browser) {
 		setText(QObject::tr("Change ModalModel Network"));
@@ -77,14 +77,14 @@ private:
 		}
 		if (_browser != nullptr) _browser->refreshAfterUndo();
 	}
-	ModalModelDefault* _adapter;
+	ModalModel* _adapter;
 	DefaultNetwork* _before;
 	DefaultNetwork* _after;
 	QPointer<ModelGraphicsScene> _scene;
 	QPointer<ObjectPropertyBrowser> _browser;
 };
 
-DefaultNetwork* resolveNetworkChoice(ModalModelDefault* adapter, const std::string& choice) {
+DefaultNetwork* resolveNetworkChoice(ModalModel* adapter, const std::string& choice) {
 	if (adapter == nullptr || adapter->getParentModel() == nullptr || adapter->getParentModel()->getDataManager() == nullptr)
 		return nullptr;
 	const std::size_t delimiter = choice.find("::");
@@ -124,16 +124,16 @@ public:
 		GuiEditingContextContribution context;
 		context.id = "gui.modal.network-editing-context";
 		context.supports = [](ModelDataDefinition* owner) {
-			return dynamic_cast<ModalModelDefault*>(owner) != nullptr
+			return dynamic_cast<ModalModel*>(owner) != nullptr
 				|| dynamic_cast<DefaultNetwork*>(owner) != nullptr
 				|| dynamic_cast<Submodel*>(owner) != nullptr;
 		};
 		context.resolveOwner = [](ModelDataDefinition* owner) -> ModelDataDefinition* {
-			if (auto* adapter = dynamic_cast<ModalModelDefault*>(owner)) return adapter->getNetwork();
+			if (auto* adapter = dynamic_cast<ModalModel*>(owner)) return adapter->getNetwork();
 			return owner;
 		};
 		context.isNetwork = [](ModelDataDefinition* owner) {
-			if (dynamic_cast<ModalModelDefault*>(owner) != nullptr) return true;
+			if (dynamic_cast<ModalModel*>(owner) != nullptr) return true;
 			return dynamic_cast<DefaultNetwork*>(owner) != nullptr;
 		};
 		context.canOpen = [](Model* model, ModelDataDefinition* owner) {
@@ -145,7 +145,7 @@ public:
 				return false;
 			}
 			if (model->getDataManager() == nullptr) return false;
-			if (auto* adapter = dynamic_cast<ModalModelDefault*>(owner)) owner = adapter->getNetwork();
+			if (auto* adapter = dynamic_cast<ModalModel*>(owner)) owner = adapter->getNetwork();
 			auto* network = dynamic_cast<DefaultNetwork*>(owner);
 			return network != nullptr
 				&& model->getDataManager()->getDataDefinition(network->getClassname(), network->getId()) == network;
@@ -154,22 +154,22 @@ public:
 
 		GuiModelReferenceContribution reference;
 		reference.id = "gui.modal.network-reference-editing";
-		reference.supports = [](ModelDataDefinition* owner) { return dynamic_cast<ModalModelDefault*>(owner) != nullptr; };
+		reference.supports = [](ModelDataDefinition* owner) { return dynamic_cast<ModalModel*>(owner) != nullptr; };
 		reference.currentReference = [](ModelDataDefinition* owner) -> ModelDataDefinition* {
-			auto* adapter = dynamic_cast<ModalModelDefault*>(owner);
+			auto* adapter = dynamic_cast<ModalModel*>(owner);
 			return adapter != nullptr ? adapter->getNetwork() : nullptr;
 		};
 		reference.resolveChoice = [](ModelDataDefinition* owner, const std::string& choice) -> ModelDataDefinition* {
-			return resolveNetworkChoice(dynamic_cast<ModalModelDefault*>(owner), choice);
+			return resolveNetworkChoice(dynamic_cast<ModalModel*>(owner), choice);
 		};
 		reference.formatChoice = [](ModelDataDefinition* owner, const std::string& property,
 			ModelDataDefinition* target) {
-			if (dynamic_cast<ModalModelDefault*>(owner) == nullptr || property != "Network" || target == nullptr) return std::string{};
+			if (dynamic_cast<ModalModel*>(owner) == nullptr || property != "Network" || target == nullptr) return std::string{};
 			return target->getClassname() + "::" + target->getName() + " [#" + std::to_string(target->getId()) + "]";
 		};
 		reference.confirmChange = [](ModelDataDefinition* owner, ModelDataDefinition* before,
 			ModelDataDefinition* after, QWidget* parent) {
-			auto* adapter = dynamic_cast<ModalModelDefault*>(owner);
+			auto* adapter = dynamic_cast<ModalModel*>(owner);
 			auto* previous = dynamic_cast<DefaultNetwork*>(before);
 			auto* selected = dynamic_cast<DefaultNetwork*>(after);
 			if (adapter == nullptr || previous == selected || selected == nullptr || !hasDifferentPortSchema(previous, selected))
@@ -180,7 +180,7 @@ public:
 		};
 		reference.referenceChanged = [](ModelDataDefinition* owner, ModelDataDefinition* before,
 			ModelDataDefinition* after, ModelGraphicsScene* scene, ObjectPropertyBrowser* browser) {
-			auto* adapter = dynamic_cast<ModalModelDefault*>(owner);
+			auto* adapter = dynamic_cast<ModalModel*>(owner);
 			if (adapter == nullptr || before == after || scene == nullptr || scene->getUndoStack() == nullptr) return;
 			scene->getUndoStack()->push(new ModalModelNetworkReferenceUndoCommand(adapter,
 				dynamic_cast<DefaultNetwork*>(before), dynamic_cast<DefaultNetwork*>(after), scene, browser));
@@ -188,7 +188,7 @@ public:
 		reference.propertyChanged = [](ModelDataDefinition* owner, const std::string& property,
 			const std::string& before, const std::string& after, ModelGraphicsScene* scene,
 			ObjectPropertyBrowser* browser) {
-			auto* adapter = dynamic_cast<ModalModelDefault*>(owner);
+			auto* adapter = dynamic_cast<ModalModel*>(owner);
 			auto* network = adapter != nullptr ? adapter->getNetwork() : nullptr;
 			if (network == nullptr || scene == nullptr || scene->getUndoStack() == nullptr) return;
 			const bool output = property.rfind("Output Binding ", 0) == 0;

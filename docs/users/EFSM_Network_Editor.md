@@ -7,7 +7,7 @@ connection.
 
 ## Associate and open a Network
 
-1. Select a `ModalModelDefault` in the process-model view.
+1. Select a `ModalModel` in the process-model view.
 2. In the Property Editor, expand its `Network` property. Choose an existing
    compatible Network, or create one after explicitly choosing its concrete
    type. Use the same property to replace or remove the association. Creating

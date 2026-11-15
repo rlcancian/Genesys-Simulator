@@ -138,7 +138,7 @@ private: /// Attributes that should be loaded or saved with this component (Pers
     std::string config;
 
 private: /// internal DataElements (Composition)
-	// DummyElement* _internalDataDefinition = nullptr;
+	// TemplateDataDefinition* _internalDataDefinition = nullptr;
 
 private: /// attached DataElements (Agrregation)
 	// ...

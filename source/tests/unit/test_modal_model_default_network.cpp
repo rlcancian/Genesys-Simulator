@@ -1,4 +1,4 @@
-// Unit tests for the generic ModalModelDefault -> DefaultNetwork bridge.
+// Unit tests for the generic ModalModel -> DefaultNetwork bridge.
 
 #include <gtest/gtest.h>
 
@@ -10,7 +10,7 @@
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponent.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/ModalModel/GraphNetwork.h"
 #include "plugins/components/ModalModel/FSMState.h"
@@ -65,9 +65,9 @@ private:
 	std::vector<NetworkPortValue> _outputs;
 };
 
-class ModalModelDefaultProbe final : public ModalModelDefault {
+class ModalModelProbe final : public ModalModel {
 public:
-	ModalModelDefaultProbe(Model* model, const std::string& name) : ModalModelDefault(model, name) {}
+	ModalModelProbe(Model* model, const std::string& name) : ModalModel(model, name) {}
 
 	void dispatch(Entity* entity, unsigned int inputPortNumber = 0) {
 		_onDispatchEvent(entity, inputPortNumber);
@@ -121,7 +121,7 @@ void drainFutureEvents(Model* model) {
 
 } // namespace
 
-TEST(ModalModelDefaultNetworkTest, ActivatesAttachedNetworkFromArrivingInputPort) {
+TEST(ModalModelNetworkTest, ActivatesAttachedNetworkFromArrivingInputPort) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -132,7 +132,7 @@ TEST(ModalModelDefaultNetworkTest, ActivatesAttachedNetworkFromArrivingInputPort
 	network.setOutput(0, true, 42.0);
 	Attribute resultAttribute(model, "ResultValue");
 
-	ModalModelDefaultProbe modal(model, "ModalBridge");
+	ModalModelProbe modal(model, "ModalBridge");
 	CollectorSinkComponentProbe sink(model, "Sink");
 	modal.getConnectionManager()->insert(&sink);
 	modal.setNetwork(&network);
@@ -154,7 +154,7 @@ TEST(ModalModelDefaultNetworkTest, ActivatesAttachedNetworkFromArrivingInputPort
 	EXPECT_DOUBLE_EQ(entity->getAttributeValue("ResultValue"), 42.0);
 }
 
-TEST(ModalModelDefaultNetworkTest, ConsumesEntityWhenNoOutputIsPresent) {
+TEST(ModalModelNetworkTest, ConsumesEntityWhenNoOutputIsPresent) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -162,7 +162,7 @@ TEST(ModalModelDefaultNetworkTest, ConsumesEntityWhenNoOutputIsPresent) {
 	TestNetwork network(model, "NoOutputNetwork");
 	network.addInputPort("Trigger");
 	network.addOutputPort("Result");
-	ModalModelDefaultProbe modal(model, "NoOutputModal");
+	ModalModelProbe modal(model, "NoOutputModal");
 	modal.setNetwork(&network);
 
 	Entity* entity = model->createEntity("ConsumedEntity", true);
@@ -175,7 +175,7 @@ TEST(ModalModelDefaultNetworkTest, ConsumesEntityWhenNoOutputIsPresent) {
 	EXPECT_DOUBLE_EQ(network.getActivationCount(), 1.0);
 }
 
-TEST(ModalModelDefaultNetworkTest, MultiplePresentOutputsCloneBeforeOutputSpecificMutation) {
+TEST(ModalModelNetworkTest, MultiplePresentOutputsCloneBeforeOutputSpecificMutation) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -189,7 +189,7 @@ TEST(ModalModelDefaultNetworkTest, MultiplePresentOutputsCloneBeforeOutputSpecif
 	Attribute outA(model, "OutAValue");
 	Attribute outB(model, "OutBValue");
 
-	ModalModelDefaultProbe modal(model, "SplitModal");
+	ModalModelProbe modal(model, "SplitModal");
 	CollectorSinkComponentProbe sinkA(model, "SinkA");
 	CollectorSinkComponentProbe sinkB(model, "SinkB");
 	modal.getConnectionManager()->insert(&sinkA);
@@ -214,7 +214,7 @@ TEST(ModalModelDefaultNetworkTest, MultiplePresentOutputsCloneBeforeOutputSpecif
 	EXPECT_DOUBLE_EQ(originalForB->getAttributeValue("OutBValue"), 20.0);
 }
 
-TEST(ModalModelDefaultNetworkTest, PersistenceRoundTripPreservesNetworkReferenceAndBindings) {
+TEST(ModalModelNetworkTest, PersistenceRoundTripPreservesNetworkReferenceAndBindings) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -223,7 +223,7 @@ TEST(ModalModelDefaultNetworkTest, PersistenceRoundTripPreservesNetworkReference
 	network.addInputPort("Trigger");
 	network.addOutputPort("Result");
 
-	ModalModelDefaultProbe source(model, "SourceModal");
+	ModalModelProbe source(model, "SourceModal");
 	source.setNetwork(&network);
 	source.setInputBinding(0, "3");
 	source.setOutputBinding(0, "PersistedResult");
@@ -232,7 +232,7 @@ TEST(ModalModelDefaultNetworkTest, PersistenceRoundTripPreservesNetworkReference
 	PersistenceRecord fields(persistence);
 	source.saveProbe(&fields);
 
-	ModalModelDefaultProbe loaded(model, "LoadedModal");
+	ModalModelProbe loaded(model, "LoadedModal");
 	ASSERT_TRUE(loaded.loadProbe(&fields));
 
 	EXPECT_EQ(loaded.getNetwork(), &network);
@@ -241,7 +241,7 @@ TEST(ModalModelDefaultNetworkTest, PersistenceRoundTripPreservesNetworkReference
 	EXPECT_EQ(loaded.getOutputBinding(0), "PersistedResult");
 }
 
-TEST(ModalModelDefaultNetworkTest, ModelFileRoundTripPreservesAttachedNetworkBinding) {
+TEST(ModalModelNetworkTest, ModelFileRoundTripPreservesAttachedNetworkBinding) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();
 	Model* model = simulator.getModelManager()->newModel();
@@ -257,7 +257,7 @@ TEST(ModalModelDefaultNetworkTest, ModelFileRoundTripPreservesAttachedNetworkBin
 	network->addState(busy);
 	network->addTransition(start);
 
-	ModalModelDefault* modal = new ModalModelDefault(model, "BoundModal");
+	ModalModel* modal = new ModalModel(model, "BoundModal");
 	Dispose* sink = new Dispose(model, "BoundSink");
 	modal->getConnectionManager()->insert(sink);
 	modal->setNetwork(network);
@@ -275,8 +275,8 @@ TEST(ModalModelDefaultNetworkTest, ModelFileRoundTripPreservesAttachedNetworkBin
 	Model* loadedModel = simulator.getModelManager()->newModel();
 	ASSERT_TRUE(loadedModel->load(filename));
 
-	ModalModelDefault* loadedModal =
-		dynamic_cast<ModalModelDefault*>(loadedModel->getComponentManager()->find("BoundModal"));
+	ModalModel* loadedModal =
+		dynamic_cast<ModalModel*>(loadedModel->getComponentManager()->find("BoundModal"));
 	ASSERT_NE(loadedModal, nullptr);
 	EXPECT_EQ(loadedModal->getNetworkName(), "BoundNetwork");
 	EXPECT_EQ(loadedModal->getInputBinding(0), "1");
@@ -321,7 +321,7 @@ TEST(ModalModelDefaultNetworkTest, ModelFileRoundTripPreservesAttachedNetworkBin
 	::unlink(filename.c_str());
 }
 
-TEST(ModalModelDefaultNetworkTest, TwoModalModelsCanShareOneNetworkInstance) {
+TEST(ModalModelNetworkTest, TwoModalModelsCanShareOneNetworkInstance) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -332,8 +332,8 @@ TEST(ModalModelDefaultNetworkTest, TwoModalModelsCanShareOneNetworkInstance) {
 	network.setOutput(0, true, 5.0);
 	Attribute resultAttribute(model, "SharedResult");
 
-	ModalModelDefaultProbe modalA(model, "ModalA");
-	ModalModelDefaultProbe modalB(model, "ModalB");
+	ModalModelProbe modalA(model, "ModalA");
+	ModalModelProbe modalB(model, "ModalB");
 	CollectorSinkComponentProbe sinkA(model, "SinkA");
 	CollectorSinkComponentProbe sinkB(model, "SinkB");
 	modalA.getConnectionManager()->insert(&sinkA);
@@ -359,12 +359,12 @@ TEST(ModalModelDefaultNetworkTest, TwoModalModelsCanShareOneNetworkInstance) {
 	EXPECT_DOUBLE_EQ(entityB->getAttributeValue("SharedResult"), 5.0);
 }
 
-TEST(ModalModelDefaultNetworkTest, CheckRejectsUnknownNetworkReference) {
+TEST(ModalModelNetworkTest, CheckRejectsUnknownNetworkReference) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
 
-	ModalModelDefaultProbe modal(model, "BrokenModal");
+	ModalModelProbe modal(model, "BrokenModal");
 	modal.setNetworkName("MissingNetwork");
 
 	std::string errorMessage;
@@ -372,7 +372,7 @@ TEST(ModalModelDefaultNetworkTest, CheckRejectsUnknownNetworkReference) {
 	EXPECT_NE(errorMessage.find("MissingNetwork"), std::string::npos);
 }
 
-TEST(ModalModelDefaultNetworkTest, ModelCheckPreservesReferencedEfsmNetworkAndStates) {
+TEST(ModalModelNetworkTest, ModelCheckPreservesReferencedEfsmNetworkAndStates) {
 	Simulator simulator;
 	simulator.getPluginManager()->autoInsertPlugins();
 	Model* model = simulator.getModelManager()->newModel();
@@ -385,7 +385,7 @@ TEST(ModalModelDefaultNetworkTest, ModelCheckPreservesReferencedEfsmNetworkAndSt
 	network->addState(busy);
 	network->addTransition(new EFSMTransition(idle, busy, "CheckedTransition"));
 
-	ModalModelDefault* modal = new ModalModelDefault(model, "CheckedModal");
+	ModalModel* modal = new ModalModel(model, "CheckedModal");
 	Dispose* sink = new Dispose(model, "CheckedSink");
 	modal->getConnectionManager()->insert(sink);
 	modal->setNetwork(network);
@@ -408,15 +408,15 @@ TEST(ModalModelDefaultNetworkTest, ModelCheckPreservesReferencedEfsmNetworkAndSt
 	EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "CheckedBusy"), nullptr);
 }
 
-TEST(ModalModelDefaultNetworkTest, SharedNetworkReferencesAndReplacementAreNonOwning) {
+TEST(ModalModelNetworkTest, SharedNetworkReferencesAndReplacementAreNonOwning) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
 
 	TestNetwork* first = new TestNetwork(model, "FirstSharedNetwork");
 	TestNetwork* second = new TestNetwork(model, "SecondSharedNetwork");
-	ModalModelDefault* modalA = new ModalModelDefault(model, "SharedModalA");
-	ModalModelDefault* modalB = new ModalModelDefault(model, "SharedModalB");
+	ModalModel* modalA = new ModalModel(model, "SharedModalA");
+	ModalModel* modalB = new ModalModel(model, "SharedModalB");
 
 	modalA->setNetwork(first);
 	modalB->setNetwork(first);
@@ -436,7 +436,7 @@ TEST(ModalModelDefaultNetworkTest, SharedNetworkReferencesAndReplacementAreNonOw
 	EXPECT_EQ(model->getDataManager()->getDataDefinition("TestNetwork", "SecondSharedNetwork"), second);
 }
 
-TEST(ModalModelDefaultNetworkTest, ReplacementRemapsBindingsByPortNameAndInitializesNewPorts) {
+TEST(ModalModelNetworkTest, ReplacementRemapsBindingsByPortNameAndInitializesNewPorts) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -449,7 +449,7 @@ TEST(ModalModelDefaultNetworkTest, ReplacementRemapsBindingsByPortNameAndInitial
 	second->addInputPort("Reset");
 	second->addOutputPort("Rejected");
 	second->addOutputPort("Accepted");
-	ModalModelDefault* adapter = new ModalModelDefault(model, "SchemaAdapter");
+	ModalModel* adapter = new ModalModel(model, "SchemaAdapter");
 	adapter->setNetwork(first);
 	adapter->setInputBinding(0, "entity.Attribute");
 	adapter->setOutputBinding(0, "acceptedValue");
@@ -470,7 +470,7 @@ TEST(ModalModelDefaultNetworkTest, ReplacementRemapsBindingsByPortNameAndInitial
 	EXPECT_EQ(adapter->getOutputBinding(1), "rejectedValue");
 }
 
-TEST(ModalModelDefaultNetworkTest, ReplacementWithUnmatchedCustomBindingIsTransactional) {
+TEST(ModalModelNetworkTest, ReplacementWithUnmatchedCustomBindingIsTransactional) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -480,7 +480,7 @@ TEST(ModalModelDefaultNetworkTest, ReplacementWithUnmatchedCustomBindingIsTransa
 	TestNetwork* second = new TestNetwork(model, "SecondSchema");
 	second->addInputPort("Reset");
 	second->addOutputPort("Rejected");
-	ModalModelDefault* adapter = new ModalModelDefault(model, "SchemaAdapter");
+	ModalModel* adapter = new ModalModel(model, "SchemaAdapter");
 	adapter->setNetwork(first);
 	adapter->setInputBinding(0, "entity.Attribute");
 	adapter->setOutputBinding(0, "acceptedValue");
@@ -491,7 +491,7 @@ TEST(ModalModelDefaultNetworkTest, ReplacementWithUnmatchedCustomBindingIsTransa
 	EXPECT_EQ(adapter->getOutputBinding(0), "acceptedValue");
 }
 
-TEST(ModalModelDefaultNetworkTest, ReplacementPreservesConnectedOutputOrRejectsBeforeMutation) {
+TEST(ModalModelNetworkTest, ReplacementPreservesConnectedOutputOrRejectsBeforeMutation) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -501,7 +501,7 @@ TEST(ModalModelDefaultNetworkTest, ReplacementPreservesConnectedOutputOrRejectsB
 	TestNetwork* second = new TestNetwork(model, "SecondConnectedSchema");
 	second->addInputPort("Trigger");
 	second->addOutputPort("Rejected");
-	ModalModelDefault* adapter = new ModalModelDefault(model, "ConnectedSchemaAdapter");
+	ModalModel* adapter = new ModalModel(model, "ConnectedSchemaAdapter");
 	Dispose* target = new Dispose(model, "ConnectedSchemaTarget");
 	adapter->setNetwork(first);
 	adapter->connectTo(target);
@@ -514,7 +514,7 @@ TEST(ModalModelDefaultNetworkTest, ReplacementPreservesConnectedOutputOrRejectsB
 	EXPECT_EQ(existingConnection->component, target);
 }
 
-TEST(ModalModelDefaultNetworkTest, NetworkWithoutAdapterRemainsModelManagedRoot) {
+TEST(ModalModelNetworkTest, NetworkWithoutAdapterRemainsModelManagedRoot) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
@@ -529,14 +529,14 @@ TEST(ModalModelDefaultNetworkTest, NetworkWithoutAdapterRemainsModelManagedRoot)
 	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<FSMState>(), "UnboundState"), state);
 }
 
-TEST(ModalModelDefaultNetworkTest, SharedNetworkRemainsModelManagedWhenAdaptersDetachOrReplaceIt) {
+TEST(ModalModelNetworkTest, SharedNetworkRemainsModelManagedWhenAdaptersDetachOrReplaceIt) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
 	ASSERT_NE(model, nullptr);
 	auto* shared = new EFSMNetwork(model, "SharedLifetimeNetwork");
 	auto* replacement = new GraphNetwork(model, "ReplacementLifetimeNetwork");
-	auto* first = new ModalModelDefault(model, "FirstLifetimeAdapter");
-	auto* second = new ModalModelDefault(model, "SecondLifetimeAdapter");
+	auto* first = new ModalModel(model, "FirstLifetimeAdapter");
+	auto* second = new ModalModel(model, "SecondLifetimeAdapter");
 	first->setNetwork(shared);
 	second->setNetwork(shared);
 

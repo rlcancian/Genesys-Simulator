@@ -12,7 +12,7 @@
 
 // Model Components
 #include "plugins/components/Logic/Create.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
@@ -22,7 +22,7 @@ Smart_DefaultModalModel::Smart_DefaultModalModel() {
 }
 
 /**
- * Demonstrates ModalModelDefault attached to an EFSMNetwork.
+ * Demonstrates ModalModel attached to an EFSMNetwork.
  */
 int Smart_DefaultModalModel::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
@@ -33,7 +33,7 @@ int Smart_DefaultModalModel::main(int argc, char** argv) {
 
 	Create* create1 = plugins->newInstance<Create>(model);
 	create1->setTimeBetweenCreationsExpression("1", Util::TimeUnit::microsecond);
-	ModalModelDefault* dmm1 = plugins->newInstance<ModalModelDefault>(model);
+	ModalModel* dmm1 = plugins->newInstance<ModalModel>(model);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 
 	EFSMNetwork* network = new EFSMNetwork(model, "DefaultModalNetwork");

@@ -16,6 +16,7 @@
 #include "../essentialPlugins/Counter.h"
 
 #include "GenSerializer.h"
+#include "LegacyPluginTypeAliases.h"
 #include "XmlSerializer.h"
 #include "JsonSerializer.h"
 #include "CppSerializer.h"
@@ -270,7 +271,8 @@ bool PersistenceDefaultImpl2::load(std::string filename) {
 			_model->getSimulation()->loadInstance(fields.get());
 					_dirty = true;
 		} else {
-			Plugin* plugin = this->_model->getParentSimulator()->getPluginManager()->find(type);
+			Plugin* plugin = this->_model->getParentSimulator()->getPluginManager()->find(
+				currentPluginTypeForPersistedType(type));
 			if (plugin != nullptr) {
 				ok = plugin->loadAndInsertNew(_model, fields.get());
 				if (ok && plugin->getPluginInfo()->isComponent()) {
