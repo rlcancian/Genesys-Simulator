@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-11-13
+last_updated: 2026-11-15
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -101,6 +101,18 @@ This is the only approved source for work an AI agent may execute without a new 
   - source branch removed automatically.
 
 ## 4. Completed application, packaging and Arena-compatibility work
+
+### AUTO-APP-004 — Clarify plugin template names and application version identities
+
+- Priority: `P2`
+- Status: `running`
+- Environment: `local + GitHub`
+- Authorization: explicit maintainer instruction dated 2026-11-15.
+- Branch: `WiP20261115/minor_changes`
+- Base: `origin/WorkInProgress` at `9ce86ecc27f57e04f6056c047011b69e54bda701`.
+- Scope: rename `DummyComponent`/`DummyElement` to `TemplateComponent`/`TemplateDataDefinition` and `ModalModelDefault` to `ModalModel`; preserve legacy persisted plugin IDs; assign independent `inaiera`/`261115` identities to production applications; change the simulation-dialog label to `Report Base Time Unit` without changing its binding or temporal behavior.
+- Non-goals: no kernel version change, launcher SemVer/distribution-contract change, simulation-time behavior change, or broad ModalModel/Network redesign.
+- Acceptance: relevant production application builds pass; legacy `.gen` identifiers load and resave under current IDs; ModalModel semantics and time-unit binding remain intact; unit, kernel-unit, smoke and GUI validation pass; manuals and evidence updated; PR checks satisfy governance before merge.
 
 ### AUTO-APP-003 — Implement per-user runtime launcher and dispatcher
 
