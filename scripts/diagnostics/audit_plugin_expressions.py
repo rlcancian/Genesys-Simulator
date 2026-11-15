@@ -60,7 +60,7 @@ def main():
     data=[]; overview=[]
     for p in sorted(R.rglob('*.cpp')):
         s=p.read_text(errors='replace'); h=p.with_suffix('.h'); hs=h.read_text(errors='replace') if h.exists() else ''
-        cls=p.stem; stripped=clean(s)
+        cls=('Assignment' if p.stem=='AssignmentItem' else p.stem); stripped=clean(s)
         checks=[body(stripped,m.end()-1) for m in CR.finditer(stripped) if m.group('cls')==cls]
         cb='\n'.join(checks); fs=fields(hs,cls); props=controls(stripped)
         calls=[l.strip() for l in cb.splitlines() if PR.search(l)][:16]
@@ -77,6 +77,25 @@ def main():
     with Path('plugin-expression-inventory.csv').open('w',newline='') as fh:
         writer=csv.DictWriter(fh,fieldnames=['category','class','attribute','type','header_line','status','name_has_Expression','check_defined','gui_string_properties','check_calls','file'])
         writer.writeheader();writer.writerows(data)
+    with Path('plugin-expression-matrix.csv').open('w',newline='') as fh:
+        writer=csv.DictWriter(fh,fieldnames=['kind','class','string_attributes','parser_checked_direct','parser_checked_indirect_candidate','runtime_parsed_without_own_check','others_not_parser_proven','own_check_defined','parser_calls_in_check','exposed_string_properties','source'])
+        writer.writeheader()
+        for p in overview:
+            values=p['fields']
+            parser=[n for n,s,_,_ in values if s=='DIRECT_CHECK']
+            indirect=[n for n,s,_,_ in values if s=='INDIRECT_CANDIDATE']
+            runtime=[n for n,s,_,_ in values if s=='RUNTIME_PARSE_ONLY']
+            others=[n for n,s,_,_ in values if s not in ('DIRECT_CHECK','INDIRECT_CANDIDATE','RUNTIME_PARSE_ONLY')]
+            writer.writerow({'kind':p['category'],'class':p['class'],
+                'string_attributes':'; '.join(n for n,_,_,_ in values),
+                'parser_checked_direct':'; '.join(parser),
+                'parser_checked_indirect_candidate':'; '.join(indirect),
+                'runtime_parsed_without_own_check':'; '.join(runtime),
+                'others_not_parser_proven':'; '.join(others),
+                'own_check_defined':p['checks'],
+                'parser_calls_in_check':' | '.join(p['calls']),
+                'exposed_string_properties':'; '.join(p['controls']),
+                'source':p['path']})
     print('AUDIT_META',json.dumps({'cpp_files':len(overview),'fields':len(data),'with_check':sum(bool(x['checks']) for x in overview),
        'statuses':dict(collections.Counter(x['status'] for x in data))}))
     for item in overview:
