@@ -232,7 +232,7 @@ validated.
 \label{sec:modal-and-hybrid-execution}
 
 The modal-model layer separates the process adapter from the network of
-computation. \texttt{ModalModelDefault} is the process-world adapter that
+computation. \texttt{ModalModel} is the process-world adapter that
 activates an attached \texttt{DefaultNetwork}. Formalism semantics live in
 network specializations such as \texttt{EFSMNetwork}, the mathematical
 \texttt{GraphNetwork} family, \texttt{MarkovChainNetwork} (finite homogeneous
@@ -250,7 +250,7 @@ This is the right place to keep the boundary clear:
 \item the current code keeps the semantics in dedicated network classes instead
   of collapsing everything into one generic process transition type;
 \item obsolete wrappers such as \texttt{ModalModelFSM}/\texttt{ModalModelPetriNet}
-  and the legacy node-list path inside \texttt{ModalModelDefault} have been
+  and the legacy node-list path inside \texttt{ModalModel} have been
   removed from the source tree after migration to the network architecture;
 \item the chapter does not claim a finished Qt network editor; GUI work remains
   a separate phase after backend contracts are stable.
@@ -264,7 +264,7 @@ path.
 % FIGURE-SPEC-BEGIN
 % ID: fig:modal-state-transitions
 % Source of truth:
-%   - source/plugins/components/ModalModel/ModalModelDefault.h
+%   - source/plugins/components/ModalModel/ModalModel.h
 %   - source/plugins/data/ModalModel/EFSMNetwork.h
 %   - source/plugins/data/ModalModel/ColoredPetriNetNetwork.h
 %   - source/plugins/components/ModalModel/DefaultTransitionExtensions.h
