@@ -21,17 +21,23 @@ def body(s,at):
         elif c=='}':level-=1
         i+=1
     return s[start:i-1]
-def fields(h):
-    out=[]
-    for n,line in enumerate(clean(h).splitlines(),1):
+def class_body(h,cls):
+    stripped=clean(h)
+    m=re.search(r'\b(?:class|struct)\s+'+re.escape(cls)+r'\b[^;{]*\{',stripped)
+    return body(stripped,m.end()-1) if m else ''
+def fields(h,cls):
+    out=[]; depth=0
+    for n,line in enumerate(class_body(h,cls).splitlines(),1):
         t=line.strip()
-        if not t or t.startswith('#') or 'typedef ' in t or 'using ' in t:continue
-        for m in FR.finditer(t):
-            nm=m.group('name')
-            if '(' in t[:m.start()] or re.search(r'\b'+re.escape(nm)+r'\s*\(',t):continue
-            if nm.lower().lstrip('_') in ('name','label'):continue
-            out.append((nm,re.sub(r'\s+','',m.group('type')),n))
+        if depth==0 and t and not t.startswith('#') and 'typedef ' not in t and 'using ' not in t:
+            for m in FR.finditer(t):
+                nm=m.group('name')
+                if '(' in t[:m.start()] or re.search(r'\b'+re.escape(nm)+r'\s*\(',t):continue
+                if nm.lower().lstrip('_') in ('name','label'):continue
+                out.append((nm,re.sub(r'\s+','',m.group('type')),n))
+        depth+=line.count('{')-line.count('}')
     return list(dict.fromkeys(out))
+
 def controls(s):
     out=[]
     for m in SR.finditer(s):
@@ -56,7 +62,7 @@ def main():
         s=p.read_text(errors='replace'); h=p.with_suffix('.h'); hs=h.read_text(errors='replace') if h.exists() else ''
         cls=p.stem; stripped=clean(s)
         checks=[body(stripped,m.end()-1) for m in CR.finditer(stripped) if m.group('cls')==cls]
-        cb='\n'.join(checks); fs=fields(hs); props=controls(stripped)
+        cb='\n'.join(checks); fs=fields(hs,cls); props=controls(stripped)
         calls=[l.strip() for l in cb.splitlines() if PR.search(l)][:16]
         info={'class':cls,'category':p.parts[2], 'path':str(p),'checks':bool(checks),
             'calls':calls,'controls':props,
