@@ -358,6 +358,11 @@ void genesyspp_driver::clearReferedDataElements() {
 }
 
 void genesyspp_driver::addRefered(std::pair<std::string,std::string> referedElement) { // pair<DataElementTypename, name>
+	// A syntax-only probe must not pollute the dependency registry used by
+	// subsequent evaluation or orphan-data-element analysis on this driver.
+	if (_syntaxOnly) {
+		return;
+	}
 	if (_isRegisterReferedDataElements) {
 		std::list<std::string> *listNamesRefered;
 		if (_referedDataElements->find(referedElement.first) == _referedDataElements->end()) { // dataElemTyper never refered before
