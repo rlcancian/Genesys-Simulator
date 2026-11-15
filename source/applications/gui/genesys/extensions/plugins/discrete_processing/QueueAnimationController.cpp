@@ -1,32 +1,35 @@
-#include "AnimationQueue.h"
-#include "graphicals/ModelGraphicsScene.h"
+#include "QueueAnimationController.h"
+#include "../../../graphicals/ModelGraphicsScene.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
 
 // Contrutor
-AnimationQueue::AnimationQueue(ModelGraphicsScene* myScene, ModelComponent* graphicalComponent) :
+QueueAnimationController::QueueAnimationController(ModelGraphicsScene* myScene, GraphicalModelComponent* graphicalComponent) :
     _myScene(myScene),
     _graphicalComponent(nullptr)
 {
-        _graphicalComponent = _myScene->findGraphicalModelComponent(graphicalComponent->getId());
+        _graphicalComponent = graphicalComponent;
 }
 
 // Destrutor
-AnimationQueue::~AnimationQueue(){}
+QueueAnimationController::~QueueAnimationController(){}
 
 // Getters
-GraphicalModelComponent* AnimationQueue::getGraphicalComponent() const {
+GraphicalModelComponent* QueueAnimationController::getGraphicalComponent() const {
     return _graphicalComponent;
 }
 
 // Verifica a necessidade de adicionar imagem na fila com base no tamanho da fila do componente
-void AnimationQueue::verifyAddAnimationQueue(bool visivible) {
+void QueueAnimationController::verifyAddAnimationQueue(bool visivible) {
     if (_graphicalComponent) {
-        if (_graphicalComponent->hasQueue()) {
-            QList<Queue *> queues = _graphicalComponent->getMapQueue()->keys();
+        if (_graphicalComponent->hasAnimationTracks()) {
+            QList<ModelDataDefinition *> queues = _graphicalComponent->getAnimationTrackMap()->keys();
 
-            for (Queue *queue : queues) {
+            for (ModelDataDefinition *data : queues) {
+                auto* queue = dynamic_cast<Queue*>(data);
+                if (queue == nullptr) continue;
                 unsigned int newQueueSize = (unsigned int) queue->size();
-                unsigned int oldQueueSize = _graphicalComponent->getSizeQueue(queue);
-                unsigned int indexQueue = _graphicalComponent->getIndexQueue(queue);
+                unsigned int oldQueueSize = _graphicalComponent->getAnimationTrackSize(queue);
+                unsigned int indexQueue = _graphicalComponent->getAnimationTrackIndex(queue);
 
                 if (newQueueSize > oldQueueSize) {
                     unsigned int width = 30;
@@ -41,7 +44,7 @@ void AnimationQueue::verifyAddAnimationQueue(bool visivible) {
 
                         GraphicalImageAnimation *image = new GraphicalImageAnimation(position, width, height, animationImageName);
 
-                        bool res = _graphicalComponent->insertImageQueue(queue, image);
+                        bool res = _graphicalComponent->insertAnimationImage(queue, image, oldQueueSize + i + 1);
 
                         if (res) {
                             _myScene->addItem(image);
@@ -57,19 +60,21 @@ void AnimationQueue::verifyAddAnimationQueue(bool visivible) {
 }
 
 // Verifica a necessidade de remover imagem da fila com base no tamanho da fila do componente
-void AnimationQueue::verifyRemoveAnimationQueue() {
+void QueueAnimationController::verifyRemoveAnimationQueue() {
     if (_graphicalComponent) {
-        if (_graphicalComponent->hasQueue()) {
-            QList<Queue *> queues = _graphicalComponent->getMapQueue()->keys();
+        if (_graphicalComponent->hasAnimationTracks()) {
+            QList<ModelDataDefinition *> queues = _graphicalComponent->getAnimationTrackMap()->keys();
 
-            for (Queue *queue : queues) {
+            for (ModelDataDefinition *data : queues) {
+                auto* queue = dynamic_cast<Queue*>(data);
+                if (queue == nullptr) continue;
                 unsigned int newQueueSize = (unsigned int) queue->size();
-                unsigned int oldQueueSize = _graphicalComponent->getSizeQueue(queue);
+                unsigned int oldQueueSize = _graphicalComponent->getAnimationTrackSize(queue);
 
                 if (newQueueSize < oldQueueSize) {
                     unsigned int quantityRemoved = oldQueueSize - newQueueSize;
 
-                    QList<GraphicalImageAnimation *> *imageRemoved = _graphicalComponent->removeImageQueue(queue, quantityRemoved);
+                    QList<GraphicalImageAnimation *> *imageRemoved = _graphicalComponent->removeAnimationImages(queue, quantityRemoved, newQueueSize);
                     if (imageRemoved) {
                         for (unsigned int i = 0; i < (unsigned int) imageRemoved->size(); i++) {
                             // pega a imagem a ser removida
@@ -97,11 +102,11 @@ void AnimationQueue::verifyRemoveAnimationQueue() {
 }
 
 // Se o componente for um componente de fila, adiciona animação
-void AnimationQueue::addAnimationQueue(bool visivible) {
+void QueueAnimationController::addAnimationQueue(bool visivible) {
     // Guard queue animation insertion when queue graphics infrastructure is not initialized.
     if (_graphicalComponent) {
-        if (_graphicalComponent->hasQueue()) {
-            QList<QList<GraphicalImageAnimation *>*> *imagesQueue = _graphicalComponent->getImagesQueue();
+        if (_graphicalComponent->hasAnimationTracks()) {
+            QList<QList<GraphicalImageAnimation *>*> *imagesQueue = _graphicalComponent->getAnimationTracks();
             if (imagesQueue == nullptr || imagesQueue->empty() || imagesQueue->at(0) == nullptr) {
                 qInfo() << "AnimationQueue: queue animation insertion skipped due to uninitialized queue graphics infrastructure";
                 return;
@@ -117,7 +122,7 @@ void AnimationQueue::addAnimationQueue(bool visivible) {
 
             GraphicalImageAnimation *image = new GraphicalImageAnimation(position, width, height, animationImageName);
 
-            bool res = _graphicalComponent->insertImageQueue(image);
+            bool res = _graphicalComponent->insertAnimationImage(image);
 
             if (res) {
                 _myScene->addItem(image);
@@ -135,21 +140,21 @@ void AnimationQueue::addAnimationQueue(bool visivible) {
 }
 
 // Se o componente for um componente de fila, remove a animação
-void AnimationQueue::removeAnimationQueue() {
+void QueueAnimationController::removeAnimationQueue() {
     // Guard batch queue removal path to avoid out-of-range access when queue list is empty.
     if (_graphicalComponent) {
-        if (_graphicalComponent->hasQueue()) {
+        if (_graphicalComponent->hasAnimationTracks()) {
 
             unsigned int images = 1;
 
             if (_graphicalComponent->getComponent()->getClassname() == "Batch") {
-                QList<QList<GraphicalImageAnimation *>*> *imagesQueue = _graphicalComponent->getImagesQueue();
+                QList<QList<GraphicalImageAnimation *>*> *imagesQueue = _graphicalComponent->getAnimationTracks();
                 if (imagesQueue != nullptr && !imagesQueue->empty() && imagesQueue->at(0) != nullptr)
-                    images = (unsigned int) _graphicalComponent->getImagesQueue()->at(0)->size();
+                    images = (unsigned int) _graphicalComponent->getAnimationTracks()->at(0)->size();
             }
 
             for (unsigned int i = 0; i < images; i++) {
-                GraphicalImageAnimation *imageRemoved = _graphicalComponent->removeImageQueue();
+                GraphicalImageAnimation *imageRemoved = _graphicalComponent->removeAnimationImage();
 
                 if (imageRemoved) {
                     _myScene->removeItem(imageRemoved);
@@ -164,7 +169,7 @@ void AnimationQueue::removeAnimationQueue() {
 }
 
 // Calcula onde a imagem será colocada
-QPointF AnimationQueue::calculatePositionImageQueue(unsigned int indexQueue, unsigned int sizeQueue, unsigned int width, unsigned int height) {
+QPointF QueueAnimationController::calculatePositionImageQueue(unsigned int indexQueue, unsigned int sizeQueue, unsigned int width, unsigned int height) {
     unsigned int multiplierX = sizeQueue + 1;
     unsigned int multiplierY = indexQueue + 1;
     unsigned int spaceBetween = 2;

@@ -175,6 +175,19 @@ A decision recorded here is not implemented automatically unless a corresponding
 - Non-goals: no dynamic plugin migration, hot unload guards, kernel model semantics changes, broad CMake reorganization or GUI framework rewrite.
 
 
+### HUM-ARCH-006 — Extraction-first isolation of plugin-specific GUI behavior
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-11-13, after integration of ModalModel/Network PRs #577 and #578.
+- Maintainer decision: **choose generic registry dispatch (alternative B)** over relocating code while retaining direct `MainWindow -> Decide` references. Reuse `source/applications/gui/genesys/extensions/plugins/` and the already-implemented GUI contributions; avoid another framework or new source-root `plugins/integrated_codes`.
+- Change in sequence: do not finalize a broad animation/window/renderer GUI-plugin API before extracting currently embedded domain-specific behavior from MainWindow, generic dialogs/controllers, Property Editor, scene and plugin tree. Catalogue the *actual* needs demonstrated by the extractions, then evolve shared contracts. The preceding G0–G7 execution strategy from the unmerged draft PR #575 is superseded as a work order, **not as an architectural invariant**.
+- First bounded slice: BioReaction/BioSpecies context menu -> `GuiContextMenuContribution` from a biochemical extension; then Decide Conditions/ports/undo, ModalModel/Network edit contexts, specialized scene graphics and finally contract consolidation.
+- Validation: fast affected Qt6 build, 1–3 relevant focused tests per extraction and small GUI interaction check when possible; full required regression/CI at integration. No silent data loss, behavioral change or bypass of mandatory merge gates.
+- Preconditions satisfied: completed prior Modal/Network PRs integrated into `WorkInProgress`. Current HEAD must be rechecked before each *new* development branch; no need to repeat an exhaustive repository-wide audit for each extracted behavior.
+- Future constraints: still static registration; no dynamic shared-object loading/unloading, ABI implementation, wide CMake changes, kernel/algorithm changes or GUI rewrite.
+- Implementation: [extraction-first plan](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md); `AUTO-GUI-004` / [PR #579](https://github.com/rlcancian/Genesys-Simulator/pull/579).
+
 ## 4. Security and deployment decisions
 
 ### HUM-SEC-001 — Worker bind-address contract

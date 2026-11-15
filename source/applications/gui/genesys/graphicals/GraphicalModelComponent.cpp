@@ -145,7 +145,7 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	}
 }
 
-void GraphicalModelComponent::applyDecideConditionPortEdit(unsigned int index, bool inserted) {
+void GraphicalModelComponent::editOutputPort(unsigned int index, bool inserted) {
 	if (index > static_cast<unsigned int>(_graphicalOutputPorts.size())) return;
 	if (inserted) {
 		auto* port = new GraphicalComponentPort(this, false, index, nullptr);
@@ -184,7 +184,7 @@ void GraphicalModelComponent::applyDecideConditionPortEdit(unsigned int index, b
 	}
 }
 
-void GraphicalModelComponent::moveDecideConditionPort(unsigned int from, unsigned int to) {
+void GraphicalModelComponent::moveOutputPort(unsigned int from, unsigned int to) {
 	if (_graphicalOutputPorts.isEmpty() || from >= static_cast<unsigned int>(_graphicalOutputPorts.size() - 1)
 		|| to >= static_cast<unsigned int>(_graphicalOutputPorts.size() - 1) || from == to) return;
 	_graphicalOutputPorts.move(static_cast<int>(from), static_cast<int>(to));
@@ -453,183 +453,84 @@ void GraphicalModelComponent::setAnimationImageName(QString name) {
 }
 
 
-// Em caso de possuir Queue
+QMap<ModelDataDefinition*, QPair<unsigned int, unsigned int>>* GraphicalModelComponent::getAnimationTrackMap() { return _animationTrackMap; }
+QList<QList<GraphicalImageAnimation*>*>* GraphicalModelComponent::getAnimationTracks() { return _animationTracks; }
 
-QMap<Queue*, QPair<unsigned int, unsigned int>>* GraphicalModelComponent::getMapQueue() {
-	return _mapQueue;
+void GraphicalModelComponent::resetAnimationTracks() {
+	clearAnimationTracks();
+	_hasAnimationTracks = false;
 }
 
-QList<QList<GraphicalImageAnimation*>*>* GraphicalModelComponent::getImagesQueue() {
-	return _imagesQueue;
-}
-
-void GraphicalModelComponent::verifyQueue() {
-	clearQueues();
-
-	std::map<std::string, ModelDataDefinition*>* internalData = this->getComponent()->getInternalData();
-	std::map<std::string, ModelDataDefinition*>* attachedData = this->getComponent()->getAttachedData();
-
-	QList<ModelDataDefinition*> qListInternalData;
-	QList<ModelDataDefinition*> qListAttachedData;
-	QList<Queue*> queues;
-
-	for (auto it = internalData->begin(); it != internalData->end(); ++it) {
-		qListInternalData.append(it->second);
-	}
-
-	for (auto it = attachedData->begin(); it != attachedData->end(); ++it) {
-		qListAttachedData.append(it->second);
-	}
-
-	for (ModelDataDefinition* internalData : qListInternalData) {
-		if (internalData->getClassname() == "Queue") {
-			Queue* queue = dynamic_cast<Queue*>(internalData);
-			if (queue) {
-				queues.append(queue);
-				_imagesQueue->append(new QList<GraphicalImageAnimation*>);
-			}
-		}
-	}
-
-	for (ModelDataDefinition* attachedData : qListAttachedData) {
-		if (attachedData->getClassname() == "Queue") {
-			Queue* queue = dynamic_cast<Queue*>(attachedData);
-			if (queue) {
-				queues.append(queue);
-				_imagesQueue->append(new QList<GraphicalImageAnimation*>);
-			}
-		}
-	}
-
-	if (_component->getClassname() == "PickStation") {
-		_imagesQueue->append(new QList<GraphicalImageAnimation*>);
-		_hasQueue = true;
-	}
-
-	if (!queues.empty()) {
-		populateMapQueue(queues);
-		_hasQueue = true;
+void GraphicalModelComponent::addAnimationTrack(ModelDataDefinition* source, unsigned int index, unsigned int currentSize) {
+	_animationTracks->append(new QList<GraphicalImageAnimation*>);
+	if (source != nullptr) {
+		_animationTrackMap->insert(source, qMakePair(index, currentSize));
+		_hasAnimationTracks = true;
 	}
 }
 
-bool GraphicalModelComponent::hasQueue() {
-	return _hasQueue;
+void GraphicalModelComponent::addUnmappedAnimationTrack() {
+	_animationTracks->append(new QList<GraphicalImageAnimation*>);
+	_hasAnimationTracks = true;
 }
 
-bool GraphicalModelComponent::compareQueuesById(const Queue* a, const Queue* b) {
-	return a->getId() < b->getId();
+bool GraphicalModelComponent::hasAnimationTracks() const { return _hasAnimationTracks; }
+
+unsigned int GraphicalModelComponent::getAnimationTrackIndex(ModelDataDefinition* source) const {
+	return _animationTrackMap->value(source).first;
 }
 
-unsigned int GraphicalModelComponent::getIndexQueue(Queue* queue) {
-	QPair<unsigned int, unsigned int> pairIndexSize = _mapQueue->value(queue);
-	return pairIndexSize.first;
+unsigned int GraphicalModelComponent::getAnimationTrackSize(ModelDataDefinition* source) const {
+	return _animationTrackMap->value(source).second;
 }
 
-unsigned int GraphicalModelComponent::getSizeQueue(Queue* queue) {
-	QPair<unsigned int, unsigned int> pairIndexSize = _mapQueue->value(queue);
-	return pairIndexSize.second;
+bool GraphicalModelComponent::insertAnimationImage(ModelDataDefinition* source, GraphicalImageAnimation* image, unsigned int newSize) {
+	if (!_animationTrackMap->contains(source)) return false;
+	const unsigned int index = getAnimationTrackIndex(source);
+	if (index >= static_cast<unsigned int>(_animationTracks->size())) return false;
+	_animationTracks->at(static_cast<int>(index))->append(image);
+	_animationTrackMap->insert(source, qMakePair(index, newSize));
+	return true;
 }
 
-void GraphicalModelComponent::populateMapQueue(QList<Queue*> queues) {
-	QList<Queue*> sortedQueues = queues;
-	std::sort(sortedQueues.begin(), sortedQueues.end(), &compareQueuesById);
+QList<GraphicalImageAnimation*>* GraphicalModelComponent::removeAnimationImages(ModelDataDefinition* source, unsigned int quantityRemoved, unsigned int newSize) {
+	if (!_animationTrackMap->contains(source)) return nullptr;
+	const unsigned int index = getAnimationTrackIndex(source);
+	if (index >= static_cast<unsigned int>(_animationTracks->size())) return nullptr;
+	auto* images = _animationTracks->at(static_cast<int>(index));
+	if (images == nullptr || images->isEmpty()) return nullptr;
+	auto* removed = new QList<GraphicalImageAnimation*>;
+	quantityRemoved = std::min(quantityRemoved, static_cast<unsigned int>(images->size()));
+	for (unsigned int i = 0; i < quantityRemoved; ++i) removed->append(images->takeLast());
+	_animationTrackMap->insert(source, qMakePair(index, newSize));
+	return removed->isEmpty() ? (delete removed, nullptr) : removed;
+}
 
-	for (Queue* queue : queues) {
-		_mapQueue->insert(queue, qMakePair(sortedQueues.indexOf(queue), (unsigned int)queue->size()));
+bool GraphicalModelComponent::insertAnimationImage(GraphicalImageAnimation* image) {
+	if (_animationTracks->isEmpty() || _animationTracks->first() == nullptr) return false;
+	_animationTracks->first()->append(image);
+	return true;
+}
+
+GraphicalImageAnimation* GraphicalModelComponent::removeAnimationImage() {
+	if (_animationTracks->isEmpty() || _animationTracks->first() == nullptr || _animationTracks->first()->isEmpty()) return nullptr;
+	return _animationTracks->first()->takeLast();
+}
+
+void GraphicalModelComponent::setAnimationTracksVisible(bool visible) {
+	for (auto* track : *_animationTracks) if (track != nullptr) for (auto* image : *track) if (image != nullptr) image->setVisible(visible);
+}
+
+void GraphicalModelComponent::clearAnimationTracks() {
+	for (auto* track : *_animationTracks) {
+		if (track == nullptr) continue;
+		for (auto* image : *track) delete image;
+		track->clear();
+		delete track;
 	}
-}
-
-bool GraphicalModelComponent::insertImageQueue(Queue* queue, GraphicalImageAnimation* image) {
-	if ((unsigned int)_imagesQueue->size() == getIndexQueue(queue) + 1) {
-		QList<GraphicalImageAnimation*>* imagesList = _imagesQueue->at(getIndexQueue(queue));
-		imagesList->append(image);
-		actualizeMapQueue(queue);
-
-		return true;
-	}
-
-	return false;
-}
-
-bool GraphicalModelComponent::insertImageQueue(GraphicalImageAnimation* image) {
-	if (!_imagesQueue->empty()) {
-		QList<GraphicalImageAnimation*>* imagesList = _imagesQueue->at(0);
-		imagesList->append(image);
-		return true;
-	}
-	return false;
-}
-
-QList<GraphicalImageAnimation*>* GraphicalModelComponent::removeImageQueue(Queue* queue, unsigned int quantityRemoved) {
-	if ((unsigned int)_imagesQueue->size() == getIndexQueue(queue) + 1) {
-		QList<GraphicalImageAnimation*>* imagesList = _imagesQueue->at(getIndexQueue(queue));
-
-		if (imagesList) {
-			if (!imagesList->empty()) {
-				QList<GraphicalImageAnimation*>* imagesRemoved = new QList<GraphicalImageAnimation*>();
-
-				if (quantityRemoved > (unsigned int)imagesList->size()) {
-					quantityRemoved = imagesList->size();
-				}
-
-				for (unsigned int i = 0; i < quantityRemoved; i++) {
-					imagesRemoved->append(imagesList->last());
-					imagesList->removeLast();
-				}
-
-				actualizeMapQueue(queue);
-
-				if (!imagesRemoved->empty())
-					return imagesRemoved;
-			}
-		}
-	}
-	return nullptr;
-}
-
-GraphicalImageAnimation* GraphicalModelComponent::removeImageQueue() {
-	if (!_imagesQueue->empty()) {
-		QList<GraphicalImageAnimation*>* imagesList = _imagesQueue->at(0);
-
-		if (imagesList) {
-			if (!imagesList->empty()) {
-				GraphicalImageAnimation* imageRemoved = imagesList->last();
-
-				if (imageRemoved) {
-					imagesList->removeLast();
-					return imageRemoved;
-				}
-			}
-		}
-	}
-
-	return nullptr;
-}
-
-void GraphicalModelComponent::actualizeMapQueue(Queue* queue) {
-	_mapQueue->insert(queue, qMakePair(getIndexQueue(queue), queue->size()));
-}
-
-void GraphicalModelComponent::visivibleImageQueue(bool visivible) {
-	for (QList<GraphicalImageAnimation*>* imagesList : *_imagesQueue) {
-		for (GraphicalImageAnimation* image : *imagesList) {
-			image->setVisible(visivible);
-		}
-	}
-}
-
-void GraphicalModelComponent::clearQueues() {
-	for (QList<GraphicalImageAnimation*>* imagesList : *_imagesQueue) {
-		for (GraphicalImageAnimation* image : *imagesList) {
-			delete image;
-		}
-		imagesList->clear();
-		delete imagesList;
-	}
-	_imagesQueue->clear();
-	_mapQueue->clear();
-	// Keep logical queue state synchronized with structural queue cleanup.
-	_hasQueue = false;
+	_animationTracks->clear();
+	_animationTrackMap->clear();
+	_hasAnimationTracks = false;
 }
 
 /*

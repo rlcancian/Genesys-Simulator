@@ -294,7 +294,9 @@
       "name": "tests-kernel-unit",
       "configurePreset": "tests-kernel-unit",
       "targets": [
-        "genesys_kernel_unit_tests_run"
+        "genesys_kernel_unit_tests_run",
+        "genesys_test_cppforg_dynamic",
+        "genesys_test_cppcompiler_dynamic"
       ]
     },
     {

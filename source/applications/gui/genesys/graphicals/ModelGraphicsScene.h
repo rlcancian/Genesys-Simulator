@@ -489,9 +489,9 @@ public:
     /** @brief Handles animation state changes for transition-driven event loops. */
     void handleAnimationStateChanged(QAbstractAnimation::State newState, QEventLoop* loop, Event* event, AnimationTransition* animationTransition);
     /** @brief Creates the queue-insert animation overlay for one component. */
-    void animateQueueInsert(ModelComponent *component, bool visivible);
+    void animateEntityArrival(ModelComponent *component, bool visible);
     /** @brief Creates the queue-remove animation overlay for one component. */
-    void animateQueueRemove(ModelComponent *component);
+    void animateEntityDeparture(ModelComponent *component);
     /** @brief Updates the counter animation overlay. */
     void animateCounter();
     /** @brief Updates the variable animation overlay. */

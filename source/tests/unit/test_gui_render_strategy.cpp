@@ -62,6 +62,20 @@ GraphicalModelItemRenderContext geneticPartContext(const QString& partType) {
     context.semanticClassName = QStringLiteral("GeneticCircuitPart");
     context.semanticSubtype = partType;
     context.fillColor = QColor(72, 124, 179, 210);
+    context.hasSpecializedGlyph = true;
+    context.specializedAccent = partType.contains(QStringLiteral("promoter"), Qt::CaseInsensitive)
+                                    ? QColor(64, 170, 120)
+                                    : QColor(52, 152, 219);
+    if (partType.contains(QStringLiteral("promoter"), Qt::CaseInsensitive)) {
+        context.specializedShape.moveTo(18, 28);
+        context.specializedShape.lineTo(118, 28);
+        context.specializedShape.lineTo(142, 40);
+        context.specializedShape.lineTo(118, 52);
+        context.specializedShape.lineTo(18, 52);
+        context.specializedShape.closeSubpath();
+    } else {
+        context.specializedShape.addRoundedRect(QRectF(24, 28, 112, 24), 6, 6);
+    }
     return context;
 }
 
@@ -73,6 +87,20 @@ GraphicalModelItemRenderContext geneticRegulationContext(const QString& regulati
     context.semanticClassName = QStringLiteral("GeneticRegulation");
     context.semanticSubtype = regulationType;
     context.fillColor = QColor(214, 82, 102, 210);
+    context.hasSpecializedGlyph = true;
+    context.specializedAccent = regulationType.contains(QStringLiteral("activation"), Qt::CaseInsensitive)
+                                    ? QColor(64, 170, 120)
+                                    : QColor(214, 82, 102);
+    context.specializedShape.addRoundedRect(QRectF(24, 28, 112, 24), 12, 12);
+    if (regulationType.contains(QStringLiteral("activation"), Qt::CaseInsensitive)) {
+        context.specializedShape.moveTo(132, 40);
+        context.specializedShape.lineTo(118, 31);
+        context.specializedShape.lineTo(118, 49);
+        context.specializedShape.closeSubpath();
+    } else {
+        context.specializedDetails.moveTo(126, 31);
+        context.specializedDetails.lineTo(126, 49);
+    }
     return context;
 }
 

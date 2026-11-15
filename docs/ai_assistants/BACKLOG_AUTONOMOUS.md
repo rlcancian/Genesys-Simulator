@@ -914,6 +914,22 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Stop gates: uncertain event semantics, model binding, unknown-extension data retention, ownership, concurrent GUI modifications, unstable C++/Qt ABI or any request to implement dynamic loading without explicit scope approval.
 - Rollback: per-phase reviewable merge commits and current-format compatibility fixtures. No release-branch promotion.
 
+### AUTO-GUI-004 — Extract concrete plugin-specific GUI logic before final graphical-plugin API
+
+- Priority: `P1`
+- Status: `running` (E0–E5 implementation and validation complete; PR awaits review)
+- Authorization: maintainer request dated 2026-11-13 after ModalModel/Network integration; implementation executed in draft PR #579.
+- Decision: `HUM-ARCH-006`; plan: [GUI_EXTENSIONS_EXTRACTION_PLAN.md](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md).
+- Environment: `github` for bounded source patch and CI evidence; `local` for interactive GUI smoke and optional focused debugging.
+- Branch: `WiP202611/gui-plugin-specific-extraction`, based on `WorkInProgress` `2ad98f96311e9c13d27078f9dd83bbffafdabe5d`; [PR #579](https://github.com/rlcancian/Genesys-Simulator/pull/579) targets `WorkInProgress`.
+- Scope: E0 source revalidation after Modal/Network integration; E1 BioReaction menu extraction, E2 Decide Conditions/ports/undo coordination, E3 ModalModel/Network/Property Editor and plugin tree, E4 Queue/Station/genetic presentation specializations, E5 classify recurring contributions and propose only necessary general contracts.
+- Implemented slices: E0 repaired test placement; E1 registered BioReaction context menu; E2 delegated Decide list/port reconciliation; E3 delegated ModalModel/Network context, tree and Property Editor operations; E4A extracted Queue/PickStation visualization; E4B extracted genetic glyph presentation. Commits and focused results are cataloged in [the execution plan](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md) and [closeout evidence](history/evidence/2026/11/2026-11-13_gui_plugin_extraction_closeout.md).
+- Current validation: GUI app and full `tests-unit` builds passed; CTest passed 2,121 active tests with four disabled. Focused GUI/renderer tests passed (renderer 11/11), and documentation governance passed. Initial CTest/hosted unit checks found the same regular-Submodel drop regression; `18a86f434` fixes it and local regression/full suite now pass. All hosted checks passed on `288c20e04ee790c8649e14c2c799fbf2978f3ce5`, including unit, kernel, smoke, GUI, integrated-tools, launcher, Debian package/lifecycle and docs governance. The PR remains draft for review; this task has no merge authorization.
+- Residual host coupling: `GraphicalModelComponent` still initializes Decide's semantic ports by concrete type, and the generic scene retains a Queue placeholder for drawing-tool placeholder mode. These are explicitly outside the extracted runtime/list paths and remain candidates for a later bounded extraction.
+- E0–E5 acceptance: implementation and required local/hosted validation are complete; interactive manual desktop checks were not executed locally.
+- No dynamic plugin loading, ABI migration, global GUI rewrite, new framework, unsafe handling of model lifetimes, data deletion or unapproved `WorkInProgress` direct edits. Maintain rollback by small commits.
+- Previous unmerged [PR #575](https://github.com/rlcancian/Genesys-Simulator/pull/575) is historical documentation and **not** the active implementation workstream. `AUTO-GUI-003` general implementation remains deferred until extracted contracts establish concrete needs; avoid parallel execution.
+
 ## 11. Authorized full ModalNetwork GUI implementation
 
 ### AUTO-MODAL-005 — Execute complete ModalModel/DefaultNetwork GUI evolution
@@ -941,3 +957,17 @@ A task moves to `done` only after required validation is green, evidence is revi
 - Non-goals: kernel Qt dependencies, proxy ModelDataDefinitions, and invented formalism semantics.
 - Progress evidence: `history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md`.
 - Completion evidence (2026-11-13): EFSM, Graph/DirectedGraph/DAG, Markov and CPN implementations were integrated by PR #578 at merge commit `0624d84b462919b235e31a625bdd75de3876ff72`; all 18 final-head hosted checks passed. Locally, the GUI test target passed 155/155 on rerun, formalism kernel/model-file tests passed 45/45, GUI app build and documentation governance passed. Interactive desktop smoke remains unperformed. See the progress evidence for commits and validation details.
+
+## 12. Completed C++ runtime integration
+
+### AUTO-CPP-001 — Complete CppCompiler and CppForG dynamic runtime
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Environment: local Ubuntu/C++23/CMake/Ninja plus GitHub Actions.
+- Authorization: explicit maintainer scope and merge authorization in the 2026-11-13 request; review confirmed in conversation before integration.
+- Branch/PR: `WiP20261111/cppcompiler-cppforg-runtime`, [PR #576](https://github.com/rlcancian/Genesys-Simulator/pull/576), source head `4f3d2705ece5993ab5f65b7702c3598aaf2d3c80`, merge commit `ad62e3d05c18c0022f42ca266ddaad5eb6a6810d`.
+- Scope: reliable direct compiler invocation, shared-library loading/symbol lifetime, generated CppForG hooks, host-kernel symbol resolution and installed header lookup; bounded `DiffEquations` ownership compatibility and regressions.
+- Acceptance: generated C++ executes because an entity reaches `CppForG`, uses real `Entity` APIs, and forwards to `Dispose`; failures, recompilation, repeat simulation, multiple instances, persistence, dependent `DiffEquations`, and resource ownership are tested; required presets and final-head CI pass.
+- Validation: 14 focused dynamic runtime/persistence tests; local full CTest 2,127 passed plus 4 disabled; smoke 3/3; GUI, shell, worker and Smart_CppForG build; ASan/UBSan and LSan focused tests passed; every final-head hosted check passed, including package lifecycle. Details: [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
+- Security boundary: generated native code executes in-process and has no sandbox. Smart_CppForG was built but not launched because its startup writes a model file.

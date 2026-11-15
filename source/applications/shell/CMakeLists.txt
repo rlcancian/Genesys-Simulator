@@ -5,6 +5,8 @@ add_executable(genesys_shell
     GenesysShell.cpp
     ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
 )
+# Runtime-compiled CppForG code resolves kernel methods from the host executable.
+set_target_properties(genesys_shell PROPERTIES ENABLE_EXPORTS ON)
 
 target_include_directories(genesys_shell
     PRIVATE
