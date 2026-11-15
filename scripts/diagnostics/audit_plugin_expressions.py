@@ -7,7 +7,10 @@ FR=re.compile(r'(?P<type>\b(?:std::)?string\b|\bQString\b|\bList\s*<\s*(?:std::)
 CR=re.compile(r'\b(?:bool|void)\s+(?P<cls>\w+)::(?P<method>_check|checkSymbols)\s*\([^)]*\)\s*(?:const\s*)?\{')
 PR=re.compile(r'\b(?:checkExpression|parseExpression|validate\w*Expression|check\w*Expression)\s*\(')
 SR=re.compile(r'new\s+SimulationControl(?:Generic\s*<\s*std::string\s*>|String)\s*\(')
-def clean(s): return re.sub(r'//[^\n]*','',re.sub(r'/\*.*?\*/','',s,flags=re.S))
+def clean(s):
+    without_blocks=re.sub(r'/\\*.*?\\*/',lambda m:'\\n'*m.group(0).count('\\n'),s,flags=re.S)
+    return re.sub(r'//[^\\n]*','',without_blocks)
+
 def body(s,at):
     level=1; i=at+1; start=i; quote=''; escaped=False
     while i<len(s) and level:
@@ -24,17 +27,18 @@ def body(s,at):
 def class_body(h,cls):
     stripped=clean(h)
     m=re.search(r'\b(?:class|struct)\s+'+re.escape(cls)+r'\b[^;{]*\{',stripped)
-    return body(stripped,m.end()-1) if m else ''
+    return (body(stripped,m.end()-1),stripped[:m.end()].count('\n')) if m else ('',0)
 def fields(h,cls):
     out=[]; depth=0
-    for n,line in enumerate(class_body(h,cls).splitlines(),1):
+    class_text,line_offset=class_body(h,cls)
+    for n,line in enumerate(class_text.splitlines(),1):
         t=line.strip()
         if depth==0 and t and not t.startswith('#') and 'typedef ' not in t and 'using ' not in t:
             for m in FR.finditer(t):
                 nm=m.group('name')
                 if '(' in t[:m.start()] or re.search(r'\b'+re.escape(nm)+r'\s*\(',t):continue
                 if nm.lower().lstrip('_') in ('name','label'):continue
-                out.append((nm,re.sub(r'\s+','',m.group('type')),n))
+                out.append((nm,re.sub(r'\s+','',m.group('type')),n+line_offset))
         depth+=line.count('{')-line.count('}')
     return list(dict.fromkeys(out))
 
