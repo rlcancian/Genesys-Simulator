@@ -29,17 +29,20 @@ def class_body(h,cls):
     m=re.search(r'\b(?:class|struct)\s+'+re.escape(cls)+r'\b[^;{]*\{',stripped)
     return (body(stripped,m.end()-1),stripped[:m.end()].count('\n')) if m else ('',0)
 def fields(h,cls):
-    out=[]; depth=0
+    out=[]; depth=0; paren_depth=0
     class_text,line_offset=class_body(h,cls)
     for n,line in enumerate(class_text.splitlines(),1):
         t=line.strip()
-        if depth==0 and t and not t.startswith('#') and 'typedef ' not in t and 'using ' not in t:
+        if depth==0 and paren_depth==0 and t and not t.startswith('#') and 'typedef ' not in t and 'using ' not in t:
             for m in FR.finditer(t):
                 nm=m.group('name')
                 if '(' in t[:m.start()] or re.search(r'\b'+re.escape(nm)+r'\s*\(',t):continue
                 if nm.lower().lstrip('_') in ('name','label'):continue
                 out.append((nm,re.sub(r'\s+','',m.group('type')),n+line_offset))
+        if depth==0:
+            paren_depth=max(0,paren_depth+line.count('(')-line.count(')'))
         depth+=line.count('{')-line.count('}')
+        if depth>0: paren_depth=0
     return list(dict.fromkeys(out))
 
 def controls(s):
