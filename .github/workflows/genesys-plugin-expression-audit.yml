@@ -1,0 +1,31 @@
+name: Diagnostic plugin expression string inventory
+on:
+  push:
+    branches:
+      - Diagnostics20261115/plugin-expression-string-audit
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Execute read-only inventory on the exact branch checkout
+        run: |
+          set -Eeuo pipefail
+          echo "AUDIT_HEAD=$(git rev-parse HEAD)"
+          python3 --version
+          python3 scripts/diagnostics/audit_plugin_expressions.py | tee plugin-expression-audit.log
+      - name: Publish audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-expression-audit
+          path: |
+            plugin-expression-inventory.csv
+            plugin-expression-inventory.json
+            plugin-expression-audit.log
+          if-no-files-found: warn
+          retention-days: 30
