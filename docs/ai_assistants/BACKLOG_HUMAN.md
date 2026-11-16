@@ -2,7 +2,7 @@
 document_type: backlog
 authority: human-decision-source
 owner: project-maintainer
-last_updated: 2026-11-12
+last_updated: 2026-11-16
 review_cadence: on-decision-or-status-change
 status: active
 tracks: 511
@@ -169,8 +169,9 @@ A decision recorded here is not implemented automatically unless a corresponding
 - Placement: retain framework classes in `source/applications/gui/genesys/extensions/`; propose `source/applications/gui/genesys/extensions/plugins/` for concrete graphical plugin implementations, without immediate large-scale file moves or separate library targets.
 - Future constraint: static registration and compilation for now. Actual shared-library packaging, dynamic load/unload, active-object/callback lifetime protection, hot reload and the Qt/C++ adapter to the approved stable versioned C ABI are **deferred** and require a separate explicit decision/plan. Kernel plugin-target duplication issue #492 remains independent.
 - Scope clarification: historical student PR #436 and DCS-5 artifacts are non-authoritative examples, not approved patches. Existing Tools/Extensions windows (e.g. Bacteria Colony) are to be phased out only after equivalent insertable model-scene animations are verified.
-- Implementation status: **not started**. Documentation-only plan/decision approved; no unattended implementation authorization.
-- Approved references: [architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md) and [gated implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md); `AUTO-GUI-003` owns future execution after activation.
+- **Formal ratification (2026-11-16):** the maintainer expressly approved all D1–D12 of [the formal post-extraction contract](reference/GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md). Decisions include: one `GuiExtensionPlugin` base and composition; minimal real-use contribution types; typed required/optional dependencies with explicit ALL/ANY grouping and optional per-contribution eligibility; deterministic exclusive provider selection; explicit item ownership; GUI-thread event/snapshot bridge; lossless unknown GUI records; bounded host capabilities; stable IDs/namespaces; and a separate future dynamic/ABI project.
+- Implementation status: **architecture ratified, general C++ architecture not implemented or validated**. The first bounded G0/G1/G2 implementation can be prepared under `AUTO-GUI-003` with actual source/tests and safety gates; no automatic approval of unreviewed C++ API signatures or dynamic loading.
+- Approved references: [conceptual architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md), [formal approved contract](reference/GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md) and [implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md).
 - Decision unlocks: planning and future separately authorized bounded GUI refactors. Stop for maintainer if kernel semantics, unsupported persistence migration, stable ABI policy or dynamic loading becomes part of the proposed change.
 - Non-goals: no dynamic plugin migration, hot unload guards, kernel model semantics changes, broad CMake reorganization or GUI framework rewrite.
 
