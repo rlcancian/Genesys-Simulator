@@ -1,4 +1,3 @@
-
 ---
 document_type: architecture-review-proposal
 authority: informative-proposal-not-approved
