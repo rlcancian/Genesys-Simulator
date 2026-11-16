@@ -245,7 +245,7 @@ These proposed `add...` method names are **candidate API names, not current symb
 
 ### 7.1 Proposed extension metadata / dependency contract
 
-A **candidate** additive descriptor (exact types/names require approval and compilation validation):
+An **approved typed-dependency direction** with one candidate additive C++ descriptor (exact names and representation require compilation validation):
 
 ```cpp
 // PROPOSAL ONLY: these declarations do not exist in WorkInProgress.
@@ -265,7 +265,7 @@ struct GuiExtensionDescriptor {
 // virtual GuiExtensionDescriptor descriptor() const;
 ```
 
-**Decision required:** a metadata method vs an explicit metadata registration function; whether new virtual dispatch is justified; AND/OR dependency grouping; version constraints; whether disabled optional dependencies simply remove particular contributions. Existing `requiredModelPlugins()` must remain a compatibility source until a verified migration. No automatic installation, no execution of external commands from metadata and no model instance creation as a consequence of enabling a GUI extension.
+**Approved architecture (D3–D5):** typed model/GUI/system requirements, explicit opt-in ALL/ANY groups, legacy `requiredModelPlugins()` ALL compatibility, and per-contribution optional gating when relevant. **Implementation detail to validate:** whether descriptors are returned through an additive virtual method or registered as metadata, and the grammar used for version constraints. No automatic installation, external commands from metadata or model instance creation on extension activation.
 
 ### 7.2 Proposed addAnimationTool — in-scene visual item, independent of model plugins
 
@@ -293,7 +293,7 @@ Prefer reusing the existing `SimulationEventController`/`OnEventManager` bridge 
 - `void onSimulationEnded(const GuiSimulationSnapshot&)`
 - `void onDetached()`
 
-These can be optional members of one `GuiSimulationObserverContribution` or a smaller event-handler table, not methods forcibly added to `GuiExtensionPlugin`. Decide whether events are lossless transitions or coalescible snapshots **per observer**; never silently downsample state transitions. Reset/cancel/drain on model close and scene destruction. Qt UI access only from the GUI thread.
+These can be optional members of one `GuiSimulationObserverContribution` or a smaller event-handler table, not methods forcibly added to `GuiExtensionPlugin`. The **approved D8 contract** requires each observer to declare lossless transitions or coalescible snapshots explicitly; never silently downsample state transitions. Reset/cancel/drain on model close and scene destruction. Qt UI access only from the GUI thread.
 
 ### 7.4 Proposed component renderer
 
@@ -305,7 +305,7 @@ A candidate `GuiServiceProviderContribution` describes `serviceId`, `providerId`
 
 ### 7.6 Persistence contract: common envelope + opaque extension payload
 
-**PROPOSED** persistent record fields:
+**Approved D9 persistence semantics; candidate on-disk record fields (not yet committed to a schema):**
 - `formatVersion`, `extensionId`, `animationTypeId`, `payloadSchemaVersion`;
 - stable `itemId`, optional stable `targetKind` + `targetId` + scoped model identity;
 - geometry/appearance/z-order/visibility and membership where supported;
@@ -313,7 +313,7 @@ A candidate `GuiServiceProviderContribution` describes `serviceId`, `providerId`
 
 Accepted critical round-trip: **extension present -> save -> extension absent -> load -> save (default Preserve) -> extension restored -> load** must recover payload, target binding and placement. Discard requires explicit user confirmation. A missing graphical extension must not be conflated with a missing model-plugin type needed to deserialize the *simulation model*. Do not replace established `.gui` format unilaterally; first characterize current records and migration fixtures.
 
-### 7.7 Registration, selection and lifecycle (PROPOSED contract)
+### 7.7 Registration, selection and lifecycle (APPROVED semantics; C++ APIs pending)
 
 ```text
 Static discovery -> normalized IDs -> duplicate/conflict checks -> dependency resolution
