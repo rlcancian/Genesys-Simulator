@@ -1,9 +1,10 @@
 ---
-document_type: architecture-review-proposal
-authority: informative-proposal-not-approved
+document_type: technical-architecture
+authority: technical-reference
 owner: project-maintainer
-status: human-review-required
+status: approved-design-implementation-pending
 date: 2026-11-16
+human_approval: D1-D12-unconditionally-approved-on-2026-11-16
 source_branch: WorkInProgress
 source_commit: 6d1c4be0b385ab7b07ea4d995e2e105fb4d7ee03
 tracks: HUM-ARCH-004,HUM-ARCH-006,AUTO-GUI-003,AUTO-GUI-004
@@ -11,7 +12,7 @@ tracks: HUM-ARCH-004,HUM-ARCH-006,AUTO-GUI-003,AUTO-GUI-004
 
 # GenESyS: formal architectural review of graphical extensions (post-E0–E5)
 
-> **REVIEW DRAFT, NOT IMPLEMENTED API.** This document distinguishes **OBSERVED** C++ signatures in the pinned source commit, **DOCUMENTED** already-approved invariants, **PROPOSED** future contracts, and **DECISION REQUIRED**. Nothing in the proposed method catalogue is a declaration that those methods already exist. This draft does not change C++, persistence, build, branch promotion, or approval status of AUTO-GUI-003.
+> **ARCHITECTURAL DECISION APPROVED — IMPLEMENTATION NOT YET VERIFIED.** On 2026-11-16 the maintainer explicitly approved decisions D1–D12, including the recommended resolutions of previously open choices. This document now records the **approved architecture and migration constraints**, distinguishes **OBSERVED** source signatures from **FUTURE CONTRACTS**, and does not claim new C++ declarations, tests, runtime behavior, ABI stabilization or dynamic loading. Names/signatures for future APIs are *implementation candidates* that must respect the approved semantics, not already-compiled public contracts. The bounded G0/G1/G2 implementation sequence requires the prescribed source inspection and local Qt6/CMake/Ninja validation.
 
 ## 1. Scope, baseline, evidence and architectural objective
 
@@ -362,26 +363,52 @@ Required invariants: deterministic registration; missing required dependency dis
 
 A complete static-first acceptance path must test teardown/rapid model switch, undo/redo, missing extension, duplicate provider, bad model reference and ideally focused ASan/UBSan/LSan. Source review alone does not establish leak freedom.
 
-## 10. Decision log for maintainer review — no choices silently implemented
+## 10. Approved architectural decisions D1–D12 — maintainer ratification 2026-11-16
 
-| ID | Architectural decision | Proposed default for review | Status |
-|---|---|---|---|
-| D1 | One base interface vs subclasses per GUI capability | Keep **one** `GuiExtensionPlugin`, compose contribution structures; no mandatory subinterfaces | Proposed |
-| D2 | Which extension categories need a new contract? | `AnimationTool` first; event observers only as warranted; renderer/provider from real second examples | Proposed |
-| D3 | Dependency metadata API form | Extend compatibly; retain `requiredModelPlugins`; define typed optional/required dependencies and group semantics | Open |
-| D4 | AND vs ANY-OF model plugin dependencies | Explicit grouping, evaluate Queue/PickStation and BioReaction/BioSpecies | Open |
-| D5 | Per-plugin vs per-contribution dependencies | Prefer per-plugin baseline plus contribution-specific optional gating only when needed | Open |
-| D6 | Exclusive renderer/service provider selection | Explicit ID, deterministic selection, fallback to generic host | Proposed |
-| D7 | Drawing tool return/ownership and lifetime | Scene adopts explicitly; no compulsory `AnimationPlaceholder` inheritance | Proposed |
-| D8 | GUI simulation event contract | Immutable snapshot, ordering/thread affinity, lossless vs coalescible modes | Open |
-| D9 | Unknown graphical record retention | Opaque lossless preservation by default; explicit discard | Previously approved invariant; implementation pending |
-| D10 | Expose `Ui::MainWindow*` to external contributions | Avoid in future SDK via bounded capabilities; do not break legacy immediately | Open migration |
-| D11 | Namespace and ID conventions | Preserve current identifiers; require stable, normalized new IDs and collision tests | Proposed |
-| D12 | Dynamic loading / C ABI / Qt ABI | **Separate future decision**, not part of this review or G0–G7 static implementation | Deferred |
+| ID | **Binding approved decision** | Consequence for implementation |
+|---|---|---|
+| **D1** | One mandatory `GuiExtensionPlugin` interface; **composition** of optional contribution descriptors; no forced IWindow/IAnimation/IRenderer inheritance | Preserve existing five pure virtual methods through the compatibility stage; implement extension capabilities by registry composition |
+| **D2** | Extend capabilities incrementally, **animation tool/factory first**; add event observers, component renderers and service providers when concrete cases justify them | Existing 11 categories remain valid; no new unused required virtual methods |
+| **D3** | Introduce **typed and explicit dependency metadata** (model-plugin, GUI-extension, system capability; required/optional), retaining compatibility with `requiredModelPlugins()` | Version/capability normalization and conflict diagnostics; exact metadata schema/version grammar must be implemented and tested |
+| **D4** | Support explicitly declared **ALL/ANY (AND/OR) groups** of requirements, without guessing from list order | Legacy `requiredModelPlugins()` retains its current ALL meaning; group semantics must be opt-in and unit-tested; Queue/PickStation is a regression fixture |
+| **D5** | Keep **per-extension** requirements as the base; support **per-contribution** eligibility when different features need different prerequisites | Absent optional feature disables only its contribution; never require a simulation model instance merely to register an extension |
+| **D6** | Competing exclusive renderer/service providers use **stable IDs, explicit selection, deterministic tie/conflict diagnostics and generic fallback** | Additive contributions (actions etc.) remain additive; no silent last-registration-wins or arbitrary private-GUI overrides |
+| **D7** | Factories create GUI items with an **explicit, single ownership handoff** to the scene; no mandatory `AnimationPlaceholder` subclass | Specify item lifetime, Qt/scene ownership, cancellation, selection, undo/redo, destruction and model switching before implementation |
+| **D8** | Reuse the GUI event bridge, provide **immutable ordered events/snapshots delivered on GUI thread**, and explicitly specify lossless vs coalescible subscriptions | Avoid extending kernel objects with Qt; do not store borrowed `SimulationEvent*` after the callback; include replication/model cancellation and event-order tests |
+| **D9** | **Lossless opaque graphical persistence by default**, including unknown payload fields when an extension is disabled/missing; discard only with explicit user approval | Accept the complete present→save→absent→load/save→restored→load round-trip; preserve current `.gui` semantics and separate absent graphical extension from absent model plugin |
+| **D10** | Minimize external extension exposure to `Ui::MainWindow*`, evolving toward bounded **GUI host capabilities/context** | Keep legacy interfaces compatible until migrated; no immediate hard-breaking replacement of public GUI types |
+| **D11** | Preserve existing stable IDs; apply **consistent normalized namespaced IDs, contribution/instance identities and incremental namespaces** to new APIs | Detect duplicate IDs, add compatibility tests and avoid mass renames or gratuitous ABI churn |
+| **D12** | Keep static registration for current stages; future dynamic loading/Qt ABI ↔ stable core C ABI integration remains a **separate authorized project** | No `QPluginLoader`/dynamic-unload lifecycle or ABI commitments are introduced by this approval |
 
-## 11. Proposed incremental implementation sequence (no authorization implied)
+**Approval interpretation:** The above rules are approved *design constraints*, not evidence that the C++ contracts already exist. Previously open details (e.g. per-contribution dependency policy, ANY/ALL group semantics, deterministic provider selection) are now resolved by the selected proposals. Concrete C++ struct field names and exact signatures may be adapted to actual code and C++23/Qt6 ownership constraints, without violating the approved semantics.
 
-- **F0 (this review):** complete current-code method, inheritance and dependency inventory; human review of D1–D12; reconcile stale `STATUS.md`/backlog statements in a later approved documentation update.
+**Implementation activation:** The user expressly authorized application of these guidelines to the **formal architecture**. This enables documentation ratification and preparation of the first bounded implementation slice; it does **not** waive required code/build/test/CI checks, authorize dynamic loading, or claim that every G0–G7 feature is implemented.
+
+### 10.1 Normative dependency and dispatch semantics
+
+1. One canonical eligibility function must be shared by Manager/Catalog dispatch paths. `requiredModelPlugins()` is legacy ALL semantics. Explicit groups use ALL/ANY and distinguish required from optional. Missing optional prerequisites must not disable unrelated contributions. Model-plugin IDs refer to registered/loaded *plugin classes*, not model-object existence.
+2. A GUI extension may reference another extension **by stable ID** (declarative prerequisite), but must not require C++ inheritance from that extension, depend on its concrete class without an explicit rationale, or assume its activation by source-order side effects. Cycles/missing required IDs fail deterministically with diagnostics. Registration and activation must be idempotent and collision-checked.
+3. Capability registration may be an independent operation; dependency evaluation, action availability and model-scene applicability are distinct questions. The generic host must neither link against optional concrete implementation classes unnecessarily nor know their class names.
+4. For *exclusive* services/renderers, choose the user-selected supported provider where available, otherwise a documented deterministic default; report conflicts and keep a safe host fallback. Persist selected-provider identity only when necessary and appropriate.
+5. When the GUI creates a `QGraphicsItem`, the extension owns it until a successful explicit adoption transfer. Thereafter, host-scene/Qt item lifecycle controls deletion, grouping and undo. The future implementation must establish how `std::unique_ptr<QGraphicsItem>` and Qt's parent/scene ownership interact before committing to an exported signature.
+6. GUI observer lifetime is bounded by the active model/scene. Event delivery is ordered with explicit pre/post-state meaning, GUI thread affinity and cancellation/drain behavior. Lossless observers may not be throttled by dropping domain transitions; coalescible observers must declare this explicitly.
+7. Extension-owned graphical records must retain identity, target binding, geometry, schema and opaque payload across absent-extension save/reload; unknown records are not silently discarded, normalized destructively or treated as proof of missing kernel-model compatibility.
+8. Static build remains current; a future C ABI/Qt SDK boundary is reserved for a separate review and tests. No virtual interface is represented as a stable cross-toolchain binary ABI by default.
+
+### 10.2 Decision-level traceability to implementation
+
+| Implementation slice | Approved decisions it realizes | End-to-end oracle |
+|---|---|---|
+| F0 — documentation ratification | D1–D12 | Published approved decisions and correct provenance; no runtime claim |
+| F1 — eligibility/registry | D1, D3–D5, D11 | Same dependency decision via Manager/Catalog; missing/cycle/duplicate/ANY/ALL/optional tests |
+| F2 — animation tool/scene factory | D2, D7, D10 | New GUI animation contributed without host domain branches; insert/resize/undo/delete/model switch |
+| F3 — event and persistent records | D8, D9 | GUI-thread ordering, event cancellation and absent-extension lossless round-trip |
+| F4 — domain migrations/providers | D2, D6–D11 | Queue/Decide residuals, Bacteria Colony/CA, competing providers; kernel output unchanged |
+| Separate future project | D12 | Dedicated dynamic loading ABI decision and lifecycle tests; **not** current implementation |
+
+## 11. Approved incremental sequence (implementation still subject to test and source-validation gates)
+
+- **F0 (approved):** inventory and ratification of D1–D12; update canonical status and backlog in this documentation integration. No source modification.
 - **F1:** unify catalogue/manager dependency eligibility and ID-collision diagnostics without changing source-level plugin registration. Build focused tests for dependency edge cases.
 - **F2:** minimal `AnimationTool` descriptor/scene factory for one independent *static* exemplar. Add menu/toolbar and scene item without generic-host domain branches; test insert/delete/undo/resize.
 - **F3:** simulation observation and generic lossless extension persistence; validate event ordering, missing extension, save/reload/reinstall and cancellation.
@@ -389,13 +416,14 @@ A complete static-first acceptance path must test teardown/rapid model switch, u
 
 Stop if a proposed interface requires kernel→Qt dependency, undocumented model mutation, unsafe pointer ownership, unapproved persistence migration, or dynamic package/ABI choices. Do not merge an implementation PR without mandated tests.
 
-## 12. Acceptance criteria for THIS review draft
+## 12. Acceptance criteria for architectural ratification vs implementation
 
 - **PASS (documentation inspection):** exact existing five pure virtual methods and 11 registry categories inventoried; full set of callback names/signatures; all 24 concrete plugin subclasses, declared model dependencies and registered capabilities; current host helpers, known coupling and existing ownership model documented.
 - **PASS (design separation):** every new candidate is labelled PROPOSED/OPEN and is not represented as implemented.
 - **UNKNOWN (requires future implementation/tests):** feasibility of proposed factories/provider APIs, collision and dependency-policy coverage, Qt GUI end-to-end interaction, cross-extension events, lossless opaque persistence, dynamic ABI.
 - **NOT PERFORMED:** compilation, CTest, Qt interaction, ABI test or actual plugin modification; this is a GitHub-only, documentation-only review branch.
-- **Human acceptance required** before updating normative architecture or activating `AUTO-GUI-003` source implementation.
+- **PASS (human architectural decision):** all D1–D12 approved unconditionally by maintainer on 2026-11-16; semantic constraints above now binding for subsequent implementation proposals.
+- **UNKNOWN (implementation):** new C++ APIs, CMake/Qt builds, runtime factory/persistence/event or ABI behavior; acceptance of the architecture does not establish these results.
 
 ## 13. Provenance / direct source references
 
