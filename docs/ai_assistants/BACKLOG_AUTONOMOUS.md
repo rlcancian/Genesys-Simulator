@@ -2,7 +2,7 @@
 document_type: backlog
 authority: executable-task-source
 owner: project-maintainer
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 review_cadence: on-status-change
 status: active
 tracks: 511
@@ -916,14 +916,14 @@ A task moves to `done` only after required validation is green, evidence is revi
 ### AUTO-GUI-003 — Implement static-first main GUI graphical extensions
 
 - Priority: `P1`
-- Status: `blocked-dependency`
+- Status: `blocked-dependency` — architecture decisions approved; implementation awaits bounded G0 source/ownership/persistence revalidation and local Qt6/CMake/Ninja execution environment
 - Environment: `local` for C++23/Qt6 GUI tests + `github` for PR/CI integration.
-- Authorization: maintainer approved **architecture and documentation only** on 2026-11-11 (`HUM-ARCH-004`). The current request explicitly authorizes the documentation PR/merge, **not implementation**. Separate explicit activation required before starting G0/G1 or any source changes.
-- Decision and plan: [GUI extension architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md), [G0–G7 implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md).
+- Authorization: maintainer approved the architectural direction on 2026-11-11 and **unconditionally approved all formal D1–D12 decisions on 2026-11-16**. The approved bounded F1/F2 sequence may proceed under existing validation/branch requirements; **no runtime feature is credited as implemented by documentation alone**, and no future dynamic ABI/loading is authorized.
+- Decision and plan: [GUI extension architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md), [approved formal contract](reference/GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md), [reconciled implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md).
 - Scope after activation: audit current coupling, extend existing registry/dependency contracts, add registered scene animation/factory and GUI event/persistence bridge, migrate domain animations incrementally, integrate BacteriaColony/CellularAutomata scene visualizations and alternative renderer/service contributions.
 - Non-goals: compile/load/unload dynamic packages; C ABI/Qt adapter implementation; hot-reload guards; kernel algorithm/model semantics changes; full GUI rewrite; broad static plugin target consolidation (#492); indiscriminate application of student PR #436.
-- Dependencies/blockers: maintainer must activate the first bounded slice; G0 current-head audit and accepted baseline precede G1/G2; per-slice API/lifecycle/persistence decisions must be evidenced before later migrations. Future dynamic work needs a separate human decision and follows the established C ABI/target gates.
-- First ready candidate **after authorization**: bounded G0 evidence-backed coupling, ownership and persistence inventory, then a minimal G1/G2 registered-animation vertical slice (separate PRs as appropriate). Do not begin G4/G5 before factory + event/persistence acceptance.
+- Dependencies/blockers: **human D1–D12 design decision is resolved**. Remaining gates are real local C++/Qt6 environment availability; bounded G0 current-head code/dependency/persistence audit; focused tests and PR checks before merging F1/F2. Future dynamic work needs a separate human decision and follows the established C ABI/target gates.
+- First bounded implementation candidate: G0 evidence-backed coupling/dependency/ownership/persistence inventory; **F1 common Manager/Catalog eligibility and ID validation**, then **F2 registered-animation vertical slice**, as separate reviewable PRs. Do not begin later domain migrations before factory + event/persistence acceptance.
 - Acceptance: a new optional GUI extension adds its animation/tool without modifying generic GUI, kernel or parser; dependency absence preserves simulation; event delivery is consistent; graphical state survives save/reload and missing-extension round-trip; alternate providers are deterministic; targeted GUI tests, unit/kernel/smoke as affected, and safety diagnostics on ownership paths pass.
 - Stop gates: uncertain event semantics, model binding, unknown-extension data retention, ownership, concurrent GUI modifications, unstable C++/Qt ABI or any request to implement dynamic loading without explicit scope approval.
 - Rollback: per-phase reviewable merge commits and current-format compatibility fixtures. No release-branch promotion.
@@ -931,18 +931,18 @@ A task moves to `done` only after required validation is green, evidence is revi
 ### AUTO-GUI-004 — Extract concrete plugin-specific GUI logic before final graphical-plugin API
 
 - Priority: `P1`
-- Status: `running` (E0–E5 implementation and validation complete; PR awaits review)
+- Status: `done_confirmed` — scoped E0–E5 implementation validated and integrated by PR #579
 - Authorization: maintainer request dated 2026-11-13 after ModalModel/Network integration; implementation executed in draft PR #579.
 - Decision: `HUM-ARCH-006`; plan: [GUI_EXTENSIONS_EXTRACTION_PLAN.md](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md).
 - Environment: `github` for bounded source patch and CI evidence; `local` for interactive GUI smoke and optional focused debugging.
-- Branch: `WiP202611/gui-plugin-specific-extraction`, based on `WorkInProgress` `2ad98f96311e9c13d27078f9dd83bbffafdabe5d`; [PR #579](https://github.com/rlcancian/Genesys-Simulator/pull/579) targets `WorkInProgress`.
+- Branch: `WiP202611/gui-plugin-specific-extraction`, based on `WorkInProgress` `2ad98f96311e9c13d27078f9dd83bbffafdabe5d`; [PR #579](https://github.com/rlcancian/Genesys-Simulator/pull/579) **merged into `WorkInProgress`** at `d9b7c077bc5b33ff2cde0e01718a90cd16431219`.
 - Scope: E0 source revalidation after Modal/Network integration; E1 BioReaction menu extraction, E2 Decide Conditions/ports/undo coordination, E3 ModalModel/Network/Property Editor and plugin tree, E4 Queue/Station/genetic presentation specializations, E5 classify recurring contributions and propose only necessary general contracts.
 - Implemented slices: E0 repaired test placement; E1 registered BioReaction context menu; E2 delegated Decide list/port reconciliation; E3 delegated ModalModel/Network context, tree and Property Editor operations; E4A extracted Queue/PickStation visualization; E4B extracted genetic glyph presentation. Commits and focused results are cataloged in [the execution plan](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md) and [closeout evidence](history/evidence/2026/11/2026-11-13_gui_plugin_extraction_closeout.md).
-- Current validation: GUI app and full `tests-unit` builds passed; CTest passed 2,121 active tests with four disabled. Focused GUI/renderer tests passed (renderer 11/11), and documentation governance passed. Initial CTest/hosted unit checks found the same regular-Submodel drop regression; `18a86f434` fixes it and local regression/full suite now pass. All hosted checks passed on `288c20e04ee790c8649e14c2c799fbf2978f3ce5`, including unit, kernel, smoke, GUI, integrated-tools, launcher, Debian package/lifecycle and docs governance. The PR remains draft for review; this task has no merge authorization.
+- Current validation: GUI app and full `tests-unit` builds passed; CTest passed 2,121 active tests with four disabled. Focused GUI/renderer tests passed (renderer 11/11), and documentation governance passed. Initial CTest/hosted unit checks found the same regular-Submodel drop regression; `18a86f434` fixes it and local regression/full suite now pass. All hosted checks passed on `288c20e04ee790c8649e14c2c799fbf2978f3ce5`, including unit, kernel, smoke, GUI, integrated-tools, launcher, Debian package/lifecycle and docs governance. The PR subsequently merged on 2026-11-14; that actual GitHub merge supersedes the historical draft checkpoint.
 - Residual host coupling: `GraphicalModelComponent` still initializes Decide's semantic ports by concrete type, and the generic scene retains a Queue placeholder for drawing-tool placeholder mode. These are explicitly outside the extracted runtime/list paths and remain candidates for a later bounded extraction.
 - E0–E5 acceptance: implementation and required local/hosted validation are complete; interactive manual desktop checks were not executed locally.
 - No dynamic plugin loading, ABI migration, global GUI rewrite, new framework, unsafe handling of model lifetimes, data deletion or unapproved `WorkInProgress` direct edits. Maintain rollback by small commits.
-- Previous unmerged [PR #575](https://github.com/rlcancian/Genesys-Simulator/pull/575) is historical documentation and **not** the active implementation workstream. `AUTO-GUI-003` general implementation remains deferred until extracted contracts establish concrete needs; avoid parallel execution.
+- Previous unmerged [PR #575](https://github.com/rlcancian/Genesys-Simulator/pull/575) is historical documentation and **not** the active implementation workstream. `AUTO-GUI-003` may now pursue the formally approved F1/F2 first slice subject to actual code/test/CI requirements; avoid parallel or duplicate extraction.
 
 ## 11. Authorized full ModalNetwork GUI implementation
 
