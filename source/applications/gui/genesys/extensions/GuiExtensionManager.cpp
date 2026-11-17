@@ -1,7 +1,11 @@
 #include "GuiExtensionManager.h"
+#include "../graphicals/ModelGraphicsScene.h"
+#include "../actions/AddUndoCommand.h"
 
 #include <QAction>
 #include <QDockWidget>
+#include <QGraphicsItem>
+#include <QUndoStack>
 #include <QMainWindow>
 #include <QMenu>
 #include <QMenuBar>
@@ -64,6 +68,35 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	for (const GuiActionContribution& action : registry.actions()) {
 		_applyActionContribution(action, context);
 	}
+    // F2: a graphical extension contributes an item factory, while generic
+    // host code handles menu placement, scene ownership and existing undo.
+    // Each trigger inserts one real, movable/selectable QGraphicsItem.
+    for (const GuiAnimationToolContribution& tool : registry.animationTools()) {
+        if (tool.id.empty() || !tool.createItem) continue;
+        GuiActionContribution action;
+        action.id = tool.id;
+        action.text = tool.text;
+        action.menuPath = tool.menuPath.empty() ? "View/Animate" : tool.menuPath;
+        action.toolBarId = tool.toolBarId;
+        action.statusTip = tool.statusTip;
+        action.isEnabled = [guard = tool.isEnabled](const GuiExtensionRuntimeContext& current) {
+            if (!current.graphicsScene || !current.graphicsScene->getUndoStack()) return false;
+            return !guard || guard(current);
+        };
+        action.trigger = [factory = tool.createItem, guard = tool.isEnabled](
+            const GuiExtensionRuntimeContext& current) {
+            ModelGraphicsScene* scene = current.graphicsScene;
+            if (!scene || !scene->getUndoStack() || (guard && !guard(current))) return;
+            std::unique_ptr<QGraphicsItem> item = factory(current);
+            if (!item) return;
+            item->setPos(scene->sceneRect().center() - item->boundingRect().center());
+            // QUndoStack::push invokes redo, which registers the item in
+            // ModelGraphicsScene::addDrawing and transfers ownership to scene.
+            scene->getUndoStack()->push(new AddUndoCommand(item.get(), scene));
+            item.release();
+        };
+        _applyActionContribution(action, context);
+    }
 	for (const GuiWindowContribution& window : registry.windows()) {
 		_applyWindowContribution(window, context);
 	}
