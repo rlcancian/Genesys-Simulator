@@ -237,6 +237,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
         test_gui_efsm_diagram_persistence.cpp
         test_gui_model_save_diagnostics.cpp
         test_gui_extension_dependencies.cpp
+        test_gui_animation_tool_f2.cpp
         ${GENESYS_QT_GUI_TEST_SOURCES}
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/GenesysQtGUI_resources.qrc
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
