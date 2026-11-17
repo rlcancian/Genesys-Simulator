@@ -355,3 +355,10 @@ Next maintainer-selected backend research phase:
 
 The authoritative completed-backend guide remains `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. The next backend research plan is `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`.
 Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
+
+### GUI captions and model inspector — 2026-11-17
+
+Direct maintainer-authorized WorkInProgress update: Label-first captions with
+Name-only fallback, and repair of inspector population/tab-refresh ordering for
+single graphical selection. See
+[bounded validation evidence](history/evidence/2026/11/GUI_CAPTIONS_SELECTION_20261117.md).

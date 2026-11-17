@@ -2717,3 +2717,51 @@ TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoRefreshT
     drainGuiEvents();
     EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
 }
+
+TEST(ModelInspectorSelectionRegression, PopulatesHiddenTreesAndKeepsSelectionAcrossTabs) {
+    MainWindow window;
+    window.show();
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+    auto* scene = window.myScene();
+    auto* simulator = scene->getSimulator();
+    auto* model = simulator->getModelManager()->current();
+    auto* manager = simulator->getPluginManager();
+    auto* component = manager->newInstance<Create>(model, "InspectorCreate");
+    auto* data = manager->newInstance<Resource>(model, "InspectorResource");
+    auto* gc = scene->addGraphicalModelComponent(manager->find("Create"), component, QPointF(100,100));
+    auto* gd = new GraphicalModelDataDefinition(manager->find("Resource"), data, QPointF(350,100));
+    scene->addItem(gd);
+    auto* tabs = window.findChild<QTabWidget*>("tabWidgetModel");
+    auto* central = window.findChild<QTabWidget*>("tabWidgetCentral");
+    auto* components = window.findChild<QTreeWidget*>("treeWidgetComponents");
+    auto* definitions = window.findChild<QTreeWidget*>("treeWidgetDataDefnitions");
+    ASSERT_NE(components, nullptr);
+    ASSERT_NE(definitions, nullptr);
+    for (int round = 0; round < 3; ++round) {
+        scene->clearSelection();
+        tabs->setCurrentIndex(4);
+        central->setCurrentIndex(1);
+        components->clear();
+        definitions->clear();
+        gc->setSelected(true);
+        drainGuiEvents();
+        EXPECT_EQ(tabs->currentWidget()->objectName(), "tabModelComponents");
+        ASSERT_NE(components->currentItem(), nullptr);
+        EXPECT_EQ(components->currentItem()->data(0, Qt::UserRole).value<quintptr>(), reinterpret_cast<quintptr>(component));
+        EXPECT_TRUE(gc->isSelected());
+        scene->clearSelection();
+        gd = new GraphicalModelDataDefinition(manager->find("Resource"), data, QPointF(350,100));
+        scene->addItem(gd);
+        gd->setSelected(true);
+        drainGuiEvents();
+        EXPECT_EQ(tabs->currentWidget()->objectName(), "tabModelDataDefinitions");
+        ASSERT_NE(definitions->currentItem(), nullptr);
+        EXPECT_EQ(definitions->currentItem()->data(0, Qt::UserRole).value<quintptr>(), reinterpret_cast<quintptr>(data));
+        EXPECT_TRUE(gd->isSelected());
+        gc->setSelected(true);
+        drainGuiEvents();
+        EXPECT_EQ(tabs->currentWidget()->objectName(), "tabModelDataDefinitions");
+        EXPECT_EQ(scene->selectedItems().size(), 2);
+    }
+}

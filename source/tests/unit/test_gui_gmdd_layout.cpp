@@ -2150,3 +2150,36 @@ int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+
+namespace {
+struct CaptionComponent : GraphicalModelComponent {
+    using GraphicalModelComponent::GraphicalModelComponent;
+    using GraphicalModelComponent::renderContext;
+};
+struct CaptionDefinition : GraphicalModelDataDefinition {
+    using GraphicalModelDataDefinition::GraphicalModelDataDefinition;
+    using GraphicalModelDataDefinition::renderContext;
+};
+}
+TEST(GuiGmddLayout, ObjectCaptionsPreferLabelAndReadLiveProperties) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    auto* model = simulator.getModelManager()->newModel();
+    auto* component = new Create(model, "Create_caption");
+    auto* definition = new Resource(model, "Resource_caption");
+    CaptionComponent gc(simulator.getPluginManager()->find("Create"), component, QPointF(), Qt::blue);
+    CaptionDefinition gd(nullptr, definition, QPointF());
+    for (const auto& label : {std::string("Customer arrivals"), std::string(300, 'L'), std::string()}) {
+        component->setLabel(label);
+        definition->setLabel(label);
+        auto cc = gc.renderContext();
+        auto dc = gd.renderContext();
+        EXPECT_EQ(cc.primaryText.toStdString(), label.empty() ? component->getName() : label);
+        EXPECT_EQ(dc.primaryText.toStdString(), label.empty() ? definition->getName() : label);
+        EXPECT_EQ(cc.secondaryText.toStdString(), label.empty() ? "" : component->getName());
+        EXPECT_EQ(dc.secondaryText.toStdString(), label.empty() ? "" : definition->getName());
+        EXPECT_EQ(dc.semanticClassName.toStdString(), definition->getClassname());
+    }
+    component->setName("UpdatedCaptionName");
+    EXPECT_EQ(gc.renderContext().primaryText, "UpdatedCaptionName");
+}

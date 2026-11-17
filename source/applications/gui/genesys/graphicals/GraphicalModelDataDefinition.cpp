@@ -101,7 +101,7 @@ GraphicalModelItemRenderContext GraphicalModelDataDefinition::renderContext() co
 		                               ? TraitsGUI<GModelDataDefinition>::selectedNonEditableOpacity
 		                               : TraitsGUI<GModelDataDefinition>::nonEditableOpacity);
 	}
-	context.primaryText = QString::fromStdString(_element->getClassname()); //QString::fromStdString(_element->getLabel());
+	context.primaryText = QString::fromStdString(_element->getLabel());
 	context.secondaryText = QString::fromStdString(_element->getName());
 	context.tertiaryText = QString(); //QString::fromStdString();
 	context.semanticClassName = QString::fromStdString(_element->getClassname());
@@ -137,6 +137,13 @@ GraphicalModelItemRenderContext GraphicalModelDataDefinition::renderContext() co
 	context.selectionColor = TraitsGUI<GModelDataDefinition>::selectionSquaresColor;
 	context.breakpointColor = TraitsGUI<GModelDataDefinition>::breakpointColor;
 	GuiExtensionPluginCatalog::configureDataDefinitionRendering(_element, &context);
+	// Extensions retain glyph/semantic metadata; object captions share the same contract.
+	context.primaryText = QString::fromStdString(_element->getLabel());
+	context.secondaryText = QString::fromStdString(_element->getName());
+	if (context.primaryText.trimmed().isEmpty()) {
+		context.primaryText = context.secondaryText;
+		context.secondaryText.clear();
+	}
 	return context;
 }
 

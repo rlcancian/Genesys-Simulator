@@ -438,3 +438,12 @@ The current snapshot has a few important limits:
 \end{itemize}
 
 For maintainers, the practical rule is simple: change the extracted controller when the behavior is local to that responsibility, and change \texttt{MainWindow} only when the glue itself needs to change.
+
+\section{Caption and selection synchronization contracts}
+Graphical render contexts supply Label as primary text and Name as secondary text,
+falling back to Name alone for empty labels. Specialized glyph metadata remains
+independent of these captions. Scene selection resolves inspector rows by kernel
+object pointer stored in Qt UserRole. Populate the target tree before lookup and
+block tree and tab signals during programmatic navigation so tab refresh callbacks
+cannot invalidate the matched row. Property-editor post-commit processing suppresses
+inspector navigation to avoid reentrant updates.

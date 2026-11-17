@@ -159,7 +159,8 @@ void MainWindow::sceneSelectionChanged() {
     // Tree rows expose the kernel identification in column zero; compare that stable
     // identity rather than the user-visible name (which need not be unique).
     const QList<QGraphicsItem*> selectedGraphics = ui->graphicsView->selectedItems();
-    if (selectedGraphics.size() == 1) {
+    if (selectedGraphics.size() == 1 &&
+        !(_propertyEditorController && _propertyEditorController->isPostCommitPipelineActive())) {
         QTreeWidget* targetTree = nullptr;
         QWidget* targetTab = nullptr;
         const void* selectedObject = nullptr;
@@ -177,6 +178,12 @@ void MainWindow::sceneSelectionChanged() {
             }
         }
         if (targetTree != nullptr && targetTab != nullptr) {
+            // Populate before lookup, and prevent tab callbacks from rebuilding matched rows.
+            const QSignalBlocker treeBlocker(targetTree);
+            if (targetTree == ui->treeWidgetComponents) _actualizeModelComponents(true);
+            else _actualizeModelDataDefinitions(true);
+            const QSignalBlocker centralBlocker(ui->tabWidgetCentral);
+            const QSignalBlocker modelBlocker(ui->tabWidgetModel);
             std::function<QTreeWidgetItem*(QTreeWidgetItem*)> findByIdentity = [&](QTreeWidgetItem* parent) -> QTreeWidgetItem* {
                 for (int i = 0; i < parent->childCount(); ++i) {
                     QTreeWidgetItem* child = parent->child(i);
@@ -196,6 +203,7 @@ void MainWindow::sceneSelectionChanged() {
                 ui->tabWidgetModel->setCurrentWidget(targetTab);
                 const QSignalBlocker blocker(targetTree);
                 for (auto* ancestor = match->parent(); ancestor != nullptr; ancestor = ancestor->parent()) ancestor->setExpanded(true);
+                targetTree->clearSelection();
                 targetTree->setCurrentItem(match);
                 match->setSelected(true);
                 targetTree->scrollToItem(match);

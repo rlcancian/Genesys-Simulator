@@ -91,3 +91,7 @@ This is a concise index of material AI-assisted development and governance chang
 | 2026-10-30 | Open empty Submodel and EFSM graphical contexts; preserve editing levels across `.gen` round-trip | GitHub | PR #556 | `5cd3e08548839490c8880e74a6a1ff1493dd7b5e` | focused GUI/EFSM, unit, kernel-unit, smoke, GUI build, documentation validation and 11/11 hosted checks | hierarchical Submodel execution remains out of scope |
 
 Append or amend one row only after a material status change. After merge, use the merge commit, record the strongest relevant validation, identify the principal remaining boundary, and synchronize `STATUS.md` plus the applicable backlog.
+
+- 2026-11-17: GUI Label/Name caption precedence and existing scene-to-inspector
+  synchronization repaired; focused offscreen interaction regressions and manual
+  updated. Evidence: `evidence/2026/11/GUI_CAPTIONS_SELECTION_20261117.md`.
