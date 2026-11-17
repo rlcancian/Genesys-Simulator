@@ -72,69 +72,112 @@ public:
             ordered.push_back(plugin);
         }
 
-        std::unordered_set<std::string> models, capabilities;
+        std::unordered_set<std::string> models, capabilities, activeIds;
         for (const auto& s : env.modelPluginIds) models.insert(normalizeId(s, true));
         for (const auto& s : env.systemCapabilityIds) capabilities.insert(normalizeId(s));
 
-        enum class Visit { Visiting, Active, Inactive };
-        std::unordered_map<std::string, Visit> states;
-        std::function<bool(const GuiExtensionPlugin*)> visit;
-        visit = [&](const GuiExtensionPlugin* plugin) -> bool {
-            const auto id = normalizeId(plugin->extensionId());
-            auto current = states.find(id);
-            if (current != states.end()) {
-                if (current->second == Visit::Visiting) {
-                    result.issues.push_back({IssueCode::DependencyCycle, id, "cyclic GUI-extension dependency"});
-                    return false;
+        const auto groupSatisfied = [&](const GuiExtensionDependencyGroup& group) {
+            if (!group.required) return true;
+            if (group.ids.empty()) return false;
+            bool any = false, all = true;
+            for (const auto& dependency : group.ids) {
+                const auto key = normalizeId(dependency, group.kind == GuiExtensionDependencyKind::ModelPlugin);
+                bool present = false;
+                switch (group.kind) {
+                case GuiExtensionDependencyKind::ModelPlugin:
+                    present = models.contains(key);
+                    break;
+                case GuiExtensionDependencyKind::SystemCapability:
+                    present = capabilities.contains(key);
+                    break;
+                case GuiExtensionDependencyKind::GuiExtension:
+                    present = activeIds.contains(key);
+                    break;
                 }
-                return current->second == Visit::Active;
+                any |= present;
+                all &= present;
             }
-            states.emplace(id, Visit::Visiting);
-            bool valid = true;
-            for (const auto& model : plugin->requiredModelPlugins()) {
-                const auto key = normalizeId(model, true);
-                if (env.modelPluginIdsKnown && !key.empty() && !models.contains(key)) {
-                    result.issues.push_back({IssueCode::MissingDependency, id, "model:" + key});
-                    valid = false;
+            return group.mode == GuiExtensionDependencyMode::All ? all : any;
+        };
+
+        const auto eligible = [&](const GuiExtensionPlugin* plugin) {
+            // Existing requiredModelPlugins() has strict ALL semantics when
+            // the model-plugin inventory is known. Unknown is not the same as
+            // an authoritative empty loaded-plugin inventory.
+            if (env.modelPluginIdsKnown) {
+                for (const auto& model : plugin->requiredModelPlugins()) {
+                    const auto key = normalizeId(model, true);
+                    if (!key.empty() && !models.contains(key)) return false;
                 }
             }
             for (const auto& group : plugin->dependencyGroups()) {
-                if (!group.required) continue;  // Optional requirements do not disable a plugin.
-                if (group.ids.empty()) {
-                    result.issues.push_back({IssueCode::MissingDependency, id, "empty dependency group"});
-                    valid = false;
-                    continue;
-                }
-                bool any = false, all = true;
-                for (const auto& dependency : group.ids) {
-                    const auto key = normalizeId(dependency, group.kind == GuiExtensionDependencyKind::ModelPlugin);
-                    bool present = false;
-                    switch (group.kind) {
-                    case GuiExtensionDependencyKind::ModelPlugin:
-                        present = models.contains(key);
-                        break;
-                    case GuiExtensionDependencyKind::SystemCapability:
-                        present = capabilities.contains(key);
-                        break;
-                    case GuiExtensionDependencyKind::GuiExtension:
-                        if (const auto it = byId.find(key); it != byId.end()) {
-                            present = visit(it->second);
+                if (!groupSatisfied(group)) return false;
+            }
+            return true;
+        };
+
+        // Least fixed-point resolution: cyclic requirements cannot activate
+        // solely by referring to one another. An ANY group with an independent
+        // active alternative can activate and then unlock other dependents.
+        // Append in dependency-first activation order without assuming that
+        // static registration order is a topological order.
+        bool changed = false;
+        do {
+            changed = false;
+            for (const auto* plugin : ordered) {
+                const auto id = normalizeId(plugin->extensionId());
+                if (activeIds.contains(id) || !eligible(plugin)) continue;
+                activeIds.insert(id);
+                result.active.push_back(plugin);
+                changed = true;
+            }
+        } while (changed);
+
+        // Report the exact outstanding requirements for inactive extensions.
+        // Cycles are detected only among inactive GUI dependencies.
+        std::unordered_set<std::string> visited, visiting, cyclic;
+        std::function<bool(const std::string&)> hasCycle;
+        hasCycle = [&](const std::string& id) -> bool {
+            if (visiting.contains(id)) return true;
+            if (visited.contains(id)) return cyclic.contains(id);
+            visiting.insert(id);
+            bool cycle = false;
+            if (const auto it = byId.find(id); it != byId.end()) {
+                for (const auto& group : it->second->dependencyGroups()) {
+                    if (!group.required || group.kind != GuiExtensionDependencyKind::GuiExtension) continue;
+                    for (const auto& name : group.ids) {
+                        const auto next = normalizeId(name);
+                        if (!activeIds.contains(next) && byId.contains(next)) {
+                            cycle = hasCycle(next) || cycle;
                         }
-                        break;
                     }
-                    any |= present;
-                    all &= present;
-                }
-                if (!(group.mode == GuiExtensionDependencyMode::All ? all : any)) {
-                    result.issues.push_back({IssueCode::MissingDependency, id, "group requirement not satisfied"});
-                    valid = false;
                 }
             }
-            states[id] = valid ? Visit::Active : Visit::Inactive;
-            return valid;
+            visiting.erase(id);
+            visited.insert(id);
+            if (cycle) cyclic.insert(id);
+            return cycle;
         };
         for (const auto* plugin : ordered) {
-            if (visit(plugin)) result.active.push_back(plugin);
+            const auto id = normalizeId(plugin->extensionId());
+            if (activeIds.contains(id)) continue;
+            if (hasCycle(id)) {
+                result.issues.push_back({IssueCode::DependencyCycle, id, "cyclic GUI-extension dependency"});
+            }
+            if (env.modelPluginIdsKnown) {
+                for (const auto& name : plugin->requiredModelPlugins()) {
+                    const auto key = normalizeId(name, true);
+                    if (!key.empty() && !models.contains(key)) {
+                        result.issues.push_back({IssueCode::MissingDependency, id, "model:" + key});
+                    }
+                }
+            }
+            for (const auto& group : plugin->dependencyGroups()) {
+                if (group.required && !groupSatisfied(group)) {
+                    result.issues.push_back({IssueCode::MissingDependency, id,
+                                             "unmet required dependency group"});
+                }
+            }
         }
         return result;
     }
