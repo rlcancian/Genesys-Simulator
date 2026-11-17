@@ -263,6 +263,10 @@ void GuiExtensionPluginCatalog::setAvailableSystemCapabilityIds(std::vector<std:
     dependencyEnvironment().systemCapabilityIds = std::move(capabilityIds);
 }
 
+void GuiExtensionPluginCatalog::setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions) {
+    dependencyEnvironment().modelPluginVersions = std::move(versions);
+}
+
 static std::vector<const GuiExtensionPlugin*> configuredPlugins();
 
 GuiExtensionDependencyResolver::Result GuiExtensionPluginCatalog::resolution() {
