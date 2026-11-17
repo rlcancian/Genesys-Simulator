@@ -31,6 +31,26 @@ std::vector<const GuiExtensionPlugin*>& registryStorage() {
 	return plugins;
 }
 
+GuiExtensionDependencyResolver::Environment& dependencyEnvironment() {
+    static GuiExtensionDependencyResolver::Environment environment;
+    return environment;
+}
+
+// Per-contribution eligibility is evaluated from the same active extension set
+// used for menus, diagram projections and model editors.
+GuiExtensionRegistry eligibleContributions(const GuiExtensionPlugin* plugin) {
+    GuiExtensionRegistry contributions;
+    if (!plugin) return contributions;
+    GuiExtensionRegistry declared;
+    plugin->registerContributions(&declared);
+    const auto resolution = GuiExtensionPluginCatalog::resolution();
+    const auto& environment = dependencyEnvironment();
+    contributions.appendEligibleFrom(declared, [&](const GuiExtensionDependencyGroups& groups) {
+        return GuiExtensionDependencyResolver::contributionEligible(groups, environment, resolution);
+    });
+    return contributions;
+}
+
 using PresentationMap = std::unordered_map<std::string, GuiExtensionPresentationMetadata>;
 
 std::string normalizeId(const std::string& input) {
@@ -234,12 +254,21 @@ const std::vector<const GuiExtensionPlugin*>& GuiExtensionPluginCatalog::plugins
 	return registryStorage();
 }
 
+void GuiExtensionPluginCatalog::setAvailableModelPluginIds(std::vector<std::string> pluginIds) {
+    dependencyEnvironment().modelPluginIds = std::move(pluginIds);
+}
+
+void GuiExtensionPluginCatalog::setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds) {
+    dependencyEnvironment().systemCapabilityIds = std::move(capabilityIds);
+}
+
+GuiExtensionDependencyResolver::Result GuiExtensionPluginCatalog::resolution() {
+    return GuiExtensionDependencyResolver::resolve(resolvedPlugins(), dependencyEnvironment());
+}
+
 std::vector<const GuiExtensionPlugin*> GuiExtensionPluginCatalog::resolvedPlugins() {
 	const std::vector<const GuiExtensionPlugin*>& registered = registryStorage();
 	QJsonObject config = loadConfigObject();
-	if (config.isEmpty()) {
-		return std::vector<const GuiExtensionPlugin*>(registered.begin(), registered.end());
-	}
 
 	const std::unordered_set<std::string> enabledIds = parseIdList(config.value("enabled"));
 	const std::unordered_set<std::string> disabledIds = parseIdList(config.value("disabled"));
@@ -268,7 +297,7 @@ std::vector<const GuiExtensionPlugin*> GuiExtensionPluginCatalog::resolvedPlugin
 	}
 	const PresentationMap presentation = parsePresentationMap(config.value("presentation"));
 	sortUnpinnedByPresentation(&ordered, pinnedIds, presentation);
-	return ordered;
+	return GuiExtensionDependencyResolver::resolve(ordered, dependencyEnvironment()).active;
 }
 
 GuiExtensionPresentationMetadata GuiExtensionPluginCatalog::presentationMetadata(const std::string& extensionId) {
@@ -318,8 +347,7 @@ std::vector<GuiDiagramProjectionContribution> GuiExtensionPluginCatalog::diagram
 	std::vector<GuiDiagramProjectionContribution> projections;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		const auto& registered = registry.diagramProjections();
 		projections.insert(projections.end(), registered.begin(), registered.end());
 	}
@@ -330,8 +358,7 @@ bool GuiExtensionPluginCatalog::hasNetworkEditor(ModelDataDefinition* owner) {
 	if (owner == nullptr) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors())
 			if (editor.supports && editor.supports(owner)) return true;
 	}
@@ -342,8 +369,7 @@ bool GuiExtensionPluginCatalog::hasEditingContext(ModelDataDefinition* owner) {
 	if (owner == nullptr) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiEditingContextContribution& context : registry.editingContexts())
 			if (context.supports && context.supports(owner)) return true;
 	}
@@ -354,8 +380,7 @@ bool GuiExtensionPluginCatalog::canDeleteNetworkElement(ModelDataDefinition* own
 	if (owner == nullptr || element == nullptr) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors())
 			if (editor.supports && editor.supports(owner) && editor.canDeleteElement
 				&& editor.canDeleteElement(owner, element)) return true;
@@ -368,8 +393,7 @@ bool GuiExtensionPluginCatalog::ownsEditableNetworkDataDefinition(
 	if (owner == nullptr || candidate == nullptr) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (editor.supports && editor.supports(owner) && editor.ownsEditableDataDefinition
 				&& editor.ownsEditableDataDefinition(owner, candidate)) return true;
@@ -384,8 +408,7 @@ QUndoCommand* GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyComm
 	if (owner == nullptr || candidate == nullptr) return nullptr;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (!editor.supports || !editor.supports(owner) || !editor.ownsEditableDataDefinition
 				|| !editor.ownsEditableDataDefinition(owner, candidate)
@@ -402,8 +425,7 @@ bool GuiExtensionPluginCatalog::canStartNetworkRelationCreation(
 	if (owner == nullptr || source == nullptr) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (editor.supports && editor.supports(owner) && editor.canStartRelationCreation
 				&& editor.canStartRelationCreation(owner, source)) return true;
@@ -417,8 +439,7 @@ QUndoCommand* GuiExtensionPluginCatalog::createNetworkRelationCommand(
 	if (owner == nullptr || source == nullptr || destination == nullptr) return nullptr;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (!editor.supports || !editor.supports(owner) || !editor.createRelationCommand) continue;
 			if (QUndoCommand* command = editor.createRelationCommand(owner, source, destination)) return command;
@@ -432,8 +453,7 @@ GuiExtensionPluginCatalog::networkElementProperties(ModelDataDefinition* owner, 
 	if (owner == nullptr || element == nullptr) return {};
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (!editor.supports || !editor.supports(owner) || !editor.elementProperties) continue;
 			auto properties = editor.elementProperties(owner, element);
@@ -449,8 +469,7 @@ QUndoCommand* GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
 	if (owner == nullptr || element == nullptr) return nullptr;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (!editor.supports || !editor.supports(owner) || !editor.elementProperties
 				|| !editor.createElementPropertyCommand) continue;
@@ -467,8 +486,7 @@ bool GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
 	if (owner == nullptr || pluginType.empty() || isComponent) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (editor.supports && editor.supports(owner) && editor.acceptsDrop
 				&& editor.acceptsDrop(owner, pluginType, isComponent)) return true;
@@ -482,8 +500,7 @@ void GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
 	if (owner == nullptr || dropped == nullptr) return;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (editor.supports && editor.supports(owner) && editor.acceptsDrop
 				&& editor.acceptsDrop(owner, dropped->getClassname(), false)
@@ -500,8 +517,7 @@ void GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionRemoved(
 	if (owner == nullptr || dropped == nullptr) return;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
 			if (editor.supports && editor.supports(owner) && editor.onDataDefinitionRemoved) {
 				editor.onDataDefinitionRemoved(owner, dropped);
@@ -526,8 +542,7 @@ void GuiExtensionPluginCatalog::configureComponentVisualization(GraphicalModelCo
 	if (component == nullptr || component->getComponent() == nullptr) return;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
 			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.configure) {
 				contribution.configure(component);
@@ -541,8 +556,7 @@ bool GuiExtensionPluginCatalog::animateComponentArrival(ModelGraphicsScene* scen
 	if (scene == nullptr || component == nullptr || component->getComponent() == nullptr) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
 			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateArrival) {
 				contribution.animateArrival(scene, component, visible);
@@ -557,8 +571,7 @@ bool GuiExtensionPluginCatalog::animateComponentDeparture(ModelGraphicsScene* sc
 	if (scene == nullptr || component == nullptr || component->getComponent() == nullptr) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
 			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateDeparture) {
 				contribution.animateDeparture(scene, component);
@@ -574,8 +587,7 @@ bool GuiExtensionPluginCatalog::configureDataDefinitionRendering(
 	if (definition == nullptr || context == nullptr) return false;
 	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
 		if (plugin == nullptr) continue;
-		GuiExtensionRegistry registry;
-		plugin->registerContributions(&registry);
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
 		for (const GuiDataDefinitionRenderingContribution& contribution : registry.dataDefinitionRenderings()) {
 			if (contribution.supports && contribution.supports(definition) && contribution.configure) {
 				contribution.configure(definition, context);
