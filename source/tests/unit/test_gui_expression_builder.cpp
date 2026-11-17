@@ -13,6 +13,8 @@
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "kernel/simulator/PluginManager.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -174,6 +176,96 @@ TEST(ExpressionBuilderDialogTest, EditsExpressionAndRejectsInvalidSyntaxWithoutE
     apply->click();
     EXPECT_EQ(editor.result(), QDialog::Accepted);
     EXPECT_EQ(editor.expressionText(), QStringLiteral("1+3"));
+}
+
+// Diagnostic RED checkpoint, isolated from feature PR #581.
+// A string control containing "Expression" but without ParserExpression hint
+// must still offer the builder in the context menu under the requested contract.
+TEST(ExpressionBuilderMenuRuleDiagnostic, HintlessProcessPriorityExpressionMustOfferBuilder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Process process(model, "HintlessExpressionProcess");
+
+    SimulationControl* priorityExpression = nullptr;
+    for (SimulationControl* control : *process.getSimulationControls()->list()) {
+        if (control != nullptr && control->getName() == "PriorityExpression") {
+            priorityExpression = control;
+            break;
+        }
+    }
+    ASSERT_NE(priorityExpression, nullptr);
+    const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(priorityExpression);
+    ASSERT_EQ(descriptor.kind, GenesysPropertyKind::String);
+    ASSERT_EQ(descriptor.editorHint, SimulationControlEditorHint::Default);
+    ASSERT_FALSE(descriptor.readOnly);
+
+    const std::string initial = priorityExpression->getValue();
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    browser.setActiveObject(nullptr, &process, {},
+                            {QString::fromStdString(process.getName())});
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+
+    const auto findNamedItem = [](const auto& self, const QList<QtBrowserItem*>& items)
+                              -> QtBrowserItem* {
+        for (auto* candidate : items) {
+            if (candidate == nullptr) continue;
+            if (candidate->property() != nullptr
+                && candidate->property()->propertyName() == QStringLiteral("PriorityExpression")) {
+                return candidate;
+            }
+            if (auto* child = self(self, candidate->children()); child != nullptr) {
+                return child;
+            }
+        }
+        return nullptr;
+    };
+    QtBrowserItem* item = findNamedItem(findNamedItem, browser.topLevelItems());
+    ASSERT_NE(item, nullptr);
+    ASSERT_TRUE(item->property()->isEnabled());
+    browser.setCurrentItem(item);
+
+    bool foundAction = false;
+    bool openedCorrectDialog = false;
+    QTimer::singleShot(0, [&]() {
+        auto* menu = qobject_cast<QMenu*>(QApplication::activePopupWidget());
+        if (menu == nullptr) return;
+        QAction* builder = nullptr;
+        for (QAction* action : menu->actions()) {
+            if (action->text() == QStringLiteral("Build expression...")) {
+                builder = action;
+                break;
+            }
+        }
+        foundAction = builder != nullptr;
+        if (builder == nullptr) { menu->close(); return; }
+        QTimer::singleShot(0, [&]() {
+            auto* dialog = qobject_cast<ExpressionBuilder*>(QApplication::activeModalWidget());
+            if (dialog == nullptr) return;
+            auto* editor = dialog->findChild<QPlainTextEdit*>(
+                QStringLiteral("expressionEditor"));
+            openedCorrectDialog = editor != nullptr
+                && editor->toPlainText() == QString::fromStdString(initial);
+            dialog->reject();
+        });
+        menu->setActiveAction(builder);
+        QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(menu, &enter);
+    });
+    QTimer::singleShot(1000, &browser, []() {
+        if (auto* dialog = QApplication::activeModalWidget()) dialog->close();
+        if (auto* menu = QApplication::activePopupWidget()) menu->close();
+    });
+    QContextMenuEvent event(QContextMenuEvent::Mouse, QPoint(5, 5),
+                            browser.mapToGlobal(QPoint(5, 5)));
+    QApplication::sendEvent(&browser, &event);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+
+    EXPECT_TRUE(foundAction) << "Missing name-based menu rule for editable String";
+    EXPECT_TRUE(openedCorrectDialog) << "Builder must open with current property value";
+    EXPECT_EQ(priorityExpression->getValue(), initial) << "Cancel must not mutate property";
 }
 
 TEST(ExpressionBuilderPropertyTest, DelayIsTaggedAsParserExpression) {
