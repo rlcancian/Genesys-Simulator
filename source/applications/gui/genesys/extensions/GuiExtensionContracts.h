@@ -45,6 +45,9 @@ struct GuiExtensionDependencyGroup {
     GuiExtensionDependencyMode mode = GuiExtensionDependencyMode::All;
     std::vector<std::string> ids;
     bool required = true;
+    // Optional minimum numeric dotted version (e.g. 1.2.3), common to the group.
+    // Unknown versions do not satisfy an explicitly versioned requirement.
+    std::string minimumVersion;
 };
 using GuiExtensionDependencyGroups = std::vector<GuiExtensionDependencyGroup>;
 
