@@ -2,6 +2,7 @@
 #define GUIEXTENSIONCONTRACTS_H
 
 #include <functional>
+#include <memory>
 #include <any>
 #include <map>
 #include <string>
@@ -185,8 +186,26 @@ struct GuiDataDefinitionRenderingContribution {
 	GuiExtensionDependencyGroups eligibility;
 };
 
+// F2: a GUI extension supplies a real scene item without extending the
+// generic scene's domain-specific drawing-mode switch. The factory owns its
+// result until the GUI host successfully hands it to the scene/undo stack.
+// Persistence and simulation event binding are separate F3 contracts.
+struct GuiAnimationToolContribution {
+    std::string id;
+    std::string text;
+    std::string statusTip;
+    std::string menuPath = "View/Animations";
+    std::function<bool(const GuiExtensionRuntimeContext&)> isEnabled;
+    std::function<std::unique_ptr<QGraphicsItem>(const GuiExtensionRuntimeContext&)> createItem;
+    GuiExtensionDependencyGroups eligibility;
+};
+
 class GuiExtensionRegistry {
 public:
+	void addAnimationTool(GuiAnimationToolContribution contribution) {
+        _animationTools.push_back(std::move(contribution));
+    }
+
 	void addAction(GuiActionContribution contribution) {
 		_actions.push_back(std::move(contribution));
 	}
@@ -230,6 +249,10 @@ public:
 	void addDataDefinitionRendering(GuiDataDefinitionRenderingContribution contribution) {
 		_dataDefinitionRenderings.push_back(std::move(contribution));
 	}
+
+	const std::vector<GuiAnimationToolContribution>& animationTools() const {
+        return _animationTools;
+    }
 
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
@@ -285,6 +308,7 @@ public:
             }
         };
         append(_actions, other._actions);
+        append(_animationTools, other._animationTools);
         append(_docks, other._docks);
         append(_windows, other._windows);
         append(_contextMenus, other._contextMenus);
@@ -299,6 +323,7 @@ public:
 
 	void clear() {
 		_actions.clear();
+        _animationTools.clear();
 		_docks.clear();
 		_windows.clear();
 		_contextMenus.clear();
@@ -313,6 +338,7 @@ public:
 
 private:
 	std::vector<GuiActionContribution> _actions;
+    std::vector<GuiAnimationToolContribution> _animationTools;
 	std::vector<GuiDockContribution> _docks;
 	std::vector<GuiWindowContribution> _windows;
 	std::vector<GuiContextMenuContribution> _contextMenus;
