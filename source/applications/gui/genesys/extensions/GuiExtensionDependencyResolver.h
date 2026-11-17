@@ -19,6 +19,9 @@ public:
     struct Environment {
         std::vector<std::string> modelPluginIds;
         std::vector<std::string> systemCapabilityIds;
+        // False only for legacy catalog calls before the GUI supplies an inventory.
+        // This is UNKNOWN, not a claim that the plugin is installed.
+        bool modelPluginIdsKnown = true;
     };
 
     enum class IssueCode { EmptyId, DuplicateId, MissingDependency, DependencyCycle };
@@ -90,7 +93,7 @@ public:
             bool valid = true;
             for (const auto& model : plugin->requiredModelPlugins()) {
                 const auto key = normalizeId(model, true);
-                if (!key.empty() && !models.contains(key)) {
+                if (env.modelPluginIdsKnown && !key.empty() && !models.contains(key)) {
                     result.issues.push_back({IssueCode::MissingDependency, id, "model:" + key});
                     valid = false;
                 }
