@@ -81,7 +81,7 @@ public:
         GuiAnimationToolContribution tool;
         tool.id = "gui.scene-marker.f2.insert";
         tool.text = "Scene Marker";
-        tool.menuPath = "View/Animations";
+        tool.menuPath = "View/Animate";
         tool.statusTip = "Insert a movable and resizable GUI-only scene marker";
         tool.createItem = [](const GuiExtensionRuntimeContext&) -> std::unique_ptr<QGraphicsItem> {
             return std::make_unique<SceneMarkerItem>();
