@@ -2,6 +2,7 @@
 #define GUIEXTENSIONMANAGER_H
 
 #include "GuiExtensionContracts.h"
+#include "GuiExtensionDependencyResolver.h"
 
 #include <string>
 #include <utility>
@@ -20,6 +21,7 @@ public:
 
 	void setPlugins(std::vector<const GuiExtensionPlugin*> plugins);
 	void setLoadedModelPluginIds(std::vector<std::string> modelPluginIds);
+	void setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds);
 	void rebuild(const GuiExtensionRuntimeContext& context);
 	void refreshActionStates(const GuiExtensionRuntimeContext& context);
 	void populateContextMenu(QMenu* menu, QGraphicsItem* item) const;
@@ -47,12 +49,12 @@ private:
 	void _applyActionContribution(const GuiActionContribution& contribution, const GuiExtensionRuntimeContext& context);
 	void _applyWindowContribution(const GuiWindowContribution& contribution, const GuiExtensionRuntimeContext& context);
 	void _applyDockContribution(const GuiDockContribution& contribution, const GuiExtensionRuntimeContext& context);
-	bool _isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const;
 
 private:
 	QMainWindow* _mainWindow = nullptr;
 	std::vector<const GuiExtensionPlugin*> _plugins;
 	std::vector<std::string> _loadedModelPluginIds;
+	std::vector<std::string> _systemCapabilityIds;
 	std::vector<QAction*> _createdActions;
 	std::vector<std::pair<QAction*, GuiActionContribution>> _actionContributions;
 	std::vector<QAction*> _createdMenuActions;
