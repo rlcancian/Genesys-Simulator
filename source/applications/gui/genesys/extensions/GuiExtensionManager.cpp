@@ -76,7 +76,7 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
         GuiActionContribution action;
         action.id = tool.id;
         action.text = tool.text;
-        action.menuPath = tool.menuPath.empty() ? "View/Animations" : tool.menuPath;
+        action.menuPath = tool.menuPath.empty() ? "View/Animate" : tool.menuPath;
         action.toolBarId = tool.toolBarId;
         action.statusTip = tool.statusTip;
         action.isEnabled = [guard = tool.isEnabled](const GuiExtensionRuntimeContext& current) {
