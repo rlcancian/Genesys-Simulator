@@ -61,7 +61,6 @@ struct GuiExtensionRuntimeContext {
 
 struct GuiActionContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::string text;
 	std::string menuPath;
 	std::string toolBarId;
@@ -70,38 +69,38 @@ struct GuiActionContribution {
 	std::function<bool(const GuiExtensionRuntimeContext&)> isVisible;
 	std::function<bool(const GuiExtensionRuntimeContext&)> isEnabled;
 	std::function<void(const GuiExtensionRuntimeContext&)> trigger;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiDockContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::string title;
 	std::string areaHint;
 	std::function<bool(const GuiExtensionRuntimeContext&)> isVisible;
 	std::function<QWidget*(const GuiExtensionRuntimeContext&)> createWidget;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiWindowContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::string menuPath;
 	std::string text;
 	std::function<bool(const GuiExtensionRuntimeContext&)> isVisible;
 	std::function<void(const GuiExtensionRuntimeContext&)> open;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 // Formalism GUI extensions can add context-specific actions without teaching the
 // generic scene controller about domain model classes.
 struct GuiContextMenuContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::function<bool(const GuiExtensionRuntimeContext&, QGraphicsItem*)> isVisible;
 	std::function<void(QMenu*, const GuiExtensionRuntimeContext&, QGraphicsItem*)> populate;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiDiagramProjectionContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::string sectionName;
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<void(Simulator*, ModelGraphicsScene*)> synchronize;
@@ -109,11 +108,11 @@ struct GuiDiagramProjectionContribution {
 	std::function<void(Simulator*, ModelDataDefinition*, ModelGraphicsScene*, const std::any&)> restoreLayout;
 	std::function<QStringList(Simulator*, const GuiDiagramLayouts&)> serializeLayouts;
 	std::function<GuiDiagramLayouts(Model*, const QStringList&)> parseLayouts;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiNetworkEditorContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<bool(ModelDataDefinition*, ModelDataDefinition*)> ownsEditableDataDefinition;
 	std::function<bool(ModelDataDefinition*, QGraphicsItem*)> canDeleteElement;
@@ -135,29 +134,29 @@ struct GuiNetworkEditorContribution {
 	std::function<bool(ModelDataDefinition*, const std::string&, bool)> acceptsDrop;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionDropped;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionRemoved;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 // Domain-specific reconciliation after the generic Property Editor changes a list.
 struct GuiPropertyListContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<void(ModelDataDefinition*, ModelGraphicsScene*)> reconcile;
 	std::function<bool(ModelDataDefinition*, ModelGraphicsScene*, int, int)> reconcileMove;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiEditingContextContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<ModelDataDefinition*(ModelDataDefinition*)> resolveOwner;
 	std::function<bool(ModelDataDefinition*)> isNetwork;
 	std::function<bool(Model*, ModelDataDefinition*)> canOpen;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiModelReferenceContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<ModelDataDefinition*(ModelDataDefinition*)> currentReference;
 	std::function<ModelDataDefinition*(ModelDataDefinition*, const std::string&)> resolveChoice;
@@ -167,22 +166,23 @@ struct GuiModelReferenceContribution {
 		referenceChanged;
 	std::function<void(ModelDataDefinition*, const std::string&, const std::string&, const std::string&,
 		ModelGraphicsScene*, ObjectPropertyBrowser*)> propertyChanged;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiComponentVisualizationContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::function<bool(ModelComponent*)> supports;
 	std::function<void(GraphicalModelComponent*)> configure;
 	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*, bool)> animateArrival;
 	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*)> animateDeparture;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiDataDefinitionRenderingContribution {
 	std::string id;
-	GuiExtensionDependencyGroups eligibility;
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<void(ModelDataDefinition*, GraphicalModelItemRenderContext*)> configure;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 class GuiExtensionRegistry {
