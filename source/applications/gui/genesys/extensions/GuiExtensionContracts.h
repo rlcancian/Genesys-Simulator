@@ -194,7 +194,7 @@ struct GuiAnimationToolContribution {
     std::string id;
     std::string text;
     std::string statusTip;
-    std::string menuPath = "View/Animations";
+    std::string menuPath = "View/Animate";
     std::string toolBarId;  // Optional existing QToolBar objectName or title.
     std::function<bool(const GuiExtensionRuntimeContext&)> isEnabled;
     std::function<std::unique_ptr<QGraphicsItem>(const GuiExtensionRuntimeContext&)> createItem;
