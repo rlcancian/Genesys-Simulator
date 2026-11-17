@@ -29,7 +29,7 @@ TEST(GuiAnimationToolF2, ConcreteExtensionRegistersIndependentFactory) {
     ASSERT_EQ(registry.animationTools().size(), 1u);
     const auto& contribution = registry.animationTools().front();
     EXPECT_EQ(contribution.id, "gui.scene-marker.f2.insert");
-    EXPECT_EQ(contribution.menuPath, "View/Animations");
+    EXPECT_EQ(contribution.menuPath, "View/Animate");
     ASSERT_TRUE(static_cast<bool>(contribution.createItem));
     GuiExtensionRuntimeContext context;
     auto item = contribution.createItem(context);
