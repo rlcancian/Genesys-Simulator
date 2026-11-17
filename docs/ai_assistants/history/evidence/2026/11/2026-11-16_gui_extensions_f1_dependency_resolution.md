@@ -24,7 +24,7 @@ Current baseline had a divergent policy: `GuiExtensionManager::_isPluginDependen
 - `GuiExtensionManager.{h,cpp}`: unified activation and contribution filtering, retaining legacy public API; available model version metadata.
 - `GuiExtensionPluginCatalog.{h,cpp}`: same resolver for all existing dispatch paths, with diagnostic `resolution()` and per-contribution filters; static registration stays unchanged; an unknown initial loaded-model inventory retains legacy behavior until `setAvailableModelPluginIds` provides an authoritative list. A known empty list does **not** count as an unknown list.
 - `mainwindow.cpp`: forwards actual loaded model-plugin type IDs and versions from `PluginManager`/`PluginInformation` to both Manager and Catalog when GUI extensions are refreshed. No kernel source modification.
-- `source/tests/unit/test_gui_extension_dependencies.cpp`: 23 Google Test test cases; included in existing Qt-backed `genesys_test_gui_gmdd_layout` test target.
+- `source/tests/unit/test_gui_extension_dependencies.cpp`: 24 Google Test test cases; included in existing Qt-backed `genesys_test_gui_gmdd_layout` test target.
 
 ## Contract semantics and remaining risk
 
@@ -43,7 +43,7 @@ Current baseline had a divergent policy: `GuiExtensionManager::_isPluginDependen
 | Shared source implementation and Qt/GTest additions published | PASS (GitHub diff) |
 | No kernel/parser/dynamic-loading changes | PASS (changed-file inspection required before merge) |
 | Header/API and code compile | **UNKNOWN — pending GitHub Actions** |
-| F1 23 targeted Qt/GTest scenarios | **UNKNOWN — pending GitHub Actions** |
+| F1 24 targeted Qt/GTest scenarios | **UNKNOWN — pending GitHub Actions** |
 | Full ordinary tests-unit and affected GUI build | **UNKNOWN — pending GitHub Actions** |
 | Kernel unit, smoke, packaging and integration checks | **UNKNOWN — pending GitHub Actions** |
 | Interactive GUI desktop smoke / sanitizers | **NOT RUN** (may require local setup if CI coverage insufficient) |
