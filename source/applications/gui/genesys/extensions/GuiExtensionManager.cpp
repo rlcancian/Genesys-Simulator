@@ -77,6 +77,7 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
         action.id = tool.id;
         action.text = tool.text;
         action.menuPath = tool.menuPath.empty() ? "View/Animations" : tool.menuPath;
+        action.toolBarId = tool.toolBarId;
         action.statusTip = tool.statusTip;
         action.isEnabled = [guard = tool.isEnabled](const GuiExtensionRuntimeContext& current) {
             if (!current.graphicsScene || !current.graphicsScene->getUndoStack()) return false;
