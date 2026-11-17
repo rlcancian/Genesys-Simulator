@@ -32,7 +32,7 @@ std::vector<const GuiExtensionPlugin*>& registryStorage() {
 }
 
 GuiExtensionDependencyResolver::Environment& dependencyEnvironment() {
-    static GuiExtensionDependencyResolver::Environment environment;
+    static GuiExtensionDependencyResolver::Environment environment{{}, {}, false};
     return environment;
 }
 
@@ -256,6 +256,7 @@ const std::vector<const GuiExtensionPlugin*>& GuiExtensionPluginCatalog::plugins
 
 void GuiExtensionPluginCatalog::setAvailableModelPluginIds(std::vector<std::string> pluginIds) {
     dependencyEnvironment().modelPluginIds = std::move(pluginIds);
+    dependencyEnvironment().modelPluginIdsKnown = true;
 }
 
 void GuiExtensionPluginCatalog::setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds) {
