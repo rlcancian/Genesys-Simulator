@@ -1,10 +1,13 @@
 #include "extensions/GuiExtensionDependencyResolver.h"
 #include "extensions/GuiExtensionManager.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 
 #include <gtest/gtest.h>
 
 #include <QAction>
 #include <QMainWindow>
+#include <QByteArray>
+#include <QTemporaryDir>
 
 #include <algorithm>
 #include <string>
@@ -244,6 +247,74 @@ TEST(GuiExtensionDependencyF1, ManagerUsesSharedResolverForActionRegistration) {
     manager.setLoadedModelPluginIds({"Queue", "PickStation"});
     manager.rebuild(context);
     EXPECT_NE(window.findChild<QAction*>("unavailable"), nullptr);
+}
+
+TEST(GuiExtensionDependencyF1, NumericDottedMinimumVersionIsStrict) {
+    EXPECT_TRUE(Resolver::versionAtLeast("1.2.0", "1.1.9"));
+    EXPECT_TRUE(Resolver::versionAtLeast("1.0", "1.0.0"));
+    EXPECT_FALSE(Resolver::versionAtLeast("1.0.9", "1.1"));
+    EXPECT_FALSE(Resolver::versionAtLeast("1.0-beta", "1.0"));
+    EXPECT_FALSE(Resolver::versionAtLeast("", "1.0"));
+    EXPECT_FALSE(Resolver::versionAtLeast("1.0", "1.0."));
+}
+
+TEST(GuiExtensionDependencyF1, ModelVersionMustBeKnownAndCompatible) {
+    auto rule = group(Kind::ModelPlugin, Mode::All, {"Queue"});
+    rule.minimumVersion = "1.2.0";
+    DependencyFixturePlugin plugin("versioned", {}, {rule});
+    Resolver::Environment env;
+    env.modelPluginIds = {"Queue"};
+    EXPECT_FALSE(Resolver::resolve({&plugin}, env).contains(&plugin));
+    env.modelPluginVersions = {{"Queue", "1.1.9"}};
+    EXPECT_FALSE(Resolver::resolve({&plugin}, env).contains(&plugin));
+    env.modelPluginVersions = {{" queue ", "1.2.0"}};
+    EXPECT_TRUE(Resolver::resolve({&plugin}, env).contains(&plugin));
+}
+
+TEST(GuiExtensionDependencyF1, GuiVersionCompatibilityGatesDependentExtension) {
+    DependencyFixturePlugin provider("provider");
+    auto rule = group(Kind::GuiExtension, Mode::All, {"provider"});
+    rule.minimumVersion = "2.0.0";
+    DependencyFixturePlugin consumer("consumer", {}, {rule});
+    EXPECT_FALSE(Resolver::resolve({&consumer, &provider}, {}).contains(&consumer));
+    rule.minimumVersion = "1.0.0";
+    DependencyFixturePlugin compatible("compatible", {}, {rule});
+    EXPECT_TRUE(Resolver::resolve({&compatible, &provider}, {}).contains(&compatible));
+}
+
+TEST(GuiExtensionDependencyF1, SystemCapabilityVersionRequiresMetadata) {
+    auto rule = group(Kind::SystemCapability, Mode::All, {"gpu"});
+    rule.minimumVersion = "2.0";
+    DependencyFixturePlugin plugin("gpu-visualizer", {}, {rule});
+    Resolver::Environment env;
+    env.systemCapabilityIds = {"gpu"};
+    EXPECT_FALSE(Resolver::resolve({&plugin}, env).contains(&plugin));
+    env.systemCapabilityVersions = {{"GPU", "2.1.0"}};
+    EXPECT_TRUE(Resolver::resolve({&plugin}, env).contains(&plugin));
+}
+
+TEST(GuiExtensionDependencyF1, StaticCatalogAppliesSameModelPluginAndPolicy) {
+    // Exercise the existing real compiled Queue/PickStation GUI extension,
+    // without adding temporary pointers to the process-global plugin registry.
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const auto previous = qgetenv("GENESYS_GUI_EXTENSIONS_CONFIG");
+    const bool hadPrevious = qEnvironmentVariableIsSet("GENESYS_GUI_EXTENSIONS_CONFIG");
+    qputenv("GENESYS_GUI_EXTENSIONS_CONFIG",
+            (directory.path() + "/no-settings.json").toUtf8());
+    const auto active = [] {
+        for (const auto* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+            if (plugin && plugin->extensionId() == "discrete-processing.visualization.gui") return true;
+        }
+        return false;
+    };
+    GuiExtensionPluginCatalog::setAvailableModelPluginIds({"Queue"});
+    EXPECT_FALSE(active());
+    GuiExtensionPluginCatalog::setAvailableModelPluginIds({"Queue", "PickStation"});
+    EXPECT_TRUE(active());
+    GuiExtensionPluginCatalog::clearAvailableModelPluginInventory();
+    if (hadPrevious) qputenv("GENESYS_GUI_EXTENSIONS_CONFIG", previous);
+    else qunsetenv("GENESYS_GUI_EXTENSIONS_CONFIG");
 }
 
 } // namespace
