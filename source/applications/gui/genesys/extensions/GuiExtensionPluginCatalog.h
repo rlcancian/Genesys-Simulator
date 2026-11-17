@@ -21,6 +21,7 @@ public:
 	static const std::vector<const GuiExtensionPlugin*>& plugins();
 	static std::vector<const GuiExtensionPlugin*> resolvedPlugins();
 	static void setAvailableModelPluginIds(std::vector<std::string> pluginIds);
+	static void clearAvailableModelPluginInventory();
 	static void setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds);
 	static void setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions);
 	static GuiExtensionDependencyResolver::Result resolution();
