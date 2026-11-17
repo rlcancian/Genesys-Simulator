@@ -8,6 +8,11 @@
  * controller. It does not define a new class; it is a thematic partition of MainWindow.
  */
 #include "mainwindow.h"
+#include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
+#include <QSignalBlocker>
 #include "ui_mainwindow.h"
 // Include the Phase 6 controller type so member calls compile with a complete class definition.
 #include "controllers/PropertyEditorController.h"
@@ -149,6 +154,53 @@ void MainWindow::sceneSelectionChanged() {
     if (simulationInteractionLocked) {
         qInfo() << "[MainWindow] sceneSelectionChanged skipped while simulation keeps property editor disabled";
         return;
+    }
+    // Keep the model inspector aligned with a single graphical model-object selection.
+    // Tree rows expose the kernel identification in column zero; compare that stable
+    // identity rather than the user-visible name (which need not be unique).
+    const QList<QGraphicsItem*> selectedGraphics = ui->graphicsView->selectedItems();
+    if (selectedGraphics.size() == 1) {
+        QTreeWidget* targetTree = nullptr;
+        QWidget* targetTab = nullptr;
+        const void* selectedObject = nullptr;
+        if (auto* component = dynamic_cast<GraphicalModelComponent*>(selectedGraphics.front())) {
+            if (component->getComponent() != nullptr) {
+                selectedObject = component->getComponent();
+                targetTree = ui->treeWidgetComponents;
+                targetTab = ui->tabModelComponents;
+            }
+        } else if (auto* definition = dynamic_cast<GraphicalModelDataDefinition*>(selectedGraphics.front())) {
+            if (definition->getDataDefinition() != nullptr) {
+                selectedObject = definition->getDataDefinition();
+                targetTree = ui->treeWidgetDataDefnitions;
+                targetTab = ui->tabModelDataDefinitions;
+            }
+        }
+        if (targetTree != nullptr && targetTab != nullptr) {
+            std::function<QTreeWidgetItem*(QTreeWidgetItem*)> findByIdentity = [&](QTreeWidgetItem* parent) -> QTreeWidgetItem* {
+                for (int i = 0; i < parent->childCount(); ++i) {
+                    QTreeWidgetItem* child = parent->child(i);
+                    if (child->data(0, Qt::UserRole).value<quintptr>() == reinterpret_cast<quintptr>(selectedObject)) return child;
+                    if (QTreeWidgetItem* nested = findByIdentity(child)) return nested;
+                }
+                return nullptr;
+            };
+            QTreeWidgetItem* match = nullptr;
+            for (int i = 0; i < targetTree->topLevelItemCount() && match == nullptr; ++i) {
+                auto* root = targetTree->topLevelItem(i);
+                if (root->data(0, Qt::UserRole).value<quintptr>() == reinterpret_cast<quintptr>(selectedObject)) match = root;
+                else match = findByIdentity(root);
+            }
+            if (match != nullptr) {
+                ui->tabWidgetCentral->setCurrentIndex(CONST.TabCentralModelIndex);
+                ui->tabWidgetModel->setCurrentWidget(targetTab);
+                const QSignalBlocker blocker(targetTree);
+                for (auto* ancestor = match->parent(); ancestor != nullptr; ancestor = ancestor->parent()) ancestor->setExpanded(true);
+                targetTree->setCurrentItem(match);
+                match->setSelected(true);
+                targetTree->scrollToItem(match);
+            }
+        }
     }
     if (_propertyEditorController == nullptr) {
         if (ui != nullptr && ui->treeViewPropertyEditor != nullptr) {

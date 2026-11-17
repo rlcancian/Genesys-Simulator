@@ -126,6 +126,7 @@ void ModelInspectorController::actualizeModelComponents(bool force) const {
             0);
         if (items.size() == 0) {
             QTreeWidgetItem* treeComp = new QTreeWidgetItem(_componentsTree);
+            treeComp->setData(0, Qt::UserRole, QVariant::fromValue(reinterpret_cast<quintptr>(comp)));
             treeComp->setText(0, QString::fromStdString(std::to_string(comp->getId())));
             treeComp->setText(1, QString::fromStdString(comp->getClassname()));
             treeComp->setText(2, QString::fromStdString(comp->getName()));
@@ -164,6 +165,7 @@ void ModelInspectorController::actualizeModelDataDefinitions(bool force) const {
                 0);
             if (items.size() == 0) {
                 QTreeWidgetItem* treeComp = new QTreeWidgetItem(_dataDefinitionsTree);
+                treeComp->setData(0, Qt::UserRole, QVariant::fromValue(reinterpret_cast<quintptr>(comp)));
                 treeComp->setText(0, QString::fromStdString(std::to_string(comp->getId())));
                 treeComp->setText(1, QString::fromStdString(comp->getClassname()));
                 treeComp->setText(2, QString::fromStdString(comp->getName()));
