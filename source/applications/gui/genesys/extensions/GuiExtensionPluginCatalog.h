@@ -5,6 +5,7 @@
 #include "GuiExtensionDependencyResolver.h"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <functional>
 #include <any>
@@ -21,6 +22,7 @@ public:
 	static std::vector<const GuiExtensionPlugin*> resolvedPlugins();
 	static void setAvailableModelPluginIds(std::vector<std::string> pluginIds);
 	static void setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds);
+	static void setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions);
 	static GuiExtensionDependencyResolver::Result resolution();
 	static GuiExtensionPresentationMetadata presentationMetadata(const std::string& extensionId);
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
