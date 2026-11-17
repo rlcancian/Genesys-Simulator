@@ -1,6 +1,10 @@
 #include "extensions/GuiExtensionDependencyResolver.h"
+#include "extensions/GuiExtensionManager.h"
 
 #include <gtest/gtest.h>
+
+#include <QAction>
+#include <QMainWindow>
 
 #include <algorithm>
 #include <string>
@@ -169,6 +173,77 @@ TEST(GuiExtensionDependencyF1, ExistingPluginRegistrationMethodStillWorks) {
     plugin.registerContributions(&registry);
     ASSERT_EQ(registry.actions().size(), 1u);
     EXPECT_EQ(registry.actions()[0].id, "compat");
+}
+
+TEST(GuiExtensionDependencyF1, UnknownLegacyInventoryKeepsPreviouslyRegisteredExtensions) {
+    DependencyFixturePlugin legacy("legacy", {"Queue"});
+    Resolver::Environment unknown;
+    unknown.modelPluginIdsKnown = false;
+    EXPECT_TRUE(Resolver::resolve({&legacy}, unknown).contains(&legacy));
+    EXPECT_FALSE(Resolver::resolve({&legacy}, {}).contains(&legacy));
+}
+
+TEST(GuiExtensionDependencyF1, GuiActivationOrderRespectsTransitiveRequirements) {
+    DependencyFixturePlugin a("a");
+    DependencyFixturePlugin b("b", {}, {group(Kind::GuiExtension, Mode::All, {"a"})});
+    DependencyFixturePlugin c("c", {}, {group(Kind::GuiExtension, Mode::All, {"b"})});
+    const auto resolved = Resolver::resolve({&c, &b, &a}, {});
+    ASSERT_EQ(resolved.active.size(), 3u);
+    EXPECT_EQ(resolved.active[0], &a);
+    EXPECT_EQ(resolved.active[1], &b);
+    EXPECT_EQ(resolved.active[2], &c);
+}
+
+TEST(GuiExtensionDependencyF1, AnyCycleWithIndependentRootCanActivate) {
+    DependencyFixturePlugin root("root");
+    DependencyFixturePlugin a("a", {}, {
+        group(Kind::GuiExtension, Mode::Any, {"b", "root"})});
+    DependencyFixturePlugin b("b", {}, {
+        group(Kind::GuiExtension, Mode::All, {"a"})});
+    const auto resolved = Resolver::resolve({&b, &a, &root}, {});
+    EXPECT_TRUE(resolved.contains(&root));
+    EXPECT_TRUE(resolved.contains(&a));
+    EXPECT_TRUE(resolved.contains(&b));
+    EXPECT_FALSE(hasIssue(resolved, Resolver::IssueCode::DependencyCycle));
+}
+
+TEST(GuiExtensionDependencyF1, ManagerUsesSharedResolverForActionRegistration) {
+    class ActionPlugin final : public GuiExtensionPlugin {
+    public:
+        ActionPlugin(std::string id, GuiExtensionDependencyGroups groups)
+            : id_(std::move(id)), groups_(std::move(groups)) {}
+        std::string extensionId() const override { return id_; }
+        std::string displayName() const override { return id_; }
+        std::string version() const override { return "1.0.0"; }
+        std::vector<std::string> requiredModelPlugins() const override { return {}; }
+        GuiExtensionDependencyGroups dependencyGroups() const override { return groups_; }
+        void registerContributions(GuiExtensionRegistry* registry) const override {
+            GuiActionContribution action;
+            action.id = id_;
+            action.text = id_;
+            action.menuPath = "TestExtensions";
+            action.trigger = [](const GuiExtensionRuntimeContext&) {};
+            registry->addAction(std::move(action));
+        }
+    private:
+        std::string id_;
+        GuiExtensionDependencyGroups groups_;
+    };
+    ActionPlugin normal("normal", {});
+    ActionPlugin unavailable("unavailable",
+        {group(Kind::ModelPlugin, Mode::All, {"PickStation"})});
+    QMainWindow window;
+    GuiExtensionManager manager(&window);
+    manager.setPlugins({&normal, &unavailable});
+    manager.setLoadedModelPluginIds({"Queue"});
+    GuiExtensionRuntimeContext context;
+    context.mainWindow = &window;
+    manager.rebuild(context);
+    EXPECT_NE(window.findChild<QAction*>("normal"), nullptr);
+    EXPECT_EQ(window.findChild<QAction*>("unavailable"), nullptr);
+    manager.setLoadedModelPluginIds({"Queue", "PickStation"});
+    manager.rebuild(context);
+    EXPECT_NE(window.findChild<QAction*>("unavailable"), nullptr);
 }
 
 } // namespace
