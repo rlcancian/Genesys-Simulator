@@ -37,6 +37,10 @@ void GuiExtensionManager::setAvailableModelPluginVersions(std::unordered_map<std
     _modelPluginVersions = std::move(versions);
 }
 
+void GuiExtensionManager::setAvailableSystemCapabilityVersions(std::unordered_map<std::string, std::string> versions) {
+    _systemCapabilityVersions = std::move(versions);
+}
+
 void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	clear();
 	_runtimeContext = context;
@@ -47,6 +51,7 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	GuiExtensionRegistry registry;
 	GuiExtensionDependencyResolver::Environment env{_loadedModelPluginIds, _systemCapabilityIds};
 	env.modelPluginVersions = _modelPluginVersions;
+	env.systemCapabilityVersions = _systemCapabilityVersions;
 	const auto resolution = GuiExtensionDependencyResolver::resolve(_plugins, env);
 	for (const GuiExtensionPlugin* plugin : resolution.active) {
 		GuiExtensionRegistry contributed;
