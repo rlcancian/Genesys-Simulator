@@ -24,6 +24,7 @@ public:
 	static void clearAvailableModelPluginInventory();
 	static void setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds);
 	static void setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions);
+	static void setAvailableSystemCapabilityVersions(std::unordered_map<std::string, std::string> versions);
 	static GuiExtensionDependencyResolver::Result resolution();
 	static GuiExtensionPresentationMetadata presentationMetadata(const std::string& extensionId);
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
