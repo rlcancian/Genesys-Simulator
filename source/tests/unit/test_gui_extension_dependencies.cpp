@@ -102,6 +102,20 @@ TEST(GuiExtensionDependencyF1, TransitiveGuiExtensionRequirements) {
     EXPECT_TRUE(result.contains(&c));
 }
 
+TEST(GuiExtensionDependencyF1, NonCyclicDependentIsNotMisdiagnosedAsCycle) {
+    DependencyFixturePlugin a("a", {}, {group(Kind::GuiExtension, Mode::All, {"b"})});
+    DependencyFixturePlugin b("b", {}, {group(Kind::GuiExtension, Mode::All, {"c"})});
+    DependencyFixturePlugin c("c", {}, {group(Kind::GuiExtension, Mode::All, {"b"})});
+    const auto result = Resolver::resolve({&a, &b, &c}, {});
+    EXPECT_TRUE(result.active.empty());
+    EXPECT_TRUE(hasIssue(result, Resolver::IssueCode::DependencyCycle));
+    for (const auto& issue : result.issues) {
+        if (issue.code == Resolver::IssueCode::DependencyCycle) {
+            EXPECT_NE(issue.extensionId, "a");
+        }
+    }
+}
+
 TEST(GuiExtensionDependencyF1, MissingRequiredGuiExtensionFails) {
     DependencyFixturePlugin a("a", {}, {group(Kind::GuiExtension, Mode::All, {"missing"})});
     auto result = Resolver::resolve({&a}, {});
