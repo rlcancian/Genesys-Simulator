@@ -4,6 +4,8 @@
 #include "GuiExtensionContracts.h"
 
 #include <algorithm>
+#include <charconv>
+#include <map>
 #include <cctype>
 #include <functional>
 #include <string>
@@ -22,6 +24,9 @@ public:
         // False only for legacy catalog calls before the GUI supplies an inventory.
         // This is UNKNOWN, not a claim that the plugin is installed.
         bool modelPluginIdsKnown = true;
+        // Versions are optional until a dependency explicitly requests one.
+        std::unordered_map<std::string, std::string> modelPluginVersions;
+        std::unordered_map<std::string, std::string> systemCapabilityVersions;
     };
 
     enum class IssueCode { EmptyId, DuplicateId, MissingDependency, DependencyCycle };
@@ -51,6 +56,35 @@ public:
         return out;
     }
 
+    // Intentionally restricted to numeric dotted versions. Unknown/pre-release
+    // grammars fail closed instead of silently passing a compatibility check.
+    static bool versionAtLeast(const std::string& actual, const std::string& minimum) {
+        const auto parse = [](const std::string& value, std::vector<unsigned int>* parts) {
+            if (value.empty()) return false;
+            std::size_t start = 0;
+            while (start < value.size()) {
+                const std::size_t dot = value.find('.', start);
+                const std::size_t end = dot == std::string::npos ? value.size() : dot;
+                if (end == start) return false;
+                unsigned int number = 0;
+                const char* first = value.data() + start;
+                const char* last = value.data() + end;
+                const auto result = std::from_chars(first, last, number);
+                if (result.ec != std::errc{} || result.ptr != last) return false;
+                parts->push_back(number);
+                if (dot == std::string::npos) return true;
+                start = dot + 1;
+            }
+            return false;
+        };
+        std::vector<unsigned int> a, b;
+        if (!parse(actual, &a) || !parse(minimum, &b)) return false;
+        const auto size = std::max(a.size(), b.size());
+        a.resize(size, 0);
+        b.resize(size, 0);
+        return a >= b;
+    }
+
     // The input plugins are already enabled/disabled filtered by the catalog.
     // The same function must be used for every Manager and Catalog dispatch.
     static Result resolve(const std::vector<const GuiExtensionPlugin*>& candidates,
@@ -73,6 +107,11 @@ public:
         }
 
         std::unordered_set<std::string> models, capabilities, activeIds;
+        std::unordered_map<std::string, std::string> modelVersions, systemVersions;
+        for (const auto& [key, value] : env.modelPluginVersions)
+            modelVersions[normalizeId(key, true)] = value;
+        for (const auto& [key, value] : env.systemCapabilityVersions)
+            systemVersions[normalizeId(key)] = value;
         for (const auto& s : env.modelPluginIds) models.insert(normalizeId(s, true));
         for (const auto& s : env.systemCapabilityIds) capabilities.insert(normalizeId(s));
 
@@ -93,6 +132,17 @@ public:
                 case GuiExtensionDependencyKind::GuiExtension:
                     present = activeIds.contains(key);
                     break;
+                }
+                if (present && !group.minimumVersion.empty()) {
+                    std::string actualVersion;
+                    if (group.kind == GuiExtensionDependencyKind::ModelPlugin) {
+                        if (auto it = modelVersions.find(key); it != modelVersions.end()) actualVersion = it->second;
+                    } else if (group.kind == GuiExtensionDependencyKind::SystemCapability) {
+                        if (auto it = systemVersions.find(key); it != systemVersions.end()) actualVersion = it->second;
+                    } else if (auto it = byId.find(key); it != byId.end()) {
+                        actualVersion = it->second->version();
+                    }
+                    present = versionAtLeast(actualVersion, group.minimumVersion);
                 }
                 any |= present;
                 all &= present;
@@ -202,6 +252,20 @@ public:
                 case GuiExtensionDependencyKind::ModelPlugin: found = models.contains(key); break;
                 case GuiExtensionDependencyKind::GuiExtension: found = extensions.contains(key); break;
                 case GuiExtensionDependencyKind::SystemCapability: found = capabilities.contains(key); break;
+                }
+                if (found && !group.minimumVersion.empty()) {
+                    std::string actualVersion;
+                    if (group.kind == GuiExtensionDependencyKind::ModelPlugin) {
+                        for (const auto& [name, version] : env.modelPluginVersions)
+                            if (normalizeId(name, true) == key) actualVersion = version;
+                    } else if (group.kind == GuiExtensionDependencyKind::SystemCapability) {
+                        for (const auto& [name, version] : env.systemCapabilityVersions)
+                            if (normalizeId(name) == key) actualVersion = version;
+                    } else {
+                        for (const auto* plugin : resolved.active)
+                            if (normalizeId(plugin->extensionId()) == key) actualVersion = plugin->version();
+                    }
+                    found = versionAtLeast(actualVersion, group.minimumVersion);
                 }
                 any |= found;
                 all &= found;
