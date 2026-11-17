@@ -262,11 +262,17 @@ void GuiExtensionPluginCatalog::setAvailableSystemCapabilityIds(std::vector<std:
     dependencyEnvironment().systemCapabilityIds = std::move(capabilityIds);
 }
 
+static std::vector<const GuiExtensionPlugin*> configuredPlugins();
+
 GuiExtensionDependencyResolver::Result GuiExtensionPluginCatalog::resolution() {
-    return GuiExtensionDependencyResolver::resolve(resolvedPlugins(), dependencyEnvironment());
+    return GuiExtensionDependencyResolver::resolve(configuredPlugins(), dependencyEnvironment());
 }
 
 std::vector<const GuiExtensionPlugin*> GuiExtensionPluginCatalog::resolvedPlugins() {
+    return resolution().active;
+}
+
+static std::vector<const GuiExtensionPlugin*> configuredPlugins() {
 	const std::vector<const GuiExtensionPlugin*>& registered = registryStorage();
 	QJsonObject config = loadConfigObject();
 
@@ -297,7 +303,7 @@ std::vector<const GuiExtensionPlugin*> GuiExtensionPluginCatalog::resolvedPlugin
 	}
 	const PresentationMap presentation = parsePresentationMap(config.value("presentation"));
 	sortUnpinnedByPresentation(&ordered, pinnedIds, presentation);
-	return GuiExtensionDependencyResolver::resolve(ordered, dependencyEnvironment()).active;
+	return ordered;
 }
 
 GuiExtensionPresentationMetadata GuiExtensionPluginCatalog::presentationMetadata(const std::string& extensionId) {
