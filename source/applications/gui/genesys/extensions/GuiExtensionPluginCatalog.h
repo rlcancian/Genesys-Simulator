@@ -2,6 +2,7 @@
 #define GUIEXTENSIONPLUGINCATALOG_H
 
 #include "GuiExtensionContracts.h"
+#include "GuiExtensionDependencyResolver.h"
 
 #include <string>
 #include <vector>
@@ -18,6 +19,9 @@ class GuiExtensionPluginCatalog {
 public:
 	static const std::vector<const GuiExtensionPlugin*>& plugins();
 	static std::vector<const GuiExtensionPlugin*> resolvedPlugins();
+	static void setAvailableModelPluginIds(std::vector<std::string> pluginIds);
+	static void setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds);
+	static GuiExtensionDependencyResolver::Result resolution();
 	static GuiExtensionPresentationMetadata presentationMetadata(const std::string& extensionId);
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
 	static std::vector<GuiDiagramProjectionContribution> diagramProjectionContributions();
