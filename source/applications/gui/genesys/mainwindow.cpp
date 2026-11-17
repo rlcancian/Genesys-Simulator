@@ -1743,7 +1743,9 @@ void MainWindow::_refreshGuiExtensions() {
     extensionContext.ui = ui;
     extensionContext.graphicsView = ui->graphicsView;
     extensionContext.graphicsScene = ui->graphicsView->getScene();
-    _guiExtensionManager->setLoadedModelPluginIds(collectLoadedModelPluginIds(simulator));
+    const auto loadedModelPluginIds = collectLoadedModelPluginIds(simulator);
+    GuiExtensionPluginCatalog::setAvailableModelPluginIds(loadedModelPluginIds);
+    _guiExtensionManager->setLoadedModelPluginIds(loadedModelPluginIds);
     _guiExtensionManager->setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
     _guiExtensionManager->rebuild(extensionContext);
     if (ui->treeViewPropertyEditor != nullptr) {
