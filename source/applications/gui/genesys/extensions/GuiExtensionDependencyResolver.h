@@ -186,32 +186,39 @@ public:
         // Report the exact outstanding requirements for inactive extensions.
         // Cycles are detected only among inactive GUI dependencies.
         std::unordered_set<std::string> visited, visiting, cyclic;
-        std::function<bool(const std::string&)> hasCycle;
-        hasCycle = [&](const std::string& id) -> bool {
-            if (visiting.contains(id)) return true;
-            if (visited.contains(id)) return cyclic.contains(id);
+        std::vector<std::string> stack;
+        std::function<void(const std::string&)> detectCycles;
+        detectCycles = [&](const std::string& id) {
+            if (visited.contains(id)) return;
+            visited.insert(id);
             visiting.insert(id);
-            bool cycle = false;
+            stack.push_back(id);
             if (const auto it = byId.find(id); it != byId.end()) {
                 for (const auto& group : it->second->dependencyGroups()) {
                     if (!group.required || group.kind != GuiExtensionDependencyKind::GuiExtension) continue;
                     for (const auto& name : group.ids) {
                         const auto next = normalizeId(name);
-                        if (!activeIds.contains(next) && byId.contains(next)) {
-                            cycle = hasCycle(next) || cycle;
+                        if (activeIds.contains(next) || !byId.contains(next)) continue;
+                        if (visiting.contains(next)) {
+                            const auto cycleStart = std::find(stack.begin(), stack.end(), next);
+                            cyclic.insert(cycleStart, stack.end());
+                        } else {
+                            detectCycles(next);
                         }
                     }
                 }
             }
+            stack.pop_back();
             visiting.erase(id);
-            visited.insert(id);
-            if (cycle) cyclic.insert(id);
-            return cycle;
         };
         for (const auto* plugin : ordered) {
             const auto id = normalizeId(plugin->extensionId());
+            if (!activeIds.contains(id)) detectCycles(id);
+        }
+        for (const auto* plugin : ordered) {
+            const auto id = normalizeId(plugin->extensionId());
             if (activeIds.contains(id)) continue;
-            if (hasCycle(id)) {
+            if (cyclic.contains(id)) {
                 result.issues.push_back({IssueCode::DependencyCycle, id, "cyclic GUI-extension dependency"});
             }
             if (env.modelPluginIdsKnown) {
