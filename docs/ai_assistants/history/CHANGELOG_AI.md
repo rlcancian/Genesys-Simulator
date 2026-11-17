@@ -95,3 +95,6 @@ Append or amend one row only after a material status change. After merge, use th
 - 2026-11-17: GUI Label/Name caption precedence and existing scene-to-inspector
   synchronization repaired; focused offscreen interaction regressions and manual
   updated. Evidence: `evidence/2026/11/GUI_CAPTIONS_SELECTION_20261117.md`.
+- 2026-11-17: Added MainWindow property-reference SelectAndEdit regression after
+  reported stale-tree-item crash; differential test fails with pre-fix scene
+  wrapper and passes with current implementation (five repetitions).

@@ -2765,3 +2765,47 @@ TEST(ModelInspectorSelectionRegression, PopulatesHiddenTreesAndKeepsSelectionAcr
         EXPECT_EQ(scene->selectedItems().size(), 2);
     }
 }
+
+TEST(ModelInspectorSelectionRegression, PropertyReferenceComboSelectsAndEditsInMainWindow) {
+    MainWindow window;
+    window.show();
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+    auto* scene = window.myScene();
+    auto* simulator = scene->getSimulator();
+    auto* model = simulator->getModelManager()->current();
+    auto* manager = simulator->getPluginManager();
+    auto* wait = manager->newInstance<Seize>(model, "ReferenceNavigation");
+    auto* queue = manager->newInstance<Queue>(model, "NavigationQueue");
+    wait->setQueue(queue);
+    auto* graphical = scene->addGraphicalModelComponent(manager->find("Seize"), wait, QPointF(100, 100));
+    scene->setShowEditableDataDefinitions(true);
+    auto* tabs = window.findChild<QTabWidget*>("tabWidgetModel");
+    auto* browser = window.findChild<ObjectPropertyBrowser*>();
+    ASSERT_NE(browser, nullptr);
+    tabs->setCurrentIndex(4);
+    tabs->setCurrentIndex(3);
+    graphical->setSelected(true);
+    drainGuiEvents();
+    ASSERT_EQ(tabs->currentWidget()->objectName(), "tabModelComponents");
+    auto* item = findBrowserItemByName(browser->topLevelItems(), "Queue");
+    ASSERT_NE(item, nullptr);
+    browser->setCurrentItem(item);
+    browser->editItem(item);
+    drainGuiEvents();
+    auto* combo = browser->findChild<QComboBox*>();
+    ASSERT_NE(combo, nullptr);
+    const int index = combo->findText("Selecionar Queue e Editar");
+    ASSERT_GE(index, 0);
+    combo->setCurrentIndex(index);
+    drainGuiEvents();
+    auto* tree = window.findChild<QTreeWidget*>("treeWidgetDataDefnitions");
+    ASSERT_NE(tree->currentItem(), nullptr);
+    EXPECT_EQ(tree->currentItem()->data(0, Qt::UserRole).value<quintptr>(), reinterpret_cast<quintptr>(queue));
+    EXPECT_EQ(tabs->currentWidget()->objectName(), "tabModelDataDefinitions");
+    ASSERT_EQ(scene->selectedItems().size(), 1);
+    auto* selected = dynamic_cast<GraphicalModelDataDefinition*>(scene->selectedItems().front());
+    ASSERT_NE(selected, nullptr);
+    EXPECT_EQ(selected->getDataDefinition(), queue);
+    EXPECT_EQ(wait->getQueueableItem()->getQueue(), queue);
+}
