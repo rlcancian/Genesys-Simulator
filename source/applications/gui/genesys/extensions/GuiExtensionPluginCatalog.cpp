@@ -259,6 +259,12 @@ void GuiExtensionPluginCatalog::setAvailableModelPluginIds(std::vector<std::stri
     dependencyEnvironment().modelPluginIdsKnown = true;
 }
 
+void GuiExtensionPluginCatalog::clearAvailableModelPluginInventory() {
+    dependencyEnvironment().modelPluginIds.clear();
+    dependencyEnvironment().modelPluginVersions.clear();
+    dependencyEnvironment().modelPluginIdsKnown = false;
+}
+
 void GuiExtensionPluginCatalog::setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds) {
     dependencyEnvironment().systemCapabilityIds = std::move(capabilityIds);
 }
