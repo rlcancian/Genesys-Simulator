@@ -54,15 +54,7 @@ GuiExtensionRegistry eligibleContributions(const GuiExtensionPlugin* plugin) {
 using PresentationMap = std::unordered_map<std::string, GuiExtensionPresentationMetadata>;
 
 std::string normalizeId(const std::string& input) {
-	std::string normalized;
-	normalized.reserve(input.size());
-	for (unsigned char c : input) {
-		if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
-			continue;
-		}
-		normalized.push_back(static_cast<char>(std::tolower(c)));
-	}
-	return normalized;
+    return GuiExtensionDependencyResolver::normalizeId(input);
 }
 
 std::string normalizeId(const QString& input) {
