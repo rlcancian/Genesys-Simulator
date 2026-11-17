@@ -191,26 +191,26 @@ void drawWrappedText(QPainter* painter,
     }
 }
 
-void drawItemText(QPainter* painter,
+GraphicalItemTextLayout layoutItemText(const QFont& baseFont,
                   const GraphicalModelItemRenderContext& context,
-                  const QRectF& contentRect,
-                  bool shadowFirstForSingleLine) {
+                  const QRectF& contentRect) {
+    GraphicalItemTextLayout layout;
+    if (contentRect.width() <= 4 || contentRect.height() <= 4) return layout;
+    const QRectF available = contentRect.adjusted(2, 2, -2, -2);
     const QString primaryText = context.primaryText.trimmed();
     const QString secondaryText = context.secondaryText.trimmed();
     const QString tertiaryText = context.tertiaryText.trimmed();
     if (primaryText.isEmpty() && secondaryText.isEmpty() && tertiaryText.isEmpty()) {
-        return;
+        return layout;
     }
 
-    const QColor textColor = colorFromRgba(context.textColor);
-    const QColor shadowColor = colorFromRgba(context.textShadowColor);
-    const qreal maxWidth = qMax<qreal>(1.0, contentRect.width());
-    const qreal left = contentRect.left();
+    const qreal maxWidth = qMax<qreal>(1.0, available.width());
+    const qreal left = available.left();
 
-    QFont baseFont = painter->font();
     QFont primaryFont = baseFont;
     primaryFont.setBold(true);
     QFont secondaryFont = baseFont;
+    secondaryFont.setBold(false);
     if (secondaryFont.pointSizeF() > 0.0) {
         secondaryFont.setPointSizeF(qMax<qreal>(1.0, secondaryFont.pointSizeF() - 1.0));
     } else if (secondaryFont.pixelSize() > 0) {
@@ -232,7 +232,7 @@ void drawItemText(QPainter* painter,
     };
 
     const QVector<TextBlock> blocks = {
-        {QStringList{primaryText}, primaryFont, Qt::AlignHCenter, 0, 2},
+        {wrapTextToWidth(primaryText, primaryFm, maxWidth), primaryFont, Qt::AlignHCenter, 0, 2},
         {secondaryLines, secondaryFont, Qt::AlignLeft, secondaryLineSpacing, 1},
         {tertiaryLines, secondaryFont, Qt::AlignRight, 1, 1}
     };
@@ -270,47 +270,58 @@ void drawItemText(QPainter* painter,
     }
 
     if (measuredBlocks.isEmpty()) {
-        return;
+        return layout;
     }
 
     totalHeight += qMax(0, measuredBlocks.size() - 1) * blockSpacing;
-    const qreal top = contentRect.top() + (contentRect.height() - totalHeight) / 2.0;
+    qreal widest = 0;
+    for (const auto& block : measuredBlocks) {
+        const QFontMetrics fm(block.font);
+        for (const auto& line : block.lines) widest = qMax(widest, qreal(fm.boundingRect(line).width()));
+    }
+    // Fit the complete caption, including its shadow. Never discard lines or alter geometry.
+    layout.scale = qMin<qreal>(1.0, qMin(available.width() / (widest + 2),
+                                         available.height() / (totalHeight + 2)));
+    const qreal top = available.center().y() - (totalHeight + 2) / 2.0;
 
     qreal y = top;
-    for (int blockIndex = 0; blockIndex < measuredBlocks.size(); ++blockIndex) {
-        const MeasuredBlock& block = measuredBlocks.at(blockIndex);
-        const QFontMetrics fm(block.font);
-        const int lineHeight = fm.height();
-        painter->setFont(block.font);
-
-        QPen pen(textColor);
-        pen.setWidth(block.penWidth);
-        pen.setCosmetic(true);
-
-        qreal lineY = y;
-        for (const QString& line : block.lines) {
-            const QRectF lineRect(left, lineY, contentRect.width(), lineHeight);
-            if (line.trimmed().isEmpty()) {
-                lineY += lineHeight + block.lineSpacing;
-                continue;
-            }
-
-            if (shadowFirstForSingleLine) {
-                painter->setPen(QPen(shadowColor, block.penWidth));
-                painter->drawText(lineRect.translated(0, 2), block.alignment | Qt::AlignVCenter | Qt::TextSingleLine, line);
-                painter->setPen(pen);
-                painter->drawText(lineRect, block.alignment | Qt::AlignVCenter | Qt::TextSingleLine, line);
-            } else {
-                painter->setPen(pen);
-                painter->drawText(lineRect, block.alignment | Qt::AlignVCenter | Qt::TextSingleLine, line);
-                painter->setPen(QPen(shadowColor, block.penWidth));
-                painter->drawText(lineRect.adjusted(0, 2, 2, 0), block.alignment | Qt::AlignVCenter | Qt::TextSingleLine, line);
-            }
-            lineY += lineHeight + block.lineSpacing;
+    for (const auto& block : measuredBlocks) {
+        const int lineHeight = QFontMetrics(block.font).height();
+        for (const auto& line : block.lines) {
+            layout.lines.append({line, block.font, QRectF(left, y, maxWidth, lineHeight),
+                                 block.alignment, block.penWidth});
+            y += lineHeight + block.lineSpacing;
         }
-
-        y += block.height + blockSpacing;
+        y += blockSpacing - block.lineSpacing;
     }
+    return layout;
+}
+
+void drawItemText(QPainter* painter, const GraphicalModelItemRenderContext& context,
+                  const QRectF& contentRect, bool shadowFirstForSingleLine) {
+    const auto layout = layoutItemText(painter->font(), context, contentRect);
+    painter->save();
+    painter->translate(contentRect.center());
+    painter->scale(layout.scale, layout.scale);
+    painter->translate(-contentRect.center());
+    const QColor textColor = colorFromRgba(context.textColor);
+    const QColor shadowColor = colorFromRgba(context.textShadowColor);
+    for (const auto& line : layout.lines) {
+        painter->setFont(line.font);
+        const auto flags = line.alignment | Qt::AlignVCenter | Qt::TextSingleLine;
+        auto draw = [&](const QColor& color, const QRectF& rect) {
+            painter->setPen(QPen(color, line.penWidth));
+            painter->drawText(rect, flags, line.text);
+        };
+        if (shadowFirstForSingleLine) {
+            draw(shadowColor, line.rect.translated(0, 2));
+            draw(textColor, line.rect);
+        } else {
+            draw(textColor, line.rect);
+            draw(shadowColor, line.rect.translated(0, 2));
+        }
+    }
+    painter->restore();
 }
 
 QRectF specializedGlyphBody(const GraphicalModelItemRenderContext& context) {
@@ -665,4 +676,9 @@ const GraphicalModelItemRenderStrategy& GraphicalModelItemRenderer::currentStrat
     return SystemPreferences::interfaceStyle() == SystemPreferences::InterfaceStyle::Modern
                ? organicStrategy()
                : classicStrategy();
+}
+
+GraphicalItemTextLayout GraphicalModelItemRenderer::layoutText(
+    const GraphicalModelItemRenderContext& context, const QRectF& rect, const QFont& font) {
+    return layoutItemText(font, context, rect);
 }

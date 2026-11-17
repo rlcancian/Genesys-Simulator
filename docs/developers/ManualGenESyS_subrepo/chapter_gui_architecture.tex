@@ -447,3 +447,10 @@ object pointer stored in Qt UserRole. Populate the target tree before lookup and
 block tree and tab signals during programmatic navigation so tab refresh callbacks
 cannot invalidate the matched row. Property-editor post-commit processing suppresses
 inspector navigation to avoid reentrant updates.
+
+The shared caption layout wraps primary text with the existing width-based wrapper
+and bold font metrics. It measures every line and inter-block gap before painting.
+Overflow is handled by a uniform transform of the complete text block about the
+content rectangle centre, with shadow padding; no lines are discarded and no item
+geometry or ports are changed. The same measured layout is used by both styles
+and exposed for focused layout regression checks.

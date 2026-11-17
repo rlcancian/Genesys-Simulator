@@ -9,6 +9,8 @@
 #include <QByteArray>
 #include <QColor>
 #include <QImage>
+#include <QFontMetrics>
+#include <QTransform>
 #include <QLineF>
 #include <QPainter>
 #include <QPointF>
@@ -347,4 +349,80 @@ int main(int argc, char** argv) {
     const int result = RUN_ALL_TESTS();
     SystemPreferences::resetToDefaults();
     return result;
+}
+
+TEST(GuiRenderStrategy, PrimaryCaptionWrapsWithoutLineLimitOrOverlap) {
+    QFont font("DejaVu Sans", 12);
+    QFont bold(font);
+    bold.setBold(true);
+    const qreal width = QFontMetrics(bold).horizontalAdvance("Label Label") + 8;
+    for (int count : {1, 2, 3, 4, 7}) {
+        auto context = baseContext(GraphicalModelItemRenderContext::ItemKind::Component);
+        context.primaryText = QStringList(count * 2, "Label").join(' ');
+        context.secondaryText = "Name";
+        const QRectF area(0, 0, width, 500);
+        const auto layout = GraphicalModelItemRenderer::layoutText(context, area, font);
+        ASSERT_EQ(layout.lines.size(), count + 1);
+        EXPECT_DOUBLE_EQ(layout.scale, 1.0);
+        QStringList recovered;
+        for (int i = 0; i < count; ++i) {
+            const auto& line = layout.lines[i];
+            EXPECT_TRUE(line.font.bold());
+            EXPECT_EQ(line.alignment, Qt::AlignHCenter);
+            recovered << line.text;
+            EXPECT_TRUE(area.contains(line.rect));
+            EXPECT_LE(line.rect.bottom(), layout.lines[i + 1].rect.top());
+        }
+        EXPECT_EQ(recovered.join(' '), context.primaryText);
+        EXPECT_FALSE(layout.lines.last().font.bold());
+        EXPECT_LT(layout.lines.last().font.pointSizeF(), layout.lines.first().font.pointSizeF());
+    }
+}
+
+TEST(GuiRenderStrategy, OversizedCaptionFitsBothDimensionsAndPreservesAllCharacters) {
+    for (auto kind : {GraphicalModelItemRenderContext::ItemKind::Component,
+                      GraphicalModelItemRenderContext::ItemKind::DataDefinition}) {
+        auto context = baseContext(kind);
+        context.primaryText = QString(400, 'W');
+        context.secondaryText = "Model_Name";
+        const QRectF area(10, 10, 130, 55);
+        const auto layout = GraphicalModelItemRenderer::layoutText(context, area, QFont("DejaVu Sans", 12));
+        ASSERT_GT(layout.lines.size(), 4);
+        EXPECT_LT(layout.scale, 1);
+        QTransform transform;
+        transform.translate(area.center().x(), area.center().y());
+        transform.scale(layout.scale, layout.scale);
+        transform.translate(-area.center().x(), -area.center().y());
+        QString recovered;
+        QRectF previous;
+        for (const auto& line : layout.lines) {
+            if (line.font.bold()) recovered += line.text;
+            auto rect = transform.mapRect(line.rect);
+            EXPECT_TRUE(area.contains(rect));
+            if (!previous.isNull()) EXPECT_LE(previous.bottom(), rect.top() + 1e-9);
+            previous = rect;
+        }
+        EXPECT_EQ(recovered, context.primaryText);
+        for (auto style : {SystemPreferences::InterfaceStyle::Arena, SystemPreferences::InterfaceStyle::Modern}) {
+            SystemPreferences::setInterfaceStyle(style);
+            auto noText = context;
+            noText.primaryText.clear(); noText.secondaryText.clear();
+            const QImage image = render(context);
+            const QImage blank = render(noText);
+            EXPECT_GT(countDifferentPixels(image, blank), 0);
+            const QRectF bounds = context.bounds.translated(24, 24);
+            for (int y = 0; y < image.height(); ++y) {
+                for (int x = 0; x < image.width(); ++x) {
+                    if (image.pixel(x, y) != blank.pixel(x, y))
+                        EXPECT_TRUE(bounds.contains(QPointF(x, y)));
+                }
+            }
+            if (kind == GraphicalModelItemRenderContext::ItemKind::Component) {
+                auto preview = context;
+                preview.primaryText = QString::fromUtf8("Processamento de pedidos de clientes com prioridade elevada");
+                render(preview).save(style == SystemPreferences::InterfaceStyle::Arena
+                                    ? "/tmp/genesys-wrap-classic.png" : "/tmp/genesys-wrap-organic.png");
+            }
+        }
+    }
 }

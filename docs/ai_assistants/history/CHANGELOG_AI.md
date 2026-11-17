@@ -98,3 +98,6 @@ Append or amend one row only after a material status change. After merge, use th
 - 2026-11-17: Added MainWindow property-reference SelectAndEdit regression after
   reported stale-tree-item crash; differential test fails with pre-fix scene
   wrapper and passes with current implementation (five repetitions).
+- 2026-11-17: Shared renderer supports multiline primary labels, with measured
+  height and proportional overflow fitting; focused layout/QImage tests and manual
+  updated. Evidence: `evidence/2026/11/GUI_LABEL_WRAPPING_20261117.md`.

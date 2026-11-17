@@ -362,3 +362,9 @@ Direct maintainer-authorized WorkInProgress update: Label-first captions with
 Name-only fallback, and repair of inspector population/tab-refresh ordering for
 single graphical selection. See
 [bounded validation evidence](history/evidence/2026/11/GUI_CAPTIONS_SELECTION_20261117.md).
+
+### Multiline graphical labels — 2026-11-17
+
+Shared Classic/Organic caption layout wraps Label by bold font metrics, measures
+all lines, and proportionally fits overflow without discarding content or changing
+item geometry. See [validation](history/evidence/2026/11/GUI_LABEL_WRAPPING_20261117.md).
