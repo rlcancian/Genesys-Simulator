@@ -24,6 +24,7 @@ public:
 	void setLoadedModelPluginIds(std::vector<std::string> modelPluginIds);
 	void setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds);
 	void setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions);
+	void setAvailableSystemCapabilityVersions(std::unordered_map<std::string, std::string> versions);
 	void rebuild(const GuiExtensionRuntimeContext& context);
 	void refreshActionStates(const GuiExtensionRuntimeContext& context);
 	void populateContextMenu(QMenu* menu, QGraphicsItem* item) const;
@@ -58,6 +59,7 @@ private:
 	std::vector<std::string> _loadedModelPluginIds;
 	std::vector<std::string> _systemCapabilityIds;
 	std::unordered_map<std::string, std::string> _modelPluginVersions;
+	std::unordered_map<std::string, std::string> _systemCapabilityVersions;
 	std::vector<QAction*> _createdActions;
 	std::vector<std::pair<QAction*, GuiActionContribution>> _actionContributions;
 	std::vector<QAction*> _createdMenuActions;
