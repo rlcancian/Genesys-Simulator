@@ -591,6 +591,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // system preferences
     SystemPreferences::load();
+    // Reapply the effective (default or persisted) diagnostic level after loading preferences.
+    simulator->getTraceManager()->setTraceLevel(SystemPreferences::traceLevel());
     _refreshRecentModelsMenu();
     GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
     if (SystemPreferences::autoLoadPlugins()) {

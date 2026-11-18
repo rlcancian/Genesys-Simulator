@@ -10,6 +10,8 @@
 #include <QColor>
 #include <QImage>
 #include <QFontMetrics>
+#include <QFile>
+#include <QStandardPaths>
 #include <QTransform>
 #include <QLineF>
 #include <QPainter>
@@ -342,8 +344,26 @@ TEST(GuiDataDefinitionLayout, RadialLayerKeepsLowerChildrenOnSameArcSide) {
     EXPECT_GT(secondLayer.y(), parentBounds.bottom());
 }
 
+TEST(SystemPreferencesTest, TraceLevelDefaultsToMostDetailedAndPreservesSavedChoice) {
+    const QString preferencesFile = SystemPreferences::configFilePath();
+    QFile::remove(preferencesFile);
+
+    EXPECT_FALSE(SystemPreferences::load());
+    EXPECT_EQ(SystemPreferences::traceLevel(), TraceManager::Level::L9_mostDetailed);
+
+    SystemPreferences::setTraceLevel(TraceManager::Level::L7_internal);
+    ASSERT_TRUE(SystemPreferences::save());
+    SystemPreferences::resetToDefaults();
+    ASSERT_TRUE(SystemPreferences::load());
+    EXPECT_EQ(SystemPreferences::traceLevel(), TraceManager::Level::L7_internal);
+
+    QFile::remove(preferencesFile);
+    SystemPreferences::resetToDefaults();
+}
+
 int main(int argc, char** argv) {
     qputenv("QT_QPA_PLATFORM", QByteArray("offscreen"));
+    QStandardPaths::setTestModeEnabled(true);
     QApplication app(argc, argv);
     ::testing::InitGoogleTest(&argc, argv);
     const int result = RUN_ALL_TESTS();
