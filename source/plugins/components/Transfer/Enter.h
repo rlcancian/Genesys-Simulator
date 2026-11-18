@@ -99,7 +99,7 @@ resource to release.
 class Enter : public ModelComponent {
 public:
 	Enter(Model* model, std::string name = "");
-	virtual ~Enter() = default;
+	virtual ~Enter();
 public:
 	virtual std::string show() override;
 public:

@@ -31,7 +31,7 @@ Start::Start(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 			_parentModel,
 			std::bind(&Start::getConveyor, this),
 			std::bind(&Start::setConveyor, this, std::placeholders::_1),
-			Util::TypeOf<Start>(), getName(), "Conveyor", "");
+			Util::TypeOf<Start>(), getName(), "Conveyor", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	auto* propVelocityExpression = new SimulationControlGeneric<std::string>(
 			std::bind(&Start::getVelocityExpression, this),
 			std::bind(&Start::setVelocityExpression, this, std::placeholders::_1),

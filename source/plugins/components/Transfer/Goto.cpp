@@ -26,7 +26,7 @@ Goto::Goto(Model* model, std::string name)
         _parentModel,
         std::bind(&Goto::getLabelDefinition, this),
         std::bind(&Goto::setLabelDefinition, this, std::placeholders::_1),
-        Util::TypeOf<Goto>(), getName(), "LabelDefinition", "");
+        Util::TypeOf<Goto>(), getName(), "LabelDefinition", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
     auto* propExpression = new SimulationControlGeneric<std::string>(
         std::bind(&Goto::getTimeDelayExpression, this),
         std::bind(&Goto::setTimeDelayExpression, this, std::placeholders::_1),

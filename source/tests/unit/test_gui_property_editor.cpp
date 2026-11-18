@@ -44,6 +44,7 @@
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/Transfer/PickStation.h"
+#include "plugins/components/Transfer/Enter.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
 #include "plugins/components/Synchronization/Signal.h"
@@ -64,6 +65,7 @@
 #include "plugins/data/Template/TemplateDataDefinition.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/Grouping/EntityGroup.h"
+#include "plugins/data/Transfer/Station.h"
 
 #include <functional>
 
@@ -2004,6 +2006,56 @@ TEST(PropertyEditorModelDataReference, WaitAndSignalSelectTheSameSignalData) {
     selectSharedSignalData(&signal);
 }
 
+TEST(PropertyEditorModelDataReference, EnterStationSelectorSwitchesAndRemovesReferenceWithoutDeletingStation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* stationA = new Station(model, "EnterSelectorStationA");
+    auto* stationB = new Station(model, "EnterSelectorStationB");
+    model->getDataManager()->insert(stationA);
+    model->getDataManager()->insert(stationB);
+
+    Enter enter(model, "EnterStationSelector");
+    enter.setStation(stationA);
+    ModelDataDefinition::CreateInternalData(&enter);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &enter);
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Station"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int stationBIndex = selector->findText(QStringLiteral("EnterSelectorStationB"));
+    ASSERT_GE(stationBIndex, 0);
+    EXPECT_GE(selector->findText(QStringLiteral("Criar novo Station")), 0);
+    selector->setCurrentIndex(stationBIndex);
+    drainGuiEvents();
+    EXPECT_EQ(enter.getStation(), stationB);
+    EXPECT_EQ(stationA->getEnterIntoStationComponent(), nullptr);
+    EXPECT_EQ(stationB->getEnterIntoStationComponent(), &enter);
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Station"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int removeIndex = selector->findText(QStringLiteral("Remover referência"));
+    ASSERT_GE(removeIndex, 0);
+    selector->setCurrentIndex(removeIndex);
+    drainGuiEvents();
+    EXPECT_EQ(enter.getStation(), nullptr);
+    EXPECT_EQ(stationB->getEnterIntoStationComponent(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationA->getName()), stationA);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationB->getName()), stationB);
+}
+
 TEST(PropertyEditorModelDataReference, WaitQueueSelectorRetainsAllChoicesAndSwitchesByIdentity) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -2034,7 +2086,7 @@ TEST(PropertyEditorModelDataReference, WaitQueueSelectorRetainsAllChoicesAndSwit
         ASSERT_GE(bIndex, 0);
         EXPECT_GE(selector->findText(QStringLiteral("Criar novo Queue")), 0);
         EXPECT_EQ(selector->findText(QStringLiteral("Selecionar Queue e Editar")), -1);
-        EXPECT_EQ(selector->findText(QStringLiteral("Remover Queue")), -1);
+        EXPECT_GE(selector->findText(QStringLiteral("Remover referência")), 0);
         selector->setCurrentIndex(bIndex);
         drainGuiEvents();
         EXPECT_EQ(wait.getQueue(), queueB);

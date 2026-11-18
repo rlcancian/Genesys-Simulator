@@ -30,7 +30,7 @@ Unstore::Unstore(Model* model, std::string name) : ModelComponent(model, Util::T
 	SimulationControlGenericClass<Storage*, Model*, Storage>* propStorage = new SimulationControlGenericClass<Storage*, Model*, Storage>(
 			_parentModel,
 			std::bind(&Unstore::getStorage, this), std::bind(&Unstore::setStorage, this, std::placeholders::_1),
-			Util::TypeOf<Unstore>(), getName(), "Storage", "");
+			Util::TypeOf<Unstore>(), getName(), "Storage", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	SimulationControlGeneric<std::string>* propQuantity = new SimulationControlGeneric<std::string>(
 			std::bind(&Unstore::getQuantityExpression, this), std::bind(&Unstore::setQuantityExpression, this, std::placeholders::_1),
 			Util::TypeOf<Unstore>(), getName(), "QuantityExpression", "");
@@ -77,6 +77,10 @@ ModelComponent* Unstore::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Unstore::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void) inputPortNumber;
+	if (_storage == nullptr) {
+		traceError("Unstore \"" + getName() + "\" has no Storage configured");
+		return;
+	}
 	const double parsedQuantity = _parentModel->parseExpression(_quantityExpression);
 	const unsigned int quantity = parsedQuantity <= 0.0 ? 0u : static_cast<unsigned int>(parsedQuantity);
 	if (quantity == 0u) {
@@ -135,13 +139,6 @@ PluginInformation* Unstore::GetPluginInformation() {
 // void Unstore::_createInternalStatisticReporters() { }
 
 void Unstore::_createEditableDataDefinitions() {
-	if (_storage == nullptr) {
-		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
-		_storage = plugins->newInstance<Storage>(_parentModel, getName() + ".Storage");
-		if (_storage == nullptr) {
-			_storage = new Storage(_parentModel, getName() + ".Storage");
-		}
-	}
 	if (_storage != nullptr) {
 		_optionalEditableDataDefinitionInsert("Storage", _storage);
 	} else {

@@ -30,7 +30,7 @@ Leave::Leave(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGenericClass<Station*, Model*, Station>* propStation = new SimulationControlGenericClass<Station*, Model*, Station>(
 									_parentModel,
 									std::bind(&Leave::getStation, this), std::bind(&Leave::setStation, this, std::placeholders::_1),
-									Util::TypeOf<Leave>(), getName(), "Station", "");
+									Util::TypeOf<Leave>(), getName(), "Station", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 
 	_parentModel->getControls()->insert(propStation);
 
@@ -39,7 +39,7 @@ Leave::Leave(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 }
 
 std::string Leave::show() {
-	return ModelComponent::show() + ",station=" + this->_station->getName();
+	return ModelComponent::show() + ",station=" + (_station != nullptr ? _station->getName() : "");
 }
 
 ModelComponent* Leave::LoadInstance(Model* model, PersistenceRecord *fields) {
@@ -58,11 +58,7 @@ void Leave::setStation(Station* _station) {
 
 void Leave::setStationName(std::string stationName) {
 	ModelDataDefinition* data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName);
-	if (data != nullptr) {
-		_station = dynamic_cast<Station*> (data);
-	} else {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel, stationName);
-	}
+	_station = dynamic_cast<Station*> (data);
 }
 
 Station* Leave::getStation() const {
@@ -70,6 +66,10 @@ Station* Leave::getStation() const {
 }
 
 void Leave::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	if (_station == nullptr) {
+		traceError("Leave \"" + getName() + "\" has no Station configured");
+		return;
+	}
 	if (_reportStatistics)
 		_numberIn->incCountValue();
 	_station->leave(entity);

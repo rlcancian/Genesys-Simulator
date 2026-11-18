@@ -43,7 +43,7 @@ Route::Route(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGenericClass<Station*, Model*, Station>* propStation = new SimulationControlGenericClass<Station*, Model*, Station>(
 									_parentModel,
 									std::bind(&Route::getStation, this), std::bind(&Route::setStation, this, std::placeholders::_1),
-									Util::TypeOf<Route>(), getName(), "Station", "");
+									Util::TypeOf<Route>(), getName(), "Station", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	SimulationControlGeneric<std::string>* propStationExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Route::getStationExpression, this), std::bind(&Route::setStationExpression, this, std::placeholders::_1),
 									Util::TypeOf<Route>(), getName(), "StationExpression", "");								
@@ -59,7 +59,7 @@ Route::Route(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGenericClass<LabelDefinition*, Model*, LabelDefinition>* propLabel = new SimulationControlGenericClass<LabelDefinition*, Model*, LabelDefinition>(
 									_parentModel,
 									std::bind(&Route::getLabel, this), std::bind(&Route::setLabel, this, std::placeholders::_1),
-									Util::TypeOf<Route>(), getName(), "LabelDefinition", "");									
+									Util::TypeOf<Route>(), getName(), "LabelDefinition", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 
 	_parentModel->getControls()->insert(propStation);
 	_parentModel->getControls()->insert(propStationExpression);
@@ -102,11 +102,7 @@ void Route::setStation(Station* _station) {
 
 void Route::setStationName(std::string stationName) {
 	ModelDataDefinition* data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName);
-	if (data != nullptr) {
-		_station = dynamic_cast<Station*> (data);
-	} else {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel, stationName);
-	}
+	_station = dynamic_cast<Station*> (data);
 }
 
 Station* Route::getStation() const {
@@ -165,11 +161,18 @@ void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		unsigned int sequenceId = static_cast<unsigned int> (entity->getAttributeValue("Entity.Sequence"));
 		unsigned int step = static_cast<unsigned int> (entity->getAttributeValue("Entity.SequenceStep"));
 		Sequence* sequence = static_cast<Sequence*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Sequence>(), sequenceId));
+		if (sequence == nullptr) {
+			traceError("Route \"" + getName() + "\" could not resolve Entity.Sequence");
+			return;
+		}
 		SequenceStep* seqStep = sequence->getSteps()->getAtRank(step);
 		if (seqStep == nullptr) {
 			step = 0;
 			seqStep = sequence->getSteps()->getAtRank(step);
-			assert(seqStep != nullptr);
+			if (seqStep == nullptr) {
+				traceError("Route \"" + getName() + "\" resolved an empty Sequence");
+				return;
+			}
 		}
 		destinyStation = seqStep->getStation(); // one of two is nullptr
 		destinyLabel = seqStep->getLabel();
@@ -188,6 +191,23 @@ void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			traceSimulation(this, "Evaluation of StationExpression \"" + _stationExpression + "\"= " + std::to_string(stationID) + " is not a Station Id. Impossible to route.", TraceManager::Level::L1_errorFatal);
 		}
 	}
+	ModelComponent* destinationComponent = nullptr;
+	if (destinyStation != nullptr) {
+		destinationComponent = destinyStation->getEnterIntoStationComponent();
+		if (destinationComponent == nullptr) {
+			traceError("Route \"" + getName() + "\" destination Station has no Enter component");
+			return;
+		}
+	} else if (destinyLabel != nullptr) {
+		destinationComponent = destinyLabel->getEnterIntoLabelComponent();
+		if (destinationComponent == nullptr) {
+			traceError("Route \"" + getName() + "\" destination LabelDefinition has no Label component");
+			return;
+		}
+	} else {
+		traceError("Route \"" + getName() + "\" has no destination configured");
+		return;
+	}
 	if (_reportStatistics)
 		_numberIn->incCountValue();
 	// adds the route time to the TransferTime statistics / attribute related to the Entitys
@@ -203,21 +223,12 @@ void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		// calculates when this Entity will reach the end of this route and schedule this Event
 		double routeEndTime = _parentModel->getSimulation()->getSimulatedTime() + routeTime;
 		Event* newEvent;
-		if (destinyStation != nullptr) {
-			newEvent = new Event(routeEndTime, entity, destinyStation->getEnterIntoStationComponent());
-			traceSimulation(this, "End of route of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " to the component \"" + destinyStation->getEnterIntoStationComponent()->getName() + "\" was scheduled to time " + std::to_string(routeEndTime), TraceManager::Level::L7_internal);
-		} else {// destination is LabelDefinition
-			newEvent = new Event(routeEndTime, entity, destinyLabel->getEnterIntoLabelComponent());
-			traceSimulation(this, "End of route of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " to the component \"" + destinyLabel->getEnterIntoLabelComponent()->getName() + "\" was scheduled to time " + std::to_string(routeEndTime), TraceManager::Level::L7_internal);
-		}
+		newEvent = new Event(routeEndTime, entity, destinationComponent);
+		traceSimulation(this, "End of route of " + entity->getName() + " to the component \"" + destinationComponent->getName() + "\" was scheduled to time " + std::to_string(routeEndTime), TraceManager::Level::L7_internal);
 		_parentModel->getFutureEvents()->insert(newEvent);
 	} else {
 		// send without delay
-		if (destinyStation != nullptr) {
-			_parentModel->sendEntityToComponent(entity, destinyStation->getEnterIntoStationComponent(), 0.0);
-		} else {// destination is LabelDefinition
-			_parentModel->sendEntityToComponent(entity, destinyLabel->getEnterIntoLabelComponent(), 0.0);
-		}
+		_parentModel->sendEntityToComponent(entity, destinationComponent, 0.0);
 	}
 }
 
@@ -340,12 +351,6 @@ void Route::_createInternalStatisticReporters() {
 }
 
 void Route::_createEditableDataDefinitions() {
-	if (_station == nullptr && this->_routeDestinationType == Route::DestinationType::Station && this->_stationExpression == "") {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
-	}
-	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label) {
-		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<LabelDefinition>(_parentModel);
-	}
 	if (_station != nullptr) {
 		_optionalEditableDataDefinitionInsert("Station", _station);
 	} else {

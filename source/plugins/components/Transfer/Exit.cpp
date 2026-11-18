@@ -31,7 +31,7 @@ Exit::Exit(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 			_parentModel,
 			std::bind(&Exit::getConveyor, this),
 			std::bind(&Exit::setConveyor, this, std::placeholders::_1),
-			Util::TypeOf<Exit>(), getName(), "Conveyor", "");
+			Util::TypeOf<Exit>(), getName(), "Conveyor", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	auto* propQuantityExpression = new SimulationControlGeneric<std::string>(
 			std::bind(&Exit::getQuantityExpression, this),
 			std::bind(&Exit::setQuantityExpression, this, std::placeholders::_1),

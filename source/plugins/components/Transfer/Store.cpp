@@ -30,7 +30,7 @@ Store::Store(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGenericClass<Storage*, Model*, Storage>* propStorage = new SimulationControlGenericClass<Storage*, Model*, Storage>(
 			_parentModel,
 			std::bind(&Store::getStorage, this), std::bind(&Store::setStorage, this, std::placeholders::_1),
-			Util::TypeOf<Store>(), getName(), "Storage", "");
+			Util::TypeOf<Store>(), getName(), "Storage", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	SimulationControlGeneric<std::string>* propQuantity = new SimulationControlGeneric<std::string>(
 			std::bind(&Store::getQuantityExpression, this), std::bind(&Store::setQuantityExpression, this, std::placeholders::_1),
 			Util::TypeOf<Store>(), getName(), "QuantityExpression", "");
@@ -77,6 +77,10 @@ ModelComponent* Store::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Store::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void) inputPortNumber;
+	if (_storage == nullptr) {
+		traceError("Store \"" + getName() + "\" has no Storage configured");
+		return;
+	}
 	const double parsedQuantity = _parentModel->parseExpression(_quantityExpression);
 	const unsigned int quantity = parsedQuantity <= 0.0 ? 0u : static_cast<unsigned int>(parsedQuantity);
 	if (quantity == 0u) {
@@ -134,13 +138,6 @@ PluginInformation* Store::GetPluginInformation() {
 // void Store::_createInternalStatisticReporters() { }
 
 void Store::_createEditableDataDefinitions() {
-	if (_storage == nullptr) {
-		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
-		_storage = plugins->newInstance<Storage>(_parentModel, getName() + ".Storage");
-		if (_storage == nullptr) {
-			_storage = new Storage(_parentModel, getName() + ".Storage");
-		}
-	}
 	if (_storage != nullptr) {
 		_optionalEditableDataDefinitionInsert("Storage", _storage);
 	} else {

@@ -2840,15 +2840,21 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
             _guiExtensionManager->currentModelReference(_modelObject), scene != nullptr ? scene : _modelScene.data(), this);
     }
 
-    _materializeAffectedModelDataDefinitions();
-    if (model != nullptr) {
-        model->check();
+    // Existing-choice references are non-owning.  Clearing one must not run
+    // the materialization/check path that prunes now-unreferenced definitions.
+    if (!binding.descriptor.keepsExistingObjectChoicesWhenSet) {
+        _materializeAffectedModelDataDefinitions();
+        if (model != nullptr) {
+            model->check();
+        }
     }
     if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
         graphical != nullptr && graphical->getComponent() == _modelObject) {
         graphical->synchronizeDynamicPorts();
     }
-    _synchronizeGraphicalModelDataDefinitionsNow();
+    if (!binding.descriptor.keepsExistingObjectChoicesWhenSet) {
+        _synchronizeGraphicalModelDataDefinitionsNow();
+    }
     _notifyModelChangeApplied();
     return true;
 }

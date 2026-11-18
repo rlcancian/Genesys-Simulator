@@ -31,7 +31,7 @@ Stop::Stop(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 			_parentModel,
 			std::bind(&Stop::getConveyor, this),
 			std::bind(&Stop::setConveyor, this, std::placeholders::_1),
-			Util::TypeOf<Stop>(), getName(), "Conveyor", "");
+			Util::TypeOf<Stop>(), getName(), "Conveyor", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	_parentModel->getControls()->insert(propConveyor);
 	_addSimulationControl(propConveyor);
 }

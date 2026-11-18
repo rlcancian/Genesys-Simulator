@@ -31,7 +31,7 @@ Enter::Enter(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGenericClass<Station*, Model*, Station>* propStation = new SimulationControlGenericClass<Station*, Model*, Station>(
 									_parentModel,
 									std::bind(&Enter::getStation, this), std::bind(&Enter::setStation, this, std::placeholders::_1),
-									Util::TypeOf<Enter>(), getName(), "Station", "");
+									Util::TypeOf<Enter>(), getName(), "Station", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 
 	_parentModel->getControls()->insert(propStation);
 
@@ -39,8 +39,12 @@ Enter::Enter(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_addSimulationControl(propStation);
 }
 
+Enter::~Enter() {
+	setStation(nullptr);
+}
+
 std::string Enter::show() {
-	return ModelComponent::show() + ",station=" + this->_station->getName();
+	return ModelComponent::show() + ",station=" + (_station != nullptr ? _station->getName() : "");
 }
 
 ModelComponent* Enter::LoadInstance(Model* model, PersistenceRecord *fields) {
@@ -53,19 +57,31 @@ ModelComponent* Enter::LoadInstance(Model* model, PersistenceRecord *fields) {
 	return newComponent;
 }
 
-void Enter::setStation(Station* _station) {
-	this->_station = _station;
-	_station->setEnterIntoStationComponent(this);
+void Enter::setStation(Station* station) {
+	if (_station == station) {
+		if (station != nullptr && station->getEnterIntoStationComponent() == nullptr) {
+			station->setEnterIntoStationComponent(this);
+		}
+		return;
+	}
+	if (station != nullptr && station->getEnterIntoStationComponent() != nullptr &&
+		station->getEnterIntoStationComponent() != this) {
+		traceError("Station \"" + station->getName() + "\" is already associated with another Enter component");
+		return;
+	}
+	Station* previousStation = _station;
+	_station = station;
+	if (previousStation != nullptr && previousStation->getEnterIntoStationComponent() == this) {
+		previousStation->setEnterIntoStationComponent(nullptr);
+	}
+	if (_station != nullptr) {
+		_station->setEnterIntoStationComponent(this);
+	}
 }
 
 void Enter::setStationName(std::string stationName) {
 	ModelDataDefinition* data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName);
-	if (data != nullptr) {
-		_station = dynamic_cast<Station*> (data);
-	} else {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel, stationName);
-	}
-	_station->setEnterIntoStationComponent(this);
+	setStation(dynamic_cast<Station*> (data));
 }
 
 Station* Enter::getStation() const {
@@ -73,6 +89,10 @@ Station* Enter::getStation() const {
 }
 
 void Enter::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	if (_station == nullptr) {
+		traceError("Enter \"" + getName() + "\" has no Station configured");
+		return;
+	}
 	if (_reportStatistics)
 		_numberIn->incCountValue();
 	_station->enter(entity);
@@ -85,9 +105,8 @@ bool Enter::_loadInstance(PersistenceRecord *fields) {
 	if (res) {
 		std::string stationName = fields->loadField("station", "");
 		Station* station = dynamic_cast<Station*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
-		this->_station = station;
 		if (station != nullptr) {
-			_station->setEnterIntoStationComponent(this);
+			setStation(station);
 		} else if (!stationName.empty()) {
 			// Dangling reference: the named Station is missing from the file being loaded.
 			// Report it instead of silently leaving _station null (later dereferenced
@@ -123,10 +142,11 @@ PluginInformation* Enter::GetPluginInformation() {
 
 bool Enter::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	if (_station != nullptr) {
-		_station->setEnterIntoStationComponent(this);
-	}
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Station>(), _station, "Station", errorMessage);
+	if (_station != nullptr && _station->getEnterIntoStationComponent() != this) {
+		errorMessage += "Station is associated with another Enter component. ";
+		resultAll = false;
+	}
 	return resultAll;
 }
 
@@ -145,9 +165,6 @@ void Enter::_createInternalStatisticReporters() {
 }
 
 void Enter::_createEditableDataDefinitions() {
-	if (_station == nullptr) {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
-	}
 	if (_station != nullptr) {
 		_optionalEditableDataDefinitionInsert("Station", _station);
 	} else {

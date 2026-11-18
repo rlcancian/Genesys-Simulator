@@ -692,6 +692,23 @@ public:
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
         _onDispatchEvent(entity, inputPortNumber);
     }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class EnterProbe : public Enter {
+public:
+    EnterProbe(Model* model, const std::string& name = "") : Enter(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
 };
 
 class MarkovChainProbe : public MarkovChain {
@@ -1123,6 +1140,10 @@ public:
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
         _onDispatchEvent(entity, inputPortNumber);
     }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
 };
 
 class UnstoreProbe : public Unstore {
@@ -1143,6 +1164,10 @@ public:
 
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
         _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -1269,6 +1294,10 @@ public:
 
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
         _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -5264,6 +5293,91 @@ TEST(SimulatorRuntimeTest, RouteCheckAcceptsLabelDestinationWithoutStation) {
     std::string errorMessage;
     EXPECT_TRUE(route.CheckProbe(errorMessage)) << errorMessage;
     EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, EnterStationReferenceCanBeSelectedAndRemovedThroughSimulationControl) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "EnterReferenceStation");
+    EnterProbe enter(model, "EnterReference");
+    SimulationControl* stationControl = nullptr;
+    for (SimulationControl* control : *enter.getSimulationControls()->list()) {
+        if (control != nullptr && control->getName() == "Station") {
+            stationControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(stationControl, nullptr);
+    EXPECT_TRUE(stationControl->keepsExistingObjectChoicesWhenSet());
+
+    stationControl->setValue(station.getName());
+    EXPECT_EQ(enter.getStation(), &station);
+    EXPECT_EQ(station.getEnterIntoStationComponent(), &enter);
+
+    EXPECT_NO_THROW(stationControl->setValue("", true));
+    EXPECT_EQ(enter.getStation(), nullptr);
+    EXPECT_EQ(station.getEnterIntoStationComponent(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), station.getName()), &station);
+}
+
+TEST(SimulatorRuntimeTest, EnterStationReplacementPreservesCardinalityAndSharedRouteReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station stationA(model, "EnterStationA");
+    Station stationB(model, "EnterStationB");
+    EnterProbe first(model, "FirstEnter");
+    EnterProbe second(model, "SecondEnter");
+    RouteProbe route(model, "RouteSharingStation");
+
+    first.setStation(&stationA);
+    route.setStation(&stationA);
+    EXPECT_EQ(route.getStation(), &stationA);
+    EXPECT_EQ(stationA.getEnterIntoStationComponent(), &first);
+
+    first.setStation(&stationB);
+    EXPECT_EQ(stationA.getEnterIntoStationComponent(), nullptr);
+    EXPECT_EQ(stationB.getEnterIntoStationComponent(), &first);
+    EXPECT_EQ(route.getStation(), &stationA);
+
+    second.setStation(&stationB);
+    EXPECT_EQ(second.getStation(), nullptr);
+    EXPECT_EQ(stationB.getEnterIntoStationComponent(), &first);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationA.getName()), &stationA);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationB.getName()), &stationB);
+}
+
+TEST(SimulatorRuntimeTest, TransferComponentsDoNotMaterializeExternalDefinitionsDuringPreparation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EnterProbe enter(model, "UnconfiguredEnter");
+    RouteProbe route(model, "UnconfiguredRoute");
+    MoveProbe move(model, "UnconfiguredMove");
+    StoreProbe store(model, "UnconfiguredStore");
+    UnstoreProbe unstore(model, "UnconfiguredUnstore");
+
+    enter.CreateInternalAndAttachedDataProbe();
+    route.CreateInternalAndAttachedDataProbe();
+    move.CreateInternalAndAttachedDataProbe();
+    store.CreateInternalAndAttachedDataProbe();
+    unstore.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(enter.getStation(), nullptr);
+    EXPECT_EQ(route.getStation(), nullptr);
+    EXPECT_EQ(route.getLabel(), nullptr);
+    EXPECT_EQ(move.getStation(), nullptr);
+    EXPECT_EQ(move.getTransporter(), nullptr);
+    EXPECT_EQ(store.getStorage(), nullptr);
+    EXPECT_EQ(unstore.getStorage(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Station>())->size(), 0u);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Transporter>())->size(), 0u);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Storage>())->size(), 0u);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<LabelDefinition>())->size(), 0u);
 }
 
 TEST(SimulatorRuntimeTest, RouteSaveAndLoadPreservesStationExpression) {

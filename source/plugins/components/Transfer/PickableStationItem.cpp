@@ -15,22 +15,11 @@
 
 PickableStationItem::PickableStationItem(Model* model, std::string stationName, std::string queueName, std::string resourceName) {
     ModelDataDefinition* station = model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName);
-    if (station == nullptr) {
-        station = model->getParentSimulator()->getPluginManager()->newInstance<Station>(model, stationName);
-    }
     ModelDataDefinition* resource = model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), resourceName);
-    if (resource == nullptr) {
-        resource = model->getParentSimulator()->getPluginManager()->newInstance<Resource>(model, resourceName);
-    }
     ModelDataDefinition* queue = model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queueName);
-    if (queue == nullptr) {
-        queue = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, queueName);
-    }
-    if (queue != nullptr) {
-        PickableStationItem(dynamic_cast<Station*>(station), dynamic_cast<Queue*>(queue));
-    } else if (resource != nullptr) {
-        PickableStationItem(dynamic_cast<Station*>(station), dynamic_cast<Resource*>(resource));
-    }
+    _station = dynamic_cast<Station*>(station);
+    _queue = dynamic_cast<Queue*>(queue);
+    _resource = dynamic_cast<Resource*>(resource);
 
     _stationName = stationName;
 
@@ -40,15 +29,15 @@ PickableStationItem::PickableStationItem(Model* model, std::string stationName, 
     SimulationControlGenericClass<Queue*, Model*, Queue>* propQueue = new SimulationControlGenericClass<Queue*, Model*, Queue>(
                                     model,
                                     std::bind(&PickableStationItem::getQueue, this), std::bind(&PickableStationItem::setQueue, this, std::placeholders::_1),
-                                    Util::TypeOf<PickableStationItem>(), "", "Queue", "");
+                                    Util::TypeOf<PickableStationItem>(), "", "Queue", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
     SimulationControlGenericClass<Resource*, Model*, Resource>* propResource = new SimulationControlGenericClass<Resource*, Model*, Resource>(
                                     model,
                                     std::bind(&PickableStationItem::getResource, this), std::bind(&PickableStationItem::setResource, this, std::placeholders::_1),
-                                    Util::TypeOf<PickableStationItem>(), "", "Resource", "");
+                                    Util::TypeOf<PickableStationItem>(), "", "Resource", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
     SimulationControlGenericClass<Station*, Model*, Station>* propStation = new SimulationControlGenericClass<Station*, Model*, Station>(
                                     model,
                                     std::bind(&PickableStationItem::getStation, this), std::bind(&PickableStationItem::setStation, this, std::placeholders::_1),
-                                    Util::TypeOf<PickableStationItem>(), "", "Station", "");
+                                    Util::TypeOf<PickableStationItem>(), "", "Station", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 
     model->getControls()->insert(propExpression);
     model->getControls()->insert(propQueue);
@@ -64,10 +53,9 @@ PickableStationItem::PickableStationItem(Model* model, std::string stationName, 
 
 PickableStationItem::PickableStationItem(Model* model, std::string stationName, std::string expression) {
     ModelDataDefinition* station = model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName);
-    if (station == nullptr) {
-        station = model->getParentSimulator()->getPluginManager()->newInstance<Station>(model, stationName);
-    }
-    PickableStationItem(dynamic_cast<Station*>(station),expression);
+    _station = dynamic_cast<Station*>(station);
+    _stationName = stationName;
+    _expression = expression;
 }
 
 PickableStationItem::PickableStationItem(Station* station, Queue* queue) {

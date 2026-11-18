@@ -803,6 +803,9 @@ public:
     virtual bool supportsExistingObjectSelection() const override { return true; }
     // This selector contract also disables implicit creation when a supplied reference name is unresolved.
     virtual bool keepsExistingObjectChoicesWhenSet() const override { return _keepsChoicesWhenSet; }
+    // Existing-object selectors represent non-owning references, so they may be
+    // cleared without deleting the referenced definition from the model.
+    virtual bool supportsReferenceRemoval() const override { return _keepsChoicesWhenSet && !_readonly; }
     // This method marks class references as creatable when writable.
     virtual bool supportsObjectCreation() const override { return !_readonly; }
     virtual List<std::string>* getCreatableReferenceTypes() override {

@@ -32,7 +32,7 @@ Access::Access(Model* model, std::string name) : ModelComponent(model, Util::Typ
 			_parentModel,
 			std::bind(&Access::getConveyor, this),
 			std::bind(&Access::setConveyor, this, std::placeholders::_1),
-			Util::TypeOf<Access>(), getName(), "Conveyor", "");
+			Util::TypeOf<Access>(), getName(), "Conveyor", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	auto* propQuantityExpression = new SimulationControlGeneric<std::string>(
 			std::bind(&Access::getQuantityExpression, this),
 			std::bind(&Access::setQuantityExpression, this, std::placeholders::_1),

@@ -18,12 +18,12 @@ Move::Move(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 			_parentModel,
 			std::bind(&Move::getTransporter, this),
 			std::bind(&Move::setTransporter, this, std::placeholders::_1),
-			Util::TypeOf<Move>(), getName(), "Transporter", "");
+			Util::TypeOf<Move>(), getName(), "Transporter", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	auto* propStation = new SimulationControlGenericClass<Station*, Model*, Station>(
 			_parentModel,
 			std::bind(&Move::getStation, this),
 			std::bind(&Move::setStation, this, std::placeholders::_1),
-			Util::TypeOf<Move>(), getName(), "Station", "");
+			Util::TypeOf<Move>(), getName(), "Station", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	auto* propStationExpression = new SimulationControlGeneric<std::string>(
 			std::bind(&Move::getStationExpression, this),
 			std::bind(&Move::setStationExpression, this, std::placeholders::_1),
@@ -203,12 +203,6 @@ void Move::_createInternalStatisticReporters() {
 }
 
 void Move::_createEditableDataDefinitions() {
-	if (_transporter == nullptr) {
-		_transporter = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Transporter>(_parentModel);
-	}
-	if (_station == nullptr && _stationExpression.empty()) {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
-	}
 	if (_transporter != nullptr) {
 		_optionalEditableDataDefinitionInsert("Transporter", _transporter);
 	} else {
