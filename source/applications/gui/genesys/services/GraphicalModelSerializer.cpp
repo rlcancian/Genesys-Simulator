@@ -657,17 +657,17 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             << Qt::endl;
         QString line = "0 Show ";
         line += "zoom=" + QString::number(_zoomSlider->value());
-        line += ", grid=" + QString::number(_actionShowGrid->isChecked());
-        line += ", rule=" + QString::number(_actionShowRule->isChecked());
-        line += ", snap=" + QString::number(_actionShowSnap->isChecked());
-        line += ", guides=" + QString::number(_actionShowGuides->isChecked());
-        line += ", internals=" + QString::number(_actionShowInternalElements->isChecked()
-                                                 || _actionShowEditableElements->isChecked());
-        line += ", attached=" + QString::number(_actionShowAttachedElements->isChecked());
-        line += ", statistics=" + QString::number(_actionShowInternalElements->isChecked());
-        line += ", editable=" + QString::number(_actionShowEditableElements->isChecked());
-        line += ", shared=" + QString::number(_actionShowAttachedElements->isChecked());
-        line += ", recursive=" + QString::number(_actionShowRecursiveElements->isChecked());
+        line += ", grid=" + QString::number(_graphicsView->getScene()->isGridVisible());
+        line += ", rule=" + QString::number(_graphicsView->isRuleVisible());
+        line += ", snap=" + QString::number(_graphicsView->getScene()->getSnapToGrid());
+        line += ", guides=" + QString::number(_graphicsView->isGuidesVisible());
+        line += ", internals=" + QString::number(_graphicsView->getScene()->showStatisticsDataDefinitions()
+                                                 || _graphicsView->getScene()->showEditableDataDefinitions());
+        line += ", attached=" + QString::number(_graphicsView->getScene()->showSharedDataDefinitions());
+        line += ", statistics=" + QString::number(_graphicsView->getScene()->showStatisticsDataDefinitions());
+        line += ", editable=" + QString::number(_graphicsView->getScene()->showEditableDataDefinitions());
+        line += ", shared=" + QString::number(_graphicsView->getScene()->showSharedDataDefinitions());
+        line += ", recursive=" + QString::number(_graphicsView->getScene()->showRecursiveDataDefinitions());
         line += ", viewpoint=(" + QString::number(_graphicsView->horizontalScrollBar()->value()) + "," + QString::number(_graphicsView->verticalScrollBar()->value()) + ")";
         out << commentedLine(line) << Qt::endl;
 
@@ -1332,13 +1332,6 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         bool hasPersistedViewState = false;
         int restoredViewpointX = 0;
         int restoredViewpointY = 0;
-        const bool hasExplicitVisualOverlay = !geometries.isEmpty()
-                                               || !animations.isEmpty()
-                                               || !counters.isEmpty()
-                                               || !variables.isEmpty()
-                                               || !timers.isEmpty()
-                                               || !placeholders.isEmpty()
-                                               || !groups.isEmpty();
         QHash<int, QGraphicsItem*> persistedItems;
         QHash<Util::identification, PersistedComponentState> persistedComponentsById;
         QHash<Util::identification, PersistedDataDefinitionState> persistedDataDefinitionsById;
@@ -1583,15 +1576,11 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             QPointF componentPos(state.position.x(), state.position.y() - existingComponent->getHeight() / 2.0);
             existingComponent->setPos(componentPos);
             existingComponent->setOldPosition(componentPos);
-            if (_simulator != nullptr && _simulator->getPluginManager() != nullptr && existingComponent->getComponent() != nullptr) {
-                Plugin* plugin = _simulator->getPluginManager()->find(existingComponent->getComponent()->getClassname());
-                if (plugin != nullptr && !hasExplicitVisualOverlay) {
-                    existingComponent->setColor(pluginCategoryColor(QString::fromStdString(plugin->getPluginInfo()->getCategory())));
-                } else if (state.hasColor) {
-                    existingComponent->setColor(state.color);
-                }
-            } else if (state.hasColor) {
+            if (state.hasColor) {
                 existingComponent->setColor(state.color);
+            } else if (_simulator && _simulator->getPluginManager() && existingComponent->getComponent()) {
+                auto* plugin = _simulator->getPluginManager()->find(existingComponent->getComponent()->getClassname());
+                if (plugin) existingComponent->setColor(pluginCategoryColor(QString::fromStdString(plugin->getPluginInfo()->getCategory())));
             }
             restorePortPositions(existingComponent, state.portPositions);
             persistedItems.insert(static_cast<int>(state.componentId), existingComponent);
@@ -2437,6 +2426,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
         // Recompute diagram-arrow endpoints after all persisted positions and groups are restored.
         // Without this pass, arrows can remain anchored to pre-restore coordinates.
+        for (auto* item : *scene->getGraphicalConnections()) {
+            if (auto* connection = dynamic_cast<GraphicalConnection*>(item))
+                connection->updateDimensionsAndPosition();
+        }
         scene->actualizeDiagramArrows();
         GuiExtensionPluginCatalog::synchronizeDiagramProjections(_simulator, scene);
 

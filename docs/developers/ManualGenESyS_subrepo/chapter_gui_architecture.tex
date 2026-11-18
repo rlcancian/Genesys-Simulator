@@ -463,3 +463,21 @@ Inline helper controls, such as SeizableItem and QueueableItem, remain part of t
 current owner's traversal. Layout links are unique by target and connection type,
 preserving distinct INTERNAL and ATTACHED relations. No kernel associations are
 removed and no logical persistence fields are changed.
+
+\paragraph{Vertex visits and transfer edges.}
+The builder's visited map prevents duplicate graphical vertices and infinite
+recursion, but never suppresses an edge to an existing vertex. Edge endpoints keep
+the logical output/input port numbers. The serializer restores saved geometry and
+colors, then refreshes transfer and data-association geometry. Viewpoint restoration
+uses a guarded pointer to the exact target view, so another model's view is not
+modified by the deferred restoration callback.
+
+\paragraph{Logical loading integrity.}
+Seize loads PriorityExpression with its String default. A single NUL from the known
+legacy numeric-default conversion is normalized to an empty expression with a
+warning; mixed corruption is preserved and rejected by checking. Set retains member
+names until referenced objects exist, resolves them in persisted order, and reports
+unresolved references without discarding them on save. Seize and Release share the
+same bounded Resource Set selection implementation, with contextual expression and
+domain diagnostics before conversion to unsigned indices or quantities. Release's
+SPECIFICMEMBER contract continues to consume SaveAttribute; Seize consumes Index.

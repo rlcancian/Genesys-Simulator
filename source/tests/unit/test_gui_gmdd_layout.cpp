@@ -33,6 +33,8 @@
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Assign.h"
+#include "plugins/data/Logic/AssignmentItem.h"
 #include "plugins/components/Synchronization/Signal.h"
 #include "plugins/components/Synchronization/Wait.h"
 #include "applications/gui/genesys/actions/DecideConditionUndoCommand.h"
@@ -1304,7 +1306,7 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
         graphicalTarget->getGraphicalInputPorts().at(0), 0, 0);
     movedDecide->moveCondition(0, 1);
     graphicalDecide->moveOutputPort(0, 1);
-    const QString expectedCategoryColor = QColor(Qt::darkGreen).name(QColor::HexRgb);
+    const QString expectedCategoryColor = graphicalSeize->getColor().name(QColor::HexRgb);
 
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
     auto* queueGmdd = findGraphicalDataDefinition(*scene, queue);
@@ -2312,4 +2314,75 @@ TEST(GuiGmddLayout, SetAssociationsStayDirectAcrossUpdatesAndExplicitRequests) {
     ASSERT_NE(findGraphicalDataDefinition(scene, set), nullptr);
     EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, set), gs), 0);
     EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, set), gr), 1);
+}
+
+TEST(GuiGmddLayout, BuilderPreservesConvergentEdgesCyclesAndMultipleSources) {
+    for (bool cycle : {false, true}) {
+        Simulator simulator;
+        simulator.getPluginManager()->autoInsertPlugins();
+        auto* model = simulator.getModelManager()->newModel();
+        auto* c1 = new Create(model, "SourceA");
+        auto* c2 = new Create(model, "SourceB");
+        auto* decide = new Decide(model, "Branches");
+        decide->addConditions("1"); decide->addConditions("0");
+        auto* a = new Assign(model, "AssignA");
+        auto* b = new Assign(model, "AssignB");
+        auto* c = new Assign(model, "AssignC");
+        auto* seize = new Seize(model, "SharedSeize");
+        auto* sink = new Dispose(model, "Sink");
+        auto* queue = new Queue(model, "Queue");
+        auto* resource = new Resource(model, "Resource");
+        seize->setQueue(queue); seize->addRequest(new SeizableItem(resource));
+        for (auto* assign : {a,b,c}) assign->getAssignments()->insert(new Assignment(model, "branch", "1"));
+        c1->connectTo(decide); c2->connectTo(decide);
+        decide->getConnectionManager()->insertAtPort(0,new Connection{a,{0}});
+        decide->getConnectionManager()->insertAtPort(1,new Connection{b,{0}});
+        decide->getConnectionManager()->insertAtPort(2,new Connection{c,{0}});
+        a->connectTo(seize); b->connectTo(seize,1); c->connectTo(seize,2);
+        seize->connectTo(cycle ? static_cast<ModelComponent*>(decide) : sink);
+        if (!cycle) EXPECT_TRUE(model->check());
+        ModelGraphicsView view;
+        view.setSimulator(&simulator);
+        auto* scene = view.getScene();
+        QUndoStack undo;
+        scene->setUndoStack(&undo);
+        PropertyEditorGenesys editor;
+        std::map<SimulationControl*, DataComponentProperty*> properties;
+        std::map<SimulationControl*, DataComponentEditor*> editors;
+        std::map<SimulationControl*, ComboBoxEnum*> combos;
+        scene->setPropertyEditor(&editor); scene->setPropertyList(&properties);
+        scene->setPropertyEditorUI(&editors); scene->setComboBox(&combos);
+        QTextEdit console;
+        std::map<std::string,QColor> colors;
+        GraphicalModelBuilder builder(&simulator,&view,scene,&colors,&console);
+        builder.generateGraphicalModelFromModel();
+        EXPECT_EQ(scene->graphicalModelComponentItems().size(), 8);
+        ASSERT_EQ(scene->getGraphicalConnections()->size(), 9);
+        for (auto* component : *model->getComponentManager()->getAllComponents()) {
+            for (auto& [port, connection] : *component->getConnectionManager()->connections()) {
+                int count=0;
+                for (auto* item : *scene->getGraphicalConnections()) {
+                    auto* edge = dynamic_cast<GraphicalConnection*>(item);
+                    ASSERT_NE(edge, nullptr);
+                    if (edge->getSourceGraphicalComponent()->getComponent()==component &&
+                        edge->getDestinationGraphicalComponent()->getComponent()==connection->component &&
+                        edge->getPortSourceConnection()==port && edge->getPortDestinationConnection()==connection->channel.portNumber) ++count;
+                }
+                EXPECT_EQ(count,1) << component->getName() << ":" << port;
+            }
+        }
+    }
+}
+
+TEST(GuiGmddLayout, GridVisibilityMatchesActualLinesAndSurvivesRecreation) {
+    ModelGraphicsScene scene(0,0,1000,1000);
+    for (bool value : {true,false,true,true,false}) {
+        scene.setGridVisible(value);
+        EXPECT_EQ(scene.isGridVisible(),value);
+        ASSERT_FALSE(scene.grid()->lines->empty());
+        for (auto* line : *scene.grid()->lines) EXPECT_EQ(line->isVisible(),value);
+    }
+    scene.showGrid();
+    EXPECT_TRUE(scene.isGridVisible());
+    for (auto* line : *scene.grid()->lines) EXPECT_TRUE(line->isVisible());
 }

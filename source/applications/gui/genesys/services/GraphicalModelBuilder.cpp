@@ -703,7 +703,7 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
                                                                        int* y,
                                                                        int* ymax,
                                                                        int sequenceInLine) {
-    if (!componentBelongsToActiveModelLevel(component)) {
+    if (!componentBelongsToActiveModelLevel(component) || map->find(component) != map->end()) {
         return;
     }
 
@@ -760,23 +760,25 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
             }
 
             recursivalyGenerateGraphicalModelFromModel(nextComp, visited, map, x, y, ymax, sequenceInLine);
-            auto destinyIt = map->find(nextComp);
-            if (destinyIt != map->end()) {
-                GraphicalModelComponent* destinyGmc = destinyIt->second;
-                if (connectionMap.first < gmc->getGraphicalOutputPorts().size()
-                    && connectionMap.second->channel.portNumber < destinyGmc->getGraphicalInputPorts().size()) {
-                    _scene->addGraphicalConnection(gmc->getGraphicalOutputPorts().at(connectionMap.first),
-                                                   destinyGmc->getGraphicalInputPorts().at(
-                                                       connectionMap.second->channel.portNumber),
-                                                   connectionMap.first,
-                                                   connectionMap.second->channel.portNumber);
-                }
-            }
 
             *x = xIni;
             *y += deltaY;
             sequenceInLine--;
         }
+        // Visited controls vertices, never whether this logical edge exists.
+        auto destinyIt = map->find(nextComp);
+        if (destinyIt != map->end()) {
+            GraphicalModelComponent* destinyGmc = destinyIt->second;
+            if (connectionMap.first < gmc->getGraphicalOutputPorts().size()
+                && connectionMap.second->channel.portNumber < destinyGmc->getGraphicalInputPorts().size()) {
+                _scene->addGraphicalConnection(gmc->getGraphicalOutputPorts().at(connectionMap.first),
+                                               destinyGmc->getGraphicalInputPorts().at(
+                                                   connectionMap.second->channel.portNumber),
+                                               connectionMap.first,
+                                               connectionMap.second->channel.portNumber);
+            }
+        }
+
     }
 
     *y = yIni;

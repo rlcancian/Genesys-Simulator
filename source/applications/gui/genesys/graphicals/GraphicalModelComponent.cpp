@@ -36,10 +36,12 @@
 #include "TraitsGUI.h"
 #include "UtilGUI.h"
 #include "plugins/components/Decisions/Decide.h"
+#include "kernel/simulator/model/Model.h"
 #include <QPainter>
 #include <QRgba64>
 #include <QSet>
 #include <QDebug>
+#include <limits>
 
 GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position,
                                                  QColor color, QGraphicsItem* parent) : GraphicalModelDataDefinition(
@@ -109,6 +111,16 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	if (component->getDynamicInputPortCount() >= 0) {
 		numInputPorts = std::max(numInputPorts, static_cast<unsigned int>(component->getDynamicInputPortCount()));
 	}
+    // Input cardinality caches do not describe the highest logical input rank.
+    // Reconstructed edges must still have a graphical endpoint at that rank.
+    for (auto* origin : *component->getParentModel()->getComponentManager()->getAllComponents()) {
+        for (const auto& [output, connection] : *origin->getConnectionManager()->connections()) {
+            (void) output;
+            if (connection && connection->component == component
+                && connection->channel.portNumber < std::numeric_limits<unsigned int>::max())
+                numInputPorts = std::max(numInputPorts, connection->channel.portNumber + 1);
+        }
+    }
 	qreal step = (double)_height / (double)(numInputPorts + 1);
 	for (unsigned int i = 0; i < numInputPorts; i++) {
 		port = new GraphicalComponentPort(this, true, i, parent);
@@ -129,6 +141,10 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	if (component->getDynamicOutputPortCount() >= 0) {
 		numOutputPorts = std::max(numOutputPorts, static_cast<unsigned int>(component->getDynamicOutputPortCount()));
 	}
+    for (const auto& [output, connection] : *component->getConnectionManager()->connections()) {
+        if (connection && output < std::numeric_limits<unsigned int>::max())
+            numOutputPorts = std::max(numOutputPorts, output + 1);
+    }
 	if (dynamic_cast<Decide*>(component) != nullptr) {
 		// A Decide's semantic ports are defined by its ordered conditions, even if
 		// a malformed/stale connection map contains an out-of-range key.

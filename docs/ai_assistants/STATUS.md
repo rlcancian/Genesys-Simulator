@@ -387,3 +387,13 @@ Shared GUI link collection stops at referenced model objects and deduplicates by
 target/type, while recursive object discovery remains intact. Seize/Release Set
 requests show component -> Set -> members; explicit Resource requests survive.
 [Evidence](history/evidence/2026/11/DIRECT_GUI_ASSOCIATIONS_20261118.md).
+
+### Model round-trip and Resource Set requests — 2026-11-18
+
+Direct maintainer-authorized WorkInProgress correction preserves convergent/cyclic
+graphical edges and logical ports, actual visual state, saved colors and final
+connection anchors. Seize string defaults and legacy NUL handling, deferred Set
+member resolution, and bounded shared Seize/Release selection cover demonstrated
+load/runtime failures. The supplied 05 model still needs an explicit Release
+identity policy change; its original file is preserved. See
+[validation and configuration boundary](history/evidence/2026/11/MODEL_ROUNDTRIP_20261118.md).

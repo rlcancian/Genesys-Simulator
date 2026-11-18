@@ -1586,6 +1586,10 @@ void ModelGraphicsScene::GRID::clear() {
 }
 
 void ModelGraphicsScene::showGrid() {
+    setGridVisible(!_grid.visible);
+}
+
+void ModelGraphicsScene::setGridVisible(bool visible) {
     if (_grid.lines == nullptr) {
         _grid.visible = false;
         return;
@@ -1607,7 +1611,8 @@ void ModelGraphicsScene::showGrid() {
     // obs.: o grid é criado uma única vez para a cena e habilitado como visível ou não. =
 
     // se eu quero que o grid fique visível, verifico se o grid já está desenhado ou não
-    if (_grid.visible) {
+    _grid.visible = visible;
+    if (visible) {
         // se não tenho linhas no grid, eu as desenho
         if (_grid.lines->size() <= 0) {
             // add new grid
@@ -1638,19 +1643,6 @@ void ModelGraphicsScene::showGrid() {
         }
     }
 
-    // troco o valor de visible
-    _grid.visible = !_grid.visible;
-}
-
-// Ajusta visibilidade do grid sem depender da semântica de toggle de showGrid().
-void ModelGraphicsScene::setGridVisible(bool visible) {
-    if (_grid.visible != visible) {
-        showGrid();
-    }
-    else if (_grid.visible && _grid.lines->empty()) {
-        showGrid();
-        showGrid();
-    }
 }
 
 // Retorna o estado visual corrente do grid para persistência/restauração.

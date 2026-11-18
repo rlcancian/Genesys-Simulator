@@ -278,3 +278,20 @@ members. Recursive display can reveal those members without adding shortcut line
 from the component to each member. An independent request targeting a Resource
 still produces its direct association. Repeated references do not duplicate the
 same association type between the same objects.
+
+\paragraph{Save and reopen.}
+Convergent paths and cycles are reconstructed from every logical connection, even
+when their destination is already drawn. Saved component colors, port coordinates,
+positions and the effective scene/view flags take precedence over automatic layout
+and default category colors. Grid visibility uses one state for both its lines and
+its checkbox; visual snapshots store the scene state rather than a stale action.
+
+\paragraph{Resource Set requests.}
+A Release using a Set must identify the member to free according to its configured
+policy. To free the same processor selected by Seize, save the member index (for
+example in \texttt{meuProcessador}) and configure Release as SPECIFICMEMBER using
+that saved attribute. A new search by largest remaining capacity can select a
+completely different processor. Invalid Sets and indices are reported as runtime
+errors rather than accessed out of bounds. Normal distributions can generate
+negative service times; any nonnegative service-time assumption must be an
+explicit modeling choice, not an automatic change to the stored distribution.

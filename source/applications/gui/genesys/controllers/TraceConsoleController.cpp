@@ -51,7 +51,9 @@ void TraceConsoleController::simulatorTraceErrorHandler(TraceErrorEvent e) const
         return;
     }
     _console->setTextColor(QColor::fromRgb(255, 0, 0));
-    _console->append(QString::fromStdString(e.getText()));
+    std::string message = e.getText();
+    if (!e.getExceptionMessage().empty()) message += ": " + e.getExceptionMessage();
+    _console->append(QString::fromStdString(message));
     QCoreApplication::processEvents();
 }
 
