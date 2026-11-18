@@ -170,6 +170,8 @@ void CellGrowthComponent::_onDispatchEvent(Entity* entity, unsigned int inputPor
 
 	_wholeCellState->setCellMass(newMass);
 	_wholeCellState->setCellVolume(newVolume);
+	traceSimulation(this, "CellGrowthComponent updated cell mass and volume", TraceManager::Level::L7_internal);
+	traceSimulation(this, "Cell mass " + std::to_string(mass) + " -> " + std::to_string(newMass) + ", volume=" + std::to_string(newVolume), TraceManager::Level::L9_mostDetailed);
 
 	_forwardEntity(entity);
 }

@@ -44,7 +44,7 @@ ModelComponent* Submodel::LoadInstance(Model* model, PersistenceRecord *fields) 
 }
 
 void Submodel::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	traceSimulation(this, "I'm just a dummy model and I'll just send the entity forward");
+	traceSimulation(this, "Submodel forwards entity through its nested model boundary", TraceManager::Level::L7_internal);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

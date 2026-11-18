@@ -162,6 +162,7 @@ void FtsZPolymerizationComponent::_initBetweenReplications() {
 }
 
 void FtsZPolymerizationComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "FtsZPolymerizationComponent updates FtsZ polymerization state", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_wholeCellState == nullptr) {

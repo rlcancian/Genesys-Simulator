@@ -258,6 +258,8 @@ void CellCycleCheckpointComponent::_onDispatchEvent(Entity* entity, unsigned int
 	}
 
 	_updateLifecyclePhase();
+	traceSimulation(this, "CellCycleCheckpointComponent updated lifecycle phase", TraceManager::Level::L7_internal);
+	traceSimulation(this, "Whole-cell step=" + std::to_string(_wholeCellState->getStepCount()) + ", time=" + std::to_string(_wholeCellState->getCurrentTime()) + ", phase=\"" + _wholeCellState->getLifecyclePhase() + "\"", TraceManager::Level::L9_mostDetailed);
 	_forwardEntity(entity);
 }
 

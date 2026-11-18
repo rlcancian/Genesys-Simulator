@@ -156,6 +156,7 @@ bool BioSimulate::_check(std::string& errorMessage) {
 //void BioSimulate::_createAttachedAttributes() {}
 
 void BioSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "BioSimulate invokes the configured biochemical simulation", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	std::string message;

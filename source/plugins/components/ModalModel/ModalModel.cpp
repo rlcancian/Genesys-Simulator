@@ -589,6 +589,7 @@ void ModalModel::setTimeDelayPerDispatchTimeUnit(const Util::TimeUnit time_delay
 }
 
 void ModalModel::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "ModalModel dispatches entity through the attached network", TraceManager::Level::L7_internal);
 	if (!_dispatchNetworkActivation(entity, inputPortNumber)) {
 		traceError("ModalModel \"" + getName() + "\" could not activate its DefaultNetwork.");
 		_parentModel->removeEntity(entity);

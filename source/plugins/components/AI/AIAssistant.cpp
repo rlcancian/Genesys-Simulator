@@ -123,6 +123,7 @@ bool AIAssistant::renderPrompt(std::string& result, std::string& error) { return
 std::string AIAssistant::show() { return ModelComponent::show() + ",aiSupport=\"" + getAISupportName() + "\",actionMappings=\"" + _actionMappings + "\""; }
 
 void AIAssistant::_onDispatchEvent(Entity* entity, unsigned int) {
+	traceSimulation(this, "AIAssistant evaluates the configured deterministic action", TraceManager::Level::L7_internal);
     AISupport* support = _resolveSupport();
     if (support == nullptr) { _fail(entity, "AISupport '" + _aiSupportName + "' was not found."); return; }
     std::string error;

@@ -243,9 +243,11 @@ void CompartmentExchangeComponent::_onDispatchEvent(Entity* entity, unsigned int
 	}
 
 	_lastTransferAmount = 0.0;
+	traceSimulation(this, "CompartmentExchangeComponent applies exchange rules", TraceManager::Level::L7_internal);
 	for (const ExchangeRule& rule : _getEffectiveRules()) {
 		_applyRule(rule);
 	}
+	traceSimulation(this, "Total compartment transfer amount=" + std::to_string(_lastTransferAmount), TraceManager::Level::L9_mostDetailed);
 
 	_forwardEntity(entity);
 }

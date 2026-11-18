@@ -169,6 +169,7 @@ double GeneticExpressionStep::_computeRegulationMultiplier(const GeneticCircuitP
 }
 
 void GeneticExpressionStep::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "GeneticExpressionStep executes the configured expression update", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_geneticCircuit == nullptr) {

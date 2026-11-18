@@ -170,6 +170,7 @@ Batch::GroupedAttribs Batch::getGroupedAttributes() const {
 }
 
 void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Batch evaluates whether queued entities can form a group", TraceManager::Level::L7_internal);
 	ModelDataManager* elements = _parentModel->getDataManager();
 	ModelDataDefinition* queueByName = elements->getDataDefinition(Util::TypeOf<Queue>(), this->getName() + ".Queue");
 	if (queueByName != nullptr) {

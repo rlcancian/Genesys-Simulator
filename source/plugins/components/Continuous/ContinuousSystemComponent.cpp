@@ -121,6 +121,7 @@ std::string ContinuousSystemComponent::getOdeSolverName() const {
 // ---------------------------------------------------------------------------
 
 void ContinuousSystemComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "ContinuousSystemComponent requests continuous-system execution", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_odeSolver == nullptr) {

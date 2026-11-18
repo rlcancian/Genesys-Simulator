@@ -99,6 +99,7 @@ ModelComponent* Match::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void Match::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Match evaluates synchronized queue arrivals", TraceManager::Level::L7_internal);
 	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
 		_createEditableDataDefinitions();
 	}

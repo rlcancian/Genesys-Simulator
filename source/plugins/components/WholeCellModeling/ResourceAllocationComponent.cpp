@@ -125,6 +125,7 @@ void ResourceAllocationComponent::_initBetweenReplications() {
 }
 
 void ResourceAllocationComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "ResourceAllocationComponent updates whole-cell resource allocation", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_wholeCellState == nullptr) {

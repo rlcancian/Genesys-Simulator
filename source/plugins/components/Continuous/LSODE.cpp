@@ -201,6 +201,7 @@ bool LSODE::_doStep() {
 }
 
 void LSODE::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "LSODE advances the configured ODE state", TraceManager::Level::L7_internal);
 	// open file
 	std::ofstream savefile;
 	if (_filename != "") {

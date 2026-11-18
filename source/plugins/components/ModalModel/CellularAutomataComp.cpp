@@ -55,6 +55,7 @@ ModelComponent* CellularAutomataComp::LoadInstance(Model* model, PersistenceReco
 }
 
 void CellularAutomataComp::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "CellularAutomataComp advances the cellular automata model", TraceManager::Level::L7_internal);
 	_cellularAutomata->step();
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }

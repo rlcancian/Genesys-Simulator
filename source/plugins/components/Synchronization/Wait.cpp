@@ -158,6 +158,7 @@ PluginInformation* Wait::GetPluginInformation() {
 // protected virtual must override
 
 void Wait::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Wait evaluates the configured synchronization condition", TraceManager::Level::L7_internal);
 	if (_queue == nullptr || (_waitType == WaitType::WaitForSignal && _signalData == nullptr)) {
 		traceError("Wait cannot execute without its required Queue and SignalData references");
 		return;

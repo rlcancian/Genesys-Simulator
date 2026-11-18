@@ -217,6 +217,7 @@ void PythonForG::_initBetweenReplications() {
 
 void PythonForG::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void) inputPortNumber;
+	traceSimulation(this, "PythonForG invokes its dispatch hook", TraceManager::Level::L7_internal);
 
 	bool executionSucceeded = true;
 	std::string errorMessage;

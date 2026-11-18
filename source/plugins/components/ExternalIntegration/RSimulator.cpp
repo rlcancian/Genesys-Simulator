@@ -169,6 +169,7 @@ RSimulatorRunner* RSimulator::getRunner() {
 
 void RSimulator::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void) inputPortNumber;
+	traceSimulation(this, "RSimulator executes configured R commands", TraceManager::Level::L7_internal);
 
 	_ensureRunner();
 	_syncRunnerConfiguration();

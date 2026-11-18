@@ -131,6 +131,7 @@ void MetabolicSubmodelComponent::_initBetweenReplications() {
 }
 
 void MetabolicSubmodelComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "MetabolicSubmodelComponent evaluates metabolic update", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_wholeCellState == nullptr) {

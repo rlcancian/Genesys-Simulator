@@ -261,6 +261,7 @@ bool MetabolicStateProjectionComponent::_check(std::string& errorMessage) {
 }
 
 void MetabolicStateProjectionComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "MetabolicStateProjectionComponent projects whole-cell state into metabolic state", TraceManager::Level::L7_internal);
 	(void) inputPortNumber;
 
 	_resolveFluxBalanceComponent();

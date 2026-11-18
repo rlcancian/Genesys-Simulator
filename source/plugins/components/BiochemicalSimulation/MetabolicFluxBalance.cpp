@@ -150,6 +150,7 @@ bool MetabolicFluxBalance::_check(std::string& errorMessage) {
 //void MetabolicFluxBalance::_createAttachedAttributes() {}
 
 void MetabolicFluxBalance::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "MetabolicFluxBalance solves the configured metabolic flux problem", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_metabolicNetwork == nullptr) {

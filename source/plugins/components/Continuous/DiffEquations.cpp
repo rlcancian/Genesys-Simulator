@@ -390,6 +390,7 @@ void DiffEquations::_saveInstance(PersistenceRecord *fields, bool saveDefaultVal
 }
 
 void DiffEquations::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "DiffEquations invokes compiled differential-equation dispatch", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 	traceSimulation(this, "Invoking cpp user code for dispatchEvent");
 	const unsigned int n = _equations->size();

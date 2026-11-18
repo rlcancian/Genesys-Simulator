@@ -156,6 +156,7 @@ bool DiffusionSimulate::_check(std::string& errorMessage) {
 }
 
 void DiffusionSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "DiffusionSimulate advances the configured diffusion field", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	std::string message;

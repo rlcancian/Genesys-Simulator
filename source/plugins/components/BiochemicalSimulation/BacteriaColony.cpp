@@ -869,6 +869,7 @@ void BacteriaColony::_createAttachedAttributes() {
 }
 
 void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "BacteriaColony advances the colony simulation state", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 	if (_groProgram != nullptr) {
 		GroProgramRuntime::ExecutionResult result = executeGroProgram();

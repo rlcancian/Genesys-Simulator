@@ -85,12 +85,13 @@ PluginInformation* Signal::GetPluginInformation() {
 // protected must override
 
 void Signal::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Signal triggers its configured SignalData", TraceManager::Level::L7_internal);
 	if (_signalData == nullptr) {
 		traceError("Signal cannot execute without a SignalData reference");
 		return;
 	}
 	unsigned int limit = _parentModel->parseExpression(_limitExpression);
-	traceSimulation(this, "Triggering signal \""+_signalData->getName()+"\" with limit \""+_limitExpression+"\"="+std::to_string(limit));
+	traceSimulation(this, "Triggering signal \""+_signalData->getName()+"\" with limit \""+_limitExpression+"\"="+std::to_string(limit), TraceManager::Level::L8_detailed);
 	unsigned int freed = _signalData->generateSignal(_signalData->getId(),limit);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
