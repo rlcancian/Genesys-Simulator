@@ -123,7 +123,7 @@ bool Set::setSetOfType(const std::string& setOfType) {
 }
 
 bool Set::canChangeSetOfType() const {
-    return _elementSet == nullptr || _elementSet->size() == 0;
+    return _pendingMemberNames.empty() && (_elementSet == nullptr || _elementSet->size() == 0);
 }
 
 void Set::setAllowedElementTypes(const std::vector<std::string>& allowedElementTypes) {
@@ -159,11 +159,27 @@ std::vector<std::string> Set::getAllowedElementTypes() const {
     return {};
 }
 
+void Set::_resolveMemberReferences() const {
+    if (_pendingMemberNames.empty()) return;
+    _elementSet->clear();
+    bool complete = true;
+    for (const auto& name : _pendingMemberNames) {
+        auto* member = _parentModel->getDataManager()->getDataDefinition(_setOfType, name);
+        if (member) _elementSet->insert(member);
+        else complete = false;
+    }
+    if (complete) _pendingMemberNames.clear();
+}
+
 List<ModelDataDefinition*>* Set::getElementSet() const {
+    // The file is visited by ID; members may not exist during Set::_loadInstance.
+    // Keep their names until the complete model has been instantiated.
+    _resolveMemberReferences();
     return _elementSet;
 }
 
 void Set::addElementSet(ModelDataDefinition* newElement) {
+    _resolveMemberReferences();
     if (newElement == nullptr) {
         traceError("Could not insert a null element in Set \"" + getName() + "\"", TraceManager::Level::L3_errorRecover);
         return;
@@ -173,12 +189,16 @@ void Set::addElementSet(ModelDataDefinition* newElement) {
     }
     if (newElement->getClassname()==_setOfType) {
         _elementSet->insert(newElement);
+        if (!_pendingMemberNames.empty()) _pendingMemberNames.push_back(newElement->getName());
     } else {
         traceError("Cound not insert element type \""+newElement->getClassname()+"\" in a Set of type \""+_setOfType+"\"", TraceManager::Level::L3_errorRecover);
     }
 }
 
 void Set::removeElementSet(ModelDataDefinition* element) {
+    _resolveMemberReferences();
+    if (element && !_pendingMemberNames.empty())
+        _pendingMemberNames.erase(std::remove(_pendingMemberNames.begin(), _pendingMemberNames.end(), element->getName()), _pendingMemberNames.end());
     _elementSet->remove(element);
 }
 
@@ -230,30 +250,28 @@ ModelDataDefinition* Set::LoadInstance(Model* model, PersistenceRecord *fields) 
 }
 
 bool Set::_loadInstance(PersistenceRecord *fields) {
-    bool res = ModelDataDefinition::_loadInstance(fields);
-    if (res) {
-        try {
-            _elementSet->clear();
-            _setOfType = fields->loadField("type", DEFAULT.setOfType);
-            unsigned int memberSize = fields->loadField("members", DEFAULT.membersSize);
-            for (unsigned int i = 0; i < memberSize; i++) {
-                std::string memberName = fields->loadField("member" + Util::StrIndex(i));
-                ModelDataDefinition* member = _parentModel->getDataManager()->getDataDefinition(_setOfType, memberName);
-                if (member == nullptr) { // not found. That's a problem. Resource not loaded yet (or mismatch name
-                    traceError("ERROR: Could not found " + _setOfType + " set member named \"" + memberName + "\"", TraceManager::Level::L1_errorFatal);
-                } else {//found
-                    _elementSet->insert(member);
-                }
-            }
-        } catch (...) {
-        }
-    }
-    return res;
+    if (!ModelDataDefinition::_loadInstance(fields)) return false;
+    _elementSet->clear();
+    _pendingMemberNames.clear();
+    _setOfType = fields->loadField("type", DEFAULT.setOfType);
+    const auto count = fields->loadField("members", DEFAULT.membersSize);
+    for (unsigned int i = 0; i < count; ++i)
+        _pendingMemberNames.push_back(fields->loadField("member" + Util::StrIndex(i)));
+    _resolveMemberReferences();
+    return true;
 }
 
 void Set::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+    _resolveMemberReferences();
     ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
     fields->saveField("type", _setOfType, DEFAULT.setOfType, saveDefaultValues);
+    if (!_pendingMemberNames.empty()) {
+        // An incomplete model remains savable without discarding unresolved names.
+        fields->saveField("members", static_cast<unsigned int>(_pendingMemberNames.size()), DEFAULT.membersSize, saveDefaultValues);
+        for (unsigned int i=0; i<_pendingMemberNames.size(); ++i)
+            fields->saveField("member" + Util::StrIndex(i), _pendingMemberNames[i]);
+        return;
+    }
     fields->saveField("members", _elementSet->size(), DEFAULT.membersSize, saveDefaultValues);
     unsigned int i = 0;
     for (ModelDataDefinition* modeldatum : *_elementSet->list()) {
@@ -263,7 +281,9 @@ void Set::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 }
 
 bool Set::_check(std::string& errorMessage) {
-    bool resultAll = true;
+    _resolveMemberReferences();
+    bool resultAll = _pendingMemberNames.empty();
+    if (!resultAll) errorMessage += "Set \"" + getName() + "\" has unresolved members";
     std::vector<std::string> previousMemberKeys;
     for (const auto& pair : *getAttachedData()) {
         if (pair.first.rfind("Member", 0) == 0) {
@@ -320,6 +340,7 @@ ParserChangesInformation* Set::_getParserChangesInformation() {
 // void Set::_createEditableDataDefinitions() { }
 
 void Set::_createAttachedAttributes() {
+    _resolveMemberReferences();
     std::vector<std::string> previousSetMemberKeys;
     const std::string setMemberPrefix = getName() + ".";
     for (const auto& pair : *getAttachedData()) {

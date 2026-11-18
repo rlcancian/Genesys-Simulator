@@ -24,6 +24,7 @@
 #include "../../plugins/data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/ResourceSetSelection.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
@@ -12064,4 +12065,99 @@ TEST(SimulatorRuntimeTest, SimulationReportsOverReleaseWithoutAbortingProcess) {
             message.find("OverReleaseDuringSimulation") != std::string::npos) found = true;
     }
     EXPECT_TRUE(found);
+}
+
+TEST(SimulatorRuntimeTest, SeizePriorityExpressionRoundTripPreservesStringsAndRecoversLegacyNul) {
+    for (const auto& expression : {std::string(), std::string("2 + 3"), std::string(1,'\0'), std::string("2+\0",3)}) {
+        Simulator simulator;
+        simulator.getPluginManager()->autoInsertPlugins();
+        auto* model = simulator.getModelManager()->newModel();
+        auto* resource = new Resource(model,"PriorityResource");
+        auto* queue = new Queue(model,"PriorityQueue");
+        auto* seize = new Seize(model,"PrioritySeize");
+        seize->setLabel("Persisted label");
+        seize->setQueue(queue);
+        seize->addRequest(new SeizableItem(resource));
+        seize->setPriorityExpression(expression);
+        const auto id = seize->getId();
+        const std::string path = "/tmp/genesys-priority-" + std::to_string(getpid()) + ".gen";
+        ASSERT_TRUE(model->save(path));
+        for (int round=0; round<2; ++round) {
+            Simulator restored;
+            restored.getPluginManager()->autoInsertPlugins();
+            ASSERT_NE(restored.getModelManager()->loadModel(path), nullptr);
+            auto* loaded = dynamic_cast<Seize*>(restored.getModelManager()->current()->getComponentManager()->find("PrioritySeize"));
+            ASSERT_NE(loaded,nullptr);
+            EXPECT_EQ(loaded->getId(),id);
+            EXPECT_EQ(loaded->getLabel(),"Persisted label");
+            EXPECT_EQ(loaded->getPriorityExpression(), expression==std::string(1,'\0') ? "" : expression);
+            EXPECT_EQ(loaded->getSeizeRequests()->getAtRank(0)->getResource()->getName(),"PriorityResource");
+            if (expression.size()>1 && expression.find('\0')!=std::string::npos) {
+                std::string errors;
+                EXPECT_FALSE(ModelDataDefinition::Check(loaded,errors));
+                EXPECT_NE(errors.find("NUL"),std::string::npos);
+            }
+            ASSERT_TRUE(restored.getModelManager()->current()->save(path));
+        }
+        std::remove(path.c_str());
+    }
+}
+
+TEST(SimulatorRuntimeTest, ResourceSetSelectionHandlesTiesZeroCapacityAndInvalidRequests) {
+    Simulator simulator;
+    auto* model = simulator.getModelManager()->newModel();
+    auto* a = new Resource(model,"SelectA");
+    auto* b = new Resource(model,"SelectB");
+    auto* set = new Set(model,"SelectionSet");
+    set->addElementSet(a);set->addElementSet(b);
+    SeizableItem request(set,"1",SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
+    EXPECT_EQ(selectRequestResource(model,&request,true,"ReleaseTest").resource,a);
+    a->seize(1);
+    EXPECT_EQ(selectRequestResource(model,&request,true,"ReleaseTest").resource,b);
+    b->seize(1);
+    EXPECT_EQ(selectRequestResource(model,&request,true,"ReleaseTest").resource,a);
+    request.setSelectionRule(SeizableItem::SelectionRule::RANDOM);
+    for (int i=0;i<100;++i) EXPECT_LT(selectRequestResource(model,&request,true,"ReleaseTest").index,2u);
+    request.setSelectionRule(SeizableItem::SelectionRule::SPECIFICMEMBER);
+    for (auto index : {"-1","2","0.5","", "1 +"}) {
+        request.setSaveAttribute(index);
+        EXPECT_THROW(selectRequestResource(model,&request,true,"ReleaseTest"),std::runtime_error);
+    }
+    set->getElementSet()->clear();
+    EXPECT_THROW(selectRequestResource(model,&request,true,"ReleaseTest"),std::runtime_error);
+    set->getElementSet()->insert(new Queue(model,"InvalidMember"));
+    EXPECT_THROW(selectRequestResource(model,&request,true,"ReleaseTest"),std::runtime_error);
+}
+
+TEST(SimulatorRuntimeTest, SetMembersCreatedAfterSetSurviveTwoRoundTrips) {
+    for (bool queues : {false,true}) {
+        Simulator source;source.getPluginManager()->autoInsertPlugins();
+        auto* model=source.getModelManager()->newModel();auto* set=new Set(model,"ForwardSet");
+        for(int i=0;i<4;++i)set->addElementSet(queues?static_cast<ModelDataDefinition*>(new Queue(model,"Member"+std::to_string(i))):static_cast<ModelDataDefinition*>(new Resource(model,"Member"+std::to_string(i))));
+        const std::string file="/tmp/genesys-forward-set-"+std::to_string(getpid())+".gen";
+        ASSERT_TRUE(model->save(file));
+        for(int round=0;round<2;++round){
+            Simulator restored;restored.getPluginManager()->autoInsertPlugins();ASSERT_NE(restored.getModelManager()->loadModel(file),nullptr);
+            auto* loaded=dynamic_cast<Set*>(restored.getModelManager()->current()->getDataManager()->getDataDefinition("Set","ForwardSet"));ASSERT_NE(loaded,nullptr);
+            ASSERT_EQ(loaded->getElementSet()->size(),4u);
+            for(int i=0;i<4;++i)EXPECT_EQ(loaded->getElementSet()->getAtRank(i)->getName(),"Member"+std::to_string(i));
+            ASSERT_TRUE(restored.getModelManager()->current()->save(file));
+        }
+        std::remove(file.c_str());
+    }
+}
+
+TEST(SimulatorRuntimeTest, ReleaseCyclicalAdvancesThroughSetMembersAfterSuccessfulRelease) {
+    Simulator simulator;auto* model=simulator.getModelManager()->newModel();
+    auto* set=new Set(model,"CyclicalResources");
+    for(int i=0;i<3;++i){auto* r=new Resource(model,"Cyclical"+std::to_string(i));r->seize(1);set->addElementSet(r);}
+    auto* release=new ReleaseDispatchProbe(model,"CyclicalRelease");release->setReportStatistics(false);
+    release->getConnectionManager()->insert(new Dispose(model,"Sink"));
+    auto* request=new SeizableItem(set,"1",SeizableItem::SelectionRule::CYCLICAL);release->addReleaseRequests(request);
+    auto* entity=model->createEntity("CyclicalEntity",true);
+    for(unsigned int expected:{1u,2u,0u}){
+        release->_onDispatchEvent(entity,0);
+        EXPECT_EQ(request->getLastMemberSeized(),expected);
+        EXPECT_EQ(dynamic_cast<Resource*>(set->getElementSet()->getAtRank(expected))->getNumberBusy(),0u);
+    }
 }

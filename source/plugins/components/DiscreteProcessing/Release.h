@@ -67,7 +67,7 @@ protected:
 	// virtual void _createInternalStatisticReporters() override;
 	// virtual void _createNonEditableDataDefinitions() override;
 	virtual void _createEditableDataDefinitions() override;
-	// virtual void _createAttachedAttributes() override;
+	virtual void _createAttachedAttributes() override;
 
 private:
 	Resource* _getResourceFromSeizableItem(SeizableItem* seizable, Entity* entity);

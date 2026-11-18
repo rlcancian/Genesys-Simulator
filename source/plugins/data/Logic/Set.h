@@ -101,6 +101,8 @@ protected:
 	virtual void _createAttachedAttributes() override;
 
 private:
+    void _resolveMemberReferences() const;
+    mutable std::vector<std::string> _pendingMemberNames;
 	//ElementManager* _elems;
 
 	const struct DEFAULT_VALUES {
