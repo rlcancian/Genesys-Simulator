@@ -246,5 +246,7 @@ void Label::_onDispatchEvent(Entity* entity, unsigned int) {
         traceError("Label '" + getName() + "': unable to forward entity without an output connection.");
         return;
     }
+    traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+                    "Label forwards entity through its output", TraceManager::Level::L7_internal);
     _parentModel->sendEntityToComponent(entity, outgoing);
 }

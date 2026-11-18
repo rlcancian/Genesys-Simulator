@@ -73,6 +73,7 @@ void Leave::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_reportStatistics)
 		_numberIn->incCountValue();
 	_station->leave(entity);
+	traceSimulation(this, "Entity left Station \"" + _station->getName() + "\"", TraceManager::Level::L7_internal);
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

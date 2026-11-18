@@ -125,7 +125,9 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
     // Route delayed forwarding through Model API so entity-move handlers are notified.
     _parentModel->sendEntityToComponent(entity, frontConnection, waitTime);
 	double delayEndTime = _parentModel->getSimulation()->getSimulatedTime() + waitTime;
-	traceSimulation(this, "End of delay of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " scheduled to time " + std::to_string(delayEndTime) + Util::StrTimeUnitShort(stu) + " (wait time " + std::to_string(waitTime) + Util::StrTimeUnitShort(stu) + ") // " + _delayExpression+ " "+Util::StrTimeUnitShort(_delayTimeUnit));
+	traceSimulation(this, "Delay schedules entity continuation", TraceManager::Level::L7_internal);
+	traceSimulation(this, "Delay expression \"" + _delayExpression + "\" produced " + std::to_string(waitTime) + Util::StrTimeUnitShort(stu), TraceManager::Level::L8_detailed);
+	traceSimulation(this, "End of delay of " + entity->getName() + " scheduled to time " + std::to_string(delayEndTime) + Util::StrTimeUnitShort(stu), TraceManager::Level::L9_mostDetailed);
 }
 
 ModelComponent* Delay::LoadInstance(Model* model, PersistenceRecord *fields) {

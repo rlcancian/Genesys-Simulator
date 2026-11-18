@@ -80,6 +80,7 @@ void Access::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		traceError("Access \"" + getName() + "\" could not allocate Conveyor capacity");
 		return;
 	}
+	traceSimulation(this, "Access allocated " + std::to_string(quantity) + " Conveyor unit(s) from \"" + _conveyor->getName() + "\"", TraceManager::Level::L7_internal);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

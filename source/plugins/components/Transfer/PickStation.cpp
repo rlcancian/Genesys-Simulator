@@ -220,6 +220,10 @@ void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 		traceError("PickStation \"" + getName() + "\" could not select a valid Station during dispatch");
 		return;
 	}
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+	                "PickStation selected Station \"" + bestStation->getName() + "\"", TraceManager::Level::L7_internal);
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+	                "PickStation selection score=" + std::to_string(bestValue), TraceManager::Level::L9_mostDetailed);
 	entity->setAttributeValue(_saveAttribute, bestStation->getId());
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }

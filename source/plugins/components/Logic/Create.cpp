@@ -99,6 +99,8 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		const unsigned int remainingCreations = maxCreations > _entitiesCreatedSoFar
 				? maxCreations - _entitiesCreatedSoFar : 0u;
 		const unsigned int nextArrivalCreations = std::min(_entitiesPerCreation, remainingCreations);
+		traceSimulation(this, "Scheduling next Create arrival", TraceManager::Level::L7_internal);
+		traceSimulation(this, "Inter-arrival value=" + std::to_string(timeBetweenCreations) + ", scaled arrival time=" + std::to_string(newArrivalTime), TraceManager::Level::L8_detailed);
 		_entitiesAwaitingCurrentArrivalDispatch = nextArrivalCreations;
 		for (unsigned int i = 0; i < nextArrivalCreations; i++) {
 			_entitiesCreatedSoFar++;
@@ -106,7 +108,7 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 				newEntity->setEntityType(entity->getEntityType());
 				Event* newEvent = new Event(newArrivalTime, newEntity, this);
 				_parentModel->getFutureEvents()->insert(newEvent);
-				traceSimulation(this, "Arrival of "/*entity " + std::to_string(newEntity->entityNumber())*/ + newEntity->getName() + " scheduled for time " + std::to_string(newArrivalTime) + Util::StrTimeUnitShort(_parentModel->getSimulation()->getReplicationBaseTimeUnit()));
+				traceSimulation(this, "Arrival of " + newEntity->getName() + " scheduled for time " + std::to_string(newArrivalTime) + Util::StrTimeUnitShort(_parentModel->getSimulation()->getReplicationBaseTimeUnit()), TraceManager::Level::L9_mostDetailed);
 			}
 		}
 	if (_reportStatistics)

@@ -87,6 +87,7 @@ void Start::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		_conveyor->setVelocity(velocity);
 	}
 	_conveyor->setActive(true);
+	traceSimulation(this, "Start activated Conveyor \"" + _conveyor->getName() + "\"", TraceManager::Level::L7_internal);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

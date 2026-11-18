@@ -228,7 +228,9 @@ void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		file.close();
 	}
 	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
-	                "Recording value " + fileinfos);
+	                "Recording observation" + fileinfos, TraceManager::Level::L7_internal);
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+	                "Expression \"" + _expression + "\" recorded value=" + std::to_string(value), TraceManager::Level::L9_mostDetailed);
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

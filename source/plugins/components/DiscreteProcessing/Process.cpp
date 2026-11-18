@@ -197,6 +197,7 @@ ModelComponent* Process::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void Process::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, TraceManager::Level::L7_internal, "Process forwards entity to its internal Seize-Delay-Release chain");
 	this->_parentModel->sendEntityToComponent(entity, _seize, 0.0);
 }
 

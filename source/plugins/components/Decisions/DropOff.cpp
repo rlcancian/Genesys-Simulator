@@ -102,6 +102,8 @@ void DropOff::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 		return;
 	}
+	traceSimulation(this, "DropOff releases members from EntityGroup", TraceManager::Level::L7_internal);
+	traceSimulation(this, "DropOff requested quantity=" + std::to_string(quantity) + ", start rank=" + std::to_string(startRank), TraceManager::Level::L8_detailed);
 	std::vector<Entity*> removedMembers;
 	for (unsigned int offset = 0; offset < quantity; ++offset) {
 		Entity* member = members->getAtRank(startRank);
@@ -111,6 +113,7 @@ void DropOff::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		removedMembers.push_back(member);
 		entityGroup->removeElement(entity->getId(), member);
 		member->setAttributeValue("Entity.Group", 0.0);
+		traceSimulation(this, "DropOff released member \"" + member->getName() + "\"", TraceManager::Level::L9_mostDetailed);
 		_parentModel->sendEntityToComponent(member, this->getConnectionManager()->getConnectionAtPort(1));
 	}
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());

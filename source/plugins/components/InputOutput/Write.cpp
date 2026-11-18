@@ -110,6 +110,7 @@ Write::WriteToType Write::writeToType() const {
 }
 
 void Write::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Write outputs configured text to " + convertEnumToStr(_writeToType), TraceManager::Level::L7_internal);
 	if (this->_writeToType == Write::WriteToType::FILE && !_filename.empty()) { // file is kept open during replication
 		_savefile.open(_filename, std::ofstream::app);
 	}

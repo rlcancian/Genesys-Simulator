@@ -185,5 +185,9 @@ void Goto::_onDispatchEvent(Entity* entity, unsigned int) {
         traceError("Goto '" + getName() + "': TimeDelayExpression produced a negative or non-finite delay.");
         return;
     }
+    traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+                    "Goto forwards entity to Label \"" + destination->getName() + "\"", TraceManager::Level::L7_internal);
+    traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+                    "Goto delay expression produced " + std::to_string(delay), TraceManager::Level::L9_mostDetailed);
     destination->sendEntityToLabelComponent(entity, delay);
 }

@@ -87,6 +87,7 @@ void Store::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		traceError("Storage \"" + _storage->getName() + "\" capacity exceeded while storing " + std::to_string(quantity) + " units.", TraceManager::Level::L3_errorRecover);
 		return;
 	}
+	traceSimulation(this, "Stored " + std::to_string(quantity) + " unit(s) in Storage \"" + _storage->getName() + "\"", TraceManager::Level::L7_internal);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

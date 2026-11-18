@@ -65,6 +65,7 @@ void Stop::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		return;
 	}
 	_conveyor->setActive(false);
+	traceSimulation(this, "Stop deactivated Conveyor \"" + _conveyor->getName() + "\"", TraceManager::Level::L7_internal);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

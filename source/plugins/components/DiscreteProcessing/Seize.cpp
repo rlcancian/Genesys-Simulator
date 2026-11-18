@@ -218,7 +218,7 @@ void Seize::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			queue->insertElement(waitingRec); // ->list()->insert(waitingRec);
 			traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
 			                "Entity starts to wait for resource in queue \"" + queue->getName() + "\" with " +
-			                std::to_string(queue->size()) + " elements");
+			                std::to_string(queue->size()) + " elements", TraceManager::Level::L7_internal);
 			return;
 		}
 		else {
@@ -234,7 +234,7 @@ void Seize::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
 			                entity->getName() + " seizes " + std::to_string(quantity) + " elements of resource \"" +
 			                resource->getName() + "\" (capacity:" + std::to_string(resource->getCapacity()) +
-			                ", numberbusy:" + std::to_string(resource->getNumberBusy()) + ")");
+			                ", numberbusy:" + std::to_string(resource->getNumberBusy()) + ")", TraceManager::Level::L7_internal);
 		}
 	}
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());

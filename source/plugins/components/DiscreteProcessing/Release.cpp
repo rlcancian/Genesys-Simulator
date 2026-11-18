@@ -117,7 +117,8 @@ void Release::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
                 + std::to_string(quantity) + " units of Resource \"" + resource->getName()
                 + "\"; only " + std::to_string(resource->getNumberBusy()) + " units are busy");
         }
-		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, entity->getName() + " releases " + std::to_string(quantity) + " units of resource \"" + resource->getName() + "\" seized on time " + std::to_string(resource->getLastTimeSeized()));
+		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, entity->getName() + " releases " + std::to_string(quantity) + " units of resource \"" + resource->getName() + "\"", TraceManager::Level::L7_internal);
+		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Resource busy units before release=" + std::to_string(resource->getNumberBusy()), TraceManager::Level::L9_mostDetailed);
 		resource->release(quantity); //{releases and sets the 'LastTimeSeized'property}
         if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
             unsigned int memberIndex = 0;

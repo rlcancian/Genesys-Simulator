@@ -76,6 +76,7 @@ void Enter::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_reportStatistics)
 		_numberIn->incCountValue();
 	_station->enter(entity);
+	traceSimulation(this, "Entity entered Station \"" + _station->getName() + "\"", TraceManager::Level::L7_internal);
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

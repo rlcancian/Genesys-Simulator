@@ -119,6 +119,10 @@ void Move::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		traceError("Move \"" + getName() + "\" could not compute a valid transport time from \"" + source->getName() + "\" to \"" + destination->getName() + "\"");
 		return;
 	}
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+	                "Move reserved Transporter \"" + _transporter->getName() + "\" from \"" + source->getName() + "\" to \"" + destination->getName() + "\"", TraceManager::Level::L7_internal);
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+	                "Move travel time=" + std::to_string(travelTime), TraceManager::Level::L9_mostDetailed);
 	if (_reportStatistics && _numberIn != nullptr) {
 		_numberIn->incCountValue();
 	}

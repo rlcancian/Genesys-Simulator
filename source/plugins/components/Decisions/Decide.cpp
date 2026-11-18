@@ -224,8 +224,9 @@ void Decide::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	unsigned short i = 0;
 	for (const std::string& condition : *_conditions->list()) {
 		value = _parentModel->parseExpression(condition);
-		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, std::to_string(i + 1) + "th condition evaluated to " + Util::StrTruncIfInt(std::to_string(value)) + "  // " + condition);
+		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, std::to_string(i + 1) + "th condition evaluated to " + Util::StrTruncIfInt(std::to_string(value)) + "  // " + condition, TraceManager::Level::L9_mostDetailed);
 		if (value) {
+			traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Decide routes entity through output " + std::to_string(i), TraceManager::Level::L7_internal);
 			if (_reportStatistics) {
 				_numberOuts->getAtRank(i)->incCountValue();
 			}
@@ -234,7 +235,7 @@ void Decide::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		}
 		i++;
 	}
-    traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "No condition has been evaluated true");
+    traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "No condition has been evaluated true; selecting Else output", TraceManager::Level::L7_internal);
 	if (_reportStatistics) {
 		_numberOuts->getAtRank(i)->incCountValue();
 	}

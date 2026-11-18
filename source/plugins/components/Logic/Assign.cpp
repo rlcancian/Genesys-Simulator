@@ -123,6 +123,7 @@ ModelComponent* Assign::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, TraceManager::Level::L7_internal, "Applying " + std::to_string(_assignments->size()) + " assignment(s)");
 	for (Assignment* let : *_assignments->list()) {
 		double value = 0.0;
 		const std::string baseDestination = _destinationBaseName(let->getDestination());
@@ -153,7 +154,8 @@ void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			static_cast<Variable*>(data)->setValue(value, indexDestination);
 		}
 
-    	traceSimulation(this, "Let " + let->getDestination() + " = \"" + let->getExpression() + "\" = " + Util::StrTruncIfInt(std::to_string(value)));
+		traceSimulation(this, "Assignment expression \"" + let->getExpression() + "\" evaluated for " + let->getDestination(), TraceManager::Level::L8_detailed);
+		traceSimulation(this, "Let " + let->getDestination() + " = " + Util::StrTruncIfInt(std::to_string(value)), TraceManager::Level::L9_mostDetailed);
     }
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }

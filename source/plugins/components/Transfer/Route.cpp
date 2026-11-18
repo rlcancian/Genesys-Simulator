@@ -192,6 +192,8 @@ void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		_numberIn->incCountValue();
 	// adds the route time to the TransferTime statistics / attribute related to the Entitys
 	double routeTime = _parentModel->parseExpression(_routeTimeExpression) * Util::TimeUnitConvert(_routeTimeTimeUnit, _parentModel->getSimulation()->getReplicationBaseTimeUnit());
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+	                "Route time expression produced " + std::to_string(routeTime), TraceManager::Level::L9_mostDetailed);
 	if (entity->getEntityType()->isReportStatistics()) {
 		std::string attribIndex="";
 		entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + ".TransferTime")->getStatistics()->getCollector()->addValue(routeTime);
@@ -203,10 +205,10 @@ void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		Event* newEvent;
 		if (destinyStation != nullptr) {
 			newEvent = new Event(routeEndTime, entity, destinyStation->getEnterIntoStationComponent());
-			traceSimulation(this, "End of route of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " to the component \"" + destinyStation->getEnterIntoStationComponent()->getName() + "\" was scheduled to time " + std::to_string(routeEndTime));
+			traceSimulation(this, "End of route of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " to the component \"" + destinyStation->getEnterIntoStationComponent()->getName() + "\" was scheduled to time " + std::to_string(routeEndTime), TraceManager::Level::L7_internal);
 		} else {// destination is LabelDefinition
 			newEvent = new Event(routeEndTime, entity, destinyLabel->getEnterIntoLabelComponent());
-			traceSimulation(this, "End of route of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " to the component \"" + destinyLabel->getEnterIntoLabelComponent()->getName() + "\" was scheduled to time " + std::to_string(routeEndTime));
+			traceSimulation(this, "End of route of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " to the component \"" + destinyLabel->getEnterIntoLabelComponent()->getName() + "\" was scheduled to time " + std::to_string(routeEndTime), TraceManager::Level::L7_internal);
 		}
 		_parentModel->getFutureEvents()->insert(newEvent);
 	} else {

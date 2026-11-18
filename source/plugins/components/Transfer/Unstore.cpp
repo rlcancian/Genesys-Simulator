@@ -87,6 +87,7 @@ void Unstore::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		traceError("Storage \"" + _storage->getName() + "\" does not contain " + std::to_string(quantity) + " units to unstore.", TraceManager::Level::L3_errorRecover);
 		return;
 	}
+	traceSimulation(this, "Unstored " + std::to_string(quantity) + " unit(s) from Storage \"" + _storage->getName() + "\"", TraceManager::Level::L7_internal);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

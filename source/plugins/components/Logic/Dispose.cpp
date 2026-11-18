@@ -36,6 +36,7 @@ std::string Dispose::show() {
 }
 
 void Dispose::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Disposing entity", TraceManager::Level::L7_internal);
 	if (_reportStatistics) {
 		_numberOut->incCountValue();
 		if (entity->getEntityType()->isReportStatistics()) {
@@ -44,6 +45,7 @@ void Dispose::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			std::string cstatName = entity->getEntityTypeName() + "." + "TotalTimeInSystem";
 			StatisticsCollector* cstat = entity->getEntityType()->addGetStatisticsCollector(cstatName);
 			cstat->getStatistics()->getCollector()->addValue(timeInSystem);
+			traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Time in system=" + std::to_string(timeInSystem), TraceManager::Level::L9_mostDetailed);
 			//StatisticsCollector* cstat = static_cast<StatisticsCollector*> (entity->getEntityType()->getInternalData(cstatName)); //@TODO:Implement
 		}
 	}
