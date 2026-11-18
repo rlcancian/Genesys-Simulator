@@ -454,3 +454,12 @@ Overflow is handled by a uniform transform of the complete text block about the
 content rectangle centre, with shadow padding; no lines are discarded and no item
 geometry or ports are changed. The same measured layout is used by both styles
 and exposed for focused layout regression checks.
+
+\paragraph{Direct association boundaries.}
+GraphicalModelBuilder separates recursive discovery of visible data definitions
+from collection of layout links. Link collection stops at a ModelDataDefinition
+reference or list member; that object's controls are visited under its own origin.
+Inline helper controls, such as SeizableItem and QueueableItem, remain part of the
+current owner's traversal. Layout links are unique by target and connection type,
+preserving distinct INTERNAL and ATTACHED relations. No kernel associations are
+removed and no logical persistence fields are changed.

@@ -39,6 +39,7 @@
 #include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/Logic/Set.h"
 #include "plugins/data/Synchronization/SignalData.h"
 #include "plugins/data/ModalModel/GraphNode.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
@@ -1490,6 +1491,9 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
 
     Queue* queue = new Queue(model, "Queue_Complex");
     Resource* resource = new Resource(model, "Resource_Complex");
+    auto* memberResource = new Resource(model, "SetMember_Complex");
+    auto* resourceSet = new Set(model, "ResourceSet_Complex");
+    resourceSet->addElementSet(memberResource);
     Seize* seize = new Seize(model, "Seize_Complex");
     Release* release = new Release(model, "Release_Complex");
     auto* sharedSignalData = new SignalData(model, "SignalData_Complex");
@@ -1511,6 +1515,8 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
     seize->setQueueableItem(new QueueableItem(queue));
     seize->addRequest(new SeizableItem(resource));
     release->addReleaseRequests(new SeizableItem(resource));
+    seize->addRequest(new SeizableItem(resourceSet));
+    release->addReleaseRequests(new SeizableItem(resourceSet));
     seize->connectTo(release, 0);
     ModelDataDefinition::CreateInternalData(seize);
     ModelDataDefinition::CreateInternalData(release);
@@ -1524,7 +1530,7 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
     scene->setShowEditableDataDefinitions(true);
     scene->setShowStatisticsDataDefinitions(true);
     scene->setShowSharedDataDefinitions(true);
-    scene->setShowRecursiveDataDefinitions(false);
+    scene->setShowRecursiveDataDefinitions(true);
     PropertyEditorGenesys propertyEditor;
     std::map<SimulationControl*, DataComponentProperty*> propertyList;
     std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
@@ -1588,6 +1594,7 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
     actionShowInternalElements.setChecked(true);
     actionShowEditableElements.setChecked(true);
     actionShowAttachedElements.setChecked(true);
+    actionShowRecursiveElements.setChecked(true);
     QString modelFilename;
     std::map<std::string, QColor> pluginCategoryColor;
     GraphicalModelBuilder builder(&simulator, &graphicsView, scene, &pluginCategoryColor, &console);
@@ -1665,20 +1672,41 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedRefer
     // Both components reference the SAME Resource, not two independently-fabricated ones.
     ASSERT_NE(loadedSeize->getQueueableItem(), nullptr);
     EXPECT_NE(loadedSeize->getQueueableItem()->getQueue(), nullptr);
-    ASSERT_EQ(loadedSeize->getSeizeRequests()->size(), 1u);
-    ASSERT_EQ(loadedRelease->getReleaseRequests()->size(), 1u);
+    ASSERT_EQ(loadedSeize->getSeizeRequests()->size(), 2u);
+    ASSERT_EQ(loadedRelease->getReleaseRequests()->size(), 2u);
     Resource* seizeResource = loadedSeize->getSeizeRequests()->list()->front()->getResource();
     Resource* releaseResource = loadedRelease->getReleaseRequests()->list()->front()->getResource();
     ASSERT_NE(seizeResource, nullptr);
     ASSERT_NE(releaseResource, nullptr);
     EXPECT_EQ(seizeResource, releaseResource);
-    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Resource>())->size(), 1u);
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Resource>())->size(), 2u);
     EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), 1u);
     EXPECT_NE(loadedWait->getSignalData(), nullptr);
     EXPECT_EQ(loadedWait->getSignalData(), loadedSignal->getSignalData());
     EXPECT_EQ(loadedWait->getSignalData()->getName(), "SignalData_Complex");
     ASSERT_NE(loadedWait->getQueue(), nullptr);
     EXPECT_EQ(loadedWait->getQueue()->getName(), "Queue_Complex");
+    auto* loadedSet = loadedSeize->getSeizeRequests()->getAtRank(1)->getSet();
+    ASSERT_NE(loadedSet, nullptr);
+    EXPECT_EQ(loadedSet, loadedRelease->getReleaseRequests()->getAtRank(1)->getSet());
+    ASSERT_EQ(loadedSet->getElementSet()->size(), 1u);
+    auto* gset = findGraphicalDataDefinition(*scene, loadedSet);
+    auto* member = findGraphicalDataDefinition(*scene, loadedSet->getElementSet()->getAtRank(0));
+    ASSERT_NE(gset, nullptr);
+    ASSERT_NE(member, nullptr);
+    QGraphicsItem* gs = nullptr;
+    QGraphicsItem* gr = nullptr;
+    for (auto* component : scene->graphicalModelComponentItems()) {
+        if (component->getComponent() == loadedSeize) gs = component;
+        if (component->getComponent() == loadedRelease) gr = component;
+    }
+    ASSERT_NE(gs, nullptr);
+    ASSERT_NE(gr, nullptr);
+    EXPECT_NE(findDiagramConnection(*scene, gset, gs), nullptr);
+    EXPECT_NE(findDiagramConnection(*scene, gset, gr), nullptr);
+    EXPECT_NE(findDiagramConnection(*scene, member, gset), nullptr);
+    EXPECT_EQ(findDiagramConnection(*scene, member, gs), nullptr);
+    EXPECT_EQ(findDiagramConnection(*scene, member, gr), nullptr);
     EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), 1u);
     EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<SignalData>())->size(), 1u);
 }
@@ -2182,4 +2210,106 @@ TEST(GuiGmddLayout, ObjectCaptionsPreferLabelAndReadLiveProperties) {
     }
     component->setName("UpdatedCaptionName");
     EXPECT_EQ(gc.renderContext().primaryText, "UpdatedCaptionName");
+}
+
+namespace {
+int associationCount(ModelGraphicsScene& scene, QGraphicsItem* child, QGraphicsItem* parent,
+                     GraphicalDiagramConnection::ConnectionType type = GraphicalDiagramConnection::ConnectionType::ATTACHED) {
+    int count = 0;
+    for (auto* item : *scene.getGraphicalDiagramsConnections()) {
+        auto* edge = dynamic_cast<GraphicalDiagramConnection*>(item);
+        if (edge && edge->getDataDefinition() == child && edge->getLinkedDataDefinition() == parent && edge->getConnectionType() == type) ++count;
+    }
+    return count;
+}
+}
+TEST(GuiGmddLayout, SetAssociationsStayDirectAcrossUpdatesAndExplicitRequests) {
+    Simulator simulator;
+    auto* plugins = simulator.getPluginManager();
+    plugins->autoInsertPlugins();
+    auto* model = simulator.getModelManager()->newModel();
+    std::vector<Resource*> resources;
+    for (int i = 0; i < 4; ++i) resources.push_back(new Resource(model, "Processor" + std::to_string(i)));
+    auto* set = new Set(model, "Processors");
+    for (auto* r : resources) set->addElementSet(r);
+    auto* queue = new Queue(model, "WaitingQueue");
+    auto* seize = new Seize(model, "SeizeSet");
+    auto* release = new Release(model, "ReleaseSet");
+    seize->setQueue(queue);
+    auto* request = new SeizableItem(set);
+    seize->addRequest(request);
+    release->addReleaseRequests(new SeizableItem(set));
+    ModelDataDefinition::CreateInternalData(seize);
+    ModelDataDefinition::CreateInternalData(release);
+    ModelDataDefinition::CreateInternalData(set);
+    // Exercise both Set attachment aliases and the property-list source.
+    std::string errors;
+    ModelDataDefinition::Check(set, errors);
+    ModelGraphicsScene scene(0, 0, 3000, 3000);
+    scene.setSimulator(&simulator);
+    scene.setShowEditableDataDefinitions(true);
+    scene.setShowSharedDataDefinitions(true);
+    scene.setShowStatisticsDataDefinitions(false);
+    scene.setShowRecursiveDataDefinitions(true);
+    auto* gs = new GraphicalModelComponent(plugins->find("Seize"), seize, QPointF(800,800), Qt::blue);
+    scene.addItem(gs);
+    auto* gr = new GraphicalModelComponent(plugins->find("Release"), release, QPointF(1200,800), Qt::blue);
+    scene.addItem(gr);
+    auto sync = [&] { GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene); };
+    sync();
+    auto* gset = findGraphicalDataDefinition(scene, set);
+    ASSERT_NE(gset, nullptr);
+    const auto position = gset->pos();
+    for (int round = 0; round < 2; ++round) {
+        sync();
+        EXPECT_EQ(associationCount(scene, gset, gs), 1);
+        EXPECT_EQ(associationCount(scene, gset, gr), 1);
+        EXPECT_EQ(gset->pos(), position);
+        for (auto* r : resources) {
+            auto* graphic = findGraphicalDataDefinition(scene, r);
+            ASSERT_NE(graphic, nullptr);
+            EXPECT_EQ(associationCount(scene, graphic, gset), 1);
+            EXPECT_EQ(associationCount(scene, graphic, gs), 0);
+            EXPECT_EQ(associationCount(scene, graphic, gr), 0);
+        }
+    }
+    // An independent direct request to a member must survive, without duplicate edges.
+    seize->addRequest(new SeizableItem(resources[0]));
+    seize->addRequest(new SeizableItem(resources[0]));
+    release->addReleaseRequests(new SeizableItem(resources[1]));
+    ModelDataDefinition::CreateInternalData(seize);
+    ModelDataDefinition::CreateInternalData(release);
+    sync();
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, resources[0]), gs), 1);
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, resources[1]), gr), 1);
+    auto* added = new Resource(model, "AddedProcessor");
+    set->addElementSet(added);
+    ModelDataDefinition::CreateInternalData(set);
+    sync();
+    auto* ga = findGraphicalDataDefinition(scene, added);
+    ASSERT_NE(ga, nullptr);
+    EXPECT_EQ(associationCount(scene, ga, gset), 1);
+    EXPECT_EQ(associationCount(scene, ga, gs), 0);
+    set->removeElementSet(added);
+    ModelDataDefinition::CreateInternalData(set);
+    ModelDataDefinition::Check(set, errors);
+    sync();
+    EXPECT_EQ(findGraphicalDataDefinition(scene, added), nullptr);
+    EXPECT_NE(findDiagramConnection(scene, findGraphicalDataDefinition(scene, queue), gs), nullptr);
+    request->setResource(resources[2]);
+    ModelDataDefinition::CreateInternalData(seize);
+    sync();
+    EXPECT_EQ(associationCount(scene, gset, gs), 0);
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, resources[2]), gs), 1);
+    EXPECT_EQ(associationCount(scene, gset, gr), 1);
+    scene.setShowEditableDataDefinitions(false);
+    scene.setShowSharedDataDefinitions(false);
+    sync();
+    EXPECT_EQ(findGraphicalDataDefinition(scene, set), nullptr);
+    scene.setShowEditableDataDefinitions(true);
+    scene.setShowSharedDataDefinitions(true);
+    sync();
+    ASSERT_NE(findGraphicalDataDefinition(scene, set), nullptr);
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, set), gs), 0);
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, set), gr), 1);
 }

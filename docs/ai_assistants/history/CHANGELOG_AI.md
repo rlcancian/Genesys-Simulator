@@ -107,3 +107,6 @@ Append or amend one row only after a material status change. After merge, use th
 - 2026-11-17: Replaced Release over-release assert with actionable runtime error;
   regression tests cover invalid/valid dispatch and simulation error handling.
   Evidence: `evidence/2026/11/RELEASE_ABORT_20261117.md`.
+- 2026-11-18: Fixed transitive/duplicate GUI association links at model-object
+  traversal boundaries; focused scene and .gui round-trip tests and manual updated.
+  Evidence: `evidence/2026/11/DIRECT_GUI_ASSOCIATIONS_20261118.md`.

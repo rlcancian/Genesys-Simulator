@@ -380,3 +380,10 @@ menu action. Dedicated code editors retain exclusive workflows. Focused Qt regre
 Over-release now produces a caught runtime diagnostic instead of terminating the
 application via assert. User-model inconsistency remains to diagnose from the
 model file. [Evidence](history/evidence/2026/11/RELEASE_ABORT_20261117.md).
+
+### Direct graphical associations — 2026-11-18
+
+Shared GUI link collection stops at referenced model objects and deduplicates by
+target/type, while recursive object discovery remains intact. Seize/Release Set
+requests show component -> Set -> members; explicit Resource requests survive.
+[Evidence](history/evidence/2026/11/DIRECT_GUI_ASSOCIATIONS_20261118.md).

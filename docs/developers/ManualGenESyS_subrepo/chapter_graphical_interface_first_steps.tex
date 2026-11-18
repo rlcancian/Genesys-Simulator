@@ -271,3 +271,10 @@ editing in their Property Editor row. The context-menu action \texttt{Build
 expression...} is an optional alternative: accepting the dialog applies its value,
 while cancelling preserves the original expression. Inline editing follows the
 ordinary String commit rules and does not require syntax validation while typing.
+
+Data-definition association lines represent direct references. A Seize or Release
+request targeting a Resource Set connects to the Set; the Set connects to its
+members. Recursive display can reveal those members without adding shortcut lines
+from the component to each member. An independent request targeting a Resource
+still produces its direct association. Repeated references do not duplicate the
+same association type between the same objects.

@@ -231,7 +231,7 @@ namespace {
             return;
         }
         for (const DataDefinitionLayoutLink& existing : *links) {
-            if (existing.dataDefinition == link.dataDefinition) {
+            if (existing.dataDefinition == link.dataDefinition && existing.connectionType == link.connectionType) {
                 return;
             }
         }
@@ -543,13 +543,21 @@ namespace {
             const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
             if (descriptor.isModelDataDefinitionReference) {
                 appendReferencedDataDefinition(control->getReferencedModelDataDefinition());
+                // A model-object reference is an association boundary. Its own controls
+                // are visited with that object as the origin, not with this owner.
+                continue;
             }
 
             recursionPath->insert(control);
             if (descriptor.supportsListEditor && descriptor.isClass) {
                 const int itemCount = static_cast<int>(descriptor.choices.size());
                 for (int index = 0; index < itemCount; ++index) {
-                    appendReferencedDataDefinition(control->getListElementModelDataDefinition(index));
+                    if (auto* element = control->getListElementModelDataDefinition(index)) {
+                        appendReferencedDataDefinition(element);
+                        continue;
+                    }
+                    // Inline helper objects (requests, queue selectors, etc.) belong
+                    // to this owner, so keep traversing their controls.
                     collectPropertyReferencedLayoutLinks(
                         control->getChildSimulationControls(index),
                         dataDefinitionMap,
@@ -1173,11 +1181,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 gdd,
                 GraphicalDiagramConnection::ConnectionType::ATTACHED};
             if (editable) {
-                upperLinks.append(link);
+                appendUniqueLayoutLink(link, &upperLinks);
             } else if (category == DataDefinitionDisplayCategory::Statistics) {
-                lowerStatisticsLinks.append(link);
+                appendUniqueLayoutLink(link, &lowerStatisticsLinks);
             } else {
-                lowerSharedLinks.append(link);
+                appendUniqueLayoutLink(link, &lowerSharedLinks);
             }
         }
 
@@ -1200,11 +1208,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 gdd,
                 GraphicalDiagramConnection::ConnectionType::INTERNAL};
             if (editable) {
-                upperLinks.append(link);
+                appendUniqueLayoutLink(link, &upperLinks);
             } else if (category == DataDefinitionDisplayCategory::Statistics) {
-                lowerStatisticsLinks.append(link);
+                appendUniqueLayoutLink(link, &lowerStatisticsLinks);
             } else {
-                lowerSharedLinks.append(link);
+                appendUniqueLayoutLink(link, &lowerSharedLinks);
             }
         }
 
@@ -1277,11 +1285,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             const DataDefinitionLayoutLink link{attachedData.second,
                                                 childGraphicalDefinition,
                                                 GraphicalDiagramConnection::ConnectionType::ATTACHED};
-            childLinks.append(link);
+            appendUniqueLayoutLink(link, &childLinks);
             if (category == DataDefinitionDisplayCategory::Statistics) {
-                lowerStatisticsChildLinks.append(link);
+                appendUniqueLayoutLink(link, &lowerStatisticsChildLinks);
             } else {
-                lowerSharedChildLinks.append(link);
+                appendUniqueLayoutLink(link, &lowerSharedChildLinks);
             }
         }
 
@@ -1298,11 +1306,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             const DataDefinitionLayoutLink link{internalData.second,
                                                 childGraphicalDefinition,
                                                 GraphicalDiagramConnection::ConnectionType::INTERNAL};
-            childLinks.append(link);
+            appendUniqueLayoutLink(link, &childLinks);
             if (category == DataDefinitionDisplayCategory::Statistics) {
-                lowerStatisticsChildLinks.append(link);
+                appendUniqueLayoutLink(link, &lowerStatisticsChildLinks);
             } else {
-                lowerSharedChildLinks.append(link);
+                appendUniqueLayoutLink(link, &lowerSharedChildLinks);
             }
         }
 
