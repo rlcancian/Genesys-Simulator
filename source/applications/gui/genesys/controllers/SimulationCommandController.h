@@ -37,7 +37,8 @@ public:
         const std::function<bool()>& setSimulationModelBasedOnText,
         const std::function<void()>& prepareNewSimulationOutputs,
         const std::function<bool()>& wasModelTabSelected,
-        const std::function<void()>& showTracesForNewSimulation);
+        const std::function<void()>& showTracesForNewSimulation,
+        const std::function<bool()>& animationsEnabled);
 
     /** @brief Delegates the start simulation command flow. */
     void onActionSimulationStartTriggered(bool modelChecked) const;
@@ -59,6 +60,7 @@ private:
     std::function<void()> _prepareNewSimulationOutputs;
     std::function<bool()> _wasModelTabSelected;
     std::function<void()> _showTracesForNewSimulation;
+    std::function<bool()> _animationsEnabled;
 };
 
 #endif // SIMULATIONCOMMANDCONTROLLER_H

@@ -471,6 +471,44 @@ TEST(SimulationEventController, StartPauseResumeAndEndKeepAnimationLifecycleCons
     EXPECT_FALSE(AnimationTransition::isRunning());
 }
 
+TEST(SimulationEventController, ResumeWithAnimationsDisabledDestroysPausedTransitionsWithoutRestarting) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    QLabel replicationLabel;
+    QProgressBar progressBar;
+    QTableWidget eventsTable;
+    QTableWidget entitiesTable;
+    QTableWidget variablesTable;
+    QTextEdit simulationText;
+    QTextEdit reportsText;
+    QTabWidget centralTabs;
+    QAction graphicalSimulation;
+    QAction animationsEnabled;
+    animationsEnabled.setCheckable(true);
+    animationsEnabled.setChecked(false);
+    bool modelChecked = true;
+    SimulationEventController controller(
+        &simulator, graphicsView.getScene(), &graphicsView, &replicationLabel, &progressBar,
+        &eventsTable, &entitiesTable, &variablesTable, &simulationText, &reportsText,
+        &centralTabs, &graphicalSimulation, &animationsEnabled, &modelChecked, 0,
+        SimulationEventController::Callbacks{[]() {}, {}, {}, {}, {}});
+
+    auto* pausedTransitions = new QList<AnimationTransition*>();
+    pausedTransitions->append(new AnimationTransition(nullptr, nullptr, nullptr, false));
+    graphicsView.getScene()->getAnimationPaused()->insert(nullptr, pausedTransitions);
+    AnimationTransition::setRunning(true);
+    AnimationTransition::setPause(true);
+
+    controller.onSimulationResumeHandler(nullptr);
+
+    EXPECT_TRUE(graphicsView.getScene()->getAnimationPaused()->isEmpty());
+    EXPECT_FALSE(AnimationTransition::isRunning());
+    EXPECT_FALSE(AnimationTransition::isPaused());
+}
+
 TEST(SimulationEventController, RealSimulationCanPauseStepResumeAndRefreshReplications) {
     class EventBridge {
     public:

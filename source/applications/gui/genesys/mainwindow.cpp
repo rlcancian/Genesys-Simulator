@@ -534,7 +534,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         [this]() {
             ui->tabWidgetCentral->setCurrentWidget(ui->tabCentralSimulation);
             ui->tabWidgetSimulation->setCurrentWidget(ui->tabDebugTraces);
-        });
+        },
+        [this]() { return ui->actionAnimation == nullptr || ui->actionAnimation->isChecked(); });
     // Initialize the Phase 7 model-lifecycle controller after simulator/UI/callback dependencies are ready.
     _modelLifecycleController = std::make_unique<ModelLifecycleController>(
         this,

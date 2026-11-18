@@ -601,6 +601,15 @@ void MainWindow::on_actionAnimation_triggered()
         ui->actionActivateGraphicalSimulation->setChecked(false);
         on_actionActivateGraphicalSimulation_triggered();
     }
+    if (!enabled) {
+        // A paused simulation can retain transitions outside the active list.
+        // Destroy them while animation is disabled so Resume cannot restart stale objects.
+        AnimationTransition::setPause(false);
+        AnimationTransition::setRunning(false);
+        if (ModelGraphicsScene* scene = myScene()) {
+            scene->clearAnimationsTransition();
+        }
+    }
     _actualizeActions();
 }
 

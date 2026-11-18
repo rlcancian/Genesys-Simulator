@@ -13,7 +13,8 @@ SimulationCommandController::SimulationCommandController(
     const std::function<bool()>& setSimulationModelBasedOnText,
     const std::function<void()>& prepareNewSimulationOutputs,
     const std::function<bool()>& wasModelTabSelected,
-    const std::function<void()>& showTracesForNewSimulation)
+    const std::function<void()>& showTracesForNewSimulation,
+    const std::function<bool()>& animationsEnabled)
     : _simulationController(simulationController),
       _insertCommandInConsole(insertCommandInConsole),
       _actualizeActions(actualizeActions),
@@ -21,7 +22,8 @@ SimulationCommandController::SimulationCommandController(
       _setSimulationModelBasedOnText(setSimulationModelBasedOnText),
       _prepareNewSimulationOutputs(prepareNewSimulationOutputs),
       _wasModelTabSelected(wasModelTabSelected),
-      _showTracesForNewSimulation(showTracesForNewSimulation) {
+      _showTracesForNewSimulation(showTracesForNewSimulation),
+      _animationsEnabled(animationsEnabled) {
 }
 
 // Move simulation start orchestration into the dedicated Phase 8 controller.
@@ -48,9 +50,9 @@ void SimulationCommandController::onActionSimulationStartTriggered(bool modelChe
         _prepareNewSimulationOutputs();
     }
 
-    // Log static animation runtime flags applied by the start action.
-    qInfo() << "GUI SimulationCommand start setRunning=true setPause=false";
-    AnimationTransition::setRunning(true);
+    const bool animationsEnabled = !_animationsEnabled || _animationsEnabled();
+    qInfo() << "GUI SimulationCommand start setRunning=" << animationsEnabled << "setPause=false";
+    AnimationTransition::setRunning(animationsEnabled);
     AnimationTransition::setPause(false);
     _insertCommandInConsole("start");
     simulation->start();
@@ -86,9 +88,9 @@ void SimulationCommandController::onActionSimulationStepTriggered(bool modelChec
         _prepareNewSimulationOutputs();
     }
 
-    // Log static animation runtime flags applied by the step action.
-    qInfo() << "GUI SimulationCommand step setRunning=true setPause=false";
-    AnimationTransition::setRunning(true);
+    const bool animationsEnabled = !_animationsEnabled || _animationsEnabled();
+    qInfo() << "GUI SimulationCommand step setRunning=" << animationsEnabled << "setPause=false";
+    AnimationTransition::setRunning(animationsEnabled);
     AnimationTransition::setPause(false);
     _insertCommandInConsole("step");
     simulation->step();
@@ -136,9 +138,10 @@ void SimulationCommandController::onActionSimulationResumeTriggered(bool modelCh
         return;
     }
 
-    // Log static animation runtime flags applied by the resume action.
-    qInfo() << "GUI SimulationCommand resume setRunning=true setPause=false";
-    AnimationTransition::setRunning(true);
+    // Resume must respect a runtime animation disable performed while paused.
+    const bool animationsEnabled = !_animationsEnabled || _animationsEnabled();
+    qInfo() << "GUI SimulationCommand resume setRunning=" << animationsEnabled << "setPause=false";
+    AnimationTransition::setRunning(animationsEnabled);
     AnimationTransition::setPause(false);
 
     _insertCommandInConsole("resume");
