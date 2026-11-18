@@ -43,3 +43,12 @@ ctest --preset tests-smoke --output-on-failure
 Relevant test files are `source/tests/unit/test_parser_expressions.cpp` and `test_gui_expression_builder.cpp`. The GUI suite exercises valid/invalid text, catalog entries, read/write metadata, Cancel and a committed Delay expression in an offscreen Qt event loop. Re-run the existing Property Editor regression suite to detect changes to focus, specialized editor dispatch, persistence, and undo/redo.
 
 **Important:** when changing grammar or lexer sources, verify the `GENESYS_PARSER_REGENERATE` build option with compatible Bison/Flex versions and compare the regenerated artifacts with the checked-in parser/scanner. The two representations currently implement an equivalent syntax-only semantic guard by different source forms; byte-for-byte equality is not claimed. Record the tool versions and build results. Confirm the final-head tests, Doxygen impact, generated PDF documentation and feature behavior before merging.
+
+### Inline editing remains available
+
+`ParserExpression` adds an optional `Build expression...` action; it does not own
+editing exclusively. Editable expression strings use the ordinary commit-aware
+inline String editor as well. Transient text (including incomplete expressions)
+is not syntax-gated by this integration. Only dedicated `SourceCodeString` and
+`CodeEditor` workflows suppress inline editing. Both paths reuse the same value
+application and notification mechanism, and read-only guards apply to both.

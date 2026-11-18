@@ -13,6 +13,7 @@
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "kernel/simulator/PluginManager.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -24,6 +25,7 @@
 #include <QEventLoop>
 #include <QKeyEvent>
 #include <QPlainTextEdit>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QTimer>
 #include <QTemporaryDir>
@@ -64,14 +66,14 @@ TEST(ExpressionBuilderCatalogTest, EveryExecutableExampleHasValidOrContextDepend
 
 
 namespace {
-QtBrowserItem* findExpressionProperty(const QList<QtBrowserItem*>& items) {
+QtBrowserItem* findExpressionProperty(const QList<QtBrowserItem*>& items, const QString& name = "DelayExpression") {
     for (QtBrowserItem* item : items) {
         if (item != nullptr && item->property() != nullptr &&
-            item->property()->propertyName() == QStringLiteral("DelayExpression")) {
+            item->property()->propertyName() == name) {
             return item;
         }
         if (item != nullptr) {
-            if (auto* child = findExpressionProperty(item->children())) return child;
+            if (auto* child = findExpressionProperty(item->children(), name)) return child;
         }
     }
     return nullptr;
@@ -359,4 +361,62 @@ TEST(ExpressionBuilderPropertyTest, CommittedExpressionSurvivesSaveAndReload) {
     ASSERT_NE(restored, nullptr);
     EXPECT_EQ(restored->delayExpression(), expected);
     EXPECT_EQ(restored->delayTimeUnit(), Util::TimeUnit::minute);
+}
+
+TEST(ExpressionBuilderPropertyTest, ParserExpressionAllowsInlineCommitWithoutSyntaxGate) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    auto* model = simulator.getModelManager()->newModel();
+    auto* delay = new Delay(model, "InlineExpressionDelay");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    int notifications = 0;
+    browser.setModelChangedCallback([&]() { ++notifications; });
+    showEditableDelay(browser, *delay);
+    for (const QString text : {QString("2 +"), QString("2 + 3")}) {
+        auto* item = findExpressionProperty(browser.topLevelItems());
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        QCoreApplication::processEvents();
+        auto* editor = browser.findChild<QLineEdit*>();
+        ASSERT_NE(editor, nullptr);
+        const auto before = delay->delayExpression();
+        editor->setFocus();
+        editor->selectAll();
+        editor->setText(text);
+        EXPECT_EQ(delay->delayExpression(), before);
+        QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(editor, &enter);
+        QKeyEvent release(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(editor, &release);
+        for (int i = 0; i < 8; ++i) QCoreApplication::processEvents();
+        EXPECT_EQ(delay->delayExpression(), text.toStdString());
+    }
+    EXPECT_EQ(notifications, 2);
+    QTemporaryDir dir;
+    ASSERT_TRUE(model->save(dir.filePath("inline.gen").toStdString()));
+    Simulator restored;
+    restored.getPluginManager()->autoInsertPlugins();
+    ASSERT_TRUE(restored.getModelManager()->loadModel(dir.filePath("inline.gen").toStdString()));
+    auto* loaded = dynamic_cast<Delay*>(restored.getModelManager()->current()->getComponentManager()->find("InlineExpressionDelay"));
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->delayExpression(), "2 + 3");
+}
+
+TEST(ExpressionBuilderPropertyTest, ReadonlyStringStillRejectsInlineCommit) {
+    Simulator simulator;
+    auto* model = simulator.getModelManager()->newModel();
+    Queue delay(model, "ReadonlyQueue");
+    const auto original = delay.getName();
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, &delay, {}, {});
+    QCoreApplication::processEvents();
+    auto* item = findExpressionProperty(browser.topLevelItems(), "Name");
+    ASSERT_NE(item, nullptr);
+    EXPECT_FALSE(item->property()->isEnabled());
+    ASSERT_TRUE(QMetaObject::invokeMethod(&browser, "onVariantEditorCommitted", Qt::DirectConnection,
+        Q_ARG(QtProperty*, item->property()), Q_ARG(QVariant, QVariant("2 + 3"))));
+    EXPECT_EQ(delay.getName(), original);
 }

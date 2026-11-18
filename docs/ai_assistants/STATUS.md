@@ -368,3 +368,9 @@ single graphical selection. See
 Shared Classic/Organic caption layout wraps Label by bold font metrics, measures
 all lines, and proportionally fits overflow without discarding content or changing
 item geometry. See [validation](history/evidence/2026/11/GUI_LABEL_WRAPPING_20261117.md).
+
+### Optional expression editing — 2026-11-17
+
+Editable ParserExpression strings retain inline commit and optional Build expression
+menu action. Dedicated code editors retain exclusive workflows. Focused Qt regression:
+16/16 PASS; [evidence](history/evidence/2026/11/INLINE_EXPRESSIONS_20261117.md).

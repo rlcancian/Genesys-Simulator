@@ -62,6 +62,12 @@
 #include "kernel/simulator/Simulator.h"
 
 namespace {
+// Code editors own their editing workflow; the expression builder is optional.
+bool requiresDedicatedEditor(const GenesysPropertyDescriptor& desc) {
+    return desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || desc.editorHint == SimulationControlEditorHint::CodeEditor;
+}
+
 class ListAwareEnumEditorFactory final : public QtEnumEditorFactory {
 public:
     explicit ListAwareEnumEditorFactory(QObject* parent) : QtEnumEditorFactory(parent) {}
@@ -453,7 +459,7 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
         });
         commitFactory->setEditorCreationFilter([this](QtProperty* property) {
             const auto binding = _bindings.find(property);
-            return binding == _bindings.end() || !_hasSpecializedEditor(binding.value().descriptor);
+            return binding == _bindings.end() || !requiresDedicatedEditor(binding.value().descriptor);
         });
         _variantFactory = commitFactory;
     }
@@ -970,7 +976,7 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
     QtVariantProperty* property = _variantManager->addProperty(variantType, name);
     property->setValue(_toVariant(desc));
 
-    // Specialized editors stay enabled for selection and shortcuts, but their inline widget is suppressed by the factory.
+    // Only dedicated code editors suppress the inline widget; expression building is optional.
     property->setEnabled(_isKernelEditingEnabled(desc));
 
     // Keep specialized editors discoverable while preserving the generic property browser flow.
@@ -3024,7 +3030,7 @@ bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) 
         return false;
     }
 
-    if (binding.descriptor.supportsInlineExpansion || _hasSpecializedEditor(binding.descriptor)) {
+    if (binding.descriptor.supportsInlineExpansion || requiresDedicatedEditor(binding.descriptor)) {
         return false;
     }
 
@@ -3069,7 +3075,7 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
     }
 
     if (binding.descriptor.supportsInlineExpansion
-        || (_hasSpecializedEditor(binding.descriptor) && !specializedEditorCommit)
+        || (requiresDedicatedEditor(binding.descriptor) && !specializedEditorCommit)
         || binding.descriptor.kind == GenesysPropertyKind::Enum
         || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
         return false;

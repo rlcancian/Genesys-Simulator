@@ -101,3 +101,6 @@ Append or amend one row only after a material status change. After merge, use th
 - 2026-11-17: Shared renderer supports multiline primary labels, with measured
   height and proportional overflow fitting; focused layout/QImage tests and manual
   updated. Evidence: `evidence/2026/11/GUI_LABEL_WRAPPING_20261117.md`.
+- 2026-11-17: Restored inline String editing for ParserExpression properties by
+  separating optional specialized actions from dedicated code-editor ownership;
+  focused Qt tests 16/16 PASS. Evidence: `evidence/2026/11/INLINE_EXPRESSIONS_20261117.md`.
