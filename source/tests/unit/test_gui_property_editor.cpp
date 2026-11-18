@@ -267,6 +267,89 @@ void commitTextWithEnter(QLineEdit* lineEdit, const QString& text) {
     drainGuiEvents();
 }
 
+TEST(CreatePropertyEditor, ExposesEditableMaxCreationsExpression) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Create create(model, "CreateMaxCreationsEditor");
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &create);
+
+    QtBrowserItem* maxCreations = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("MaxCreations"));
+    ASSERT_NE(maxCreations, nullptr);
+    browser.setCurrentItem(maxCreations);
+    browser.editItem(maxCreations);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("2 + 8"));
+    EXPECT_EQ(create.getMaxCreations(), "2 + 8");
+}
+
+TEST(MainWindowSimulationNavigation, StartAndStepFromModelShowSimulationTraces) {
+    for (const char* slot : {"on_actionSimulationStart_triggered", "on_actionSimulationStep_triggered"}) {
+        MainWindow window;
+        window.show();
+        ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+        drainGuiEvents();
+        auto* scene = window.myScene();
+        ASSERT_NE(scene, nullptr);
+        auto* simulator = scene->getSimulator();
+        auto* model = simulator->getModelManager()->current();
+        auto* manager = simulator->getPluginManager();
+        auto* create = manager->newInstance<Create>(model, "NavigationCreate");
+        auto* dispose = manager->newInstance<Dispose>(model, "NavigationDispose");
+        auto* entityType = new EntityType(model, "NavigationEntity");
+        ASSERT_NE(create, nullptr);
+        ASSERT_NE(dispose, nullptr);
+        create->setEntityType(entityType);
+        create->setMaxCreations(1);
+        create->setTimeBetweenCreationsExpression("1");
+        create->connectTo(dispose);
+        model->getSimulation()->setReplicationLength(2.0);
+
+        auto* central = window.findChild<QTabWidget*>("tabWidgetCentral");
+        auto* simulationTabs = window.findChild<QTabWidget*>("tabWidgetSimulation");
+        auto* modelTab = window.findChild<QWidget*>("tabCentralModel");
+        auto* simulationTab = window.findChild<QWidget*>("tabCentralSimulation");
+        auto* tracesTab = window.findChild<QWidget*>("tabDebugTraces");
+        ASSERT_NE(central, nullptr);
+        ASSERT_NE(simulationTabs, nullptr);
+        ASSERT_NE(modelTab, nullptr);
+        ASSERT_NE(simulationTab, nullptr);
+        ASSERT_NE(tracesTab, nullptr);
+        central->setCurrentWidget(modelTab);
+        simulationTabs->setCurrentIndex(0);
+        ASSERT_EQ(central->currentWidget(), modelTab);
+
+        ASSERT_TRUE(QMetaObject::invokeMethod(&window, slot, Qt::DirectConnection));
+        drainGuiEvents();
+        EXPECT_EQ(central->currentWidget(), simulationTab) << central->currentWidget()->objectName().toStdString();
+        EXPECT_EQ(simulationTabs->currentWidget(), tracesTab);
+    }
+}
+
+TEST(MainWindowSimulationNavigation, PreservesNonModelNavigation) {
+    MainWindow window;
+    window.show();
+    auto* central = window.findChild<QTabWidget*>("tabWidgetCentral");
+    auto* simulationTabs = window.findChild<QTabWidget*>("tabWidgetSimulation");
+    auto* reportsTab = window.findChild<QWidget*>("tabCentralWidget");
+    ASSERT_NE(central, nullptr);
+    ASSERT_NE(simulationTabs, nullptr);
+    ASSERT_NE(reportsTab, nullptr);
+    central->setCurrentWidget(reportsTab);
+    simulationTabs->setCurrentIndex(1);
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionSimulationStart_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+    EXPECT_EQ(central->currentWidget(), reportsTab);
+    EXPECT_EQ(simulationTabs->currentIndex(), 1);
+}
+
 TEST(EFSMStatePropertyEditor, ExposesAndEditsStateExpressionsAndFinalFlag) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
