@@ -923,6 +923,10 @@ public:
         _createInternalAndAttachedData();
     }
 
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
     Counter* NumberOutProbe() const {
         return _numberOut;
     }
@@ -939,6 +943,56 @@ static void DrainFutureEvents(Model* model) {
         }
         delete event;
     }
+}
+
+TEST(SimulatorRuntimeTest, CreateHonorsMaxCreationsForInitialAndPartialArrivalBatches) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EntityType entityType(model, "CreateLimitEntity");
+    CreateProbe create(model, "CreateLimit");
+    CollectorSinkComponentProbe sink(model, "CreateLimitSink");
+    create.setEntityType(&entityType);
+    create.setReportStatistics(false);
+    create.setEntitiesPerCreation(3);
+    create.setMaxCreations(10);
+    create.setTimeBetweenCreationsExpression("1");
+    create.connectTo(&sink);
+
+    create.InitBetweenReplicationsProbe();
+    ASSERT_EQ(model->getFutureEvents()->size(), 3u);
+    DrainFutureEvents(model);
+
+    EXPECT_EQ(create.getEntitiesCreated(), 10u);
+    EXPECT_EQ(sink.ReceivedEntities().size(), 10u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
+TEST(SimulatorRuntimeTest, CreateSchedulesFiniteZeroIntervalArrivalsAndResetsForNextReplication) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EntityType entityType(model, "CreateZeroIntervalEntity");
+    CreateProbe create(model, "CreateZeroInterval");
+    CollectorSinkComponentProbe sink(model, "CreateZeroIntervalSink");
+    create.setEntityType(&entityType);
+    create.setReportStatistics(false);
+    create.setEntitiesPerCreation(1);
+    create.setMaxCreations(4);
+    create.setTimeBetweenCreationsExpression("0");
+    create.connectTo(&sink);
+
+    create.InitBetweenReplicationsProbe();
+    DrainFutureEvents(model);
+    EXPECT_EQ(create.getEntitiesCreated(), 4u);
+    EXPECT_EQ(sink.ReceivedEntities().size(), 4u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+
+    create.InitBetweenReplicationsProbe();
+    DrainFutureEvents(model);
+    EXPECT_EQ(create.getEntitiesCreated(), 4u);
+    EXPECT_EQ(sink.ReceivedEntities().size(), 8u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
 }
 
 static std::string JoinTraceErrors(Model* model) {

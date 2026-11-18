@@ -75,7 +75,10 @@ protected:
 	virtual void _createInternalStatisticReporters() override;
 	virtual void _createEditableDataDefinitions() override;
 private:
-	double _lastArrival = -1.0;
+	// Number of entities still to dispatch from the logical arrival currently
+	// being processed.  Arrival time alone cannot identify a batch because a
+	// valid zero inter-arrival time produces consecutive arrivals at one time.
+	unsigned int _entitiesAwaitingCurrentArrivalDispatch = 0;
 private: // internal elements
 	Counter* _numberOut = nullptr; // internal modeldatum
 private: // attached elements

@@ -73,10 +73,16 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
     entity->setAttributeValue("Entity.ArrivalTime", tnow);
 	entity->setAttributeValue("Entity.Type", (double) entity->getEntityType()->getId());
 	//entity->setAttributeValue("Entity.Picture", 1);
-	double timeBetweenCreations, timeScale, newArrivalTime;
-	unsigned int _maxCreations = _parentModel->parseExpression(this->_maxCreationsExpression);
-	if (tnow != _lastArrival) {
-		_lastArrival = tnow;
+	if (_entitiesAwaitingCurrentArrivalDispatch > 0) {
+		--_entitiesAwaitingCurrentArrivalDispatch;
+	}
+	if (_entitiesAwaitingCurrentArrivalDispatch == 0) {
+		double timeBetweenCreations, timeScale, newArrivalTime;
+		const double parsedMaxCreations = _parentModel->parseExpression(this->_maxCreationsExpression);
+		const unsigned int maxCreations = parsedMaxCreations <= 0.0 ? 0u
+				: parsedMaxCreations >= static_cast<double>(std::numeric_limits<unsigned int>::max())
+					? std::numeric_limits<unsigned int>::max()
+					: static_cast<unsigned int>(parsedMaxCreations);
 		if (_timeBetweenCreationsExpression != "") {
 			timeBetweenCreations = _parentModel->parseExpression(_timeBetweenCreationsExpression);
 		} else if (_timeBetweenCreationsSchedule != nullptr) {
@@ -90,9 +96,12 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		timeScale = Util::TimeUnitConvert(this->_timeBetweenCreationsTimeUnit, _parentModel->getSimulation()->getReplicationBaseTimeUnit());
 		newArrivalTime = std::max<double>(tnow + timeBetweenCreations*timeScale, tnow); // force no time travel to past. Not sure if it should really be avoided
         // create new entities (to be sent to this component in future at time newArrivalTime
-        for (unsigned int i = 0; i<this->_entitiesPerCreation; i++) {
-			if (_entitiesCreatedSoFar < _maxCreations) {
-				_entitiesCreatedSoFar++;
+		const unsigned int remainingCreations = maxCreations > _entitiesCreatedSoFar
+				? maxCreations - _entitiesCreatedSoFar : 0u;
+		const unsigned int nextArrivalCreations = std::min(_entitiesPerCreation, remainingCreations);
+		_entitiesAwaitingCurrentArrivalDispatch = nextArrivalCreations;
+		for (unsigned int i = 0; i < nextArrivalCreations; i++) {
+			_entitiesCreatedSoFar++;
 				Entity* newEntity = _parentModel->createEntity(entity->getEntityType()->getName() + "_%", false);
 				newEntity->setEntityType(entity->getEntityType());
 				Event* newEvent = new Event(newArrivalTime, newEntity, this);
@@ -100,7 +109,6 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 				traceSimulation(this, "Arrival of "/*entity " + std::to_string(newEntity->entityNumber())*/ + newEntity->getName() + " scheduled for time " + std::to_string(newArrivalTime) + Util::StrTimeUnitShort(_parentModel->getSimulation()->getReplicationBaseTimeUnit()));
 			}
 		}
-	}
 	if (_reportStatistics)
 		_numberOut->incCountValue();
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
@@ -145,6 +153,7 @@ bool Create::_loadInstance(PersistenceRecord *fields) {
 
 void Create::_initBetweenReplications() {
 	SourceModelComponent::_initBetweenReplications();
+	_entitiesAwaitingCurrentArrivalDispatch = _entitiesCreatedSoFar;
 }
 
 void Create::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
