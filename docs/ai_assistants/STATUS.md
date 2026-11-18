@@ -374,3 +374,9 @@ item geometry. See [validation](history/evidence/2026/11/GUI_LABEL_WRAPPING_2026
 Editable ParserExpression strings retain inline commit and optional Build expression
 menu action. Dedicated code editors retain exclusive workflows. Focused Qt regression:
 16/16 PASS; [evidence](history/evidence/2026/11/INLINE_EXPRESSIONS_20261117.md).
+
+### Release runtime abort — 2026-11-17
+
+Over-release now produces a caught runtime diagnostic instead of terminating the
+application via assert. User-model inconsistency remains to diagnose from the
+model file. [Evidence](history/evidence/2026/11/RELEASE_ABORT_20261117.md).

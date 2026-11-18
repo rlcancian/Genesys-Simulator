@@ -23,6 +23,7 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "../../plugins/data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
@@ -11995,4 +11996,72 @@ TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {
     EXPECT_NE(generated.find("Delay_A->connectTo(Dispose_A, 0);"), std::string::npos);
     EXPECT_NE(generated.find("sim->setNumberOfReplications(7);"), std::string::npos);
     EXPECT_NE(generated.find("sim->setReplicationLength(42.000000, Util::TimeUnit::minute);"), std::string::npos);
+}
+
+namespace {
+class ReleaseDispatchProbe : public Release {
+public:
+    using Release::Release;
+    using Release::_onDispatchEvent;
+};
+}
+TEST(SimulatorRuntimeTest, ReleaseExcessQuantityReportsErrorWithoutChangingResource) {
+    Simulator simulator;
+    auto* model = simulator.getModelManager()->newModel();
+    auto* resource = new Resource(model, "OverReleaseResource");
+    ASSERT_TRUE(resource->seize(1));
+    auto* release = new ReleaseDispatchProbe(model, "InvalidRelease");
+    release->addReleaseRequests(new SeizableItem(resource, "2"));
+    auto* entity = model->createEntity("OverReleaseEntity", true);
+    try {
+        release->_onDispatchEvent(entity, 0);
+        FAIL() << "Expected runtime diagnostic";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string(error.what()).find("OverReleaseResource"), std::string::npos);
+        EXPECT_NE(std::string(error.what()).find("InvalidRelease"), std::string::npos);
+    }
+    EXPECT_EQ(resource->getNumberBusy(), 1u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
+TEST(SimulatorRuntimeTest, ReleaseValidQuantityStillReleasesAndRoutesEntity) {
+    Simulator simulator;
+    auto* model = simulator.getModelManager()->newModel();
+    auto* resource = new Resource(model, "ValidReleaseResource");
+    ASSERT_TRUE(resource->seize(1));
+    auto* release = new ReleaseDispatchProbe(model, "ValidRelease");
+    release->setReportStatistics(false);
+    auto* sink = new Dispose(model, "ReleaseSink");
+    release->getConnectionManager()->insert(sink);
+    release->addReleaseRequests(new SeizableItem(resource, "1"));
+    auto* entity = model->createEntity("ValidReleaseEntity", true);
+    EXPECT_NO_THROW(release->_onDispatchEvent(entity, 0));
+    EXPECT_EQ(resource->getNumberBusy(), 0u);
+    ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+    EXPECT_EQ(model->getFutureEvents()->front()->getComponent(), sink);
+    EXPECT_EQ(model->getFutureEvents()->front()->getEntity(), entity);
+}
+
+TEST(SimulatorRuntimeTest, SimulationReportsOverReleaseWithoutAbortingProcess) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    auto* model = simulator.getModelManager()->newModel();
+    auto* create = new Create(model, "OverReleaseSource");
+    create->setMaxCreations(1);
+    auto* release = new Release(model, "OverReleaseDuringSimulation");
+    auto* resource = new Resource(model, "UnseizedResource");
+    release->addReleaseRequests(new SeizableItem(resource, "1"));
+    auto* sink = new Dispose(model, "OverReleaseSink");
+    create->getConnectionManager()->insert(release);
+    release->getConnectionManager()->insert(sink);
+    model->getSimulation()->setReplicationLength(1.0, Util::TimeUnit::second);
+    ASSERT_TRUE(model->check());
+    EXPECT_NO_THROW(model->getSimulation()->start());
+    EXPECT_EQ(resource->getNumberBusy(), 0u);
+    bool found = false;
+    for (const auto& message : *model->getTracer()->errorMessages()->list()) {
+        if (message.find("Error executing component") != std::string::npos &&
+            message.find("OverReleaseDuringSimulation") != std::string::npos) found = true;
+    }
+    EXPECT_TRUE(found);
 }

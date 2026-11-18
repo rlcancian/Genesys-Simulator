@@ -104,3 +104,6 @@ Append or amend one row only after a material status change. After merge, use th
 - 2026-11-17: Restored inline String editing for ParserExpression properties by
   separating optional specialized actions from dedicated code-editor ownership;
   focused Qt tests 16/16 PASS. Evidence: `evidence/2026/11/INLINE_EXPRESSIONS_20261117.md`.
+- 2026-11-17: Replaced Release over-release assert with actionable runtime error;
+  regression tests cover invalid/valid dispatch and simulation error handling.
+  Evidence: `evidence/2026/11/RELEASE_ABORT_20261117.md`.

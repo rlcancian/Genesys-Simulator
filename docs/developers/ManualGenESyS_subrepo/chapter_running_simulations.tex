@@ -309,3 +309,12 @@ produced.
 Those limitations are not defects in the chapter. They are the boundary between
 what the current repository actually supports and what the manual should not
 overstate.
+
+\paragraph{Invalid resource release.}
+A Release request cannot release more units than the resource currently has busy.
+Such a request produces a runtime diagnostic identifying the Release, Resource,
+requested quantity and busy quantity, rather than aborting the application.
+Inspect the matching Seize and Release resource selections, quantities and model
+paths. The rejected request does not release units or forward its entity; the
+simulation's existing event-error handling remains in effect. Results from a run
+with runtime errors must not be interpreted as a successful model execution.

@@ -17,7 +17,7 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 //#include "kernel/simulator/Attribute.h"
-#include <assert.h>
+#include <stdexcept>
 #include <cmath>
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -221,8 +221,15 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 void Release::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	for (SeizableItem* seizable : *_releaseRequests->list()) {
 		Resource* resource = _getResourceFromSeizableItem(seizable, entity);
+        if (resource == nullptr) {
+            throw std::runtime_error("Release \"" + getName() + "\": request has no resolved Resource");
+        }
 		unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
-		assert(resource->getNumberBusy() >= quantity); // 202104 ops. maybe not anymore
+        if (resource->getNumberBusy() < quantity) {
+            throw std::runtime_error("Release \"" + getName() + "\": cannot release "
+                + std::to_string(quantity) + " units of Resource \"" + resource->getName()
+                + "\"; only " + std::to_string(resource->getNumberBusy()) + " units are busy");
+        }
 		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, entity->getName() + " releases " + std::to_string(quantity) + " units of resource \"" + resource->getName() + "\" seized on time " + std::to_string(resource->getLastTimeSeized()));
 		resource->release(quantity); //{releases and sets the 'LastTimeSeized'property}
 		if (_reportStatistics) {
