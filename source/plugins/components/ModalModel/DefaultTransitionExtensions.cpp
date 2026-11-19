@@ -67,15 +67,11 @@ bool EFSMTransition::isDefaultTransition() const {
 }
 
 bool EFSMTransition::canFire(Model* model, Entity* entity) const {
-	bool parentCanFire = DefaultNodeTransition::canFire(model, entity);
-	if (!parentCanFire) {
-		return false;
-	}
-	if (_probabilityExpression != "") {
-		double p = model->parseExpression(_probabilityExpression);
-		return p > 0.0;
-	}
-	return true;
+    // Guard-only predicate. The parent EFSMNetwork owns both the short-lived
+    // input-event frame and its seeded sampler, so it alone may apply event
+    // presence and optional Bernoulli probability after a successful guard.
+    // An unbound transition cannot invent an activation frame or RNG source.
+    return DefaultNodeTransition::canFire(model, entity);
 }
 
 void EFSMTransition::execute(Model* model, Entity* entity) const {
