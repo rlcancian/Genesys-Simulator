@@ -645,6 +645,80 @@ void editCpnPlaceCurrentMarking(const GuiExtensionRuntimeContext& context) {
     editCpnPlaceMarking(context, false);
 }
 
+bool canEditCpnArcInscription(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
+        && selectedArc(context) != nullptr;
+}
+
+void editCpnArcInscription(const GuiExtensionRuntimeContext& context) {
+    if (!canEditCpnArcInscription(context)) return;
+    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
+    CPNArc* arc = selectedArc(context);
+    if (network == nullptr || arc == nullptr) return;
+
+    QDialog dialog;
+    dialog.setWindowTitle(QObject::tr("CPN arc inscription — %1")
+        .arg(QString::fromStdString(arc->getName())));
+    dialog.resize(480, 360);
+    QVBoxLayout layout(&dialog);
+    auto* table = new QTableWidget(0, 2, &dialog);
+    table->setHorizontalHeaderLabels({QObject::tr("Color"), QObject::tr("Tokens per firing")});
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    layout.addWidget(table);
+    const auto addRow = [table](const QString& color, unsigned int count) {
+        const int row = table->rowCount();
+        table->insertRow(row);
+        table->setItem(row, 0, new QTableWidgetItem(color));
+        table->setItem(row, 1, new QTableWidgetItem(QString::number(count)));
+    };
+    for (const auto& [color, quantity] : arc->getInscriptions())
+        addRow(QString::fromStdString(color), quantity);
+
+    QHBoxLayout actions;
+    auto* add = new QPushButton(QObject::tr("Add color"), &dialog);
+    auto* remove = new QPushButton(QObject::tr("Remove selected"), &dialog);
+    actions.addWidget(add);
+    actions.addWidget(remove);
+    layout.addLayout(&actions);
+    QObject::connect(add, &QPushButton::clicked, &dialog,
+                     [addRow]() { addRow(QString(), 1u); });
+    QObject::connect(remove, &QPushButton::clicked, &dialog, [table]() {
+        if (table->currentRow() >= 0) table->removeRow(table->currentRow());
+    });
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout.addWidget(buttons);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, [&]() {
+        std::map<std::string, unsigned int> inscription;
+        for (int row = 0; row < table->rowCount(); ++row) {
+            const auto* colorItem = table->item(row, 0);
+            const auto* quantityItem = table->item(row, 1);
+            const QString color = colorItem != nullptr ? colorItem->text().trimmed() : QString();
+            const QByteArray numeric = quantityItem != nullptr
+                ? quantityItem->text().trimmed().toLatin1() : QByteArray();
+            unsigned int value = 0u;
+            const auto [end, ec] = std::from_chars(
+                numeric.constData(), numeric.constData() + numeric.size(), value);
+            if (color.isEmpty() || color.contains(QLatin1Char(';')) || color.contains(QLatin1Char('='))
+                || ec != std::errc{} || end != numeric.constData() + numeric.size()
+                || value == 0u || !inscription.emplace(color.toStdString(), value).second) {
+                QMessageBox::warning(&dialog, QObject::tr("Invalid arc inscription"),
+                    QObject::tr("Use unique colors and strictly positive integer quantities."));
+                return;
+            }
+        }
+        if (inscription != arc->getInscriptions()) {
+            context.graphicsScene->getUndoStack()->push(
+                new EditCpnArcInscriptionUndoCommand(network, arc, context.graphicsScene,
+                                                       std::move(inscription)));
+        }
+        dialog.accept();
+    });
+    dialog.exec();
+}
+
 void resetCpnPlaceToInitialMarking(const GuiExtensionRuntimeContext& context) {
     if (!canEditCpnPlaceMarking(context)) return;
     auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
@@ -1071,6 +1145,18 @@ public:
         editCurrentMarking.isEnabled = canEditCpnPlaceMarking;
         editCurrentMarking.trigger = editCpnPlaceCurrentMarking;
         registry->addAction(std::move(editCurrentMarking));
+
+        GuiActionContribution editArcInscription;
+        editArcInscription.id = "modal.cpn.edit-arc-inscription";
+        editArcInscription.text = "Edit Selected CPN Arc Inscription...";
+        editArcInscription.menuPath = "Model";
+        editArcInscription.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        editArcInscription.isEnabled = canEditCpnArcInscription;
+        editArcInscription.trigger = editCpnArcInscription;
+        registry->addAction(std::move(editArcInscription));
 
         GuiActionContribution resetMarking;
         resetMarking.id = "modal.cpn.reset-place-marking";
