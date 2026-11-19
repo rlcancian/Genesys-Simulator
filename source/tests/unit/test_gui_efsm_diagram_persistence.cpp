@@ -620,6 +620,25 @@ TEST(GuiExtensionManager, ProcessSubmodelStillAcceptsProcessComponentDrops) {
     EXPECT_EQ(scene.getGraphicalModelComponents()->size(), 1);
 }
 
+TEST(NetworkBendDiagram, OwnedRouteLabelsTrackLiveBendGeometry) {
+    NetworkBendGraphicsItem edge(QStringLiteral("test.routing"), QStringLiteral("edge-0"));
+    edge.setGeometry(QPointF(20, 30), QPointF(250, 30), 0, 1, false, true);
+    edge.setRouteLabel(QStringLiteral("p=0.25"), QColor(35, 45, 60));
+    ASSERT_NE(edge.routeLabel(), nullptr);
+    EXPECT_EQ(edge.routeLabel()->parentItem(), &edge);
+    EXPECT_EQ(edge.routeLabel()->text(), QStringLiteral("p=0.25"));
+    const QPointF initial = edge.routeLabel()->pos();
+    EXPECT_EQ(initial, edge.handlePosition() + QPointF(5, -14));
+
+    edge.setManualBendPoint(QPointF(135, -95));
+    EXPECT_TRUE(edge.hasManualBendPoint());
+    EXPECT_NE(edge.routeLabel()->pos(), initial);
+    EXPECT_EQ(edge.routeLabel()->pos(), edge.handlePosition() + QPointF(5, -14));
+    edge.clearManualBendPoint();
+    EXPECT_FALSE(edge.hasManualBendPoint());
+    EXPECT_EQ(edge.routeLabel()->pos(), initial);
+}
+
 TEST(NetworkBendDiagram, GraphMarkovAndCpnBendsRoundTripThroughRegisteredCodecs) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -1640,14 +1659,14 @@ TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndo
     EXPECT_EQ(transition->getSource(), first);
     EXPECT_EQ(transition->getDestination(), second);
     EXPECT_DOUBLE_EQ(transition->getProbability(), 1.0);
-    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 4);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 3);
     undoStack.undo();
     EXPECT_TRUE(network.getTransitions()->empty());
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 2);
     undoStack.redo();
     ASSERT_EQ(network.getTransitions()->size(), 1u);
     EXPECT_EQ(network.getTransitions()->front(), transition);
-    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 4);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 3);
 
     auto actionById = [](const std::string& id) {
         GuiActionContribution result;
