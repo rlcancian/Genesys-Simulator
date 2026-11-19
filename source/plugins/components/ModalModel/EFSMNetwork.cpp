@@ -774,11 +774,15 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
         if (source == nullptr || destination == nullptr
             || _states->find(destination) == _states->list()->end()) return false;
 
-        // A postfire-driven Termination or Error transition must still execute
-        // the source state's exit action. Error handlers may produce recovery
-        // outputs; Termination outputs remain forbidden by model validation.
-        if (!source->getExitActionExpression().empty())
+        // A source exit action belongs to the *committed* transition. If a
+        // refinement has fired, delay the exit action until its postfire
+        // succeeds; otherwise an Error recovery could execute it twice.
+        // Keep the historical order for preemptive/no-refinement transitions.
+        const bool deferExitAction = didFire && firedRefinement != nullptr;
+        if (!deferExitAction && !source->getExitActionExpression().empty())
             _parentModel->parseExpression(source->getExitActionExpression());
+        // A postfire Error handler may still publish recovery outputs;
+        // a Termination handler cannot publish outputs by model contract.
         if (!afterPostfire || t->isErrorTransition()) {
             if (!t->getOutputExpression().empty() && getNumOutputPorts() > 0)
                 result.setPresent(0, _parentModel->parseExpression(t->getOutputExpression()));
@@ -801,6 +805,8 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
                 return false;
             }
         }
+        if (deferExitAction && !source->getExitActionExpression().empty())
+            _parentModel->parseExpression(source->getExitActionExpression());
         std::vector<std::pair<Variable*, double>> values;
         for (const auto& [variable, expr] : commitTargets)
             values.emplace_back(variable, _parentModel->parseExpression(expr));
