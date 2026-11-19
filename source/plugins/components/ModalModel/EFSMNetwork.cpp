@@ -79,8 +79,11 @@ void EFSMNetwork::addState(FSMState* state) {
 		// The containing Network is also this state's hierarchical editing context.
 		state->setModelLevel(static_cast<unsigned int>(getId()));
 		if (_initialState == nullptr || state->isInitialNode()) {
+			if (_initialState != nullptr && _initialState != state)
+				_initialState->setInitialNode(false);
 			_initialState = state;
 			_currentState = state;
+			state->setInitialNode(true);
 		}
 	}
 }
@@ -162,12 +165,14 @@ List<EFSMTransition*>* EFSMNetwork::getTransitions() const {
 }
 
 void EFSMNetwork::setInitialState(FSMState* state) {
+	if (state != nullptr)
+		addState(state);
 	_initialState = state;
 	_currentState = state;
-	if (state != nullptr) {
-		state->setInitialNode(true);
-		addState(state);
-	}
+	// The network pointer is authoritative: exactly the designated state
+	// is initial, including after a GUI edit, an undo, or clearing the state.
+	for (FSMState* candidate : *_states->list())
+		if (candidate != nullptr) candidate->setInitialNode(candidate == state);
 }
 
 FSMState* EFSMNetwork::getInitialState() const {
@@ -317,6 +322,10 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 		if (_currentState == nullptr) {
 			_currentState = _initialState;
 		}
+		// The serialized initial-state name is canonical; nested state flags
+		// may otherwise leave more than one Initial Node marked after loading.
+		for (FSMState* candidate : *_states->list())
+			if (candidate != nullptr) candidate->setInitialNode(candidate == _initialState);
 		_conflictPolicy = convertStringToConflictPolicy(fields->loadField("conflictPolicy", convertConflictPolicyToString(ConflictPolicy::DETERMINISTIC_PRIORITY)));
 	}
 	return res;
