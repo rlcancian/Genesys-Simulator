@@ -263,6 +263,38 @@ TEST(EFSMNetworkLifecycle, ErrorTransitionHandlesRefinementPostfireFailure) {
     EXPECT_EQ(refinement.postfired, 1);
 }
 
+TEST(EFSMNetworkLifecycle, PostfireFailureOverridesUncommittedOrdinaryTransition) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "PostfirePrecedence");
+    FSMState active(model, "Active");
+    FSMState normalTarget(model, "NormalTarget");
+    FSMState recovery(model, "Recovery");
+    RefinementLifecycleProbe refinement(model, "PostfireFailing");
+    active.setRefinementNetwork(&refinement);
+    refinement.throwsOnPostfire = true;
+    network.setInitialState(&active);
+    network.addState(&normalTarget);
+    network.addState(&recovery);
+    auto* ordinary = new EFSMTransition(&active, &normalTarget, "Normal");
+    ordinary->setGuardExpression("1");
+    ordinary->setOutputExpression("9");
+    network.addTransition(ordinary);
+    auto* failure = new EFSMTransition(&active, &recovery, "OnError");
+    failure->setErrorTransition(true);
+    failure->setGuardExpression("1");
+    network.addTransition(failure);
+
+    NetworkActivationFrame frame(network.getNumInputPorts());
+    const auto result = network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &recovery);
+    EXPECT_EQ(network.getLastTransition(), failure);
+    EXPECT_EQ(network.getLastRefinementError(), "postfire-boom");
+    EXPECT_EQ(refinement.fired, 1);
+    EXPECT_EQ(refinement.postfired, 1);
+    EXPECT_FALSE(result.isPresent(0)); // uncommitted output is not exposed
+}
+
 TEST(EFSMNetworkLifecycle, UnhandledRefinementExceptionPropagates) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
