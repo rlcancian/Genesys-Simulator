@@ -1104,6 +1104,10 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
             itemActions.push_back({ObjectListAction::Kind::MoveUp, ""});
             itemActions.push_back({ObjectListAction::Kind::MoveDown, ""});
         }
+        if (control->supportsListElementRemoval() && _isKernelEditingEnabled(desc)) {
+            itemChoices << QStringLiteral("Remover item");
+            itemActions.push_back({ObjectListAction::Kind::Remove, ""});
+        }
         _enumNames[elementGroup] = itemChoices;
         _objectListActions[elementGroup] = itemActions;
         _enumManager->setEnumNames(elementGroup, itemChoices);
@@ -2946,6 +2950,8 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
                 return _moveListItem(property, it.value().listElementIndex - 1);
             case ObjectListAction::Kind::MoveDown:
                 return _moveListItem(property, it.value().listElementIndex + 1);
+            case ObjectListAction::Kind::Remove:
+                return _removeListItem(property);
             case ObjectListAction::Kind::None:
                 return true;
         }
@@ -3001,6 +3007,61 @@ bool ObjectPropertyBrowser::_moveListItem(QtProperty* property, int destination)
     } else {
         apply(from, destination);
     }
+    return true;
+}
+
+bool ObjectPropertyBrowser::_removeListItem(QtProperty* property) {
+    if (isCommitPipelineBusy() || !_hasValidActiveBindingContext(property)) return false;
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) return false;
+    const Binding binding = it.value();
+    const int index = binding.listElementIndex;
+    if (!binding.isListItemAction || binding.control == nullptr
+        || !binding.control->supportsListElementRemoval()
+        || !_isKernelEditingEnabled(binding.descriptor)
+        || index < 0 || index >= static_cast<int>(binding.descriptor.choices.size())) {
+        return false;
+    }
+
+    SimulationControl* control = binding.control;
+    ModelDataDefinition* owner = binding.owner;
+    ModelGraphicsScene* scene = _graphicalItem != nullptr && _graphicalItem->scene() != nullptr
+        ? dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene()) : _modelScene.data();
+    QGraphicsItem* graphicalItem = dynamic_cast<QGraphicsItem*>(_graphicalObject.data());
+
+    try {
+        // The control removes only the selected pointer from its owner's list. The referenced
+        // ModelDataDefinition remains registered and owned by the model's DataManager.
+        control->removeListValueAt(index);
+    } catch (const std::exception& e) {
+        qWarning() << "[PropertyEditor] failed to remove list element:" << e.what();
+        _scheduleDeferredRebuild();
+        return false;
+    } catch (...) {
+        qWarning() << "[PropertyEditor] failed to remove list element: unknown error";
+        _scheduleDeferredRebuild();
+        return false;
+    }
+
+    if (owner != nullptr) {
+        ModelDataDefinition::CreateInternalData(owner);
+        std::string validationMessage;
+        ModelDataDefinition::Check(owner, validationMessage);
+    }
+    if (_guiExtensionManager != nullptr) {
+        _guiExtensionManager->reconcilePropertyListChange(owner, scene);
+    }
+    if (scene != nullptr) {
+        scene->update();
+        scene->notifyGraphicalModelChange(
+            GraphicalModelEvent::EventType::EDIT,
+            dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data()) != nullptr
+                ? GraphicalModelEvent::EventObjectType::COMPONENT
+                : GraphicalModelEvent::EventObjectType::DATADEFINITION,
+            graphicalItem);
+    }
+    _synchronizeGraphicalModelDataDefinitionsNow();
+    _notifyModelChangeApplied();
     return true;
 }
 
@@ -3460,15 +3521,19 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
         return;
     }
 
-    if (binding.isListItemAction && binding.control->supportsListElementMove() && _isKernelEditingEnabled(binding.descriptor)) {
+    if (binding.isListItemAction
+        && (binding.control->supportsListElementMove() || binding.control->supportsListElementRemoval())
+        && _isKernelEditingEnabled(binding.descriptor)) {
         QMenu menu(this);
-        QAction* up = menu.addAction(QStringLiteral("Mover para cima"));
-        QAction* down = menu.addAction(QStringLiteral("Mover para baixo"));
-        up->setEnabled(binding.listElementIndex > 0);
-        down->setEnabled(binding.listElementIndex + 1 < static_cast<int>(binding.descriptor.choices.size()));
+        QAction* up = binding.control->supportsListElementMove() ? menu.addAction(QStringLiteral("Mover para cima")) : nullptr;
+        QAction* down = binding.control->supportsListElementMove() ? menu.addAction(QStringLiteral("Mover para baixo")) : nullptr;
+        QAction* remove = binding.control->supportsListElementRemoval() ? menu.addAction(QStringLiteral("Remover item")) : nullptr;
+        if (up != nullptr) up->setEnabled(binding.listElementIndex > 0);
+        if (down != nullptr) down->setEnabled(binding.listElementIndex + 1 < static_cast<int>(binding.descriptor.choices.size()));
         QAction* selected = menu.exec(event->globalPos());
         if (selected == up) _moveListItem(item->property(), binding.listElementIndex - 1);
         else if (selected == down) _moveListItem(item->property(), binding.listElementIndex + 1);
+        else if (selected == remove) _removeListItem(item->property());
         return;
     }
 

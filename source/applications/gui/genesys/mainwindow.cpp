@@ -451,7 +451,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // set current tabs
     ui->tabWidgetCentral->setCurrentIndex(CONST.TabCentralModelIndex);
-    ui->tabWidgetModel->setCurrentIndex(CONST.TabModelSimLangIndex);
+    ui->tabWidgetModel->setCurrentIndex(CONST.TabModelDataDefinitionsIndex);
     ui->tabWidgetSimulation->setCurrentIndex(CONST.TabSimulationBreakpointsIndex);
     ui->tabWidgetReports->setCurrentIndex(CONST.TabReportReportIndex);
     {
@@ -461,6 +461,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         if (modelDiagramTabIndex >= 0) {
             ui->tabWidgetModel->setTabVisible(modelDiagramTabIndex, false);
         }
+        const int simLanguageTabIndex = ui->tabWidgetModel->indexOf(ui->tabModelSimLanguage);
+        if (simLanguageTabIndex >= 0) {
+            ui->tabWidgetModel->setTabVisible(simLanguageTabIndex, false);
+        }
+        const int cppTabIndex = ui->tabWidgetModel->indexOf(ui->tabModelCpp);
+        if (cppTabIndex >= 0) {
+            ui->tabWidgetModel->setTabVisible(cppTabIndex, false);
+        }
+        ui->tabWidgetModel->setCurrentWidget(ui->tabModelDataDefinitions);
     }
     //
     // adjust toolbars position and ranking
@@ -1040,6 +1049,11 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
                 QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
                 return false;
             }
+
+            // SimulLang is no longer refreshed during ordinary graphical edits. Generate the
+            // current kernel snapshot only because the user explicitly chose the .gen format.
+            _actualizeModelTextHasChanged(false);
+            _actualizeModelSimLanguage();
 
             const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
             const QString textFilename = baseFileName + ".gen";
@@ -1669,13 +1683,13 @@ void MainWindow::_rebuildViewDependentControllers() {
         propertyBox,
         [this]() {
             // A committed Property Editor change has already mutated the kernel model.
-            // Its generated SimulLang therefore supersedes any cached textual snapshot.
+            // Keep the text cache invalidated, but mark the graphical/kernel document dirty.
+            // SimulLang and C++ are hidden and are generated only on an explicit save/export.
             _actualizeModelTextHasChanged(false);
-            _actualizeModelSimLanguage();
+            setGraphicalModelHasChanged(true);
         },
         [this](bool force) { _actualizeModelComponents(force); },
         [this](bool force) { _actualizeModelDataDefinitions(force); },
-        [this]() { _actualizeModelCppCode(); },
         [this]() { return _createModelImage(); },
         [this]() { _actualizeTabPanes(); },
         [this]() { _actualizeActions(); });
@@ -1999,9 +2013,9 @@ void MainWindow::_actualizeTabPanes() {
             index = ui->tabWidgetModel->currentIndex();
             if (ui->tabWidgetModel->currentIndex() == CONST.TabModelDiagramIndex) {
                 _createModelImage();
-            } else if (index == CONST.TabModelSimLangIndex) {
+            } else if (index == CONST.TabModelSimLangIndex && ui->tabWidgetModel->isTabVisible(index)) {
                 this->_actualizeModelSimLanguage();
-            } else if (index == CONST.TabModelCppCodeIndex) {
+            } else if (index == CONST.TabModelCppCodeIndex && ui->tabWidgetModel->isTabVisible(index)) {
                 _actualizeModelCppCode();
             } else if (index == CONST.TabModelComponentsIndex) {
                 _actualizeModelComponents(true);

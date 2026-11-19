@@ -91,6 +91,7 @@
 #include <QString>
 #include <QTabWidget>
 #include <QTimer>
+#include <QTemporaryDir>
 #include <QUndoStack>
 
 namespace {
@@ -463,6 +464,88 @@ TEST(PropertyEditorLists, MovesSimpleAndObjectListItemsByPosition) {
     selectListItemAction(browser, "Assignments", "Item 0 - Entity.second", "Mover para baixo");
     EXPECT_EQ(assign.getAssignments()->getAtRank(0), first);
     EXPECT_EQ(assign.getAssignments()->getAtRank(1), second);
+}
+
+TEST(PropertyEditorLists, RemovesSetResourceAndQueueReferencesWithoutDeletingMembers) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* resourceSet = new Set(model, "EditableResourceSet");
+    auto* resource0 = new Resource(model, "EditableResource0");
+    auto* resource1 = new Resource(model, "EditableResource1");
+    auto* resource2 = new Resource(model, "EditableResource2");
+    resourceSet->addElementSet(resource0);
+    resourceSet->addElementSet(resource1);
+    resourceSet->addElementSet(resource2);
+
+    auto* queueSet = new Set(model, "EditableQueueSet");
+    auto* queue0 = new Queue(model, "EditableQueue0");
+    auto* queue1 = new Queue(model, "EditableQueue1");
+    auto* queue2 = new Queue(model, "EditableQueue2");
+    queueSet->addElementSet(queue0);
+    queueSet->addElementSet(queue1);
+    queueSet->addElementSet(queue2);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, resourceSet);
+    selectListItemAction(browser, "ElementSet", "Item 1 - EditableResource1", "Remover item");
+    ASSERT_EQ(resourceSet->getElementSet()->size(), 2u);
+    EXPECT_EQ(resourceSet->getElementSet()->getAtRank(0), resource0);
+    EXPECT_EQ(resourceSet->getElementSet()->getAtRank(1), resource2);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "EditableResource1"), resource1);
+
+    // Remove the first member, then the last remaining two members, including the singleton case.
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableResource0", "Remover item");
+    ASSERT_EQ(resourceSet->getElementSet()->size(), 1u);
+    EXPECT_EQ(resourceSet->getElementSet()->getAtRank(0), resource2);
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableResource2", "Remover item");
+    EXPECT_EQ(resourceSet->getElementSet()->size(), 0u);
+    resourceSet->addElementSet(resource1);
+    bindEditableKernelObject(browser, resourceSet);
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableResource1", "Remover item");
+    EXPECT_TRUE(resourceSet->getElementSet()->empty());
+
+    bindEditableKernelObject(browser, queueSet);
+    selectListItemAction(browser, "ElementSet", "Item 1 - EditableQueue1", "Remover item");
+    ASSERT_EQ(queueSet->getElementSet()->size(), 2u);
+    EXPECT_EQ(queueSet->getElementSet()->getAtRank(0), queue0);
+    EXPECT_EQ(queueSet->getElementSet()->getAtRank(1), queue2);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "EditableQueue1"), queue1);
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableQueue0", "Remover item");
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableQueue2", "Remover item");
+    EXPECT_EQ(queueSet->getElementSet()->size(), 0u);
+    queueSet->addElementSet(queue1);
+    bindEditableKernelObject(browser, queueSet);
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableQueue1", "Remover item");
+    EXPECT_TRUE(queueSet->getElementSet()->empty());
+
+    auto* roundTripSet = new Set(model, "EditableRoundTripSet");
+    auto* kept = new Resource(model, "EditableRoundTripKept");
+    auto* removed = new Resource(model, "EditableRoundTripRemoved");
+    roundTripSet->addElementSet(kept);
+    roundTripSet->addElementSet(removed);
+    bindEditableKernelObject(browser, roundTripSet);
+    selectListItemAction(browser, "ElementSet", "Item 1 - EditableRoundTripRemoved", "Remover item");
+    ASSERT_EQ(roundTripSet->getElementSet()->size(), 1u);
+
+    QTemporaryDir temporaryDirectory;
+    ASSERT_TRUE(temporaryDirectory.isValid());
+    const QString path = temporaryDirectory.filePath(QStringLiteral("set-removal-roundtrip.gen"));
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Simulator restored;
+    restored.getPluginManager()->autoInsertPlugins();
+    Model* loaded = restored.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedSet = dynamic_cast<Set*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<Set>(), "EditableRoundTripSet"));
+    ASSERT_NE(loadedSet, nullptr);
+    ASSERT_EQ(loadedSet->getElementSet()->size(), 1u);
+    EXPECT_EQ(loadedSet->getElementSet()->getAtRank(0)->getName(), "EditableRoundTripKept");
+    EXPECT_NE(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "EditableRoundTripRemoved"), nullptr);
 }
 
 TEST(PropertyEditorLists, ListItemActionsRespectBoundariesAndReadOnly) {
@@ -2567,7 +2650,7 @@ TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndK
 }
 
 
-TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTextView) {
+TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsDoNotSerializeHiddenTextViews) {
     MainWindow window;
     window.resize(900, 700);
     window.show();
@@ -2590,7 +2673,11 @@ TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTe
 
     QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
     ASSERT_NE(modelTabs, nullptr);
-    modelTabs->setCurrentIndex(0);
+    ASSERT_FALSE(modelTabs->isTabVisible(0));
+    ASSERT_FALSE(modelTabs->isTabVisible(1));
+    ASSERT_TRUE(modelTabs->isTabVisible(3));
+    ASSERT_TRUE(modelTabs->isTabVisible(4));
+    const QString unchangedText = window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"))->toPlainText();
     drainGuiEvents();
 
     QPlainTextEdit* editor =
@@ -2607,7 +2694,7 @@ TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTe
         GraphicalModelEvent::EventObjectType::DATADEFINITION,
         nullptr);
     drainGuiEvents();
-    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("GroProgram_SceneSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     model->getDataManager()->remove(program);
     scene->notifyGraphicalModelChange(
@@ -2615,7 +2702,7 @@ TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTe
         GraphicalModelEvent::EventObjectType::DATADEFINITION,
         nullptr);
     drainGuiEvents();
-    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("GroProgram_SceneSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
     delete program;
 
     Create* source = manager->newInstance<Create>(model, "Create_SceneSync");
@@ -2628,8 +2715,7 @@ TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTe
         GraphicalModelEvent::EventObjectType::COMPONENT,
         nullptr);
     drainGuiEvents();
-    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Create_SceneSync")));
-    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Dispose_SceneSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     source->getConnectionManager()->insert(destination);
     scene->notifyGraphicalModelChange(
@@ -2639,7 +2725,7 @@ TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTe
     drainGuiEvents();
     const QString destinationId =
         QStringLiteral("nextId=") + QString::number(destination->getId());
-    EXPECT_TRUE(editor->toPlainText().contains(destinationId));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     source->getConnectionManager()->removeAtPort(0);
     scene->notifyGraphicalModelChange(
@@ -2647,7 +2733,7 @@ TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTe
         GraphicalModelEvent::EventObjectType::CONNECTION,
         nullptr);
     drainGuiEvents();
-    EXPECT_FALSE(editor->toPlainText().contains(destinationId));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     model->getComponentManager()->remove(source);
     scene->notifyGraphicalModelChange(
@@ -2655,7 +2741,7 @@ TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsRefreshMainWindowTe
         GraphicalModelEvent::EventObjectType::COMPONENT,
         nullptr);
     drainGuiEvents();
-    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Create_SceneSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
     delete source;
 }
 
@@ -2694,6 +2780,74 @@ TEST(ModelLanguageSynchronizerRegression, VisualOnlySceneEventPreservesManualTex
     drainGuiEvents();
 
     EXPECT_EQ(editor->toPlainText(), manualText);
+}
+
+TEST(MainWindowPropertyChanges, MarkDocumentDirtyWithoutRefreshingOrSavingTextViews) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    Simulator* simulator = scene->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    PluginManager* manager = simulator->getPluginManager();
+    manager->autoInsertPlugins();
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+
+    QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
+    ASSERT_NE(modelTabs, nullptr);
+    ASSERT_FALSE(modelTabs->isTabVisible(0));
+    ASSERT_FALSE(modelTabs->isTabVisible(1));
+    ASSERT_TRUE(modelTabs->isTabVisible(3));
+    ASSERT_TRUE(modelTabs->isTabVisible(4));
+
+    auto* create = manager->newInstance<Create>(model, "PropertyDirtyCreate");
+    ASSERT_NE(create, nullptr);
+    ObjectPropertyBrowser* browser = window.findChild<ObjectPropertyBrowser*>(QStringLiteral("treeViewPropertyEditor"));
+    ASSERT_NE(browser, nullptr);
+    bindEditableKernelObject(*browser, create);
+
+    QTemporaryDir temporaryDirectory;
+    ASSERT_TRUE(temporaryDirectory.isValid());
+    const QString path = temporaryDirectory.filePath(QStringLiteral("property-edit-baseline.gen"));
+    ASSERT_TRUE(model->save(path.toStdString()));
+    QFile baselineFile(path);
+    ASSERT_TRUE(baselineFile.open(QIODevice::ReadOnly));
+    const QByteArray baseline = baselineFile.readAll();
+    baselineFile.close();
+    QPlainTextEdit* textEditor = window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(textEditor, nullptr);
+    const QString oldText = textEditor->toPlainText();
+
+    QtBrowserItem* maxCreations = findBrowserItemByName(browser->topLevelItems(), QStringLiteral("MaxCreations"));
+    ASSERT_NE(maxCreations, nullptr);
+    browser->setCurrentItem(maxCreations);
+    browser->editItem(maxCreations);
+    drainGuiEvents();
+    QLineEdit* editor = browser->findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("7"));
+
+    EXPECT_EQ(create->getMaxCreations(), "7");
+    EXPECT_TRUE(window.graphicalModelHasChanged());
+    EXPECT_EQ(textEditor->toPlainText(), oldText);
+    QFile afterEditFile(path);
+    ASSERT_TRUE(afterEditFile.open(QIODevice::ReadOnly));
+    EXPECT_EQ(afterEditFile.readAll(), baseline)
+        << "A property edit must not persist the existing model file";
+
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Simulator restored;
+    restored.getPluginManager()->autoInsertPlugins();
+    Model* loaded = restored.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedCreate = dynamic_cast<Create*>(loaded->getComponentManager()->find("PropertyDirtyCreate"));
+    ASSERT_NE(loadedCreate, nullptr);
+    EXPECT_EQ(loadedCreate->getMaxCreations(), "7");
 }
 
 TEST(ModelLanguageSynchronizerRegression, ModelTabsKeepManualTextIsolated) {
@@ -2742,7 +2896,7 @@ TEST(ModelLanguageSynchronizerRegression, ModelTabsKeepManualTextIsolated) {
     EXPECT_EQ(editor->toPlainText(), secondText);
 }
 
-TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoRefreshTextView) {
+TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoLeaveHiddenTextViewsUntouched) {
     MainWindow window;
     window.resize(900, 700);
     window.show();
@@ -2768,12 +2922,14 @@ TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoRefreshT
 
     QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
     ASSERT_NE(modelTabs, nullptr);
-    modelTabs->setCurrentIndex(0);
+    ASSERT_FALSE(modelTabs->isTabVisible(0));
+    ASSERT_FALSE(modelTabs->isTabVisible(1));
     drainGuiEvents();
 
     QPlainTextEdit* editor =
         window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
     ASSERT_NE(editor, nullptr);
+    const QString unchangedText = editor->toPlainText();
 
     Create* source = manager->newInstance<Create>(model, "Create_UndoSync");
     Dispose* destination = manager->newInstance<Dispose>(model, "Dispose_UndoSync");
@@ -2793,16 +2949,16 @@ TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoRefreshT
     ASSERT_NE(graphicalDestination, nullptr);
     drainGuiEvents();
 
-    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Create_UndoSync")));
-    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Dispose_UndoSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     undoStack->undo();
     drainGuiEvents();
-    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Dispose_UndoSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     undoStack->redo();
     drainGuiEvents();
-    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Dispose_UndoSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     const QList<GraphicalComponentPort*> sourcePorts = graphicalSource->getGraphicalOutputPorts();
     const QList<GraphicalComponentPort*> destinationPorts = graphicalDestination->getGraphicalInputPorts();
@@ -2816,17 +2972,17 @@ TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoRefreshT
     const QString destinationId =
         QStringLiteral("nextId=") + QString::number(destination->getId());
     EXPECT_EQ(source->getConnectionManager()->size(), 1u);
-    EXPECT_TRUE(editor->toPlainText().contains(destinationId));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     undoStack->undo();
     drainGuiEvents();
     EXPECT_EQ(source->getConnectionManager()->size(), 0u);
-    EXPECT_FALSE(editor->toPlainText().contains(destinationId));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     undoStack->redo();
     drainGuiEvents();
     EXPECT_EQ(source->getConnectionManager()->size(), 1u);
-    EXPECT_TRUE(editor->toPlainText().contains(destinationId));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     Create* deleted = manager->newInstance<Create>(model, "Create_DeleteUndoSync");
     ASSERT_NE(deleted, nullptr);
@@ -2836,21 +2992,21 @@ TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoRefreshT
         scene->addGraphicalModelComponent(deletedPlugin, deleted, QPointF(120.0, 320.0), Qt::blue, true);
     ASSERT_NE(graphicalDeleted, nullptr);
     drainGuiEvents();
-    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     QList<QGraphicsItem*> deleteItems;
     deleteItems.append(graphicalDeleted);
     undoStack->push(new DeleteUndoCommand(deleteItems, scene));
     drainGuiEvents();
-    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     undoStack->undo();
     drainGuiEvents();
-    EXPECT_TRUE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 
     undoStack->redo();
     drainGuiEvents();
-    EXPECT_FALSE(editor->toPlainText().contains(QStringLiteral("Create_DeleteUndoSync")));
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
 }
 
 TEST(ModelInspectorSelectionRegression, PopulatesHiddenTreesAndKeepsSelectionAcrossTabs) {

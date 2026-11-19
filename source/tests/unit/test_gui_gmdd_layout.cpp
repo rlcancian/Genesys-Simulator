@@ -977,13 +977,7 @@ TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsE
         &propertyList,
         &propertyEditorUi,
         &propertyCombo,
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-        {});
+        {}, {}, {}, {}, {}, {});
 
     queueGmdd->setSelected(true);
     controller.sceneSelectionChanged();
@@ -1026,7 +1020,7 @@ TEST(GuiGmddLayout, AssignVariableInitialValueIsEditableThroughPropertyEditorAnd
     std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
     std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
     PropertyEditorController controller(&browser, &graphicsView, &propertyEditor,
-        &propertyList, &propertyEditorUi, &propertyCombo, {}, {}, {}, {}, {}, {}, {});
+        &propertyList, &propertyEditorUi, &propertyCombo, {}, {}, {}, {}, {}, {});
     graphicalVariable->setSelected(true);
     controller.sceneSelectionChanged();
     QApplication::processEvents();
@@ -1109,7 +1103,7 @@ TEST(GuiGmddLayout, EFSMNetworkMemberSelectionEnablesStatePropertiesByIdentity) 
     std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
     PropertyEditorController controller(
         &propertyBrowser, &graphicsView, &propertyEditor, &propertyList,
-        &propertyEditorUi, &propertyCombo, {}, {}, {}, {}, {}, {}, {});
+        &propertyEditorUi, &propertyCombo, {}, {}, {}, {}, {}, {});
 
     graphicalState->setSelected(true);
     controller.sceneSelectionChanged();
@@ -1251,13 +1245,7 @@ TEST(GuiGmddLayout, ComponentLoadRestoresEditableAuxiliaryItemControlsAndResourc
         &propertyList,
         &propertyEditorUi,
         &propertyCombo,
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-        {});
+        {}, {}, {}, {}, {}, {});
     scene->clearSelection();
     loadedResourceGmdd->setSelected(true);
     controller.sceneSelectionChanged();

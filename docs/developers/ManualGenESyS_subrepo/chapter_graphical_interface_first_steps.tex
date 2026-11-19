@@ -182,12 +182,24 @@ The property editor is one of the most important tools in the GUI. It is through
 
 In practice, this means that the selection of an element in the graphics area or in a navigation tree tends to be associated with the display of corresponding properties. The next chapters, this mechanism will appear continuously, because almost every relevant modification of a model goes through some type of parameterization.
 
+For editable object lists, expand the list and use the item's action selector
+to reorder or remove a member. Removing a member removes only that association;
+the referenced Resource, Queue, or other data definition remains in the model.
+
 \subsection{Complementary tabs and views}
 \label{subsec:cap3_abas_visoes_complementares}
 
 The presence of central tabs and panels organized by tabs shows that the GUI was built to support multiple perspectives on the same model. Some of these perspectives are visual, others are textual, others are focused on execution, debugging, or presenting results. The user does not need to master all of this now, but must retain the idea that the model is not observed only through a single visual surface.
 
-This multiplicity of views will be especially important when, later on, we introduce the \textit{Simulang} tab as a complementary textual representation to the graphical model.
+In the current GUI, the SimulLang and C++ representation tabs are temporarily
+hidden while the graphical model, component, and data-definition views remain
+available. Their generators remain in the application, but ordinary property
+edits update the model in memory and mark it as pending save without refreshing
+those textual representations. A user-requested save in \texttt{.gen} format
+generates the current SimulLang representation as part of that explicit save.
+
+SimulLang remains a complementary textual representation of the graphical
+model, although its GUI tab is temporarily hidden in the current application.
 
 \section{Minimal User Guidance Flow in the GUI}
 \label{sec:cap3_fluxo_minimo_orientacao}

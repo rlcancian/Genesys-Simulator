@@ -216,6 +216,7 @@ public:
     virtual bool supportsPositionalListEditing() const { return false; }
     virtual std::string getListElementLabel() const { return "Item"; }
     virtual bool supportsListElementMove() const { return false; }
+    virtual bool supportsListElementRemoval() const { return false; }
     virtual bool handlesListMoveReconciliation() const { return false; }
     virtual void moveListElement(int from, int to) {
         (void)from; (void)to;
@@ -1172,6 +1173,18 @@ public:
     // This method marks pointer lists as editable through the list editor in the universal contract.
     virtual bool supportsListEditor() const override { return true; }
     virtual bool supportsListElementMove() const override { return !_readonly; }
+    virtual bool supportsListElementRemoval() const override { return !_readonly && _remover != nullptr; }
+    virtual void removeListValueAt(int index) override {
+        _ensureWritable("remove list element from");
+        List<T>* values = _getter();
+        if (index < 0 || static_cast<std::size_t>(index) >= values->size()) {
+            throw std::out_of_range("list index");
+        }
+        if (!_remover) {
+            throw std::logic_error("SimulationControlGenericListPointer remover is not defined");
+        }
+        _remover(values->getAtRank(static_cast<unsigned int>(index)));
+    }
     virtual bool handlesListMoveReconciliation() const override { return static_cast<bool>(_listMoveHandler); }
     void setListMoveHandler(ListMoveHandler handler) { _listMoveHandler = std::move(handler); }
     virtual void moveListElement(int from, int to) override {
