@@ -1708,14 +1708,18 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 }
                 ModelDataManager* dataManager = model->getDataManager();
                 const std::string className = state.className.trimmed().toStdString();
-                if (state.dataId > 0) {
-                    ModelDataDefinition* byId = dataManager->getDataDefinition(className, state.dataId);
-                    if (byId != nullptr) {
-                        return byId;
+                // Names are the compatibility key for legacy graphical rows. Prefer
+                // an exact class/name match before trusting a possibly stale GUI id;
+                // if a rename left the name stale, the stable kernel id remains the
+                // fallback identity.
+                if (!state.name.trimmed().isEmpty()) {
+                    ModelDataDefinition* byName = dataManager->getDataDefinition(className, state.name.toStdString());
+                    if (byName != nullptr) {
+                        return byName;
                     }
                 }
-                if (!state.name.trimmed().isEmpty()) {
-                    return dataManager->getDataDefinition(className, state.name.toStdString());
+                if (state.dataId > 0) {
+                    return dataManager->getDataDefinition(className, state.dataId);
                 }
                 return nullptr;
             };
@@ -1743,7 +1747,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
                 gmdd->setPos(state.position);
                 gmdd->setOldPosition(state.position.x(), state.position.y());
-                if (state.dataId > 0) {
+                if (state.dataId > 0 && state.dataId == dataDefinition->getId()) {
                     persistedItems.insert(static_cast<int>(state.dataId), gmdd);
                 }
                 if (state.itemId != 0) {
@@ -1762,18 +1766,19 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
                     ModelDataDefinition* dataDefinition = gmdd->getDataDefinition();
                     bool applied = false;
-                    auto byId = persistedDataDefinitionsById.find(dataDefinition->getId());
-                    if (byId != persistedDataDefinitionsById.end()) {
-                        applyPersistedDataDefinitionState(byId.value());
+                    const QString fallbackKey = QString::fromStdString(dataDefinition->getClassname()) + "#"
+                                                + QString::fromStdString(dataDefinition->getName());
+                    auto byClassAndName = persistedDataDefinitionsByClassAndName.find(fallbackKey);
+                    if (byClassAndName != persistedDataDefinitionsByClassAndName.end()) {
+                        applyPersistedDataDefinitionState(byClassAndName.value());
                         applied = true;
                     }
 
                     if (!applied) {
-                        const QString fallbackKey = QString::fromStdString(dataDefinition->getClassname()) + "#"
-                                                    + QString::fromStdString(dataDefinition->getName());
-                        auto byClassAndName = persistedDataDefinitionsByClassAndName.find(fallbackKey);
-                        if (byClassAndName != persistedDataDefinitionsByClassAndName.end()) {
-                            applyPersistedDataDefinitionState(byClassAndName.value());
+                        auto byId = persistedDataDefinitionsById.find(dataDefinition->getId());
+                        if (byId != persistedDataDefinitionsById.end()
+                            && byId.value().className == QString::fromStdString(dataDefinition->getClassname())) {
+                            applyPersistedDataDefinitionState(byId.value());
                         }
                     }
                 }

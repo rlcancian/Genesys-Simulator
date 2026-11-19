@@ -35,6 +35,7 @@
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Assign.h"
 #include "plugins/data/Logic/AssignmentItem.h"
+#include "plugins/data/Logic/Variable.h"
 #include "plugins/components/Synchronization/Signal.h"
 #include "plugins/components/Synchronization/Wait.h"
 #include "applications/gui/genesys/actions/DecideConditionUndoCommand.h"
@@ -55,6 +56,7 @@
 
 
 #include <QApplication>
+#include <QAbstractButton>
 #include <QAction>
 #include <QByteArray>
 #include <QColor>
@@ -987,6 +989,97 @@ TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsE
     controller.sceneSelectionChanged();
 
     EXPECT_TRUE(queueGmdd->isEditableInPropertyEditor());
+}
+
+TEST(GuiGmddLayout, AssignVariableInitialValueIsEditableThroughPropertyEditorAndPersists) {
+    Simulator simulator;
+    auto* plugins = simulator.getPluginManager();
+    ASSERT_NE(plugins, nullptr);
+    plugins->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* assign = new Assign(model, "AssignVariableForEditor");
+    assign->addAssignment(new Assignment(model, "EditorVariable", "1", false));
+    auto* variable = dynamic_cast<Variable*>(
+        model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "EditorVariable"));
+    ASSERT_NE(variable, nullptr);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setShowEditableDataDefinitions(true);
+    scene->setShowSharedDataDefinitions(true);
+    auto* assignPlugin = plugins->find(Util::TypeOf<Assign>());
+    ASSERT_NE(assignPlugin, nullptr);
+    scene->addItem(new GraphicalModelComponent(assignPlugin, assign, QPointF(300, 300), Qt::blue));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+
+    auto* graphicalVariable = findGraphicalDataDefinition(*scene, variable);
+    ASSERT_NE(graphicalVariable, nullptr);
+    ASSERT_TRUE(graphicalVariable->isEditableInPropertyEditor());
+
+    ObjectPropertyBrowser browser;
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    PropertyEditorController controller(&browser, &graphicsView, &propertyEditor,
+        &propertyList, &propertyEditorUi, &propertyCombo, {}, {}, {}, {}, {}, {}, {});
+    graphicalVariable->setSelected(true);
+    controller.sceneSelectionChanged();
+    QApplication::processEvents();
+
+    std::function<QtBrowserItem*(const QList<QtBrowserItem*>&)> findInitialValue =
+        [&](const QList<QtBrowserItem*>& items) -> QtBrowserItem* {
+            for (QtBrowserItem* item : items) {
+                if (item != nullptr && item->property() != nullptr
+                    && item->property()->propertyName() == QStringLiteral("InitialValue")) return item;
+                if (item != nullptr) {
+                    if (auto* child = findInitialValue(item->children())) return child;
+                }
+            }
+            return nullptr;
+        };
+    auto* initialValue = findInitialValue(browser.topLevelItems());
+    ASSERT_NE(initialValue, nullptr);
+    ASSERT_TRUE(initialValue->property()->isEnabled());
+
+    bool dialogEdited = false;
+    QTimer::singleShot(0, [&]() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* editor = dialog->findChild<QPlainTextEdit*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        if (editor == nullptr || buttons == nullptr) return;
+        editor->setPlainText(QStringLiteral("37.5"));
+        QPushButton* applyButton = nullptr;
+        for (QAbstractButton* button : buttons->buttons()) {
+            if (button->text() == QStringLiteral("Apply")) applyButton = qobject_cast<QPushButton*>(button);
+        }
+        if (applyButton == nullptr || buttons->button(QDialogButtonBox::Ok) == nullptr) return;
+        applyButton->click();
+        dialogEdited = variable->getInitialValuesText() == "37.5";
+        buttons->button(QDialogButtonBox::Ok)->click();
+    });
+    ASSERT_TRUE(QMetaObject::invokeMethod(&browser, "enumValueChanged", Qt::DirectConnection,
+        Q_ARG(QtProperty*, initialValue->property()), Q_ARG(int, 1)));
+    EXPECT_TRUE(dialogEdited);
+    EXPECT_EQ(variable->getInitialValuesText(), "37.5");
+
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const std::string path = directory.filePath(QStringLiteral("variable-initial-value.gen")).toStdString();
+    ASSERT_TRUE(model->save(path));
+    Simulator restoredSimulator;
+    restoredSimulator.getPluginManager()->autoInsertPlugins();
+    auto* restoredModel = restoredSimulator.getModelManager()->loadModel(path);
+    ASSERT_NE(restoredModel, nullptr);
+    auto* restoredVariable = dynamic_cast<Variable*>(
+        restoredModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "EditorVariable"));
+    ASSERT_NE(restoredVariable, nullptr);
+    EXPECT_EQ(restoredVariable->getInitialValuesText(), "37.5");
 }
 
 TEST(GuiGmddLayout, EFSMNetworkMemberSelectionEnablesStatePropertiesByIdentity) {

@@ -347,6 +347,10 @@ std::map<std::string, ModelDataDefinition*>* ModelDataDefinition::getAttachedDat
 	return _dataAssociations.getAttachedData();
 }
 
+std::map<std::string, ModelDataDefinition*>* ModelDataDefinition::getOptionalEditableDataDefinitions() const {
+	return _dataAssociations.getOptionalEditableDataDefinitions();
+}
+
 Util::identification ModelDataDefinition::getId() const {
 	return _id;
 }

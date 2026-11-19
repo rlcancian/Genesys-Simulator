@@ -184,6 +184,17 @@ void collectEditableAttachedDataDefinitionNames(ModelComponent* component, QSet<
             }
         }
     }
+
+    // Optional editable associations are an explicit kernel declaration of objects
+    // exposed for editing (for example, Assign's Variable destination). They need
+    // not correspond to a class-valued SimulationControl.
+    if (auto* editable = component->getOptionalEditableDataDefinitions()) {
+        for (const auto& entry : *editable) {
+            if (entry.second != nullptr) {
+                names.insert(QString::fromStdString(entry.second->getName()));
+            }
+        }
+    }
 }
 
 /*! \brief Builds the full editable data-definition set from the current scene and loaded model.

@@ -887,7 +887,8 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
 bool ObjectPropertyBrowser::_hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const {
     return desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
         || desc.editorHint == SimulationControlEditorHint::CodeEditor
-        || desc.editorHint == SimulationControlEditorHint::ParserExpression;
+        || desc.editorHint == SimulationControlEditorHint::ParserExpression
+        || (desc.kind == GenesysPropertyKind::String && !desc.readOnly);
 }
 
 QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropertyDescriptor& desc) const {
@@ -897,6 +898,16 @@ QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropert
 
     if (desc.technicalTypeName == Util::TypeOf<SourceCodeString>()) {
         return "Edit source code...";
+    }
+    if (desc.editorHint == SimulationControlEditorHint::CodeEditor) {
+        return "Edit source code...";
+    }
+    if (desc.kind == GenesysPropertyKind::String
+        && desc.editorHint == SimulationControlEditorHint::MultiLineText) {
+        return "Edit text...";
+    }
+    if (desc.kind == GenesysPropertyKind::String) {
+        return "Build expression...";
     }
 
     switch (desc.editorHint) {
@@ -2318,10 +2329,6 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         return false;
     }
 
-    if (binding.descriptor.editorHint == SimulationControlEditorHint::ParserExpression) {
-        return _openExpressionBuilder(property, binding);
-    }
-
     if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
         || binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
         return _openTextDialogEditor(binding, false);
@@ -2329,6 +2336,11 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
 
     if (binding.descriptor.editorHint == SimulationControlEditorHint::MultiLineText) {
         return _openMultilineTextDialogEditor(binding);
+    }
+
+    if (binding.descriptor.editorHint == SimulationControlEditorHint::ParserExpression
+        || binding.descriptor.kind == GenesysPropertyKind::String) {
+        return _openExpressionBuilder(property, binding);
     }
 
     return false;
@@ -3473,8 +3485,15 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     QMenu menu(this);
     QAction* editAction = nullptr;
     QAction* createAction = nullptr;
+    QAction* expressionAction = nullptr;
     if (_hasSpecializedEditor(binding.descriptor)) {
         editAction = menu.addAction(_specializedEditorActionText(binding.descriptor));
+    }
+    const bool hasExpressionAlternative = binding.descriptor.kind == GenesysPropertyKind::String
+        && !binding.descriptor.readOnly
+        && binding.descriptor.editorHint != SimulationControlEditorHint::ParserExpression;
+    if (hasExpressionAlternative) {
+        expressionAction = menu.addAction(QStringLiteral("Build expression..."));
     }
     if (binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
         createAction = menu.addAction("Create object");
@@ -3487,6 +3506,11 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
 
     if (chosen == editAction && editAction != nullptr) {
         _openSpecializedEditor(item->property());
+    } else if (chosen == expressionAction && expressionAction != nullptr) {
+        const auto currentBinding = _bindings.find(item->property());
+        if (currentBinding != _bindings.end()) {
+            _openExpressionBuilder(item->property(), currentBinding.value());
+        }
     } else if (chosen == createAction && createAction != nullptr) {
         _createObjectForProperty(item->property());
     }

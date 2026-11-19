@@ -66,6 +66,10 @@ std::map<std::string, ModelDataDefinition*>* ModelDataDefinitionAssociations::ge
 	return const_cast<std::map<std::string, ModelDataDefinition*>*>(&_attachedData);
 }
 
+std::map<std::string, ModelDataDefinition*>* ModelDataDefinitionAssociations::getOptionalEditableDataDefinitions() const {
+	return const_cast<std::map<std::string, ModelDataDefinition*>*>(&_optionalEditableDataDefinitions);
+}
+
 ModelDataDefinition* ModelDataDefinitionAssociations::getInternalData(const std::string& key) const {
 	const auto it = _internalData.find(key);
 	return it != _internalData.end() ? it->second : nullptr;

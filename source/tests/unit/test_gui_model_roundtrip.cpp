@@ -2,6 +2,8 @@
 #include <QApplication>
 #include <QAction>
 #include <QFile>
+#include <QRegularExpression>
+#include <QStringList>
 #include <QPlainTextEdit>
 #include <QScrollBar>
 #include <QSlider>
@@ -12,6 +14,7 @@
 #include "kernel/simulator/OnEventManager.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/GraphicalConnection.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
 #include "controllers/TraceConsoleController.h"
@@ -19,6 +22,7 @@
 #include "kernel/simulator/model/Model.h"
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Assign.h"
+#include "plugins/data/Logic/AssignmentItem.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
@@ -27,6 +31,7 @@
 #include "plugins/data/Logic/Set.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
+#include "plugins/data/Logic/Variable.h"
 
 namespace {
 void events() { for(int i=0;i<8;++i) QApplication::processEvents(); }
@@ -153,6 +158,99 @@ TEST(GraphicalRoundTrip, ConvergenceAndVisualStateSurviveTwoCycles) {
     for(auto* c:gui.view.getScene()->graphicalModelComponentItems())c->setColor(QColor("#8a2345"));
     expectTwoCycles(gui,model);
 }
+
+TEST(GraphicalRoundTrip, StaleGraphicalDataDefinitionIdFallsBackToExactClassAndName) {
+    RoundTripGui gui;
+    auto* model = gui.simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* assign = new Assign(model, "LayoutVariablesAssign");
+    assign->addAssignment(new Assignment(model, "LayoutVariableA", "1", false));
+    assign->addAssignment(new Assignment(model, "LayoutVariableB", "2", false));
+    auto* first = dynamic_cast<Variable*>(model->getDataManager()->getDataDefinition(
+        Util::TypeOf<Variable>(), "LayoutVariableA"));
+    auto* second = dynamic_cast<Variable*>(model->getDataManager()->getDataDefinition(
+        Util::TypeOf<Variable>(), "LayoutVariableB"));
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    auto* plugin = gui.simulator.getPluginManager()->find(Util::TypeOf<Variable>());
+    ASSERT_NE(plugin, nullptr);
+    auto* scene = gui.view.getScene();
+    scene->setShowEditableDataDefinitions(true);
+    auto* firstGraphical = scene->addGraphicalModelDataDefinition(plugin, first, QPointF(111, 222), QColor(220, 220, 220));
+    auto* secondGraphical = scene->addGraphicalModelDataDefinition(plugin, second, QPointF(333, 444), QColor(220, 220, 220));
+    ASSERT_NE(firstGraphical, nullptr);
+    ASSERT_NE(secondGraphical, nullptr);
+    firstGraphical->setPos(QPointF(111, 222));
+    firstGraphical->setOldPosition(111, 222);
+    secondGraphical->setPos(QPointF(333, 444));
+    secondGraphical->setOldPosition(333, 444);
+
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const QString path = directory.filePath(QStringLiteral("stale-gmdd-id.gui"));
+    ASSERT_TRUE(gui.serializer.saveGraphicalModel(path));
+
+    // Simulate a legacy/edited GUI row whose displayed name is still valid but
+    // whose stale id now belongs to another same-class data definition.
+    QFile file(path);
+    ASSERT_TRUE(file.open(QIODevice::ReadOnly | QIODevice::Text));
+    QStringList lines = QString::fromUtf8(file.readAll()).split('\n');
+    file.close();
+    bool changed = false;
+    const QRegularExpression prefixPattern(QStringLiteral("^(\\s*#\\s*)\\d+"));
+    for (QString& line : lines) {
+        if (!line.contains(QStringLiteral("Variable")) || !line.contains(QStringLiteral("name=LayoutVariableA"))) continue;
+        line.replace(prefixPattern, QStringLiteral("\\1%1").arg(second->getId()));
+        changed = true;
+    }
+    ASSERT_TRUE(changed);
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate));
+    file.write(lines.join('\n').toUtf8());
+    file.close();
+
+    model = gui.serializer.loadGraphicalModel(path.toStdString());
+    ASSERT_NE(model, nullptr);
+    auto* restoredFirst = dynamic_cast<Variable*>(model->getDataManager()->getDataDefinition(
+        Util::TypeOf<Variable>(), "LayoutVariableA"));
+    auto* restoredSecond = dynamic_cast<Variable*>(model->getDataManager()->getDataDefinition(
+        Util::TypeOf<Variable>(), "LayoutVariableB"));
+    ASSERT_NE(restoredFirst, nullptr);
+    ASSERT_NE(restoredSecond, nullptr);
+    GraphicalModelDataDefinition* restoredFirstGraphical = nullptr;
+    GraphicalModelDataDefinition* restoredSecondGraphical = nullptr;
+    for (auto* graphical : *gui.view.getScene()->getAllDataDefinitions()) {
+        if (graphical == nullptr) continue;
+        if (graphical->getDataDefinition() == restoredFirst) restoredFirstGraphical = graphical;
+        if (graphical->getDataDefinition() == restoredSecond) restoredSecondGraphical = graphical;
+    }
+    ASSERT_NE(restoredFirstGraphical, nullptr);
+    ASSERT_NE(restoredSecondGraphical, nullptr);
+    EXPECT_EQ(restoredFirstGraphical->pos(), QPointF(111, 222));
+    EXPECT_EQ(restoredSecondGraphical->pos(), QPointF(333, 444));
+}
+
+TEST(GraphicalRoundTrip, InvalidDecideExpressionLoadsWithoutTerminatingGui) {
+    RoundTripGui gui;
+    auto* model = gui.simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* decide = new Decide(model, "InvalidGuiDecide");
+    decide->addConditions("unit(0,1) < 0.6");
+    gui.builder.generateGraphicalModelFromModel();
+
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const QString path = directory.filePath(QStringLiteral("invalid-expression.gui"));
+    ASSERT_TRUE(gui.serializer.saveGraphicalModel(path));
+    Model* loaded = nullptr;
+    EXPECT_NO_THROW(loaded = gui.serializer.loadGraphicalModel(path.toStdString()));
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedDecide = dynamic_cast<Decide*>(loaded->getComponentManager()->find("InvalidGuiDecide"));
+    ASSERT_NE(loadedDecide, nullptr);
+    std::string errors;
+    EXPECT_FALSE(ModelDataDefinition::Check(loadedDecide, errors));
+    EXPECT_NE(errors.find("unit(0,1)"), std::string::npos);
+}
+
 TEST(GraphicalRoundTrip, LocalReferenceModelPreservesGraphAndVisualState) {
     const auto path=qEnvironmentVariable("GENESYS_REFERENCE_GUI");
     if(path.isEmpty())GTEST_SKIP()<<"Set GENESYS_REFERENCE_GUI to exercise a supplied model without changing it";
