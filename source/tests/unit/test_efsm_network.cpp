@@ -11,10 +11,13 @@
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
 #include "plugins/data/Logic/Variable.h"
 
 #include <memory>
+#include <stdexcept>
+#include <vector>
 #include <string>
 #include <unistd.h>
 
@@ -38,6 +41,36 @@ public:
 	void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = true) { _saveInstance(fields, saveDefaultValues); }
 	bool LoadInstanceProbe(PersistenceRecord* fields) { return _loadInstance(fields); }
 	void InitBetweenReplicationsProbe() { _initBetweenReplications(); }
+};
+
+class RefinementLifecycleProbe final : public DefaultNetwork {
+public:
+    RefinementLifecycleProbe(Model* model, const std::string& name)
+        : DefaultNetwork(model, name) { addInputPort("input"); addOutputPort("output"); }
+
+    void initializeRefinement() override {
+        ++initialized;
+        events.push_back("initialize");
+    }
+    NetworkActivationResult fireRefinement(const NetworkActivationFrame& frame) override {
+        ++fired;
+        events.push_back("fire");
+        if (throwsOnFire) throw std::runtime_error("refinement-boom");
+        NetworkActivationResult result(getNumOutputPorts());
+        if (frame.isPresent(0)) result.setPresent(0, frame.getValue(0));
+        return result;
+    }
+    bool postfireRefinement() override {
+        ++postfired;
+        events.push_back("postfire");
+        return !terminateOnPostfire;
+    }
+    int initialized = 0;
+    int fired = 0;
+    int postfired = 0;
+    bool throwsOnFire = false;
+    bool terminateOnPostfire = false;
+    std::vector<std::string> events;
 };
 
 } // namespace
@@ -93,6 +126,226 @@ TEST(EFSMNetworkTest, InitialStateIdentityAndFlagsRemainConsistent) {
     EXPECT_EQ(network.getInitialState(), &first);
     EXPECT_TRUE(first.isInitialNode());
     EXPECT_FALSE(second.isInitialNode());
+}
+
+TEST(EFSMNetworkLifecycle, PreemptiveTransitionsSkipSourceRefinementFire) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "Preemption");
+    FSMState start(model, "Start");
+    FSMState done(model, "Done");
+    RefinementLifecycleProbe refinement(model, "SourceRefinement");
+    start.setRefinementNetwork(&refinement);
+    network.setInitialState(&start);
+    network.addState(&done);
+    auto* t = new EFSMTransition(&start, &done, "Preempt");
+    t->setGuardExpression("1");
+    t->setPreemptive(true);
+    network.addTransition(t);
+
+    const NetworkActivationFrame frame(network.getNumInputPorts());
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &done);
+    EXPECT_EQ(refinement.fired, 0);
+    EXPECT_EQ(refinement.postfired, 0);
+    EXPECT_EQ(refinement.initialized, 1);
+}
+
+TEST(EFSMNetworkLifecycle, NonPreemptiveTransitionsFireAndPostfireRefinement) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "Nonpreemptive");
+    FSMState start(model, "Start");
+    FSMState done(model, "Done");
+    RefinementLifecycleProbe refinement(model, "SourceRefinement");
+    start.setRefinementNetwork(&refinement);
+    network.setInitialState(&start);
+    network.addState(&done);
+    auto* t = new EFSMTransition(&start, &done, "Normal");
+    t->setGuardExpression("1");
+    network.addTransition(t);
+
+    NetworkActivationFrame frame(network.getNumInputPorts());
+    frame.setPresent(0, 7.0);
+    const auto result = network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &done);
+    EXPECT_EQ(refinement.initialized, 1);
+    EXPECT_EQ(refinement.fired, 1);
+    EXPECT_EQ(refinement.postfired, 1);
+    ASSERT_EQ(refinement.events.size(), 3);
+    EXPECT_EQ(refinement.events[0], "initialize");
+    EXPECT_EQ(refinement.events[1], "fire");
+    EXPECT_EQ(refinement.events[2], "postfire");
+    ASSERT_TRUE(result.isPresent(0));
+    EXPECT_DOUBLE_EQ(result.getValue(0), 7.0);
+}
+
+TEST(EFSMNetworkLifecycle, HistoryPreservesAndResetReinitializesDestinationRefinement) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "History");
+    FSMState a(model, "A");
+    FSMState b(model, "B");
+    RefinementLifecycleProbe refinement(model, "BRefinement");
+    b.setRefinementNetwork(&refinement);
+    network.setInitialState(&a);
+    network.addState(&b);
+    auto* enter = new EFSMTransition(&a, &b, "EnterB");
+    enter->setGuardExpression("1");
+    auto* leave = new EFSMTransition(&b, &a, "LeaveB");
+    leave->setGuardExpression("1");
+    enter->setHistory(true);
+    network.addTransition(enter);
+    network.addTransition(leave);
+
+    NetworkActivationFrame frame(network.getNumInputPorts());
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &b);
+    EXPECT_EQ(refinement.initialized, 1);
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &a);
+    EXPECT_EQ(refinement.fired, 1);
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &b);
+    EXPECT_EQ(refinement.initialized, 1);
+    network.activate(frame);
+    enter->setHistory(false);
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &b);
+    EXPECT_EQ(refinement.initialized, 2);
+}
+
+TEST(EFSMNetworkLifecycle, ErrorTransitionHandlesOnlyRefinementFailures) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "ErrorHandling");
+    FSMState active(model, "Active");
+    FSMState recovered(model, "Recovered");
+    RefinementLifecycleProbe refinement(model, "FailingRefinement");
+    refinement.throwsOnFire = true;
+    active.setRefinementNetwork(&refinement);
+    network.setInitialState(&active);
+    network.addState(&recovered);
+    auto* errorTransition = new EFSMTransition(&active, &recovered, "Recover");
+    errorTransition->setGuardExpression("1");
+    errorTransition->setErrorTransition(true);
+    network.addTransition(errorTransition);
+    EXPECT_NO_THROW(network.activate(NetworkActivationFrame(network.getNumInputPorts())));
+    EXPECT_EQ(network.getCurrentState(), &recovered);
+    EXPECT_EQ(network.getLastTransition(), errorTransition);
+    EXPECT_EQ(network.getLastRefinementError(), "refinement-boom");
+    EXPECT_EQ(refinement.postfired, 0);
+}
+
+TEST(EFSMNetworkLifecycle, UnhandledRefinementExceptionPropagates) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "UnhandledError");
+    FSMState initial(model, "Initial");
+    RefinementLifecycleProbe refinement(model, "ThrowingRefinement");
+    refinement.throwsOnFire = true;
+    initial.setRefinementNetwork(&refinement);
+    network.setInitialState(&initial);
+    EXPECT_THROW(network.activate(NetworkActivationFrame(network.getNumInputPorts())),
+                 std::runtime_error);
+    EXPECT_EQ(network.getCurrentState(), &initial);
+    EXPECT_EQ(network.getLastRefinementError(), "refinement-boom");
+}
+
+TEST(EFSMNetworkLifecycle, TerminationFiresOnlyWhenPostfireDeclaresCompletion) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "Termination");
+    FSMState active(model, "Active");
+    FSMState complete(model, "Complete");
+    RefinementLifecycleProbe refinement(model, "FiniteRefinement");
+    active.setRefinementNetwork(&refinement);
+    network.setInitialState(&active);
+    network.addState(&complete);
+    auto* t = new EFSMTransition(&active, &complete, "Done");
+    t->setTermination(true);
+    t->setGuardExpression("1");
+    network.addTransition(t);
+    NetworkActivationFrame frame(network.getNumInputPorts());
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &active);
+    EXPECT_EQ(refinement.postfired, 1);
+    refinement.terminateOnPostfire = true;
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &complete);
+    EXPECT_EQ(refinement.postfired, 2);
+}
+
+TEST(EFSMNetworkLifecycle, ImmediateTransitionsChainWithoutExtraOrdinarySteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "Immediate");
+    FSMState a(model, "A");
+    FSMState b(model, "B");
+    FSMState c(model, "C");
+    FSMState d(model, "D");
+    network.setInitialState(&a);
+    network.addState(&b);
+    network.addState(&c);
+    network.addState(&d);
+    auto* ab = new EFSMTransition(&a, &b, "AB");
+    auto* bc = new EFSMTransition(&b, &c, "BC");
+    auto* cd = new EFSMTransition(&c, &d, "CD");
+    ab->setGuardExpression("1");
+    bc->setGuardExpression("1");
+    bc->setImmediate(true);
+    cd->setGuardExpression("1");
+    network.addTransition(ab);
+    network.addTransition(bc);
+    network.addTransition(cd);
+    const NetworkActivationFrame frame(network.getNumInputPorts());
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &c);
+    EXPECT_EQ(network.getLastTransition(), bc);
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &d);
+}
+
+TEST(EFSMNetworkLifecycle, ImmediateSelfLoopStopsAtConfiguredSafetyBound) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "ImmediateCycle");
+    FSMState a(model, "A");
+    network.setInitialState(&a);
+    auto* cycle = new EFSMTransition(&a, &a, "Cycle");
+    cycle->setGuardExpression("1");
+    cycle->setImmediate(true);
+    network.addTransition(cycle);
+    network.setMaxImmediateTransitionsPerActivation(3);
+    EXPECT_THROW(network.activate(NetworkActivationFrame(network.getNumInputPorts())),
+                 std::runtime_error);
+    EXPECT_EQ(network.getCurrentState(), &a);
+}
+
+TEST(EFSMNetworkLifecycle, ValidationRejectsUnsupportedFlagCombinationsAndCycles) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetworkProbe parent(model, "Parent");
+    EFSMNetwork child(model, "Child");
+    FSMState initial(model, "Initial");
+    FSMState nested(model, "Nested");
+    parent.setInitialState(&initial);
+    child.setInitialState(&nested);
+    initial.setRefinementNetwork(&child);
+    nested.setRefinementNetwork(&parent);
+    std::string error;
+    EXPECT_FALSE(parent.CheckProbe(error));
+    EXPECT_NE(error.find("recursive refinement cycle"), std::string::npos);
+    nested.setRefinementNetwork(nullptr);
+
+    auto* illegal = new EFSMTransition(&initial, &initial, "IllegalError");
+    illegal->setErrorTransition(true);
+    illegal->setPreemptive(true);
+    parent.addTransition(illegal);
+    error.clear();
+    EXPECT_FALSE(parent.CheckProbe(error));
+    EXPECT_NE(error.find("cannot also be preemptive"), std::string::npos);
 }
 
 TEST(EFSMNetworkTest, ConstructionCreatesDefaultInputAndOutputPorts) {
