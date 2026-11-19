@@ -9,6 +9,9 @@
 #include <QPainterPathStroker>
 #include <QPointer>
 #include <QUndoStack>
+#include <QTimer>
+#include <QLineF>
+#include <algorithm>
 #include "ModelGraphicsScene.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include <QStringList>
@@ -213,13 +216,22 @@ void EFSMTransitionGraphicsItem::mouseReleaseEvent(QGraphicsSceneMouseEvent* eve
     if (_draggingBend) {
         _draggingBend = false;
         auto* networkScene = dynamic_cast<ModelGraphicsScene*>(scene());
+        if (event != nullptr) event->accept();
         if (networkScene != nullptr && networkScene->getUndoStack() != nullptr
             && _manualBendPoint != _beforeDragBendPoint) {
-            networkScene->getUndoStack()->push(new EFSMBendUndoCommand(
-                networkScene, _transition, _beforeDragWasManual,
-                _beforeDragBendPoint, _manualBendPoint));
+            // QUndoStack::indexChanged synchronously rebuilds scene overlays.
+            // Do not delete this QGraphicsItem from within its mouse-release handler.
+            const QPointer<ModelGraphicsScene> guardedScene(networkScene);
+            EFSMTransition* const transition = _transition;
+            const bool beforeManual = _beforeDragWasManual;
+            const QPointF before = _beforeDragBendPoint;
+            const QPointF after = _manualBendPoint;
+            QTimer::singleShot(0, networkScene, [guardedScene, transition, beforeManual, before, after]() {
+                if (guardedScene != nullptr && guardedScene->getUndoStack() != nullptr)
+                    guardedScene->getUndoStack()->push(
+                        new EFSMBendUndoCommand(guardedScene, transition, beforeManual, before, after));
+            });
         }
-        if (event != nullptr) event->accept();
         return;
     }
     QGraphicsPathItem::mouseReleaseEvent(event);
