@@ -876,6 +876,37 @@ TEST(EFSMNetworkTest, RejectsInputAndTriggerEventsThatAreNotPorts) {
     EXPECT_TRUE(network.CheckProbe(errors)) << errors;
 }
 
+TEST(EFSMNetworkTest, AbsentInputEventDoesNotAdvanceProbabilitySampler) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetworkProbe network(model, "EventRngIsolation");
+    FSMState waiting(model, "Waiting");
+    FSMState done(model, "Done");
+    network.setInitialState(&waiting);
+    network.addState(&done);
+    auto* t = new EFSMTransition(&waiting, &done, "MaybeOnInput");
+    t->setInputEvent("input");
+    t->setGuardExpression("1");
+    t->setProbabilityExpression("0.37");
+    network.addTransition(t);
+
+    NetworkActivationFrame present(network.getNumInputPorts());
+    present.setPresent(0, 0.0);
+    const NetworkActivationFrame absent(network.getNumInputPorts());
+    network.activate(present);
+    const bool baseline = network.getLastTransition() == t;
+
+    network.InitBetweenReplicationsProbe();
+    for (int i = 0; i < 100; ++i) {
+        network.activate(absent);
+        EXPECT_EQ(network.getCurrentState(), &waiting);
+        EXPECT_EQ(network.getLastTransition(), nullptr);
+    }
+    network.activate(present);
+    EXPECT_EQ(network.getLastTransition() == t, baseline);
+}
+
 TEST(EFSMNetworkTest, ProbabilityExpressionGatesTransitionWithBernoulliSemantics) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
