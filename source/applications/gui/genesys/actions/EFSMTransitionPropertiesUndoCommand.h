@@ -17,6 +17,7 @@ public:
         unsigned int priority = 0;
         std::string triggerEvent;
         std::string probabilityExpression;
+        bool defaultTransition = false;
     };
 
     EFSMTransitionPropertiesUndoCommand(EFSMNetwork* network, EFSMTransition* transition,
