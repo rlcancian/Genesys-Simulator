@@ -27,6 +27,9 @@ EFSMTransitionPropertiesUndoCommand::_read(const EFSMTransition* transition) {
     properties.priority = transition->getPriority();
     properties.triggerEvent = transition->getTriggerEvent();
     properties.probabilityExpression = transition->getProbabilityExpression();
+    properties.outputActions = transition->getOutputActions();
+    properties.setActions = transition->getSetActions();
+    properties.nondeterministic = transition->isNondeterministic();
     properties.defaultTransition = transition->isDefaultTransition();
     return properties;
 }
@@ -43,6 +46,9 @@ bool EFSMTransitionPropertiesUndoCommand::_apply(const Properties& properties) {
     _transition->setPriority(properties.priority);
     _transition->setTriggerEvent(properties.triggerEvent);
     _transition->setProbabilityExpression(properties.probabilityExpression);
+    _transition->setOutputActions(properties.outputActions);
+    _transition->setSetActions(properties.setActions);
+    _transition->setNondeterministic(properties.nondeterministic);
     _transition->setDefaultTransition(properties.defaultTransition);
     return true;
 }
