@@ -28,12 +28,14 @@ public:
 
 private:
     static Properties _read(const FSMState* state);
-    bool _apply(const Properties& properties);
+    bool _apply(const Properties& properties, FSMState* initialState);
 
     EFSMNetwork* _network = nullptr;
     FSMState* _state = nullptr;
     Properties _before;
     Properties _after;
+    FSMState* _beforeInitial = nullptr;
+    FSMState* _afterInitial = nullptr;
 };
 
 #endif
