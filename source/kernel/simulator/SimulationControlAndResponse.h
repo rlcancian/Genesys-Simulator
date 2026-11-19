@@ -5,6 +5,7 @@
 #include <functional>
 #include <iterator>
 #include <list>
+#include <memory>
 #include <vector>
 #include <stdexcept>
 #include <type_traits>
@@ -650,6 +651,18 @@ public:
 		}
 		if constexpr (std::is_same_v<T, std::string>) {
 			_setter(value);
+		} else if constexpr (std::is_same_v<T, bool>) {
+			const auto first = value.find_first_not_of(" \t\n\r");
+			const auto last = value.find_last_not_of(" \t\n\r");
+			const std::string normalized = first == std::string::npos
+				? "" : value.substr(first, last - first + 1);
+			if (normalized == "true" || normalized == "1") {
+				_setter(true);
+			} else if (normalized == "false" || normalized == "0") {
+				_setter(false);
+			} else {
+				throw std::invalid_argument("Invalid boolean property value: " + value);
+			}
 		} else {
 			std::istringstream auxStr(value);
 			T tVal{};
@@ -847,6 +860,26 @@ public:
         _model->getDataManager()->insert(created);
         _setter(created);
         return hasObjectInstance();
+    }
+
+    virtual bool createObjectInstanceOfType(const std::string& typeName, const std::string& value = "") override {
+        if (typeName.empty()) return createObjectInstance(value);
+        if (_creatableTypesProvider) {
+            std::unique_ptr<List<std::string>> types(_creatableTypesProvider());
+            bool supported = false;
+            if (types) {
+                for (const std::string& type : *types->list()) {
+                    if (type == typeName) {
+                        supported = true;
+                        break;
+                    }
+                }
+            }
+            if (!supported) return false;
+        } else if (typeName != _propertyType) {
+            return false;
+        }
+        return createObjectInstance(value);
     }
 
     virtual List<std::string>* getStrValues() override {

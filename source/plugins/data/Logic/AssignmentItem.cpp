@@ -66,7 +66,7 @@ void Assignment::ensureSimulationControls(Model* model) {
 	SimulationControlGeneric<bool>* propAttributeNotVariable = new SimulationControlGeneric<bool>(
 				std::bind(&Assignment::isAttributeNotVariable, this),
 				std::bind(&Assignment::setAttributeNotVariable, this, std::placeholders::_1),
-				Util::TypeOf<Assignment>(), getName(), "AttributeNotVariable", "");
+				Util::TypeOf<Assignment>(), getName(), "DestinationIsAttribute", "");
 
 	model->getControls()->insert(propDestination);
 	model->getControls()->insert(propExpression);

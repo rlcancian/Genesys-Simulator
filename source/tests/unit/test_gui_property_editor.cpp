@@ -1845,6 +1845,114 @@ TEST(PropertyEditorModelDataReference, SearchSelectsEntityGroupWithoutChangingSe
     EXPECT_EQ(component.getSearchInType(), Search::SearchInType::ENTITYGROUP);
 }
 
+TEST(PropertyEditorAssignment, DestinationIsAttributeCheckboxCanToggleBothWays) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Assign assign(model, "AssignmentBooleanEditor");
+    auto* assignment = new Assignment("Entity.booleanDestination", "1", true);
+    assign.addAssignment(assignment);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &assign);
+    for (bool value : {false, true, false, true}) {
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("DestinationIsAttribute"));
+        ASSERT_NE(item, nullptr);
+        auto* property = dynamic_cast<QtVariantProperty*>(item->property());
+        ASSERT_NE(property, nullptr);
+        property->setValue(value);
+        drainGuiEvents();
+        EXPECT_EQ(assignment->isAttributeNotVariable(), value);
+    }
+    for (bool expected : {false, true}) {
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("DestinationIsAttribute"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QCheckBox* checkBox = browser.findChild<QCheckBox*>();
+        ASSERT_NE(checkBox, nullptr);
+        checkBox->click();
+        drainGuiEvents();
+        EXPECT_EQ(assignment->isAttributeNotVariable(), expected);
+    }
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveQueueCanBeClearedWithoutRecreation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* queue = new Queue(model, "DecisionQueueEditor");
+    Search search(model, "SearchQueueEditor");
+    Remove remove(model, "RemoveQueueEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    for (auto* component : {static_cast<ModelComponent*>(&search), static_cast<ModelComponent*>(&remove)}) {
+        bindEditableKernelObject(browser, component);
+        const QString propertyName = component == &search ? QStringLiteral("SearchIn") : QStringLiteral("RemoveFrom");
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int queueIndex = selector->findText(QString::fromStdString(queue->getName()));
+        ASSERT_GE(queueIndex, 0);
+        selector->setCurrentIndex(queueIndex);
+        drainGuiEvents();
+        EXPECT_EQ(component == &search ? search.getSearchIn() : remove.getRemoveFrom(), queue);
+        bindEditableKernelObject(browser, component);
+        item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int clearIndex = selector->findText(QStringLiteral("Remover referência"));
+        ASSERT_GE(clearIndex, 0);
+        selector->setCurrentIndex(clearIndex);
+        drainGuiEvents();
+        EXPECT_EQ(component == &search ? search.getSearchIn() : remove.getRemoveFrom(), nullptr);
+        EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queue->getName()), queue);
+    }
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveCreateQueueOnlyWhenRequested) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Search search(model, "ExplicitSearchQueue");
+    Remove remove(model, "ExplicitRemoveQueue");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    for (auto* component : {static_cast<ModelComponent*>(&search), static_cast<ModelComponent*>(&remove)}) {
+        bindEditableKernelObject(browser, component);
+        const QString propertyName = component == &search ? QStringLiteral("SearchIn") : QStringLiteral("RemoveFrom");
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int createIndex = selector->findText(QStringLiteral("Criar novo Queue"));
+        ASSERT_GE(createIndex, 0);
+        const std::size_t before = model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size();
+        selector->setCurrentIndex(createIndex);
+        drainGuiEvents();
+        EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), before + 1);
+        EXPECT_NE(component == &search ? search.getSearchIn() : remove.getRemoveFrom(), nullptr);
+    }
+}
+
 TEST(PropertyEditorModelDataReference, RemoveSelectsEntityGroupWithoutChangingRemoveMode) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -1906,6 +2014,34 @@ TEST(PropertyEditorModelDataReference, SearchAndRemoveRestoreSharedEntityGroupRe
     EXPECT_EQ(loadedRemove->getRemoveFrom(), loadedGroup);
     EXPECT_EQ(loadedSearch->getSearchInType(), Search::SearchInType::ENTITYGROUP);
     EXPECT_EQ(loadedRemove->getRemoveFromType(), Remove::RemoveFromType::ENTITYGROUP);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveRoundTripPreservesClearedQueueReference) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* queue = new Queue(model, "RoundTripDecisionQueue");
+    auto* search = new Search(model, "ClearedSearch");
+    auto* remove = new Remove(model, "SharedQueueRemove");
+    search->setSearchIn(queue);
+    remove->setRemoveFrom(queue);
+    search->setSearchIn(nullptr);
+    const QString path = QStringLiteral("/tmp/genesys_search_remove_cleared_queue_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedQueue = dynamic_cast<Queue*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<Queue>(), "RoundTripDecisionQueue"));
+    auto* loadedSearch = dynamic_cast<Search*>(loaded->getComponentManager()->find("ClearedSearch"));
+    auto* loadedRemove = dynamic_cast<Remove*>(loaded->getComponentManager()->find("SharedQueueRemove"));
+    ASSERT_NE(loadedQueue, nullptr);
+    ASSERT_NE(loadedSearch, nullptr);
+    ASSERT_NE(loadedRemove, nullptr);
+    EXPECT_EQ(loadedSearch->getSearchIn(), nullptr);
+    EXPECT_EQ(loadedRemove->getRemoveFrom(), loadedQueue);
     QFile::remove(path);
 }
 
