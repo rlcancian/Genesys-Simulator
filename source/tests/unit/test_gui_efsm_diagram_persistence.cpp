@@ -3224,6 +3224,31 @@ TEST(EFSMNetworkProjection, InitialAndFinalStatesUseDistinctNonInteractiveMarker
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm.state.markers")).size(), 3);
 }
 
+TEST(EFSMNetworkProjection, DistinguishesAntiparallelEdgesAndMultipleSelfLoops) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    FSMState a(model, "A");
+    FSMState b(model, "B");
+    EFSMTransition forward(&a, &b, "Forward");
+    EFSMTransition backward(&b, &a, "Backward");
+    EFSMTransition loopOne(&a, &a, "LoopOne");
+    EFSMTransition loopTwo(&a, &a, "LoopTwo");
+
+    EFSMTransitionGraphicsItem forwardGraphic(&forward, 0);
+    EFSMTransitionGraphicsItem backwardGraphic(&backward, 1);
+    forwardGraphic.setGeometry(QPointF(10, 20), QPointF(210, 20), 0, 1, true);
+    backwardGraphic.setGeometry(QPointF(210, 20), QPointF(10, 20), 0, 1, true);
+    EXPECT_NE(forwardGraphic.path().pointAtPercent(0.5),
+              backwardGraphic.path().pointAtPercent(0.5));
+
+    EFSMTransitionGraphicsItem loopGraphicOne(&loopOne, 2);
+    EFSMTransitionGraphicsItem loopGraphicTwo(&loopTwo, 3);
+    loopGraphicOne.setGeometry(QPointF(50, 50), QPointF(50, 50), 0, 2);
+    loopGraphicTwo.setGeometry(QPointF(50, 50), QPointF(50, 50), 1, 2);
+    EXPECT_NE(loopGraphicOne.path().boundingRect(), loopGraphicTwo.path().boundingRect());
+}
+
 TEST(EFSMNetworkProjection, ManualBendPointsSurviveProjectionRefreshAndLayoutRestore) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
