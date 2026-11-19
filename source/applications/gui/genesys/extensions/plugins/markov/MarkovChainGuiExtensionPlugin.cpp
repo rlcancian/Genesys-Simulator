@@ -370,10 +370,10 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
         edge->setToolTip(QStringLiteral("%1 → %2  p=%3")
                              .arg(QString::fromStdString(transition->getSource()->getName()),
                                   QString::fromStdString(transition->getDestination()->getName()))
-                             .arg(transition->getProbability(), 0, 'g', 8));
+                             .arg(transition->getProbability(), 0, 'g', 17));
         scene->addExtensionOverlayItem(QString::fromLatin1(kMarkovExtensionId), edge);
         if (selectedTransitions.contains(transition)) edge->setSelected(true);
-        auto* label = new QGraphicsSimpleTextItem(QString::number(transition->getProbability(), 'g', 5));
+        auto* label = new QGraphicsSimpleTextItem(QString::number(transition->getProbability(), 'g', 12));
         label->setBrush(QColor(35, 45, 60));
         label->setPos(path.pointAtPercent(0.5) + QPointF(4, -14));
         label->setZValue(-0.8);
@@ -567,7 +567,7 @@ public:
             result.push_back(P{"Name", transition->getName(), {}, P::Kind::String, true});
             result.push_back(P{"Source State", transition->getSource() ? transition->getSource()->getName() : "", {}, P::Kind::String, false});
             result.push_back(P{"Destination State", transition->getDestination() ? transition->getDestination()->getName() : "", {}, P::Kind::String, false});
-            result.push_back(P{"Probability", std::to_string(transition->getProbability()), {}, P::Kind::Double, true});
+            result.push_back(P{"Probability", QString::number(transition->getProbability(), 'g', 17).toStdString(), {}, P::Kind::Double, true});
             return result;
         };
         editor.createElementPropertyCommand = [](ModelDataDefinition* definition, QGraphicsItem* item,
