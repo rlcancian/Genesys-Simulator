@@ -764,9 +764,12 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
         if (source == nullptr || destination == nullptr
             || _states->find(destination) == _states->list()->end()) return false;
 
-        if (!afterPostfire) {
-            if (!source->getExitActionExpression().empty())
-                _parentModel->parseExpression(source->getExitActionExpression());
+        // A postfire-driven Termination or Error transition must still execute
+        // the source state's exit action. Error handlers may produce recovery
+        // outputs; Termination outputs remain forbidden by model validation.
+        if (!source->getExitActionExpression().empty())
+            _parentModel->parseExpression(source->getExitActionExpression());
+        if (!afterPostfire || t->isErrorTransition()) {
             if (!t->getOutputExpression().empty() && getNumOutputPorts() > 0)
                 result.setPresent(0, _parentModel->parseExpression(t->getOutputExpression()));
             for (const auto& action : outputs) {
