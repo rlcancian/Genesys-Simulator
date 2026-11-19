@@ -53,6 +53,7 @@ bool parseTransitionActions(const std::string& source, std::vector<TransitionAct
         return begin >= end ? std::string{} : std::string(begin, end);
     };
     std::size_t cursor = 0;
+    std::unordered_set<std::string> destinations;
     while (cursor < source.size()) {
         const std::size_t separator = source.find(';', cursor);
         const std::string clause = trim(source.substr(cursor, separator == std::string::npos
@@ -70,7 +71,8 @@ bool parseTransitionActions(const std::string& source, std::vector<TransitionAct
             return std::isalnum(ch) != 0 || ch == '_';
         };
         if (!isInitial(static_cast<unsigned char>(destination.front()))
-            || !std::all_of(destination.begin() + 1, destination.end(), isTail))
+            || !std::all_of(destination.begin() + 1, destination.end(), isTail)
+            || !destinations.insert(destination).second)
             return false;
         result->push_back({destination, expression});
         if (separator == std::string::npos) break;
