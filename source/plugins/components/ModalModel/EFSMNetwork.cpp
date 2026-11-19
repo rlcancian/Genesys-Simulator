@@ -13,8 +13,11 @@
 #include "kernel/TraitsKernel.h"
 #include "kernel/statistics/SamplerDefaultImpl1.h"
 #include "kernel/statistics/Sampler_if.h"
+#include "kernel/simulator/model/ModelDataManager.h"
+#include "plugins/data/Logic/Variable.h"
 
 #include <algorithm>
+#include <cctype>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -22,6 +25,52 @@
 namespace {
 std::string stateAssociationKey(const FSMState* state) {
 	return "EFSMNetwork.State." + std::to_string(state != nullptr ? state->getId() : 0);
+}
+
+struct TransitionAction {
+    std::string destination;
+    std::string expression;
+};
+
+// Supported GenESyS action subset: portName=expression (output) or
+// existingVariableName=expression (commit), optionally separated by semicolons.
+// Ptolemy II's channel indexing and refinement-qualified destinations need
+// capabilities the current numeric NetworkActivationFrame does not provide.
+bool parseTransitionActions(const std::string& source, std::vector<TransitionAction>* result) {
+    if (result == nullptr) return false;
+    result->clear();
+    if (source.empty()) return true;
+    const auto trim = [](std::string text) {
+        const auto nonSpace = [](unsigned char c) { return !std::isspace(c); };
+        auto begin = std::find_if(text.begin(), text.end(), nonSpace);
+        auto end = std::find_if(text.rbegin(), text.rend(), nonSpace).base();
+        return begin >= end ? std::string{} : std::string(begin, end);
+    };
+    std::size_t cursor = 0;
+    while (cursor < source.size()) {
+        const std::size_t separator = source.find(';', cursor);
+        const std::string clause = trim(source.substr(cursor, separator == std::string::npos
+            ? std::string::npos : separator - cursor));
+        if (clause.empty()) return false; // reject consecutive separators
+        const std::size_t equals = clause.find('=');
+        if (equals == std::string::npos) return false;
+        const std::string destination = trim(clause.substr(0, equals));
+        const std::string expression = trim(clause.substr(equals + 1));
+        if (destination.empty() || expression.empty()) return false;
+        const auto isInitial = [](unsigned char ch) {
+            return std::isalpha(ch) != 0 || ch == '_';
+        };
+        const auto isTail = [](unsigned char ch) {
+            return std::isalnum(ch) != 0 || ch == '_';
+        };
+        if (!isInitial(static_cast<unsigned char>(destination.front()))
+            || !std::all_of(destination.begin() + 1, destination.end(), isTail))
+            return false;
+        result->push_back({destination, expression});
+        if (separator == std::string::npos) break;
+        cursor = separator + 1;
+    }
+    return true;
 }
 }
 
@@ -305,6 +354,9 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 			transition->setTriggerEvent(fields->loadField("transitionTriggerEvent" + suffix, std::string("")));
 			transition->setProbabilityExpression(fields->loadField("transitionProbabilityExpression" + suffix, std::string("")));
 			transition->setDefaultTransition(fields->loadField("transitionDefault" + suffix, 0u) != 0u);
+			transition->setNondeterministic(fields->loadField("transitionNondeterministic" + suffix, 0u) != 0u);
+			transition->setOutputActions(fields->loadField("transitionOutputActions" + suffix, std::string("")));
+			transition->setSetActions(fields->loadField("transitionSetActions" + suffix, std::string("")));
 			addTransition(transition);
 		}
 
@@ -376,6 +428,9 @@ void EFSMNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefaultValue
 		fields->saveField("transitionTriggerEvent" + suffix, transition->getTriggerEvent(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionProbabilityExpression" + suffix, transition->getProbabilityExpression(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionDefault" + suffix, transition->isDefaultTransition() ? 1u : 0u, 0u, saveDefaultValues);
+		fields->saveField("transitionNondeterministic" + suffix, transition->isNondeterministic() ? 1u : 0u, 0u, saveDefaultValues);
+		fields->saveField("transitionOutputActions" + suffix, transition->getOutputActions(), std::string(""), saveDefaultValues);
+		fields->saveField("transitionSetActions" + suffix, transition->getSetActions(), std::string(""), saveDefaultValues);
 		i++;
 	}
 }
@@ -404,6 +459,38 @@ bool EFSMNetwork::_check(std::string& errorMessage) {
 		if (transition->getProbabilityExpression() != "") {
 			resultAll &= _parentModel->checkExpression(transition->getProbabilityExpression(), "EFSM probability[" + transition->getName() + "]", errorMessage);
 		}
+        for (bool isOutput : {true, false}) {
+            const std::string& actions = isOutput
+                ? transition->getOutputActions() : transition->getSetActions();
+            std::vector<TransitionAction> parsed;
+            if (!parseTransitionActions(actions, &parsed)) {
+                errorMessage += "EFSM transition \"" + transition->getName() + "\" has invalid "
+                    + (isOutput ? "Output Actions" : "Set Actions")
+                    + " (use destination=expression; ...). ";
+                resultAll = false;
+                continue;
+            }
+            for (const auto& action : parsed) {
+                bool targetFound = false;
+                if (isOutput) {
+                    for (unsigned int port = 0; port < getNumOutputPorts(); ++port)
+                        if (getOutputPortName(port) == action.destination) targetFound = true;
+                } else if (_parentModel != nullptr && _parentModel->getDataManager() != nullptr) {
+                    targetFound = dynamic_cast<Variable*>(_parentModel->getDataManager()
+                        ->getDataDefinition(Util::TypeOf<Variable>(), action.destination)) != nullptr;
+                }
+                if (!targetFound) {
+                    errorMessage += "EFSM transition \"" + transition->getName() + "\" has unknown "
+                        + (isOutput ? "output port " : "Variable ")
+                        + "\"" + action.destination + "\". ";
+                    resultAll = false;
+                }
+                resultAll &= _parentModel->checkExpression(action.expression,
+                    isOutput ? "EFSM Output Actions[" + transition->getName() + "]"
+                             : "EFSM Set Actions[" + transition->getName() + "]",
+                    errorMessage);
+            }
+        }
 	}
 	return resultAll;
 }
@@ -429,27 +516,31 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
 	}
 
 	std::vector<EFSMTransition*> enabled;
-	std::vector<EFSMTransition*> enabledDefaults;
-	for (DefaultNodeTransition* transition : *_currentState->getTransitions()->list()) {
-		EFSMTransition* efsmTransition = dynamic_cast<EFSMTransition*>(transition);
-		if (efsmTransition != nullptr && efsmTransition->canFire(_parentModel, nullptr)) {
-			if (efsmTransition->isDefaultTransition()) enabledDefaults.push_back(efsmTransition);
-			else enabled.push_back(efsmTransition);
-		}
-	}
-	// Ptolemy-style fallback: default relations are considered only when no
-	// ordinary outgoing relation is enabled.
-	if (enabled.empty()) enabled = std::move(enabledDefaults);
+    // Do not evaluate fallback guards when a normal transition is enabled:
+    // guard expressions can be stochastic and must not consume RNG needlessly.
+    for (bool defaults : {false, true}) {
+        for (DefaultNodeTransition* transition : *_currentState->getTransitions()->list()) {
+            auto* candidate = dynamic_cast<EFSMTransition*>(transition);
+            if (candidate != nullptr && candidate->isDefaultTransition() == defaults
+                && candidate->canFire(_parentModel, nullptr))
+                enabled.push_back(candidate);
+        }
+        if (!enabled.empty()) break;
+    }
 	if (enabled.empty()) {
 		return result;
 	}
 	EFSMTransition* chosen = nullptr;
+    const bool allNondeterministic = enabled.size() > 1
+        && std::all_of(enabled.begin(), enabled.end(), [](const EFSMTransition* transition) {
+            return transition->isNondeterministic();
+        });
 	if (enabled.size() == 1) {
 		chosen = enabled.front();
-	} else if (_conflictPolicy == ConflictPolicy::MODEL_ERROR) {
+	} else if (_conflictPolicy == ConflictPolicy::MODEL_ERROR && !allNondeterministic) {
 		traceError("EFSMNetwork \"" + getName() + "\" has multiple enabled transitions with MODEL_ERROR conflict policy.", TraceManager::Level::L3_errorRecover);
 		return result;
-	} else if (_conflictPolicy == ConflictPolicy::NONDETERMINISTIC_CHOICE) {
+	} else if (_conflictPolicy == ConflictPolicy::NONDETERMINISTIC_CHOICE || allNondeterministic) {
 		const double sample = _sampler != nullptr ? _sampler->random() : 0.0;
 		const auto index = std::min(static_cast<std::size_t>(sample * enabled.size()), enabled.size() - 1);
 		chosen = enabled[index];
@@ -462,6 +553,37 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
 	if (chosen == nullptr) {
 		return result;
 	}
+    std::vector<TransitionAction> outputs;
+    std::vector<TransitionAction> commits;
+    if (!parseTransitionActions(chosen->getOutputActions(), &outputs)
+        || !parseTransitionActions(chosen->getSetActions(), &commits)) {
+        traceError("EFSMNetwork: invalid transition actions in \"" + chosen->getName() + "\".",
+                   TraceManager::Level::L3_errorRecover);
+        return result;
+    }
+    // Validate all destinations before causing a state transition or writes.
+    std::vector<std::pair<Variable*, std::string>> commitTargets;
+    for (const TransitionAction& action : commits) {
+        auto* variable = dynamic_cast<Variable*>(_parentModel->getDataManager()
+            ->getDataDefinition(Util::TypeOf<Variable>(), action.destination));
+        if (variable == nullptr) {
+            traceError("EFSMNetwork: unknown Variable \"" + action.destination
+                + "\" in Set Actions.", TraceManager::Level::L3_errorRecover);
+            return result;
+        }
+        commitTargets.emplace_back(variable, action.expression);
+    }
+    for (const TransitionAction& action : outputs) {
+        bool found = false;
+        for (unsigned int port = 0; port < getNumOutputPorts(); ++port)
+            if (getOutputPortName(port) == action.destination) found = true;
+        if (!found) {
+            traceError("EFSMNetwork: unknown output port \"" + action.destination
+                + "\" in Output Actions.", TraceManager::Level::L3_errorRecover);
+            return result;
+        }
+    }
+
 	_lastTransition = chosen;
 	FSMState* source = dynamic_cast<FSMState*>(chosen->getSource());
 	FSMState* destination = dynamic_cast<FSMState*>(chosen->getDestination());
@@ -471,6 +593,20 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
 	if (chosen->getOutputExpression() != "" && getNumOutputPorts() > 0) {
 		result.setPresent(0, _parentModel->parseExpression(chosen->getOutputExpression()));
 	}
+    for (const TransitionAction& action : outputs)
+        for (unsigned int port = 0; port < getNumOutputPorts(); ++port)
+            if (getOutputPortName(port) == action.destination)
+                result.setPresent(port, _parentModel->parseExpression(action.expression));
+
+    // The activation is atomic in the current GenESyS network contract:
+    // calculate all commit RHS values before changing any Variable.
+    std::vector<std::pair<Variable*, double>> pendingCommits;
+    pendingCommits.reserve(commitTargets.size());
+    for (const auto& [variable, expression] : commitTargets)
+        pendingCommits.emplace_back(variable, _parentModel->parseExpression(expression));
+    for (const auto& [variable, value] : pendingCommits)
+        variable->setValue(value);
+
 	_currentState = destination;
 	if (_currentState != nullptr && _currentState->getEntryActionExpression() != "") {
 		_parentModel->parseExpression(_currentState->getEntryActionExpression());
