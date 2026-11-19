@@ -19,6 +19,7 @@
 #include <QPen>
 #include <QBrush>
 #include <QPolygonF>
+#include <QSet>
 #include <algorithm>
 #include <cmath>
 
@@ -53,10 +54,13 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
     }
     // Preserve manual routes across domain/selection refreshes that recreate overlay objects.
     QHash<EFSMTransition*, QPointF> existingBends;
+    QSet<EFSMTransition*> selectedTransitions;
     for (QGraphicsItem* graphic : scene->extensionOverlayItems(QStringLiteral("efsm"))) {
-        if (auto* edge = dynamic_cast<EFSMTransitionGraphicsItem*>(graphic);
-            edge != nullptr && edge->hasManualBendPoint())
-            existingBends.insert(edge->transition(), edge->manualBendPoint());
+        if (auto* edge = dynamic_cast<EFSMTransitionGraphicsItem*>(graphic); edge != nullptr) {
+            if (edge->hasManualBendPoint())
+                existingBends.insert(edge->transition(), edge->manualBendPoint());
+            if (edge->isSelected()) selectedTransitions.insert(edge->transition());
+        }
     }
     scene->clearExtensionOverlayItems(QStringLiteral("efsm"));
     scene->clearExtensionOverlayItems(QStringLiteral("efsm.state.markers"));
@@ -97,6 +101,7 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
         item->setGeometry(stateCenter(scene, source), stateCenter(scene, destination), rank, count);
         if (existingBends.contains(transition))
             item->setManualBendPoint(existingBends.value(transition));
+        if (selectedTransitions.contains(transition)) item->setSelected(true);
         item->setFired(network->getLastTransition() == transition);
         scene->addExtensionOverlayItem(QStringLiteral("efsm"), item);
     }
