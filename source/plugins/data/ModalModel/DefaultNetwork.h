@@ -78,6 +78,16 @@ public: // activation
 	 * specialization) is a valid, inert network.
 	 */
 	NetworkActivationResult activate(const NetworkActivationFrame& frame);
+
+    /**
+     * Discrete-event refinement lifecycle used by a containing EFSM.
+     * These are virtual so a refinement network may delay state commitment
+     * until postfire. The default adapter performs one atomic activation
+     * and reports that it can continue.
+     */
+    virtual void initializeRefinement();
+    virtual NetworkActivationResult fireRefinement(const NetworkActivationFrame& frame);
+    virtual bool postfireRefinement();
 protected: // must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
