@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cctype>
 #include <memory>
+#include <exception>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
@@ -545,113 +546,222 @@ void EFSMNetwork::_initBetweenReplications() {
 }
 
 NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& frame) {
-	(void)frame;
-	_lastTransition = nullptr;
-	NetworkActivationResult result(getNumOutputPorts());
-	if (_currentState == nullptr) {
-		_currentState = _resolveInitialState();
-	}
-	if (_currentState == nullptr) {
-		return result;
-	}
-
-	std::vector<EFSMTransition*> enabled;
-    // Do not evaluate fallback guards when a normal transition is enabled:
-    // guard expressions can be stochastic and must not consume RNG needlessly.
-    for (bool defaults : {false, true}) {
-        for (DefaultNodeTransition* transition : *_currentState->getTransitions()->list()) {
-            auto* candidate = dynamic_cast<EFSMTransition*>(transition);
-            if (candidate != nullptr && candidate->isDefaultTransition() == defaults
-                && candidate->canFire(_parentModel, nullptr))
-                enabled.push_back(candidate);
-        }
-        if (!enabled.empty()) break;
+    _lastTransition = nullptr;
+    _lastRefinementError.clear();
+    NetworkActivationResult result(getNumOutputPorts());
+    if (_currentState == nullptr) {
+        _currentState = _resolveInitialState();
+        _stateJustEntered = true;
     }
-	if (enabled.empty()) {
-		return result;
-	}
-	EFSMTransition* chosen = nullptr;
-    const bool allNondeterministic = enabled.size() > 1
-        && std::all_of(enabled.begin(), enabled.end(), [](const EFSMTransition* transition) {
-            return transition->isNondeterministic();
+    if (_currentState == nullptr) return result;
+
+    // Selection is a two-phase discrete-event analogue of FSMDirector:
+    // preemptive guards -> fire state refinement -> non-preemptive guards
+    // -> output actions -> refinement postfire -> set actions/state commit.
+    // Default transitions are fallbacks in each phase. Termination occurs
+    // only after postfire and loses to all normal/default transitions.
+    const auto select = [this](FSMState* state, bool preemptive, bool immediate,
+                               bool error, bool termination) -> EFSMTransition* {
+        std::vector<EFSMTransition*> enabled;
+        for (bool defaultFlag : {false, true}) {
+            for (DefaultNodeTransition* base : *state->getTransitions()->list()) {
+                auto* t = dynamic_cast<EFSMTransition*>(base);
+                if (t == nullptr || _transitions->find(t) == _transitions->list()->end()
+                    || t->isPreemptive() != preemptive || t->isImmediate() != immediate
+                    || t->isErrorTransition() != error || t->isTermination() != termination
+                    || t->isDefaultTransition() != defaultFlag)
+                    continue;
+                if (t->canFire(_parentModel, nullptr)) enabled.push_back(t);
+            }
+            if (!enabled.empty()) break;
+        }
+        if (enabled.empty()) return nullptr;
+        if (enabled.size() == 1) return enabled.front();
+        const bool allNondeterministic = std::all_of(enabled.begin(), enabled.end(),
+            [](const EFSMTransition* t) { return t->isNondeterministic(); });
+        if (_conflictPolicy == ConflictPolicy::MODEL_ERROR && !allNondeterministic) {
+            traceError("EFSMNetwork \"" + getName() + "\" has conflicting enabled transitions.",
+                       TraceManager::Level::L3_errorRecover);
+            return nullptr;
+        }
+        if (_conflictPolicy == ConflictPolicy::NONDETERMINISTIC_CHOICE || allNondeterministic) {
+            const double draw = _sampler != nullptr ? _sampler->random() : 0.0;
+            const auto index = std::min(static_cast<std::size_t>(draw * enabled.size()),
+                                        enabled.size() - 1);
+            return enabled[index];
+        }
+        std::stable_sort(enabled.begin(), enabled.end(), [](const EFSMTransition* a, const EFSMTransition* b) {
+            return a->getPriority() < b->getPriority();
         });
-	if (enabled.size() == 1) {
-		chosen = enabled.front();
-	} else if (_conflictPolicy == ConflictPolicy::MODEL_ERROR && !allNondeterministic) {
-		traceError("EFSMNetwork \"" + getName() + "\" has multiple enabled transitions with MODEL_ERROR conflict policy.", TraceManager::Level::L3_errorRecover);
-		return result;
-	} else if (_conflictPolicy == ConflictPolicy::NONDETERMINISTIC_CHOICE || allNondeterministic) {
-		const double sample = _sampler != nullptr ? _sampler->random() : 0.0;
-		const auto index = std::min(static_cast<std::size_t>(sample * enabled.size()), enabled.size() - 1);
-		chosen = enabled[index];
-	} else {
-		std::stable_sort(enabled.begin(), enabled.end(), [](EFSMTransition* a, EFSMTransition* b) {
-			return a->getPriority() < b->getPriority();
-		});
-		chosen = enabled.front();
-	}
-	if (chosen == nullptr) {
-		return result;
-	}
-    std::vector<TransitionAction> outputs;
-    std::vector<TransitionAction> commits;
-    if (!parseTransitionActions(chosen->getOutputActions(), &outputs)
-        || !parseTransitionActions(chosen->getSetActions(), &commits)) {
-        traceError("EFSMNetwork: invalid transition actions in \"" + chosen->getName() + "\".",
-                   TraceManager::Level::L3_errorRecover);
-        return result;
-    }
-    // Validate all destinations before causing a state transition or writes.
-    std::vector<std::pair<Variable*, std::string>> commitTargets;
-    for (const TransitionAction& action : commits) {
-        auto* variable = dynamic_cast<Variable*>(_parentModel->getDataManager()
-            ->getDataDefinition(Util::TypeOf<Variable>(), action.destination));
-        if (variable == nullptr) {
-            traceError("EFSMNetwork: unknown Variable \"" + action.destination
-                + "\" in Set Actions.", TraceManager::Level::L3_errorRecover);
-            return result;
+        return enabled.front();
+    };
+
+    const auto projectRefinementOutputs = [this, &result](
+        DefaultNetwork* refinement, const NetworkActivationResult& outputs) {
+        for (unsigned int local = 0; local < outputs.size(); ++local) {
+            if (!outputs.isPresent(local)) continue;
+            const int external = getOutputPortIndex(refinement->getOutputPortName(local));
+            if (external >= 0)
+                result.setPresent(static_cast<unsigned int>(external), outputs.getValue(local));
         }
-        commitTargets.emplace_back(variable, action.expression);
-    }
-    for (const TransitionAction& action : outputs) {
-        bool found = false;
-        for (unsigned int port = 0; port < getNumOutputPorts(); ++port)
-            if (getOutputPortName(port) == action.destination) found = true;
-        if (!found) {
-            traceError("EFSMNetwork: unknown output port \"" + action.destination
-                + "\" in Output Actions.", TraceManager::Level::L3_errorRecover);
-            return result;
+    };
+
+    const auto childFrame = [this, &frame](DefaultNetwork* refinement) {
+        NetworkActivationFrame child(refinement->getNumInputPorts());
+        for (unsigned int input = 0; input < child.size(); ++input) {
+            const int parent = getInputPortIndex(refinement->getInputPortName(input));
+            if (parent >= 0 && frame.isPresent(static_cast<unsigned int>(parent)))
+                child.setPresent(input, frame.getValue(static_cast<unsigned int>(parent)));
         }
+        return child;
+    };
+
+    // Commit validates every destination before changing any state or Variable.
+    // Output actions are evaluated before refinement postfire; Set Actions are
+    // evaluated and committed afterwards.
+    const auto commit = [this, &result](EFSMTransition* t, DefaultNetwork* firedRefinement,
+                                        bool didFire, bool afterPostfire) -> bool {
+        std::vector<TransitionAction> outputs, assignments;
+        if (!parseTransitionActions(t->getOutputActions(), &outputs)
+            || !parseTransitionActions(t->getSetActions(), &assignments)) {
+            traceError("EFSMNetwork: malformed actions on transition \"" + t->getName() + "\".",
+                       TraceManager::Level::L3_errorRecover);
+            return false;
+        }
+        std::vector<std::pair<Variable*, std::string>> commitTargets;
+        if (_parentModel == nullptr || _parentModel->getDataManager() == nullptr) return false;
+        for (const auto& action : assignments) {
+            auto* variable = dynamic_cast<Variable*>(_parentModel->getDataManager()
+                ->getDataDefinition(Util::TypeOf<Variable>(), action.destination));
+            if (variable == nullptr) {
+                traceError("EFSMNetwork: unknown Variable \"" + action.destination + "\" in Set Actions.",
+                           TraceManager::Level::L3_errorRecover);
+                return false;
+            }
+            commitTargets.emplace_back(variable, action.expression);
+        }
+        for (const auto& action : outputs)
+            if (getOutputPortIndex(action.destination) < 0) {
+                traceError("EFSMNetwork: unknown output port \"" + action.destination + "\" in Output Actions.",
+                           TraceManager::Level::L3_errorRecover);
+                return false;
+            }
+
+        auto* source = dynamic_cast<FSMState*>(t->getSource());
+        auto* destination = dynamic_cast<FSMState*>(t->getDestination());
+        if (source == nullptr || destination == nullptr
+            || _states->find(destination) == _states->list()->end()) return false;
+
+        if (!afterPostfire) {
+            if (!source->getExitActionExpression().empty())
+                _parentModel->parseExpression(source->getExitActionExpression());
+            if (!t->getOutputExpression().empty() && getNumOutputPorts() > 0)
+                result.setPresent(0, _parentModel->parseExpression(t->getOutputExpression()));
+            for (const auto& action : outputs) {
+                const int port = getOutputPortIndex(action.destination);
+                result.setPresent(static_cast<unsigned int>(port),
+                                  _parentModel->parseExpression(action.expression));
+            }
+        }
+        if (didFire && firedRefinement != nullptr) {
+            (void)firedRefinement->postfireRefinement();
+        }
+        std::vector<std::pair<Variable*, double>> values;
+        for (const auto& [variable, expr] : commitTargets)
+            values.emplace_back(variable, _parentModel->parseExpression(expr));
+        for (const auto& [variable, value] : values) variable->setValue(value);
+
+        DefaultNetwork* destinationRefinement = destination->getRefinementNetwork();
+        if (destinationRefinement != nullptr
+            && (!t->isHistory() || !_initializedRefinements.contains(destinationRefinement))) {
+            destinationRefinement->initializeRefinement();
+            _initializedRefinements.insert(destinationRefinement);
+        }
+        _lastTransition = t;
+        _currentState = destination;
+        _stateJustEntered = true;
+        if (!destination->getEntryActionExpression().empty())
+            _parentModel->parseExpression(destination->getEntryActionExpression());
+        return true;
+    };
+
+    // One normal EFSM step per activation, followed by zero-time immediate
+    // microsteps from newly entered states. Never execute another ordinary
+    // transition merely because an immediate transition led to a new state.
+    bool immediateOnly = false;
+    unsigned int immediateCount = 0;
+    while (_currentState != nullptr) {
+        FSMState* source = _currentState;
+        const bool justEntered = _stateJustEntered;
+        _stateJustEntered = false;
+        DefaultNetwork* refinement = source->getRefinementNetwork();
+        if (refinement != nullptr && !_initializedRefinements.contains(refinement)) {
+            refinement->initializeRefinement();
+            _initializedRefinements.insert(refinement);
+        }
+
+        const bool allowImmediate = justEntered || immediateOnly;
+        EFSMTransition* chosen = allowImmediate ? select(source, true, true, false, false) : nullptr;
+        if (chosen == nullptr && !immediateOnly)
+            chosen = select(source, true, false, false, false);
+        bool didFire = false;
+        bool terminated = false;
+        bool refinementFailed = false;
+        std::exception_ptr refinementException;
+
+        if (chosen == nullptr) {
+            if (refinement != nullptr) {
+                try {
+                    const auto outputs = refinement->fireRefinement(childFrame(refinement));
+                    didFire = true;
+                    projectRefinementOutputs(refinement, outputs);
+                } catch (const std::exception& exception) {
+                    refinementFailed = true;
+                    _lastRefinementError = exception.what();
+                    refinementException = std::current_exception();
+                } catch (...) {
+                    refinementFailed = true;
+                    _lastRefinementError = "unknown refinement exception";
+                    refinementException = std::current_exception();
+                }
+            }
+            if (refinementFailed) {
+                chosen = select(source, false, immediateOnly, true, false);
+                if (chosen == nullptr && !immediateOnly)
+                    chosen = select(source, false, false, true, false);
+                if (chosen == nullptr) std::rethrow_exception(refinementException);
+            } else {
+                if (allowImmediate)
+                    chosen = select(source, false, true, false, false);
+                if (chosen == nullptr && !immediateOnly)
+                    chosen = select(source, false, false, false, false);
+            }
+        }
+
+        if (chosen == nullptr) {
+            if (didFire && refinement != nullptr)
+                terminated = !refinement->postfireRefinement();
+            if (terminated && !immediateOnly)
+                chosen = select(source, false, false, false, true);
+            if (chosen == nullptr) break;
+            // Termination is discovered in postfire: its output actions are
+            // forbidden by _check(), because the output phase has elapsed.
+            if (!chosen->isTermination() || !commit(chosen, nullptr, false, true)) break;
+        } else {
+            if (!commit(chosen, refinement, didFire, false)) break;
+        }
+
+        if (chosen->isImmediate()) {
+            if (++immediateCount > _maxImmediateTransitionsPerActivation)
+                throw std::runtime_error("EFSM immediate transition cycle exceeded configured bound in \"" +
+                                         getName() + "\"");
+        }
+        immediateOnly = true;
+        // The next pass can take only an immediate transition. Do not fire
+        // the destination refinement if no immediate transition is eligible.
+        if (_currentState == nullptr) break;
     }
-
-	_lastTransition = chosen;
-	FSMState* source = dynamic_cast<FSMState*>(chosen->getSource());
-	FSMState* destination = dynamic_cast<FSMState*>(chosen->getDestination());
-	if (source != nullptr && source->getExitActionExpression() != "") {
-		_parentModel->parseExpression(source->getExitActionExpression());
-	}
-	if (chosen->getOutputExpression() != "" && getNumOutputPorts() > 0) {
-		result.setPresent(0, _parentModel->parseExpression(chosen->getOutputExpression()));
-	}
-    for (const TransitionAction& action : outputs)
-        for (unsigned int port = 0; port < getNumOutputPorts(); ++port)
-            if (getOutputPortName(port) == action.destination)
-                result.setPresent(port, _parentModel->parseExpression(action.expression));
-
-    // The activation is atomic in the current GenESyS network contract:
-    // calculate all commit RHS values before changing any Variable.
-    std::vector<std::pair<Variable*, double>> pendingCommits;
-    pendingCommits.reserve(commitTargets.size());
-    for (const auto& [variable, expression] : commitTargets)
-        pendingCommits.emplace_back(variable, _parentModel->parseExpression(expression));
-    for (const auto& [variable, value] : pendingCommits)
-        variable->setValue(value);
-
-	_currentState = destination;
-	if (_currentState != nullptr && _currentState->getEntryActionExpression() != "") {
-		_parentModel->parseExpression(_currentState->getEntryActionExpression());
-	}
-	return result;
+    return result;
 }
 
 FSMState* EFSMNetwork::_resolveInitialState() {
