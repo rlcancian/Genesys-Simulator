@@ -10,6 +10,7 @@
 - `source/plugins/data/ModalModel/DefaultNetwork.{h,cpp}`: public `initializeRefinement()`, `fireRefinement(frame)`, `postfireRefinement()` hooks. The default adapter initializes a network using its replication-reset entry point, executes a single `activate()`, and reports that it can continue in postfire. Subclasses can override these phases.
 - `source/plugins/components/ModalModel/FSMState.{h,cpp}`: optional `Refinement Network` property, referencing an **existing**, model-owned `DefaultNetwork`. No implicit creation or ownership transfer; typed classname/name persistence and ModelDataManager lookup. A refinement may be shared, but reinitialization/historical state remains owned by the referenced Network.
 - `source/plugins/data/ModalModel/EFSMNetwork.h` and `source/plugins/components/ModalModel/EFSMNetwork.cpp`: phase ordering, state transitions, immediate microsteps, choice policy, refinement lifecycle, output/set actions, error/termination outcomes, cycle validation.
+  The EFSM Property Editor additionally exposes `Max Immediate Transitions Per Activation` (positive integer) and a read-only `Last Refinement Error` message.
 - `source/plugins/components/ModalModel/DefaultTransitionExtensions.{h,cpp}`: transition flags `Default`, `Nondeterministic`, `Immediate`, `Preemptive`, `History`, `Error`, `Termination`.
 - `source/applications/gui/genesys/extensions/plugins/efsm/EFSMGuiExtensionPlugin.cpp` and transition properties undo command: editable booleans with undo/redo.
 
