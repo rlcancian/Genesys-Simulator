@@ -397,7 +397,10 @@ TEST(DecideConditionsEditorTest, MovedObjectListsSurviveSaveAndLoad) {
 	}
 	const std::string filename = "/tmp/genesys_object_list_move_" + std::to_string(::getpid()) + ".gen";
 	::unlink(filename.c_str());
-	ASSERT_TRUE(model->save(filename));
+    const bool saved = model->save(filename);
+    std::string diagnostics;
+    for (const auto& error : *model->getTracer()->errorMessages()->list()) diagnostics += error + "\n";
+    ASSERT_TRUE(saved) << diagnostics;
 	Model* loaded = simulator.getModelManager()->loadModel(filename);
 	ASSERT_NE(loaded, nullptr);
 	auto* loadedSeize = dynamic_cast<Seize*>(loaded->getComponentManager()->find("MoveObjectSeize"));
@@ -596,4 +599,35 @@ TEST(PersistenceAtomicSaveTest, FailedTemporaryWritePreservesPreviousFileContent
 	previous.close();
 	std::filesystem::remove(tempFilename);
 	::unlink(filename.c_str());
+}
+
+TEST(PersistenceIntegrityTest, DuplicateNamesRejectSaveWithoutReplacingValidSnapshot) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    const auto path = std::filesystem::temp_directory_path() /
+        ("genesys_duplicate_save_" + std::to_string(::getpid()) + ".gen");
+    struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{path};
+    auto* resource = new Resource(model, "KeepBothObjects");
+    ASSERT_TRUE(model->save(path.string()));
+    const auto read = [&]() {
+        std::ifstream input(path);
+        return std::string(std::istreambuf_iterator<char>(input), {});
+    };
+    const auto before = read();
+    auto* other = new Resource(model, "OtherObject");
+    other->setName(resource->getName());
+    model->setHasChanged(true);
+    EXPECT_FALSE(model->save(path.string()));
+    EXPECT_EQ(read(), before);
+    EXPECT_TRUE(model->hasChanged());
+    EXPECT_FALSE(std::filesystem::exists(path.string() + ".tmp"));
+    other->setName("RepairedObject");
+    ASSERT_TRUE(model->save(path.string()));
+    Simulator restored;
+    restored.getPluginManager()->autoInsertPlugins();
+    auto* loaded = restored.getModelManager()->loadModel(path.string());
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_NE(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "KeepBothObjects"), nullptr);
+    EXPECT_NE(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "RepairedObject"), nullptr);
 }

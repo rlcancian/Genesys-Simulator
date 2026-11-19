@@ -327,7 +327,7 @@ TEST(ModelSaveDiagnostics, ConsolePluginInsertRemoveReinsertAcrossMultipleSaves)
 }
 
 
-TEST(ModelSaveDiagnostics, CharacterizesSwallowedSaveInstanceErrorWithoutMaskingIt) {
+TEST(ModelSaveDiagnostics, RecordSerializationErrorPreservesPreviousFile) {
     SaveSandbox sandbox;
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -337,15 +337,11 @@ TEST(ModelSaveDiagnostics, CharacterizesSwallowedSaveInstanceErrorWithoutMasking
     const fs::path destination = sandbox.root / "prior.gen";
     writeFile(destination, "PREVIOUS_VALID_SAVE");
 
-    // CHARACTERIZATION OF KNOWN DEFECT, not a successful-save contract:
-    // SaveInstance catches the injected exception and returns void. Existing
-    // persistence historically treats the resulting partial record as valid.
-    const bool returnedSuccess = model->save(destination.string());
+    model->setHasChanged(true);
+    EXPECT_FALSE(model->save(destination.string()));
     EXPECT_TRUE(hasDiagnostic(model, "SERIALIZER_RECORD_SAVE_REPORTED_ERROR"));
-    EXPECT_TRUE(returnedSuccess) << "The bug is that a swallowed field-save error "
-                                  "can be reported as successful persistence.";
-    EXPECT_NE(readFile(destination), "PREVIOUS_VALID_SAVE")
-        << "Current code replaces a prior save after a swallowed record error.";
-    // Phase 2 must invert this contract, preserve the destination, and revise
-    // this characterization into a normal regression test.
+    EXPECT_TRUE(hasDiagnostic(model, "SERIALIZATION_FAILED"));
+    EXPECT_EQ(readFile(destination), "PREVIOUS_VALID_SAVE");
+    EXPECT_TRUE(model->hasChanged());
+    EXPECT_FALSE(fs::exists(destination.string() + ".tmp"));
 }

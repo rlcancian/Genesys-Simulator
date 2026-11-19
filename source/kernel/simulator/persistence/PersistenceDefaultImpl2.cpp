@@ -20,6 +20,7 @@
 #include "XmlSerializer.h"
 #include "JsonSerializer.h"
 #include "CppSerializer.h"
+#include <unordered_set>
 
 PersistenceDefaultImpl2::PersistenceDefaultImpl2(Model* model) :
 	_model(model) {
@@ -29,6 +30,8 @@ PersistenceDefaultImpl2::PersistenceDefaultImpl2(Model* model) :
 bool PersistenceDefaultImpl2::save(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file \"" + filename + "\"");
 	Util::IncIndent();
+
+	const auto errorsBeforeSerialization = _model->getTracer()->errorMessages()->size();
 
 	// choose format
 	std::unique_ptr<Serializer> serializer;
@@ -75,6 +78,10 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelSimulation stage=put");
 	}
 
+	// Internal components can occur in both registries (for example Process).
+	// Serialize each object once; distinct objects still require distinct names.
+	std::unordered_set<const ModelDataDefinition*> serializedObjects;
+
 	// gather data definitions
 	const std::string counter = Util::TypeOf<Counter>();
 	const std::string statsCollector = Util::TypeOf<StatisticsCollector>();
@@ -85,6 +92,7 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 		_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing elements of type \"" + type + "\":");
 		Util::IncIndent();
 		for (ModelDataDefinition *data : *_model->getDataManager()->getDataDefinitionList(type)->list()) {
+			if (!serializedObjects.insert(data).second) continue;
 			_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing " + type + " \"" + data->getName() + "\"");
 			fields->clear();
 			const auto errorsBefore = _model->getTracer()->errorMessages()->size();
@@ -108,6 +116,7 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing components:");
 	Util::IncIndent();
 	for (ModelComponent* component : *_model->getComponentManager()) {
+		if (!serializedObjects.insert(component).second) continue;
 		fields->clear();
 		const auto errorsBefore = _model->getTracer()->errorMessages()->size();
 		component->SaveInstance(fields.get(), component);
@@ -124,6 +133,14 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 		}
 	}
 	Util::DecIndent();
+
+	// A serializer may diagnose a duplicate name or a failed SaveInstance while
+	// retaining a partial record buffer. Never commit that incomplete snapshot.
+	if (_model->getTracer()->errorMessages()->size() > errorsBeforeSerialization) {
+		_model->getTracer()->traceError("SAVE_DIAGNOSTIC code=SERIALIZATION_FAILED stage=records; previous file preserved");
+		Util::DecIndent();
+		return false;
+	}
 
 	// write contents to a temp file first, then atomically replace the destination. A plain
 	// std::ofstream on `filename` truncates it the instant it's opened, so a crash/disk-full/
