@@ -84,6 +84,7 @@
 #include <QMainWindow>
 #include <QMenu>
 #include <QSpinBox>
+#include <QTableWidget>
 #include <QDoubleSpinBox>
 #include <QLocale>
 #include <QKeyEvent>
@@ -1040,6 +1041,72 @@ TEST(ColoredPetriNetGuiExtension, ValidationActionReportsInvalidGuardExpressions
         message->accept();
     });
     validate.trigger(context);
+}
+
+TEST(ColoredPetriNetGuiExtension, StructuredMarkingEditorAndResetAreUndoable) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ColoredPetriNetNetwork network(model, "EditableMarking");
+    auto* place = new PetriPlace(model, "Input");
+    network.addPlace(place);
+    network.setInitialTokens(place, "red", 3);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    QUndoStack stack;
+    scene.setUndoStack(&stack);
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<PetriPlace>());
+    ASSERT_NE(plugin, nullptr);
+    auto* graphical = scene.addGraphicalModelDataDefinition(plugin, place, QPointF(20, 20));
+    ASSERT_NE(graphical, nullptr);
+    graphical->setSelected(true);
+
+    GuiActionContribution editAction;
+    GuiActionContribution resetAction;
+    for (const GuiExtensionPlugin* extension : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (extension == nullptr || extension->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        extension->registerContributions(&registry);
+        for (const auto& action : registry.actions()) {
+            if (action.id == "modal.cpn.edit-initial-marking") editAction = action;
+            if (action.id == "modal.cpn.reset-place-marking") resetAction = action;
+        }
+    }
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(static_cast<bool>(editAction.trigger));
+    ASSERT_TRUE(static_cast<bool>(resetAction.trigger));
+    ASSERT_TRUE(editAction.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* table = dialog->findChild<QTableWidget*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        if (table == nullptr || buttons == nullptr || table->rowCount() != 1) {
+            dialog->reject();
+            return;
+        }
+        table->item(0, 1)->setText(QStringLiteral("5"));
+        buttons->button(QDialogButtonBox::Ok)->click();
+    });
+    editAction.trigger(context);
+    EXPECT_EQ(network.getInitialTokens(place, "red"), 5u);
+    EXPECT_EQ(place->getTokens("red"), 3u);
+    ASSERT_EQ(stack.count(), 1);
+    stack.undo();
+    EXPECT_EQ(network.getInitialTokens(place, "red"), 3u);
+    stack.redo();
+    EXPECT_EQ(network.getInitialTokens(place, "red"), 5u);
+
+    resetAction.trigger(context);
+    EXPECT_EQ(place->getTokens("red"), 5u);
+    stack.undo();
+    EXPECT_EQ(place->getTokens("red"), 3u);
 }
 
 TEST(ColoredPetriNetGuiExtension, GenericGuiPersistenceRestoresNodeGeometryAndTopology) {
