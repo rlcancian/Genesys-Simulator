@@ -441,6 +441,30 @@ TEST(EFSMNetworkLifecycle, QualifierPersistenceRoundTrip) {
     EXPECT_EQ(restored.getMaxImmediateTransitionsPerActivation(), 21u);
 }
 
+TEST(EFSMNetworkLifecycle, RecursiveRefinementActivationFailsWithoutStackOverflow) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork parent(model, "ParentCycle");
+    EFSMNetwork child(model, "ChildCycle");
+    FSMState outer(model, "Outer");
+    FSMState inner(model, "Inner");
+    parent.setInitialState(&outer);
+    child.setInitialState(&inner);
+    outer.setRefinementNetwork(&child);
+    inner.setRefinementNetwork(&parent);
+
+    const NetworkActivationFrame frame(parent.getNumInputPorts());
+    EXPECT_THROW(parent.activate(frame), std::logic_error);
+    EXPECT_EQ(parent.getCurrentState(), &outer);
+    EXPECT_EQ(child.getCurrentState(), &inner);
+
+    // An exception must release the activation guard, allowing recovery
+    // after the cyclic reference is removed.
+    inner.setRefinementNetwork(nullptr);
+    EXPECT_NO_THROW(parent.activate(frame));
+}
+
 TEST(EFSMNetworkLifecycle, ValidationRejectsUnsupportedFlagCombinationsAndCycles) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
