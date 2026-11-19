@@ -43,6 +43,60 @@ Transitions in the same selection phase use the existing conflict policy (`MODEL
 
 The runtime exposes `getLastRefinementError()` to inspect the last thrown error message. No exception is treated as ordinary success. A handled postfire failure does not commit the earlier selected normal transition.
 
+## Legacy events, stochastic gating and transition action diagnostics
+
+These clarifications describe the current **GenESyS discrete-event subset**, not
+new architectural services and not the Ptolemy II general token/event scope.
+
+- `Input Event` and `Trigger Event` are optional exact names of existing
+  EFSM **input ports**. Every configured name must be present in the current
+  `NetworkActivationFrame`; a present value of zero still satisfies the
+  condition. When both fields are configured, both presences are required.
+  Unknown names fail `EFSMNetwork::_check()`.
+- The short-circuit order is **input-port presence → guard expression →
+  Bernoulli probability gate**. Thus absent events do not evaluate stochastic
+  guards and a false guard does not consume RNG from the probability gate.
+- `Probability Expression` is a **per-transition probability of eligibility**,
+  not a categorical distribution across outgoing relations. Its runtime value
+  must be finite and in `[0,1]`; `0` always rejects and `1` always admits
+  without drawing RNG. Interior probabilities use the EFSM sampler. Dynamic
+  probabilities are validated **at activation time**; static `_check()`
+  validates expression syntax only to avoid consuming RNG during validation.
+  Once Bernoulli-gated relations have been identified, the preexisting
+  deterministic-priority / model-error / nondeterministic conflict policy chooses
+  a relation. With no enabled ordinary relation, `Default` candidates are
+  considered and gated independently.
+- The runtime action subset remains `name=expression;...`. Duplicate output
+  port or Variable destinations in the same action list are rejected instead
+  of relying on ambiguous last-write-wins behavior. `Output Actions` are
+  evaluated before `Set Actions`; assignment right-hand sides of `Set Actions`
+  are evaluated before updating any destination Variable.
+- For `Error` recovery after a failed refinement `postfire`, recovery output
+  expressions/actions can still be emitted and the source state's exit action
+  is evaluated. Termination transitions also execute exit actions, but their
+  output actions remain invalid under `_check()`.
+- On **every external activation**, immediate and non-immediate transitions
+  from the current state participate in their common preemptive or
+  non-preemptive phase, including default fallback and conflict priority.
+  Only within microsteps after a transition in the same activation are
+  candidates restricted to immediate transitions. Consequently, an immediate
+  transition whose guard was initially false remains eligible on a later
+  external activation.
+- Graphical transition properties provide a read-only explanation of the
+  event and Bernoulli semantics; primary validation remains in `EFSMNetwork`.
+- `FSMState::getRefinementNetwork()` checks the live ModelDataManager registry
+  before using a cached non-owning reference. A still-live target remains
+  associated when renamed; persistence can resolve the typed name to a
+  reloaded target. Loading new association fields detaches the previous
+  association without deleting the referenced Network.
+
+**Irreversibility limitation:** the default child `fireRefinement()` executes an
+atomic `activate()`, and legacy expression evaluation may itself have side
+effects or consume randomness. If a later `postfireRefinement()` throws, the
+parent retracts uncommitted output values and may run an `Error` transition,
+but it cannot rollback already committed child state or arbitrary parser side
+effects. No transactional guarantee should be inferred or advertised.
+
 ## Ptolemy II equivalence boundary — NOT COMPLETE
 
 The Ptolemy II `FSMDirector` implements an actor-level `fire()` / `postfire()` protocol with tentative choice actions, state/transition refinements, refinement-produced input visibility and fixed-point compatibility. GenESyS currently has a **single atomic, committed `activate()`** and an additional optional refinement lifecycle. Therefore:
