@@ -1245,6 +1245,62 @@ TEST(MarkovChainNetworkGuiExtension, DecimalProbabilityEditorPreservesFractionUn
     EXPECT_GE(undo.count(), 1);
 }
 
+TEST(MarkovChainNetworkGuiExtension, SpinButtonCommitsProbabilityWithoutLosingFraction) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "SpinButtonNetwork");
+    auto* source = new MarkovState(model, "Start");
+    auto* destination = new MarkovState(model, "Destination");
+    network.addState(source);
+    network.addState(destination);
+    network.setInitialState(source);
+    auto* transition = new MarkovChainNetwork::MarkovTransition(source, destination, 1.0, "Go");
+    network.addTransition(transition);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    QUndoStack undo;
+    scene.setUndoStack(&undo);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+
+    QGraphicsItem* edge = nullptr;
+    for (auto* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")))
+        if (item->data(1).isValid()) { edge = item; break; }
+    ASSERT_NE(edge, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.setModelScene(&scene);
+    browser.setActiveGraphicsItem(edge);
+    QList<QtBrowserItem*> pending = browser.topLevelItems();
+    QtBrowserItem* probability = nullptr;
+    while (!pending.isEmpty()) {
+        auto* item = pending.takeFirst();
+        if (item->property()->propertyName() == QStringLiteral("Probability")) {
+            probability = item; break;
+        }
+        pending.append(item->children());
+    }
+    ASSERT_NE(probability, nullptr);
+    browser.setCurrentItem(probability);
+    browser.editItem(probability);
+    QApplication::processEvents();
+    auto* spin = browser.findChild<QDoubleSpinBox*>();
+    ASSERT_NE(spin, nullptr);
+    ASSERT_DOUBLE_EQ(spin->value(), 1.0);
+    spin->stepDown();
+    // This also runs the deferred undo command, which recreates the edge overlay.
+    QApplication::processEvents();
+    EXPECT_NEAR(transition->getProbability(), 0.95, 1e-12);
+    EXPECT_EQ(undo.count(), 1);
+    undo.undo();
+    QApplication::processEvents();
+    EXPECT_NEAR(transition->getProbability(), 1.0, 1e-12);
+}
+
 TEST(MarkovChainNetworkGuiExtension, ProbabilityRowSumsFollowKernelEdits) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
