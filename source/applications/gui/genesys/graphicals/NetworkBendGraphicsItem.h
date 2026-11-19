@@ -3,6 +3,7 @@
 #include "ModelGraphicsScene.h"
 
 #include <QGraphicsPathItem>
+#include <QGraphicsSimpleTextItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 #include <QPainterPathStroker>
@@ -41,6 +42,22 @@ public:
     QPointF manualBendPoint() const { return _bend; }
 
     void setVisiblePen(const QPen& pen) { _visiblePen = pen; setPen(pen); update(); }
+
+    // The label is a child of the relation and follows its curve while
+    // the bend handle is being dragged; no stale sibling pointer is retained.
+    void setRouteLabel(const QString& text, const QColor& ink,
+                       QPointF offset = QPointF(5.0, -14.0)) {
+        if (_routeLabel == nullptr) {
+            _routeLabel = new QGraphicsSimpleTextItem(this);
+            _routeLabel->setAcceptedMouseButtons(Qt::NoButton);
+            _routeLabel->setZValue(0.2);
+        }
+        _routeLabelOffset = offset;
+        _routeLabel->setText(text);
+        _routeLabel->setBrush(ink);
+        _routeLabel->setPos(handlePosition() + _routeLabelOffset);
+    }
+    QGraphicsSimpleTextItem* routeLabel() const { return _routeLabel; }
 
     void setGeometry(const QPointF& from, const QPointF& to, int rank, int count,
                      bool opposite, bool directed) {
@@ -228,11 +245,15 @@ private:
             }
         }
         setPath(route);
+        if (_routeLabel != nullptr)
+            _routeLabel->setPos(handlePosition() + _routeLabelOffset);
     }
 
     QString _extensionId;
     QString _routeKey;
     QPen _visiblePen = QPen(QColor(65, 75, 90), 2.0);
+    QGraphicsSimpleTextItem* _routeLabel = nullptr; // owned by QGraphicsItem parent
+    QPointF _routeLabelOffset = QPointF(5.0, -14.0);
     QPointF _from, _to, _bend, _beforeBend;
     int _rank = 0, _count = 1;
     bool _manual = false, _dragging = false, _beforeManual = false;
