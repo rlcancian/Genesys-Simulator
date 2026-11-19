@@ -375,12 +375,8 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
                              .arg(transition->getProbability(), 0, 'g', 17));
         scene->addExtensionOverlayItem(QString::fromLatin1(kMarkovExtensionId), edge);
         if (selectedTransitions.contains(transition)) edge->setSelected(true);
-        auto* label = new QGraphicsSimpleTextItem(QString::number(transition->getProbability(), 'g', 12));
-        label->setBrush(QColor(35, 45, 60));
-        label->setPos(edge->path().pointAtPercent(0.5) + QPointF(4, -14));
-        label->setZValue(-0.8);
-        label->setAcceptedMouseButtons(Qt::NoButton);
-        scene->addExtensionOverlayItem(QString::fromLatin1(kMarkovExtensionId), label);
+        edge->setRouteLabel(QString::number(transition->getProbability(), 'g', 12),
+                            QColor(35, 45, 60), QPointF(4, -14));
     }
 }
 
