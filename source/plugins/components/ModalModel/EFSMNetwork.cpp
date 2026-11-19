@@ -819,7 +819,6 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
     unsigned int immediateCount = 0;
     while (_currentState != nullptr) {
         FSMState* source = _currentState;
-        const bool justEntered = _stateJustEntered;
         _stateJustEntered = false;
         if (immediateOnly) {
             // A newly entered state without an immediate outgoing relation
@@ -842,12 +841,13 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
             _initializedRefinements.insert(refinement);
         }
 
-        // At the start of a reaction, immediate and ordinary transitions
-        // share one preemptive/non-preemptive selection phase. Only after
-        // taking a transition in this same activate() call do we restrict
-        // the next microstep to immediate transitions.
-        const std::optional<bool> immediateFilter = immediateOnly ? std::optional<bool>{true}
-            : justEntered ? std::nullopt : std::optional<bool>{false};
+        // On every *external* activation, the current state's immediate and
+        // ordinary transitions compete together. The immediate-only filter
+        // applies exclusively to microsteps after a transition in this call;
+        // an immediate transition remains eligible on later activations if
+        // its guard was previously false.
+        const std::optional<bool> immediateFilter =
+            immediateOnly ? std::optional<bool>{true} : std::nullopt;
         EFSMTransition* chosen = select(source, true, immediateFilter, false, false);
         if (selectionConflict) break;
         bool hasNonpreemptiveImmediate = false;
