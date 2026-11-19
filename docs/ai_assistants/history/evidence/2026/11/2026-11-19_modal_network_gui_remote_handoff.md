@@ -12,6 +12,41 @@ base_commit: 6c57631cfcfa881f3fd57d411de7099ae0bb4d99
 
 # Modal / Network GUI remote implementation — local agent handoff
 
+## Update — experimental EFSM refinement semantics
+
+This update supersedes the previous statements below that `Immediate`,
+`Preemptive`, `History`, `Error`, and `Termination` were unimplemented.
+
+All five qualifiers are now implemented in the **single-activation discrete-event
+subset of the GenESyS kernel** and exposed through GUI properties, persistence
+and undo/redo. There is a typed, non-owning, selectable `Refinement Network`
+reference on `FSMState` and a virtual refinement lifecycle on `DefaultNetwork`:
+`initializeRefinement()`, `fireRefinement()`, `postfireRefinement()`.
+
+The implementation now includes staged preemptive/non-preemptive transition
+selection, history-controlled reinitialization, immediate microstep chaining
+with a configurable limit, exception-driven Error transitions during refinement
+fire/postfire, and postfire-driven Termination transitions. Both static
+cycle validation and a runtime synchronous activation recursion guard were added.
+Nested EFSM refinements can report termination on final states. A dedicated
+technical contract with explicit Ptolemy II differences is located at
+`docs/ai_assistants/reference/EFSM_REFINEMENT_RUNTIME.md`.
+
+**No compiled/runtime evidence exists for this implementation in the remote
+branch.** Kernel and GUI regression tests have been authored but not run.
+All newly introduced code must undergo compilation, CTest, Xvfb interaction
+and sanitizer tests before the implementation can be marked PASS.
+The full Ptolemy II actor/director model is **not equivalent** to this bounded
+GenESyS discrete-event implementation: fixed-point fire/postfire rollback,
+arbitrary actor/transition refinements, heterogeneous event tokens, and
+string/object-valued error scope are still beyond the verified backend contract.
+A truthful claim is therefore "semantic discrete-event subset implemented,
+unverified", not "full Ptolemy II compatibility".
+
+No PR, merge, or push to `WorkInProgress` is part of this remote stage.
+
+
+
 ## Update after timeout recovery — revised remote implementation inventory
 
 This section supersedes the narrower scope descriptions below. It records
