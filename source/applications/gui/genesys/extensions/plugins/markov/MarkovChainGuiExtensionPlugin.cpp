@@ -296,6 +296,7 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
             marker->setPen(QPen(QColor(40, 145, 90), 2.0, Qt::DashLine));
             marker->setBrush(Qt::NoBrush);
             marker->setZValue(-0.5);
+            marker->setAcceptedMouseButtons(Qt::NoButton);
             marker->setToolTip(QObject::tr("Initial Markov state"));
             scene->addExtensionOverlayItem(QString::fromLatin1(kMarkovExtensionId), marker);
         }
@@ -304,6 +305,7 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
             marker->setPen(QPen(QColor(40, 100, 205), 2.0));
             marker->setBrush(Qt::NoBrush);
             marker->setZValue(-0.6);
+            marker->setAcceptedMouseButtons(Qt::NoButton);
             marker->setToolTip(QObject::tr("Current Markov state"));
             scene->addExtensionOverlayItem(QString::fromLatin1(kMarkovExtensionId), marker);
         }
