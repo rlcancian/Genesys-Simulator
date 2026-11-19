@@ -12,6 +12,7 @@
 #include <QTimer>
 #include <QLineF>
 #include <algorithm>
+#include <cmath>
 #include "ModelGraphicsScene.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include <QStringList>
@@ -130,11 +131,12 @@ void EFSMTransitionGraphicsItem::clearManualBendPoint() {
 }
 
 void EFSMTransitionGraphicsItem::setGeometry(const QPointF& sourceCenter, const QPointF& destinationCenter,
-                                             int parallelRank, int parallelCount) {
+                                             int parallelRank, int parallelCount, bool hasOppositeDirection) {
     _sourceCenter = sourceCenter;
     _destinationCenter = destinationCenter;
     _parallelRank = parallelRank;
     _parallelCount = std::max(1, parallelCount);
+    _hasOppositeDirection = hasOppositeDirection;
     _rebuildGeometry();
 }
 
@@ -142,10 +144,17 @@ void EFSMTransitionGraphicsItem::_rebuildGeometry() {
     QPainterPath transitionPath;
     const QPointF delta = _destinationCenter - _sourceCenter;
     const double length = std::hypot(delta.x(), delta.y());
-    const double parallelOffset = (_parallelRank - (_parallelCount - 1) / 2.0) * 26.0;
+    // Reverse relations use the opposite unit normal, so the same positive
+    // offset separates A->B from B->A instead of drawing them on top of one another.
+    const double parallelOffset = (_parallelRank - (_parallelCount - 1) / 2.0) * 26.0
+        + (_hasOppositeDirection ? 18.0 : 0.0);
 
     if (length < 1.0) {
-        const QRectF loop(_sourceCenter.x() - 45.0, _sourceCenter.y() - 80.0, 90.0, 80.0);
+        // Each self-loop has its own radius, rather than every loop sharing one path.
+        const double radiusOffset = std::max(0, _parallelRank) * 24.0;
+        const QRectF loop(_sourceCenter.x() - 45.0 - radiusOffset,
+                          _sourceCenter.y() - 80.0 - radiusOffset,
+                          90.0 + radiusOffset * 2.0, 80.0 + radiusOffset);
         const QPointF start = _sourceCenter + QPointF(24.0, -18.0);
         const QPointF end = _sourceCenter + QPointF(-24.0, -18.0);
         transitionPath.moveTo(start);
