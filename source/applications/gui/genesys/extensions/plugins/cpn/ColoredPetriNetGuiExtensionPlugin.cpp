@@ -38,6 +38,7 @@
 #include <sstream>
 #include <map>
 #include <memory>
+#include <limits>
 #include <utility>
 #include <unordered_set>
 
@@ -72,6 +73,83 @@ void addArrow(QPainterPath& path, const QPointF& tip) {
     path.lineTo(tip - QPointF(std::cos(angle - spread) * length, std::sin(angle - spread) * length));
     path.moveTo(tip);
     path.lineTo(tip - QPointF(std::cos(angle + spread) * length, std::sin(angle + spread) * length));
+}
+
+// This probe deliberately does not evaluate transition guards. The model parser
+// can consume RNG or perform stateful evaluation, which must never be triggered
+// just because Qt repaints a scene or opens an action menu.
+struct CpnPreviewReadiness {
+    bool tokenAndCapacityReady = false;
+    bool guardPending = false;
+    QString explanation;
+};
+
+CpnPreviewReadiness previewCpnReadiness(const ColoredPetriNetNetwork* network, CPNTransition* transition) {
+    if (network == nullptr || transition == nullptr || network->getTransitions() == nullptr
+        || network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) {
+        return {false, false, QObject::tr("Transition does not belong to this CPN Network")};
+    }
+
+    const auto inputs = network->getInputArcs(transition);
+    const auto outputs = network->getOutputArcs(transition);
+    if (inputs.empty() && outputs.empty()) {
+        return {false, false, QObject::tr("No incident arcs: connect a place to this transition")};
+    }
+
+    using ColorCounts = std::map<std::string, unsigned long long>;
+    std::map<PetriPlace*, ColorCounts> required;
+    std::map<PetriPlace*, ColorCounts> produced;
+    const auto accumulate = [](std::map<PetriPlace*, ColorCounts>& amounts,
+                               const CPNArc* arc) -> bool {
+        if (arc == nullptr || arc->getPlace() == nullptr) return false;
+        for (const auto& [color, count] : arc->getInscriptions()) {
+            unsigned long long& total = amounts[arc->getPlace()][color];
+            if (total > std::numeric_limits<unsigned long long>::max() - count) return false;
+            total += count;
+        }
+        return true;
+    };
+
+    for (CPNArc* arc : inputs)
+        if (!accumulate(required, arc))
+            return {false, false, QObject::tr("Invalid or overflowing input arc inscription")};
+    for (CPNArc* arc : outputs)
+        if (!accumulate(produced, arc))
+            return {false, false, QObject::tr("Invalid or overflowing output arc inscription")};
+
+    for (const auto& [place, colors] : required) {
+        for (const auto& [color, count] : colors) {
+            const unsigned int available = place->getTokens(color);
+            if (count > available) {
+                return {false, false,
+                    QObject::tr("%1: color %2 requires %3 tokens, but only %4 are available")
+                        .arg(QString::fromStdString(place->getName()),
+                             QString::fromStdString(color))
+                        .arg(count).arg(available)};
+            }
+        }
+    }
+
+    const auto maxTokens = std::numeric_limits<unsigned int>::max();
+    for (const auto& [place, colors] : produced) {
+        for (const auto& [color, count] : colors) {
+            const unsigned long long available = place->getTokens(color);
+            const unsigned long long consumed = required[place][color];
+            if (count > maxTokens || available - consumed + count > maxTokens) {
+                return {false, false,
+                    QObject::tr("%1: output for color %2 would overflow token capacity")
+                        .arg(QString::fromStdString(place->getName()),
+                             QString::fromStdString(color))};
+            }
+        }
+    }
+
+    if (!transition->getGuardExpression().empty()) {
+        return {true, true, QObject::tr(
+            "Token prerequisites satisfied; guard NOT evaluated in GUI preview. "
+            "The guard is evaluated only when firing is requested or simulation runs.")};
+    }
+    return {true, false, QObject::tr("Enabled by marking and topology (no guard expression)")};
 }
 
 void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
@@ -114,14 +192,16 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
         if (graphical == nullptr) continue;
         auto* badge = new QGraphicsRectItem(graphical->sceneBoundingRect().adjusted(-5, -5, 5, 5));
         const bool fired = network->getLastFiredTransition() == transition;
+        const CpnPreviewReadiness preview = previewCpnReadiness(network, transition);
         badge->setPen(QPen(fired ? QColor(225, 90, 35)
-                                  : network->isEnabled(transition) ? QColor(45, 150, 90) : QColor(110, 110, 110),
+                                  : !preview.tokenAndCapacityReady ? QColor(110, 110, 110)
+                                  : preview.guardPending ? QColor(200, 145, 45)
+                                                         : QColor(45, 150, 90),
                               fired ? 4.0 : 2.0));
         badge->setBrush(Qt::NoBrush);
         badge->setZValue(-0.7);
-        badge->setToolTip(fired ? QObject::tr("Last fired CPN transition")
-                                : network->isEnabled(transition) ? QObject::tr("Enabled CPN transition")
-                                                                 : QObject::tr("Disabled CPN transition"));
+        badge->setToolTip(fired ? QObject::tr("Last fired CPN transition. %1").arg(preview.explanation)
+                                : preview.explanation);
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), badge);
     }
     for (CPNArc* arc : *network->getArcs()->list()) {
@@ -668,7 +748,7 @@ bool canFireSelectedTransition(const GuiExtensionRuntimeContext& context) {
     if (context.graphicsScene == nullptr || context.graphicsScene->getUndoStack() == nullptr) return false;
     auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
     auto* transition = selectedTransition(context);
-    return network != nullptr && transition != nullptr && network->isEnabled(transition);
+    return previewCpnReadiness(network, transition).tokenAndCapacityReady;
 }
 
 void fireSelectedTransition(const GuiExtensionRuntimeContext& context) {
@@ -819,8 +899,9 @@ public:
             auto* data = graphical != nullptr ? graphical->getDataDefinition() : nullptr;
             if (auto* transition = dynamic_cast<CPNTransition*>(data)) {
                 if (network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) return result;
-                result.push_back(P{"Enabled", network->isEnabled(transition) ? "true" : "false", {},
-                                   P::Kind::Boolean, false});
+                const CpnPreviewReadiness preview = previewCpnReadiness(network, transition);
+                result.push_back(P{"Firing Readiness", preview.explanation.toStdString(), {},
+                                   P::Kind::String, false});
                 result.push_back(P{"Guard Expression", transition->getGuardExpression(), {}, P::Kind::String, true});
                 result.push_back(P{"Priority", std::to_string(transition->getPriority()), {}, P::Kind::Integer, true});
             } else if (auto* place = dynamic_cast<PetriPlace*>(data)) {
