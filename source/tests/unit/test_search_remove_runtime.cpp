@@ -50,6 +50,7 @@ public:
     void dispatch(Entity* entity) {
         _onDispatchEvent(entity, 0u);
     }
+    void materializeReferences() { _createEditableDataDefinitions(); }
 };
 
 class RemoveProbe final : public Remove {
@@ -60,6 +61,7 @@ public:
     void dispatch(Entity* entity) {
         _onDispatchEvent(entity, 0u);
     }
+    void materializeReferences() { _createEditableDataDefinitions(); }
 };
 
 class DecideProbe final : public Decide {
@@ -83,6 +85,59 @@ void drainFutureEvents(Model* model) {
 }
 
 } // namespace
+
+TEST(SearchRemoveRuntimeTest, EmptyQueueReferencesRemainEmptyAcrossMaterializationAndModelCheck) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    SearchProbe search(model, "UnconfiguredSearch");
+    RemoveProbe remove(model, "UnconfiguredRemove");
+    for (int repetition = 0; repetition < 3; ++repetition) {
+        search.materializeReferences();
+        remove.materializeReferences();
+        EXPECT_EQ(search.getSearchIn(), nullptr);
+        EXPECT_EQ(remove.getRemoveFrom(), nullptr);
+        EXPECT_EQ(model->getDataManager()->getDataDefinition("Queue", "UnconfiguredSearch.Queue"), nullptr);
+        EXPECT_EQ(model->getDataManager()->getDataDefinition("Queue", "UnconfiguredRemove.Queue"), nullptr);
+    }
+    model->check();
+    EXPECT_EQ(search.getSearchIn(), nullptr);
+    EXPECT_EQ(remove.getRemoveFrom(), nullptr);
+}
+
+TEST(SearchRemoveRuntimeTest, ClearingOneSharedQueueReferenceKeepsTheQueueAndOtherConsumer) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Queue queue(model, "SharedDecisionQueue");
+    SearchProbe search(model, "SharedSearch");
+    RemoveProbe remove(model, "SharedRemove");
+    search.setSearchIn(&queue);
+    remove.setRemoveFrom(&queue);
+    SimulationControl* searchReference = nullptr;
+    SimulationControl* removeReference = nullptr;
+    for (auto* control : *search.getSimulationControls()->list())
+        if (control->getName() == "SearchIn") searchReference = control;
+    for (auto* control : *remove.getSimulationControls()->list())
+        if (control->getName() == "RemoveFrom") removeReference = control;
+    ASSERT_NE(searchReference, nullptr);
+    ASSERT_NE(removeReference, nullptr);
+    EXPECT_TRUE(searchReference->supportsReferenceRemoval());
+    EXPECT_TRUE(removeReference->supportsReferenceRemoval());
+    searchReference->setValue("", true);
+    search.materializeReferences();
+    EXPECT_EQ(search.getSearchIn(), nullptr);
+    EXPECT_EQ(remove.getRemoveFrom(), &queue);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition("Queue", "SharedDecisionQueue"), &queue);
+    removeReference->setValue("", true);
+    remove.materializeReferences();
+    EXPECT_EQ(remove.getRemoveFrom(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition("Queue", "SharedDecisionQueue"), &queue);
+    searchReference->setValue("SharedDecisionQueue");
+    removeReference->setValue("SharedDecisionQueue");
+    EXPECT_EQ(search.getSearchIn(), &queue);
+    EXPECT_EQ(remove.getRemoveFrom(), &queue);
+}
 
 TEST(SearchRemoveRuntimeTest, SearchQueueFindsEntityInRangeSavesRankAndRoutesToFoundPort) {
     Simulator simulator;

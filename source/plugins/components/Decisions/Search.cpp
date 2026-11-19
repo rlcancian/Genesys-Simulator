@@ -170,7 +170,7 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
 									std::bind(&Search::getSearchIn, this),
 									std::bind(&Search::setSearchIn, this, std::placeholders::_1),
 									Util::TypeOf<Search>(), getName(), "SearchIn", "", false, true, false, createSearchIn,
-									false, false, resolveSearchIn, searchInChoices, searchInCreatableTypes);
+									false, false, resolveSearchIn, searchInChoices, searchInCreatableTypes, true);
     SimulationControlGenericEnum<Search::SearchInType, Search>* propSearchInType = new SimulationControlGenericEnum<Search::SearchInType, Search>(
                                     std::bind(&Search::getSearchInType, this), std::bind(&Search::setSearchInType, this, std::placeholders::_1),
                                     Util::TypeOf<Search>(), getName(), "SearchInType", "");
@@ -376,16 +376,9 @@ void Search::_createEditableDataDefinitions() {
 	if (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), _saveFounRankAttribute) == nullptr) {
 		this->_attachedAttributesInsert({_saveFounRankAttribute});
 	}
-	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_searchInType == Search::SearchInType::QUEUE) {
-		if (dynamic_cast<Queue*>(_searchIn) == nullptr) {
-			_searchIn = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
-			if (_searchIn == nullptr) {
-				_searchIn = new Queue(_parentModel, getName() + ".Queue");
-			}
-		}
 		if (_searchIn != nullptr) {
-			setSearchIn(_searchIn); // @TODO: Check internal and attached and shared queues
+			setSearchIn(_searchIn);
 		} else {
 			_optionalEditableDataDefinitionRemove("Queue");
 		}

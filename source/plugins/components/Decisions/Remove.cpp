@@ -136,7 +136,7 @@ Remove::Remove(Model* model, std::string name, std::string pluginTypeName)
 									std::bind(&Remove::getRemoveFrom, this),
 									std::bind(&Remove::setRemoveFrom, this, std::placeholders::_1),
 									Util::TypeOf<Remove>(), getName(), "RemoveFrom", "", false, true, false, createRemoveFrom,
-									false, false, resolveRemoveFrom, removeFromChoices, removeFromCreatableTypes);
+									false, false, resolveRemoveFrom, removeFromChoices, removeFromCreatableTypes, true);
 
 	
 	_parentModel->getControls()->insert(propRemoveFrom);
@@ -295,14 +295,7 @@ PluginInformation* Remove::GetPluginInformation() {
 // void Remove::_createInternalStatisticReporters() { }
 
 void Remove::_createEditableDataDefinitions() {
-	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_removeFromType == Remove::RemoveFromType::QUEUE) {
-		if (dynamic_cast<Queue*>(_removeFrom) == nullptr) {
-			_removeFrom = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
-			if (_removeFrom == nullptr) {
-				_removeFrom = new Queue(_parentModel, getName() + ".Queue");
-			}
-		}
 		if (_removeFrom != nullptr) {
 			setRemoveFrom(_removeFrom);
 		} else {
