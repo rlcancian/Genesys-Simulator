@@ -96,7 +96,8 @@ void synchronizeGraphProjection(Simulator*, ModelGraphicsScene* scene) {
     if (network == nullptr) return;
 
     const auto edges = network->getEdges();
-    for (GraphEdge* edge : edges) {
+    for (std::size_t ordinal = 0; ordinal < edges.size(); ++ordinal) {
+        GraphEdge* edge = edges[ordinal];
         if (edge == nullptr || edge->getSource() == nullptr || edge->getDestination() == nullptr) continue;
         auto* source = scene->findGraphicalModelDataDefinition(edge->getSource());
         auto* destination = scene->findGraphicalModelDataDefinition(edge->getDestination());
@@ -109,7 +110,7 @@ void synchronizeGraphProjection(Simulator*, ModelGraphicsScene* scene) {
         const bool opposite = network->isDirected() && edge->getSource() != edge->getDestination()
             && !network->getEdgesBetween(edge->getDestination(), edge->getSource()).empty();
         const QString key = NetworkBendDiagramCodec::relationKey(
-            edge->getId(), QString::fromStdString(edge->getSource()->getName()),
+            static_cast<qulonglong>(ordinal), QString::fromStdString(edge->getSource()->getName()),
             QString::fromStdString(edge->getDestination()->getName()),
             QString::fromStdString(edge->getName()));
         auto* item = new NetworkBendGraphicsItem(QString::fromLatin1(kGraphExtensionId), key);
