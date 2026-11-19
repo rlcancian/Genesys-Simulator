@@ -620,6 +620,120 @@ TEST(GuiExtensionManager, ProcessSubmodelStillAcceptsProcessComponentDrops) {
     EXPECT_EQ(scene.getGraphicalModelComponents()->size(), 1);
 }
 
+TEST(NetworkBendDiagram, GraphMarkovAndCpnBendsRoundTripThroughRegisteredCodecs) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const auto verify = [&](ModelDataDefinition* network, const QString& extension,
+                            ModelGraphicsScene* scene) {
+        const auto& projections = GuiExtensionPluginCatalog::diagramProjectionContributions();
+        auto found = std::find_if(projections.begin(), projections.end(),
+            [&](const GuiDiagramProjectionContribution& projection) {
+                return QString::fromStdString(projection.id) == extension;
+            });
+        ASSERT_NE(found, projections.end());
+        ASSERT_TRUE(static_cast<bool>(found->captureLayout));
+        ASSERT_TRUE(static_cast<bool>(found->restoreLayout));
+        ASSERT_TRUE(static_cast<bool>(found->serializeLayouts));
+        ASSERT_TRUE(static_cast<bool>(found->parseLayouts));
+
+        GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, scene);
+        NetworkBendGraphicsItem* bendable = nullptr;
+        for (auto* item : scene->extensionOverlayItems(extension)) {
+            bendable = dynamic_cast<NetworkBendGraphicsItem*>(item);
+            if (bendable != nullptr) break;
+        }
+        ASSERT_NE(bendable, nullptr);
+        bendable->setManualBendPoint(QPointF(120.25, -64.5));
+        const QString routeKey = bendable->routeKey();
+        ASSERT_FALSE(routeKey.isEmpty());
+
+        GuiDiagramLayouts captured;
+        captured.emplace(static_cast<unsigned long>(network->getId()),
+                         found->captureLayout(&simulator, network, scene));
+        const QStringList records = found->serializeLayouts(&simulator, captured);
+        ASSERT_EQ(records.size(), 1);
+        EXPECT_TRUE(records.front().contains(QStringLiteral("NetworkBend")));
+        const GuiDiagramLayouts loaded = found->parseLayouts(model, records);
+        ASSERT_EQ(loaded.size(), 1);
+
+        // Destroy all current graphical relation objects, then restore from
+        // serialized data. Kernel relation objects remain unchanged.
+        scene->clearExtensionOverlayItems(extension);
+        GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, scene);
+        auto loadedLayout = loaded.find(static_cast<unsigned long>(network->getId()));
+        ASSERT_NE(loadedLayout, loaded.end());
+        found->restoreLayout(&simulator, network, scene, loadedLayout->second);
+
+        NetworkBendGraphicsItem* restored = nullptr;
+        for (auto* item : scene->extensionOverlayItems(extension)) {
+            auto* candidate = dynamic_cast<NetworkBendGraphicsItem*>(item);
+            if (candidate != nullptr && candidate->routeKey() == routeKey) {
+                restored = candidate; break;
+            }
+        }
+        ASSERT_NE(restored, nullptr);
+        EXPECT_TRUE(restored->hasManualBendPoint());
+        EXPECT_EQ(restored->manualBendPoint(), QPointF(120.25, -64.5));
+    };
+
+    {
+        DirectedGraphNetwork graph(model, "GraphBendCodec");
+        auto* a = new GraphNode(model, "GraphA");
+        auto* z = new GraphNode(model, "GraphZ");
+        ASSERT_TRUE(graph.addNode(a));
+        ASSERT_TRUE(graph.addNode(z));
+        ASSERT_TRUE(graph.addEdge(new GraphEdge(model, a, z, "GraphRelation")));
+        ExposedModelGraphicsScene scene;
+        scene.setSimulator(&simulator);
+        scene.setNetworkEditorOwner(&graph);
+        auto* plugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+        ASSERT_NE(plugin, nullptr);
+        scene.addGraphicalModelDataDefinition(plugin, a, QPointF(10, 10));
+        scene.addGraphicalModelDataDefinition(plugin, z, QPointF(260, 40));
+        verify(&graph, QStringLiteral("modal.graph.gui"), &scene);
+    }
+    {
+        MarkovChainNetwork markov(model, "MarkovBendCodec");
+        auto* a = new MarkovState(model, "MarkovA");
+        auto* z = new MarkovState(model, "MarkovZ");
+        markov.addState(a);
+        markov.addState(z);
+        markov.setInitialState(a);
+        markov.addTransition(new MarkovChainNetwork::MarkovTransition(a, z, 1.0, "MarkovRelation"));
+        ExposedModelGraphicsScene scene;
+        scene.setSimulator(&simulator);
+        scene.setNetworkEditorOwner(&markov);
+        auto* plugin = simulator.getPluginManager()->find(Util::TypeOf<MarkovState>());
+        ASSERT_NE(plugin, nullptr);
+        scene.addGraphicalModelDataDefinition(plugin, a, QPointF(10, 10));
+        scene.addGraphicalModelDataDefinition(plugin, z, QPointF(260, 40));
+        verify(&markov, QStringLiteral("modal.markov.gui"), &scene);
+    }
+    {
+        ColoredPetriNetNetwork cpn(model, "CpnBendCodec");
+        auto* place = new PetriPlace(model, "CpnP");
+        auto* transition = new CPNTransition(model, "CpnT");
+        cpn.addPlace(place);
+        cpn.addTransition(transition);
+        auto* arc = new CPNArc(model, place, transition,
+                               CPNArc::Direction::PlaceToTransition, "CpnRelation");
+        ASSERT_TRUE(cpn.addArc(arc));
+        ExposedModelGraphicsScene scene;
+        scene.setSimulator(&simulator);
+        scene.setNetworkEditorOwner(&cpn);
+        auto* placePlugin = simulator.getPluginManager()->find(Util::TypeOf<PetriPlace>());
+        auto* transitionPlugin = simulator.getPluginManager()->find(Util::TypeOf<CPNTransition>());
+        ASSERT_NE(placePlugin, nullptr);
+        ASSERT_NE(transitionPlugin, nullptr);
+        scene.addGraphicalModelDataDefinition(placePlugin, place, QPointF(10, 10));
+        scene.addGraphicalModelDataDefinition(transitionPlugin, transition, QPointF(260, 40));
+        verify(&cpn, QStringLiteral("modal.cpn.gui"), &scene);
+    }
+}
+
 TEST(GraphNetworkGuiExtension, ProjectsParallelAndSelfLoopEdgesFromTheNetworkTopology) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
