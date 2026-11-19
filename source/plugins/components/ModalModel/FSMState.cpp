@@ -126,13 +126,16 @@ DefaultNetwork* FSMState::getRefinementNetwork() const {
             && candidate->getName() == _refinementNetworkName)
             byIdentity = candidate;
     }
+    // Preserve actual object identity across renames, even if another
+    // Network later receives the old name. Registration, not a non-owning
+    // cached pointer alone, determines whether the target is still live.
+    if (byPointer != nullptr
+        && byPointer->getClassname() == _refinementNetworkClassname)
+        return byPointer;
     if (byIdentity != nullptr) {
         _refinementNetwork = byIdentity;
         return byIdentity;
     }
-    // Keep references to deliberately renamed, still-registered networks.
-    // The ModelDataManager is the authority for whether an address is live.
-    if (byPointer != nullptr) return byPointer;
     _refinementNetwork = nullptr;
     return nullptr;
 }
