@@ -84,6 +84,9 @@
 #include <QMainWindow>
 #include <QMenu>
 #include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <QLocale>
+#include <QKeyEvent>
 
 #include <algorithm>
 #include <iterator>
@@ -1103,6 +1106,75 @@ TEST(ColoredPetriNetGuiExtension, GenericGuiPersistenceRestoresNodeGeometryAndTo
     EXPECT_EQ(restoredInput->pos(), QPointF(30.25, 80.5));
     EXPECT_EQ(restoredTransition->pos(), QPointF(230.75, 80.5));
     EXPECT_EQ(restoredOutput->pos(), QPointF(430.125, 80.5));
+}
+
+TEST(MarkovChainNetworkGuiExtension, DecimalProbabilityEditorPreservesFractionUnderBrazilianLocale) {
+    struct RestoreLocale {
+        QLocale original = QLocale();
+        ~RestoreLocale() { QLocale::setDefault(original); }
+    } restore;
+    QLocale::setDefault(QLocale(QLocale::Portuguese, QLocale::Brazil));
+
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "LocaleProbabilityNetwork");
+    auto* source = new MarkovState(model, "A");
+    auto* destination = new MarkovState(model, "B");
+    network.addState(source);
+    network.addState(destination);
+    network.setInitialState(source);
+    auto* transition = new MarkovChainNetwork::MarkovTransition(source, destination, 1.0, "AB");
+    network.addTransition(transition);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    QUndoStack undo;
+    scene.setUndoStack(&undo);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+
+    QGraphicsItem* edge = nullptr;
+    for (auto* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui"))) {
+        if (item->data(1).isValid()) { edge = item; break; }
+    }
+    ASSERT_NE(edge, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.setModelScene(&scene);
+    browser.setActiveGraphicsItem(edge);
+    QtBrowserItem* probability = nullptr;
+    QList<QtBrowserItem*> pending = browser.topLevelItems();
+    while (!pending.isEmpty()) {
+        auto* item = pending.takeFirst();
+        if (item->property()->propertyName() == QStringLiteral("Probability")) {
+            probability = item;
+            break;
+        }
+        pending.append(item->children());
+    }
+    ASSERT_NE(probability, nullptr);
+    browser.setCurrentItem(probability);
+    browser.editItem(probability);
+    QApplication::processEvents();
+    auto* spin = browser.findChild<QDoubleSpinBox*>();
+    ASSERT_NE(spin, nullptr);
+    EXPECT_EQ(spin->locale().decimalPoint(), QChar('.'));
+    EXPECT_DOUBLE_EQ(spin->minimum(), 0.0);
+    EXPECT_DOUBLE_EQ(spin->maximum(), 1.0);
+    EXPECT_GE(spin->decimals(), 9);
+
+    QLineEdit* line = spin->findChild<QLineEdit*>();
+    ASSERT_NE(line, nullptr);
+    spin->setFocus();
+    line->setText(QStringLiteral("0.25"));
+    QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(line, &enter);
+    QApplication::processEvents();
+    EXPECT_NEAR(transition->getProbability(), 0.25, 1e-12);
+    EXPECT_GE(undo.count(), 1);
 }
 
 TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndoRedo) {
