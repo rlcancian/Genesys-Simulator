@@ -13,6 +13,12 @@ public:
 	std::string getTriggerEvent() const;
 	void setProbabilityExpression(std::string probabilityExpression);
 	std::string getProbabilityExpression() const;
+	void setOutputActions(std::string actions);
+	std::string getOutputActions() const;
+	void setSetActions(std::string actions);
+	std::string getSetActions() const;
+	void setNondeterministic(bool enabled);
+	bool isNondeterministic() const;
 	// Fallback relation: eligible only when no ordinary transition is enabled.
 	void setDefaultTransition(bool enabled);
 	bool isDefaultTransition() const;
@@ -25,5 +31,8 @@ private:
 	std::string _triggerEvent = "";
 	std::string _probabilityExpression = "";
 	bool _defaultTransition = false;
+	bool _nondeterministic = false;
+	std::string _outputActions;
+	std::string _setActions;
 };
 
