@@ -1,6 +1,8 @@
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include <utility>
+#include <cmath>
+#include <stdexcept>
 
 EFSMTransition::EFSMTransition(DefaultNode* source, DefaultNode* destination, std::string name)
 	: DefaultNodeTransition(source, destination, name) {
@@ -71,7 +73,13 @@ bool EFSMTransition::canFire(Model* model, Entity* entity) const {
     // input-event frame and its seeded sampler, so it alone may apply event
     // presence and optional Bernoulli probability after a successful guard.
     // An unbound transition cannot invent an activation frame or RNG source.
-    return DefaultNodeTransition::canFire(model, entity);
+    (void)entity;
+    if (model == nullptr) return false;
+    if (getGuardExpression().empty()) return true;
+    const double value = model->parseExpression(getGuardExpression());
+    if (!std::isfinite(value))
+        throw std::domain_error("EFSM transition guard evaluates to a non-finite value: " + getName());
+    return value != 0.0;
 }
 
 void EFSMTransition::execute(Model* model, Entity* entity) const {
