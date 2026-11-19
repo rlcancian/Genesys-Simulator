@@ -278,6 +278,7 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
         }
     }
     scene->clearExtensionOverlayItems(QString::fromLatin1(kMarkovExtensionId));
+    scene->clearExtensionOverlayItems(QStringLiteral("modal.markov.rowsums"));
     auto* network = dynamic_cast<MarkovChainNetwork*>(scene->networkEditorOwner());
     if (network == nullptr) return;
 
@@ -300,6 +301,29 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
             marker->setToolTip(QObject::tr("Current Markov state"));
             scene->addExtensionOverlayItem(QString::fromLatin1(kMarkovExtensionId), marker);
         }
+    }
+
+    // A DTMC must have a stochastic outgoing row for every state. Report
+    // incomplete rows while the user edits; do not normalize or reject interim values.
+    for (MarkovState* state : *network->getStates()->list()) {
+        if (state == nullptr) continue;
+        auto* graphical = scene->findGraphicalModelDataDefinition(state);
+        if (graphical == nullptr) continue;
+        double sum = 0.0;
+        for (auto* edge : network->getOutgoingTransitions(state))
+            if (edge != nullptr) sum += edge->getProbability();
+        const bool valid = std::isfinite(sum)
+            && std::fabs(sum - 1.0) <= network->getProbabilityTolerance();
+        auto* badge = new QGraphicsSimpleTextItem(
+            QObject::tr("Σp=%1").arg(sum, 0, 'g', 8));
+        badge->setBrush(valid ? QColor(30, 115, 70) : QColor(185, 65, 40));
+        badge->setPos(graphical->sceneBoundingRect().bottomRight() + QPointF(6, 3));
+        badge->setZValue(-0.4);
+        badge->setAcceptedMouseButtons(Qt::NoButton);
+        badge->setToolTip(valid ? QObject::tr("Outgoing transition probabilities sum to 1")
+            : QObject::tr("Outgoing transition probabilities must sum to 1; current sum: %1")
+                .arg(sum, 0, 'g', 12));
+        scene->addExtensionOverlayItem(QStringLiteral("modal.markov.rowsums"), badge);
     }
 
     const auto transitions = network->getTransitions()->list();
