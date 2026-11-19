@@ -182,6 +182,11 @@ public:
             add("Set Actions", transition->getSetActions(), Property::Kind::String, true);
             add("Default", transition->isDefaultTransition() ? "true" : "false", Property::Kind::Boolean, true);
             add("Nondeterministic", transition->isNondeterministic() ? "true" : "false", Property::Kind::Boolean, true);
+            add("Immediate", transition->isImmediate() ? "true" : "false", Property::Kind::Boolean, true);
+            add("Preemptive", transition->isPreemptive() ? "true" : "false", Property::Kind::Boolean, true);
+            add("History", transition->isHistory() ? "true" : "false", Property::Kind::Boolean, true);
+            add("Error", transition->isErrorTransition() ? "true" : "false", Property::Kind::Boolean, true);
+            add("Termination", transition->isTermination() ? "true" : "false", Property::Kind::Boolean, true);
             // Legacy/advanced fields remain editable for compatibility.
             add("Output Expression", transition->getOutputExpression(), Property::Kind::String, true);
             add("Input Event", transition->getInputEvent(), Property::Kind::String, true);
@@ -208,6 +213,11 @@ public:
             updated.probabilityExpression = transition->getProbabilityExpression();
             updated.defaultTransition = transition->isDefaultTransition();
             updated.nondeterministic = transition->isNondeterministic();
+            updated.immediate = transition->isImmediate();
+            updated.preemptive = transition->isPreemptive();
+            updated.history = transition->isHistory();
+            updated.errorTransition = transition->isErrorTransition();
+            updated.termination = transition->isTermination();
             updated.outputActions = transition->getOutputActions();
             updated.setActions = transition->getSetActions();
             if (propertyName == "Name") updated.name = value;
@@ -218,6 +228,11 @@ public:
             else if (propertyName == "Probability Expression") updated.probabilityExpression = value;
             else if (propertyName == "Default") updated.defaultTransition = value == "true" || value == "1";
             else if (propertyName == "Nondeterministic") updated.nondeterministic = value == "true" || value == "1";
+            else if (propertyName == "Immediate") updated.immediate = value == "true" || value == "1";
+            else if (propertyName == "Preemptive") updated.preemptive = value == "true" || value == "1";
+            else if (propertyName == "History") updated.history = value == "true" || value == "1";
+            else if (propertyName == "Error") updated.errorTransition = value == "true" || value == "1";
+            else if (propertyName == "Termination") updated.termination = value == "true" || value == "1";
             else if (propertyName == "Output Actions") updated.outputActions = value;
             else if (propertyName == "Set Actions") updated.setActions = value;
             else if (propertyName == "Priority") {
