@@ -14,6 +14,11 @@
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 
 #include <QPointF>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsPolygonItem>
+#include <QPen>
+#include <QBrush>
+#include <QPolygonF>
 #include <algorithm>
 #include <cmath>
 
@@ -47,6 +52,7 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
         return;
     }
     scene->clearExtensionOverlayItems(QStringLiteral("efsm"));
+    scene->clearExtensionOverlayItems(QStringLiteral("efsm.state.markers"));
     EFSMNetwork* network = contextNetwork(simulator, scene);
     if (network == nullptr || network->getTransitions() == nullptr) {
         return;
@@ -97,6 +103,30 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
                               : initial ? QColor(135, 210, 155)
                               : final ? QColor(245, 195, 125)
                                        : QColor(220, 220, 220));
+            // Presentation-only markers are kept separate from selectable relations.
+            const QRectF bounds = item->sceneBoundingRect();
+            if (final) {
+                auto* doubleBorder = new QGraphicsEllipseItem(bounds.adjusted(-7.0, -7.0, 7.0, 7.0));
+                doubleBorder->setPen(QPen(QColor(55, 65, 85), 2.0));
+                doubleBorder->setBrush(Qt::NoBrush);
+                doubleBorder->setZValue(-0.5);
+                doubleBorder->setAcceptedMouseButtons(Qt::NoButton);
+                doubleBorder->setToolTip(QObject::tr("Final EFSM state"));
+                scene->addExtensionOverlayItem(QStringLiteral("efsm.state.markers"), doubleBorder);
+            }
+            if (initial) {
+                const qreal centerY = bounds.center().y();
+                auto* arrow = new QGraphicsPolygonItem(QPolygonF()
+                    << QPointF(bounds.left() - 23.0, centerY - 7.0)
+                    << QPointF(bounds.left() - 9.0, centerY)
+                    << QPointF(bounds.left() - 23.0, centerY + 7.0));
+                arrow->setPen(QPen(QColor(30, 115, 75), 1.5));
+                arrow->setBrush(QBrush(QColor(30, 115, 75)));
+                arrow->setZValue(-0.5);
+                arrow->setAcceptedMouseButtons(Qt::NoButton);
+                arrow->setToolTip(QObject::tr("Initial EFSM state"));
+                scene->addExtensionOverlayItem(QStringLiteral("efsm.state.markers"), arrow);
+            }
         }
     }
 }
