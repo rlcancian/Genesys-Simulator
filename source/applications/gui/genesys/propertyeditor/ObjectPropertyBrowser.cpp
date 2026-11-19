@@ -46,6 +46,8 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QAbstractSpinBox>
+#include <QDoubleSpinBox>
+#include <QLocale>
 #include <QKeyEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -158,6 +160,7 @@ class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
     using CommitCallback = std::function<void(QtProperty*, const QVariant&)>;
     using EditorCreationFilter = std::function<bool(QtProperty*)>;
+    using NumericEditorConfigurator = std::function<void(QtProperty*, QAbstractSpinBox*)>;
 
     struct EditorState {
         QtVariantPropertyManager* manager = nullptr;
@@ -178,6 +181,10 @@ public:
         _editorCreationFilter = std::move(filter);
     }
 
+    void setNumericEditorConfigurator(NumericEditorConfigurator configure) {
+        _numericEditorConfigurator = std::move(configure);
+    }
+
 protected:
     QWidget* createEditor(QtVariantPropertyManager* manager, QtProperty* property, QWidget* parent) override {
         if (_editorCreationFilter != nullptr && !_editorCreationFilter(property)) {
@@ -196,6 +203,7 @@ protected:
             spinBox = editor->findChild<QAbstractSpinBox*>();
         }
         if (spinBox != nullptr) {
+            if (_numericEditorConfigurator) _numericEditorConfigurator(property, spinBox);
             _registerEditor(spinBox, manager, property, editor);
             if (QLineEdit* spinLineEdit = spinBox->findChild<QLineEdit*>()) {
                 spinLineEdit->installEventFilter(this);
@@ -304,6 +312,7 @@ private:
 
     CommitCallback _commitCallback;
     EditorCreationFilter _editorCreationFilter;
+    NumericEditorConfigurator _numericEditorConfigurator;
     QHash<QObject*, EditorState> _editorStates;
 };
 
@@ -460,6 +469,20 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
         commitFactory->setEditorCreationFilter([this](QtProperty* property) {
             const auto binding = _bindings.find(property);
             return binding == _bindings.end() || !requiresDedicatedEditor(binding.value().descriptor);
+        });
+        commitFactory->setNumericEditorConfigurator([this](QtProperty* property, QAbstractSpinBox* editor) {
+            // Network relation probabilities are canonical decimal values (not locale-formatted text).
+            // In pt_BR, a dot typed into an inherited spin box can be treated as a group separator,
+            // silently turning 0.25 into 25. Reject grouping on this bounded numeric editor.
+            const auto binding = _bindings.constFind(property);
+            if (binding == _bindings.constEnd() || binding->kind != BindingKind::GraphicsVariant
+                || property->propertyName() != QStringLiteral("Probability")) return;
+            auto* doubleEditor = qobject_cast<QDoubleSpinBox*>(editor);
+            if (doubleEditor == nullptr) return;
+            QLocale locale = QLocale::c();
+            locale.setNumberOptions(locale.numberOptions() | QLocale::RejectGroupSeparator);
+            doubleEditor->setLocale(locale);
+            doubleEditor->setGroupSeparatorShown(false);
         });
         _variantFactory = commitFactory;
     }
@@ -1833,11 +1856,19 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                     propertyName, QVariant::Int, QString::fromStdString(descriptor.value).toInt(),
                     std::move(setter), false, descriptor.editable));
                 break;
-            case GuiNetworkEditorContribution::ElementProperty::Kind::Double:
-                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Double: {
+                auto* numeric = _createGraphicsVariantProperty(
                     propertyName, QVariant::Double, QString::fromStdString(descriptor.value).toDouble(),
-                    std::move(setter), false, descriptor.editable));
+                    std::move(setter), false, descriptor.editable);
+                if (propertyName == QStringLiteral("Probability")) {
+                    numeric->setAttribute("minimum", 0.0);
+                    numeric->setAttribute("maximum", 1.0);
+                    numeric->setAttribute("decimals", 12);
+                    numeric->setAttribute("singleStep", 0.05);
+                }
+                elementGroup->addSubProperty(numeric);
                 break;
+            }
             case GuiNetworkEditorContribution::ElementProperty::Kind::String:
             case GuiNetworkEditorContribution::ElementProperty::Kind::Enumeration:
                 elementGroup->addSubProperty(_createGraphicsVariantProperty(
