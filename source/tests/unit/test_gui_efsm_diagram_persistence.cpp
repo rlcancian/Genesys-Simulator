@@ -79,6 +79,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsRectItem>
 #include <QGraphicsPathItem>
+#include <QGraphicsSimpleTextItem>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPolygonItem>
 #include <QMainWindow>
@@ -1242,6 +1243,50 @@ TEST(MarkovChainNetworkGuiExtension, DecimalProbabilityEditorPreservesFractionUn
     QApplication::processEvents();
     EXPECT_NEAR(transition->getProbability(), 0.25, 1e-12);
     EXPECT_GE(undo.count(), 1);
+}
+
+TEST(MarkovChainNetworkGuiExtension, ProbabilityRowSumsFollowKernelEdits) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "RowFeedback");
+    auto* a = new MarkovState(model, "A");
+    auto* b = new MarkovState(model, "B");
+    network.addState(a);
+    network.addState(b);
+    network.setInitialState(a);
+    auto* aa = new MarkovChainNetwork::MarkovTransition(a, a, 0.25, "AA");
+    network.addTransition(aa);
+    network.addTransition(new MarkovChainNetwork::MarkovTransition(a, b, 0.75, "AB"));
+    network.addTransition(new MarkovChainNetwork::MarkovTransition(b, b, 1.0, "BB"));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    auto rows = scene.extensionOverlayItems(QStringLiteral("modal.markov.rowsums"));
+    ASSERT_EQ(rows.size(), 2);
+    for (auto* item : rows) {
+        auto* label = dynamic_cast<QGraphicsSimpleTextItem*>(item);
+        ASSERT_NE(label, nullptr);
+        EXPECT_EQ(label->text(), QStringLiteral("Σp=1"));
+        EXPECT_EQ(label->acceptedMouseButtons(), Qt::NoButton);
+    }
+
+    aa->setProbability(0.5);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    int incorrect = 0;
+    for (auto* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.rowsums"))) {
+        auto* label = dynamic_cast<QGraphicsSimpleTextItem*>(item);
+        if (label != nullptr && label->text() == QStringLiteral("Σp=1.25")) {
+            ++incorrect;
+            EXPECT_TRUE(label->toolTip().contains(QStringLiteral("must sum to 1")));
+        }
+    }
+    EXPECT_EQ(incorrect, 1);
 }
 
 TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndoRedo) {
