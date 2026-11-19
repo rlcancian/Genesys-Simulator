@@ -85,6 +85,18 @@ protection checks. The corresponding local unit/kernel/smoke suites and GUI
 build passed as recorded above. These runner outcomes are infrastructure
 cancellations or pending results, not code-test failures.
 
+## Portable package closeout
+
+After integration, `bash ./generate_genesys_install.sh` was run from
+`~/Repositories` against commit `78726e7a33fd5dc75d54977cc92fdb18c3593823`.
+The build completed successfully and published
+`~/University/Seafile/genesys-simulator/genesys-linux-x86_64-portable.tar.gz`
+(72 MiB). SHA-256 is
+`12437ee15d83f2d169582e47b70f1c003febcb8f50a3a50f919e36a53daf3016`, matching
+the generated archive. The previous package was preserved alongside it as
+`genesys-linux-x86_64-portable.tar.gz.pre-78726e7a3` (SHA-256
+`3bbce1aa0d1d5aa61015364555620df8af53afd7380ffabf411e6d1882e03185`).
+
 ## Remaining limits
 
 - Save and Save As dialogs were not manually driven through an interactive
