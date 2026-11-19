@@ -3264,6 +3264,7 @@ TEST(EFSMNetworkProjection, ManualBendPointsSurviveProjectionRefreshAndLayoutRes
     EXPECT_NE(firstItem->path(), parallelItem->path());
     const QPointF bend(140.0, -90.0);
     firstItem->setManualBendPoint(bend);
+    firstItem->setSelected(true);
     ASSERT_TRUE(firstItem->hasManualBendPoint());
 
     EFSMNetworkDiagramLayout layout;
@@ -3277,6 +3278,7 @@ TEST(EFSMNetworkProjection, ManualBendPointsSurviveProjectionRefreshAndLayoutRes
     ASSERT_NE(findEdge(first), nullptr);
     EXPECT_TRUE(findEdge(first)->hasManualBendPoint());
     EXPECT_EQ(findEdge(first)->manualBendPoint(), bend);
+    EXPECT_TRUE(findEdge(first)->isSelected());
     EXPECT_FALSE(findEdge(parallel)->hasManualBendPoint());
 
     scene.clearExtensionOverlayItems(QStringLiteral("efsm"));
