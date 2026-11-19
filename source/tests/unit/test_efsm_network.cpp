@@ -968,6 +968,17 @@ TEST(EFSMNetworkTest, ActionValidationRejectsUnknownTargetsAndMalformedAssignmen
     error.clear();
     EXPECT_FALSE(network.CheckProbe(error));
     EXPECT_NE(error.find("invalid Set Actions"), std::string::npos);
+
+    edge->setSetActions("count = 1; count = 2");
+    error.clear();
+    EXPECT_FALSE(network.CheckProbe(error));
+    EXPECT_NE(error.find("invalid Set Actions"), std::string::npos);
+
+    edge->setSetActions("");
+    edge->setOutputActions("output = 1; output = 2");
+    error.clear();
+    EXPECT_FALSE(network.CheckProbe(error));
+    EXPECT_NE(error.find("invalid Output Actions"), std::string::npos);
 }
 
 TEST(EFSMNetworkTest, ModelErrorPolicyReportsAmbiguousActivationAndKeepsState) {
