@@ -2,6 +2,8 @@
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../graphicals/GraphicalModelDataDefinition.h"
 #include "../../../graphicals/ModelGraphicsScene.h"
+#include "../../../graphicals/NetworkBendGraphicsItem.h"
+#include "../../../services/NetworkBendDiagramCodec.h"
 #include "../../../services/GraphicalModelBuilder.h"
 
 #include "plugins/data/ModalModel/MarkovChainNetwork.h"
@@ -270,7 +272,11 @@ void addArrow(QPainterPath& path, const QPointF& tip) {
 void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
     if (scene == nullptr) return;
     std::unordered_set<MarkovChainNetwork::MarkovTransition*> selectedTransitions;
+    QHash<QString, QPointF> previousBends;
     for (QGraphicsItem* item : scene->extensionOverlayItems(QString::fromLatin1(kMarkovExtensionId))) {
+        auto* graphic = dynamic_cast<NetworkBendGraphicsItem*>(item);
+        if (graphic != nullptr && graphic->hasManualBendPoint())
+            previousBends.insert(graphic->routeKey(), graphic->manualBendPoint());
         if (item != nullptr && item->isSelected() && item->data(1).isValid()) {
             auto* transition = reinterpret_cast<MarkovChainNetwork::MarkovTransition*>(
                 static_cast<quintptr>(item->data(1).toULongLong()));
@@ -327,46 +333,40 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
     }
 
     const auto transitions = network->getTransitions()->list();
-    for (auto it = transitions->begin(); it != transitions->end(); ++it) {
+    int transitionOrdinal = 0;
+    for (auto it = transitions->begin(); it != transitions->end(); ++it, ++transitionOrdinal) {
         auto* transition = *it;
         if (transition == nullptr || transition->getSource() == nullptr || transition->getDestination() == nullptr) continue;
         auto* source = scene->findGraphicalModelDataDefinition(transition->getSource());
         auto* destination = scene->findGraphicalModelDataDefinition(transition->getDestination());
         if (source == nullptr || destination == nullptr) continue;
 
-        const QPointF start = source->sceneBoundingRect().center();
-        const QPointF end = destination->sceneBoundingRect().center();
-        QPainterPath path(start);
-        if (transition->getSource() == transition->getDestination()) {
-            const QPointF top(source->sceneBoundingRect().center().x(), source->sceneBoundingRect().top());
-            path.moveTo(top);
-            path.cubicTo(top + QPointF(-34, -52), top + QPointF(34, -52), top);
-        } else {
-            std::vector<MarkovChainNetwork::MarkovTransition*> parallel;
-            for (auto* candidate : *transitions) {
-                if (candidate != nullptr && candidate->getSource() == transition->getSource()
-                    && candidate->getDestination() == transition->getDestination()) parallel.push_back(candidate);
-            }
-            const auto position = std::find(parallel.begin(), parallel.end(), transition);
-            const std::size_t ordinal = position == parallel.end() ? 0u : std::distance(parallel.begin(), position);
-            if (parallel.size() > 1u) {
-                const QPointF delta = end - start;
-                const qreal length = std::max<qreal>(1.0, std::hypot(delta.x(), delta.y()));
-                const QPointF normal(-delta.y() / length, delta.x() / length);
-                const qreal offset = (static_cast<qreal>(ordinal) - (parallel.size() - 1) / 2.0) * 22.0;
-                path.quadTo((start + end) / 2.0 + normal * offset, end);
-            } else {
-                path.lineTo(end);
-            }
+        std::vector<MarkovChainNetwork::MarkovTransition*> parallel;
+        bool opposite = false;
+        for (auto* candidate : *transitions) {
+            if (candidate == nullptr) continue;
+            if (candidate->getSource() == transition->getSource()
+                && candidate->getDestination() == transition->getDestination()) parallel.push_back(candidate);
+            if (transition->getSource() != transition->getDestination()
+                && candidate->getSource() == transition->getDestination()
+                && candidate->getDestination() == transition->getSource()) opposite = true;
         }
-        addArrow(path, path.pointAtPercent(1.0));
-        auto* edge = new QGraphicsPathItem(path);
+        const auto position = std::find(parallel.begin(), parallel.end(), transition);
+        const int rank = position != parallel.end()
+            ? static_cast<int>(std::distance(parallel.begin(), position)) : 0;
+        const QString key = NetworkBendDiagramCodec::relationKey(
+            static_cast<qulonglong>(transitionOrdinal),
+            QString::fromStdString(transition->getSource()->getName()),
+            QString::fromStdString(transition->getDestination()->getName()),
+            QString::fromStdString(transition->getName()));
+        auto* edge = new NetworkBendGraphicsItem(QString::fromLatin1(kMarkovExtensionId), key);
+        edge->setGeometry(source->sceneBoundingRect().center(), destination->sceneBoundingRect().center(),
+                          rank, static_cast<int>(parallel.size()), opposite, true);
+        if (previousBends.contains(key)) edge->setManualBendPoint(previousBends.value(key));
         const bool sampled = network->getLastTransition() == transition;
-        edge->setPen(QPen(sampled ? QColor(225, 90, 35) : QColor(65, 75, 90), sampled ? 4.0 : 2.0));
-        edge->setBrush(Qt::NoBrush);
-        edge->setZValue(-1.0);
+        edge->setVisiblePen(QPen(sampled ? QColor(225, 90, 35) : QColor(65, 75, 90),
+                                 sampled ? 4.0 : 2.0));
         edge->setData(1, QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(transition)));
-        edge->setFlag(QGraphicsItem::ItemIsSelectable, true);
         edge->setToolTip(QStringLiteral("%1 → %2  p=%3")
                              .arg(QString::fromStdString(transition->getSource()->getName()),
                                   QString::fromStdString(transition->getDestination()->getName()))
@@ -375,8 +375,9 @@ void synchronizeMarkovProjection(Simulator*, ModelGraphicsScene* scene) {
         if (selectedTransitions.contains(transition)) edge->setSelected(true);
         auto* label = new QGraphicsSimpleTextItem(QString::number(transition->getProbability(), 'g', 12));
         label->setBrush(QColor(35, 45, 60));
-        label->setPos(path.pointAtPercent(0.5) + QPointF(4, -14));
+        label->setPos(edge->path().pointAtPercent(0.5) + QPointF(4, -14));
         label->setZValue(-0.8);
+        label->setAcceptedMouseButtons(Qt::NoButton);
         scene->addExtensionOverlayItem(QString::fromLatin1(kMarkovExtensionId), label);
     }
 }
@@ -485,6 +486,20 @@ public:
             return dynamic_cast<MarkovChainNetwork*>(definition) != nullptr;
         };
         projection.synchronize = synchronizeMarkovProjection;
+        projection.sectionName = "MarkovNetworkBend";
+        projection.captureLayout = [](Simulator*, ModelDataDefinition* owner, ModelGraphicsScene* scene) {
+            return NetworkBendDiagramCodec::capture(owner, scene, QString::fromLatin1(kMarkovExtensionId));
+        };
+        projection.restoreLayout = [](Simulator*, ModelDataDefinition* owner,
+                                      ModelGraphicsScene* scene, const std::any& layout) {
+            NetworkBendDiagramCodec::restore(owner, scene, layout, QString::fromLatin1(kMarkovExtensionId));
+        };
+        projection.serializeLayouts = NetworkBendDiagramCodec::serialize;
+        projection.parseLayouts = [](Model* model, const QStringList& lines) {
+            return NetworkBendDiagramCodec::parse(model, lines, [](ModelDataDefinition* owner) {
+                return dynamic_cast<MarkovChainNetwork*>(owner) != nullptr;
+            });
+        };
         registry->addDiagramProjection(std::move(projection));
 
         GuiActionContribution validate;
