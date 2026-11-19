@@ -21,6 +21,7 @@
 #include <cctype>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <exception>
 #include <functional>
 #include <stdexcept>
@@ -646,14 +647,15 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
     };
 
     const auto select = [this, &selectionConflict, &inputEventIsPresent](
-        FSMState* state, bool preemptive, bool immediate,
+        FSMState* state, bool preemptive, std::optional<bool> immediate,
         bool error, bool termination) -> EFSMTransition* {
         std::vector<EFSMTransition*> enabled;
         for (bool defaultFlag : {false, true}) {
             for (DefaultNodeTransition* base : *state->getTransitions()->list()) {
                 auto* t = dynamic_cast<EFSMTransition*>(base);
                 if (t == nullptr || _transitions->find(t) == _transitions->list()->end()
-                    || t->isPreemptive() != preemptive || t->isImmediate() != immediate
+                    || t->isPreemptive() != preemptive
+                    || (immediate.has_value() && t->isImmediate() != immediate.value())
                     || t->isErrorTransition() != error || t->isTermination() != termination
                     || t->isDefaultTransition() != defaultFlag)
                     continue;
@@ -840,11 +842,13 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
             _initializedRefinements.insert(refinement);
         }
 
-        const bool allowImmediate = justEntered || immediateOnly;
-        EFSMTransition* chosen = allowImmediate ? select(source, true, true, false, false) : nullptr;
-        if (selectionConflict) break;
-        if (chosen == nullptr && !immediateOnly)
-            chosen = select(source, true, false, false, false);
+        // At the start of a reaction, immediate and ordinary transitions
+        // share one preemptive/non-preemptive selection phase. Only after
+        // taking a transition in this same activate() call do we restrict
+        // the next microstep to immediate transitions.
+        const std::optional<bool> immediateFilter = immediateOnly ? std::optional<bool>{true}
+            : justEntered ? std::nullopt : std::optional<bool>{false};
+        EFSMTransition* chosen = select(source, true, immediateFilter, false, false);
         if (selectionConflict) break;
         bool hasNonpreemptiveImmediate = false;
         if (immediateOnly) {
@@ -880,17 +884,11 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
                 }
             }
             if (refinementFailed) {
-                chosen = select(source, false, immediateOnly, true, false);
-                if (chosen == nullptr && !immediateOnly)
-                    chosen = select(source, false, false, true, false);
+                chosen = select(source, false, false, true, false);
                 if (selectionConflict) break;
                 if (chosen == nullptr) std::rethrow_exception(refinementException);
             } else {
-                if (allowImmediate)
-                    chosen = select(source, false, true, false, false);
-                if (selectionConflict) break;
-                if (chosen == nullptr && !immediateOnly)
-                    chosen = select(source, false, false, false, false);
+                chosen = select(source, false, immediateFilter, false, false);
                 if (selectionConflict) break;
             }
         }
