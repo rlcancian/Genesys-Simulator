@@ -22,6 +22,14 @@ std::string EFSMTransition::getProbabilityExpression() const {
 	return _probabilityExpression;
 }
 
+void EFSMTransition::setDefaultTransition(bool enabled) {
+    _defaultTransition = enabled;
+}
+
+bool EFSMTransition::isDefaultTransition() const {
+    return _defaultTransition;
+}
+
 bool EFSMTransition::canFire(Model* model, Entity* entity) const {
 	bool parentCanFire = DefaultNodeTransition::canFire(model, entity);
 	if (!parentCanFire) {
