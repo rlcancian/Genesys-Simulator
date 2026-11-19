@@ -22,6 +22,30 @@ std::string EFSMTransition::getProbabilityExpression() const {
 	return _probabilityExpression;
 }
 
+void EFSMTransition::setOutputActions(std::string actions) {
+    _outputActions = std::move(actions);
+}
+
+std::string EFSMTransition::getOutputActions() const {
+    return _outputActions;
+}
+
+void EFSMTransition::setSetActions(std::string actions) {
+    _setActions = std::move(actions);
+}
+
+std::string EFSMTransition::getSetActions() const {
+    return _setActions;
+}
+
+void EFSMTransition::setNondeterministic(bool enabled) {
+    _nondeterministic = enabled;
+}
+
+bool EFSMTransition::isNondeterministic() const {
+    return _nondeterministic;
+}
+
 void EFSMTransition::setDefaultTransition(bool enabled) {
     _defaultTransition = enabled;
 }
