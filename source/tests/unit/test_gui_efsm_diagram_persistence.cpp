@@ -8,6 +8,8 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
+#include "graphicals/NetworkBendGraphicsItem.h"
+#include "services/NetworkBendDiagramCodec.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "actions/EFSMTransitionUndoCommand.h"
