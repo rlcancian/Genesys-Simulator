@@ -108,6 +108,18 @@ NetworkActivationResult DefaultNetwork::activate(const NetworkActivationFrame& f
 	return _activate(frame);
 }
 
+void DefaultNetwork::initializeRefinement() {
+    ModelDataDefinition::InitBetweenReplications(this);
+}
+
+NetworkActivationResult DefaultNetwork::fireRefinement(const NetworkActivationFrame& frame) {
+    return activate(frame);
+}
+
+bool DefaultNetwork::postfireRefinement() {
+    return true;
+}
+
 NetworkActivationResult DefaultNetwork::_activate(const NetworkActivationFrame& /*frame*/) {
 	// Base DefaultNetwork has no formalism semantics: every declared output stays absent.
 	return NetworkActivationResult(getNumOutputPorts());
