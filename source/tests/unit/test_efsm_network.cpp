@@ -216,6 +216,44 @@ TEST(EFSMNetworkTest, ActivationChoosesLowestPriorityEnabledTransition) {
 	EXPECT_EQ(network.getCurrentState(), &fast);
 }
 
+TEST(EFSMNetworkTest, DefaultTransitionOnlyFiresWhenOrdinaryRelationsAreDisabled) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "FallbackMachine");
+    FSMState initial(model, "Initial");
+    FSMState ordinaryTarget(model, "Ordinary");
+    FSMState fallbackTarget(model, "Fallback");
+    network.setInitialState(&initial);
+    network.addState(&ordinaryTarget);
+    network.addState(&fallbackTarget);
+
+    auto* ordinary = new EFSMTransition(&initial, &ordinaryTarget, "Normal");
+    ordinary->setGuardExpression("1");
+    ordinary->setOutputExpression("10");
+    auto* fallback = new EFSMTransition(&initial, &fallbackTarget, "Default");
+    fallback->setGuardExpression("1");
+    fallback->setOutputExpression("20");
+    fallback->setDefaultTransition(true);
+    network.addTransition(ordinary);
+    network.addTransition(fallback);
+
+    const NetworkActivationFrame frame(network.getNumInputPorts());
+    auto result = network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &ordinaryTarget);
+    EXPECT_EQ(network.getLastTransition(), ordinary);
+    ASSERT_TRUE(result.isPresent(0));
+    EXPECT_DOUBLE_EQ(result.getValue(0), 10.0);
+
+    network.setCurrentState(&initial);
+    ordinary->setGuardExpression("0");
+    result = network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &fallbackTarget);
+    EXPECT_EQ(network.getLastTransition(), fallback);
+    ASSERT_TRUE(result.isPresent(0));
+    EXPECT_DOUBLE_EQ(result.getValue(0), 20.0);
+}
+
 TEST(EFSMNetworkTest, ModelErrorPolicyReportsAmbiguousActivationAndKeepsState) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -357,6 +395,7 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	transition->setInputEvent("go");
 	transition->setPriority(3);
 	transition->setProbabilityExpression("1");
+	transition->setDefaultTransition(true);
 	source.setInitialState(&idle);
 	source.addState(&busy);
 	source.addTransition(transition);
@@ -394,6 +433,7 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	EXPECT_EQ(loadedTransition->getInputEvent(), "go");
 	EXPECT_EQ(loadedTransition->getPriority(), 3u);
 	EXPECT_EQ(loadedTransition->getProbabilityExpression(), "1");
+	EXPECT_TRUE(loadedTransition->isDefaultTransition());
 }
 
 TEST(EFSMNetworkTest, PersistencePreservesExplicitlyEmptyTransitionName) {
