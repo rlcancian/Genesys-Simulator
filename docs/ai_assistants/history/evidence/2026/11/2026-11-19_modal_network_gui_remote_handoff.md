@@ -12,6 +12,64 @@ base_commit: 6c57631cfcfa881f3fd57d411de7099ae0bb4d99
 
 # Modal / Network GUI remote implementation — local agent handoff
 
+## Update after timeout recovery — revised remote implementation inventory
+
+This section supersedes the narrower scope descriptions below. It records
+source changes **committed through GitHub**, not build/test results.
+
+- GUI-010 now has the reusable header-only `NetworkBendGraphicsItem` and
+  `NetworkBendDiagramCodec`. Graph/DAG, Markov, and CPN extensions use
+  bendable relations, independent graphical .gui route sections, deferred
+  undo commands, retained selection across projection rebuilds, and route
+  keys combining serialized relation ordinal with source/destination/name.
+  EFSM continues using its independent v1 diagram codec. Antiparallel
+  relations and multiple self-loops are separated by auto-routing.
+  The Markov probability and CPN inscription labels are owned children of
+  their relation item, so they follow a dragged bend. Existing tests
+  asserting overlay counts were updated for these child labels.
+  **All tests are authored only, not executed.**
+- GUI-011 now includes genuine `Default` and `Nondeterministic` selection
+  support; `Output Actions` writes named numeric output ports, and
+  `Set Actions` calculates then writes existing model Variables. These
+  actions accept a deliberately restricted `name=expression;...` grammar,
+  not the full Ptolemy II action language. Properties have `.gen`
+  persistence, GUI editing and undo/redo, plus authored kernel tests.
+  Ptolemy `immediate`, `preemptive`, `history`, `error`, and
+  `termination` qualifiers remain **unimplemented** because their true
+  behavior requires refinement/activation lifecycle contracts not present
+  in the verified kernel. Do not expose inert flags or claim equivalence.
+- GUI-012 includes initial/final markers and fixes that preserve the
+  authoritative initial-state identity across unrelated property edits,
+  undo/redo, and persistence load.
+- GUI-013 has a structured initial marking dialog, current marking
+  read-only inspection, undoable reset, input-token and output-capacity
+  readiness diagnostics, and arc inscriptions displayed with each curve.
+  The readiness preview deliberately **does not evaluate guards**, to
+  avoid consuming RNG or causing parser side effects on repaint. Full
+  typed CPN colors/token inscriptions remain outside the current kernel.
+- GUI-014 has canonical dot-decimal QDoubleSpinBox editing, bounded
+  probabilities with high precision, immediate spin-button commits,
+  elimination of a `QtDoubleEdit` integer precision/overflow bug,
+  probability row-sum overlays, and fraction-preserving property labels.
+  CPN/Markov visual colors are synchronized with the `pen()` of the
+  underlying item so legacy selection/highlight tests remain meaningful.
+
+**Critical local verification gates**: compile `gui-app` and
+`tests-unit`; execute Qt/Xvfb tests and kernel suites; test actual
+`.gui` save/reload (not just codec serialization), rotation and movement
+of nodes with manual bends, undo/redo and mouse handling under ASan/UBSan;
+check explicit colored CPN firing and Markov numerical editing under
+`pt_BR`/`C` locales. The connector returned no pull-request-triggered
+CI run for the remote head. Preserve the isolated branch; no PR/merge
+in this cycle. Inspect the bounded probability editor's asynchronous
+lifetime and ensure that the queued undo commits do not target stale
+network relations.
+
+The earlier sections of this file are retained as the chronological
+history of the first remote implementation stage.
+
+
+
 **Evidence classification: code changes committed remotely, NOT compiled or executed.**
 The GitHub-only development environment cannot verify CMake/Ninja builds, CTest,
 Xvfb interaction, ASan/UBSan, or simulation behavior. No PR or merge is authorized
