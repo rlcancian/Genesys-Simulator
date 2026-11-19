@@ -79,6 +79,8 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsRectItem>
 #include <QGraphicsPathItem>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsPolygonItem>
 #include <QMainWindow>
 #include <QMenu>
 #include <QSpinBox>
@@ -2935,6 +2937,51 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     stack.redo();
     EXPECT_EQ(transition->getName(), "finish");
     EXPECT_EQ(transition->getPriority(), 7u);
+}
+
+TEST(EFSMNetworkProjection, InitialAndFinalStatesUseDistinctNonInteractiveMarkers) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new EFSMNetwork(model, "VisualStateNetwork");
+    auto* start = new FSMState(model, "Start");
+    auto* finish = new FSMState(model, "Finish");
+    network->addState(start);
+    network->addState(finish);
+    network->setInitialState(start);
+    finish->setFinalNode(true);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene.setNetworkEditorOwner(network);
+    Plugin* statePlugin = simulator.getPluginManager()->find(Util::TypeOf<FSMState>());
+    ASSERT_NE(statePlugin, nullptr);
+    ASSERT_NE(scene.addGraphicalModelDataDefinition(statePlugin, start, QPointF(40, 40)), nullptr);
+    ASSERT_NE(scene.addGraphicalModelDataDefinition(statePlugin, finish, QPointF(240, 40)), nullptr);
+
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    auto markers = scene.extensionOverlayItems(QStringLiteral("efsm.state.markers"));
+    ASSERT_EQ(markers.size(), 2);
+    int initialArrows = 0;
+    int finalRings = 0;
+    for (auto* marker : markers) {
+        EXPECT_EQ(marker->acceptedMouseButtons(), Qt::NoButton);
+        if (dynamic_cast<QGraphicsPolygonItem*>(marker)) ++initialArrows;
+        if (dynamic_cast<QGraphicsEllipseItem*>(marker)) ++finalRings;
+    }
+    EXPECT_EQ(initialArrows, 1);
+    EXPECT_EQ(finalRings, 1);
+
+    // Refresh is idempotent and keeps presentation separate from relations.
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm.state.markers")).size(), 2);
+    EXPECT_TRUE(scene.extensionOverlayItems(QStringLiteral("efsm")).isEmpty());
+
+    start->setFinalNode(true);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm.state.markers")).size(), 3);
 }
 
 TEST(EFSMNetworkUndo, InitialStateChangeUndoRedoRestoresPointerAndStateFlags) {
