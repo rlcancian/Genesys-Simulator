@@ -12,6 +12,7 @@
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
+#include "plugins/data/Logic/Variable.h"
 
 #include <memory>
 #include <string>
@@ -284,6 +285,94 @@ TEST(EFSMNetworkTest, DefaultTransitionOnlyFiresWhenOrdinaryRelationsAreDisabled
     EXPECT_DOUBLE_EQ(result.getValue(0), 20.0);
 }
 
+TEST(EFSMNetworkTest, NondeterministicTransitionFlagsAllowReproducibleConflictChoice) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetworkProbe network(model, "NondeterministicMachine");
+    FSMState initial(model, "Initial");
+    FSMState left(model, "Left");
+    FSMState right(model, "Right");
+    network.setInitialState(&initial);
+    network.addState(&left);
+    network.addState(&right);
+    auto* a = new EFSMTransition(&initial, &left, "A");
+    auto* b = new EFSMTransition(&initial, &right, "B");
+    a->setGuardExpression("1");
+    b->setGuardExpression("1");
+    a->setNondeterministic(true);
+    b->setNondeterministic(true);
+    network.addTransition(a);
+    network.addTransition(b);
+    network.setConflictPolicy(EFSMNetwork::ConflictPolicy::MODEL_ERROR);
+
+    const NetworkActivationFrame frame(network.getNumInputPorts());
+    ASSERT_NO_THROW(network.activate(frame));
+    FSMState* chosen = network.getCurrentState();
+    EXPECT_TRUE(chosen == &left || chosen == &right);
+    network.InitBetweenReplicationsProbe();
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), chosen);
+}
+
+TEST(EFSMNetworkTest, OutputActionsPublishMultiplePortsAndSetActionsCommitVariables) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* count = new Variable(model, "count");
+    ASSERT_NE(count, nullptr);
+    count->setValue(2.0);
+    EFSMNetworkProbe network(model, "ActionsMachine");
+    network.addOutputPort("extra");
+    FSMState idle(model, "Idle");
+    FSMState busy(model, "Busy");
+    network.setInitialState(&idle);
+    network.addState(&busy);
+    auto* edge = new EFSMTransition(&idle, &busy, "Update");
+    edge->setGuardExpression("1");
+    edge->setOutputActions("output = count + 1; extra = count * 2");
+    edge->setSetActions("count = count + 4");
+    network.addTransition(edge);
+
+    const NetworkActivationResult result = network.activate(
+        NetworkActivationFrame(network.getNumInputPorts()));
+    ASSERT_EQ(result.size(), 2u);
+    ASSERT_TRUE(result.isPresent(0));
+    ASSERT_TRUE(result.isPresent(1));
+    EXPECT_DOUBLE_EQ(result.getValue(0), 3.0);
+    EXPECT_DOUBLE_EQ(result.getValue(1), 4.0);
+    EXPECT_DOUBLE_EQ(count->getValue(), 6.0);
+    EXPECT_EQ(network.getCurrentState(), &busy);
+}
+
+TEST(EFSMNetworkTest, ActionValidationRejectsUnknownTargetsAndMalformedAssignments) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetworkProbe network(model, "ActionsValidation");
+    FSMState idle(model, "Idle");
+    FSMState busy(model, "Busy");
+    network.setInitialState(&idle);
+    network.addState(&busy);
+    auto* edge = new EFSMTransition(&idle, &busy, "BadActions");
+    network.addTransition(edge);
+
+    edge->setOutputActions("unknownPort = 2");
+    std::string error;
+    EXPECT_FALSE(network.CheckProbe(error));
+    EXPECT_NE(error.find("unknown output port"), std::string::npos);
+    edge->setOutputActions("");
+    edge->setSetActions("unknownVariable = 2");
+    error.clear();
+    EXPECT_FALSE(network.CheckProbe(error));
+    EXPECT_NE(error.find("unknown Variable"), std::string::npos);
+    edge->setSetActions("invalid =");
+    error.clear();
+    EXPECT_FALSE(network.CheckProbe(error));
+    EXPECT_NE(error.find("invalid Set Actions"), std::string::npos);
+}
+
 TEST(EFSMNetworkTest, ModelErrorPolicyReportsAmbiguousActivationAndKeepsState) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
@@ -426,6 +515,9 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	transition->setPriority(3);
 	transition->setProbabilityExpression("1");
 	transition->setDefaultTransition(true);
+	transition->setNondeterministic(true);
+	transition->setOutputActions("output = 77");
+	transition->setSetActions("counter = 2");
 	source.setInitialState(&idle);
 	source.addState(&busy);
 	source.addTransition(transition);
@@ -464,6 +556,9 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	EXPECT_EQ(loadedTransition->getPriority(), 3u);
 	EXPECT_EQ(loadedTransition->getProbabilityExpression(), "1");
 	EXPECT_TRUE(loadedTransition->isDefaultTransition());
+	EXPECT_TRUE(loadedTransition->isNondeterministic());
+	EXPECT_EQ(loadedTransition->getOutputActions(), "output = 77");
+	EXPECT_EQ(loadedTransition->getSetActions(), "counter = 2");
 }
 
 TEST(EFSMNetworkTest, PersistencePreservesExplicitlyEmptyTransitionName) {
