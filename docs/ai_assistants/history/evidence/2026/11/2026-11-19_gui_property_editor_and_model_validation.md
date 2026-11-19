@@ -66,6 +66,24 @@ removal, and property edits that mark the document dirty without refreshing or
 saving hidden text views. The `tests-kernel-unit` preset ran 2,230 tests; four
 were disabled and two were skipped by CTest.
 
+After merging and publishing the documentation commits on `WorkInProgress`,
+the suites were reconfigured, rebuilt, and rerun from that checkout:
+
+| Post-merge WIP validation | Result |
+|---|---|
+| `tests-unit` CTest | PASS; 2,189 passed, 0 failed, 4 disabled, 2 skipped |
+| `tests-kernel-unit` CTest | PASS; 2,200 passed, 0 failed, 4 disabled, 2 skipped |
+| `tests-smoke` CTest | PASS; 3/3 |
+| Focused Goto/Label graphical round trip | PASS after rebuilding the stale `genesys_plugins_components_minimal` objects in the local CMake cache |
+
+The first post-merge unit run reused an old static-plugin object and that one
+round-trip test segfaulted. GDB showed a stale `Goto` property-control vtable;
+the current Ninja target graph did not rebuild that object's headers. A clean
+rebuild of `genesys_plugins_components_minimal` followed by the focused test
+and complete unit suite passed. This was a stale local build artifact, not a
+source-code regression. The CI jobs were independently cancelled before
+completion as described below.
+
 ## Hosted validation and integration
 
 PR #590 was opened as draft against `WorkInProgress`, then marked ready after
@@ -75,15 +93,15 @@ shell, worker, launcher, standalone tools, smoke, GUI model diagnostics, AI
 Assistant, Data Analyser, Optimizer, plugin archive/link inspection (present
 and absent), and plugin target inspection where completed.
 
-Four final reruns (`tests-unit`, parser regeneration, plugin lifetime
-sanitizer, and plugin-target introspection) were cancelled by the 30-minute
-job limit while their dependency-install steps were still running; configure,
-build, and test steps were skipped. The final `tests-kernel-unit` and main GUI
-build reruns remained in progress during post-merge closeout. Earlier hosted
-checks listed above passed. GitHub reported no configured required branch
-protection checks. The corresponding local unit/kernel/smoke suites and GUI
-build passed as recorded above. These runner outcomes are infrastructure
-cancellations or pending results, not code-test failures.
+All six final hosted reruns (`tests-unit`, `tests-kernel-unit`, parser
+regeneration, main GUI build, plugin lifetime sanitizer, and plugin-target
+introspection) were cancelled before successful completion. Four were
+cancelled while dependency installation was still running; the kernel suite
+reached its CTest step before cancellation, and the GUI build remained in
+dependency installation. These outcomes did not report code-test failures.
+Earlier hosted checks listed above passed. GitHub reported no configured
+required branch-protection checks. The corresponding local unit/kernel/smoke
+suites and GUI build passed as recorded above.
 
 ## Portable package closeout
 
