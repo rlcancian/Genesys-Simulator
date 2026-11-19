@@ -611,7 +611,8 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
     // -> output actions -> refinement postfire -> set actions/state commit.
     // Default transitions are fallbacks in each phase. Termination occurs
     // only after postfire and loses to all normal/default transitions.
-    const auto select = [this](FSMState* state, bool preemptive, bool immediate,
+    bool selectionConflict = false;
+    const auto select = [this, &selectionConflict](FSMState* state, bool preemptive, bool immediate,
                                bool error, bool termination) -> EFSMTransition* {
         std::vector<EFSMTransition*> enabled;
         for (bool defaultFlag : {false, true}) {
@@ -633,6 +634,7 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
         if (_conflictPolicy == ConflictPolicy::MODEL_ERROR && !allNondeterministic) {
             traceError("EFSMNetwork \"" + getName() + "\" has conflicting enabled transitions.",
                        TraceManager::Level::L3_errorRecover);
+            selectionConflict = true;
             return nullptr;
         }
         if (_conflictPolicy == ConflictPolicy::NONDETERMINISTIC_CHOICE || allNondeterministic) {
@@ -745,6 +747,21 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
         FSMState* source = _currentState;
         const bool justEntered = _stateJustEntered;
         _stateJustEntered = false;
+        if (immediateOnly) {
+            // A newly entered state without an immediate outgoing relation
+            // is stable for the remainder of this activation. Its refinement
+            // must not fire a second ordinary step in the same dispatch.
+            bool hasImmediate = false;
+            for (DefaultNodeTransition* base : *source->getTransitions()->list()) {
+                auto* t = dynamic_cast<EFSMTransition*>(base);
+                if (t != nullptr && t->isImmediate()
+                    && !t->isErrorTransition() && !t->isTermination()
+                    && _transitions->find(t) != _transitions->list()->end()) {
+                    hasImmediate = true; break;
+                }
+            }
+            if (!hasImmediate) break;
+        }
         DefaultNetwork* refinement = source->getRefinementNetwork();
         if (refinement != nullptr && !_initializedRefinements.contains(refinement)) {
             refinement->initializeRefinement();
@@ -753,8 +770,22 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
 
         const bool allowImmediate = justEntered || immediateOnly;
         EFSMTransition* chosen = allowImmediate ? select(source, true, true, false, false) : nullptr;
+        if (selectionConflict) break;
         if (chosen == nullptr && !immediateOnly)
             chosen = select(source, true, false, false, false);
+        if (selectionConflict) break;
+        bool hasNonpreemptiveImmediate = false;
+        if (immediateOnly) {
+            for (DefaultNodeTransition* base : *source->getTransitions()->list()) {
+                auto* t = dynamic_cast<EFSMTransition*>(base);
+                if (t != nullptr && t->isImmediate() && !t->isPreemptive()
+                    && !t->isErrorTransition() && !t->isTermination()
+                    && _transitions->find(t) != _transitions->list()->end()) {
+                    hasNonpreemptiveImmediate = true; break;
+                }
+            }
+            if (chosen == nullptr && !hasNonpreemptiveImmediate && immediateOnly) break;
+        }
         bool didFire = false;
         bool terminated = false;
         bool refinementFailed = false;
@@ -780,12 +811,15 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
                 chosen = select(source, false, immediateOnly, true, false);
                 if (chosen == nullptr && !immediateOnly)
                     chosen = select(source, false, false, true, false);
+                if (selectionConflict) break;
                 if (chosen == nullptr) std::rethrow_exception(refinementException);
             } else {
                 if (allowImmediate)
                     chosen = select(source, false, true, false, false);
+                if (selectionConflict) break;
                 if (chosen == nullptr && !immediateOnly)
                     chosen = select(source, false, false, false, false);
+                if (selectionConflict) break;
             }
         }
 
@@ -794,7 +828,7 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
                 terminated = !refinement->postfireRefinement();
             if (terminated && !immediateOnly)
                 chosen = select(source, false, false, false, true);
-            if (chosen == nullptr) break;
+            if (selectionConflict || chosen == nullptr) break;
             // Termination is discovered in postfire: its output actions are
             // forbidden by _check(), because the output phase has elapsed.
             if (!chosen->isTermination() || !commit(chosen, nullptr, false, true)) break;
