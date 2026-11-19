@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <cctype>
 #include <memory>
+#include <stdexcept>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -213,11 +215,29 @@ List<EFSMTransition*>* EFSMNetwork::getTransitions() const {
 	return _transitions;
 }
 
+void EFSMNetwork::setMaxImmediateTransitionsPerActivation(unsigned int maximum) {
+    if (maximum == 0) throw std::invalid_argument("EFSM immediate transition budget must be positive");
+    _maxImmediateTransitionsPerActivation = maximum;
+}
+
+unsigned int EFSMNetwork::getMaxImmediateTransitionsPerActivation() const {
+    return _maxImmediateTransitionsPerActivation;
+}
+
+const std::string& EFSMNetwork::getLastRefinementError() const {
+    return _lastRefinementError;
+}
+
+bool EFSMNetwork::postfireRefinement() {
+    return _currentState == nullptr || !_currentState->isFinalNode();
+}
+
 void EFSMNetwork::setInitialState(FSMState* state) {
 	if (state != nullptr)
 		addState(state);
 	_initialState = state;
 	_currentState = state;
+    _stateJustEntered = true;
 	// The network pointer is authoritative: exactly the designated state
 	// is initial, including after a GUI edit, an undo, or clearing the state.
 	for (FSMState* candidate : *_states->list())
@@ -238,6 +258,7 @@ EFSMTransition* EFSMNetwork::getLastTransition() const {
 
 void EFSMNetwork::setCurrentState(FSMState* state) {
 	_currentState = state;
+    _stateJustEntered = true;
 	if (state != nullptr) {
 		addState(state);
 	}
@@ -300,6 +321,9 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 		_destroyOwnedTransitions();
 		_initialState = nullptr;
 		_currentState = nullptr;
+        _stateJustEntered = true;
+        _lastRefinementError.clear();
+        _initializedRefinements.clear();
 
 		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 		std::unordered_map<std::string, FSMState*> statesByName;
@@ -357,6 +381,11 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 			transition->setNondeterministic(fields->loadField("transitionNondeterministic" + suffix, 0u) != 0u);
 			transition->setOutputActions(fields->loadField("transitionOutputActions" + suffix, std::string("")));
 			transition->setSetActions(fields->loadField("transitionSetActions" + suffix, std::string("")));
+            transition->setImmediate(fields->loadField("transitionImmediate" + suffix, 0u) != 0u);
+            transition->setPreemptive(fields->loadField("transitionPreemptive" + suffix, 0u) != 0u);
+            transition->setHistory(fields->loadField("transitionHistory" + suffix, 0u) != 0u);
+            transition->setErrorTransition(fields->loadField("transitionError" + suffix, 0u) != 0u);
+            transition->setTermination(fields->loadField("transitionTermination" + suffix, 0u) != 0u);
 			addTransition(transition);
 		}
 
@@ -379,6 +408,8 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 		for (FSMState* candidate : *_states->list())
 			if (candidate != nullptr) candidate->setInitialNode(candidate == _initialState);
 		_conflictPolicy = convertStringToConflictPolicy(fields->loadField("conflictPolicy", convertConflictPolicyToString(ConflictPolicy::DETERMINISTIC_PRIORITY)));
+        _maxImmediateTransitionsPerActivation = fields->loadField("maxImmediateTransitionsPerActivation", 64u);
+        if (_maxImmediateTransitionsPerActivation == 0) _maxImmediateTransitionsPerActivation = 64u;
 	}
 	return res;
 }
@@ -386,6 +417,7 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 void EFSMNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
 	DefaultNetwork::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("conflictPolicy", convertConflictPolicyToString(_conflictPolicy), convertConflictPolicyToString(ConflictPolicy::DETERMINISTIC_PRIORITY), saveDefaultValues);
+    fields->saveField("maxImmediateTransitionsPerActivation", _maxImmediateTransitionsPerActivation, 64u, saveDefaultValues);
 	if (_initialState != nullptr) {
 		fields->saveField("initialState", _initialState->getName(), std::string(""), saveDefaultValues);
 	}
@@ -431,6 +463,11 @@ void EFSMNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefaultValue
 		fields->saveField("transitionNondeterministic" + suffix, transition->isNondeterministic() ? 1u : 0u, 0u, saveDefaultValues);
 		fields->saveField("transitionOutputActions" + suffix, transition->getOutputActions(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionSetActions" + suffix, transition->getSetActions(), std::string(""), saveDefaultValues);
+        fields->saveField("transitionImmediate" + suffix, transition->isImmediate() ? 1u : 0u, 0u, saveDefaultValues);
+        fields->saveField("transitionPreemptive" + suffix, transition->isPreemptive() ? 1u : 0u, 0u, saveDefaultValues);
+        fields->saveField("transitionHistory" + suffix, transition->isHistory() ? 1u : 0u, 0u, saveDefaultValues);
+        fields->saveField("transitionError" + suffix, transition->isErrorTransition() ? 1u : 0u, 0u, saveDefaultValues);
+        fields->saveField("transitionTermination" + suffix, transition->isTermination() ? 1u : 0u, 0u, saveDefaultValues);
 		i++;
 	}
 }
@@ -499,6 +536,9 @@ void EFSMNetwork::_initBetweenReplications() {
 	DefaultNetwork::_initBetweenReplications();
 	_currentState = _resolveInitialState();
 	_lastTransition = nullptr;
+    _stateJustEntered = true;
+    _initializedRefinements.clear();
+    _lastRefinementError.clear();
 	if (auto* defaultSampler = dynamic_cast<SamplerDefaultImpl1*>(_sampler); defaultSampler != nullptr) {
 		defaultSampler->reset();
 	}
