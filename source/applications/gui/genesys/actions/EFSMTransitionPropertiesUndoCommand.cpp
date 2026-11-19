@@ -31,6 +31,11 @@ EFSMTransitionPropertiesUndoCommand::_read(const EFSMTransition* transition) {
     properties.setActions = transition->getSetActions();
     properties.nondeterministic = transition->isNondeterministic();
     properties.defaultTransition = transition->isDefaultTransition();
+    properties.immediate = transition->isImmediate();
+    properties.preemptive = transition->isPreemptive();
+    properties.history = transition->isHistory();
+    properties.errorTransition = transition->isErrorTransition();
+    properties.termination = transition->isTermination();
     return properties;
 }
 
@@ -50,6 +55,11 @@ bool EFSMTransitionPropertiesUndoCommand::_apply(const Properties& properties) {
     _transition->setSetActions(properties.setActions);
     _transition->setNondeterministic(properties.nondeterministic);
     _transition->setDefaultTransition(properties.defaultTransition);
+    _transition->setImmediate(properties.immediate);
+    _transition->setPreemptive(properties.preemptive);
+    _transition->setHistory(properties.history);
+    _transition->setErrorTransition(properties.errorTransition);
+    _transition->setTermination(properties.termination);
     return true;
 }
 
