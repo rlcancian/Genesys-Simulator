@@ -64,6 +64,36 @@ TEST(EFSMNetworkTest, ProgrammaticStatesBelongToNetworkEditingLevel) {
 	EXPECT_EQ(network.getStates()->size(), 2u);
 }
 
+TEST(EFSMNetworkTest, InitialStateIdentityAndFlagsRemainConsistent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EFSMNetwork network(model, "UniqueInitialFlags");
+    FSMState first(model, "First");
+    FSMState second(model, "Second");
+    network.addState(&first);
+    network.addState(&second);
+    EXPECT_EQ(network.getInitialState(), &first);
+    EXPECT_TRUE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+
+    network.setInitialState(&second);
+    EXPECT_EQ(network.getInitialState(), &second);
+    EXPECT_FALSE(first.isInitialNode());
+    EXPECT_TRUE(second.isInitialNode());
+
+    network.setInitialState(nullptr);
+    EXPECT_EQ(network.getInitialState(), nullptr);
+    EXPECT_FALSE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+
+    network.setInitialState(&first);
+    EXPECT_EQ(network.getInitialState(), &first);
+    EXPECT_TRUE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+}
+
 TEST(EFSMNetworkTest, ConstructionCreatesDefaultInputAndOutputPorts) {
 	Simulator simulator;
 	Model* model = simulator.getModelManager()->newModel();
