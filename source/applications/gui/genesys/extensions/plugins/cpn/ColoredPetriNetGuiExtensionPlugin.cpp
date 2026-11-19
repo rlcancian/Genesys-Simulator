@@ -260,12 +260,8 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
                 QStringLiteral("%1:%2").arg(QString::fromStdString(color)).arg(quantity));
         }
         if (!inscriptions.isEmpty()) {
-            auto* label = new QGraphicsSimpleTextItem(inscriptions.join(QStringLiteral(", ")));
-            label->setBrush(QColor(80, 50, 105));
-            label->setPos(item->path().pointAtPercent(0.5) + QPointF(5, -14));
-            label->setZValue(-0.8);
-            label->setAcceptedMouseButtons(Qt::NoButton);
-            scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), label);
+            item->setRouteLabel(inscriptions.join(QStringLiteral(", ")),
+                                QColor(80, 50, 105));
         }
     }
 }
