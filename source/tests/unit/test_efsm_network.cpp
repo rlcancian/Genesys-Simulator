@@ -16,6 +16,8 @@
 #include "plugins/data/Logic/Variable.h"
 
 #include <memory>
+#include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <vector>
 #include <string>
@@ -254,8 +256,12 @@ TEST(EFSMNetworkLifecycle, ErrorTransitionHandlesRefinementPostfireFailure) {
     auto* exceptionHandler = new EFSMTransition(&source, &destination, "Recover");
     exceptionHandler->setGuardExpression("1");
     exceptionHandler->setErrorTransition(true);
+    exceptionHandler->setOutputActions("output = 77");
     network.addTransition(exceptionHandler);
-    EXPECT_NO_THROW(network.activate(NetworkActivationFrame(network.getNumInputPorts())));
+    NetworkActivationResult recovery;
+    EXPECT_NO_THROW(recovery = network.activate(NetworkActivationFrame(network.getNumInputPorts())));
+    ASSERT_TRUE(recovery.isPresent(0));
+    EXPECT_DOUBLE_EQ(recovery.getValue(0), 77.0);
     EXPECT_EQ(network.getCurrentState(), &destination);
     EXPECT_EQ(network.getLastTransition(), exceptionHandler);
     EXPECT_EQ(network.getLastRefinementError(), "postfire-boom");
@@ -880,6 +886,36 @@ TEST(EFSMNetworkTest, ProbabilityExpressionUsesResettableSamplerAndIsStatistical
     const double fraction = static_cast<double>(
         std::count(first.begin(), first.end(), true)) / trials;
     EXPECT_NEAR(fraction, 0.35, 0.055);
+}
+
+TEST(EFSMNetworkTest, DefaultFallbackDoesNotEvaluateProbabilityUnlessNeeded) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "LazyDefault");
+    FSMState initial(model, "Initial");
+    FSMState normalTarget(model, "Normal");
+    FSMState defaultTarget(model, "Default");
+    network.setInitialState(&initial);
+    network.addState(&normalTarget);
+    network.addState(&defaultTarget);
+    auto* normal = new EFSMTransition(&initial, &normalTarget, "Normal");
+    normal->setGuardExpression("1");
+    auto* fallback = new EFSMTransition(&initial, &defaultTarget, "Fallback");
+    fallback->setDefaultTransition(true);
+    fallback->setProbabilityExpression("2"); // invalid, but not evaluated when normal is eligible
+    network.addTransition(normal);
+    network.addTransition(fallback);
+
+    const NetworkActivationFrame frame(network.getNumInputPorts());
+    EXPECT_NO_THROW(network.activate(frame));
+    EXPECT_EQ(network.getCurrentState(), &normalTarget);
+    EXPECT_EQ(network.getLastTransition(), normal);
+
+    network.setCurrentState(&initial);
+    normal->setGuardExpression("0");
+    EXPECT_THROW(network.activate(frame), std::domain_error);
+    EXPECT_EQ(network.getCurrentState(), &initial);
 }
 
 TEST(EFSMNetworkTest, NondeterministicTransitionFlagsAllowReproducibleConflictChoice) {
