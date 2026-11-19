@@ -672,7 +672,8 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
     // Commit validates every destination before changing any state or Variable.
     // Output actions are evaluated before refinement postfire; Set Actions are
     // evaluated and committed afterwards.
-    const auto commit = [this, &result](EFSMTransition* t, DefaultNetwork* firedRefinement,
+    std::exception_ptr postfireFailure;
+    const auto commit = [this, &result, &postfireFailure](EFSMTransition* t, DefaultNetwork* firedRefinement,
                                         bool didFire, bool afterPostfire) -> bool {
         std::vector<TransitionAction> outputs, assignments;
         if (!parseTransitionActions(t->getOutputActions(), &outputs)
@@ -717,7 +718,17 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
             }
         }
         if (didFire && firedRefinement != nullptr) {
-            (void)firedRefinement->postfireRefinement();
+            try {
+                (void)firedRefinement->postfireRefinement();
+            } catch (const std::exception& error) {
+                _lastRefinementError = error.what();
+                postfireFailure = std::current_exception();
+                return false;
+            } catch (...) {
+                _lastRefinementError = "unknown refinement postfire exception";
+                postfireFailure = std::current_exception();
+                return false;
+            }
         }
         std::vector<std::pair<Variable*, double>> values;
         for (const auto& [variable, expr] : commitTargets)
@@ -824,16 +835,42 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
         }
 
         if (chosen == nullptr) {
-            if (didFire && refinement != nullptr)
-                terminated = !refinement->postfireRefinement();
-            if (terminated && !immediateOnly)
-                chosen = select(source, false, false, false, true);
-            if (selectionConflict || chosen == nullptr) break;
-            // Termination is discovered in postfire: its output actions are
-            // forbidden by _check(), because the output phase has elapsed.
-            if (!chosen->isTermination() || !commit(chosen, nullptr, false, true)) break;
+            if (didFire && refinement != nullptr) {
+                try {
+                    terminated = !refinement->postfireRefinement();
+                } catch (const std::exception& error) {
+                    _lastRefinementError = error.what();
+                    postfireFailure = std::current_exception();
+                } catch (...) {
+                    _lastRefinementError = "unknown refinement postfire exception";
+                    postfireFailure = std::current_exception();
+                }
+            }
+            if (postfireFailure != nullptr) {
+                chosen = select(source, false, false, true, false);
+                if (selectionConflict) break;
+                if (chosen == nullptr) std::rethrow_exception(postfireFailure);
+                result.reset(getNumOutputPorts()); // suppress incomplete refinement outputs
+                postfireFailure = nullptr;
+                if (!commit(chosen, nullptr, false, true)) break;
+            } else {
+                if (terminated && !immediateOnly)
+                    chosen = select(source, false, false, false, true);
+                if (selectionConflict || chosen == nullptr) break;
+                // Termination is discovered in postfire: its output actions are
+                // forbidden by _check(), because the output phase has elapsed.
+                if (!chosen->isTermination() || !commit(chosen, nullptr, false, true)) break;
+            }
         } else {
-            if (!commit(chosen, refinement, didFire, false)) break;
+            if (!commit(chosen, refinement, didFire, false)) {
+                if (postfireFailure == nullptr) break;
+                chosen = select(source, false, false, true, false);
+                if (selectionConflict) break;
+                if (chosen == nullptr) std::rethrow_exception(postfireFailure);
+                result.reset(getNumOutputPorts()); // retract uncommitted transition outputs
+                postfireFailure = nullptr;
+                if (!commit(chosen, nullptr, false, true)) break;
+            }
         }
 
         if (chosen->isImmediate()) {
