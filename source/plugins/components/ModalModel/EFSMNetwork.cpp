@@ -298,7 +298,7 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 			transition->setPriority(fields->loadField("transitionPriority" + suffix, 0u));
 			transition->setTriggerEvent(fields->loadField("transitionTriggerEvent" + suffix, std::string("")));
 			transition->setProbabilityExpression(fields->loadField("transitionProbabilityExpression" + suffix, std::string("")));
-			transition->setDefaultTransition(fields->loadField("transitionDefault" + suffix, false));
+			transition->setDefaultTransition(fields->loadField("transitionDefault" + suffix, 0u) != 0u);
 			addTransition(transition);
 		}
 
@@ -365,7 +365,7 @@ void EFSMNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefaultValue
 		fields->saveField("transitionPriority" + suffix, transition->getPriority(), 0u, saveDefaultValues);
 		fields->saveField("transitionTriggerEvent" + suffix, transition->getTriggerEvent(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionProbabilityExpression" + suffix, transition->getProbabilityExpression(), std::string(""), saveDefaultValues);
-		fields->saveField("transitionDefault" + suffix, transition->isDefaultTransition(), false, saveDefaultValues);
+		fields->saveField("transitionDefault" + suffix, transition->isDefaultTransition() ? 1u : 0u, 0u, saveDefaultValues);
 		i++;
 	}
 }
