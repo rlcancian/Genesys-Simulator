@@ -415,7 +415,7 @@ QtDoubleEdit::QtDoubleEdit(QWidget* parent) :
 	setFocusProxy(m_doublespinbox);
 }
 
-int QtDoubleEdit::value()
+double QtDoubleEdit::value()
 {
 	return m_doublespinbox->value();
 }
