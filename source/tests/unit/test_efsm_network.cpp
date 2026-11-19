@@ -461,6 +461,12 @@ TEST(EFSMNetworkLifecycle, RefinementNetworkReferenceIsPersistedAndResolvedByTyp
     EXPECT_EQ(restored->getRefinementNetwork(), &targetRefinement);
     EXPECT_EQ(restored->getRefinementNetworkIdentity(),
               targetRefinement.getClassname() + "::" + targetRefinement.getName());
+    // A live reference remains attached to the model-owned object even if
+    // it is renamed after a persistence round trip.
+    targetRefinement.setName("RenamedSubnetwork");
+    EXPECT_EQ(restored->getRefinementNetwork(), &targetRefinement);
+    EXPECT_EQ(restored->getRefinementNetworkIdentity(),
+              targetRefinement.getClassname() + "::RenamedSubnetwork");
 
     restored->setRefinementNetwork(nullptr);
     EXPECT_EQ(restored->getRefinementNetwork(), nullptr);
