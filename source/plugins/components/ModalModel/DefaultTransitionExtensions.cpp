@@ -47,6 +47,17 @@ bool EFSMTransition::isNondeterministic() const {
     return _nondeterministic;
 }
 
+void EFSMTransition::setImmediate(bool enabled) { _immediate = enabled; }
+bool EFSMTransition::isImmediate() const { return _immediate; }
+void EFSMTransition::setPreemptive(bool enabled) { _preemptive = enabled; }
+bool EFSMTransition::isPreemptive() const { return _preemptive; }
+void EFSMTransition::setHistory(bool enabled) { _history = enabled; }
+bool EFSMTransition::isHistory() const { return _history; }
+void EFSMTransition::setErrorTransition(bool enabled) { _errorTransition = enabled; }
+bool EFSMTransition::isErrorTransition() const { return _errorTransition; }
+void EFSMTransition::setTermination(bool enabled) { _termination = enabled; }
+bool EFSMTransition::isTermination() const { return _termination; }
+
 void EFSMTransition::setDefaultTransition(bool enabled) {
     _defaultTransition = enabled;
 }
