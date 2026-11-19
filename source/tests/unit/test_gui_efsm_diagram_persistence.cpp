@@ -293,7 +293,12 @@ TEST(EFSMNetworkPropertyEditor, SelectedTransitionExposesMathematicalPropertiesA
                                  QStringLiteral("Destination State"), QStringLiteral("Guard Expression"),
                                  QStringLiteral("Output Expression"), QStringLiteral("Input Event"),
                                  QStringLiteral("Priority"), QStringLiteral("Trigger Event"),
-                                 QStringLiteral("Probability Expression")}) {
+                                 QStringLiteral("Probability Expression"),
+                                 QStringLiteral("Output Actions"), QStringLiteral("Set Actions"),
+                                 QStringLiteral("Default"), QStringLiteral("Nondeterministic"),
+                                 QStringLiteral("Immediate"), QStringLiteral("Preemptive"),
+                                 QStringLiteral("History"), QStringLiteral("Error"),
+                                 QStringLiteral("Termination")}) {
         ASSERT_NE(findProperty(name), nullptr) << name.toStdString();
     }
     EXPECT_FALSE(findProperty(QStringLiteral("Source State"))->property()->isEnabled());
@@ -3448,6 +3453,11 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     edited.triggerEvent = "trigger-finish";
     edited.probabilityExpression = "0.25";
     edited.nondeterministic = true;
+    edited.immediate = true;
+    edited.preemptive = true;
+    edited.history = true;
+    edited.errorTransition = true;
+    edited.termination = true;
     edited.outputActions = "output = 3";
     edited.setActions = "counter = 4";
 
@@ -3461,6 +3471,11 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     EXPECT_EQ(transition->getTriggerEvent(), "trigger-finish");
     EXPECT_EQ(transition->getProbabilityExpression(), "0.25");
     EXPECT_TRUE(transition->isNondeterministic());
+    EXPECT_TRUE(transition->isImmediate());
+    EXPECT_TRUE(transition->isPreemptive());
+    EXPECT_TRUE(transition->isHistory());
+    EXPECT_TRUE(transition->isErrorTransition());
+    EXPECT_TRUE(transition->isTermination());
     EXPECT_EQ(transition->getOutputActions(), "output = 3");
     EXPECT_EQ(transition->getSetActions(), "counter = 4");
 
@@ -3473,6 +3488,11 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     EXPECT_EQ(transition->getTriggerEvent(), "trigger-start");
     EXPECT_EQ(transition->getProbabilityExpression(), "0.75");
     EXPECT_FALSE(transition->isNondeterministic());
+    EXPECT_FALSE(transition->isImmediate());
+    EXPECT_FALSE(transition->isPreemptive());
+    EXPECT_FALSE(transition->isHistory());
+    EXPECT_FALSE(transition->isErrorTransition());
+    EXPECT_FALSE(transition->isTermination());
     EXPECT_EQ(transition->getOutputActions(), "output = 1");
     EXPECT_EQ(transition->getSetActions(), "counter = 2");
 
