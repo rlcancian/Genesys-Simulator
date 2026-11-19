@@ -51,6 +51,13 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
     if (scene == nullptr) {
         return;
     }
+    // Preserve manual routes across domain/selection refreshes that recreate overlay objects.
+    QHash<EFSMTransition*, QPointF> existingBends;
+    for (QGraphicsItem* graphic : scene->extensionOverlayItems(QStringLiteral("efsm"))) {
+        if (auto* edge = dynamic_cast<EFSMTransitionGraphicsItem*>(graphic);
+            edge != nullptr && edge->hasManualBendPoint())
+            existingBends.insert(edge->transition(), edge->manualBendPoint());
+    }
     scene->clearExtensionOverlayItems(QStringLiteral("efsm"));
     scene->clearExtensionOverlayItems(QStringLiteral("efsm.state.markers"));
     EFSMNetwork* network = contextNetwork(simulator, scene);
@@ -88,6 +95,8 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
 
         auto* item = new EFSMTransitionGraphicsItem(transition, ordinal);
         item->setGeometry(stateCenter(scene, source), stateCenter(scene, destination), rank, count);
+        if (existingBends.contains(transition))
+            item->setManualBendPoint(existingBends.value(transition));
         item->setFired(network->getLastTransition() == transition);
         scene->addExtensionOverlayItem(QStringLiteral("efsm"), item);
     }
@@ -157,6 +166,31 @@ bool captureLayout(EFSMNetwork* network, ModelGraphicsScene* scene, EFSMNetworkD
                                 QString::fromStdString(state->getName()), position});
     }
 
+    // An EFSM transition is not a ModelDataDefinition: retain the established
+    // sequence ordinal plus source/destination/name integrity checks.
+    if (network->getTransitions() != nullptr) {
+        QVector<EFSMTransition*> transitions;
+        for (EFSMTransition* transition : *network->getTransitions()->list())
+            if (transition != nullptr) transitions.append(transition);
+        for (QGraphicsItem* overlay : scene->extensionOverlayItems(QStringLiteral("efsm"))) {
+            auto* item = dynamic_cast<EFSMTransitionGraphicsItem*>(overlay);
+            if (item == nullptr || !item->hasManualBendPoint()) continue;
+            const int ordinal = item->ordinal();
+            if (ordinal < 0 || ordinal >= transitions.size()
+                || transitions.at(ordinal) != item->transition()) continue;
+            EFSMTransition* transition = item->transition();
+            EFSMNetworkDiagramLayout::TransitionLayout route;
+            route.ordinal = ordinal;
+            route.sourceName = transition->getSource() != nullptr
+                ? QString::fromStdString(transition->getSource()->getName()) : QString();
+            route.destinationName = transition->getDestination() != nullptr
+                ? QString::fromStdString(transition->getDestination()->getName()) : QString();
+            route.transitionName = QString::fromStdString(transition->getName());
+            route.controlPoints.append(item->manualBendPoint());
+            captured.transitions.append(std::move(route));
+        }
+    }
+
     *layout = std::move(captured);
     return true;
 }
@@ -193,6 +227,30 @@ void restoreLayout(Simulator* simulator, EFSMNetwork* network, ModelGraphicsScen
     }
 
     synchronize(simulator, scene);
+
+    QVector<EFSMTransition*> transitions;
+    if (network->getTransitions() != nullptr) {
+        for (EFSMTransition* transition : *network->getTransitions()->list())
+            if (transition != nullptr) transitions.append(transition);
+    }
+    for (const auto& route : layout.transitions) {
+        if (route.controlPoints.size() != 1 || route.ordinal < 0
+            || route.ordinal >= transitions.size()) continue;
+        EFSMTransition* transition = transitions.at(route.ordinal);
+        if (transition == nullptr
+            || (transition->getSource() != nullptr ? QString::fromStdString(transition->getSource()->getName()) : QString()) != route.sourceName
+            || (transition->getDestination() != nullptr ? QString::fromStdString(transition->getDestination()->getName()) : QString()) != route.destinationName
+            || QString::fromStdString(transition->getName()) != route.transitionName) continue;
+        const QPointF bend = route.controlPoints.front();
+        if (!std::isfinite(bend.x()) || !std::isfinite(bend.y())) continue;
+        for (QGraphicsItem* overlay : scene->extensionOverlayItems(QStringLiteral("efsm"))) {
+            auto* item = dynamic_cast<EFSMTransitionGraphicsItem*>(overlay);
+            if (item != nullptr && item->transition() == transition && item->ordinal() == route.ordinal) {
+                item->setManualBendPoint(bend);
+                break;
+            }
+        }
+    }
 }
 
 } // namespace EFSMNetworkDiagramProjection
