@@ -63,12 +63,14 @@ public:
     bool postfireRefinement() override {
         ++postfired;
         events.push_back("postfire");
+        if (throwsOnPostfire) throw std::runtime_error("postfire-boom");
         return !terminateOnPostfire;
     }
     int initialized = 0;
     int fired = 0;
     int postfired = 0;
     bool throwsOnFire = false;
+    bool throwsOnPostfire = false;
     bool terminateOnPostfire = false;
     std::vector<std::string> events;
 };
@@ -236,6 +238,29 @@ TEST(EFSMNetworkLifecycle, ErrorTransitionHandlesOnlyRefinementFailures) {
     EXPECT_EQ(network.getLastTransition(), errorTransition);
     EXPECT_EQ(network.getLastRefinementError(), "refinement-boom");
     EXPECT_EQ(refinement.postfired, 0);
+}
+
+TEST(EFSMNetworkLifecycle, ErrorTransitionHandlesRefinementPostfireFailure) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    EFSMNetwork network(model, "PostfireError");
+    FSMState source(model, "Active");
+    FSMState destination(model, "Recovered");
+    RefinementLifecycleProbe refinement(model, "PostfireThrower");
+    source.setRefinementNetwork(&refinement);
+    refinement.throwsOnPostfire = true;
+    network.setInitialState(&source);
+    network.addState(&destination);
+    auto* exceptionHandler = new EFSMTransition(&source, &destination, "Recover");
+    exceptionHandler->setGuardExpression("1");
+    exceptionHandler->setErrorTransition(true);
+    network.addTransition(exceptionHandler);
+    EXPECT_NO_THROW(network.activate(NetworkActivationFrame(network.getNumInputPorts())));
+    EXPECT_EQ(network.getCurrentState(), &destination);
+    EXPECT_EQ(network.getLastTransition(), exceptionHandler);
+    EXPECT_EQ(network.getLastRefinementError(), "postfire-boom");
+    EXPECT_EQ(refinement.fired, 1);
+    EXPECT_EQ(refinement.postfired, 1);
 }
 
 TEST(EFSMNetworkLifecycle, UnhandledRefinementExceptionPropagates) {
