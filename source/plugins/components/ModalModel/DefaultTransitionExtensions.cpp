@@ -1,5 +1,6 @@
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "../../../kernel/simulator/model/Model.h"
+#include <utility>
 
 EFSMTransition::EFSMTransition(DefaultNode* source, DefaultNode* destination, std::string name)
 	: DefaultNodeTransition(source, destination, name) {
