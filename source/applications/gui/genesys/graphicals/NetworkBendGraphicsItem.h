@@ -5,6 +5,7 @@
 #include <QGraphicsPathItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
+#include <QPainterPathStroker>
 #include <QPen>
 #include <QPolygonF>
 #include <QPointer>
@@ -27,7 +28,7 @@ class NetworkBendGraphicsItem final : public QGraphicsPathItem {
 public:
     explicit NetworkBendGraphicsItem(QString extensionId, QString routeKey)
         : _extensionId(std::move(extensionId)), _routeKey(std::move(routeKey)) {
-        setPen(QPen(Qt::black, 12.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        setPen(_visiblePen);
         setBrush(Qt::NoBrush);
         setFlag(ItemIsSelectable, true);
         setAcceptedMouseButtons(Qt::LeftButton);
@@ -39,7 +40,7 @@ public:
     bool hasManualBendPoint() const { return _manual; }
     QPointF manualBendPoint() const { return _bend; }
 
-    void setVisiblePen(const QPen& pen) { _visiblePen = pen; update(); }
+    void setVisiblePen(const QPen& pen) { _visiblePen = pen; setPen(pen); update(); }
 
     void setGeometry(const QPointF& from, const QPointF& to, int rank, int count,
                      bool opposite, bool directed) {
@@ -67,13 +68,17 @@ public:
     QPointF handlePosition() const { return path().pointAtPercent(0.5); }
 
     QPainterPath shape() const override {
-        QPainterPath result = QGraphicsPathItem::shape();
+        QPainterPathStroker hit;
+        hit.setWidth(12.0);
+        hit.setCapStyle(Qt::RoundCap);
+        hit.setJoinStyle(Qt::RoundJoin);
+        QPainterPath result = hit.createStroke(path());
         if (!path().isEmpty()) result.addEllipse(handlePosition(), 11.0, 11.0);
         return result;
     }
 
     QRectF boundingRect() const override {
-        QRectF result = QGraphicsPathItem::boundingRect();
+        QRectF result = QGraphicsPathItem::boundingRect().adjusted(-14.0, -14.0, 14.0, 14.0);
         if (!path().isEmpty()) {
             const QPointF center = handlePosition();
             result = result.united(QRectF(center - QPointF(12, 12), QSizeF(24, 24)));
