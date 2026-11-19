@@ -3056,6 +3056,68 @@ TEST(EFSMNetworkProjection, InitialAndFinalStatesUseDistinctNonInteractiveMarker
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm.state.markers")).size(), 3);
 }
 
+TEST(EFSMNetworkProjection, ManualBendPointsSurviveProjectionRefreshAndLayoutRestore) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "BendGeometryNetwork");
+    FSMState a(model, "A");
+    FSMState b(model, "B");
+    network.addState(&a);
+    network.addState(&b);
+    network.setInitialState(&a);
+    auto* first = new EFSMTransition(&a, &b, "First");
+    auto* parallel = new EFSMTransition(&a, &b, "Parallel");
+    network.addTransition(first);
+    network.addTransition(parallel);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    scene.setNetworkEditorOwner(&network);
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<FSMState>());
+    ASSERT_NE(plugin, nullptr);
+    ASSERT_NE(scene.addGraphicalModelDataDefinition(plugin, &a, QPointF(30, 30)), nullptr);
+    ASSERT_NE(scene.addGraphicalModelDataDefinition(plugin, &b, QPointF(280, 30)), nullptr);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+
+    auto findEdge = [&](EFSMTransition* t) -> EFSMTransitionGraphicsItem* {
+        for (auto* item : scene.extensionOverlayItems(QStringLiteral("efsm"))) {
+            auto* edge = dynamic_cast<EFSMTransitionGraphicsItem*>(item);
+            if (edge != nullptr && edge->transition() == t) return edge;
+        }
+        return nullptr;
+    };
+    auto* firstItem = findEdge(first);
+    auto* parallelItem = findEdge(parallel);
+    ASSERT_NE(firstItem, nullptr);
+    ASSERT_NE(parallelItem, nullptr);
+    EXPECT_NE(firstItem->path(), parallelItem->path());
+    const QPointF bend(140.0, -90.0);
+    firstItem->setManualBendPoint(bend);
+    ASSERT_TRUE(firstItem->hasManualBendPoint());
+
+    EFSMNetworkDiagramLayout layout;
+    ASSERT_TRUE(EFSMNetworkDiagramProjection::captureLayout(&network, &scene, &layout));
+    ASSERT_EQ(layout.transitions.size(), 1);
+    EXPECT_EQ(layout.transitions.front().ordinal, 0);
+    ASSERT_EQ(layout.transitions.front().controlPoints.size(), 1);
+    EXPECT_EQ(layout.transitions.front().controlPoints.front(), bend);
+
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    ASSERT_NE(findEdge(first), nullptr);
+    EXPECT_TRUE(findEdge(first)->hasManualBendPoint());
+    EXPECT_EQ(findEdge(first)->manualBendPoint(), bend);
+    EXPECT_FALSE(findEdge(parallel)->hasManualBendPoint());
+
+    scene.clearExtensionOverlayItems(QStringLiteral("efsm"));
+    EFSMNetworkDiagramProjection::restoreLayout(&simulator, &network, &scene, layout);
+    ASSERT_NE(findEdge(first), nullptr);
+    EXPECT_EQ(findEdge(first)->manualBendPoint(), bend);
+    EXPECT_FALSE(findEdge(parallel)->hasManualBendPoint());
+}
+
 TEST(EFSMNetworkUndo, InitialStateChangeUndoRedoRestoresPointerAndStateFlags) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
