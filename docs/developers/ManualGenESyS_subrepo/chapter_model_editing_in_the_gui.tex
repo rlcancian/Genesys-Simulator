@@ -179,6 +179,16 @@ The main plugin palette lists model components. Data definitions remain part of 
 be available through the model data and specialized editing views; hiding them from the component palette
 does not unregister them from the simulator.
 
+For an \texttt{Assign} item, \texttt{DestinationIsAttribute} selects the destination type:
+checked means an Attribute, unchecked means a Variable. The checkbox can be changed in either
+direction. A \texttt{Search} or \texttt{Remove} component may temporarily have no Queue while being
+configured; use its reference selector to choose an existing Queue, create one explicitly, or remove
+the reference without deleting the Queue itself. \texttt{Seize.SaveAttribute} is optional when the
+selected Resource or Set member does not need to be identified by a later component. For
+\texttt{SPECIFICMEMBER}, Seize selects with \texttt{Index}; a corresponding Release needs a saved
+member reference to release the correct Resource. An Assignment expression such as
+\texttt{DISC(0.6,1,1,2)} samples value 1 with probability 0.6 or value 2 with probability 0.4.
+
 \begin{figure}[htbp]
 \centering
 % FIGURE-SPEC-BEGIN

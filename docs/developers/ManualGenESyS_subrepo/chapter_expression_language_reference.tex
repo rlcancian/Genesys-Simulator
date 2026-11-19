@@ -171,9 +171,16 @@ The current stochastic functions are:
 The implemented distributions call through \texttt{Sampler\_if}. The unit
 tests reproduce valid and invalid cases for \texttt{unif}, \texttt{tria},
 \texttt{expo}, \texttt{weib}, \texttt{norm}, \texttt{logn},
-\texttt{gamm}, \texttt{erla}, and \texttt{beta}. The invalid cases are
+\texttt{gamm}, \texttt{erla}, \texttt{beta}, and \texttt{disc}. The invalid cases are
 important because they prove that the parser reports recoverable errors rather
 than silently accepting bad parameters.
+
+\texttt{disc} takes ordered pairs of cumulative probability and numeric value.
+For example, \texttt{disc(0.6,1,1,2)} returns 1 with probability 0.6 and 2
+with probability 0.4. Cumulative probabilities must be finite, in the range
+0 to 1, nondecreasing, and end at 1 (allowing up to \texttt{1e-12} of
+rounding below 1). Values must be finite. Each evaluation draws once from
+the model sampler; syntax-only validation does not draw.
 
 \subsection{Kernel and model-aware functions}
 \label{subsec:expression-reference-kernel}
@@ -365,6 +372,8 @@ evidence in the parser implementation.
 \hline
 \texttt{unif(0.8,1.0)} & finite value in range & stochastic validity test \\
 \hline
+\texttt{disc(0.6,1,1,2)} & \texttt{1} or \texttt{2} & seeded distribution test \\
+\hline
 \texttt{beta(2,3,1,0)} & failure & invalid-parameter recovery test \\
 \hline
 \end{tabular}
@@ -385,7 +394,6 @@ The current reference does not claim support for the following:
 \item a dedicated array literal syntax;
 \item a dedicated matrix literal syntax;
 \item recursive formula evaluation through \texttt{FORM[...]};
-\item full discrete-distribution support through \texttt{disc(...)};
 \item a general-purpose programming language with full \texttt{for} and
       \texttt{else} semantics.
 \end{itemize}
@@ -393,7 +401,7 @@ The current reference does not claim support for the following:
 Some of those forms are partially tokenized or partially parsed, but the
 current implementation does not provide a finished semantic contract for
 them. In particular, the grammar still contains clear TODO paths for
-\texttt{disc}, formula recursion, and some plugin-backed functions, so those
+formula recursion and some plugin-backed functions, so those
 forms must not be documented as complete features.
 
 \section{Summary}
@@ -403,6 +411,6 @@ The current expression language is a model-aware, sparse-indexed, numeric
 language. It supports arithmetic, logic, selected math functions, stochastic
 functions, and direct reads and writes against live model data. It also has
 clear limits: no quoted strings, no dedicated array or matrix literals, and no
-finished recursion for formulas or discrete distributions.
+finished recursion for formulas.
 
 That conservative boundary is the correct reference for the manual today.
