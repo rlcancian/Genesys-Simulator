@@ -24,7 +24,7 @@ class QObject;
  *
  * Responsibilities:
  * - synchronize current scene selection into PropertyEditorGenesys/ObjectPropertyBrowser;
- * - execute post-edit refresh callbacks for model language, trees, C++ export, and tabs;
+ * - execute post-edit refresh callbacks for model trees, image/tabs, and scene projections;
  * - coalesce heavy refresh requests to avoid re-entrant UI update storms.
  *
  * Boundaries:
@@ -41,10 +41,9 @@ public:
                              std::map<SimulationControl*, DataComponentProperty*>* propertyList,
                              std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI,
                              std::map<SimulationControl*, ComboBoxEnum*>* propertyBox,
-                             std::function<void()> actualizeModelSimLanguage,
+                             std::function<void()> markModelChanged,
                              std::function<void(bool)> actualizeModelComponents,
                              std::function<void(bool)> actualizeModelDataDefinitions,
-                             std::function<void()> actualizeModelCppCode,
                              std::function<bool()> createModelImage,
                              std::function<void()> actualizeTabPanes,
                              std::function<void()> actualizeActions);
@@ -72,10 +71,9 @@ private:
     std::map<SimulationControl*, ComboBoxEnum*>* _propertyBox;
 
     // Keep narrow callbacks for MainWindow-owned update methods.
-    std::function<void()> _actualizeModelSimLanguage;
+    std::function<void()> _markModelChanged;
     std::function<void(bool)> _actualizeModelComponents;
     std::function<void(bool)> _actualizeModelDataDefinitions;
-    std::function<void()> _actualizeModelCppCode;
     std::function<bool()> _createModelImage;
     std::function<void()> _actualizeTabPanes;
     std::function<void()> _actualizeActions;

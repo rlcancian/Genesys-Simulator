@@ -357,6 +357,18 @@ namespace {
                 }
             }
         }
+
+        // These entries are explicitly marked editable by the kernel association
+        // contract, including destinations represented as scalar strings in lists.
+        if (auto* editable = component->getOptionalEditableDataDefinitions()) {
+            for (const auto& entry : *editable) {
+                ModelDataDefinition* dataDefinition = entry.second;
+                if (belongsToModelLevel(dataDefinition, hasModelLevelFilter, modelLevelFilter)
+                    && !isStatisticsDataDefinition(dataDefinition)) {
+                    editableDefinitions->insert(dataDefinition);
+                }
+            }
+        }
     }
 
     QSet<ModelDataDefinition*> editableDataDefinitionsForModel(Model* model,

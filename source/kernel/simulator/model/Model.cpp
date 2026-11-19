@@ -326,10 +326,23 @@ bool Model::checkExpression(const std::string expression, const std::string expr
 void Model::checkReferencesToDataDefinitions(std::string expression,
                                              std::map<std::string, std::list<std::string>*>*
                                              referencedDataDefinitions) {
+    if (referencedDataDefinitions == nullptr) {
+        return;
+    }
     genesyspp_driver wrapper = _parser->getParser();
     wrapper.setRegisterReferedDataElements(true);
     wrapper.clearReferedDataElements();
-    wrapper.parse_str(expression);
+    // Reference discovery only needs lexical symbol resolution. The syntax-only
+    // parser suppresses semantic actions, so distributions and stateful functions
+    // are never evaluated merely to populate attachment metadata.
+    const ExpressionSyntaxValidation validation = wrapper.validateSyntax(expression, true);
+    wrapper.setRegisterReferedDataElements(false);
+    if (!validation.isValid()) {
+        _traceManager->trace("Could not discover data-definition references in expression '" + expression + "': " + validation.errorMessage,
+                             TraceManager::Level::L3_errorRecover);
+        wrapper.clearReferedDataElements();
+        return;
+    }
     std::map<std::string, std::list<std::string>*>* refs = wrapper.getReferedDataElements();
     // Deep-copy referred element names so output map owns stable lists beyond parser wrapper lifetime.
     for (const auto& typeAndNames : *refs) {
@@ -349,7 +362,7 @@ void Model::checkReferencesToDataDefinitions(std::string expression,
             }
         }
     }
-    wrapper.setRegisterReferedDataElements(false);
+    wrapper.clearReferedDataElements();
 }
 
 double Model::parseExpression(const std::string expression, bool& success, std::string& errorMessage) {

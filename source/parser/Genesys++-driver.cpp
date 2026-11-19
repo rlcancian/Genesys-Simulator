@@ -225,7 +225,8 @@ int genesyspp_driver::parse_str(const std::string &str) {
 
 // Keep expression validation separate from evaluation. A fresh driver can be
 // used by a GUI without a sampler; semantic actions are suppressed by Bison.
-ExpressionSyntaxValidation genesyspp_driver::validateSyntax(const std::string& expression) {
+ExpressionSyntaxValidation genesyspp_driver::validateSyntax(const std::string& expression,
+                                                               bool registerReferences) {
 	ExpressionSyntaxValidation validation;
 	if (expression.find_first_not_of(" \t\r\n") == std::string::npos) {
 		validation.errorMessage = "Empty expression";
@@ -234,7 +235,9 @@ ExpressionSyntaxValidation genesyspp_driver::validateSyntax(const std::string& e
 
 	const bool previousMode = _syntaxOnly;
 	const bool previousThrows = throwsException;
+	const bool previousRegisterReferences = _isRegisterReferedDataElements;
 	_syntaxOnly = true;
+	_isRegisterReferedDataElements = registerReferences;
 	throwsException = false;
 	_syntaxUnresolvedIdentifiers.clear();
 	_syntaxInvalidCharacters.clear();
@@ -244,6 +247,7 @@ ExpressionSyntaxValidation genesyspp_driver::validateSyntax(const std::string& e
 		parseStatus = parse_str(expression);
 	} catch (...) {
 		_syntaxOnly = previousMode;
+		_isRegisterReferedDataElements = previousRegisterReferences;
 		throwsException = previousThrows;
 		throw;
 	}
@@ -265,6 +269,7 @@ ExpressionSyntaxValidation genesyspp_driver::validateSyntax(const std::string& e
 	}
 
 	_syntaxOnly = previousMode;
+	_isRegisterReferedDataElements = previousRegisterReferences;
 	throwsException = previousThrows;
 	return validation;
 }
@@ -358,9 +363,10 @@ void genesyspp_driver::clearReferedDataElements() {
 }
 
 void genesyspp_driver::addRefered(std::pair<std::string,std::string> referedElement) { // pair<DataElementTypename, name>
-	// A syntax-only probe must not pollute the dependency registry used by
-	// subsequent evaluation or orphan-data-element analysis on this driver.
-	if (_syntaxOnly) {
+	// Syntax-only probes normally stay side-effect free. Reference discovery is
+	// the one explicit exception: it sets this flag on a private parser copy so
+	// identifiers can be collected without evaluating expressions or sampling.
+	if (_syntaxOnly && !_isRegisterReferedDataElements) {
 		return;
 	}
 	if (_isRegisterReferedDataElements) {

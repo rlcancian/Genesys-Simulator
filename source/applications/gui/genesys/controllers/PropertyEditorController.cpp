@@ -184,6 +184,17 @@ void collectEditableAttachedDataDefinitionNames(ModelComponent* component, QSet<
             }
         }
     }
+
+    // Optional editable associations are an explicit kernel declaration of objects
+    // exposed for editing (for example, Assign's Variable destination). They need
+    // not correspond to a class-valued SimulationControl.
+    if (auto* editable = component->getOptionalEditableDataDefinitions()) {
+        for (const auto& entry : *editable) {
+            if (entry.second != nullptr) {
+                names.insert(QString::fromStdString(entry.second->getName()));
+            }
+        }
+    }
 }
 
 /*! \brief Builds the full editable data-definition set from the current scene and loaded model.
@@ -276,10 +287,9 @@ PropertyEditorController::PropertyEditorController(
     std::map<SimulationControl*, DataComponentProperty*>* propertyList,
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI,
     std::map<SimulationControl*, ComboBoxEnum*>* propertyBox,
-    std::function<void()> actualizeModelSimLanguage,
+    std::function<void()> markModelChanged,
     std::function<void(bool)> actualizeModelComponents,
     std::function<void(bool)> actualizeModelDataDefinitions,
-    std::function<void()> actualizeModelCppCode,
     std::function<bool()> createModelImage,
     std::function<void()> actualizeTabPanes,
     std::function<void()> actualizeActions)
@@ -289,10 +299,9 @@ PropertyEditorController::PropertyEditorController(
       _propertyList(propertyList),
       _propertyEditorUI(propertyEditorUI),
       _propertyBox(propertyBox),
-      _actualizeModelSimLanguage(std::move(actualizeModelSimLanguage)),
+      _markModelChanged(std::move(markModelChanged)),
       _actualizeModelComponents(std::move(actualizeModelComponents)),
       _actualizeModelDataDefinitions(std::move(actualizeModelDataDefinitions)),
-      _actualizeModelCppCode(std::move(actualizeModelCppCode)),
       _createModelImage(std::move(createModelImage)),
       _actualizeTabPanes(std::move(actualizeTabPanes)),
       _actualizeActions(std::move(actualizeActions)) {
@@ -462,20 +471,14 @@ void PropertyEditorController::_runGlobalRefresh() const {
         _pendingGlobalRefresh = false;
         qInfo() << "[PropertyEditorController] _runGlobalRefresh enter";
 
+        if (_markModelChanged) {
+            _markModelChanged();
+        }
         if (_actualizeModelComponents) {
             _actualizeModelComponents(true);
         }
         if (_actualizeModelDataDefinitions) {
             _actualizeModelDataDefinitions(true);
-        }
-        // Refresh the serialized model text only after component and data-definition panes have
-        // consumed the committed kernel state. This keeps Siman aligned with the same model
-        // snapshot already visible in the inspector widgets.
-        if (_actualizeModelSimLanguage) {
-            _actualizeModelSimLanguage();
-        }
-        if (_actualizeModelCppCode) {
-            _actualizeModelCppCode();
         }
         if (_createModelImage) {
             _createModelImage();

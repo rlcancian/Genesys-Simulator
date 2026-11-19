@@ -117,6 +117,8 @@ public:
 	 * \return Map of attached data indexed by name.
 	 */
 	std::map<std::string, ModelDataDefinition*>* getAttachedData() const;
+	/*!\brief Returns references explicitly registered as optional editable data definitions. */
+	std::map<std::string, ModelDataDefinition*>* getOptionalEditableDataDefinitions() const;
 	//ModelDataDefinition* getInternalData(std::string key) const;
 	/*!
 	 * \brief Indicates whether this instance has been modified since the last reset.

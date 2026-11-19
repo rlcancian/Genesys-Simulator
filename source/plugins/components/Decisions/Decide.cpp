@@ -274,8 +274,11 @@ void Decide::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 bool Decide::_check(std::string& errorMessage) {
 	bool allResult = true;
 	for (const std::string& condition : *_conditions->list()) {
-		allResult &= _parentModel->checkExpression(condition, "condition", errorMessage);
-		_checkCreateAttachedReferencedDataDefinition(condition);
+		const bool expressionIsValid = _parentModel->checkExpression(condition, "condition", errorMessage);
+		allResult &= expressionIsValid;
+		if (expressionIsValid) {
+			_checkCreateAttachedReferencedDataDefinition(condition);
+		}
 	}
 	return allResult;
 }

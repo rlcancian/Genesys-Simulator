@@ -14,6 +14,8 @@
 #include "kernel/simulator/PluginManager.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
+#include "plugins/data/WholeCellModeling/MolecularSpecies.h"
+#include "plugins/data/Logic/Variable.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -419,4 +421,142 @@ TEST(ExpressionBuilderPropertyTest, ReadonlyStringStillRejectsInlineCommit) {
     ASSERT_TRUE(QMetaObject::invokeMethod(&browser, "onVariantEditorCommitted", Qt::DirectConnection,
         Q_ARG(QtProperty*, item->property()), Q_ARG(QVariant, QVariant("2 + 3"))));
     EXPECT_EQ(delay.getName(), original);
+}
+
+TEST(ExpressionBuilderPropertyTest, GenericEditableStringOffersBuilderAndKeepsInlineEditing) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    auto* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MolecularSpecies species(model, "GenericStringSpecies");
+    species.setUnit("molecules");
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    browser.setActiveObject(nullptr, &species, {}, {QString::fromStdString(species.getName())});
+    QCoreApplication::processEvents();
+
+    auto* item = findExpressionProperty(browser.topLevelItems(), QStringLiteral("Unit"));
+    ASSERT_NE(item, nullptr);
+    ASSERT_TRUE(item->property()->isEnabled());
+
+    // The regular inline editor remains active and accepts free text without parser validation.
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    auto* inlineEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(inlineEditor, nullptr);
+    inlineEditor->setFocus();
+    inlineEditor->selectAll();
+    inlineEditor->setText(QStringLiteral("micromoles"));
+    QKeyEvent commit(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(inlineEditor, &commit);
+    QKeyEvent release(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(inlineEditor, &release);
+    EXPECT_EQ(species.getUnit(), "micromoles");
+    for (int i = 0; i < 8; ++i) QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+
+    item = findExpressionProperty(browser.topLevelItems(), QStringLiteral("Unit"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    bool builderOpened = false;
+    QTimer::singleShot(0, [&]() {
+        auto* menu = qobject_cast<QMenu*>(QApplication::activePopupWidget());
+        if (menu == nullptr) return;
+        QAction* action = nullptr;
+        for (QAction* candidate : menu->actions()) {
+            if (candidate->text() == QStringLiteral("Build expression...")) action = candidate;
+        }
+        ASSERT_NE(action, nullptr);
+        QTimer::singleShot(0, [&]() {
+            auto* dialog = qobject_cast<ExpressionBuilder*>(QApplication::activeModalWidget());
+            if (dialog == nullptr) return;
+            builderOpened = true;
+            auto* editor = dialog->findChild<QPlainTextEdit*>(QStringLiteral("expressionEditor"));
+            ASSERT_NE(editor, nullptr);
+            EXPECT_EQ(editor->toPlainText(), QStringLiteral("micromoles"));
+            editor->setPlainText(QStringLiteral("2 + 3"));
+            dialog->findChild<QPushButton*>(QStringLiteral("btnApply"))->click();
+        });
+        menu->setActiveAction(action);
+        QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(menu, &enter);
+    });
+    QTimer::singleShot(1000, &browser, []() {
+        if (auto* widget = QApplication::activeModalWidget()) widget->close();
+        if (auto* menu = QApplication::activePopupWidget()) menu->close();
+    });
+    QContextMenuEvent event(QContextMenuEvent::Mouse, QPoint(5, 5),
+                            browser.mapToGlobal(QPoint(5, 5)));
+    QApplication::sendEvent(&browser, &event);
+    for (int i = 0; i < 8; ++i) QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    EXPECT_TRUE(builderOpened);
+    EXPECT_EQ(species.getUnit(), "2 + 3");
+
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const std::string path = directory.filePath(QStringLiteral("generic-string-expression.gen")).toStdString();
+    ASSERT_TRUE(model->save(path));
+    Simulator restoredSimulator;
+    restoredSimulator.getPluginManager()->autoInsertPlugins();
+    auto* restoredModel = restoredSimulator.getModelManager()->loadModel(path);
+    ASSERT_NE(restoredModel, nullptr);
+    auto* restoredSpecies = dynamic_cast<MolecularSpecies*>(restoredModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<MolecularSpecies>(), "GenericStringSpecies"));
+    ASSERT_NE(restoredSpecies, nullptr);
+    EXPECT_EQ(restoredSpecies->getUnit(), "2 + 3");
+}
+
+TEST(ExpressionBuilderPropertyTest, MultilineStringKeepsItsEditorAndOffersExpressionBuilderAsAlternative) {
+    Simulator simulator;
+    auto* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Variable variable(model, "MultilineExpressionVariable");
+    variable.setInitialValuesText("7.5");
+    const std::string original = variable.getInitialValuesText();
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    browser.setActiveObject(nullptr, &variable, {}, {QString::fromStdString(variable.getName())});
+    QCoreApplication::processEvents();
+    auto* item = findExpressionProperty(browser.topLevelItems(), QStringLiteral("InitialValue"));
+    ASSERT_NE(item, nullptr);
+    ASSERT_TRUE(item->property()->isEnabled());
+    browser.setCurrentItem(item);
+
+    bool hasTextEditorAction = false;
+    bool builderOpened = false;
+    QTimer::singleShot(0, [&]() {
+        auto* menu = qobject_cast<QMenu*>(QApplication::activePopupWidget());
+        if (menu == nullptr) return;
+        QAction* builderAction = nullptr;
+        for (QAction* action : menu->actions()) {
+            hasTextEditorAction |= action->text() == QStringLiteral("Edit text...");
+            if (action->text() == QStringLiteral("Build expression...")) builderAction = action;
+        }
+        if (builderAction == nullptr) { menu->close(); return; }
+        QTimer::singleShot(0, [&]() {
+            auto* dialog = qobject_cast<ExpressionBuilder*>(QApplication::activeModalWidget());
+            if (dialog == nullptr) return;
+            builderOpened = true;
+            EXPECT_EQ(dialog->expressionText(), QStringLiteral("7.5"));
+            dialog->reject();
+        });
+        menu->setActiveAction(builderAction);
+        QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(menu, &enter);
+    });
+    QTimer::singleShot(1000, &browser, []() {
+        if (auto* widget = QApplication::activeModalWidget()) widget->close();
+        if (auto* menu = QApplication::activePopupWidget()) menu->close();
+    });
+    QContextMenuEvent event(QContextMenuEvent::Mouse, QPoint(5, 5),
+                            browser.mapToGlobal(QPoint(5, 5)));
+    QApplication::sendEvent(&browser, &event);
+    for (int i = 0; i < 8; ++i) QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    EXPECT_TRUE(hasTextEditorAction);
+    EXPECT_TRUE(builderOpened);
+    EXPECT_EQ(variable.getInitialValuesText(), original);
 }

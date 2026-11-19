@@ -93,6 +93,7 @@
 #include "plugins/components/Grouping/Separate.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "../../plugins/components/Logic/Assign.h"
 #include "plugins/components/InputOutput/Record.h"
@@ -2335,6 +2336,82 @@ TEST(SimulatorRuntimeTest, AttributeInitialValuePropertyUsesMultiLineTextEditorH
 
     ASSERT_NE(initialValueControl, nullptr);
     EXPECT_EQ(initialValueControl->preferredEditorHint(), SimulationControlEditorHint::MultiLineText);
+}
+
+TEST(SimulatorRuntimeTest, InvalidDecideExpressionReferenceDiscoveryIsRecoverable) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Decide decide(model, "InvalidExpressionDecide");
+    decide.addConditions("unit(0,1) < 0.6");
+    std::string errorMessage;
+    EXPECT_NO_THROW(EXPECT_FALSE(ModelDataDefinition::Check(&decide, errorMessage)));
+    EXPECT_NE(errorMessage.find("unit(0,1)"), std::string::npos);
+    EXPECT_NO_THROW(EXPECT_FALSE(ModelDataDefinition::Check(&decide, errorMessage)));
+}
+
+TEST(SimulatorRuntimeTest, LoadingInvalidDecideExpressionIsRecoverableAndDoesNotPoisonNextLoad) {
+    const std::string invalidPath = "/tmp/genesys_invalid_decide_" + std::to_string(::getpid()) + ".gen";
+    const std::string validPath = "/tmp/genesys_valid_decide_" + std::to_string(::getpid()) + ".gen";
+    ::unlink(invalidPath.c_str());
+    ::unlink(validPath.c_str());
+
+    Simulator sourceSimulator;
+    sourceSimulator.getPluginManager()->autoInsertPlugins();
+    Model* invalidModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(invalidModel, nullptr);
+    auto* invalidDecide = new Decide(invalidModel, "InvalidPersistedDecide");
+    invalidDecide->addConditions("unit(0,1) < 0.6");
+    ASSERT_TRUE(invalidModel->save(invalidPath));
+
+    Model* validModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(validModel, nullptr);
+    auto* validDecide = new Decide(validModel, "ValidPersistedDecide");
+    validDecide->addConditions("1 < 2");
+    ASSERT_TRUE(validModel->save(validPath));
+
+    Simulator loadedSimulator;
+    loadedSimulator.getPluginManager()->autoInsertPlugins();
+    Model* loadedInvalid = nullptr;
+    EXPECT_NO_THROW(loadedInvalid = loadedSimulator.getModelManager()->loadModel(invalidPath));
+    ASSERT_NE(loadedInvalid, nullptr);
+    auto* restoredInvalid = dynamic_cast<Decide*>(
+        loadedInvalid->getComponentManager()->find("InvalidPersistedDecide"));
+    ASSERT_NE(restoredInvalid, nullptr);
+    std::string validationErrors;
+    EXPECT_FALSE(ModelDataDefinition::Check(restoredInvalid, validationErrors));
+    EXPECT_NE(validationErrors.find("unit(0,1)"), std::string::npos);
+
+    Model* loadedValid = nullptr;
+    EXPECT_NO_THROW(loadedValid = loadedSimulator.getModelManager()->loadModel(validPath));
+    ASSERT_NE(loadedValid, nullptr);
+    EXPECT_NE(loadedValid->getComponentManager()->find("ValidPersistedDecide"), nullptr);
+    ::unlink(invalidPath.c_str());
+    ::unlink(validPath.c_str());
+}
+
+TEST(SimulatorRuntimeTest, InvalidExpressionReferenceDiscoveryDoesNotThrowForSyntaxOrLexicalErrors) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Variable variable(model, "VariableA");
+    std::map<std::string, std::list<std::string>*> references;
+    EXPECT_NO_THROW(model->checkReferencesToDataDefinitions("VariableA + 1", &references));
+    ASSERT_TRUE(references.find(Util::TypeOf<Variable>()) != references.end());
+    ASSERT_NE(references[Util::TypeOf<Variable>()], nullptr);
+    EXPECT_EQ(references[Util::TypeOf<Variable>()]->front(), "VariableA");
+    for (auto& entry : references) delete entry.second;
+    references.clear();
+
+    // Distribution syntax is parsed without evaluating or sampling it.
+    EXPECT_NO_THROW(model->checkReferencesToDataDefinitions("unif(0,1)", &references));
+    EXPECT_TRUE(references.empty());
+
+    EXPECT_NO_THROW(model->checkReferencesToDataDefinitions("VariableA + (", &references));
+    for (auto& entry : references) delete entry.second;
+    references.clear();
+    EXPECT_NO_THROW(model->checkReferencesToDataDefinitions("VariableA + @", &references));
+    for (auto& entry : references) delete entry.second;
 }
 
 TEST(SimulatorRuntimeTest, ModelDataDefinitionAccessorsExposeStableStateAndMetadata) {

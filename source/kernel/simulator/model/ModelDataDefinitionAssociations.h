@@ -37,6 +37,7 @@ public:
 public:
 	std::map<std::string, ModelDataDefinition*>* getInternalData() const;
 	std::map<std::string, ModelDataDefinition*>* getAttachedData() const;
+	std::map<std::string, ModelDataDefinition*>* getOptionalEditableDataDefinitions() const;
 	ModelDataDefinition* getInternalData(const std::string& key) const;
 
 	void clearAll();
