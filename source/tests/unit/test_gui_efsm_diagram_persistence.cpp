@@ -3341,6 +3341,63 @@ TEST(EFSMNetworkUndo, InitialStateChangeUndoRedoRestoresPointerAndStateFlags) {
     EXPECT_FALSE(idle.isInitialNode());
 }
 
+TEST(EFSMNetworkUndo, StatePropertyEditsPreserveAndRestoreInitialStateIdentity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "InitialPropertyNetwork");
+    FSMState first(model, "First");
+    FSMState second(model, "Second");
+    network.setInitialState(&first);
+    network.addState(&second);
+    ASSERT_EQ(network.getInitialState(), &first);
+    ASSERT_TRUE(first.isInitialNode());
+
+    auto current = [](const FSMState& state) {
+        EFSMStatePropertiesUndoCommand::Properties value;
+        value.name = state.getName();
+        value.label = state.getLabel();
+        value.entryActionExpression = state.getEntryActionExpression();
+        value.exitActionExpression = state.getExitActionExpression();
+        value.traceLevel = static_cast<std::uint32_t>(state.getTraceLevelSpecific());
+        value.reportStatistics = state.isReportStatistics();
+        value.finalNode = state.isFinalNode();
+        value.initialNode = state.isInitialNode();
+        return value;
+    };
+
+    QUndoStack stack;
+    auto otherEdit = current(second);
+    otherEdit.finalNode = true;
+    stack.push(new EFSMStatePropertiesUndoCommand(&network, &second, otherEdit));
+    EXPECT_TRUE(second.isFinalNode());
+    EXPECT_EQ(network.getInitialState(), &first);
+    EXPECT_TRUE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+    stack.undo();
+    EXPECT_EQ(network.getInitialState(), &first);
+    EXPECT_TRUE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+    stack.redo();
+    EXPECT_EQ(network.getInitialState(), &first);
+
+    auto switchInitial = current(second);
+    switchInitial.initialNode = true;
+    stack.push(new EFSMStatePropertiesUndoCommand(&network, &second, switchInitial));
+    EXPECT_EQ(network.getInitialState(), &second);
+    EXPECT_FALSE(first.isInitialNode());
+    EXPECT_TRUE(second.isInitialNode());
+
+    stack.undo();
+    EXPECT_EQ(network.getInitialState(), &first);
+    EXPECT_TRUE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+    stack.redo();
+    EXPECT_EQ(network.getInitialState(), &second);
+    EXPECT_FALSE(first.isInitialNode());
+    EXPECT_TRUE(second.isInitialNode());
+}
+
 TEST(EFSMNetworkUndo, StateDeletionUndoRedoRestoresIncidentTransitionsAndManagerIdentity) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
