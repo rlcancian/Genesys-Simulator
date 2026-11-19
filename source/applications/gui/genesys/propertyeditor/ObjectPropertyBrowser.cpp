@@ -162,13 +162,15 @@ class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
     using CommitCallback = std::function<void(QtProperty*, const QVariant&)>;
     using EditorCreationFilter = std::function<bool(QtProperty*)>;
-    using NumericEditorConfigurator = std::function<void(QtProperty*, QAbstractSpinBox*)>;
+    // Returns true for numeric editors that must commit spin-button changes immediately.
+    using NumericEditorConfigurator = std::function<bool(QtProperty*, QAbstractSpinBox*)>;
 
     struct EditorState {
         QtVariantPropertyManager* manager = nullptr;
         QtProperty* property = nullptr;
         QWidget* editor = nullptr;
         QVariant originalValue;
+        QVariant lastCommittedValue;
         bool suppressCommit = false;
     };
 
@@ -205,8 +207,24 @@ protected:
             spinBox = editor->findChild<QAbstractSpinBox*>();
         }
         if (spinBox != nullptr) {
-            if (_numericEditorConfigurator) _numericEditorConfigurator(property, spinBox);
+            const bool liveCommit = _numericEditorConfigurator
+                && _numericEditorConfigurator(property, spinBox);
             _registerEditor(spinBox, manager, property, editor);
+            if (liveCommit) {
+                if (auto* doubleEditor = qobject_cast<QDoubleSpinBox*>(spinBox)) {
+                    // Keyboard tracking is disabled by QtDoubleEdit, so typed values commit
+                    // once on interpretation while spin-button clicks commit immediately.
+                    QObject::connect(doubleEditor, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+                        this, [this, callback = _commitCallback, property, spinBox](double value) {
+                            auto state = _editorStates.find(spinBox);
+                            if (state == _editorStates.end() || state.value().suppressCommit) return;
+                            const QVariant numericValue(value);
+                            if (state.value().lastCommittedValue == numericValue) return;
+                            state.value().lastCommittedValue = numericValue;
+                            callback(property, numericValue);
+                        });
+                }
+            }
             if (QLineEdit* spinLineEdit = spinBox->findChild<QLineEdit*>()) {
                 spinLineEdit->installEventFilter(this);
             }
@@ -217,7 +235,13 @@ protected:
                     return;
                 }
                 spinBox->interpretText();
-                callback(property, spinBox->property("value"));
+                const QVariant value = spinBox->property("value");
+                auto state = _editorStates.find(spinBox);
+                if (state != _editorStates.end()) {
+                    if (state.value().lastCommittedValue == value) return;
+                    state.value().lastCommittedValue = value;
+                }
+                callback(property, value);
             });
             return editor;
         }
@@ -283,7 +307,9 @@ private:
             return;
         }
 
-        _editorStates.insert(watched, EditorState{manager, property, editor, manager != nullptr && property != nullptr ? manager->value(property) : QVariant(), false});
+        const QVariant original = manager != nullptr && property != nullptr
+            ? manager->value(property) : QVariant();
+        _editorStates.insert(watched, EditorState{manager, property, editor, original, original, false});
         watched->installEventFilter(this);
         QObject::connect(watched, &QObject::destroyed, this, [this, watched]() {
             _editorStates.remove(watched);
@@ -478,13 +504,14 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
             // silently turning 0.25 into 25. Reject grouping on this bounded numeric editor.
             const auto binding = _bindings.constFind(property);
             if (binding == _bindings.constEnd() || binding->kind != BindingKind::GraphicsVariant
-                || property->propertyName() != QStringLiteral("Probability")) return;
+                || property->propertyName() != QStringLiteral("Probability")) return false;
             auto* doubleEditor = qobject_cast<QDoubleSpinBox*>(editor);
-            if (doubleEditor == nullptr) return;
+            if (doubleEditor == nullptr) return false;
             QLocale locale = QLocale::c();
             locale.setNumberOptions(locale.numberOptions() | QLocale::RejectGroupSeparator);
             doubleEditor->setLocale(locale);
             doubleEditor->setGroupSeparatorShown(false);
+            return true;
         });
         _variantFactory = commitFactory;
     }
