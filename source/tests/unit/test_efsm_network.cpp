@@ -761,6 +761,127 @@ TEST(EFSMNetworkTest, DefaultTransitionOnlyFiresWhenOrdinaryRelationsAreDisabled
     EXPECT_DOUBLE_EQ(result.getValue(0), 20.0);
 }
 
+TEST(EFSMNetworkTest, InputAndTriggerEventsUsePortPresenceNotPortValue) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "PortEventMachine");
+    const unsigned int eventPort = network.addInputPort("trigger");
+    FSMState waiting(model, "Waiting");
+    FSMState done(model, "Done");
+    network.setInitialState(&waiting);
+    network.addState(&done);
+    auto* t = new EFSMTransition(&waiting, &done, "EventDependent");
+    t->setInputEvent("input");
+    t->setTriggerEvent("trigger");
+    t->setGuardExpression("1");
+    network.addTransition(t);
+
+    NetworkActivationFrame frame(network.getNumInputPorts());
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &waiting);
+    EXPECT_EQ(network.getLastTransition(), nullptr);
+    frame.setPresent(0, 0.0); // present-zero IS an input event
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &waiting); // missing second event
+    frame.setPresent(eventPort, 0.0);
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &done);
+    EXPECT_EQ(network.getLastTransition(), t);
+}
+
+TEST(EFSMNetworkTest, RejectsInputAndTriggerEventsThatAreNotPorts) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetworkProbe network(model, "BadEvents");
+    FSMState a(model, "A");
+    FSMState b(model, "B");
+    network.setInitialState(&a);
+    network.addState(&b);
+    auto* t = new EFSMTransition(&a, &b, "BadPort");
+    network.addTransition(t);
+    t->setInputEvent("missingInput");
+    t->setTriggerEvent("missingTrigger");
+    std::string errors;
+    EXPECT_FALSE(network.CheckProbe(errors));
+    EXPECT_NE(errors.find("unknown Input Event input port"), std::string::npos);
+    EXPECT_NE(errors.find("unknown Trigger Event input port"), std::string::npos);
+
+    t->setInputEvent("input");
+    t->setTriggerEvent("input");
+    errors.clear();
+    EXPECT_TRUE(network.CheckProbe(errors)) << errors;
+}
+
+TEST(EFSMNetworkTest, ProbabilityExpressionGatesTransitionWithBernoulliSemantics) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "BernoulliEligibility");
+    FSMState waiting(model, "Waiting");
+    FSMState done(model, "Done");
+    network.setInitialState(&waiting);
+    network.addState(&done);
+    auto* t = new EFSMTransition(&waiting, &done, "Maybe");
+    t->setGuardExpression("1");
+    t->setProbabilityExpression("0");
+    network.addTransition(t);
+    const NetworkActivationFrame frame(network.getNumInputPorts());
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &waiting);
+    EXPECT_EQ(network.getLastTransition(), nullptr);
+
+    t->setProbabilityExpression("1");
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &done);
+    EXPECT_EQ(network.getLastTransition(), t);
+
+    network.setCurrentState(&waiting);
+    t->setProbabilityExpression("1.25");
+    EXPECT_THROW(network.activate(frame), std::domain_error);
+    EXPECT_EQ(network.getCurrentState(), &waiting);
+    EXPECT_EQ(network.getLastTransition(), nullptr);
+    t->setProbabilityExpression("-0.01");
+    EXPECT_THROW(network.activate(frame), std::domain_error);
+    EXPECT_EQ(network.getCurrentState(), &waiting);
+}
+
+TEST(EFSMNetworkTest, ProbabilityExpressionUsesResettableSamplerAndIsStatisticallyPlausible) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetworkProbe network(model, "BernoulliReproducible");
+    FSMState waiting(model, "Waiting");
+    FSMState done(model, "Done");
+    network.setInitialState(&waiting);
+    network.addState(&done);
+    auto* t = new EFSMTransition(&waiting, &done, "Sampled");
+    t->setGuardExpression("1");
+    t->setProbabilityExpression("0.35");
+    network.addTransition(t);
+    const NetworkActivationFrame frame(network.getNumInputPorts());
+
+    constexpr int trials = 1500;
+    const auto simulate = [&]() {
+        std::vector<bool> observations;
+        observations.reserve(trials);
+        for (int i = 0; i < trials; ++i) {
+            network.setCurrentState(&waiting);
+            network.activate(frame);
+            observations.push_back(network.getLastTransition() == t);
+        }
+        return observations;
+    };
+    const auto first = simulate();
+    network.InitBetweenReplicationsProbe();
+    const auto second = simulate();
+    EXPECT_EQ(first, second);
+    const double fraction = static_cast<double>(
+        std::count(first.begin(), first.end(), true)) / trials;
+    EXPECT_NEAR(fraction, 0.35, 0.055);
+}
+
 TEST(EFSMNetworkTest, NondeterministicTransitionFlagsAllowReproducibleConflictChoice) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
