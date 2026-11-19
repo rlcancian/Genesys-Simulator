@@ -183,6 +183,7 @@ public:
             add("Priority", std::to_string(transition->getPriority()), Property::Kind::Integer, true);
             add("Trigger Event", transition->getTriggerEvent(), Property::Kind::String, true);
             add("Probability Expression", transition->getProbabilityExpression(), Property::Kind::String, true);
+            add("Default", transition->isDefaultTransition() ? "true" : "false", Property::Kind::Boolean, true);
             return result;
         };
         networkEditor.createElementPropertyCommand = [](
@@ -201,12 +202,14 @@ public:
             updated.priority = transition->getPriority();
             updated.triggerEvent = transition->getTriggerEvent();
             updated.probabilityExpression = transition->getProbabilityExpression();
+            updated.defaultTransition = transition->isDefaultTransition();
             if (propertyName == "Name") updated.name = value;
             else if (propertyName == "Guard Expression") updated.guardExpression = value;
             else if (propertyName == "Output Expression") updated.outputExpression = value;
             else if (propertyName == "Input Event") updated.inputEvent = value;
             else if (propertyName == "Trigger Event") updated.triggerEvent = value;
             else if (propertyName == "Probability Expression") updated.probabilityExpression = value;
+            else if (propertyName == "Default") updated.defaultTransition = value == "true" || value == "1";
             else if (propertyName == "Priority") {
                 unsigned int parsed = 0;
                 const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
