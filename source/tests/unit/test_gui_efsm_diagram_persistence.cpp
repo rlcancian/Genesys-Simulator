@@ -703,7 +703,11 @@ TEST(GraphNetworkGuiExtension, RendersArrowsOnlyForDirectedGraphFamilies) {
     ASSERT_EQ(directedItems.size(), 1);
     auto* directedPath = dynamic_cast<QGraphicsPathItem*>(directedItems.front());
     ASSERT_NE(directedPath, nullptr);
-    EXPECT_GT(directedPath->path().elementCount(), undirectedElementCount);
+    auto* directedRoute = dynamic_cast<NetworkBendGraphicsItem*>(directedPath);
+    ASSERT_NE(directedRoute, nullptr);
+    EXPECT_TRUE(directedRoute->hasArrowHead());
+    // Arrowheads are now painted, not part of the geometric relation path.
+    EXPECT_EQ(directedPath->path().elementCount(), undirectedElementCount);
 }
 
 TEST(GraphNetworkGuiExtension, RemovesNodeAndIncidentEdgesWithUndoRedoAndStableGeometry) {
