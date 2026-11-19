@@ -193,6 +193,13 @@ public:
             add("Priority", std::to_string(transition->getPriority()), Property::Kind::Integer, true);
             add("Trigger Event", transition->getTriggerEvent(), Property::Kind::String, true);
             add("Probability Expression", transition->getProbabilityExpression(), Property::Kind::String, true);
+            // Keep the legacy properties editable, but make their exact
+            // GenESyS semantics visible to users of the graphical editor.
+            add("Event / Probability Semantics",
+                "Input Event and Trigger Event require present named input ports (including value 0); "
+                "Probability Expression is an independent Bernoulli eligibility gate in [0,1], "
+                "not a probability-matrix row or categorical transition weight.",
+                Property::Kind::String, false);
             return result;
         };
         networkEditor.createElementPropertyCommand = [](
