@@ -1301,6 +1301,44 @@ TEST(MarkovChainNetworkGuiExtension, SpinButtonCommitsProbabilityWithoutLosingFr
     EXPECT_NEAR(transition->getProbability(), 1.0, 1e-12);
 }
 
+TEST(MarkovChainNetworkGuiExtension, ProbabilityPropertyPreservesSubMicroPrecision) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "PreciseProbability");
+    auto* a = new MarkovState(model, "A");
+    auto* b = new MarkovState(model, "B");
+    network.addState(a);
+    network.addState(b);
+    network.setInitialState(a);
+    constexpr double expected = 0.123456789012;
+    auto* transition = new MarkovChainNetwork::MarkovTransition(a, b, expected, "AB");
+    network.addTransition(transition);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+
+    QGraphicsItem* edge = nullptr;
+    for (auto* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui"))) {
+        if (item->data(1).isValid()) { edge = item; break; }
+    }
+    ASSERT_NE(edge, nullptr);
+    const auto properties = GuiExtensionPluginCatalog::networkElementProperties(&network, edge);
+    auto probability = std::find_if(properties.begin(), properties.end(), [](const auto& item) {
+        return item.name == "Probability";
+    });
+    ASSERT_NE(probability, properties.end());
+    bool ok = false;
+    const double value = QString::fromStdString(probability->value).toDouble(&ok);
+    ASSERT_TRUE(ok);
+    EXPECT_NEAR(value, expected, 1e-14);
+}
+
 TEST(MarkovChainNetworkGuiExtension, ProbabilityRowSumsFollowKernelEdits) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
