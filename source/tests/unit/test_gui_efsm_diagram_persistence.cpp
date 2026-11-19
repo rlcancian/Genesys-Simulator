@@ -294,6 +294,7 @@ TEST(EFSMNetworkPropertyEditor, SelectedTransitionExposesMathematicalPropertiesA
                                  QStringLiteral("Output Expression"), QStringLiteral("Input Event"),
                                  QStringLiteral("Priority"), QStringLiteral("Trigger Event"),
                                  QStringLiteral("Probability Expression"),
+                                 QStringLiteral("Event / Probability Semantics"),
                                  QStringLiteral("Output Actions"), QStringLiteral("Set Actions"),
                                  QStringLiteral("Default"), QStringLiteral("Nondeterministic"),
                                  QStringLiteral("Immediate"), QStringLiteral("Preemptive"),
@@ -303,6 +304,7 @@ TEST(EFSMNetworkPropertyEditor, SelectedTransitionExposesMathematicalPropertiesA
     }
     EXPECT_FALSE(findProperty(QStringLiteral("Source State"))->property()->isEnabled());
     EXPECT_FALSE(findProperty(QStringLiteral("Destination State"))->property()->isEnabled());
+    EXPECT_FALSE(findProperty(QStringLiteral("Event / Probability Semantics"))->property()->isEnabled());
 
     QtBrowserItem* guard = findProperty(QStringLiteral("Guard Expression"));
     browser.setCurrentItem(guard);
