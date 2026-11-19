@@ -19,6 +19,7 @@
 #include <exception>
 #include <utility>
 #include <algorithm>
+#include <memory>
 
 #include <QSignalBlocker>
 #include <QBrush>
@@ -48,6 +49,7 @@
 #include <QAbstractSpinBox>
 #include <QDoubleSpinBox>
 #include <QLocale>
+#include <QTimer>
 #include <QKeyEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -1843,7 +1845,19 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                 }
                 QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
                     networkOwner, item, propertyName.toStdString(), serialized.toStdString());
-                if (command != nullptr) networkScene->getUndoStack()->push(command);
+                if (command != nullptr) {
+                    // indexChanged synchronously regenerates graphical overlays.
+                    // Pushing here can destroy the selected relation (and its active editor)
+                    // in the middle of the spin-box/line-edit commit callback.
+                    const QPointer<ModelGraphicsScene> guardedScene(networkScene);
+                    auto ownedCommand = std::make_shared<std::unique_ptr<QUndoCommand>>(command);
+                    QTimer::singleShot(0, networkScene, [guardedScene, networkOwner, ownedCommand]() {
+                        if (guardedScene != nullptr
+                            && guardedScene->networkEditorOwner() == networkOwner
+                            && guardedScene->getUndoStack() != nullptr)
+                            guardedScene->getUndoStack()->push(ownedCommand->release());
+                    });
+                }
             };
             switch (descriptor.kind) {
             case GuiNetworkEditorContribution::ElementProperty::Kind::Boolean:
