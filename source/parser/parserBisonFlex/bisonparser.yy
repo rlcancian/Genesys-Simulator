@@ -12,6 +12,8 @@
 	#include <string>
 	#include <cmath>
 	#include <algorithm>
+	#include <utility>
+	#include <vector>
 	#include "obj_t.h"
 	#include "kernel/util/Util.h"
 	#include "kernel/simulator/essentialPlugins/Attribute.h"
@@ -278,7 +280,7 @@ void copyVariableStore(genesyspp_driver& driver, const obj_t& destination, const
 %type <obj_t> pluginFunction
 %type <obj_t> userFunction
 %type <obj_t> elementFunction
-%type <obj_t> listaparm
+%type <std::vector<std::pair<double, double>>> listaparm
 %type <obj_t> illegal
 %type <std::string> indexList
 
@@ -645,7 +647,40 @@ probFunction:
 			YYERROR;
 		}
 	} }
-	| fDISC  "(" listaparm ")"                  { if (!driver.isSyntaxOnly()) { $$.valor = driver.getSampler()->sampleDiscrete(0,0); /*@TODO: NOT IMPLEMENTED YET*/ } }
+	| fDISC  "(" listaparm ")"                  { if (!driver.isSyntaxOnly()) {
+		try {
+			std::vector<double> probabilities;
+			std::vector<double> values;
+			probabilities.reserve($3.size());
+			values.reserve($3.size());
+			double previous = 0.0;
+			for (const auto& [cumulative, value] : $3) {
+				if (!std::isfinite(cumulative) || !std::isfinite(value) ||
+					cumulative < 0.0 || cumulative > 1.0 || cumulative < previous) {
+					throw std::invalid_argument("expected finite values and nondecreasing cumulative probabilities in [0,1]");
+				}
+				probabilities.push_back(cumulative - previous);
+				values.push_back(value);
+				previous = cumulative;
+			}
+			// Accept rounding of the final cumulative probability within 1e-12.
+			if (probabilities.empty() || 1.0 - previous > 1e-12) {
+				throw std::invalid_argument("final cumulative probability must equal 1");
+			}
+			probabilities.back() += 1.0 - previous;
+			$$.valor = driver.getSampler()->sampleDiscrete(probabilities.data(), values.data(), static_cast<int>(values.size()));
+		} catch (const std::exception& e) {
+			std::string msg = buildProbError("disc", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("disc", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	} }
     ;
 
 
@@ -654,10 +689,9 @@ userFunction:
       "USER" "(" expression ")"         { if (!driver.isSyntaxOnly()) { $$.valor = $3.valor; } }
     ;
 
-//Probably returns parameters for something, check if continues on the parser, for now does nothing
 listaparm: 
-      listaparm "," expression "," expression    { if (!driver.isSyntaxOnly()) {/*@TODO: NOT IMPLEMENTED YET*/} }
-    | expression "," expression                  { if (!driver.isSyntaxOnly()) {/*@TODO: NOT IMPLEMENTED YET*/} }
+	  listaparm "," expression "," expression    { if (!driver.isSyntaxOnly()) { $$ = std::move($1); $$.emplace_back($3.valor, $5.valor); } }
+	| expression "," expression                  { if (!driver.isSyntaxOnly()) { $$.emplace_back($1.valor, $3.valor); } }
     ;
 
 indexList:

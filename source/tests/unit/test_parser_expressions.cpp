@@ -91,6 +91,67 @@ TEST_F(ParserExpressionsTest, MathFunctionsRoundTruncFracAndSqrt) {
     EXPECT_DOUBLE_EQ(model->parseExpression("sqrt(9)"), 3.0);
 }
 
+TEST_F(ParserExpressionsTest, DiscUsesCumulativeProbabilitiesAndRejectsInvalidParameters) {
+    for (int i = 0; i < 20; ++i) EXPECT_DOUBLE_EQ(model->parseExpression("DISC(1,5)"), 5.0);
+    for (const std::string expression : {
+             "DISC(-0.1,1,1,2)", "DISC(1.1,1)", "DISC(0.8,1,0.6,2,1,3)",
+             "DISC(0.6,1,0.9,2)", "DISC(0.6,1,1)", "DISC()",
+             "DISC(0.6,1,1,2,0.5)", "DISC(0.5,1/0,1,2)"}) {
+        bool success = true;
+        std::string error;
+        model->parseExpression(expression, success, error);
+        EXPECT_FALSE(success) << expression;
+        EXPECT_FALSE(error.empty()) << expression;
+    }
+    bool success = false;
+    std::string error;
+    const double value = model->parseExpression("disc(0.5,2+3,1,7)", success, error);
+    EXPECT_TRUE(success) << error;
+    EXPECT_TRUE(value == 5.0 || value == 7.0);
+}
+
+TEST_F(ParserExpressionsTest, DiscSyntaxValidationDoesNotAdvanceRandomStream) {
+    SamplerDefaultImpl1 sampler;
+    SamplerDefaultImpl1 untouched;
+    genesyspp_driver driver(model, &sampler, true);
+    EXPECT_TRUE(driver.validateSyntax("DISC(0.6,1,1,2)").isValid());
+    EXPECT_DOUBLE_EQ(sampler.random(), untouched.random());
+}
+
+TEST_F(ParserExpressionsTest, DiscEvaluationConsumesOneDrawAndSupportsThreeValues) {
+    SamplerDefaultImpl1 sampler;
+    SamplerDefaultImpl1 reference;
+    genesyspp_driver driver(model, &sampler, true);
+    ASSERT_EQ(driver.parse_str("DISC(0,10,0.5,20,1,30)"), 0);
+    EXPECT_TRUE(driver.getResult() == 20.0 || driver.getResult() == 30.0);
+    reference.random();
+    EXPECT_DOUBLE_EQ(sampler.random(), reference.random());
+}
+
+TEST_F(ParserExpressionsTest, DiscInvalidCdfDoesNotConsumeRandomDraw) {
+    SamplerDefaultImpl1 sampler;
+    SamplerDefaultImpl1 reference;
+    genesyspp_driver driver(model, &sampler, true);
+    EXPECT_THROW(driver.parse_str("DISC(0.7,1,0.6,2)"), std::string);
+    EXPECT_DOUBLE_EQ(sampler.random(), reference.random());
+}
+
+TEST_F(ParserExpressionsTest, DiscSamplingFollowsSeededStatisticalDistribution) {
+    // Seed 16021974, N=10000, tolerance 0.025 (>5 standard errors).
+    SamplerDefaultImpl1 sampler;
+    genesyspp_driver driver(model, &sampler, true);
+    int ones = 0;
+    constexpr int samples = 10000;
+    for (int i = 0; i < samples; ++i) {
+        ASSERT_EQ(driver.parse_str("DISC(0.6,1,1,2)"), 0);
+        const double value = driver.getResult();
+        ASSERT_TRUE(value == 1.0 || value == 2.0);
+        ones += value == 1.0;
+    }
+    EXPECT_EQ(ones, 5989);
+    EXPECT_NEAR(static_cast<double>(ones) / samples, 0.6, 0.025);
+}
+
 TEST_F(ParserExpressionsTest, VariableIndexesSupportScalarLegacyAndNDReads) {
     auto* variable = new Variable(model, "ParserVarND");
     ASSERT_NE(variable, nullptr);

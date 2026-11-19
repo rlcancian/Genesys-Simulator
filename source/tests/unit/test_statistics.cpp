@@ -165,4 +165,14 @@ TEST(SamplerDefaultImpl1Test, VariadicDiscreteValidatesCumulativeProbabilities) 
     );
 }
 
+TEST(SamplerDefaultImpl1Test, ArrayDiscreteSkipsZeroMassWhenRandomDrawIsZero) {
+    SamplerDefaultImpl1 sampler;
+    SamplerDefaultImpl1::DefaultImpl1RNG_Parameters parameters;
+    parameters.seed = 0;
+    sampler.setRNGparameters(&parameters);
+    double probabilities[] = {0.0, 1.0};
+    double values[] = {1.0, 2.0};
+    EXPECT_DOUBLE_EQ(sampler.sampleDiscrete(probabilities, values, 2), 2.0);
+}
+
 } // namespace
