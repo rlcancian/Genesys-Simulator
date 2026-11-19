@@ -178,12 +178,16 @@ public:
             add("Destination State", transition->getDestination() != nullptr ? transition->getDestination()->getName() : "",
                 Property::Kind::String, false);
             add("Guard Expression", transition->getGuardExpression(), Property::Kind::String, true);
+            add("Output Actions", transition->getOutputActions(), Property::Kind::String, true);
+            add("Set Actions", transition->getSetActions(), Property::Kind::String, true);
+            add("Default", transition->isDefaultTransition() ? "true" : "false", Property::Kind::Boolean, true);
+            add("Nondeterministic", transition->isNondeterministic() ? "true" : "false", Property::Kind::Boolean, true);
+            // Legacy/advanced fields remain editable for compatibility.
             add("Output Expression", transition->getOutputExpression(), Property::Kind::String, true);
             add("Input Event", transition->getInputEvent(), Property::Kind::String, true);
             add("Priority", std::to_string(transition->getPriority()), Property::Kind::Integer, true);
             add("Trigger Event", transition->getTriggerEvent(), Property::Kind::String, true);
             add("Probability Expression", transition->getProbabilityExpression(), Property::Kind::String, true);
-            add("Default", transition->isDefaultTransition() ? "true" : "false", Property::Kind::Boolean, true);
             return result;
         };
         networkEditor.createElementPropertyCommand = [](
@@ -203,6 +207,9 @@ public:
             updated.triggerEvent = transition->getTriggerEvent();
             updated.probabilityExpression = transition->getProbabilityExpression();
             updated.defaultTransition = transition->isDefaultTransition();
+            updated.nondeterministic = transition->isNondeterministic();
+            updated.outputActions = transition->getOutputActions();
+            updated.setActions = transition->getSetActions();
             if (propertyName == "Name") updated.name = value;
             else if (propertyName == "Guard Expression") updated.guardExpression = value;
             else if (propertyName == "Output Expression") updated.outputExpression = value;
@@ -210,6 +217,9 @@ public:
             else if (propertyName == "Trigger Event") updated.triggerEvent = value;
             else if (propertyName == "Probability Expression") updated.probabilityExpression = value;
             else if (propertyName == "Default") updated.defaultTransition = value == "true" || value == "1";
+            else if (propertyName == "Nondeterministic") updated.nondeterministic = value == "true" || value == "1";
+            else if (propertyName == "Output Actions") updated.outputActions = value;
+            else if (propertyName == "Set Actions") updated.setActions = value;
             else if (propertyName == "Priority") {
                 unsigned int parsed = 0;
                 const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
