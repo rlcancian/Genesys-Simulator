@@ -20,6 +20,7 @@
 #include <cctype>
 #include <memory>
 #include <exception>
+#include <functional>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
@@ -483,7 +484,57 @@ bool EFSMNetwork::_check(std::string& errorMessage) {
 		errorMessage += "EFSMNetwork \"" + getName() + "\" requires an initial state. ";
 		resultAll = false;
 	}
+    // A child refinement may itself be an EFSM; detect recursive cycles
+    // without traversing model-owned objects or touching simulation state.
+    std::unordered_set<const DefaultNetwork*> visited, active;
+    std::function<bool(const DefaultNetwork*)> cycle = [&](const DefaultNetwork* node) {
+        if (node == nullptr) return false;
+        if (active.contains(node)) return true;
+        if (visited.contains(node)) return false;
+        visited.insert(node);
+        active.insert(node);
+        if (auto* nested = dynamic_cast<const EFSMNetwork*>(node)) {
+            for (FSMState* state : *nested->getStates()->list())
+                if (state != nullptr && cycle(state->getRefinementNetwork())) return true;
+        }
+        active.erase(node);
+        return false;
+    };
+    if (cycle(this)) {
+        errorMessage += "EFSMNetwork \"" + getName() + "\" has a recursive refinement cycle. ";
+        resultAll = false;
+    }
+    for (FSMState* state : *_states->list()) {
+        if (state != nullptr && state->hasUnresolvedRefinementNetwork()) {
+            errorMessage += "EFSM state \"" + state->getName()
+                + "\" has unresolved Refinement Network " + state->getRefinementNetworkIdentity() + ". ";
+            resultAll = false;
+        }
+    }
 	for (EFSMTransition* transition : *_transitions->list()) {
+        if (transition == nullptr) continue;
+        auto* sourceState = dynamic_cast<FSMState*>(transition->getSource());
+        if (transition->isErrorTransition() || transition->isTermination()) {
+            if (sourceState == nullptr || sourceState->getRefinementNetwork() == nullptr) {
+                errorMessage += "EFSM transition \"" + transition->getName()
+                    + "\" requires a source state with a Refinement Network. ";
+                resultAll = false;
+            }
+        }
+        if (transition->isErrorTransition() &&
+            (transition->isPreemptive() || transition->isTermination() || transition->isImmediate())) {
+            errorMessage += "EFSM error transition \"" + transition->getName()
+                + "\" cannot also be preemptive, immediate or termination. ";
+            resultAll = false;
+        }
+        if (transition->isTermination() &&
+            (transition->isPreemptive() || transition->isImmediate()
+             || !transition->getOutputActions().empty()
+             || !transition->getOutputExpression().empty())) {
+            errorMessage += "EFSM termination transition \"" + transition->getName()
+                + "\" is postfire-only: no preemption, immediate firing or output actions. ";
+            resultAll = false;
+        }
 		if (transition->getSource() == nullptr || transition->getDestination() == nullptr) {
 			errorMessage += "EFSMNetwork \"" + getName() + "\" has transition \"" + transition->getName() + "\" with null endpoint. ";
 			resultAll = false;
