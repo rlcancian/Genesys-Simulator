@@ -1044,6 +1044,65 @@ TEST(ColoredPetriNetGuiExtension, ValidationActionReportsInvalidGuardExpressions
     validate.trigger(context);
 }
 
+TEST(ColoredPetriNetGuiExtension, PreviewExplainsTokenDeficitsWithoutEvaluatingGuards) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ColoredPetriNetNetwork network(model, "PreviewSafety");
+    auto* place = new PetriPlace(model, "Input");
+    auto* transition = new CPNTransition(model, "Guarded");
+    network.addPlace(place);
+    network.addTransition(transition);
+    network.setInitialTokens(place, "red", 3);
+    auto* arc = new CPNArc(model, place, transition, CPNArc::Direction::PlaceToTransition, "InputArc");
+    arc->setInscription("red", 4);
+    ASSERT_TRUE(network.addArc(arc));
+    // A GUI projection must NOT evaluate this intentionally invalid parser expression.
+    transition->setGuardExpression("(");
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    ASSERT_NO_THROW(GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene));
+    auto* transitionItem = scene.findGraphicalModelDataDefinition(transition);
+    ASSERT_NE(transitionItem, nullptr);
+    const auto shortage = GuiExtensionPluginCatalog::networkElementProperties(&network, transitionItem);
+    const auto findReadiness = [](const auto& properties) -> QString {
+        for (const auto& property : properties)
+            if (property.name == "Firing Readiness")
+                return QString::fromStdString(property.value);
+        return {};
+    };
+    EXPECT_TRUE(findReadiness(shortage).contains(QStringLiteral("requires 4 tokens")));
+
+    network.setInitialTokens(place, "red", 4);
+    ASSERT_NO_THROW(GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene));
+    const auto sufficient = GuiExtensionPluginCatalog::networkElementProperties(&network, transitionItem);
+    EXPECT_TRUE(findReadiness(sufficient).contains(QStringLiteral("guard NOT evaluated")));
+
+    // Menu enablement is also a non-executing preview; actual guard evaluation
+    // is deferred until the explicit Fire action or simulation activation.
+    QUndoStack undo;
+    scene.setUndoStack(&undo);
+    transitionItem->setSelected(true);
+    GuiActionContribution fire;
+    for (const GuiExtensionPlugin* extension : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (extension == nullptr || extension->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        extension->registerContributions(&registry);
+        for (const auto& action : registry.actions())
+            if (action.id == "modal.cpn.fire-transition") fire = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(fire.isEnabled));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    EXPECT_NO_THROW(EXPECT_TRUE(fire.isEnabled(context)));
+}
+
 TEST(ColoredPetriNetGuiExtension, StructuredMarkingEditorAndResetAreUndoable) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
