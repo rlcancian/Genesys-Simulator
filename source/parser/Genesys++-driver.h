@@ -56,8 +56,10 @@ public:
 	int parse_file(const std::string& f);
 	int parse_str(const std::string& str);
 
-	// Non-executing validation; does not sample distributions or mutate a model.
-	[[nodiscard]] ExpressionSyntaxValidation validateSyntax(const std::string& expression);
+	// Non-executing validation; it does not sample distributions or alter model values.
+	// Reference registration is opt-in for callers discovering model attachments.
+	[[nodiscard]] ExpressionSyntaxValidation validateSyntax(const std::string& expression,
+	                                                       bool registerReferences = false);
 	[[nodiscard]] bool isSyntaxOnly() const noexcept { return _syntaxOnly; }
 	void noteUnresolvedIdentifier(const std::string& identifier);
 	void noteInvalidCharacter(const std::string& character);

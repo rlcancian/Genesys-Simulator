@@ -335,7 +335,7 @@ void Model::checkReferencesToDataDefinitions(std::string expression,
     // Reference discovery only needs lexical symbol resolution. The syntax-only
     // parser suppresses semantic actions, so distributions and stateful functions
     // are never evaluated merely to populate attachment metadata.
-    const ExpressionSyntaxValidation validation = wrapper.validateSyntax(expression);
+    const ExpressionSyntaxValidation validation = wrapper.validateSyntax(expression, true);
     wrapper.setRegisterReferedDataElements(false);
     if (!validation.isValid()) {
         _traceManager->trace("Could not discover data-definition references in expression '" + expression + "': " + validation.errorMessage,
