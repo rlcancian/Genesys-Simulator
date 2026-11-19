@@ -2056,6 +2056,35 @@ TEST(ColoredPetriNetGuiExtension, CreatesAndEditsBipartiteArcThroughSharedEditor
     EXPECT_TRUE(relationRemainsSelected);
     EXPECT_EQ(arc->getInscription("blue"), 3u); EXPECT_EQ(arc->getInscription("green"), 2u); undoStack.undo(); EXPECT_EQ(arc->getInscription("default"), 1u); undoStack.redo(); EXPECT_EQ(arc->getInscription("green"), 2u);
     undoStack.undo(); undoStack.undo(); EXPECT_TRUE(network.getArcs()->empty()); undoStack.redo(); undoStack.redo(); ASSERT_EQ(network.getArcs()->size(), 1u); EXPECT_EQ(network.getArcs()->front(), arc);
+
+    GuiActionContribution editStructured;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions())
+            if (action.id == "modal.cpn.edit-arc-inscription") editStructured = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(editStructured.trigger));
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui")))
+        if (item->data(1).isValid() && item->data(1).toULongLong() == reinterpret_cast<quintptr>(arc))
+            item->setSelected(true);
+    ASSERT_TRUE(editStructured.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* table = dialog->findChild<QTableWidget*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        if (table == nullptr || buttons == nullptr || table->rowCount() != 2) {
+            dialog->reject(); return;
+        }
+        table->item(0, 1)->setText(QStringLiteral("4")); // blue:3 -> blue:4
+        buttons->button(QDialogButtonBox::Ok)->click();
+    });
+    editStructured.trigger(context);
+    EXPECT_EQ(arc->getInscription("blue"), 4u);
+    undoStack.undo();
+    EXPECT_EQ(arc->getInscription("blue"), 3u);
 }
 
 TEST(GraphNetworkGuiExtension, DroppedGraphNodeJoinsTheNetworkAndScene) {
