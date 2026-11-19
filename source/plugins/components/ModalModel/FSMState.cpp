@@ -112,18 +112,28 @@ void FSMState::setRefinementNetwork(DefaultNetwork* network) {
 
 DefaultNetwork* FSMState::getRefinementNetwork() const {
     if (_parentModel == nullptr || _parentModel->getDataManager() == nullptr) return nullptr;
+    // Never dereference a cached pointer without first confirming that it
+    // remains registered in this model. A reloaded or recreated refinement
+    // may have the same persisted identity but a different address.
+    DefaultNetwork* byIdentity = nullptr;
+    DefaultNetwork* byPointer = nullptr;
     for (DefaultNetwork* candidate : _parentModel->getDataManager()
              ->getDataDefinitionsAssignableTo<DefaultNetwork>()) {
         if (candidate == nullptr) continue;
-        if (_refinementNetwork != nullptr && candidate == _refinementNetwork)
-            return candidate;
-        if (_refinementNetwork == nullptr && !_refinementNetworkClassname.empty()
+        if (candidate == _refinementNetwork) byPointer = candidate;
+        if (!_refinementNetworkClassname.empty()
             && candidate->getClassname() == _refinementNetworkClassname
-            && candidate->getName() == _refinementNetworkName) {
-            _refinementNetwork = candidate;
-            return candidate;
-        }
+            && candidate->getName() == _refinementNetworkName)
+            byIdentity = candidate;
     }
+    if (byIdentity != nullptr) {
+        _refinementNetwork = byIdentity;
+        return byIdentity;
+    }
+    // Keep references to deliberately renamed, still-registered networks.
+    // The ModelDataManager is the authority for whether an address is live.
+    if (byPointer != nullptr) return byPointer;
+    _refinementNetwork = nullptr;
     return nullptr;
 }
 
@@ -173,6 +183,9 @@ bool FSMState::_loadInstance(PersistenceRecord *fields) {
 	if (res) {
 		_entryActionExpression = fields->loadField("entryActionExpression", DEFAULT.entryActionExpression);
 		_exitActionExpression = fields->loadField("exitActionExpression", DEFAULT.exitActionExpression);
+        // Replacing persistence fields must not retain a previous association.
+        // Detaching never destroys the referenced model-owned Network.
+        _attachedDataRemove(kRefinementAssociation);
         _refinementNetwork = nullptr;
         _refinementNetworkClassname = fields->loadField("refinementNetworkClassname", std::string{});
         _refinementNetworkName = fields->loadField("refinementNetworkName", std::string{});
