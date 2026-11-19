@@ -213,7 +213,9 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
                                 : preview.explanation);
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), badge);
     }
+    qulonglong arcOrdinal = 0;
     for (CPNArc* arc : *network->getArcs()->list()) {
+        const qulonglong currentOrdinal = arcOrdinal++;
         if (arc == nullptr || arc->getPlace() == nullptr || arc->getTransition() == nullptr) continue;
         auto* place = scene->findGraphicalModelDataDefinition(arc->getPlace());
         auto* transition = scene->findGraphicalModelDataDefinition(arc->getTransition());
@@ -236,7 +238,7 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
             }
         }
         const QString key = NetworkBendDiagramCodec::relationKey(
-            arc->getId(), QString::fromStdString(arc->getPlace()->getName()),
+            currentOrdinal, QString::fromStdString(arc->getPlace()->getName()),
             QString::fromStdString(arc->getTransition()->getName()),
             QString::fromStdString(arc->getName()));
         auto* item = new NetworkBendGraphicsItem(QString::fromLatin1(kCpnExtensionId), key);
