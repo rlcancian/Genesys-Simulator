@@ -392,6 +392,56 @@ TEST(EFSMNetworkLifecycle, RefinementRuntimeControlsExposeBoundAndReadOnlyError)
     EXPECT_THROW(error->setValue("manual-override"), std::logic_error);
 }
 
+TEST(EFSMNetworkLifecycle, ImmediateTransitionCanBecomeEnabledOnLaterActivation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "DelayedImmediate");
+    FSMState current(model, "Current");
+    FSMState target(model, "Target");
+    network.setInitialState(&current);
+    network.addState(&target);
+    auto* edge = new EFSMTransition(&current, &target, "Immediate");
+    edge->setImmediate(true);
+    edge->setGuardExpression("0");
+    network.addTransition(edge);
+    const NetworkActivationFrame frame(network.getNumInputPorts());
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &current);
+    EXPECT_EQ(network.getLastTransition(), nullptr);
+    edge->setGuardExpression("1");
+    network.activate(frame);
+    EXPECT_EQ(network.getCurrentState(), &target);
+    EXPECT_EQ(network.getLastTransition(), edge);
+}
+
+TEST(EFSMNetworkLifecycle, ImmediateAndOrdinaryPreemptiveCompeteByPriorityOnReactionStart) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "UnifiedPriority");
+    FSMState current(model, "Current");
+    FSMState immediateTarget(model, "ImmediateTarget");
+    FSMState ordinaryTarget(model, "OrdinaryTarget");
+    network.setInitialState(&current);
+    network.addState(&immediateTarget);
+    network.addState(&ordinaryTarget);
+    auto* immediate = new EFSMTransition(&current, &immediateTarget, "Immediate");
+    immediate->setGuardExpression("1");
+    immediate->setImmediate(true);
+    immediate->setPreemptive(true);
+    immediate->setPriority(10);
+    auto* ordinary = new EFSMTransition(&current, &ordinaryTarget, "Ordinary");
+    ordinary->setGuardExpression("1");
+    ordinary->setPreemptive(true);
+    ordinary->setPriority(1);
+    network.addTransition(immediate);
+    network.addTransition(ordinary);
+    network.activate(NetworkActivationFrame(network.getNumInputPorts()));
+    EXPECT_EQ(network.getCurrentState(), &ordinaryTarget);
+    EXPECT_EQ(network.getLastTransition(), ordinary);
+}
+
 TEST(EFSMNetworkLifecycle, ImmediateSelfLoopStopsAtConfiguredSafetyBound) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
