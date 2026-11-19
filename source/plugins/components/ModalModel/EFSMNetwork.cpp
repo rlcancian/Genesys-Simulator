@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <memory>
 #include <exception>
 #include <functional>
@@ -554,6 +555,15 @@ bool EFSMNetwork::_check(std::string& errorMessage) {
 			errorMessage += "EFSMNetwork \"" + getName() + "\" has transition \"" + transition->getName() + "\" with null endpoint. ";
 			resultAll = false;
 		}
+        for (const auto& [name, value] : {
+            std::pair<std::string, std::string>{"Input Event", transition->getInputEvent()},
+            std::pair<std::string, std::string>{"Trigger Event", transition->getTriggerEvent()}}) {
+            if (!value.empty() && getInputPortIndex(value) < 0) {
+                errorMessage += "EFSM transition \"" + transition->getName()
+                    + "\" has unknown " + name + " input port \"" + value + "\". ";
+                resultAll = false;
+            }
+        }
 		if (transition->getGuardExpression() != "") {
 			resultAll &= _parentModel->checkExpression(transition->getGuardExpression(), "EFSM guard[" + transition->getName() + "]", errorMessage);
 		}
@@ -627,8 +637,15 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
     // Default transitions are fallbacks in each phase. Termination occurs
     // only after postfire and loses to all normal/default transitions.
     bool selectionConflict = false;
-    const auto select = [this, &selectionConflict](FSMState* state, bool preemptive, bool immediate,
-                               bool error, bool termination) -> EFSMTransition* {
+    const auto inputEventIsPresent = [this, &frame](const std::string& eventName) {
+        if (eventName.empty()) return true;
+        const int port = getInputPortIndex(eventName);
+        return port >= 0 && frame.isPresent(static_cast<unsigned int>(port));
+    };
+
+    const auto select = [this, &selectionConflict, &inputEventIsPresent](
+        FSMState* state, bool preemptive, bool immediate,
+        bool error, bool termination) -> EFSMTransition* {
         std::vector<EFSMTransition*> enabled;
         for (bool defaultFlag : {false, true}) {
             for (DefaultNodeTransition* base : *state->getTransitions()->list()) {
@@ -638,7 +655,31 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
                     || t->isErrorTransition() != error || t->isTermination() != termination
                     || t->isDefaultTransition() != defaultFlag)
                     continue;
-                if (t->canFire(_parentModel, nullptr)) enabled.push_back(t);
+                // In the current numeric NetworkActivationFrame, an event is the
+                // presence of its named input port, not a nonzero port value.
+                // Both configured event names are conjunctive requirements.
+                // Short-circuit before evaluating stochastic guard expressions.
+                if (!inputEventIsPresent(t->getInputEvent())
+                    || !inputEventIsPresent(t->getTriggerEvent())
+                    || !t->canFire(_parentModel, nullptr))
+                    continue;
+
+                // Probability Expression means a *per-transition Bernoulli
+                // eligibility gate*, not a row-normalized weighted choice.
+                // Existing conflict/default policies apply after this gate.
+                if (!t->getProbabilityExpression().empty()) {
+                    const double p = _parentModel->parseExpression(t->getProbabilityExpression());
+                    if (!std::isfinite(p) || p < 0.0 || p > 1.0)
+                        throw std::domain_error("EFSM transition \"" + t->getName()
+                            + "\" Probability Expression must evaluate to a finite value in [0,1]");
+                    if (p == 0.0) continue;
+                    if (p < 1.0) {
+                        if (_sampler == nullptr)
+                            throw std::logic_error("EFSM probabilistic transition requires a sampler");
+                        if (_sampler->random() >= p) continue;
+                    }
+                }
+                enabled.push_back(t);
             }
             if (!enabled.empty()) break;
         }
