@@ -197,6 +197,11 @@ bool Release::_check(std::string& errorMessage) {
 		} else if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
 			// Set* set = seizable->getSet();
 			resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Set>(), seizable->getSet(), "Set", errorMessage);
+			if (seizable->getSelectionRule() == SeizableItem::SelectionRule::SPECIFICMEMBER
+					&& seizable->getSaveAttribute().empty()) {
+				resultAll = false;
+				errorMessage += getName() + ".Release.SaveAttribute is required to identify the previously seized Set member. ";
+			}
 		}
 		i++;
 	}

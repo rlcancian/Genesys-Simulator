@@ -318,6 +318,9 @@ bool Seize::_check(std::string& errorMessage) {
 			// Set* set = seizable->getSet();
 			resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Set>(), seizable->getSet(), "Set",
 			                                                   errorMessage);
+			if (seizable->getSelectionRule() == SeizableItem::SelectionRule::SPECIFICMEMBER) {
+				resultAll &= _parentModel->checkExpression(seizable->getIndex(), "Seize.Index", errorMessage);
+			}
 		}
 		i++;
 	}

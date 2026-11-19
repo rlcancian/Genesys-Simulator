@@ -24,6 +24,7 @@
 #include "../../plugins/data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/ResourceSetSelection.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/Logic/Formula.h"
@@ -6753,6 +6754,28 @@ TEST(SimulatorRuntimeTest, AssignmentSetterUpdatesTypeConsistently) {
     EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Attribute>());
 }
 
+TEST(SimulatorRuntimeTest, AssignmentBooleanControlAcceptsTextAndNumericValuesWithoutLosingState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    Assignment assignment(model, "Entity.boolDestination", "1", true);
+    SimulationControl* destinationType = nullptr;
+    for (SimulationControl* control : *assignment.getSimulationControls()->list()) {
+        if (control->getName() == "DestinationIsAttribute") destinationType = control;
+    }
+    ASSERT_NE(destinationType, nullptr);
+    for (const auto& [text, expected] : std::vector<std::pair<std::string, bool>>{
+             {"false", false}, {"true", true}, {"0", false}, {"1", true},
+             {" false ", false}, {" true ", true}}) {
+        destinationType->setValue(text);
+        EXPECT_EQ(assignment.isAttributeNotVariable(), expected);
+        EXPECT_EQ(assignment.getTypeDC(), expected ? Util::TypeOf<Attribute>() : Util::TypeOf<Variable>());
+    }
+    for (const auto& invalid : {"", "maybe", "2", "true trailing"}) {
+        EXPECT_THROW(destinationType->setValue(invalid), std::invalid_argument);
+        EXPECT_TRUE(assignment.isAttributeNotVariable());
+    }
+}
+
 TEST(SimulatorRuntimeTest, AssignmentSaveLoadRoundTripPreservesDestinationExpressionAndType) {
     Assignment source("Entity.attrRoundTrip", "3+4", true);
     source.setAttributeNotVariable(false);
@@ -6816,7 +6839,7 @@ TEST(SimulatorRuntimeTest, AssignListEditorCreationExposesAssignmentChildPropert
 
     EXPECT_NE(std::find(childNames.begin(), childNames.end(), "Destination"), childNames.end());
     EXPECT_NE(std::find(childNames.begin(), childNames.end(), "Expression"), childNames.end());
-    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "AttributeNotVariable"), childNames.end());
+    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "DestinationIsAttribute"), childNames.end());
 }
 
 TEST(SimulatorRuntimeTest, AssignAddAssignmentMaterializesChildPropertiesForSimpleAssignment) {
@@ -6970,7 +6993,7 @@ TEST(SimulatorRuntimeTest, AssignGuiDestinationEditCreatesAndAttachesDestination
     for (SimulationControl* child : *childControls->list()) {
         if (child->getName() == "Destination") {
             destinationControl = child;
-        } else if (child->getName() == "AttributeNotVariable") {
+        } else if (child->getName() == "DestinationIsAttribute") {
             attributeNotVariableControl = child;
         }
     }
@@ -7009,6 +7032,24 @@ TEST(SimulatorRuntimeTest, AssignDispatchWritesIndexedAttributeAndVariableValues
     EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.attrIndexedDispatch", ""), 0.0);
     EXPECT_DOUBLE_EQ(variable->getValue("2,3"), 22.0);
     EXPECT_DOUBLE_EQ(variable->getValue(""), 0.0);
+}
+
+TEST(SimulatorRuntimeTest, AssignDiscExpressionWritesValidAttributeAndVariableValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    new Attribute(model, "Entity.discAttribute");
+    auto* variable = new Variable(model, "discVariable");
+    AssignProbe assign(model, "AssignDisc");
+    assign.connectTo(new Dispose(model, "AssignDiscSink"));
+    assign.addAssignment(new Assignment("Entity.discAttribute", "DISC(0.6,1,1,2)", true));
+    assign.addAssignment(new Assignment("discVariable", "DISC(1,5)", false));
+    Entity* entity = model->createEntity("AssignDiscEntity", true);
+    ASSERT_NE(entity, nullptr);
+    assign.DispatchEventProbe(entity);
+    const double attribute = entity->getAttributeValue("Entity.discAttribute");
+    EXPECT_TRUE(attribute == 1.0 || attribute == 2.0);
+    EXPECT_DOUBLE_EQ(variable->getValue(), 5.0);
 }
 
 TEST(SimulatorRuntimeTest, CreateCheckFailsForAmbiguousTimeBetweenConfiguration) {
@@ -12372,6 +12413,83 @@ TEST(SimulatorRuntimeTest, ResourceSetSelectionHandlesTiesZeroCapacityAndInvalid
     EXPECT_THROW(selectRequestResource(model,&request,true,"ReleaseTest"),std::runtime_error);
     set->getElementSet()->insert(new Queue(model,"InvalidMember"));
     EXPECT_THROW(selectRequestResource(model,&request,true,"ReleaseTest"),std::runtime_error);
+}
+
+TEST(SimulatorRuntimeTest, SeizeAcceptsEmptySaveAttributeButReleaseRequiresItForSpecificSetMember) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* resourceA = new Resource(model, "OptionalSaveResourceA");
+    auto* resourceB = new Resource(model, "OptionalSaveResourceB");
+    auto* set = new Set(model, "OptionalSaveSet");
+    set->addElementSet(resourceA);
+    set->addElementSet(resourceB);
+    auto* queue = new Queue(model, "OptionalSaveQueue");
+    auto* singleResourceSeize = new Seize(model, "OptionalSaveSingleResource");
+    singleResourceSeize->setQueue(queue);
+    singleResourceSeize->addRequest(new SeizableItem(resourceA, "1"));
+    std::string singleResourceErrors;
+    EXPECT_TRUE(ModelDataDefinition::Check(singleResourceSeize, singleResourceErrors)) << singleResourceErrors;
+    auto* seize = new Seize(model, "OptionalSaveSeize");
+    seize->setQueue(queue);
+    auto* request = new SeizableItem(set, "1", SeizableItem::SelectionRule::SPECIFICMEMBER, "", "1");
+    seize->addRequest(request);
+    std::string errors;
+    EXPECT_TRUE(ModelDataDefinition::Check(seize, errors)) << errors;
+    EXPECT_EQ(selectRequestResource(model, request, false, "OptionalSaveSeize").resource, resourceB);
+
+    request->setSelectionRule(SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
+    errors.clear();
+    EXPECT_TRUE(ModelDataDefinition::Check(seize, errors)) << errors;
+    request->setIndex("1+");
+    request->setSelectionRule(SeizableItem::SelectionRule::SPECIFICMEMBER);
+    errors.clear();
+    EXPECT_FALSE(ModelDataDefinition::Check(seize, errors));
+    request->setIndex("2");
+    EXPECT_THROW(selectRequestResource(model, request, false, "OptionalSaveSeize"), std::runtime_error);
+
+    auto* release = new Release(model, "OptionalSaveRelease");
+    auto* releaseRequest = new SeizableItem(set, "1", SeizableItem::SelectionRule::SPECIFICMEMBER);
+    release->addReleaseRequests(releaseRequest);
+    errors.clear();
+    EXPECT_FALSE(ModelDataDefinition::Check(release, errors));
+    EXPECT_NE(errors.find("Release.SaveAttribute"), std::string::npos);
+    releaseRequest->setSaveAttribute("Entity.SavedMember");
+    errors.clear();
+    EXPECT_TRUE(ModelDataDefinition::Check(release, errors)) << errors;
+}
+
+TEST(SimulatorRuntimeTest, SeizeDynamicSetSelectionReleasesTheSavedMember) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* first = new Resource(model, "DynamicFirst");
+    auto* second = new Resource(model, "DynamicSecond");
+    auto* set = new Set(model, "DynamicResources");
+    set->addElementSet(first);
+    set->addElementSet(second);
+    auto* queue = new Queue(model, "DynamicQueue");
+    auto* create = new Create(model, "DynamicSource");
+    create->setMaxCreations(1);
+    create->setTimeBetweenCreationsExpression("1");
+    auto* seize = new Seize(model, "DynamicSeize");
+    seize->setQueue(queue);
+    seize->addRequest(new SeizableItem(set, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY,
+                                        "Entity.DynamicMember"));
+    auto* release = new Release(model, "DynamicRelease");
+    release->addReleaseRequests(new SeizableItem(set, "1", SeizableItem::SelectionRule::SPECIFICMEMBER,
+                                                  "Entity.DynamicMember"));
+    auto* dispose = new Dispose(model, "DynamicSink");
+    create->connectTo(seize);
+    seize->connectTo(release);
+    release->connectTo(dispose);
+    model->getSimulation()->setReplicationLength(10.0, Util::TimeUnit::second);
+    ASSERT_TRUE(model->check());
+    model->getSimulation()->start();
+    EXPECT_EQ(first->getNumberBusy(), 0u);
+    EXPECT_EQ(second->getNumberBusy(), 0u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
 }
 
 TEST(SimulatorRuntimeTest, SetMembersCreatedAfterSetSurviveTwoRoundTrips) {
