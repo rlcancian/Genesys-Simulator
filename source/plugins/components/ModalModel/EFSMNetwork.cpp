@@ -554,10 +554,18 @@ bool EFSMNetwork::_check(std::string& errorMessage) {
                 + "\" is postfire-only: no preemption, immediate firing or output actions. ";
             resultAll = false;
         }
-		if (transition->getSource() == nullptr || transition->getDestination() == nullptr) {
-			errorMessage += "EFSMNetwork \"" + getName() + "\" has transition \"" + transition->getName() + "\" with null endpoint. ";
-			resultAll = false;
-		}
+        auto* sourceEndpoint = dynamic_cast<FSMState*>(transition->getSource());
+        auto* destinationEndpoint = dynamic_cast<FSMState*>(transition->getDestination());
+        if (sourceEndpoint == nullptr || destinationEndpoint == nullptr) {
+            errorMessage += "EFSMNetwork \"" + getName() + "\" has transition \"" + transition->getName()
+                + "\" with a null or non-FSM endpoint. ";
+            resultAll = false;
+        } else if (_states->find(sourceEndpoint) == _states->list()->end()
+                   || _states->find(destinationEndpoint) == _states->list()->end()) {
+            errorMessage += "EFSM transition \"" + transition->getName()
+                + "\" references a state outside its owning Network. ";
+            resultAll = false;
+        }
         for (const auto& [name, value] : {
             std::pair<std::string, std::string>{"Input Event", transition->getInputEvent()},
             std::pair<std::string, std::string>{"Trigger Event", transition->getTriggerEvent()}}) {
