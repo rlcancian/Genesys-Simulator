@@ -680,7 +680,6 @@ private:
     QMetaObject::Connection _sceneChangedConnection;
     QMetaObject::Connection _sceneFocusItemChangedConnection;
     QMetaObject::Connection _sceneSelectionChangedConnection;
-    bool _isDeferredPropertyEditorModelChangedScheduled = false;
 	//CodeEditor* textCodeEdit_Model;
 };
 #endif // MAINWINDOW_H

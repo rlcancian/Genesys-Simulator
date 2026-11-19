@@ -316,9 +316,11 @@ SaveModelFormat requestedSaveModelFormat(const QString& selectedPath) {
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
     _actionModelPrevious = new QAction(tr("Previous Model"), this);
+    _actionModelPrevious->setObjectName(QStringLiteral("actionModelPrevious"));
     _actionModelPrevious->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp));
     connect(_actionModelPrevious, &QAction::triggered, this, [this]() { _activatePreviousModel(); });
     _actionModelNext = new QAction(tr("Next Model"), this);
+    _actionModelNext->setObjectName(QStringLiteral("actionModelNext"));
     _actionModelNext->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
     connect(_actionModelNext, &QAction::triggered, this, [this]() { _activateNextModel(); });
     _actionOpenSelectedSubmodel = new QAction(tr("Open Submodel"), this);
@@ -1029,93 +1031,43 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
     _syncCurrentModelDocumentState();
     Model* model = simulator->getModelManager()->current();
     QString baseFileName = _modelSaveBaseFilename(_modelFilenames[model]);
-
+    SaveModelFormat format = requestedSaveModelFormat(_modelFilenames[model]);
     if (promptForFilename || baseFileName.isEmpty()) {
-        QString selectedFileName = QFileDialog::getSaveFileName(this,
-                                                                QObject::tr("Save Model"),
-                                                                baseFileName,
-                                                                QObject::tr("Graphical Genesys Model (*.gui);;Genesys Model (*.gen)"),
-                                                                nullptr,
-                                                                QFileDialog::DontUseNativeDialog);
+        QString selectedFilter = format == SaveModelFormat::KernelGen
+            ? tr("Genesys Model (*.gen)") : tr("Graphical Genesys Model (*.gui)");
+        const QString selectedFileName = QFileDialog::getSaveFileName(
+            this, tr("Save Model"), baseFileName,
+            tr("Graphical Genesys Model (*.gui);;Genesys Model (*.gen)"),
+            &selectedFilter, QFileDialog::DontUseNativeDialog);
         if (selectedFileName.isEmpty()) {
             return false;
         }
         baseFileName = _modelSaveBaseFilename(selectedFileName);
-        const SaveModelFormat selectedFormat = requestedSaveModelFormat(selectedFileName);
-        if (selectedFormat == SaveModelFormat::KernelGen) {
-            _insertCommandInConsole("save " + selectedFileName.toStdString());
-
-            if (!_setSimulationModelBasedOnText()) {
-                QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
-                return false;
-            }
-
-            // SimulLang is no longer refreshed during ordinary graphical edits. Generate the
-            // current kernel snapshot only because the user explicitly chose the .gen format.
-            _actualizeModelTextHasChanged(false);
-            _actualizeModelSimLanguage();
-
-            const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
-            const QString textFilename = baseFileName + ".gen";
-            QFile saveFile(textFilename);
-            if (!saveFile.open(QIODevice::WriteOnly)) {
-                QMessageBox::information(this, QObject::tr("Unable to access file to save"), saveFile.errorString());
-                return false;
-            }
-
-            if (!_saveTextModel(&saveFile, textToSave)) {
-                saveFile.close();
-                QMessageBox::warning(this, "Save Model", "Error while saving model text.");
-                return false;
-            }
-            saveFile.close();
-
-            _modelFilenames[model] = baseFileName;
-            _modelfilename = baseFileName;
-            _modelTextContents[model] = textToSave;
-            _modelTextHasChanged[model] = false;
-            _modelGraphicalHasChanged[model] = false;
-            _textModelHasChanged = false;
-            _graphicalModelHasChanged = false;
-            model->setHasChanged(false);
-
-            SystemPreferences::pushRecentModelFile(textFilename.toStdString());
-            SystemPreferences::save();
-            if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
-                ui->graphicsView->getScene()->getUndoStack() != nullptr) {
-                ui->graphicsView->getScene()->getUndoStack()->clear();
-            }
-            _updateModelTabs();
-            _actualizeActions();
-            return true;
-        }
+        format = QFileInfo(selectedFileName).suffix().isEmpty()
+            ? (selectedFilter == tr("Genesys Model (*.gen)") ? SaveModelFormat::KernelGen : SaveModelFormat::GraphicalGui)
+            : requestedSaveModelFormat(selectedFileName);
     }
 
-    _insertCommandInConsole("save " + baseFileName.toStdString());
-
-    if (!_setSimulationModelBasedOnText()) {
-        QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
+    const QString filename = baseFileName + (format == SaveModelFormat::KernelGen ? ".gen" : ".gui");
+    _insertCommandInConsole("save " + filename.toStdString());
+    // Both formats serialize the live model transactionally. A failed transient
+    // text refresh must never overwrite a valid file or mark the document clean.
+    const bool saved = format == SaveModelFormat::KernelGen
+        ? model->save(filename.toStdString()) : _saveGraphicalModel(filename);
+    if (!saved) {
+        QMessageBox::warning(this, "Save Model", "Error while saving model. The previous file was preserved.");
         return false;
     }
 
-    const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
-
-    const QString graphicalFilename = baseFileName + ".gui";
-    if (!_saveGraphicalModel(graphicalFilename)) {
-        QMessageBox::warning(this, "Save Model", "Error while saving graphical model.");
-        return false;
-    }
-
-    _modelFilenames[model] = baseFileName;
-    _modelfilename = baseFileName;
-    _modelTextContents[model] = textToSave;
+    _modelFilenames[model] = filename;
+    _modelfilename = filename;
     _modelTextHasChanged[model] = false;
     _modelGraphicalHasChanged[model] = false;
     _textModelHasChanged = false;
     _graphicalModelHasChanged = false;
     model->setHasChanged(false);
 
-    SystemPreferences::pushRecentModelFile(graphicalFilename.toStdString());
+    SystemPreferences::pushRecentModelFile(filename.toStdString());
     SystemPreferences::save();
     if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
         ui->graphicsView->getScene()->getUndoStack() != nullptr) {
@@ -1202,6 +1154,7 @@ bool MainWindow::_closeModel(Model* model) {
         return false;
     }
 
+    _syncCurrentModelDocumentState();
     if (!simulator->getModelManager()->setCurrent(model)) {
         return false;
     }
@@ -1548,9 +1501,12 @@ void MainWindow::_activatePreviousModel() {
     if (simulator == nullptr || simulator->getModelManager() == nullptr) {
         return;
     }
+    _syncCurrentModelDocumentState();
     Model* model = simulator->getModelManager()->previous();
     if (model != nullptr) {
         _ensureModelTab(model);
+        _restoreModelDocumentState(model);
+        ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
         _actualizeActions();
         _actualizeTabPanes();
     }
@@ -1560,9 +1516,12 @@ void MainWindow::_activateNextModel() {
     if (simulator == nullptr || simulator->getModelManager() == nullptr) {
         return;
     }
+    _syncCurrentModelDocumentState();
     Model* model = simulator->getModelManager()->next();
     if (model != nullptr) {
         _ensureModelTab(model);
+        _restoreModelDocumentState(model);
+        ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
         _actualizeActions();
         _actualizeTabPanes();
     }
@@ -1686,7 +1645,11 @@ void MainWindow::_rebuildViewDependentControllers() {
             // Keep the text cache invalidated, but mark the graphical/kernel document dirty.
             // SimulLang and C++ are hidden and are generated only on an explicit save/export.
             _actualizeModelTextHasChanged(false);
-            setGraphicalModelHasChanged(true);
+            _graphicalModelHasChanged = true;
+            if (Model* model = simulator->getModelManager()->current()) {
+                _modelGraphicalHasChanged[model] = true;
+                model->setHasChanged(true);
+            }
         },
         [this](bool force) { _actualizeModelComponents(force); },
         [this](bool force) { _actualizeModelDataDefinitions(force); },
@@ -1817,23 +1780,11 @@ void MainWindow::refreshPluginCatalog() {
 }
 
 void MainWindow::_onPropertyEditorModelChanged() {
-    qInfo() << "[MainWindow] _onPropertyEditorModelChanged enter";
-    // Keep this wrapper for compatibility during the incremental Phase 6 refactor.
-    if (_propertyEditorController != nullptr && !_isDeferredPropertyEditorModelChangedScheduled) {
-        _isDeferredPropertyEditorModelChangedScheduled = true;
-        qInfo() << "[MainWindow] scheduling deferred property-editor model-changed handling";
-        QMetaObject::invokeMethod(this, [this]() {
-            _isDeferredPropertyEditorModelChangedScheduled = false;
-            if (_propertyEditorController == nullptr) {
-                return;
-            }
-            qInfo() << "[MainWindow] property-editor pipeline active before controller callback="
-                    << _propertyEditorController->isPostCommitPipelineActive();
-            qInfo() << "[MainWindow] executing deferred property-editor model-changed handling";
-            _propertyEditorController->onPropertyEditorModelChanged();
-        }, Qt::QueuedConnection);
+    if (_propertyEditorController != nullptr) {
+        // The controller records dirty state immediately and coalesces widget work
+        // using a callback whose lifetime ends with this view's controller.
+        _propertyEditorController->onPropertyEditorModelChanged();
     }
-    qInfo() << "[MainWindow] _onPropertyEditorModelChanged exit";
 }
 
 

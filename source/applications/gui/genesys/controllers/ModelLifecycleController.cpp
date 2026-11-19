@@ -175,7 +175,9 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
         _callbacks.actualizeActions();
         _callbacks.actualizeTabPanes();
     }
-    clearUndoStackIfAvailable(_ui);
+    if (model != nullptr) {
+        clearUndoStackIfAvailable(_ui);
+    }
     return model != nullptr;
 }
 

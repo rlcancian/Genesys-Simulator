@@ -163,7 +163,7 @@ bool MainWindow::_saveGraphicalModel(QString filename)
     const bool saved = _graphicalModelSerializer->saveGraphicalModel(filename);
     if (saved && simulator != nullptr && simulator->getModelManager() != nullptr) {
         if (Model* model = simulator->getModelManager()->current()) {
-            _modelFilenames[model] = _modelSaveBaseFilename(filename);
+            _modelFilenames[model] = filename;
             _updateModelTabs();
         }
     }
@@ -208,7 +208,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
         _modelGraphicsViews[model] = ui->graphicsView;
         _modelsByGraphicsView[ui->graphicsView] = model;
         _ensureRootModelViewContext(model, ui->graphicsView);
-        _modelFilenames[model] = _modelSaveBaseFilename(QString::fromStdString(filename));
+        _modelFilenames[model] = QString::fromStdString(filename);
         _updateModelTabs();
         return model;
     }

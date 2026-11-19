@@ -365,7 +365,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
         qInfo() << "[PropertyEditorController] sceneSelectionChanged deferred because post-commit pipeline is active";
         if (!_isDeferredSelectionSyncScheduled) {
             _isDeferredSelectionSyncScheduled = true;
-            QTimer::singleShot(0, [this]() {
+            QTimer::singleShot(0, this, [this]() {
                 _isDeferredSelectionSyncScheduled = false;
                 this->sceneSelectionChanged();
             });
@@ -435,13 +435,18 @@ void PropertyEditorController::sceneSelectionChanged() const {
 void PropertyEditorController::onPropertyEditorModelChanged() const {
     qInfo() << "[PropertyEditorController] onPropertyEditorModelChanged request. queued=" << _isGlobalRefreshQueued
             << " running=" << _isGlobalRefreshRunning << " pending=" << _pendingGlobalRefresh;
+    // Record the commit while its document is still active. Only widget refreshes
+    // are deferred; a tab switch or close may happen before the next event turn.
+    if (_markModelChanged) {
+        _markModelChanged();
+    }
     _pendingGlobalRefresh = true;
     if (_isGlobalRefreshRunning || _isGlobalRefreshQueued) {
         return;
     }
 
     _isGlobalRefreshQueued = true;
-    QTimer::singleShot(0, [this]() {
+    QTimer::singleShot(0, this, [this]() {
         _isGlobalRefreshQueued = false;
         _runGlobalRefresh();
     });
@@ -458,7 +463,7 @@ void PropertyEditorController::_runGlobalRefresh() const {
         qInfo() << "[PropertyEditorController] _runGlobalRefresh deferred because property editor is still stabilizing";
         if (!_isGlobalRefreshQueued) {
             _isGlobalRefreshQueued = true;
-            QTimer::singleShot(0, [this]() {
+            QTimer::singleShot(0, this, [this]() {
                 _isGlobalRefreshQueued = false;
                 _runGlobalRefresh();
             });
@@ -471,9 +476,6 @@ void PropertyEditorController::_runGlobalRefresh() const {
         _pendingGlobalRefresh = false;
         qInfo() << "[PropertyEditorController] _runGlobalRefresh enter";
 
-        if (_markModelChanged) {
-            _markModelChanged();
-        }
         if (_actualizeModelComponents) {
             _actualizeModelComponents(true);
         }
@@ -483,8 +485,8 @@ void PropertyEditorController::_runGlobalRefresh() const {
         if (_createModelImage) {
             _createModelImage();
         }
-        if (_actualizeTabPanes) {
-            _actualizeTabPanes();
+        if (_actualizeActions) {
+            _actualizeActions();
         }
 
         ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;

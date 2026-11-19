@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 #include <vector>
+#ifdef __linux__
+#include <sys/inotify.h>
+#include <unistd.h>
+#endif
 
 #include "mainwindow.h"
 #include "actions/AddUndoCommand.h"
@@ -2823,16 +2827,37 @@ TEST(MainWindowPropertyChanges, MarkDocumentDirtyWithoutRefreshingOrSavingTextVi
     ASSERT_NE(textEditor, nullptr);
     const QString oldText = textEditor->toPlainText();
 
-    QtBrowserItem* maxCreations = findBrowserItemByName(browser->topLevelItems(), QStringLiteral("MaxCreations"));
-    ASSERT_NE(maxCreations, nullptr);
-    browser->setCurrentItem(maxCreations);
-    browser->editItem(maxCreations);
-    drainGuiEvents();
-    QLineEdit* editor = browser->findChild<QLineEdit*>();
-    ASSERT_NE(editor, nullptr);
-    commitTextWithEnter(editor, QStringLiteral("7"));
-
-    EXPECT_EQ(create->getMaxCreations(), "7");
+#ifdef __linux__
+    const int notificationFd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+    ASSERT_GE(notificationFd, 0);
+    struct CloseNotifications { int fd; ~CloseNotifications() { ::close(fd); } } cleanup{notificationFd};
+    ASSERT_GE(inotify_add_watch(notificationFd, QDir::tempPath().toLocal8Bit().constData(), IN_CREATE | IN_CLOSE_WRITE), 0);
+#endif
+    for (int value = 7; value < 17; ++value) {
+        bindEditableKernelObject(*browser, create);
+        QtBrowserItem* maxCreations = findBrowserItemByName(browser->topLevelItems(), QStringLiteral("MaxCreations"));
+        ASSERT_NE(maxCreations, nullptr);
+        browser->setCurrentItem(maxCreations);
+        browser->editItem(maxCreations);
+        drainGuiEvents();
+        QLineEdit* editor = browser->findChild<QLineEdit*>();
+        ASSERT_NE(editor, nullptr);
+        commitTextWithEnter(editor, QString::number(value));
+        EXPECT_EQ(create->getMaxCreations(), std::to_string(value));
+    }
+#ifdef __linux__
+    alignas(inotify_event) char notifications[16384];
+    for (ssize_t count; (count = ::read(notificationFd, notifications, sizeof(notifications))) > 0;) {
+        for (ssize_t offset = 0; offset < count;) {
+            const auto* event = reinterpret_cast<const inotify_event*>(notifications + offset);
+            if (event->len != 0) {
+                EXPECT_FALSE(QString::fromLocal8Bit(event->name).startsWith("genesys-model-"))
+                    << "Ordinary edits must not create transient serialized model files";
+            }
+            offset += sizeof(inotify_event) + event->len;
+        }
+    }
+#endif
     EXPECT_TRUE(window.graphicalModelHasChanged());
     EXPECT_EQ(textEditor->toPlainText(), oldText);
     QFile afterEditFile(path);
@@ -2847,7 +2872,7 @@ TEST(MainWindowPropertyChanges, MarkDocumentDirtyWithoutRefreshingOrSavingTextVi
     ASSERT_NE(loaded, nullptr);
     auto* loadedCreate = dynamic_cast<Create*>(loaded->getComponentManager()->find("PropertyDirtyCreate"));
     ASSERT_NE(loadedCreate, nullptr);
-    EXPECT_EQ(loadedCreate->getMaxCreations(), "7");
+    EXPECT_EQ(loadedCreate->getMaxCreations(), "16");
 }
 
 TEST(ModelLanguageSynchronizerRegression, ModelTabsKeepManualTextIsolated) {

@@ -1,6 +1,7 @@
 #ifndef PROPERTYEDITORCONTROLLER_H
 #define PROPERTYEDITORCONTROLLER_H
 
+#include <QObject>
 #include <functional>
 #include <map>
 
@@ -32,7 +33,7 @@ class QObject;
  * - it does not alter undo/redo infrastructure or scene command orchestration;
  * - it does not persist models or execute simulation commands.
  */
-class PropertyEditorController {
+class PropertyEditorController : public QObject {
 public:
     /** @brief Creates the property-editor controller and its synchronization callbacks. */
     PropertyEditorController(ObjectPropertyBrowser* propertyBrowser,
