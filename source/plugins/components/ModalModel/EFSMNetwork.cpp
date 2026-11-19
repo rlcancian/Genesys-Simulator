@@ -298,6 +298,7 @@ bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 			transition->setPriority(fields->loadField("transitionPriority" + suffix, 0u));
 			transition->setTriggerEvent(fields->loadField("transitionTriggerEvent" + suffix, std::string("")));
 			transition->setProbabilityExpression(fields->loadField("transitionProbabilityExpression" + suffix, std::string("")));
+			transition->setDefaultTransition(fields->loadField("transitionDefault" + suffix, false));
 			addTransition(transition);
 		}
 
@@ -364,6 +365,7 @@ void EFSMNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefaultValue
 		fields->saveField("transitionPriority" + suffix, transition->getPriority(), 0u, saveDefaultValues);
 		fields->saveField("transitionTriggerEvent" + suffix, transition->getTriggerEvent(), std::string(""), saveDefaultValues);
 		fields->saveField("transitionProbabilityExpression" + suffix, transition->getProbabilityExpression(), std::string(""), saveDefaultValues);
+		fields->saveField("transitionDefault" + suffix, transition->isDefaultTransition(), false, saveDefaultValues);
 		i++;
 	}
 }
@@ -417,12 +419,17 @@ NetworkActivationResult EFSMNetwork::_activate(const NetworkActivationFrame& fra
 	}
 
 	std::vector<EFSMTransition*> enabled;
+	std::vector<EFSMTransition*> enabledDefaults;
 	for (DefaultNodeTransition* transition : *_currentState->getTransitions()->list()) {
 		EFSMTransition* efsmTransition = dynamic_cast<EFSMTransition*>(transition);
 		if (efsmTransition != nullptr && efsmTransition->canFire(_parentModel, nullptr)) {
-			enabled.push_back(efsmTransition);
+			if (efsmTransition->isDefaultTransition()) enabledDefaults.push_back(efsmTransition);
+			else enabled.push_back(efsmTransition);
 		}
 	}
+	// Ptolemy-style fallback: default relations are considered only when no
+	// ordinary outgoing relation is enabled.
+	if (enabled.empty()) enabled = std::move(enabledDefaults);
 	if (enabled.empty()) {
 		return result;
 	}
