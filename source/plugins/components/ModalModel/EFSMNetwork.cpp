@@ -15,6 +15,7 @@
 #include "kernel/statistics/Sampler_if.h"
 #include "kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/Logic/Variable.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 
 #include <algorithm>
 #include <cctype>
@@ -89,6 +90,20 @@ EFSMNetwork::EFSMNetwork(Model* model, std::string name)
 	addInputPort("input");
 	addOutputPort("output");
 	_sampler = new TraitsKernel<Sampler_if>::Implementation();
+
+    auto* bound = new SimulationControlGeneric<unsigned int>(
+        [this]() { return getMaxImmediateTransitionsPerActivation(); },
+        [this](unsigned int count) { setMaxImmediateTransitionsPerActivation(count); },
+        Util::TypeOf<EFSMNetwork>(), getName(), "Max Immediate Transitions Per Activation",
+        "Positive safety bound for zero-time immediate transition chains.");
+    _parentModel->getControls()->insert(bound);
+    _addSimulationControl(bound);
+    auto* lastError = new SimulationControlGeneric<std::string>(
+        [this]() { return getLastRefinementError(); }, nullptr,
+        Util::TypeOf<EFSMNetwork>(), getName(), "Last Refinement Error",
+        "Read-only message of the last caught refinement fire/postfire exception.");
+    _parentModel->getControls()->insert(lastError);
+    _addSimulationControl(lastError);
 }
 
 EFSMNetwork::~EFSMNetwork() {
