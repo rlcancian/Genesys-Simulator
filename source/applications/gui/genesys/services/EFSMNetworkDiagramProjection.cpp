@@ -97,8 +97,19 @@ void synchronize(Simulator* simulator, ModelGraphicsScene* scene) {
             }
         }
 
+        bool hasOppositeDirection = false;
+        if (source != destination) {
+            for (EFSMTransition* candidate : transitions) {
+                if (candidate != nullptr && candidate->getSource() == destination
+                    && candidate->getDestination() == source) {
+                    hasOppositeDirection = true;
+                    break;
+                }
+            }
+        }
         auto* item = new EFSMTransitionGraphicsItem(transition, ordinal);
-        item->setGeometry(stateCenter(scene, source), stateCenter(scene, destination), rank, count);
+        item->setGeometry(stateCenter(scene, source), stateCenter(scene, destination),
+                          rank, count, hasOppositeDirection);
         if (existingBends.contains(transition))
             item->setManualBendPoint(existingBends.value(transition));
         if (selectedTransitions.contains(transition)) item->setSelected(true);
