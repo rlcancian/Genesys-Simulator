@@ -323,6 +323,99 @@ TEST(EFSMNetworkLifecycle, ImmediateSelfLoopStopsAtConfiguredSafetyBound) {
     EXPECT_EQ(network.getCurrentState(), &a);
 }
 
+TEST(EFSMNetworkLifecycle, NestedEFSMRefinementTerminationUsesFinalState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EFSMNetwork parent(model, "ParentEFSM");
+    EFSMNetwork child(model, "ChildEFSM");
+    FSMState parentActive(model, "ParentActive");
+    FSMState parentFinal(model, "ParentFinal");
+    FSMState childActive(model, "ChildActive");
+    FSMState childFinal(model, "ChildFinal");
+    childFinal.setFinalNode(true);
+    child.setInitialState(&childActive);
+    child.addState(&childFinal);
+    auto* childAdvance = new EFSMTransition(&childActive, &childFinal, "ChildAdvance");
+    childAdvance->setGuardExpression("1");
+    child.addTransition(childAdvance);
+
+    parentActive.setRefinementNetwork(&child);
+    parent.setInitialState(&parentActive);
+    parent.addState(&parentFinal);
+    auto* termination = new EFSMTransition(&parentActive, &parentFinal, "ChildTerminated");
+    termination->setGuardExpression("1");
+    termination->setTermination(true);
+    parent.addTransition(termination);
+
+    const NetworkActivationFrame frame(parent.getNumInputPorts());
+    parent.activate(frame);
+    EXPECT_EQ(child.getCurrentState(), &childFinal);
+    EXPECT_EQ(parent.getCurrentState(), &parentFinal);
+    EXPECT_EQ(parent.getLastTransition(), termination);
+}
+
+TEST(EFSMNetworkLifecycle, RefinementNetworkReferenceIsPersistedAndResolvedByTypeAndName) {
+    Simulator simulator;
+    Model* sourceModel = simulator.getModelManager()->newModel();
+    ASSERT_NE(sourceModel, nullptr);
+    DefaultNetwork sourceRefinement(sourceModel, "Subnetwork");
+    FSMState original(sourceModel, "MainState");
+    original.setRefinementNetwork(&sourceRefinement);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    ModelDataDefinition::SaveInstance(&fields, &original);
+
+    Model* targetModel = simulator.getModelManager()->newModel();
+    ASSERT_NE(targetModel, nullptr);
+    DefaultNetwork targetRefinement(targetModel, "Subnetwork");
+    auto* restored = dynamic_cast<FSMState*>(FSMState::LoadInstance(targetModel, &fields));
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored->getRefinementNetwork(), &targetRefinement);
+    EXPECT_EQ(restored->getRefinementNetworkIdentity(),
+              targetRefinement.getClassname() + "::" + targetRefinement.getName());
+
+    restored->setRefinementNetwork(nullptr);
+    EXPECT_EQ(restored->getRefinementNetwork(), nullptr);
+    EXPECT_FALSE(restored->hasUnresolvedRefinementNetwork());
+}
+
+TEST(EFSMNetworkLifecycle, QualifierPersistenceRoundTrip) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetworkProbe source(model, "Qualifiers");
+    FSMState a(model, "A");
+    FSMState b(model, "B");
+    source.setInitialState(&a);
+    source.addState(&b);
+    auto* t = new EFSMTransition(&a, &b, "AllFlags");
+    t->setImmediate(true);
+    t->setPreemptive(true);
+    t->setHistory(true);
+    t->setErrorTransition(false);
+    t->setTermination(false);
+    source.addTransition(t);
+    source.setMaxImmediateTransitionsPerActivation(21);
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    EFSMNetworkProbe restored(model, "Restored");
+    ASSERT_TRUE(restored.LoadInstanceProbe(&fields));
+    ASSERT_EQ(restored.getTransitions()->size(), 1u);
+    EFSMTransition* loaded = restored.getTransitions()->front();
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_TRUE(loaded->isImmediate());
+    EXPECT_TRUE(loaded->isPreemptive());
+    EXPECT_TRUE(loaded->isHistory());
+    EXPECT_FALSE(loaded->isErrorTransition());
+    EXPECT_FALSE(loaded->isTermination());
+    EXPECT_EQ(restored.getMaxImmediateTransitionsPerActivation(), 21u);
+}
+
 TEST(EFSMNetworkLifecycle, ValidationRejectsUnsupportedFlagCombinationsAndCycles) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
