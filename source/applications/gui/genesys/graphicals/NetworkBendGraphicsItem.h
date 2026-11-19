@@ -35,6 +35,7 @@ public:
     }
 
     const QString& routeKey() const { return _routeKey; }
+    bool hasArrowHead() const { return _directed; }
     bool hasManualBendPoint() const { return _manual; }
     QPointF manualBendPoint() const { return _bend; }
 
