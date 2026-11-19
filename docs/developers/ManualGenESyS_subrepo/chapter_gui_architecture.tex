@@ -162,8 +162,14 @@ This is the main architectural fact to keep in mind when editing the GUI: the co
 
 The main GUI temporarily hides the SimulLang and C++ tabs. The generators are
 retained, but routine property refreshes do not serialize a temporary model
-file to populate them. A user-requested save in \texttt{.gen} format explicitly
-regenerates the current SimulLang snapshot before writing that file.
+file to populate them. A user-requested save in \texttt{.gen} format writes the
+live kernel model through transactional persistence; it does not copy a cached
+hidden editor. A failed load preserves the previous document's undo history.
+
+Property commits mark the active document dirty synchronously. Widget refreshes
+are coalesced and scheduled with the \texttt{PropertyEditorController} QObject
+as their lifetime context. Switching views destroys that controller and cancels
+its outstanding callbacks rather than refreshing a destroyed or different view.
 
 Graphical connection lifetime follows an explicit ownership split. A
 \texttt{GraphicalConnection} owns the stable endpoint metadata required by the

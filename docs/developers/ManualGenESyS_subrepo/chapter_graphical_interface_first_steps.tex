@@ -196,7 +196,12 @@ hidden while the graphical model, component, and data-definition views remain
 available. Their generators remain in the application, but ordinary property
 edits update the model in memory and mark it as pending save without refreshing
 those textual representations. A user-requested save in \texttt{.gen} format
-generates the current SimulLang representation as part of that explicit save.
+writes the current in-memory model as part of that explicit save. Use
+\texttt{.gui} to preserve graphical layout as well as model configuration.
+If saving fails or its file dialog is cancelled, the document remains open with
+unsaved changes. Duplicate object names must be corrected before saving: a
+serialization error must not replace the previous valid file. Cancelling a close
+request preserves the model; declining to save is an explicit discard decision.
 
 SimulLang remains a complementary textual representation of the graphical
 model, although its GUI tab is temporarily hidden in the current application.

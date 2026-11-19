@@ -100,6 +100,11 @@ preparation does not invoke the model checker and does not prune independent
 data definitions. Formatting and file writing happen inside
 \texttt{PersistenceDefaultImpl2::save}.
 
+Errors reported while building serializer records, including duplicate name
+keys and failed object serialization, abort the save before the destination is
+replaced. Previously accumulated diagnostics do not block a corrected model:
+only new errors from the current serialization attempt are considered.
+
 The save pipeline is straightforward but important:
 \begin{itemize}
 \item the persistence service selects a serializer from the filename
