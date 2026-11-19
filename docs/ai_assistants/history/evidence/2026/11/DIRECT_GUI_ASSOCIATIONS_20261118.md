@@ -1,3 +1,10 @@
+---
+document_type: implementation-validation-evidence
+authority: informative
+owner: project-maintainer
+status: historical
+---
+
 # Direct graphical associations — 2026-11-18
 
 Base 58e686671, WorkInProgress. Initial tree clean; fetched origin, zero ahead/behind.

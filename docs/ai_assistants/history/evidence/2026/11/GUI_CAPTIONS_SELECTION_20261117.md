@@ -1,3 +1,10 @@
+---
+document_type: implementation-validation-evidence
+authority: informative
+owner: project-maintainer
+status: historical
+---
+
 # GUI captions and inspector selection — 2026-11-17
 
 Base: `615d57400`, direct `WorkInProgress` execution explicitly requested by maintainer.

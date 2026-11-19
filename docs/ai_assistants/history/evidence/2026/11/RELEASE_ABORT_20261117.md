@@ -1,3 +1,10 @@
+---
+document_type: implementation-validation-evidence
+authority: informative
+owner: project-maintainer
+status: historical
+---
+
 # Release runtime abort containment — 2026-11-17
 
 Base 8e98e031b, WorkInProgress, clean initial tree and zero ahead/behind after fetch.

@@ -1,3 +1,10 @@
+---
+document_type: implementation-validation-evidence
+authority: informative
+owner: project-maintainer
+status: historical
+---
+
 # Multiline graphical labels — 2026-11-17
 
 Base b69af467c, WorkInProgress. Initial tree clean, fetch confirmed 0 ahead/behind.
