@@ -25,7 +25,7 @@ public:
     void setFired(bool fired);
     bool isFired() const;
     void setGeometry(const QPointF& sourceCenter, const QPointF& destinationCenter, int parallelRank,
-                     int parallelCount);
+                     int parallelCount, bool hasOppositeDirection = false);
     bool hasManualBendPoint() const;
     QPointF manualBendPoint() const;
     void setManualBendPoint(const QPointF& point);
@@ -52,6 +52,7 @@ private:
     QPointF _destinationCenter;
     int _parallelRank = 0;
     int _parallelCount = 1;
+    bool _hasOppositeDirection = false;
     QPointF _handlePosition() const;
     void _rebuildGeometry();
 };
