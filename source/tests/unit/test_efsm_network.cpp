@@ -1228,6 +1228,23 @@ TEST(EFSMNetworkTest, CheckRejectsMissingStateAndAcceptsWellFormedMachine) {
 	EXPECT_TRUE(valid.CheckProbe(errorMessage)) << errorMessage;
 }
 
+TEST(EFSMNetworkTest, RejectsTransitionsReferencingStatesOutsideOwningNetwork) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetworkProbe network(model, "Owner");
+    FSMState internal(model, "Internal");
+    FSMState foreign(model, "Foreign");
+    network.setInitialState(&internal);
+    // A public addTransition can receive a foreign endpoint. It must be
+    // rejected by model validation rather than simulating a foreign state.
+    auto* invalid = new EFSMTransition(&internal, &foreign, "ForeignTarget");
+    network.addTransition(invalid);
+    std::string errors;
+    EXPECT_FALSE(network.CheckProbe(errors));
+    EXPECT_NE(errors.find("outside its owning Network"), std::string::npos);
+}
+
 TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurrentState) {
 	Simulator simulator;
 	ASSERT_NE(simulator.getPluginManager()->insert("fsmstate.so"), nullptr);
