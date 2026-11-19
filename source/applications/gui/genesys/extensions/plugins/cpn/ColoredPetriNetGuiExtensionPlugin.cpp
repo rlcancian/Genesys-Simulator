@@ -182,11 +182,13 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
         QStringList tokens;
         for (const auto& [color, quantity] : *place->getAllTokens())
             if (quantity > 0) tokens << QStringLiteral("%1:%2").arg(QString::fromStdString(color)).arg(quantity);
+        badge->setAcceptedMouseButtons(Qt::NoButton);
         badge->setToolTip(QObject::tr("Current marking: %1")
             .arg(tokens.isEmpty() ? QObject::tr("empty") : tokens.join(QStringLiteral(", "))));
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), badge);
         if (!tokens.isEmpty()) {
             auto* label = new QGraphicsSimpleTextItem(tokens.join(QStringLiteral("\n")));
+            label->setAcceptedMouseButtons(Qt::NoButton);
             label->setBrush(QColor(20, 70, 120));
             label->setPos(bounds.topRight() + QPointF(3, -label->boundingRect().height() / 2.0));
             label->setZValue(-0.6);
@@ -206,6 +208,7 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
                               fired ? 4.0 : 2.0));
         badge->setBrush(Qt::NoBrush);
         badge->setZValue(-0.7);
+        badge->setAcceptedMouseButtons(Qt::NoButton);
         badge->setToolTip(fired ? QObject::tr("Last fired CPN transition. %1").arg(preview.explanation)
                                 : preview.explanation);
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), badge);
