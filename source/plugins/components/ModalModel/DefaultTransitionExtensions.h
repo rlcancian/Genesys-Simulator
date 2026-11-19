@@ -13,6 +13,9 @@ public:
 	std::string getTriggerEvent() const;
 	void setProbabilityExpression(std::string probabilityExpression);
 	std::string getProbabilityExpression() const;
+	// Fallback relation: eligible only when no ordinary transition is enabled.
+	void setDefaultTransition(bool enabled);
+	bool isDefaultTransition() const;
 
 public:
 	virtual bool canFire(Model* model, Entity* entity) const override;
@@ -21,5 +24,6 @@ public:
 private:
 	std::string _triggerEvent = "";
 	std::string _probabilityExpression = "";
+	bool _defaultTransition = false;
 };
 
