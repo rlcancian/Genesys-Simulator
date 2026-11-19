@@ -8,6 +8,25 @@
 #include "DefaultNetwork.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
+#include <algorithm>
+#include <stdexcept>
+#include <vector>
+
+namespace {
+thread_local std::vector<const DefaultNetwork*> activeNetworkActivations;
+
+struct ActivationGuard {
+    explicit ActivationGuard(const DefaultNetwork* network) {
+        if (std::find(activeNetworkActivations.begin(), activeNetworkActivations.end(), network)
+            != activeNetworkActivations.end())
+            throw std::logic_error("Recursive synchronous DefaultNetwork activation is not allowed");
+        activeNetworkActivations.push_back(network);
+    }
+    ~ActivationGuard() { activeNetworkActivations.pop_back(); }
+    ActivationGuard(const ActivationGuard&) = delete;
+    ActivationGuard& operator=(const ActivationGuard&) = delete;
+};
+} // namespace
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -97,6 +116,7 @@ double DefaultNetwork::getActivationCount() const {
 }
 
 NetworkActivationResult DefaultNetwork::activate(const NetworkActivationFrame& frame) {
+    ActivationGuard guard(this);
 	if (_reportStatistics) {
 		if (_activationCounter == nullptr) {
 			_createInternalStatisticReporters();
