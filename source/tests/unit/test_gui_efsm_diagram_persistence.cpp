@@ -689,6 +689,9 @@ TEST(GraphNetworkGuiExtension, RendersArrowsOnlyForDirectedGraphFamilies) {
     ASSERT_NE(undirectedPath, nullptr);
     const int undirectedElementCount = undirectedPath->path().elementCount();
     EXPECT_EQ(undirectedElementCount, 2);
+    auto* undirectedRoute = dynamic_cast<NetworkBendGraphicsItem*>(undirectedPath);
+    ASSERT_NE(undirectedRoute, nullptr);
+    EXPECT_FALSE(undirectedRoute->hasArrowHead());
 
     scene.clearExtensionOverlayItems(QStringLiteral("modal.graph.gui"));
     scene.clear();
