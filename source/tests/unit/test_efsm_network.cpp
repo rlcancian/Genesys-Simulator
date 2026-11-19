@@ -364,6 +364,28 @@ TEST(EFSMNetworkLifecycle, ImmediateTransitionsChainWithoutExtraOrdinarySteps) {
     EXPECT_EQ(network.getCurrentState(), &d);
 }
 
+TEST(EFSMNetworkLifecycle, RefinementRuntimeControlsExposeBoundAndReadOnlyError) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "RuntimeControls");
+    SimulationControl* limit = nullptr;
+    SimulationControl* error = nullptr;
+    for (SimulationControl* control : *network.getSimulationControls()->list()) {
+        if (control == nullptr) continue;
+        if (control->getName() == "Max Immediate Transitions Per Activation") limit = control;
+        if (control->getName() == "Last Refinement Error") error = control;
+    }
+    ASSERT_NE(limit, nullptr);
+    ASSERT_NE(error, nullptr);
+    EXPECT_EQ(limit->getValue(), "64");
+    limit->setValue("7");
+    EXPECT_EQ(network.getMaxImmediateTransitionsPerActivation(), 7u);
+    EXPECT_THROW(limit->setValue("0"), std::invalid_argument);
+    EXPECT_TRUE(error->getValue().empty());
+    EXPECT_THROW(error->setValue("manual-override"), std::logic_error);
+}
+
 TEST(EFSMNetworkLifecycle, ImmediateSelfLoopStopsAtConfiguredSafetyBound) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
