@@ -439,6 +439,33 @@ TEST(EFSMNetworkLifecycle, RefinementNetworkReferenceIsPersistedAndResolvedByTyp
     EXPECT_FALSE(restored->hasUnresolvedRefinementNetwork());
 }
 
+TEST(EFSMNetworkLifecycle, RefinementReferenceControlSelectsAndRemovesWithoutCreatingNetworks) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    FSMState state(model, "State");
+    EFSMNetwork refinement(model, "ExistingEFSM");
+    SimulationControl* reference = nullptr;
+    for (SimulationControl* control : *state.getSimulationControls()->list()) {
+        if (control != nullptr && control->getName() == "Refinement Network") {
+            reference = control;
+            break;
+        }
+    }
+    ASSERT_NE(reference, nullptr);
+    EXPECT_TRUE(reference->supportsExistingObjectSelection());
+    EXPECT_TRUE(reference->supportsReferenceRemoval());
+    EXPECT_FALSE(reference->supportsObjectCreation());
+
+    const auto before = model->getDataManager()->getDataDefinitionsAssignableTo<DefaultNetwork>().size();
+    reference->setValue(refinement.getClassname() + "::" + refinement.getName());
+    EXPECT_EQ(state.getRefinementNetwork(), &refinement);
+    reference->setValue("", true);
+    EXPECT_EQ(state.getRefinementNetwork(), nullptr);
+    const auto after = model->getDataManager()->getDataDefinitionsAssignableTo<DefaultNetwork>().size();
+    EXPECT_EQ(after, before);
+}
+
 TEST(EFSMNetworkLifecycle, QualifierPersistenceRoundTrip) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
