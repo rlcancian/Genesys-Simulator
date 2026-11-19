@@ -3364,6 +3364,8 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     transition->setPriority(2);
     transition->setTriggerEvent("trigger-start");
     transition->setProbabilityExpression("0.75");
+    transition->setOutputActions("output = 1");
+    transition->setSetActions("counter = 2");
     network.addTransition(transition);
 
     EFSMTransitionPropertiesUndoCommand::Properties edited;
@@ -3374,6 +3376,9 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     edited.priority = 7;
     edited.triggerEvent = "trigger-finish";
     edited.probabilityExpression = "0.25";
+    edited.nondeterministic = true;
+    edited.outputActions = "output = 3";
+    edited.setActions = "counter = 4";
 
     QUndoStack stack;
     stack.push(new EFSMTransitionPropertiesUndoCommand(&network, transition, edited));
@@ -3384,6 +3389,9 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     EXPECT_EQ(transition->getPriority(), 7u);
     EXPECT_EQ(transition->getTriggerEvent(), "trigger-finish");
     EXPECT_EQ(transition->getProbabilityExpression(), "0.25");
+    EXPECT_TRUE(transition->isNondeterministic());
+    EXPECT_EQ(transition->getOutputActions(), "output = 3");
+    EXPECT_EQ(transition->getSetActions(), "counter = 4");
 
     stack.undo();
     EXPECT_EQ(transition->getName(), "begin");
@@ -3393,6 +3401,9 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     EXPECT_EQ(transition->getPriority(), 2u);
     EXPECT_EQ(transition->getTriggerEvent(), "trigger-start");
     EXPECT_EQ(transition->getProbabilityExpression(), "0.75");
+    EXPECT_FALSE(transition->isNondeterministic());
+    EXPECT_EQ(transition->getOutputActions(), "output = 1");
+    EXPECT_EQ(transition->getSetActions(), "counter = 2");
 
     stack.redo();
     EXPECT_EQ(transition->getName(), "finish");
