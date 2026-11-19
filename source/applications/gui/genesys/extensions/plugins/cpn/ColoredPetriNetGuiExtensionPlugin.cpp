@@ -13,6 +13,14 @@
 #include "kernel/util/Util.h"
 
 #include <QDialog>
+#include <QDialogButtonBox>
+#include <QHeaderView>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QTableWidget>
+#include <QVBoxLayout>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsRectItem>
@@ -375,6 +383,117 @@ PetriPlace* selectedPlace(const GuiExtensionRuntimeContext& context) {
     return nullptr;
 }
 
+// Initial marking is editable independent of the current simulation marking.
+class ResetCpnPlaceMarkingUndoCommand final : public QUndoCommand {
+public:
+    ResetCpnPlaceMarkingUndoCommand(ColoredPetriNetNetwork* network, PetriPlace* place,
+                                   ModelGraphicsScene* scene)
+        : _network(network), _place(place), _scene(scene),
+          _before(*place->getAllTokens()), _after(network->getInitialMarking(place)) {
+        setText(QObject::tr("Reset CPN place to initial marking"));
+    }
+    void undo() override { apply(_before); }
+    void redo() override { apply(_after); }
+private:
+    void apply(const std::map<std::string, unsigned int>& marking) {
+        if (_network == nullptr || _place == nullptr
+            || _network->getPlaces()->find(_place) == _network->getPlaces()->list()->end()) {
+            setObsolete(true); return;
+        }
+        _place->clearTokens();
+        for (const auto& [color, count] : marking) _place->setTokens(count, color);
+        synchronizeCpnProjection(nullptr, _scene);
+    }
+    ColoredPetriNetNetwork* _network;
+    PetriPlace* _place;
+    QPointer<ModelGraphicsScene> _scene;
+    std::map<std::string, unsigned int> _before, _after;
+};
+
+bool canEditCpnPlaceMarking(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
+        && selectedPlace(context) != nullptr;
+}
+
+void editCpnPlaceInitialMarking(const GuiExtensionRuntimeContext& context) {
+    if (!canEditCpnPlaceMarking(context)) return;
+    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
+    PetriPlace* place = selectedPlace(context);
+
+    QDialog dialog;
+    dialog.setWindowTitle(QObject::tr("CPN initial marking — %1").arg(QString::fromStdString(place->getName())));
+    dialog.resize(480, 360);
+    QVBoxLayout layout(&dialog);
+    auto* explanation = new QLabel(QObject::tr(
+        "Edit the initial tokens by color. The current marking is unchanged until reset or simulation restart."), &dialog);
+    explanation->setWordWrap(true);
+    layout.addWidget(explanation);
+    auto* table = new QTableWidget(0, 2, &dialog);
+    table->setHorizontalHeaderLabels({QObject::tr("Color"), QObject::tr("Token count")});
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    layout.addWidget(table);
+    const auto addRow = [table](const QString& color, unsigned int count) {
+        const int row = table->rowCount();
+        table->insertRow(row);
+        table->setItem(row, 0, new QTableWidgetItem(color));
+        table->setItem(row, 1, new QTableWidgetItem(QString::number(count)));
+    };
+    for (const auto& [color, count] : network->getInitialMarking(place))
+        addRow(QString::fromStdString(color), count);
+
+    QHBoxLayout rowActions;
+    auto* add = new QPushButton(QObject::tr("Add color"), &dialog);
+    auto* remove = new QPushButton(QObject::tr("Remove selected"), &dialog);
+    rowActions.addWidget(add);
+    rowActions.addWidget(remove);
+    layout.addLayout(&rowActions);
+    QObject::connect(add, &QPushButton::clicked, &dialog,
+                     [addRow]() { addRow(QString(), 0); });
+    QObject::connect(remove, &QPushButton::clicked, &dialog, [table]() {
+        if (table->currentRow() >= 0) table->removeRow(table->currentRow());
+    });
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout.addWidget(buttons);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, [&]() {
+        std::map<std::string, unsigned int> marking;
+        for (int row = 0; row < table->rowCount(); ++row) {
+            auto* colorItem = table->item(row, 0);
+            auto* quantityItem = table->item(row, 1);
+            const QString color = colorItem != nullptr ? colorItem->text().trimmed() : QString();
+            const QByteArray quantity = quantityItem != nullptr
+                ? quantityItem->text().trimmed().toLatin1() : QByteArray();
+            unsigned int count = 0;
+            const auto [end, error] = std::from_chars(quantity.constData(),
+                quantity.constData() + quantity.size(), count);
+            if (color.isEmpty() || color.contains(QLatin1Char('=')) || color.contains(QLatin1Char(';'))
+                || error != std::errc{} || end != quantity.constData() + quantity.size()
+                || !marking.emplace(color.toStdString(), count).second) {
+                QMessageBox::warning(&dialog, QObject::tr("Invalid marking"),
+                                     QObject::tr("Each row needs a unique color and a nonnegative integer token count."));
+                return;
+            }
+        }
+        if (marking != network->getInitialMarking(place)) {
+            context.graphicsScene->getUndoStack()->push(
+                new SetCpnInitialMarkingUndoCommand(network, place, context.graphicsScene, std::move(marking)));
+        }
+        dialog.accept();
+    });
+    dialog.exec();
+}
+
+void resetCpnPlaceToInitialMarking(const GuiExtensionRuntimeContext& context) {
+    if (!canEditCpnPlaceMarking(context)) return;
+    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
+    auto* place = selectedPlace(context);
+    if (*place->getAllTokens() == network->getInitialMarking(place)) return;
+    context.graphicsScene->getUndoStack()->push(
+        new ResetCpnPlaceMarkingUndoCommand(network, place, context.graphicsScene));
+}
+
 class RemoveCpnNodeUndoCommand final : public QUndoCommand {
 public:
     RemoveCpnNodeUndoCommand(ColoredPetriNetNetwork* network, PetriPlace* place, ModelGraphicsScene* scene)
@@ -700,6 +819,8 @@ public:
             auto* data = graphical != nullptr ? graphical->getDataDefinition() : nullptr;
             if (auto* transition = dynamic_cast<CPNTransition*>(data)) {
                 if (network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) return result;
+                result.push_back(P{"Enabled", network->isEnabled(transition) ? "true" : "false", {},
+                                   P::Kind::Boolean, false});
                 result.push_back(P{"Guard Expression", transition->getGuardExpression(), {}, P::Kind::String, true});
                 result.push_back(P{"Priority", std::to_string(transition->getPriority()), {}, P::Kind::Integer, true});
             } else if (auto* place = dynamic_cast<PetriPlace*>(data)) {
@@ -709,6 +830,13 @@ public:
                     if (!first) marking << ";"; first = false; marking << color << "=" << quantity;
                 }
                 result.push_back(P{"Initial Marking", marking.str(), {}, P::Kind::String, true});
+                std::ostringstream current; bool firstCurrent = true;
+                for (const auto& [color, quantity] : *place->getAllTokens()) {
+                    if (!firstCurrent) current << ";";
+                    firstCurrent = false;
+                    current << color << "=" << quantity;
+                }
+                result.push_back(P{"Current Marking", current.str(), {}, P::Kind::String, false});
             }
             return result;
         };
@@ -745,6 +873,30 @@ public:
             if (auto* transition = dynamic_cast<CPNTransition*>(dropped)) network->removeTransition(transition);
         };
         registry->addNetworkEditor(std::move(editor));
+        GuiActionContribution editMarking;
+        editMarking.id = "modal.cpn.edit-initial-marking";
+        editMarking.text = "Edit Selected CPN Place Initial Marking...";
+        editMarking.menuPath = "Model";
+        editMarking.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        editMarking.isEnabled = canEditCpnPlaceMarking;
+        editMarking.trigger = editCpnPlaceInitialMarking;
+        registry->addAction(std::move(editMarking));
+
+        GuiActionContribution resetMarking;
+        resetMarking.id = "modal.cpn.reset-place-marking";
+        resetMarking.text = "Reset Selected CPN Place to Initial Marking";
+        resetMarking.menuPath = "Model";
+        resetMarking.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        resetMarking.isEnabled = canEditCpnPlaceMarking;
+        resetMarking.trigger = resetCpnPlaceToInitialMarking;
+        registry->addAction(std::move(resetMarking));
+
         GuiActionContribution fire;
         fire.id = "modal.cpn.fire-transition";
         fire.text = "Fire Selected Enabled CPN Transition";
