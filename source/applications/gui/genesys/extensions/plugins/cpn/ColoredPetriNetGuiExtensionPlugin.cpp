@@ -2,6 +2,8 @@
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../graphicals/GraphicalModelDataDefinition.h"
 #include "../../../graphicals/ModelGraphicsScene.h"
+#include "../../../graphicals/NetworkBendGraphicsItem.h"
+#include "../../../services/NetworkBendDiagramCodec.h"
 #include "../../../services/GraphicalModelBuilder.h"
 
 #include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
@@ -155,7 +157,11 @@ CpnPreviewReadiness previewCpnReadiness(const ColoredPetriNetNetwork* network, C
 void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
     if (scene == nullptr) return;
     std::unordered_set<CPNArc*> selectedArcs;
+    QHash<QString, QPointF> previousBends;
     for (QGraphicsItem* item : scene->extensionOverlayItems(QString::fromLatin1(kCpnExtensionId))) {
+        auto* graphic = dynamic_cast<NetworkBendGraphicsItem*>(item);
+        if (graphic != nullptr && graphic->hasManualBendPoint())
+            previousBends.insert(graphic->routeKey(), graphic->manualBendPoint());
         if (item != nullptr && item->isSelected() && item->data(1).isValid()) {
             auto* arc = reinterpret_cast<CPNArc*>(static_cast<quintptr>(item->data(1).toULongLong()));
             if (arc != nullptr) selectedArcs.insert(arc);
@@ -205,30 +211,57 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), badge);
     }
     for (CPNArc* arc : *network->getArcs()->list()) {
-        if (arc == nullptr) continue;
+        if (arc == nullptr || arc->getPlace() == nullptr || arc->getTransition() == nullptr) continue;
         auto* place = scene->findGraphicalModelDataDefinition(arc->getPlace());
         auto* transition = scene->findGraphicalModelDataDefinition(arc->getTransition());
         if (place == nullptr || transition == nullptr) continue;
-        const QPointF placePoint = place->sceneBoundingRect().center();
-        const QPointF transitionPoint = transition->sceneBoundingRect().center();
-        const QPointF start = arc->isInputArc() ? placePoint : transitionPoint;
-        const QPointF end = arc->isInputArc() ? transitionPoint : placePoint;
-        QPainterPath path(start);
-        path.lineTo(end);
-        addArrow(path, end);
-        auto* item = new QGraphicsPathItem(path);
-        const bool participatedInLastFiring = network->getLastFiredTransition() == arc->getTransition();
-        item->setPen(QPen(participatedInLastFiring ? QColor(225, 90, 35) : QColor(90, 75, 115),
-                          participatedInLastFiring ? 3.5 : 2.0));
-        item->setBrush(Qt::NoBrush);
-        item->setZValue(-1.0);
+        const QPointF placeCenter = place->sceneBoundingRect().center();
+        const QPointF transitionCenter = transition->sceneBoundingRect().center();
+        const QPointF start = arc->isInputArc() ? placeCenter : transitionCenter;
+        const QPointF end = arc->isInputArc() ? transitionCenter : placeCenter;
+
+        int rank = 0, count = 0;
+        bool opposite = false;
+        for (CPNArc* candidate : *network->getArcs()->list()) {
+            if (candidate == nullptr || candidate->getPlace() != arc->getPlace()
+                || candidate->getTransition() != arc->getTransition()) continue;
+            if (candidate->getDirection() == arc->getDirection()) {
+                if (candidate == arc) rank = count;
+                ++count;
+            } else {
+                opposite = true;
+            }
+        }
+        const QString key = NetworkBendDiagramCodec::relationKey(
+            arc->getId(), QString::fromStdString(arc->getPlace()->getName()),
+            QString::fromStdString(arc->getTransition()->getName()),
+            QString::fromStdString(arc->getName()));
+        auto* item = new NetworkBendGraphicsItem(QString::fromLatin1(kCpnExtensionId), key);
+        item->setGeometry(start, end, rank, count, opposite, true);
+        if (previousBends.contains(key)) item->setManualBendPoint(previousBends.value(key));
+        const bool lastFiring = network->getLastFiredTransition() == arc->getTransition();
+        item->setVisiblePen(QPen(lastFiring ? QColor(225, 90, 35) : QColor(90, 75, 115),
+                                 lastFiring ? 3.5 : 2.0));
         item->setData(1, QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(arc)));
-        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
-        item->setToolTip(participatedInLastFiring
+        item->setToolTip(lastFiring
             ? QObject::tr("Last firing: %1").arg(QString::fromStdString(arc->show()))
             : QString::fromStdString(arc->show()));
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), item);
         if (selectedArcs.contains(arc)) item->setSelected(true);
+
+        QStringList inscriptions;
+        for (const auto& [color, quantity] : arc->getInscriptions()) {
+            if (quantity > 0) inscriptions.append(
+                QStringLiteral("%1:%2").arg(QString::fromStdString(color)).arg(quantity));
+        }
+        if (!inscriptions.isEmpty()) {
+            auto* label = new QGraphicsSimpleTextItem(inscriptions.join(QStringLiteral(", ")));
+            label->setBrush(QColor(80, 50, 105));
+            label->setPos(item->path().pointAtPercent(0.5) + QPointF(5, -14));
+            label->setZValue(-0.8);
+            label->setAcceptedMouseButtons(Qt::NoButton);
+            scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), label);
+        }
     }
 }
 
@@ -772,6 +805,20 @@ public:
             return dynamic_cast<ColoredPetriNetNetwork*>(definition) != nullptr;
         };
         projection.synchronize = synchronizeCpnProjection;
+        projection.sectionName = "ColoredPetriNetBend";
+        projection.captureLayout = [](Simulator*, ModelDataDefinition* owner, ModelGraphicsScene* scene) {
+            return NetworkBendDiagramCodec::capture(owner, scene, QString::fromLatin1(kCpnExtensionId));
+        };
+        projection.restoreLayout = [](Simulator*, ModelDataDefinition* owner,
+                                      ModelGraphicsScene* scene, const std::any& layout) {
+            NetworkBendDiagramCodec::restore(owner, scene, layout, QString::fromLatin1(kCpnExtensionId));
+        };
+        projection.serializeLayouts = NetworkBendDiagramCodec::serialize;
+        projection.parseLayouts = [](Model* model, const QStringList& lines) {
+            return NetworkBendDiagramCodec::parse(model, lines, [](ModelDataDefinition* owner) {
+                return dynamic_cast<ColoredPetriNetNetwork*>(owner) != nullptr;
+            });
+        };
         registry->addDiagramProjection(std::move(projection));
         GuiActionContribution validate;
         validate.id = "modal.cpn.validate-network";
