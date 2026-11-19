@@ -358,9 +358,10 @@ void genesyspp_driver::clearReferedDataElements() {
 }
 
 void genesyspp_driver::addRefered(std::pair<std::string,std::string> referedElement) { // pair<DataElementTypename, name>
-	// A syntax-only probe must not pollute the dependency registry used by
-	// subsequent evaluation or orphan-data-element analysis on this driver.
-	if (_syntaxOnly) {
+	// Syntax-only probes normally stay side-effect free. Reference discovery is
+	// the one explicit exception: it sets this flag on a private parser copy so
+	// identifiers can be collected without evaluating expressions or sampling.
+	if (_syntaxOnly && !_isRegisterReferedDataElements) {
 		return;
 	}
 	if (_isRegisterReferedDataElements) {
