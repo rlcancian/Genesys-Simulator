@@ -12,6 +12,50 @@ base_commit: 6c57631cfcfa881f3fd57d411de7099ae0bb4d99
 
 # Modal / Network GUI remote implementation — local agent handoff
 
+
+## 2026-11-19 follow-up — EFSM semantics without further kernel architecture changes
+
+The frozen-architecture stabilization work in this branch was based on commit
+b958cbc6ab5824a01980c942b0296e4d47af0883. No generic DefaultNetwork,
+NetworkActivationFrame or global kernel contracts were modified in this phase.
+
+Changes committed and awaiting compilation:
+
+- EFSMTransition::canFire is now a guard-only finite-value predicate.
+- Input Event and Trigger Event require presence of the exact named input ports;
+  zero-valued present events count. Invalid names fail EFSMNetwork validation.
+- Probability Expression is a reproducible, per-transition Bernoulli
+  eligibility gate after event and guard checks. Runtime values must be
+  finite and in [0,1]. This is not a row-normalized or categorical choice.
+- Every external reaction considers immediate and non-immediate outgoing
+  transitions together; same-call microsteps consider immediate only.
+  Previously disabled immediate guards remain eligible on future activations.
+- Transition action lists reject duplicate Variable/output destinations.
+- Termination/Error transitions selected after postfire run source exit
+  actions; an Error handler for postfire failure can publish recovery outputs.
+- FSMState cached non-owning refinement references are validated against
+  ModelDataManager, can follow live renames, and clear outdated associations
+  on field reload.
+- EFSMNetwork validation rejects transitions with foreign endpoints.
+- EFSM graphical properties display read-only semantic guidance.
+- New unit and Qt tests cover events, probabilities, RNG consumption,
+  immediate selection precedence, postfire recovery, duplicate actions,
+  and Network relation integrity.
+
+**Evidence:** source commits only. No local CMake/Ninja build, CTest execution,
+Qt/Xvfb testing, sanitizer testing or complete GEN/GUI save/reload test
+was performed for this follow-up. All execution checks remain UNKNOWN.
+There is no PR, merge or change to WorkInProgress.
+
+Independent local agent gates include compilation of gui-app and tests-unit,
+running relevant tests-kernel-unit, gui and smoke suites, statistical
+reproducibility checks and sanitizers on refinement/undo paths.
+Review the source-backed semantic specification at
+docs/ai_assistants/reference/EFSM_REFINEMENT_RUNTIME.md, especially
+differences from full Ptolemy II and incomplete rollback of side effects.
+
+
+
 ## Update — experimental EFSM refinement semantics
 
 This update supersedes the previous statements below that `Immediate`,
