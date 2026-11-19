@@ -28,6 +28,7 @@
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/AI/AIAssistant.h"
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"
@@ -550,6 +551,91 @@ TEST(PropertyEditorLists, RemovesSetResourceAndQueueReferencesWithoutDeletingMem
     ASSERT_EQ(loadedSet->getElementSet()->size(), 1u);
     EXPECT_EQ(loadedSet->getElementSet()->getAtRank(0)->getName(), "EditableRoundTripKept");
     EXPECT_NE(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "EditableRoundTripRemoved"), nullptr);
+}
+
+TEST(PropertyEditorLists, RemovingQueueFromSetKeepsMainWindowSelectionEditable) {
+    MainWindow window;
+    window.show();
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    auto* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    auto* simulator = scene->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    auto* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+    auto* manager = simulator->getPluginManager();
+    auto* set = manager->newInstance<Set>(model, "SelectionQueueSet");
+    auto* first = manager->newInstance<Queue>(model, "SelectionQueueFirst");
+    auto* second = manager->newInstance<Queue>(model, "SelectionQueueSecond");
+    auto* create = manager->newInstance<Create>(model, "SelectionCreate");
+    auto* seize = manager->newInstance<Seize>(model, "SelectionSeize");
+    ASSERT_NE(set, nullptr);
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(seize, nullptr);
+    set->addElementSet(first);
+    set->addElementSet(second);
+    seize->setQueueableItem(new QueueableItem(set, QueueableItem::QueueableType::SET));
+
+    auto* graphicalCreate = scene->addGraphicalModelComponent(
+        manager->find("Create"), create, QPointF(350, 100));
+    ASSERT_NE(graphicalCreate, nullptr);
+    ASSERT_NE(scene->addGraphicalModelComponent(
+        manager->find("Seize"), seize, QPointF(600, 100)), nullptr);
+    auto* browser = window.findChild<ObjectPropertyBrowser*>("treeViewPropertyEditor");
+    ASSERT_NE(browser, nullptr);
+
+    // Select the Set through the real inspector. Rebuilding that tree after a
+    // list edit is part of the reported failure, unlike a standalone browser.
+    auto* modelTabs = window.findChild<QTabWidget*>("tabWidgetModel");
+    auto* definitions = window.findChild<QTreeWidget*>("treeWidgetDataDefnitions");
+    ASSERT_NE(modelTabs, nullptr);
+    ASSERT_NE(definitions, nullptr);
+    modelTabs->setCurrentWidget(window.findChild<QWidget*>("tabModelComponents"));
+    modelTabs->setCurrentWidget(window.findChild<QWidget*>("tabModelDataDefinitions"));
+    drainGuiEvents();
+    QTreeWidgetItem* setItem = nullptr;
+    std::function<void(QTreeWidgetItem*)> findSet = [&](QTreeWidgetItem* item) {
+        if (item == nullptr || setItem != nullptr) return;
+        if (item->data(0, Qt::UserRole).value<quintptr>() == reinterpret_cast<quintptr>(set)) {
+            setItem = item;
+            return;
+        }
+        for (int i = 0; i < item->childCount(); ++i) findSet(item->child(i));
+    };
+    for (int i = 0; i < definitions->topLevelItemCount(); ++i) findSet(definitions->topLevelItem(i));
+    ASSERT_NE(setItem, nullptr);
+    definitions->setCurrentItem(setItem);
+    drainGuiEvents();
+    ASSERT_NE(findBrowserItemByName(browser->topLevelItems(), "ElementSet"), nullptr);
+    selectListItemAction(*browser, "ElementSet", "Item 0 - SelectionQueueFirst", "Remover item");
+    ASSERT_EQ(set->getElementSet()->size(), 1u);
+    EXPECT_EQ(set->getElementSet()->getAtRank(0), second);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "SelectionQueueFirst"), first);
+    EXPECT_NE(findBrowserItemByName(browser->topLevelItems(), "ElementSet"), nullptr);
+
+    scene->clearSelection();
+    graphicalCreate->setSelected(true);
+    drainGuiEvents();
+    EXPECT_FALSE(browser->isCommitPipelineBusy());
+    auto* firstCreationItem = findBrowserItemByName(browser->topLevelItems(), "FirstCreation");
+    ASSERT_NE(firstCreationItem, nullptr);
+    browser->setCurrentItem(firstCreationItem);
+    browser->editItem(firstCreationItem);
+    drainGuiEvents();
+    auto* firstCreationEditor = browser->findChild<QDoubleSpinBox*>();
+    ASSERT_NE(firstCreationEditor, nullptr);
+    commitTextWithEnter(firstCreationEditor->findChild<QLineEdit*>(), QStringLiteral("3"));
+    drainGuiEvents();
+    EXPECT_DOUBLE_EQ(create->getFirstCreation(), 3.0);
+
+    scene->clearSelection();
+    graphicalCreate->setSelected(true);
+    drainGuiEvents();
+    EXPECT_NE(findBrowserItemByName(browser->topLevelItems(), "FirstCreation"), nullptr);
 }
 
 TEST(PropertyEditorLists, ListItemActionsRespectBoundariesAndReadOnly) {

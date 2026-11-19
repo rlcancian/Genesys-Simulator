@@ -674,6 +674,9 @@ void ObjectPropertyBrowser::_scheduleDeferredRebuild() {
         _isDeferredRebuildScheduled = false;
         if (!_hasValidActiveBindingContext()) {
             qWarning() << "[PropertyEditor] Deferred rebuild canceled due to invalid binding context";
+            // A scene synchronization may have detached the selected GMDD.
+            // There is then no rebuild to perform or wait for.
+            _pendingRebuild = false;
             return;
         }
         _rebuildPropertiesGuarded();
@@ -698,10 +701,9 @@ void ObjectPropertyBrowser::_scheduleDeferredModelChangedCallback() {
             _scheduleDeferredModelChangedCallback();
             return;
         }
-        if (!_hasValidActiveBindingContext()) {
-            qWarning() << "[PropertyEditor] Deferred model-changed callback canceled due to invalid binding context";
-            return;
-        }
+        // The edit already committed. Scene synchronization may have removed
+        // its old selection, but the document still needs its dirty/refresh
+        // notification so that selecting another object works normally.
         QMetaObject::invokeMethod(this, [this]() {
             if (_isRebuildingProperties || _pendingRebuild || _isDeferredRebuildScheduled) {
                 qInfo() << "[PropertyEditor] model-changed callback postponed one more turn due to pending rebuild";
