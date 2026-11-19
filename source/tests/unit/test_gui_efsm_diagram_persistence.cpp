@@ -1249,6 +1249,7 @@ TEST(ColoredPetriNetGuiExtension, StructuredMarkingEditorAndResetAreUndoable) {
     graphical->setSelected(true);
 
     GuiActionContribution editAction;
+    GuiActionContribution editCurrentAction;
     GuiActionContribution resetAction;
     for (const GuiExtensionPlugin* extension : GuiExtensionPluginCatalog::resolvedPlugins()) {
         if (extension == nullptr || extension->extensionId() != "modal.cpn.gui") continue;
@@ -1256,6 +1257,7 @@ TEST(ColoredPetriNetGuiExtension, StructuredMarkingEditorAndResetAreUndoable) {
         extension->registerContributions(&registry);
         for (const auto& action : registry.actions()) {
             if (action.id == "modal.cpn.edit-initial-marking") editAction = action;
+            if (action.id == "modal.cpn.edit-current-marking") editCurrentAction = action;
             if (action.id == "modal.cpn.reset-place-marking") resetAction = action;
         }
     }
@@ -1263,6 +1265,7 @@ TEST(ColoredPetriNetGuiExtension, StructuredMarkingEditorAndResetAreUndoable) {
     context.simulator = &simulator;
     context.graphicsScene = &scene;
     ASSERT_TRUE(static_cast<bool>(editAction.trigger));
+    ASSERT_TRUE(static_cast<bool>(editCurrentAction.trigger));
     ASSERT_TRUE(static_cast<bool>(resetAction.trigger));
     ASSERT_TRUE(editAction.isEnabled(context));
     QTimer::singleShot(0, []() {
@@ -1290,6 +1293,26 @@ TEST(ColoredPetriNetGuiExtension, StructuredMarkingEditorAndResetAreUndoable) {
     EXPECT_EQ(place->getTokens("red"), 5u);
     stack.undo();
     EXPECT_EQ(place->getTokens("red"), 3u);
+
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* table = dialog->findChild<QTableWidget*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        if (table == nullptr || buttons == nullptr || table->rowCount() != 1) {
+            dialog->reject(); return;
+        }
+        table->item(0, 1)->setText(QStringLiteral("8"));
+        buttons->button(QDialogButtonBox::Ok)->click();
+    });
+    ASSERT_TRUE(editCurrentAction.isEnabled(context));
+    editCurrentAction.trigger(context);
+    EXPECT_EQ(place->getTokens("red"), 8u);
+    EXPECT_EQ(network.getInitialTokens(place, "red"), 5u);
+    stack.undo();
+    EXPECT_EQ(place->getTokens("red"), 3u);
+    stack.redo();
+    EXPECT_EQ(place->getTokens("red"), 8u);
 }
 
 TEST(ColoredPetriNetGuiExtension, GenericGuiPersistenceRestoresNodeGeometryAndTopology) {
