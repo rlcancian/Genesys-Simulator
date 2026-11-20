@@ -1,7 +1,11 @@
 #include "GuiExtensionManager.h"
+#include "../graphicals/ModelGraphicsScene.h"
+#include "../actions/AddUndoCommand.h"
 
 #include <QAction>
 #include <QDockWidget>
+#include <QGraphicsItem>
+#include <QUndoStack>
 #include <QMainWindow>
 #include <QMenu>
 #include <QMenuBar>
@@ -12,25 +16,7 @@
 #include <Qt>
 
 #include <algorithm>
-#include <cctype>
-#include <unordered_set>
 #include <utility>
-
-namespace {
-std::string normalizePluginId(std::string text) {
-	std::string normalized;
-	normalized.reserve(text.size());
-	for (unsigned char c : text) {
-		if (!std::isspace(c)) {
-			normalized.push_back(static_cast<char>(std::tolower(c)));
-		}
-	}
-	if (normalized.size() > 3 && normalized.substr(normalized.size() - 3) == ".so") {
-		normalized.erase(normalized.size() - 3);
-	}
-	return normalized;
-}
-} // namespace
 
 GuiExtensionManager::GuiExtensionManager(QMainWindow* mainWindow) : _mainWindow(mainWindow) {
 }
@@ -47,6 +33,18 @@ void GuiExtensionManager::setLoadedModelPluginIds(std::vector<std::string> model
 	_loadedModelPluginIds = std::move(modelPluginIds);
 }
 
+void GuiExtensionManager::setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds) {
+	_systemCapabilityIds = std::move(capabilityIds);
+}
+
+void GuiExtensionManager::setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions) {
+    _modelPluginVersions = std::move(versions);
+}
+
+void GuiExtensionManager::setAvailableSystemCapabilityVersions(std::unordered_map<std::string, std::string> versions) {
+    _systemCapabilityVersions = std::move(versions);
+}
+
 void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	clear();
 	_runtimeContext = context;
@@ -55,19 +53,50 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	}
 
 	GuiExtensionRegistry registry;
-	for (const GuiExtensionPlugin* plugin : _plugins) {
-		if (plugin == nullptr) {
-			continue;
-		}
-		if (!_isPluginDependenciesSatisfied(plugin)) {
-			continue;
-		}
-		plugin->registerContributions(&registry);
+	GuiExtensionDependencyResolver::Environment env{_loadedModelPluginIds, _systemCapabilityIds};
+	env.modelPluginVersions = _modelPluginVersions;
+	env.systemCapabilityVersions = _systemCapabilityVersions;
+	const auto resolution = GuiExtensionDependencyResolver::resolve(_plugins, env);
+	for (const GuiExtensionPlugin* plugin : resolution.active) {
+		GuiExtensionRegistry contributed;
+		plugin->registerContributions(&contributed);
+		registry.appendEligibleFrom(contributed, [&](const GuiExtensionDependencyGroups& groups) {
+			return GuiExtensionDependencyResolver::contributionEligible(groups, env, resolution);
+		});
 	}
 
 	for (const GuiActionContribution& action : registry.actions()) {
 		_applyActionContribution(action, context);
 	}
+    // F2: a graphical extension contributes an item factory, while generic
+    // host code handles menu placement, scene ownership and existing undo.
+    // Each trigger inserts one real, movable/selectable QGraphicsItem.
+    for (const GuiAnimationToolContribution& tool : registry.animationTools()) {
+        if (tool.id.empty() || !tool.createItem) continue;
+        GuiActionContribution action;
+        action.id = tool.id;
+        action.text = tool.text;
+        action.menuPath = tool.menuPath.empty() ? "View/Animate" : tool.menuPath;
+        action.toolBarId = tool.toolBarId;
+        action.statusTip = tool.statusTip;
+        action.isEnabled = [guard = tool.isEnabled](const GuiExtensionRuntimeContext& current) {
+            if (!current.graphicsScene || !current.graphicsScene->getUndoStack()) return false;
+            return !guard || guard(current);
+        };
+        action.trigger = [factory = tool.createItem, guard = tool.isEnabled](
+            const GuiExtensionRuntimeContext& current) {
+            ModelGraphicsScene* scene = current.graphicsScene;
+            if (!scene || !scene->getUndoStack() || (guard && !guard(current))) return;
+            std::unique_ptr<QGraphicsItem> item = factory(current);
+            if (!item) return;
+            item->setPos(scene->sceneRect().center() - item->boundingRect().center());
+            // QUndoStack::push invokes redo, which registers the item in
+            // ModelGraphicsScene::addDrawing and transfers ownership to scene.
+            scene->getUndoStack()->push(new AddUndoCommand(item.get(), scene));
+            item.release();
+        };
+        _applyActionContribution(action, context);
+    }
 	for (const GuiWindowContribution& window : registry.windows()) {
 		_applyWindowContribution(window, context);
 	}
@@ -211,37 +240,6 @@ void GuiExtensionManager::clear() {
 	_editingContextContributions.clear();
 	_modelReferenceContributions.clear();
 	_runtimeContext = GuiExtensionRuntimeContext{};
-}
-
-bool GuiExtensionManager::_isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const {
-	if (plugin == nullptr) {
-		return false;
-	}
-
-	const std::vector<std::string> required = plugin->requiredModelPlugins();
-	if (required.empty()) {
-		return true;
-	}
-
-	std::unordered_set<std::string> loaded;
-	loaded.reserve(_loadedModelPluginIds.size());
-	for (const std::string& id : _loadedModelPluginIds) {
-		const std::string normalized = normalizePluginId(id);
-		if (!normalized.empty()) {
-			loaded.insert(normalized);
-		}
-	}
-
-	for (const std::string& dependency : required) {
-		const std::string normalized = normalizePluginId(dependency);
-		if (normalized.empty()) {
-			continue;
-		}
-		if (loaded.find(normalized) == loaded.end()) {
-			return false;
-		}
-	}
-	return true;
 }
 
 QMenu* GuiExtensionManager::_resolveMenuPath(const std::string& menuPath) {

@@ -2,7 +2,7 @@
 document_type: technical-architecture
 authority: technical-reference
 owner: project-maintainer
-last_reviewed: 2026-11-11
+last_reviewed: 2026-11-16
 status: approved-concept-implementation-pending
 tracks: HUM-ARCH-004
 ---
@@ -16,6 +16,12 @@ This document records the **maintainer-approved architectural direction of 2026-
 **Goal:** an optional graphical extension can add menus/actions/toolbar entries, dialogs/windows/docks, animation tools and scene-bound visualizations, component renderers or alternative GUI service providers *without editing or recompiling the generic GUI source for each new plugin type*. Simulation plugins must remain usable by the kernel and non-graphical applications without Qt or any GUI extension.
 
 **Not in current scope:** implementation; widespread CMake or source moves; dynamic loading/unloading; hot reload; converting simulation plugins to shared libraries; a second plugin framework; changes to biological/modal/continuous simulation semantics. PR #436 and the two student DCS-5 deliveries are historical candidate material **only**, not binding design or a merge/cherry-pick target.
+
+## 1.1. Formal ratification after E0–E5 (2026-11-16)
+
+The maintainer **approved D1–D12 without reservations** after inspection of the extraction results and current implementation inventory. The complete [formal method/hierarchy/dependency contract and ratified decisions](GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md) extends and refines this conceptual architecture. **Normative interpretation for future implementation:** one mandatory `GuiExtensionPlugin` interface plus registered optional contributions; typed model/GUI/system dependencies with explicit ALL/ANY semantics; per-extension and where justified per-contribution gating; deterministic provider choice; explicit QGraphicsItem ownership; immutable GUI-thread event observation; lossless absent-extension graphical persistence; bounded host capabilities; stable IDs; and **deferred** dynamic-ABI decisions. Existing C++ interfaces remain unchanged until the separately validated implementation slices. All 11 pre-existing contribution categories and 24 observed concrete subclasses remain part of the compatibility baseline.
+
+The previous `HUM-ARCH-004` concept is therefore **approved and formally specified**, but the G0–G7 general runtime remains **implementation-pending**, not complete or dynamically loadable. The extraction PR #579 is merged; its evidence should not be confused with acceptance of future factories and providers.
 
 ## 2. Current source evidence (WorkInProgress, inspected 2026-11-11)
 

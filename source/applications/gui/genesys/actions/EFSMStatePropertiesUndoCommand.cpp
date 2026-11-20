@@ -12,7 +12,9 @@
 EFSMStatePropertiesUndoCommand::EFSMStatePropertiesUndoCommand(
         EFSMNetwork* network, FSMState* state, Properties updated, QUndoCommand* parent)
     : QUndoCommand(parent), _network(network), _state(state), _before(_read(state)),
-      _after(std::move(updated)) {
+      _after(std::move(updated)),
+      _beforeInitial(network != nullptr ? network->getInitialState() : nullptr),
+      _afterInitial(_after.initialNode ? state : (_beforeInitial == state ? nullptr : _beforeInitial)) {
     setText(QObject::tr("Edit EFSM state"));
     if (_network == nullptr || _network->getStates() == nullptr || _state == nullptr
         || _network->getStates()->find(_state) == _network->getStates()->list()->end()) {
@@ -35,7 +37,7 @@ EFSMStatePropertiesUndoCommand::Properties EFSMStatePropertiesUndoCommand::_read
     return properties;
 }
 
-bool EFSMStatePropertiesUndoCommand::_apply(const Properties& properties) {
+bool EFSMStatePropertiesUndoCommand::_apply(const Properties& properties, FSMState* initialState) {
     if (_network == nullptr || _network->getStates() == nullptr || _state == nullptr
         || _network->getStates()->find(_state) == _network->getStates()->list()->end()) {
         return false;
@@ -55,25 +57,26 @@ bool EFSMStatePropertiesUndoCommand::_apply(const Properties& properties) {
     _state->setTraceLevelSpecific(static_cast<TraceManager::Level>(properties.traceLevel));
     _state->setReportStatistics(properties.reportStatistics);
     _state->setFinalNode(properties.finalNode);
+    // Initial-state identity belongs to the EFSMNetwork. Changing a name,
+    // label or Final Node on another state must not clear that identity.
+    if (initialState != nullptr && _network->getStates()->find(initialState)
+        == _network->getStates()->list()->end()) return false;
+    if (_network->getInitialState() != initialState)
+        _network->setInitialState(initialState);
     for (FSMState* state : *_network->getStates()->list()) {
-        if (state != nullptr) state->setInitialNode(state == _state && properties.initialNode);
-    }
-    if (properties.initialNode) {
-        _network->setInitialState(_state);
-    } else if (_network->getInitialState() == _state) {
-        _network->setInitialState(nullptr);
+        if (state != nullptr) state->setInitialNode(state == initialState);
     }
     return true;
 }
 
 void EFSMStatePropertiesUndoCommand::undo() {
-    if (!_apply(_before)) {
+    if (!_apply(_before, _beforeInitial)) {
         setObsolete(true);
     }
 }
 
 void EFSMStatePropertiesUndoCommand::redo() {
-    if (!_apply(_after)) {
+    if (!_apply(_after, _afterInitial)) {
         setObsolete(true);
     }
 }

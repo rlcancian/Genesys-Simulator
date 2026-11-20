@@ -2,8 +2,8 @@
 document_type: implementation-plan
 authority: technical-reference
 owner: project-maintainer
-last_reviewed: 2026-11-11
-status: planned-not-started
+last_reviewed: 2026-11-16
+status: formal-architecture-approved-implementation-pending
 tracks: AUTO-GUI-003
 ---
 
@@ -13,7 +13,7 @@ tracks: AUTO-GUI-003
 
 Implement the [approved graphical extension architecture](GUI_EXTENSIONS_ARCHITECTURE.md) incrementally, **without** bringing optional simulation-specific animation, renderer, dialog or menu implementation into generic GUI host code. Preserve the simulation kernel/parser/plugin independence from all Qt6 applications.
 
-Decision: `HUM-ARCH-004` in [BACKLOG_HUMAN](../BACKLOG_HUMAN.md), 2026-11-11; execution tracker: `AUTO-GUI-003` in [BACKLOG_AUTONOMOUS](../BACKLOG_AUTONOMOUS.md), initially **blocked-dependency / not ready** pending an explicit bounded implementation activation and current-code revalidation. Documentation approval and merge do not authorize unattended implementation. Track each implemented slice with a separate bounded branch/PR after activation, not one giant code rewrite.
+Decision: `HUM-ARCH-004` in [BACKLOG_HUMAN](../BACKLOG_HUMAN.md), initially approved 2026-11-11 and **formally ratified on 2026-11-16 (all D1–D12)** in [GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md](GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md). The E0–E5 extraction was already completed and merged in PR #579. Execution tracker: `AUTO-GUI-003` in [BACKLOG_AUTONOMOUS](../BACKLOG_AUTONOMOUS.md). The architectural policy and the **bounded first implementation sequence** are authorized in principle; actual C++ source changes require the G0 current-code/ownership/persistence inventory and local Qt6/CMake/Ninja tests, followed by a separate validated PR. There is no authorization for dynamic ABI/loading, a broad rewrite, or unverified finished-state claims.
 
 **Supported baseline**: Ubuntu 24.04, GCC/toolchain-supported C++23, CMake + Ninja, Qt6, Google Test and existing test/GUI presets (`tests-unit`, `tests-kernel-unit`, `tests-smoke`, `gui-app`), per [README](../../../README.md), [governance](../GOVERNANCE.md), [current status](../STATUS.md) and [GitHub runbook](../runbooks/GITHUB_AGENT.md). Do not claim local build or UI tests from a remote-only agent.
 
@@ -34,6 +34,10 @@ Out of scope now:
 - rewriting kernel simulation semantics, parser, whole-cell models or CellularAutomata -> DefaultNetwork backend migration;
 - moving all GUI directories, redesigning Property Editor, creating a parallel scene/network editor, refactoring plugin target overlap (#492) or rewriting the UI framework;
 - wholesale adoption of PR #436 or student ZIPs; they are review-only reference material.
+
+### Post-extraction execution order (approved 2026-11-16)
+
+The **E0–E5 extraction is complete**; G0–G7 below is a *capability roadmap*, not an instruction to repeat work already delivered. The approved execution order from the [formal contract](GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md) is: **F1** one canonical dependency/eligibility and collision policy (D1,D3–D5,D11); **F2** one new registered animation tool/scene factory (D2,D7,D10); **F3** GUI-thread observation and opaque missing-extension persistence (D8,D9); **F4** bounded remaining migrations (Decide, Queue and subsequent domain extensions), alternative renderers/providers and documentation (D2,D6–D11). The prior G0 audit is limited to current relevant source, test, ownership and persistence evidence. No G4/G5 implementation precedes F2/F3 acceptance. Dynamic loading (D12) remains a separate future project.
 
 ## 3. Preconditions and baseline audit (G0; first execution slice)
 
@@ -135,8 +139,8 @@ The stable C ABI mandated for future core packages does not allow Qt/C++ objects
 
 ## 8. Plan execution and exit conditions
 
-- **Planning stage:** maintainer decision and docs recorded; no source change; `AUTO-GUI-003` not executable yet.
-- **After explicit activation:** start with G0 audit and one minimum G1/G2 vertical slice proving registered static animation insertion. Do not begin queue/resource/bacteria migrations until that contract and persistence strategy are tested.
+- **Approved architecture checkpoint (2026-11-16):** D1–D12 approved, E0–E5 merged; first bounded implementation F1/F2 authorized in principle, pending current-code reinspection, local toolchain/Qt6 tests, and separate PR review. No C++ implementation is claimed by this documentation checkpoint.
+- **Next development activity:** perform bounded G0/F1 dependency/ID source inventory and tests, then a minimum F2 registered-animation vertical slice. Do not begin queue/resource/bacteria migrations until that contract and persistence strategy are tested.
 - **Success:** adding a new optional GUI extension requires no changes to generic GUI host source, it can declare simulation dependencies without owning them, it receives safe GUI-routed simulation updates, and its in-scene animation survives absence/reinstallation and save/reopen with no silent data loss.
 - **Stop/escalate:** an unresolved semantic kernel event question, persistence compatibility ambiguity, ownership/ABI boundary shift, broad target reorganization, or new requirement for actual dynamic loading. Do not assume decisions not recorded in the approved architecture.
 

@@ -19,6 +19,7 @@
 #include <exception>
 #include <utility>
 #include <algorithm>
+#include <memory>
 
 #include <QSignalBlocker>
 #include <QBrush>
@@ -46,6 +47,9 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QAbstractSpinBox>
+#include <QDoubleSpinBox>
+#include <QLocale>
+#include <QTimer>
 #include <QKeyEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -158,12 +162,15 @@ class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
     using CommitCallback = std::function<void(QtProperty*, const QVariant&)>;
     using EditorCreationFilter = std::function<bool(QtProperty*)>;
+    // Returns true for numeric editors that must commit spin-button changes immediately.
+    using NumericEditorConfigurator = std::function<bool(QtProperty*, QAbstractSpinBox*)>;
 
     struct EditorState {
         QtVariantPropertyManager* manager = nullptr;
         QtProperty* property = nullptr;
         QWidget* editor = nullptr;
         QVariant originalValue;
+        QVariant lastCommittedValue;
         bool suppressCommit = false;
     };
 
@@ -176,6 +183,10 @@ public:
 
     void setEditorCreationFilter(EditorCreationFilter filter) {
         _editorCreationFilter = std::move(filter);
+    }
+
+    void setNumericEditorConfigurator(NumericEditorConfigurator configure) {
+        _numericEditorConfigurator = std::move(configure);
     }
 
 protected:
@@ -196,7 +207,24 @@ protected:
             spinBox = editor->findChild<QAbstractSpinBox*>();
         }
         if (spinBox != nullptr) {
+            const bool liveCommit = _numericEditorConfigurator
+                && _numericEditorConfigurator(property, spinBox);
             _registerEditor(spinBox, manager, property, editor);
+            if (liveCommit) {
+                if (auto* doubleEditor = qobject_cast<QDoubleSpinBox*>(spinBox)) {
+                    // Keyboard tracking is disabled by QtDoubleEdit, so typed values commit
+                    // once on interpretation while spin-button clicks commit immediately.
+                    QObject::connect(doubleEditor, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+                        this, [this, callback = _commitCallback, property, spinBox](double value) {
+                            auto state = _editorStates.find(spinBox);
+                            if (state == _editorStates.end() || state.value().suppressCommit) return;
+                            const QVariant numericValue(value);
+                            if (state.value().lastCommittedValue == numericValue) return;
+                            state.value().lastCommittedValue = numericValue;
+                            callback(property, numericValue);
+                        });
+                }
+            }
             if (QLineEdit* spinLineEdit = spinBox->findChild<QLineEdit*>()) {
                 spinLineEdit->installEventFilter(this);
             }
@@ -207,7 +235,13 @@ protected:
                     return;
                 }
                 spinBox->interpretText();
-                callback(property, spinBox->property("value"));
+                const QVariant value = spinBox->property("value");
+                auto state = _editorStates.find(spinBox);
+                if (state != _editorStates.end()) {
+                    if (state.value().lastCommittedValue == value) return;
+                    state.value().lastCommittedValue = value;
+                }
+                callback(property, value);
             });
             return editor;
         }
@@ -273,7 +307,9 @@ private:
             return;
         }
 
-        _editorStates.insert(watched, EditorState{manager, property, editor, manager != nullptr && property != nullptr ? manager->value(property) : QVariant(), false});
+        const QVariant original = manager != nullptr && property != nullptr
+            ? manager->value(property) : QVariant();
+        _editorStates.insert(watched, EditorState{manager, property, editor, original, original, false});
         watched->installEventFilter(this);
         QObject::connect(watched, &QObject::destroyed, this, [this, watched]() {
             _editorStates.remove(watched);
@@ -304,6 +340,7 @@ private:
 
     CommitCallback _commitCallback;
     EditorCreationFilter _editorCreationFilter;
+    NumericEditorConfigurator _numericEditorConfigurator;
     QHash<QObject*, EditorState> _editorStates;
 };
 
@@ -460,6 +497,21 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
         commitFactory->setEditorCreationFilter([this](QtProperty* property) {
             const auto binding = _bindings.find(property);
             return binding == _bindings.end() || !requiresDedicatedEditor(binding.value().descriptor);
+        });
+        commitFactory->setNumericEditorConfigurator([this](QtProperty* property, QAbstractSpinBox* editor) {
+            // Network relation probabilities are canonical decimal values (not locale-formatted text).
+            // In pt_BR, a dot typed into an inherited spin box can be treated as a group separator,
+            // silently turning 0.25 into 25. Reject grouping on this bounded numeric editor.
+            const auto binding = _bindings.constFind(property);
+            if (binding == _bindings.constEnd() || binding->kind != BindingKind::GraphicsVariant
+                || property->propertyName() != QStringLiteral("Probability")) return false;
+            auto* doubleEditor = qobject_cast<QDoubleSpinBox*>(editor);
+            if (doubleEditor == nullptr) return false;
+            QLocale locale = QLocale::c();
+            locale.setNumberOptions(locale.numberOptions() | QLocale::RejectGroupSeparator);
+            doubleEditor->setLocale(locale);
+            doubleEditor->setGroupSeparatorShown(false);
+            return true;
         });
         _variantFactory = commitFactory;
     }
@@ -1820,7 +1872,19 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                 }
                 QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
                     networkOwner, item, propertyName.toStdString(), serialized.toStdString());
-                if (command != nullptr) networkScene->getUndoStack()->push(command);
+                if (command != nullptr) {
+                    // indexChanged synchronously regenerates graphical overlays.
+                    // Pushing here can destroy the selected relation (and its active editor)
+                    // in the middle of the spin-box/line-edit commit callback.
+                    const QPointer<ModelGraphicsScene> guardedScene(networkScene);
+                    auto ownedCommand = std::make_shared<std::unique_ptr<QUndoCommand>>(command);
+                    QTimer::singleShot(0, networkScene, [guardedScene, networkOwner, ownedCommand]() {
+                        if (guardedScene != nullptr
+                            && guardedScene->networkEditorOwner() == networkOwner
+                            && guardedScene->getUndoStack() != nullptr)
+                            guardedScene->getUndoStack()->push(ownedCommand->release());
+                    });
+                }
             };
             switch (descriptor.kind) {
             case GuiNetworkEditorContribution::ElementProperty::Kind::Boolean:
@@ -1833,11 +1897,19 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                     propertyName, QVariant::Int, QString::fromStdString(descriptor.value).toInt(),
                     std::move(setter), false, descriptor.editable));
                 break;
-            case GuiNetworkEditorContribution::ElementProperty::Kind::Double:
-                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Double: {
+                auto* numeric = _createGraphicsVariantProperty(
                     propertyName, QVariant::Double, QString::fromStdString(descriptor.value).toDouble(),
-                    std::move(setter), false, descriptor.editable));
+                    std::move(setter), false, descriptor.editable);
+                if (propertyName == QStringLiteral("Probability")) {
+                    numeric->setAttribute("minimum", 0.0);
+                    numeric->setAttribute("maximum", 1.0);
+                    numeric->setAttribute("decimals", 12);
+                    numeric->setAttribute("singleStep", 0.05);
+                }
+                elementGroup->addSubProperty(numeric);
                 break;
+            }
             case GuiNetworkEditorContribution::ElementProperty::Kind::String:
             case GuiNetworkEditorContribution::ElementProperty::Kind::Enumeration:
                 elementGroup->addSubProperty(_createGraphicsVariantProperty(
@@ -3186,9 +3258,23 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         if (QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
                 networkScene->networkEditorOwner(), binding.owner,
                 binding.descriptor.displayName, newValue)) {
-            networkScene->getUndoStack()->push(command);
+            // A Network property undo command can synchronously rebuild the
+            // Property Editor and invalidate its active Qt editor during this callback.
+            // Commit after the current event; cancel if the owner context changes.
+            const QPointer<ModelGraphicsScene> guardedScene(networkScene);
+            const QPointer<ObjectPropertyBrowser> guardedBrowser(this);
+            ModelDataDefinition* const networkOwner = networkScene->networkEditorOwner();
+            auto commandOwner = std::make_shared<std::unique_ptr<QUndoCommand>>(command);
+            QTimer::singleShot(0, networkScene,
+                [guardedScene, guardedBrowser, networkOwner, commandOwner]() {
+                    if (guardedScene == nullptr || guardedBrowser == nullptr
+                        || guardedScene->networkEditorOwner() != networkOwner
+                        || guardedScene->getUndoStack() == nullptr) return;
+                    guardedScene->getUndoStack()->push(commandOwner->release());
+                    if (guardedBrowser != nullptr)
+                        guardedBrowser->_notifyModelChangeApplied();
+                });
             binding.descriptor.currentValue = newValue;
-            _notifyModelChangeApplied();
             return true;
         }
     }
@@ -3439,8 +3525,22 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         if (QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
                 networkScene->networkEditorOwner(), binding.owner,
                 binding.descriptor.displayName, newValue)) {
-            networkScene->getUndoStack()->push(command);
-            _notifyModelChangeApplied();
+            // A Network property undo command can synchronously rebuild the
+            // Property Editor and invalidate its active Qt editor during this callback.
+            // Commit after the current event; cancel if the owner context changes.
+            const QPointer<ModelGraphicsScene> guardedScene(networkScene);
+            const QPointer<ObjectPropertyBrowser> guardedBrowser(this);
+            ModelDataDefinition* const networkOwner = networkScene->networkEditorOwner();
+            auto commandOwner = std::make_shared<std::unique_ptr<QUndoCommand>>(command);
+            QTimer::singleShot(0, networkScene,
+                [guardedScene, guardedBrowser, networkOwner, commandOwner]() {
+                    if (guardedScene == nullptr || guardedBrowser == nullptr
+                        || guardedScene->networkEditorOwner() != networkOwner
+                        || guardedScene->getUndoStack() == nullptr) return;
+                    guardedScene->getUndoStack()->push(commandOwner->release());
+                    if (guardedBrowser != nullptr)
+                        guardedBrowser->_notifyModelChangeApplied();
+                });
             return;
         }
     }

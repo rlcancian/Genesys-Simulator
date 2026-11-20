@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 class Sampler_if;
 
@@ -76,6 +77,10 @@ public:
 	void setCurrentState(FSMState* state);
 	void setConflictPolicy(ConflictPolicy policy);
 	ConflictPolicy getConflictPolicy() const;
+    void setMaxImmediateTransitionsPerActivation(unsigned int maximum);
+    unsigned int getMaxImmediateTransitionsPerActivation() const;
+    const std::string& getLastRefinementError() const;
+    bool postfireRefinement() override;
 	static std::string convertConflictPolicyToString(ConflictPolicy policy);
 	static ConflictPolicy convertStringToConflictPolicy(const std::string& policy);
 
@@ -101,6 +106,10 @@ private:
 	EFSMTransition* _lastTransition = nullptr;
 	ConflictPolicy _conflictPolicy = ConflictPolicy::DETERMINISTIC_PRIORITY;
 	Sampler_if* _sampler = nullptr;
+    unsigned int _maxImmediateTransitionsPerActivation = 64;
+    bool _stateJustEntered = true;
+    std::unordered_set<DefaultNetwork*> _initializedRefinements;
+    std::string _lastRefinementError;
 };
 
 #endif /* EFSMNETWORK_H */

@@ -2,6 +2,7 @@
 #define GUIEXTENSIONCONTRACTS_H
 
 #include <functional>
+#include <memory>
 #include <any>
 #include <map>
 #include <string>
@@ -36,6 +37,21 @@ namespace Ui {
 class MainWindow;
 }
 
+// Declarative GUI-only eligibility metadata. Legacy requiredModelPlugins() remains
+// an ALL/AND group; these new groups are opt-in and do not own model plugins.
+enum class GuiExtensionDependencyKind { ModelPlugin, GuiExtension, SystemCapability };
+enum class GuiExtensionDependencyMode { All, Any };
+struct GuiExtensionDependencyGroup {
+    GuiExtensionDependencyKind kind = GuiExtensionDependencyKind::ModelPlugin;
+    GuiExtensionDependencyMode mode = GuiExtensionDependencyMode::All;
+    std::vector<std::string> ids;
+    bool required = true;
+    // Optional minimum numeric dotted version (e.g. 1.2.3), common to the group.
+    // Unknown versions do not satisfy an explicitly versioned requirement.
+    std::string minimumVersion;
+};
+using GuiExtensionDependencyGroups = std::vector<GuiExtensionDependencyGroup>;
+
 struct GuiExtensionRuntimeContext {
 	Simulator* simulator = nullptr;
 	QMainWindow* mainWindow = nullptr;
@@ -54,6 +70,7 @@ struct GuiActionContribution {
 	std::function<bool(const GuiExtensionRuntimeContext&)> isVisible;
 	std::function<bool(const GuiExtensionRuntimeContext&)> isEnabled;
 	std::function<void(const GuiExtensionRuntimeContext&)> trigger;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiDockContribution {
@@ -62,6 +79,7 @@ struct GuiDockContribution {
 	std::string areaHint;
 	std::function<bool(const GuiExtensionRuntimeContext&)> isVisible;
 	std::function<QWidget*(const GuiExtensionRuntimeContext&)> createWidget;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiWindowContribution {
@@ -70,6 +88,7 @@ struct GuiWindowContribution {
 	std::string text;
 	std::function<bool(const GuiExtensionRuntimeContext&)> isVisible;
 	std::function<void(const GuiExtensionRuntimeContext&)> open;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 // Formalism GUI extensions can add context-specific actions without teaching the
@@ -78,6 +97,7 @@ struct GuiContextMenuContribution {
 	std::string id;
 	std::function<bool(const GuiExtensionRuntimeContext&, QGraphicsItem*)> isVisible;
 	std::function<void(QMenu*, const GuiExtensionRuntimeContext&, QGraphicsItem*)> populate;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiDiagramProjectionContribution {
@@ -89,6 +109,7 @@ struct GuiDiagramProjectionContribution {
 	std::function<void(Simulator*, ModelDataDefinition*, ModelGraphicsScene*, const std::any&)> restoreLayout;
 	std::function<QStringList(Simulator*, const GuiDiagramLayouts&)> serializeLayouts;
 	std::function<GuiDiagramLayouts(Model*, const QStringList&)> parseLayouts;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiNetworkEditorContribution {
@@ -114,6 +135,7 @@ struct GuiNetworkEditorContribution {
 	std::function<bool(ModelDataDefinition*, const std::string&, bool)> acceptsDrop;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionDropped;
 	std::function<void(ModelDataDefinition*, ModelDataDefinition*)> onDataDefinitionRemoved;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 // Domain-specific reconciliation after the generic Property Editor changes a list.
@@ -122,6 +144,7 @@ struct GuiPropertyListContribution {
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<void(ModelDataDefinition*, ModelGraphicsScene*)> reconcile;
 	std::function<bool(ModelDataDefinition*, ModelGraphicsScene*, int, int)> reconcileMove;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiEditingContextContribution {
@@ -130,6 +153,7 @@ struct GuiEditingContextContribution {
 	std::function<ModelDataDefinition*(ModelDataDefinition*)> resolveOwner;
 	std::function<bool(ModelDataDefinition*)> isNetwork;
 	std::function<bool(Model*, ModelDataDefinition*)> canOpen;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiModelReferenceContribution {
@@ -143,6 +167,7 @@ struct GuiModelReferenceContribution {
 		referenceChanged;
 	std::function<void(ModelDataDefinition*, const std::string&, const std::string&, const std::string&,
 		ModelGraphicsScene*, ObjectPropertyBrowser*)> propertyChanged;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiComponentVisualizationContribution {
@@ -151,16 +176,37 @@ struct GuiComponentVisualizationContribution {
 	std::function<void(GraphicalModelComponent*)> configure;
 	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*, bool)> animateArrival;
 	std::function<void(ModelGraphicsScene*, GraphicalModelComponent*)> animateDeparture;
+	GuiExtensionDependencyGroups eligibility;
 };
 
 struct GuiDataDefinitionRenderingContribution {
 	std::string id;
 	std::function<bool(ModelDataDefinition*)> supports;
 	std::function<void(ModelDataDefinition*, GraphicalModelItemRenderContext*)> configure;
+	GuiExtensionDependencyGroups eligibility;
+};
+
+// F2: a GUI extension supplies a real scene item without extending the
+// generic scene's domain-specific drawing-mode switch. The factory owns its
+// result until the GUI host successfully hands it to the scene/undo stack.
+// Persistence and simulation event binding are separate F3 contracts.
+struct GuiAnimationToolContribution {
+    std::string id;
+    std::string text;
+    std::string statusTip;
+    std::string menuPath = "View/Animate";
+    std::string toolBarId;  // Optional existing QToolBar objectName or title.
+    std::function<bool(const GuiExtensionRuntimeContext&)> isEnabled;
+    std::function<std::unique_ptr<QGraphicsItem>(const GuiExtensionRuntimeContext&)> createItem;
+    GuiExtensionDependencyGroups eligibility;
 };
 
 class GuiExtensionRegistry {
 public:
+	void addAnimationTool(GuiAnimationToolContribution contribution) {
+        _animationTools.push_back(std::move(contribution));
+    }
+
 	void addAction(GuiActionContribution contribution) {
 		_actions.push_back(std::move(contribution));
 	}
@@ -204,6 +250,10 @@ public:
 	void addDataDefinitionRendering(GuiDataDefinitionRenderingContribution contribution) {
 		_dataDefinitionRenderings.push_back(std::move(contribution));
 	}
+
+	const std::vector<GuiAnimationToolContribution>& animationTools() const {
+        return _animationTools;
+    }
 
 	const std::vector<GuiActionContribution>& actions() const {
 		return _actions;
@@ -249,8 +299,32 @@ public:
 		return _dataDefinitionRenderings;
 	}
 
+    // Copies only contribution categories whose local eligibility is satisfied.
+    // Used by both the GUI manager and the static catalog to avoid policy drift.
+    void appendEligibleFrom(const GuiExtensionRegistry& other,
+                            const std::function<bool(const GuiExtensionDependencyGroups&)>& eligible) {
+        const auto append = [&eligible](auto& destination, const auto& source) {
+            for (const auto& item : source) {
+                if (!eligible || eligible(item.eligibility)) destination.push_back(item);
+            }
+        };
+        append(_actions, other._actions);
+        append(_animationTools, other._animationTools);
+        append(_docks, other._docks);
+        append(_windows, other._windows);
+        append(_contextMenus, other._contextMenus);
+        append(_diagramProjections, other._diagramProjections);
+        append(_networkEditors, other._networkEditors);
+        append(_propertyLists, other._propertyLists);
+        append(_editingContexts, other._editingContexts);
+        append(_modelReferences, other._modelReferences);
+        append(_componentVisualizations, other._componentVisualizations);
+        append(_dataDefinitionRenderings, other._dataDefinitionRenderings);
+    }
+
 	void clear() {
 		_actions.clear();
+        _animationTools.clear();
 		_docks.clear();
 		_windows.clear();
 		_contextMenus.clear();
@@ -265,6 +339,7 @@ public:
 
 private:
 	std::vector<GuiActionContribution> _actions;
+    std::vector<GuiAnimationToolContribution> _animationTools;
 	std::vector<GuiDockContribution> _docks;
 	std::vector<GuiWindowContribution> _windows;
 	std::vector<GuiContextMenuContribution> _contextMenus;
@@ -285,6 +360,8 @@ public:
 	virtual std::string displayName() const = 0;
 	virtual std::string version() const = 0;
 	virtual std::vector<std::string> requiredModelPlugins() const = 0;
+	// Non-pure for compatibility with all existing GUI extension implementations.
+	virtual GuiExtensionDependencyGroups dependencyGroups() const { return {}; }
 	virtual void registerContributions(GuiExtensionRegistry* registry) const = 0;
 };
 

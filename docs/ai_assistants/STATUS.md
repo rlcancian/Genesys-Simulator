@@ -18,6 +18,15 @@ Use it for current branch/checkpoint state, validated baselines, blockers and ne
 
 ## 2. Repository state
 
+- **Branch consolidation checkpoint (2026-11-20):** a local integration
+  worktree based on `82f57c203` cleanly combined the Modal/Network GUI branch
+  (#591), GUI extension dependency resolution (F1), the descendant animation
+  tool slice (F2), and the formal architecture review (#587). Consolidated
+  local validation passed 2329/2329 unit tests, 3/3 smoke tests and the
+  `gui-app` build. This checkpoint is not a remote merge yet; conflicting
+  Read, ContinuousModels, packaging and historical branches remain listed in
+  [`branch consolidation evidence`](history/evidence/2026/11/2026-11-20_branch_consolidation.md).
+
 - Active integration branch: `WorkInProgress`.
 - **Set Queue Property Editor recovery (2026-11-19):** a new MainWindow regression reproduced the maintainer's report: removing one Queue from a two-member Set left the Property Editor empty for subsequent component selections. The cause was a canceled deferred rebuild retaining `_pendingRebuild=true`, compounded by inspector tree refresh clearing a still-valid Set selection. The browser now clears stale rebuild state and delivers the committed edit notification; the inspector preserves the selected DataDefinition by identity when it remains in the current model. The removed Queue remains registered. Focused Qt 28/28, focused ASan/UBSan 2/2, full unit 2,203 active, GUI build and documentation governance passed locally. See [evidence](history/evidence/2026/11/2026-11-19_gui_set_queue_selection_recovery.md).
 - **GUI classroom stabilization (2026-11-19, direct `WorkInProgress` work):** focused Qt widget regressions exposed and fixed a deferred Property Editor callback SIGSEGV, save failures that replaced the previous `.gen` and cleared dirty state, stale hidden-text `.gen` export, failed-open Undo loss, and dirty-state/selection errors when switching models. Ten consecutive property edits produced no temporary model serialization by Linux inotify; three saved/reloaded classroom models each executed ten entities. Focused Qt 13/13, ASan/UBSan 2/2, unit 2,202 active, kernel 2,213 active, smoke 3/3, GUI build, Xvfb startup, manual PDF and documentation governance passed locally. Full human desktop drag/drop and deletion of a referenced Resource were not exercised; classroom release readiness remains unestablished. See [evidence](history/evidence/2026/11/2026-11-19_gui_classroom_stabilization.md).

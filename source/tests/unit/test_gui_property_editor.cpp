@@ -2517,6 +2517,7 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleCont
 
     BioNetwork* network = manager->newInstance<BioNetwork>(model, "BioNetwork_PropertyEditor");
     ASSERT_NE(network, nullptr);
+    network->setStepSize(0.4);
     BacteriaSignalGrid* grid =
         manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_PropertyEditor");
     ASSERT_NE(grid, nullptr);
@@ -2538,8 +2539,8 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleCont
             return getter();
         }
         commitTextWithEnter(spinBox->findChild<QLineEdit*>(), localizedText);
-        EXPECT_EQ(modelChangedCount, countBefore + 1);
         drainGuiEvents();
+        EXPECT_EQ(modelChangedCount, countBefore + 1);
         return getter();
     };
 
@@ -2561,8 +2562,8 @@ TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleCont
             return getter();
         }
         commitTextWithEnter(spinBox->findChild<QLineEdit*>(), localizedText);
-        EXPECT_EQ(modelChangedCount, countBefore + 1);
         drainGuiEvents();
+        EXPECT_EQ(modelChangedCount, countBefore + 1);
         return getter();
     };
 

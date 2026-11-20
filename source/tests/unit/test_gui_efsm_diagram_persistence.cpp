@@ -8,6 +8,8 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/EFSMTransitionGraphicsItem.h"
+#include "graphicals/NetworkBendGraphicsItem.h"
+#include "services/NetworkBendDiagramCodec.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "actions/EFSMTransitionUndoCommand.h"
@@ -79,9 +81,16 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QGraphicsRectItem>
 #include <QGraphicsPathItem>
+#include <QGraphicsSimpleTextItem>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsPolygonItem>
 #include <QMainWindow>
 #include <QMenu>
 #include <QSpinBox>
+#include <QTableWidget>
+#include <QDoubleSpinBox>
+#include <QLocale>
+#include <QKeyEvent>
 
 #include <algorithm>
 #include <iterator>
@@ -284,11 +293,18 @@ TEST(EFSMNetworkPropertyEditor, SelectedTransitionExposesMathematicalPropertiesA
                                  QStringLiteral("Destination State"), QStringLiteral("Guard Expression"),
                                  QStringLiteral("Output Expression"), QStringLiteral("Input Event"),
                                  QStringLiteral("Priority"), QStringLiteral("Trigger Event"),
-                                 QStringLiteral("Probability Expression")}) {
+                                 QStringLiteral("Probability Expression"),
+                                 QStringLiteral("Event / Probability Semantics"),
+                                 QStringLiteral("Output Actions"), QStringLiteral("Set Actions"),
+                                 QStringLiteral("Default"), QStringLiteral("Nondeterministic"),
+                                 QStringLiteral("Immediate"), QStringLiteral("Preemptive"),
+                                 QStringLiteral("History"), QStringLiteral("Error"),
+                                 QStringLiteral("Termination")}) {
         ASSERT_NE(findProperty(name), nullptr) << name.toStdString();
     }
     EXPECT_FALSE(findProperty(QStringLiteral("Source State"))->property()->isEnabled());
     EXPECT_FALSE(findProperty(QStringLiteral("Destination State"))->property()->isEnabled());
+    EXPECT_FALSE(findProperty(QStringLiteral("Event / Probability Semantics"))->property()->isEnabled());
 
     QtBrowserItem* guard = findProperty(QStringLiteral("Guard Expression"));
     browser.setCurrentItem(guard);
@@ -611,6 +627,139 @@ TEST(GuiExtensionManager, ProcessSubmodelStillAcceptsProcessComponentDrops) {
     EXPECT_EQ(scene.getGraphicalModelComponents()->size(), 1);
 }
 
+TEST(NetworkBendDiagram, OwnedRouteLabelsTrackLiveBendGeometry) {
+    NetworkBendGraphicsItem edge(QStringLiteral("test.routing"), QStringLiteral("edge-0"));
+    edge.setGeometry(QPointF(20, 30), QPointF(250, 30), 0, 1, false, true);
+    edge.setRouteLabel(QStringLiteral("p=0.25"), QColor(35, 45, 60));
+    ASSERT_NE(edge.routeLabel(), nullptr);
+    EXPECT_EQ(edge.routeLabel()->parentItem(), &edge);
+    EXPECT_EQ(edge.routeLabel()->text(), QStringLiteral("p=0.25"));
+    const QPointF initial = edge.routeLabel()->pos();
+    EXPECT_EQ(initial, edge.handlePosition() + QPointF(5, -14));
+
+    edge.setManualBendPoint(QPointF(135, -95));
+    EXPECT_TRUE(edge.hasManualBendPoint());
+    EXPECT_NE(edge.routeLabel()->pos(), initial);
+    EXPECT_EQ(edge.routeLabel()->pos(), edge.handlePosition() + QPointF(5, -14));
+    edge.clearManualBendPoint();
+    EXPECT_FALSE(edge.hasManualBendPoint());
+    EXPECT_EQ(edge.routeLabel()->pos(), initial);
+}
+
+TEST(NetworkBendDiagram, GraphMarkovAndCpnBendsRoundTripThroughRegisteredCodecs) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const auto verify = [&](ModelDataDefinition* network, const QString& extension,
+                            ModelGraphicsScene* scene) {
+        const auto& projections = GuiExtensionPluginCatalog::diagramProjectionContributions();
+        auto found = std::find_if(projections.begin(), projections.end(),
+            [&](const GuiDiagramProjectionContribution& projection) {
+                return QString::fromStdString(projection.id) == extension;
+            });
+        ASSERT_NE(found, projections.end());
+        ASSERT_TRUE(static_cast<bool>(found->captureLayout));
+        ASSERT_TRUE(static_cast<bool>(found->restoreLayout));
+        ASSERT_TRUE(static_cast<bool>(found->serializeLayouts));
+        ASSERT_TRUE(static_cast<bool>(found->parseLayouts));
+
+        GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, scene);
+        NetworkBendGraphicsItem* bendable = nullptr;
+        for (auto* item : scene->extensionOverlayItems(extension)) {
+            bendable = dynamic_cast<NetworkBendGraphicsItem*>(item);
+            if (bendable != nullptr) break;
+        }
+        ASSERT_NE(bendable, nullptr);
+        bendable->setManualBendPoint(QPointF(120.25, -64.5));
+        const QString routeKey = bendable->routeKey();
+        ASSERT_FALSE(routeKey.isEmpty());
+
+        GuiDiagramLayouts captured;
+        captured.emplace(static_cast<unsigned long>(network->getId()),
+                         found->captureLayout(&simulator, network, scene));
+        const QStringList records = found->serializeLayouts(&simulator, captured);
+        ASSERT_EQ(records.size(), 1);
+        EXPECT_TRUE(records.front().contains(QStringLiteral("NetworkBend")));
+        const GuiDiagramLayouts loaded = found->parseLayouts(model, records);
+        ASSERT_EQ(loaded.size(), 1);
+
+        // Destroy all current graphical relation objects, then restore from
+        // serialized data. Kernel relation objects remain unchanged.
+        scene->clearExtensionOverlayItems(extension);
+        GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, scene);
+        auto loadedLayout = loaded.find(static_cast<unsigned long>(network->getId()));
+        ASSERT_NE(loadedLayout, loaded.end());
+        found->restoreLayout(&simulator, network, scene, loadedLayout->second);
+
+        NetworkBendGraphicsItem* restored = nullptr;
+        for (auto* item : scene->extensionOverlayItems(extension)) {
+            auto* candidate = dynamic_cast<NetworkBendGraphicsItem*>(item);
+            if (candidate != nullptr && candidate->routeKey() == routeKey) {
+                restored = candidate; break;
+            }
+        }
+        ASSERT_NE(restored, nullptr);
+        EXPECT_TRUE(restored->hasManualBendPoint());
+        EXPECT_EQ(restored->manualBendPoint(), QPointF(120.25, -64.5));
+    };
+
+    {
+        DirectedGraphNetwork graph(model, "GraphBendCodec");
+        auto* a = new GraphNode(model, "GraphA");
+        auto* z = new GraphNode(model, "GraphZ");
+        ASSERT_TRUE(graph.addNode(a));
+        ASSERT_TRUE(graph.addNode(z));
+        ASSERT_TRUE(graph.addEdge(new GraphEdge(model, a, z, "GraphRelation")));
+        ExposedModelGraphicsScene scene;
+        scene.setSimulator(&simulator);
+        scene.setNetworkEditorOwner(&graph);
+        auto* plugin = simulator.getPluginManager()->find(Util::TypeOf<GraphNode>());
+        ASSERT_NE(plugin, nullptr);
+        scene.addGraphicalModelDataDefinition(plugin, a, QPointF(10, 10));
+        scene.addGraphicalModelDataDefinition(plugin, z, QPointF(260, 40));
+        verify(&graph, QStringLiteral("modal.graph.gui"), &scene);
+    }
+    {
+        MarkovChainNetwork markov(model, "MarkovBendCodec");
+        auto* a = new MarkovState(model, "MarkovA");
+        auto* z = new MarkovState(model, "MarkovZ");
+        markov.addState(a);
+        markov.addState(z);
+        markov.setInitialState(a);
+        markov.addTransition(new MarkovChainNetwork::MarkovTransition(a, z, 1.0, "MarkovRelation"));
+        ExposedModelGraphicsScene scene;
+        scene.setSimulator(&simulator);
+        scene.setNetworkEditorOwner(&markov);
+        auto* plugin = simulator.getPluginManager()->find(Util::TypeOf<MarkovState>());
+        ASSERT_NE(plugin, nullptr);
+        scene.addGraphicalModelDataDefinition(plugin, a, QPointF(10, 10));
+        scene.addGraphicalModelDataDefinition(plugin, z, QPointF(260, 40));
+        verify(&markov, QStringLiteral("modal.markov.gui"), &scene);
+    }
+    {
+        ColoredPetriNetNetwork cpn(model, "CpnBendCodec");
+        auto* place = new PetriPlace(model, "CpnP");
+        auto* transition = new CPNTransition(model, "CpnT");
+        cpn.addPlace(place);
+        cpn.addTransition(transition);
+        auto* arc = new CPNArc(model, place, transition,
+                               CPNArc::Direction::PlaceToTransition, "CpnRelation");
+        ASSERT_TRUE(cpn.addArc(arc));
+        ExposedModelGraphicsScene scene;
+        scene.setSimulator(&simulator);
+        scene.setNetworkEditorOwner(&cpn);
+        auto* placePlugin = simulator.getPluginManager()->find(Util::TypeOf<PetriPlace>());
+        auto* transitionPlugin = simulator.getPluginManager()->find(Util::TypeOf<CPNTransition>());
+        ASSERT_NE(placePlugin, nullptr);
+        ASSERT_NE(transitionPlugin, nullptr);
+        scene.addGraphicalModelDataDefinition(placePlugin, place, QPointF(10, 10));
+        scene.addGraphicalModelDataDefinition(transitionPlugin, transition, QPointF(260, 40));
+        verify(&cpn, QStringLiteral("modal.cpn.gui"), &scene);
+    }
+}
+
 TEST(GraphNetworkGuiExtension, ProjectsParallelAndSelfLoopEdgesFromTheNetworkTopology) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -682,6 +831,9 @@ TEST(GraphNetworkGuiExtension, RendersArrowsOnlyForDirectedGraphFamilies) {
     ASSERT_NE(undirectedPath, nullptr);
     const int undirectedElementCount = undirectedPath->path().elementCount();
     EXPECT_EQ(undirectedElementCount, 2);
+    auto* undirectedRoute = dynamic_cast<NetworkBendGraphicsItem*>(undirectedPath);
+    ASSERT_NE(undirectedRoute, nullptr);
+    EXPECT_FALSE(undirectedRoute->hasArrowHead());
 
     scene.clearExtensionOverlayItems(QStringLiteral("modal.graph.gui"));
     scene.clear();
@@ -693,7 +845,11 @@ TEST(GraphNetworkGuiExtension, RendersArrowsOnlyForDirectedGraphFamilies) {
     ASSERT_EQ(directedItems.size(), 1);
     auto* directedPath = dynamic_cast<QGraphicsPathItem*>(directedItems.front());
     ASSERT_NE(directedPath, nullptr);
-    EXPECT_GT(directedPath->path().elementCount(), undirectedElementCount);
+    auto* directedRoute = dynamic_cast<NetworkBendGraphicsItem*>(directedPath);
+    ASSERT_NE(directedRoute, nullptr);
+    EXPECT_TRUE(directedRoute->hasArrowHead());
+    // Arrowheads are now painted, not part of the geometric relation path.
+    EXPECT_EQ(directedPath->path().elementCount(), undirectedElementCount);
 }
 
 TEST(GraphNetworkGuiExtension, RemovesNodeAndIncidentEdgesWithUndoRedoAndStableGeometry) {
@@ -1037,6 +1193,154 @@ TEST(ColoredPetriNetGuiExtension, ValidationActionReportsInvalidGuardExpressions
     validate.trigger(context);
 }
 
+TEST(ColoredPetriNetGuiExtension, PreviewExplainsTokenDeficitsWithoutEvaluatingGuards) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ColoredPetriNetNetwork network(model, "PreviewSafety");
+    auto* place = new PetriPlace(model, "Input");
+    auto* transition = new CPNTransition(model, "Guarded");
+    network.addPlace(place);
+    network.addTransition(transition);
+    network.setInitialTokens(place, "red", 3);
+    auto* arc = new CPNArc(model, place, transition, CPNArc::Direction::PlaceToTransition, "InputArc");
+    arc->setInscription("red", 4);
+    ASSERT_TRUE(network.addArc(arc));
+    // A GUI projection must NOT evaluate this intentionally invalid parser expression.
+    transition->setGuardExpression("(");
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    ASSERT_NO_THROW(GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene));
+    auto* transitionItem = scene.findGraphicalModelDataDefinition(transition);
+    ASSERT_NE(transitionItem, nullptr);
+    const auto shortage = GuiExtensionPluginCatalog::networkElementProperties(&network, transitionItem);
+    const auto findReadiness = [](const auto& properties) -> QString {
+        for (const auto& property : properties)
+            if (property.name == "Firing Readiness")
+                return QString::fromStdString(property.value);
+        return {};
+    };
+    EXPECT_TRUE(findReadiness(shortage).contains(QStringLiteral("requires 4 tokens")));
+
+    network.setInitialTokens(place, "red", 4);
+    ASSERT_NO_THROW(GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene));
+    const auto sufficient = GuiExtensionPluginCatalog::networkElementProperties(&network, transitionItem);
+    EXPECT_TRUE(findReadiness(sufficient).contains(QStringLiteral("guard NOT evaluated")));
+
+    // Menu enablement is also a non-executing preview; actual guard evaluation
+    // is deferred until the explicit Fire action or simulation activation.
+    QUndoStack undo;
+    scene.setUndoStack(&undo);
+    transitionItem->setSelected(true);
+    GuiActionContribution fire;
+    for (const GuiExtensionPlugin* extension : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (extension == nullptr || extension->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        extension->registerContributions(&registry);
+        for (const auto& action : registry.actions())
+            if (action.id == "modal.cpn.fire-transition") fire = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(fire.isEnabled));
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    EXPECT_NO_THROW(EXPECT_TRUE(fire.isEnabled(context)));
+}
+
+TEST(ColoredPetriNetGuiExtension, StructuredMarkingEditorAndResetAreUndoable) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ColoredPetriNetNetwork network(model, "EditableMarking");
+    auto* place = new PetriPlace(model, "Input");
+    network.addPlace(place);
+    network.setInitialTokens(place, "red", 3);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    QUndoStack stack;
+    scene.setUndoStack(&stack);
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<PetriPlace>());
+    ASSERT_NE(plugin, nullptr);
+    auto* graphical = scene.addGraphicalModelDataDefinition(plugin, place, QPointF(20, 20));
+    ASSERT_NE(graphical, nullptr);
+    graphical->setSelected(true);
+
+    GuiActionContribution editAction;
+    GuiActionContribution editCurrentAction;
+    GuiActionContribution resetAction;
+    for (const GuiExtensionPlugin* extension : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (extension == nullptr || extension->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        extension->registerContributions(&registry);
+        for (const auto& action : registry.actions()) {
+            if (action.id == "modal.cpn.edit-initial-marking") editAction = action;
+            if (action.id == "modal.cpn.edit-current-marking") editCurrentAction = action;
+            if (action.id == "modal.cpn.reset-place-marking") resetAction = action;
+        }
+    }
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(static_cast<bool>(editAction.trigger));
+    ASSERT_TRUE(static_cast<bool>(editCurrentAction.trigger));
+    ASSERT_TRUE(static_cast<bool>(resetAction.trigger));
+    ASSERT_TRUE(editAction.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* table = dialog->findChild<QTableWidget*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        if (table == nullptr || buttons == nullptr || table->rowCount() != 1) {
+            dialog->reject();
+            return;
+        }
+        table->item(0, 1)->setText(QStringLiteral("5"));
+        buttons->button(QDialogButtonBox::Ok)->click();
+    });
+    editAction.trigger(context);
+    EXPECT_EQ(network.getInitialTokens(place, "red"), 5u);
+    EXPECT_EQ(place->getTokens("red"), 3u);
+    ASSERT_EQ(stack.count(), 1);
+    stack.undo();
+    EXPECT_EQ(network.getInitialTokens(place, "red"), 3u);
+    stack.redo();
+    EXPECT_EQ(network.getInitialTokens(place, "red"), 5u);
+
+    resetAction.trigger(context);
+    EXPECT_EQ(place->getTokens("red"), 5u);
+    stack.undo();
+    EXPECT_EQ(place->getTokens("red"), 3u);
+
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* table = dialog->findChild<QTableWidget*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        if (table == nullptr || buttons == nullptr || table->rowCount() != 1) {
+            dialog->reject(); return;
+        }
+        table->item(0, 1)->setText(QStringLiteral("8"));
+        buttons->button(QDialogButtonBox::Ok)->click();
+    });
+    ASSERT_TRUE(editCurrentAction.isEnabled(context));
+    editCurrentAction.trigger(context);
+    EXPECT_EQ(place->getTokens("red"), 8u);
+    EXPECT_EQ(network.getInitialTokens(place, "red"), 5u);
+    stack.undo();
+    EXPECT_EQ(place->getTokens("red"), 3u);
+    stack.redo();
+    EXPECT_EQ(place->getTokens("red"), 8u);
+}
+
 TEST(ColoredPetriNetGuiExtension, GenericGuiPersistenceRestoresNodeGeometryAndTopology) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -1103,6 +1407,215 @@ TEST(ColoredPetriNetGuiExtension, GenericGuiPersistenceRestoresNodeGeometryAndTo
     EXPECT_EQ(restoredOutput->pos(), QPointF(430.125, 80.5));
 }
 
+TEST(MarkovChainNetworkGuiExtension, DecimalProbabilityEditorPreservesFractionUnderBrazilianLocale) {
+    struct RestoreLocale {
+        QLocale original = QLocale();
+        ~RestoreLocale() { QLocale::setDefault(original); }
+    } restore;
+    QLocale::setDefault(QLocale(QLocale::Portuguese, QLocale::Brazil));
+
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "LocaleProbabilityNetwork");
+    auto* source = new MarkovState(model, "A");
+    auto* destination = new MarkovState(model, "B");
+    network.addState(source);
+    network.addState(destination);
+    network.setInitialState(source);
+    auto* transition = new MarkovChainNetwork::MarkovTransition(source, destination, 1.0, "AB");
+    network.addTransition(transition);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    QUndoStack undo;
+    scene.setUndoStack(&undo);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+
+    QGraphicsItem* edge = nullptr;
+    for (auto* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui"))) {
+        if (item->data(1).isValid()) { edge = item; break; }
+    }
+    ASSERT_NE(edge, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.setModelScene(&scene);
+    browser.setActiveGraphicsItem(edge);
+    QApplication::processEvents();
+    QtBrowserItem* probability = nullptr;
+    QList<QtBrowserItem*> pending = browser.topLevelItems();
+    while (!pending.isEmpty()) {
+        auto* item = pending.takeFirst();
+        if (item->property()->propertyName() == QStringLiteral("Probability")) {
+            probability = item;
+            break;
+        }
+        pending.append(item->children());
+    }
+    ASSERT_NE(probability, nullptr);
+    browser.setCurrentItem(probability);
+    browser.editItem(probability);
+    QApplication::processEvents();
+    auto* spin = browser.findChild<QDoubleSpinBox*>();
+    ASSERT_NE(spin, nullptr);
+    EXPECT_EQ(spin->locale().decimalPoint(), QChar('.'));
+    EXPECT_DOUBLE_EQ(spin->minimum(), 0.0);
+    EXPECT_DOUBLE_EQ(spin->maximum(), 1.0);
+    EXPECT_GE(spin->decimals(), 9);
+
+    QLineEdit* line = spin->findChild<QLineEdit*>();
+    ASSERT_NE(line, nullptr);
+    spin->setFocus();
+    line->setText(QStringLiteral("0.25"));
+    QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(line, &enter);
+    QApplication::processEvents();
+    EXPECT_NEAR(transition->getProbability(), 0.25, 1e-12);
+    EXPECT_GE(undo.count(), 1);
+}
+
+TEST(MarkovChainNetworkGuiExtension, SpinButtonCommitsProbabilityWithoutLosingFraction) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "SpinButtonNetwork");
+    auto* source = new MarkovState(model, "Start");
+    auto* destination = new MarkovState(model, "Destination");
+    network.addState(source);
+    network.addState(destination);
+    network.setInitialState(source);
+    auto* transition = new MarkovChainNetwork::MarkovTransition(source, destination, 1.0, "Go");
+    network.addTransition(transition);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    QUndoStack undo;
+    scene.setUndoStack(&undo);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+
+    QGraphicsItem* edge = nullptr;
+    for (auto* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")))
+        if (item->data(1).isValid()) { edge = item; break; }
+    ASSERT_NE(edge, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.setModelScene(&scene);
+    browser.setActiveGraphicsItem(edge);
+    QApplication::processEvents();
+    QList<QtBrowserItem*> pending = browser.topLevelItems();
+    QtBrowserItem* probability = nullptr;
+    while (!pending.isEmpty()) {
+        auto* item = pending.takeFirst();
+        if (item->property()->propertyName() == QStringLiteral("Probability")) {
+            probability = item; break;
+        }
+        pending.append(item->children());
+    }
+    ASSERT_NE(probability, nullptr);
+    browser.setCurrentItem(probability);
+    browser.editItem(probability);
+    QApplication::processEvents();
+    auto* spin = browser.findChild<QDoubleSpinBox*>();
+    ASSERT_NE(spin, nullptr);
+    ASSERT_DOUBLE_EQ(spin->value(), 1.0);
+    spin->stepDown();
+    // This also runs the deferred undo command, which recreates the edge overlay.
+    QApplication::processEvents();
+    EXPECT_NEAR(transition->getProbability(), 0.95, 1e-12);
+    EXPECT_EQ(undo.count(), 1);
+    undo.undo();
+    QApplication::processEvents();
+    EXPECT_NEAR(transition->getProbability(), 1.0, 1e-12);
+}
+
+TEST(MarkovChainNetworkGuiExtension, ProbabilityPropertyPreservesSubMicroPrecision) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "PreciseProbability");
+    auto* a = new MarkovState(model, "A");
+    auto* b = new MarkovState(model, "B");
+    network.addState(a);
+    network.addState(b);
+    network.setInitialState(a);
+    constexpr double expected = 0.123456789012;
+    auto* transition = new MarkovChainNetwork::MarkovTransition(a, b, expected, "AB");
+    network.addTransition(transition);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+
+    QGraphicsItem* edge = nullptr;
+    for (auto* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.gui"))) {
+        if (item->data(1).isValid()) { edge = item; break; }
+    }
+    ASSERT_NE(edge, nullptr);
+    const auto properties = GuiExtensionPluginCatalog::networkElementProperties(&network, edge);
+    auto probability = std::find_if(properties.begin(), properties.end(), [](const auto& item) {
+        return item.name == "Probability";
+    });
+    ASSERT_NE(probability, properties.end());
+    bool ok = false;
+    const double value = QString::fromStdString(probability->value).toDouble(&ok);
+    ASSERT_TRUE(ok);
+    EXPECT_NEAR(value, expected, 1e-14);
+}
+
+TEST(MarkovChainNetworkGuiExtension, ProbabilityRowSumsFollowKernelEdits) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MarkovChainNetwork network(model, "RowFeedback");
+    auto* a = new MarkovState(model, "A");
+    auto* b = new MarkovState(model, "B");
+    network.addState(a);
+    network.addState(b);
+    network.setInitialState(a);
+    auto* aa = new MarkovChainNetwork::MarkovTransition(a, a, 0.25, "AA");
+    network.addTransition(aa);
+    network.addTransition(new MarkovChainNetwork::MarkovTransition(a, b, 0.75, "AB"));
+    network.addTransition(new MarkovChainNetwork::MarkovTransition(b, b, 1.0, "BB"));
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setNetworkEditorOwner(&network);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    auto rows = scene.extensionOverlayItems(QStringLiteral("modal.markov.rowsums"));
+    ASSERT_EQ(rows.size(), 2);
+    for (auto* item : rows) {
+        auto* label = dynamic_cast<QGraphicsSimpleTextItem*>(item);
+        ASSERT_NE(label, nullptr);
+        EXPECT_EQ(label->text(), QStringLiteral("Σp=1"));
+        EXPECT_EQ(label->acceptedMouseButtons(), Qt::NoButton);
+    }
+
+    aa->setProbability(0.5);
+    GuiExtensionPluginCatalog::synchronizeDiagramProjections(&simulator, &scene);
+    int incorrect = 0;
+    for (auto* item : scene.extensionOverlayItems(QStringLiteral("modal.markov.rowsums"))) {
+        auto* label = dynamic_cast<QGraphicsSimpleTextItem*>(item);
+        if (label != nullptr && label->text() == QStringLiteral("Σp=1.25")) {
+            ++incorrect;
+            EXPECT_TRUE(label->toolTip().contains(QStringLiteral("must sum to 1")));
+        }
+    }
+    EXPECT_EQ(incorrect, 1);
+}
+
 TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndoRedo) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
@@ -1155,14 +1668,14 @@ TEST(MarkovChainNetworkGuiExtension, ProjectsStatesAndCreatesTransitionsWithUndo
     EXPECT_EQ(transition->getSource(), first);
     EXPECT_EQ(transition->getDestination(), second);
     EXPECT_DOUBLE_EQ(transition->getProbability(), 1.0);
-    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 4);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 3);
     undoStack.undo();
     EXPECT_TRUE(network.getTransitions()->empty());
     EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 2);
     undoStack.redo();
     ASSERT_EQ(network.getTransitions()->size(), 1u);
     EXPECT_EQ(network.getTransitions()->front(), transition);
-    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 4);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("modal.markov.gui")).size(), 3);
 
     auto actionById = [](const std::string& id) {
         GuiActionContribution result;
@@ -1571,6 +2084,35 @@ TEST(ColoredPetriNetGuiExtension, CreatesAndEditsBipartiteArcThroughSharedEditor
     EXPECT_TRUE(relationRemainsSelected);
     EXPECT_EQ(arc->getInscription("blue"), 3u); EXPECT_EQ(arc->getInscription("green"), 2u); undoStack.undo(); EXPECT_EQ(arc->getInscription("default"), 1u); undoStack.redo(); EXPECT_EQ(arc->getInscription("green"), 2u);
     undoStack.undo(); undoStack.undo(); EXPECT_TRUE(network.getArcs()->empty()); undoStack.redo(); undoStack.redo(); ASSERT_EQ(network.getArcs()->size(), 1u); EXPECT_EQ(network.getArcs()->front(), arc);
+
+    GuiActionContribution editStructured;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::resolvedPlugins()) {
+        if (plugin == nullptr || plugin->extensionId() != "modal.cpn.gui") continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const auto& action : registry.actions())
+            if (action.id == "modal.cpn.edit-arc-inscription") editStructured = action;
+    }
+    ASSERT_TRUE(static_cast<bool>(editStructured.trigger));
+    for (QGraphicsItem* item : scene.extensionOverlayItems(QStringLiteral("modal.cpn.gui")))
+        if (item->data(1).isValid() && item->data(1).toULongLong() == reinterpret_cast<quintptr>(arc))
+            item->setSelected(true);
+    ASSERT_TRUE(editStructured.isEnabled(context));
+    QTimer::singleShot(0, []() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* table = dialog->findChild<QTableWidget*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        if (table == nullptr || buttons == nullptr || table->rowCount() != 2) {
+            dialog->reject(); return;
+        }
+        table->item(0, 1)->setText(QStringLiteral("4")); // blue:3 -> blue:4
+        buttons->button(QDialogButtonBox::Ok)->click();
+    });
+    editStructured.trigger(context);
+    EXPECT_EQ(arc->getInscription("blue"), 4u);
+    undoStack.undo();
+    EXPECT_EQ(arc->getInscription("blue"), 3u);
 }
 
 TEST(GraphNetworkGuiExtension, DroppedGraphNodeJoinsTheNetworkAndScene) {
@@ -1934,6 +2476,7 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     ASSERT_NE(model, nullptr);
 
     EFSMNetwork network(model, "ViewerNetwork");
+    const unsigned int arrivalPort = network.addInputPort("arrive");
     FSMState idle(model, "Idle");
     FSMState done(model, "Done");
     network.setInitialState(&idle);
@@ -1973,7 +2516,9 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     EXPECT_EQ(network.getTransitions()->size(), 3u);
 
     guardedUnnamed->setGuardExpression("");
-    network.activate(NetworkActivationFrame(network.getNumInputPorts()));
+    NetworkActivationFrame frame(network.getNumInputPorts());
+    frame.setPresent(arrivalPort, 0.0);
+    network.activate(frame);
     EXPECT_EQ(network.getCurrentState(), &done);
     EXPECT_EQ(network.getLastTransition(), guardedUnnamed);
     EFSMNetworkDiagramProjection::synchronize(&simulator, scene);
@@ -2902,6 +3447,8 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     transition->setPriority(2);
     transition->setTriggerEvent("trigger-start");
     transition->setProbabilityExpression("0.75");
+    transition->setOutputActions("output = 1");
+    transition->setSetActions("counter = 2");
     network.addTransition(transition);
 
     EFSMTransitionPropertiesUndoCommand::Properties edited;
@@ -2912,6 +3459,14 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     edited.priority = 7;
     edited.triggerEvent = "trigger-finish";
     edited.probabilityExpression = "0.25";
+    edited.nondeterministic = true;
+    edited.immediate = true;
+    edited.preemptive = true;
+    edited.history = true;
+    edited.errorTransition = true;
+    edited.termination = true;
+    edited.outputActions = "output = 3";
+    edited.setActions = "counter = 4";
 
     QUndoStack stack;
     stack.push(new EFSMTransitionPropertiesUndoCommand(&network, transition, edited));
@@ -2922,6 +3477,14 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     EXPECT_EQ(transition->getPriority(), 7u);
     EXPECT_EQ(transition->getTriggerEvent(), "trigger-finish");
     EXPECT_EQ(transition->getProbabilityExpression(), "0.25");
+    EXPECT_TRUE(transition->isNondeterministic());
+    EXPECT_TRUE(transition->isImmediate());
+    EXPECT_TRUE(transition->isPreemptive());
+    EXPECT_TRUE(transition->isHistory());
+    EXPECT_TRUE(transition->isErrorTransition());
+    EXPECT_TRUE(transition->isTermination());
+    EXPECT_EQ(transition->getOutputActions(), "output = 3");
+    EXPECT_EQ(transition->getSetActions(), "counter = 4");
 
     stack.undo();
     EXPECT_EQ(transition->getName(), "begin");
@@ -2931,10 +3494,152 @@ TEST(EFSMNetworkUndo, TransitionPropertiesUndoRedoRestoresMathematicalValues) {
     EXPECT_EQ(transition->getPriority(), 2u);
     EXPECT_EQ(transition->getTriggerEvent(), "trigger-start");
     EXPECT_EQ(transition->getProbabilityExpression(), "0.75");
+    EXPECT_FALSE(transition->isNondeterministic());
+    EXPECT_FALSE(transition->isImmediate());
+    EXPECT_FALSE(transition->isPreemptive());
+    EXPECT_FALSE(transition->isHistory());
+    EXPECT_FALSE(transition->isErrorTransition());
+    EXPECT_FALSE(transition->isTermination());
+    EXPECT_EQ(transition->getOutputActions(), "output = 1");
+    EXPECT_EQ(transition->getSetActions(), "counter = 2");
 
     stack.redo();
     EXPECT_EQ(transition->getName(), "finish");
     EXPECT_EQ(transition->getPriority(), 7u);
+}
+
+TEST(EFSMNetworkProjection, InitialAndFinalStatesUseDistinctNonInteractiveMarkers) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* network = new EFSMNetwork(model, "VisualStateNetwork");
+    auto* start = new FSMState(model, "Start");
+    auto* finish = new FSMState(model, "Finish");
+    network->addState(start);
+    network->addState(finish);
+    network->setInitialState(start);
+    finish->setFinalNode(true);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network->getId()));
+    scene.setNetworkEditorOwner(network);
+    Plugin* statePlugin = simulator.getPluginManager()->find(Util::TypeOf<FSMState>());
+    ASSERT_NE(statePlugin, nullptr);
+    ASSERT_NE(scene.addGraphicalModelDataDefinition(statePlugin, start, QPointF(40, 40)), nullptr);
+    ASSERT_NE(scene.addGraphicalModelDataDefinition(statePlugin, finish, QPointF(240, 40)), nullptr);
+
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    auto markers = scene.extensionOverlayItems(QStringLiteral("efsm.state.markers"));
+    ASSERT_EQ(markers.size(), 2);
+    int initialArrows = 0;
+    int finalRings = 0;
+    for (auto* marker : markers) {
+        EXPECT_EQ(marker->acceptedMouseButtons(), Qt::NoButton);
+        if (dynamic_cast<QGraphicsPolygonItem*>(marker)) ++initialArrows;
+        if (dynamic_cast<QGraphicsEllipseItem*>(marker)) ++finalRings;
+    }
+    EXPECT_EQ(initialArrows, 1);
+    EXPECT_EQ(finalRings, 1);
+
+    // Refresh is idempotent and keeps presentation separate from relations.
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm.state.markers")).size(), 2);
+    EXPECT_TRUE(scene.extensionOverlayItems(QStringLiteral("efsm")).isEmpty());
+
+    start->setFinalNode(true);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    EXPECT_EQ(scene.extensionOverlayItems(QStringLiteral("efsm.state.markers")).size(), 3);
+}
+
+TEST(EFSMNetworkProjection, DistinguishesAntiparallelEdgesAndMultipleSelfLoops) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    FSMState a(model, "A");
+    FSMState b(model, "B");
+    EFSMTransition forward(&a, &b, "Forward");
+    EFSMTransition backward(&b, &a, "Backward");
+    EFSMTransition loopOne(&a, &a, "LoopOne");
+    EFSMTransition loopTwo(&a, &a, "LoopTwo");
+
+    EFSMTransitionGraphicsItem forwardGraphic(&forward, 0);
+    EFSMTransitionGraphicsItem backwardGraphic(&backward, 1);
+    forwardGraphic.setGeometry(QPointF(10, 20), QPointF(210, 20), 0, 1, true);
+    backwardGraphic.setGeometry(QPointF(210, 20), QPointF(10, 20), 0, 1, true);
+    EXPECT_NE(forwardGraphic.path().pointAtPercent(0.5),
+              backwardGraphic.path().pointAtPercent(0.5));
+
+    EFSMTransitionGraphicsItem loopGraphicOne(&loopOne, 2);
+    EFSMTransitionGraphicsItem loopGraphicTwo(&loopTwo, 3);
+    loopGraphicOne.setGeometry(QPointF(50, 50), QPointF(50, 50), 0, 2);
+    loopGraphicTwo.setGeometry(QPointF(50, 50), QPointF(50, 50), 1, 2);
+    EXPECT_NE(loopGraphicOne.path().boundingRect(), loopGraphicTwo.path().boundingRect());
+}
+
+TEST(EFSMNetworkProjection, ManualBendPointsSurviveProjectionRefreshAndLayoutRestore) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "BendGeometryNetwork");
+    FSMState a(model, "A");
+    FSMState b(model, "B");
+    network.addState(&a);
+    network.addState(&b);
+    network.setInitialState(&a);
+    auto* first = new EFSMTransition(&a, &b, "First");
+    auto* parallel = new EFSMTransition(&a, &b, "Parallel");
+    network.addTransition(first);
+    network.addTransition(parallel);
+
+    ExposedModelGraphicsScene scene;
+    scene.setSimulator(&simulator);
+    scene.setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    scene.setNetworkEditorOwner(&network);
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<FSMState>());
+    ASSERT_NE(plugin, nullptr);
+    ASSERT_NE(scene.addGraphicalModelDataDefinition(plugin, &a, QPointF(30, 30)), nullptr);
+    ASSERT_NE(scene.addGraphicalModelDataDefinition(plugin, &b, QPointF(280, 30)), nullptr);
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+
+    auto findEdge = [&](EFSMTransition* t) -> EFSMTransitionGraphicsItem* {
+        for (auto* item : scene.extensionOverlayItems(QStringLiteral("efsm"))) {
+            auto* edge = dynamic_cast<EFSMTransitionGraphicsItem*>(item);
+            if (edge != nullptr && edge->transition() == t) return edge;
+        }
+        return nullptr;
+    };
+    auto* firstItem = findEdge(first);
+    auto* parallelItem = findEdge(parallel);
+    ASSERT_NE(firstItem, nullptr);
+    ASSERT_NE(parallelItem, nullptr);
+    EXPECT_NE(firstItem->path(), parallelItem->path());
+    const QPointF bend(140.0, -90.0);
+    firstItem->setManualBendPoint(bend);
+    firstItem->setSelected(true);
+    ASSERT_TRUE(firstItem->hasManualBendPoint());
+
+    EFSMNetworkDiagramLayout layout;
+    ASSERT_TRUE(EFSMNetworkDiagramProjection::captureLayout(&network, &scene, &layout));
+    ASSERT_EQ(layout.transitions.size(), 1);
+    EXPECT_EQ(layout.transitions.front().ordinal, 0);
+    ASSERT_EQ(layout.transitions.front().controlPoints.size(), 1);
+    EXPECT_EQ(layout.transitions.front().controlPoints.front(), bend);
+
+    EFSMNetworkDiagramProjection::synchronize(&simulator, &scene);
+    ASSERT_NE(findEdge(first), nullptr);
+    EXPECT_TRUE(findEdge(first)->hasManualBendPoint());
+    EXPECT_EQ(findEdge(first)->manualBendPoint(), bend);
+    EXPECT_TRUE(findEdge(first)->isSelected());
+    EXPECT_FALSE(findEdge(parallel)->hasManualBendPoint());
+
+    scene.clearExtensionOverlayItems(QStringLiteral("efsm"));
+    EFSMNetworkDiagramProjection::restoreLayout(&simulator, &network, &scene, layout);
+    ASSERT_NE(findEdge(first), nullptr);
+    EXPECT_EQ(findEdge(first)->manualBendPoint(), bend);
+    EXPECT_FALSE(findEdge(parallel)->hasManualBendPoint());
 }
 
 TEST(EFSMNetworkUndo, InitialStateChangeUndoRedoRestoresPointerAndStateFlags) {
@@ -2963,6 +3668,63 @@ TEST(EFSMNetworkUndo, InitialStateChangeUndoRedoRestoresPointerAndStateFlags) {
     EXPECT_EQ(network.getInitialState(), &done);
     EXPECT_TRUE(done.isInitialNode());
     EXPECT_FALSE(idle.isInitialNode());
+}
+
+TEST(EFSMNetworkUndo, StatePropertyEditsPreserveAndRestoreInitialStateIdentity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "InitialPropertyNetwork");
+    FSMState first(model, "First");
+    FSMState second(model, "Second");
+    network.setInitialState(&first);
+    network.addState(&second);
+    ASSERT_EQ(network.getInitialState(), &first);
+    ASSERT_TRUE(first.isInitialNode());
+
+    auto current = [](const FSMState& state) {
+        EFSMStatePropertiesUndoCommand::Properties value;
+        value.name = state.getName();
+        value.label = state.getLabel();
+        value.entryActionExpression = state.getEntryActionExpression();
+        value.exitActionExpression = state.getExitActionExpression();
+        value.traceLevel = static_cast<std::uint32_t>(state.getTraceLevelSpecific());
+        value.reportStatistics = state.isReportStatistics();
+        value.finalNode = state.isFinalNode();
+        value.initialNode = state.isInitialNode();
+        return value;
+    };
+
+    QUndoStack stack;
+    auto otherEdit = current(second);
+    otherEdit.finalNode = true;
+    stack.push(new EFSMStatePropertiesUndoCommand(&network, &second, otherEdit));
+    EXPECT_TRUE(second.isFinalNode());
+    EXPECT_EQ(network.getInitialState(), &first);
+    EXPECT_TRUE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+    stack.undo();
+    EXPECT_EQ(network.getInitialState(), &first);
+    EXPECT_TRUE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+    stack.redo();
+    EXPECT_EQ(network.getInitialState(), &first);
+
+    auto switchInitial = current(second);
+    switchInitial.initialNode = true;
+    stack.push(new EFSMStatePropertiesUndoCommand(&network, &second, switchInitial));
+    EXPECT_EQ(network.getInitialState(), &second);
+    EXPECT_FALSE(first.isInitialNode());
+    EXPECT_TRUE(second.isInitialNode());
+
+    stack.undo();
+    EXPECT_EQ(network.getInitialState(), &first);
+    EXPECT_TRUE(first.isInitialNode());
+    EXPECT_FALSE(second.isInitialNode());
+    stack.redo();
+    EXPECT_EQ(network.getInitialState(), &second);
+    EXPECT_FALSE(first.isInitialNode());
+    EXPECT_TRUE(second.isInitialNode());
 }
 
 TEST(EFSMNetworkUndo, StateDeletionUndoRedoRestoresIncidentTransitionsAndManagerIdentity) {
