@@ -1117,7 +1117,7 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
     _objectListActions[property] = actions;
     _enumManager->setEnumNames(property, choices);
     _enumManager->setValue(property, 0);
-    property->setEnabled(!_activeKernelObjectReadOnly);
+    property->setEnabled(_isKernelEditingEnabled(desc));
     property->setToolTip("Expanda para editar os elementos da lista ou selecione uma ação para definir o tipo ou criar um novo elemento.");
     property->setStatusTip("Lista de objetos");
 
@@ -1297,7 +1297,7 @@ bool ObjectPropertyBrowser::_isObjectListProperty(const GenesysPropertyDescripto
 }
 
 bool ObjectPropertyBrowser::_isKernelEditingEnabled(const GenesysPropertyDescriptor& desc) const {
-    return !_activeKernelObjectReadOnly && !desc.readOnly;
+    return !_activeKernelObjectReadOnly && !desc.readOnly && desc.enabled;
 }
 
 bool ObjectPropertyBrowser::_hasGraphicalRepresentation(const GenesysPropertyDescriptor& desc) const {
@@ -2573,6 +2573,9 @@ bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
         || binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
         return _openTextDialogEditor(binding, true);
@@ -3653,16 +3656,17 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     QAction* editAction = nullptr;
     QAction* createAction = nullptr;
     QAction* expressionAction = nullptr;
-    if (_hasSpecializedEditor(binding.descriptor)) {
+    const bool editingEnabled = _isKernelEditingEnabled(binding.descriptor);
+    if (editingEnabled && _hasSpecializedEditor(binding.descriptor)) {
         editAction = menu.addAction(_specializedEditorActionText(binding.descriptor));
     }
-    const bool hasExpressionAlternative = binding.descriptor.kind == GenesysPropertyKind::String
-        && !binding.descriptor.readOnly
+    const bool hasExpressionAlternative = editingEnabled
+        && binding.descriptor.kind == GenesysPropertyKind::String
         && binding.descriptor.editorHint != SimulationControlEditorHint::ParserExpression;
     if (hasExpressionAlternative) {
         expressionAction = menu.addAction(QStringLiteral("Build expression..."));
     }
-    if (binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
+    if (editingEnabled && binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
         createAction = menu.addAction("Create object");
     }
     if (editAction == nullptr && createAction == nullptr) {

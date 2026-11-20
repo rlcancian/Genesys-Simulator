@@ -638,6 +638,55 @@ TEST(PropertyEditorLists, RemovingQueueFromSetKeepsMainWindowSelectionEditable) 
     EXPECT_NE(findBrowserItemByName(browser->topLevelItems(), "FirstCreation"), nullptr);
 }
 
+TEST(PropertyEditorDynamicEnabled, NestedQueueableItemIndexTracksSetReference) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* set = new Set(model, "DynamicQueueSet");
+    Seize seize(model, "DynamicSeize");
+    seize.setQueueableItem(new QueueableItem(model, ""));
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &seize);
+
+    QtBrowserItem* queueableItem = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("QueueableItem"));
+    ASSERT_NE(queueableItem, nullptr);
+    browser.setExpanded(queueableItem, true);
+    drainGuiEvents();
+
+    QtBrowserItem* index = findBrowserItemByName(
+        queueableItem->children(), QStringLiteral("Index"));
+    ASSERT_NE(index, nullptr);
+    EXPECT_FALSE(index->property()->isEnabled());
+
+    seize.getQueueableItem()->setSet(set);
+    browser.objectUpdated();
+    drainGuiEvents();
+    queueableItem = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("QueueableItem"));
+    ASSERT_NE(queueableItem, nullptr);
+    browser.setExpanded(queueableItem, true);
+    index = findBrowserItemByName(queueableItem->children(), QStringLiteral("Index"));
+    ASSERT_NE(index, nullptr);
+    EXPECT_TRUE(index->property()->isEnabled());
+
+    seize.getQueueableItem()->setSet(nullptr);
+    browser.objectUpdated();
+    drainGuiEvents();
+    queueableItem = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("QueueableItem"));
+    ASSERT_NE(queueableItem, nullptr);
+    browser.setExpanded(queueableItem, true);
+    index = findBrowserItemByName(queueableItem->children(), QStringLiteral("Index"));
+    ASSERT_NE(index, nullptr);
+    EXPECT_FALSE(index->property()->isEnabled());
+}
+
 TEST(PropertyEditorLists, ListItemActionsRespectBoundariesAndReadOnly) {
     Simulator simulator;
     simulator.getPluginManager()->autoInsertPlugins();
