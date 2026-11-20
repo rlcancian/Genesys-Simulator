@@ -4,7 +4,7 @@ authority: technical-reference
 owner: project-maintainer
 last_reviewed: 2026-11-13
 review_cadence: on-material-change
-status: draft
+status: locally-integrated
 ---
 
 # Read — InputOutput ModelComponent
@@ -47,6 +47,13 @@ Before applying a record, `Read` parses all fields, checks their count, and reso
 ## Persistence and validation
 
 Serialized fields: `readFromType`, `filename`, `readDestinations` and pairs `readDest{index}` / `readIsAttrib{index}`. No changes to existing `Write` or `File` persistence records. Errors and source compatibility should be validated by the focused `genesys_test_read_component` suite, ordinary and kernel presets, smoke tests, and GUI build.
+
+## Validation status
+
+The component is integrated in the local `WorkInProgress` branch. The focused
+Read suite and the complete configured unit suite pass, and the GUI executable
+builds and starts headlessly. Interactive palette insertion and the real Qt
+keyboard dialog still require manual desktop validation.
 
 ## Known limits
 
