@@ -47,6 +47,7 @@ Route::Route(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propStationExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Route::getStationExpression, this), std::bind(&Route::setStationExpression, this, std::placeholders::_1),
 									Util::TypeOf<Route>(), getName(), "StationExpression", "");								
+	propStationExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	// SimulationControlGeneric<std::string>* propTimeExpression = new SimulationControlGeneric<std::string>(
 	// 								std::bind(&Route::getRouteTimeExpression, this), std::bind(&Route::setRouteTimeExpression, this, std::placeholders::_1),
 	// 								Util::TypeOf<Route>(), getName(), "RouteTimeExpression", "");									

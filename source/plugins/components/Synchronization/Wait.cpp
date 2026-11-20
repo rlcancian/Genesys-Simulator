@@ -43,9 +43,11 @@ Wait::Wait(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 	SimulationControlGeneric<std::string>* propCondition = new SimulationControlGeneric<std::string>(
 									std::bind(&Wait::getCondition, this), std::bind(&Wait::setCondition, this, std::placeholders::_1),
 									Util::TypeOf<Wait>(), getName(), "Condition", "");
+	propCondition->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Wait::getlimitExpression, this), std::bind(&Wait::setLimitExpression, this, std::placeholders::_1),
 									Util::TypeOf<Wait>(), getName(), "LimitExpression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     SimulationControlGenericEnum<Wait::WaitType, Wait>* propWaitType = new SimulationControlGenericEnum<Wait::WaitType, Wait>(
                                     std::bind(&Wait::getWaitType, this), std::bind(&Wait::setWaitType, this, std::placeholders::_1),
                                     Util::TypeOf<Wait>(), getName(), "WaitType", "");

@@ -47,6 +47,7 @@ Seize::Seize(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 			std::bind(&Seize::getPriorityExpression, this),
 			std::bind(&Seize::setPriorityExpression, this, std::placeholders::_1),
 			Util::TypeOf<Seize>(), getName(), "PriorityExpression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGenericClassNotDC<QueueableItem*,Model*,QueueableItem>* propQueueableItem = new
 			SimulationControlGenericClassNotDC<QueueableItem*,Model*,QueueableItem>(
 					_parentModel,

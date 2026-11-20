@@ -34,6 +34,7 @@ Unstore::Unstore(Model* model, std::string name) : ModelComponent(model, Util::T
 	SimulationControlGeneric<std::string>* propQuantity = new SimulationControlGeneric<std::string>(
 			std::bind(&Unstore::getQuantityExpression, this), std::bind(&Unstore::setQuantityExpression, this, std::placeholders::_1),
 			Util::TypeOf<Unstore>(), getName(), "QuantityExpression", "");
+	propQuantity->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	_parentModel->getControls()->insert(propStorage);
 	_parentModel->getControls()->insert(propQuantity);
 	_addSimulationControl(propStorage);

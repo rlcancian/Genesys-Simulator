@@ -83,6 +83,7 @@ Record::Record(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 			std::bind(&Record::getExpression, this), std::bind(&Record::setExpression, this, std::placeholders::_1),
 			Util::TypeOf<Record>(), getName(), "Expression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propExpressionName = new SimulationControlGeneric<std::string>(
 			std::bind(&Record::getExpressionName, this),
 			std::bind(&Record::setExpressionName, this, std::placeholders::_1),

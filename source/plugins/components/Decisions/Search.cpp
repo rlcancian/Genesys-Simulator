@@ -132,12 +132,15 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	SimulationControlGeneric<std::string>* propStart = new SimulationControlGeneric<std::string>(
 									std::bind(&Search::getStartRank, this), std::bind(&Search::setStartRank, this, std::placeholders::_1),
 									Util::TypeOf<Search>(), getName(), "StartRank", "");
+	propStart->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propEnd = new SimulationControlGeneric<std::string>(
 									std::bind(&Search::getEndRank, this), std::bind(&Search::setEndRank, this, std::placeholders::_1),
 									Util::TypeOf<Search>(), getName(), "EndRank", "");
+	propEnd->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propCondition = new SimulationControlGeneric<std::string>(
 									std::bind(&Search::getSearchCondition, this), std::bind(&Search::setSearchCondition, this, std::placeholders::_1),
 									Util::TypeOf<Search>(), getName(), "SearchCondition", "");
+	propCondition->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propSaveAttribute = new SimulationControlGeneric<std::string>(
 									std::bind(&Search::getSaveFounRankAttribute, this), std::bind(&Search::setSaveFounRankAttribute, this, std::placeholders::_1),
 									Util::TypeOf<Search>(), getName(), "SaveFounRankAttribute", "");

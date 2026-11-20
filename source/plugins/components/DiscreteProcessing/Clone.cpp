@@ -34,6 +34,7 @@ Clone::Clone(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propNumClone = new SimulationControlGeneric<std::string>(
 									std::bind(&Clone::getNumClonesExpression, this), std::bind(&Clone::setNumClonesExpression, this, std::placeholders::_1),
 									Util::TypeOf<Clone>(), getName(), "NumClonesExpression", "");
+	propNumClone->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 
 	_parentModel->getControls()->insert(propNumClone);
 

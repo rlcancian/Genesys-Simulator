@@ -40,6 +40,7 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 	SimulationControlGeneric<std::string>* propPriorityExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Process::getPriorityExpression, this), std::bind(&Process::setPriorityExpression, this, std::placeholders::_1),
 									Util::TypeOf<Process>(), getName(), "PriorityExpression", "");
+	propPriorityExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     SimulationControlGenericEnum<Util::AllocationType, Util>* propAlloc = new SimulationControlGenericEnum<Util::AllocationType, Util>(
                                     std::bind(&Process::getAllocationType, this), std::bind(&Process::setAllocationType, this, std::placeholders::_1),
                                     Util::TypeOf<Process>(), getName(), "AllocationType", "");

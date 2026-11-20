@@ -37,6 +37,7 @@ void QueueableItem::_ensureSimulationControls(Model* model) {
 	auto* propIndex = new SimulationControlGeneric<std::string>(
 		std::bind(&QueueableItem::getIndex, this), std::bind(&QueueableItem::setIndex, this, std::placeholders::_1),
 		Util::TypeOf<QueueableItem>(), getName(), "Index", "");
+	propIndex->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	auto* propQueue = new SimulationControlGenericClass<Queue*, Model*, Queue>(
 		model,
 		std::bind(&QueueableItem::getQueue, this), std::bind(&QueueableItem::setQueue, this, std::placeholders::_1),

@@ -36,6 +36,7 @@ Start::Start(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 			std::bind(&Start::getVelocityExpression, this),
 			std::bind(&Start::setVelocityExpression, this, std::placeholders::_1),
 			Util::TypeOf<Start>(), getName(), "VelocityExpression", "");
+	propVelocityExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	_parentModel->getControls()->insert(propConveyor);
 	_parentModel->getControls()->insert(propVelocityExpression);
 	_addSimulationControl(propConveyor);

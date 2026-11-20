@@ -101,9 +101,11 @@ Remove::Remove(Model* model, std::string name, std::string pluginTypeName)
 	SimulationControlGeneric<std::string>* propRemoveStart = new SimulationControlGeneric<std::string>(
 									std::bind(&Remove::getRemoveStartRank, this), std::bind(&Remove::setRemoveStartRank,  this, std::placeholders::_1),
 									Util::TypeOf<Remove>(), getName(), "RemoveStartRank", "");
+	propRemoveStart->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propRemoveEnd = new SimulationControlGeneric<std::string>(
 									std::bind(&Remove::getRemoveEndRank, this), std::bind(&Remove::setRemoveEndRank, this, std::placeholders::_1),
 									Util::TypeOf<Remove>(), getName(), "RemoveEndRank", "");
+	propRemoveEnd->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     SimulationControlGenericEnum<Remove::RemoveFromType, Remove>* propRemoveType = new SimulationControlGenericEnum<Remove::RemoveFromType, Remove>(
                                     std::bind(&Remove::getRemoveFromType, this), std::bind(&Remove::setRemoveFromType, this, std::placeholders::_1),
                                     Util::TypeOf<Remove>(), getName(), "RemoveFromType", "");

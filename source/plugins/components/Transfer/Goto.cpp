@@ -31,6 +31,7 @@ Goto::Goto(Model* model, std::string name)
         std::bind(&Goto::getTimeDelayExpression, this),
         std::bind(&Goto::setTimeDelayExpression, this, std::placeholders::_1),
         Util::TypeOf<Goto>(), getName(), "TimeDelayExpression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     auto* propUnit = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
         std::bind(&Goto::getTimeDelayTimeUnit, this),
         std::bind(&Goto::setTimeDelayTimeUnit, this, std::placeholders::_1),

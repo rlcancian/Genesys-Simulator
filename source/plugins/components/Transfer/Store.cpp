@@ -34,6 +34,7 @@ Store::Store(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propQuantity = new SimulationControlGeneric<std::string>(
 			std::bind(&Store::getQuantityExpression, this), std::bind(&Store::setQuantityExpression, this, std::placeholders::_1),
 			Util::TypeOf<Store>(), getName(), "QuantityExpression", "");
+	propQuantity->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	_parentModel->getControls()->insert(propStorage);
 	_parentModel->getControls()->insert(propQuantity);
 	_addSimulationControl(propStorage);

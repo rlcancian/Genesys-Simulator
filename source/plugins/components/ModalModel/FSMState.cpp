@@ -37,10 +37,12 @@ FSMState::FSMState(Model* model, std::string name) : DefaultNode(model, Util::Ty
 		[this]() { return getEntryActionExpression(); },
 		[this](const std::string& value) { setEntryActionExpression(value); },
 		classname, getName(), "Entry Action Expression", "Expression evaluated when entering this state.");
+	entryAction->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	auto* exitAction = new SimulationControlGeneric<std::string>(
 		[this]() { return getExitActionExpression(); },
 		[this](const std::string& value) { setExitActionExpression(value); },
 		classname, getName(), "Exit Action Expression", "Expression evaluated when leaving this state.");
+	exitAction->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	auto* finalNode = new SimulationControlBool(
 		[this]() { return isFinalNode(); },
 		[this](bool value) { setFinalNode(value); },

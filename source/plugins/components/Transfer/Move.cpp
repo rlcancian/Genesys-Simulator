@@ -28,6 +28,7 @@ Move::Move(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 			std::bind(&Move::getStationExpression, this),
 			std::bind(&Move::setStationExpression, this, std::placeholders::_1),
 			Util::TypeOf<Move>(), getName(), "StationExpression", "");
+	propStationExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	_parentModel->getControls()->insert(propTransporter);
 	_parentModel->getControls()->insert(propStation);
 	_parentModel->getControls()->insert(propStationExpression);

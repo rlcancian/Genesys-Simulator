@@ -38,6 +38,7 @@ Signal::Signal(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Signal::limitExpression, this), std::bind(&Signal::setLimitExpression, this, std::placeholders::_1),
 									Util::TypeOf<Signal>(), getName(), "LimitExpression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 
 	_parentModel->getControls()->insert(propSignalData);
 	_parentModel->getControls()->insert(propExpression);

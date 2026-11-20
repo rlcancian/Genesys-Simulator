@@ -37,6 +37,7 @@ Access::Access(Model* model, std::string name) : ModelComponent(model, Util::Typ
 			std::bind(&Access::getQuantityExpression, this),
 			std::bind(&Access::setQuantityExpression, this, std::placeholders::_1),
 			Util::TypeOf<Access>(), getName(), "QuantityExpression", "");
+	propQuantityExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	_parentModel->getControls()->insert(propConveyor);
 	_parentModel->getControls()->insert(propQuantityExpression);
 	_addSimulationControl(propConveyor);

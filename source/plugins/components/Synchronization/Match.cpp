@@ -48,6 +48,7 @@ Match::Match(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propMatchSize = new SimulationControlGeneric<std::string>(
 									std::bind(&Match::getMatchSize, this), std::bind(&Match::setMatchSize, this, std::placeholders::_1),
 									Util::TypeOf<Match>(), getName(), "MatchSize", "");
+	propMatchSize->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propAttributeName = new SimulationControlGeneric<std::string>(
 									std::bind(&Match::getAttributeName, this), std::bind(&Match::setAttributeName, this, std::placeholders::_1),
 									Util::TypeOf<Match>(), getName(), "AttributeName", "");

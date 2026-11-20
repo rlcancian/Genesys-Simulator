@@ -34,9 +34,11 @@ DropOff::DropOff(Model* model, std::string name) : ModelComponent(model, Util::T
 	SimulationControlGeneric<std::string>* propQuantity = new SimulationControlGeneric<std::string>(
 			std::bind(&DropOff::getQuantityExpression, this), std::bind(&DropOff::setQuantityExpression, this, std::placeholders::_1),
 			Util::TypeOf<DropOff>(), getName(), "QuantityExpression", "");
+	propQuantity->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propStartingRank = new SimulationControlGeneric<std::string>(
 			std::bind(&DropOff::getStartingRankExpression, this), std::bind(&DropOff::setStartingRankExpression, this, std::placeholders::_1),
 			Util::TypeOf<DropOff>(), getName(), "StartingRankExpression", "");
+	propStartingRank->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	_parentModel->getControls()->insert(propQuantity);
 	_parentModel->getControls()->insert(propStartingRank);
 	_addSimulationControl(propQuantity);

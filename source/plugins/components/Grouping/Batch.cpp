@@ -80,6 +80,7 @@ Batch::Batch(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 				std::bind(&Batch::getBatchSize, this),
 				std::bind(&Batch::setBatchSize, this, std::placeholders::_1),
 				Util::TypeOf<Batch>(), getName(), "BatchSize", "");
+	propSize->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	
 
 	_parentModel->getControls()->insert(propBatchType);

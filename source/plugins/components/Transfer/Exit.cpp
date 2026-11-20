@@ -36,6 +36,7 @@ Exit::Exit(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 			std::bind(&Exit::getQuantityExpression, this),
 			std::bind(&Exit::setQuantityExpression, this, std::placeholders::_1),
 			Util::TypeOf<Exit>(), getName(), "QuantityExpression", "");
+	propQuantityExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	_parentModel->getControls()->insert(propConveyor);
 	_parentModel->getControls()->insert(propQuantityExpression);
 	_addSimulationControl(propConveyor);

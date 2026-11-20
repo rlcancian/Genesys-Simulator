@@ -26,6 +26,7 @@ PickableStationItem::PickableStationItem(Model* model, std::string stationName, 
     SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
                                     std::bind(&PickableStationItem::getExpression, this), std::bind(&PickableStationItem::setExpression, this, std::placeholders::_1),
                                     Util::TypeOf<PickableStationItem>(), "", "Expression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     SimulationControlGenericClass<Queue*, Model*, Queue>* propQueue = new SimulationControlGenericClass<Queue*, Model*, Queue>(
                                     model,
                                     std::bind(&PickableStationItem::getQueue, this), std::bind(&PickableStationItem::setQueue, this, std::placeholders::_1),

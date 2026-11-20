@@ -48,6 +48,7 @@ void SeizableItem::_ensureSimulationControls(Model* model) {
     auto* propIndex = new SimulationControlGeneric<std::string>(
         std::bind(&SeizableItem::getIndex, this), std::bind(&SeizableItem::setIndex, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "Index", "");
+	propIndex->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     auto* propRule = new SimulationControlGenericEnum<SeizableItem::SelectionRule, SeizableItem>(
         std::bind(&SeizableItem::getSelectionRule, this),
         std::bind(&SeizableItem::setSelectionRule, this, std::placeholders::_1),
@@ -58,6 +59,7 @@ void SeizableItem::_ensureSimulationControls(Model* model) {
     auto* propQuantityExpression = new SimulationControlGeneric<std::string>(
         std::bind(&SeizableItem::getQuantityExpression, this), std::bind(&SeizableItem::setQuantityExpression, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "QuantityExpression", "");
+	propQuantityExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     auto* propResource = new SimulationControlGenericClass<Resource*, Model*, Resource>(
         model,
         std::bind(&SeizableItem::getResource, this), std::bind(&SeizableItem::setResource, this, std::placeholders::_1),
