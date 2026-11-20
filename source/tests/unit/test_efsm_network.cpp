@@ -552,6 +552,7 @@ TEST(EFSMNetworkLifecycle, RefinementReferenceControlSelectsAndRemovesWithoutCre
 
 TEST(EFSMNetworkLifecycle, QualifierPersistenceRoundTrip) {
     Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager()->insert("fsmstate.so"), nullptr);
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
     EFSMNetworkProbe source(model, "Qualifiers");
@@ -1040,7 +1041,8 @@ TEST(EFSMNetworkTest, OutputActionsPublishMultiplePortsAndSetActionsCommitVariab
     simulator.getPluginManager()->autoInsertPlugins();
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
-    auto* count = new Variable(model, "count");
+    // "count" is a reserved parser function token, not a Variable identifier.
+    auto* count = new Variable(model, "actionCounter");
     ASSERT_NE(count, nullptr);
     count->setValue(2.0);
     EFSMNetworkProbe network(model, "ActionsMachine");
@@ -1051,8 +1053,8 @@ TEST(EFSMNetworkTest, OutputActionsPublishMultiplePortsAndSetActionsCommitVariab
     network.addState(&busy);
     auto* edge = new EFSMTransition(&idle, &busy, "Update");
     edge->setGuardExpression("1");
-    edge->setOutputActions("output = count + 1; extra = count * 2");
-    edge->setSetActions("count = count + 4");
+    edge->setOutputActions("output = actionCounter + 1; extra = actionCounter * 2");
+    edge->setSetActions("actionCounter = actionCounter + 4");
     network.addTransition(edge);
 
     const NetworkActivationResult result = network.activate(
@@ -1129,7 +1131,7 @@ TEST(EFSMNetworkTest, ModelErrorPolicyReportsAmbiguousActivationAndKeepsState) {
 	EXPECT_FALSE(result.isPresent(0));
 	EXPECT_EQ(network.getCurrentState(), &initial);
 	ASSERT_NE(model->getTracer()->errorMessages(), nullptr);
-	EXPECT_NE(model->getTracer()->errorMessages()->front().find("multiple enabled transitions"), std::string::npos);
+	EXPECT_NE(model->getTracer()->errorMessages()->front().find("conflicting enabled transitions"), std::string::npos);
 }
 
 TEST(EFSMNetworkTest, NondeterministicChoiceUsesResettableKernelSampler) {
@@ -1338,6 +1340,11 @@ TEST(EFSMNetworkTest, RepeatedReloadDetachesOldOutgoingTransitions) {
         std::string errorMessage;
         EXPECT_TRUE(network.CheckProbe(errorMessage)) << errorMessage;
     }
+    const NetworkActivationResult result = network.activate(
+        NetworkActivationFrame(network.getNumInputPorts()));
+    EXPECT_EQ(result.size(), network.getNumOutputPorts());
+    EXPECT_EQ(network.getCurrentState(),
+              dynamic_cast<FSMState*>(network.getTransitions()->front()->getDestination()));
 }
 
 TEST(EFSMNetworkTest, PersistencePreservesExplicitlyEmptyTransitionName) {

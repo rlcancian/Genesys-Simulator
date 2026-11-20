@@ -1444,6 +1444,7 @@ TEST(MarkovChainNetworkGuiExtension, DecimalProbabilityEditorPreservesFractionUn
     ObjectPropertyBrowser browser;
     browser.setModelScene(&scene);
     browser.setActiveGraphicsItem(edge);
+    QApplication::processEvents();
     QtBrowserItem* probability = nullptr;
     QList<QtBrowserItem*> pending = browser.topLevelItems();
     while (!pending.isEmpty()) {
@@ -1506,6 +1507,7 @@ TEST(MarkovChainNetworkGuiExtension, SpinButtonCommitsProbabilityWithoutLosingFr
     ObjectPropertyBrowser browser;
     browser.setModelScene(&scene);
     browser.setActiveGraphicsItem(edge);
+    QApplication::processEvents();
     QList<QtBrowserItem*> pending = browser.topLevelItems();
     QtBrowserItem* probability = nullptr;
     while (!pending.isEmpty()) {
