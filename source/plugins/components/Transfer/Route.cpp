@@ -44,6 +44,7 @@ Route::Route(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 									_parentModel,
 									std::bind(&Route::getStation, this), std::bind(&Route::setStation, this, std::placeholders::_1),
 									Util::TypeOf<Route>(), getName(), "Station", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
+	propStation->setDynamicEnabled([this]() -> bool { return this->getRouteDestinationType()==DestinationType::Station; } );
 	SimulationControlGeneric<std::string>* propStationExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Route::getStationExpression, this), std::bind(&Route::setStationExpression, this, std::placeholders::_1),
 									Util::TypeOf<Route>(), getName(), "StationExpression", "");								
@@ -61,6 +62,7 @@ Route::Route(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 									_parentModel,
 									std::bind(&Route::getLabel, this), std::bind(&Route::setLabel, this, std::placeholders::_1),
 									Util::TypeOf<Route>(), getName(), "LabelDefinition", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
+	propLabel->setDynamicEnabled([this]() -> bool { return this->getRouteDestinationType()==DestinationType::Label; } );
 
 	_parentModel->getControls()->insert(propStation);
 	_parentModel->getControls()->insert(propStationExpression);

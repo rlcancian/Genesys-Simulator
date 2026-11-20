@@ -49,10 +49,12 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 									std::bind(&Process::getQueueableItem, this), std::bind(&Process::setQueueableItem, this, std::placeholders::_1),
 									Util::TypeOf<Process>(), getName(), "QueueableItem", "", false, true, false,
 									[](Model* model) { return new QueueableItem(model, ""); });
-	// SimulationControlGeneric<std::string>* propdelayExpression = new SimulationControlGeneric<std::string>(
-	// 								std::bind(&Process::delayExpression, this), std::bind(&Process::setDelayExpression, this, std::placeholders::_1),
-	// 								Util::TypeOf<Process>(), getName(), "DelayExpression", "");
-    SimulationControlGenericEnum<Util::TimeUnit, Util>* propdelayTimeUnit = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
+	SimulationControlGeneric<std::string>* propdelayExpression = new SimulationControlGeneric<std::string>(
+								std::bind(&Process::delayExpression, this),
+								[this](std::string value) { this->setDelayExpression(value); },
+								Util::TypeOf<Process>(), getName(), "DelayExpression", "");
+	propdelayExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
+	SimulationControlGenericEnum<Util::TimeUnit, Util>* propdelayTimeUnit = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
 									std::bind(&Process::delayTimeUnit, this), std::bind(&Process::setDelayTimeUnit, this, std::placeholders::_1),
 									Util::TypeOf<Process>(), getName(), "DelayTimeUnit", "");	
 	// This block enables explicit typed creation for Process seize-request list elements.
@@ -68,7 +70,7 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 	_parentModel->getControls()->insert(propPriorityExpression);
     _parentModel->getControls()->insert(propAlloc);
 	_parentModel->getControls()->insert(propQueueableItem);
-	// _parentModel->getControls()->insert(propdelayExpression);
+	_parentModel->getControls()->insert(propdelayExpression);
 	_parentModel->getControls()->insert(propdelayTimeUnit);
 	_parentModel->getControls()->insert(propSeizeRequests);
 	
@@ -77,7 +79,7 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 	_addSimulationControl(propPriorityExpression);
     _addSimulationControl(propAlloc);
 	_addSimulationControl(propQueueableItem);
-	// _addSimulationControl(propdelayExpression);
+	_addSimulationControl(propdelayExpression);
 	_addSimulationControl(propdelayTimeUnit);
 	_addSimulationControl(propSeizeRequests);
 }

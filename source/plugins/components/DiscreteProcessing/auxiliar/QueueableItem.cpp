@@ -43,24 +43,25 @@ void QueueableItem::_ensureSimulationControls(Model* model) {
 		model,
 		std::bind(&QueueableItem::getQueue, this), std::bind(&QueueableItem::setQueue, this, std::placeholders::_1),
 		Util::TypeOf<QueueableItem>(), "", "Queue", "");
+	propQueue->setDynamicEnabled([this]() -> bool { return this->getSet() == nullptr; });
 	auto* propSet = new SimulationControlGenericClass<Set*, Model*, Set>(
 		model,
 		std::bind(&QueueableItem::getSet, this), std::bind(&QueueableItem::setSet, this, std::placeholders::_1),
 		Util::TypeOf<QueueableItem>(), "", "Set", "");
+	propSet->setDynamicEnabled([this]() -> bool { return this->getQueue() == nullptr; });
+	/*
 	auto* propType = new SimulationControlGenericEnum<QueueableItem::QueueableType, QueueableItem>(
 		std::bind(&QueueableItem::getQueueableType, this),
 		std::bind(&QueueableItem::setQueueableType, this, std::placeholders::_1),
 		Util::TypeOf<QueueableItem>(), getName(), "QueueableType", "");
-
+	*/
 	model->getControls()->insert(propIndex);
 	model->getControls()->insert(propQueue);
 	model->getControls()->insert(propSet);
-	model->getControls()->insert(propType);
 
 	_addSimulationControl(propIndex);
 	_addSimulationControl(propQueue);
 	_addSimulationControl(propSet);
-	_addSimulationControl(propType);
 }
 
 QueueableItem::QueueableItem(ModelDataDefinition* queueOrSet, QueueableItem::QueueableType queueableType, std::string index) {

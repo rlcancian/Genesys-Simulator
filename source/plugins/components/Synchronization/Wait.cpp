@@ -44,6 +44,7 @@ Wait::Wait(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 									std::bind(&Wait::getCondition, this), std::bind(&Wait::setCondition, this, std::placeholders::_1),
 									Util::TypeOf<Wait>(), getName(), "Condition", "");
 	propCondition->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
+	propCondition->setDynamicEnabled([this]() -> bool {return this->getWaitType()==WaitType::ScanForCondition;});
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Wait::getlimitExpression, this), std::bind(&Wait::setLimitExpression, this, std::placeholders::_1),
 									Util::TypeOf<Wait>(), getName(), "LimitExpression", "");
@@ -59,6 +60,7 @@ Wait::Wait(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 									_parentModel,
 									std::bind(&Wait::getSignalData, this), std::bind(&Wait::setSignalData, this, std::placeholders::_1),
 									Util::TypeOf<Wait>(), getName(), "SignalData", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
+	propSignalData->setDynamicEnabled([this]() -> bool {return this->getWaitType()==WaitType::WaitForSignal;});
 
 	_parentModel->getControls()->insert(propQueue);
 	_parentModel->getControls()->insert(propSignalData);

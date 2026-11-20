@@ -49,10 +49,30 @@ Create::Create(Model* model, std::string name) : SourceModelComponent(model, Uti
 									_parentModel,
 									std::bind(&Create::getTimeBetweenCreationsFormula, this), std::bind(&Create::setTimeBetweenCreationsFormula, this, std::placeholders::_1),
 									Util::TypeOf<Create>(), getName(), "TimeBetweenCreationsFormula", "");
+	propTimeBetweenCreationsFormula->setDynamicEnabled([this]() -> bool {
+		return this->getTimeBetweenCreationsExpression().empty()
+				&& this->getTimeBetweenCreationsSchedule() == nullptr;
+	});
 	SimulationControlGenericClass<Schedule*, Model*, Schedule>* propTimeBetweenCreationsSchedule = new SimulationControlGenericClass<Schedule*, Model*, Schedule>(
 									_parentModel,
 									std::bind(&Create::getTimeBetweenCreationsSchedule, this), std::bind(&Create::setTimeBetweenCreationsSchedule, this, std::placeholders::_1),
 									Util::TypeOf<Create>(), getName(), "TimeBetweenCreationsSchedule", "");
+	propTimeBetweenCreationsSchedule->setDynamicEnabled([this]() -> bool {
+		return this->getTimeBetweenCreationsExpression().empty()
+				&& this->getTimeBetweenCreationsFormula() == nullptr;
+	});
+
+	// Configure the inherited SourceModelComponent property without touching
+	// controls belonging to other model objects with the same property name.
+	for (SimulationControl* control : *getSimulationControls()->list()) {
+		if (control != nullptr && control->getName() == "TimeBetweenArrivals") {
+			control->setDynamicEnabled([this]() -> bool {
+				return this->getTimeBetweenCreationsFormula() == nullptr
+						&& this->getTimeBetweenCreationsSchedule() == nullptr;
+			});
+			break;
+		}
+	}
 
 	_parentModel->getControls()->insert(propTimeBetweenCreationsFormula);
 	_parentModel->getControls()->insert(propTimeBetweenCreationsSchedule);

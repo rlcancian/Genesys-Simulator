@@ -45,6 +45,8 @@ public: // constructors
 
 public:
 	void insertText(std::list<std::string> texts);
+	void addWriteElement(std::string text);
+	void removeWriteElement(std::string text);
 	void setFilename(std::string _filename);
 	std::string filename() const;
 	void setWriteToType(WriteToType _writeToType);

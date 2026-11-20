@@ -52,13 +52,14 @@ Match::Match(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propAttributeName = new SimulationControlGeneric<std::string>(
 									std::bind(&Match::getAttributeName, this), std::bind(&Match::setAttributeName, this, std::placeholders::_1),
 									Util::TypeOf<Match>(), getName(), "AttributeName", "");
+	propAttributeName->setDynamicEnabled([this]()->bool {return this->getRule() == Rule::ByAttribute;});
 	SimulationControlGenericEnum<Queue::OrderRule, Queue>* propQueueOrderRule = new SimulationControlGenericEnum<Queue::OrderRule, Queue>(
 									std::bind(&Match::getQueueOrderRule, this), std::bind(&Match::setQueueOrderRule, this, std::placeholders::_1),
 									Util::TypeOf<Match>(), getName(), "QueueOrderRule", "Common ordering rule applied to all internal queues.");
 	SimulationControlGeneric<std::string>* propQueueOrderAttributeName = new SimulationControlGeneric<std::string>(
 									std::bind(&Match::getQueueOrderAttributeName, this), std::bind(&Match::setQueueOrderAttributeName, this, std::placeholders::_1),
 									Util::TypeOf<Match>(), getName(), "QueueOrderAttributeName", "Attribute used by HIGHESTVALUE or SMALLESTVALUE queue ordering.");
-
+	propQueueOrderAttributeName->setDynamicEnabled([this]()-> bool {return this->getQueueOrderRule() != Queue::OrderRule::FIFO;});
     _parentModel->getControls()->insert(propRule);
 	_parentModel->getControls()->insert(propNumberQueues);
 	_parentModel->getControls()->insert(propMatchSize);

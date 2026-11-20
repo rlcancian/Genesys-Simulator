@@ -50,6 +50,7 @@
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/Transfer/PickStation.h"
 #include "plugins/components/Transfer/Enter.h"
+#include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
 #include "plugins/components/Synchronization/Signal.h"
@@ -685,6 +686,34 @@ TEST(PropertyEditorDynamicEnabled, NestedQueueableItemIndexTracksSetReference) {
     index = findBrowserItemByName(queueableItem->children(), QStringLiteral("Index"));
     ASSERT_NE(index, nullptr);
     EXPECT_FALSE(index->property()->isEnabled());
+}
+
+TEST(PropertyEditorLists, WriteElementsAreExposedAsEditableSimulationControl) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Write write(model, "WriteElementsProperty");
+    SimulationControl* elementsControl = nullptr;
+    for (SimulationControl* control : *write.getSimulationControls()->list()) {
+        if (control != nullptr && control->getName() == "WriteElements") {
+            elementsControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(elementsControl, nullptr);
+    EXPECT_TRUE(elementsControl->getIsList());
+    EXPECT_TRUE(elementsControl->supportsListEditor());
+    EXPECT_TRUE(elementsControl->supportsPositionalListEditing());
+
+    ASSERT_TRUE(elementsControl->createNewListElement("literal"));
+    ASSERT_TRUE(elementsControl->createNewListElement("@Entity.Priority"));
+    ASSERT_EQ(elementsControl->getStrValues()->size(), 2u);
+    elementsControl->replaceListValueAt(0, "updated");
+    elementsControl->setValue("@Entity.Priority", true);
+    ASSERT_EQ(elementsControl->getStrValues()->size(), 1u);
+    EXPECT_EQ(elementsControl->getStrValues()->getAtRank(0), "updated");
 }
 
 TEST(PropertyEditorLists, ListItemActionsRespectBoundariesAndReadOnly) {

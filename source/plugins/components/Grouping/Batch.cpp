@@ -76,6 +76,7 @@ Batch::Batch(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 				std::bind(&Batch::getAttributeName, this),
 				std::bind(&Batch::setAttributeName, this, std::placeholders::_1),
 				Util::TypeOf<Batch>(), getName(), "AttributeName", "");
+	propAttributeName->setDynamicEnabled([this]() -> bool{ return this->getRule() == Rule::ByAttribute;});
 	SimulationControlGeneric<std::string>* propSize = new SimulationControlGeneric<std::string>(
 				std::bind(&Batch::getBatchSize, this),
 				std::bind(&Batch::setBatchSize, this, std::placeholders::_1),

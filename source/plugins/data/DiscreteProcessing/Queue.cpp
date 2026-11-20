@@ -42,23 +42,26 @@ Queue::Queue(Model* model, std::string name) : ModelDataDefinition(model, Util::
 				std::bind(&Queue::getAttributeName, this),
 				std::bind(&Queue::setAttributeName, this, std::placeholders::_1),
 				Util::TypeOf<Queue>(), getName(), "AttributeName", "");
+	propAttributeName->setDynamicEnabled([this]()->bool{return this->getOrderRule()==OrderRule::HIGHESTVALUE || this->getOrderRule()==OrderRule::SMALLESTVALUE;});
 	SimulationControlGenericEnum<Queue::OrderRule, Queue>* propOrderRule = new SimulationControlGenericEnum<Queue::OrderRule, Queue>(
 				std::bind(&Queue::getOrderRule, this),
 				std::bind(&Queue::setOrderRule, this, std::placeholders::_1),
 				Util::TypeOf<Queue>(), getName(), "OrderRule", "");
+	/*
 	SimulationControlGeneric<int>* propOrderRuleInt = new SimulationControlGeneric<int>(
 				std::bind(&Queue::getOrderRuleInt, this),
 				std::bind(&Queue::setOrderRuleInt, this, std::placeholders::_1),
 				Util::TypeOf<Queue>(), getName(), "OrderRuleInt", "");
+	*/
 
 	_parentModel->getControls()->insert(propAttributeName);
 	_parentModel->getControls()->insert(propOrderRule);
-	_parentModel->getControls()->insert(propOrderRuleInt);
+	//_parentModel->getControls()->insert(propOrderRuleInt);
 
 	// setting properties
 	_addSimulationControl(propAttributeName);
 	_addSimulationControl(propOrderRule);
-	_addSimulationControl(propOrderRuleInt);
+	//_addSimulationControl(propOrderRuleInt);
 
 	_configureListComparator();
 }

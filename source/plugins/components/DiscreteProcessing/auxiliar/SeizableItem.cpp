@@ -49,13 +49,20 @@ void SeizableItem::_ensureSimulationControls(Model* model) {
         std::bind(&SeizableItem::getIndex, this), std::bind(&SeizableItem::setIndex, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "Index", "");
 	propIndex->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
+	propIndex->setDynamicEnabled([this]() -> bool {
+		return this->getSet() != nullptr && this->getSelectionRule() == SelectionRule::SPECIFICMEMBER;
+	});
     auto* propRule = new SimulationControlGenericEnum<SeizableItem::SelectionRule, SeizableItem>(
         std::bind(&SeizableItem::getSelectionRule, this),
         std::bind(&SeizableItem::setSelectionRule, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "SelectionRule", "");
+	propRule->setDynamicEnabled([this]() -> bool { return this->getSet() != nullptr; });
     auto* propSaveAttribute = new SimulationControlGeneric<std::string>(
         std::bind(&SeizableItem::getSaveAttribute, this), std::bind(&SeizableItem::setSaveAttribute, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "SaveAttribute", "");
+	propSaveAttribute->setDynamicEnabled([this]() -> bool {
+		return this->getSet() != nullptr && this->getSelectionRule() != SelectionRule::SPECIFICMEMBER;
+	});
     auto* propQuantityExpression = new SimulationControlGeneric<std::string>(
         std::bind(&SeizableItem::getQuantityExpression, this), std::bind(&SeizableItem::setQuantityExpression, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "QuantityExpression", "");
@@ -64,25 +71,28 @@ void SeizableItem::_ensureSimulationControls(Model* model) {
         model,
         std::bind(&SeizableItem::getResource, this), std::bind(&SeizableItem::setResource, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), "", "Resource", "");
+	propResource->setDynamicEnabled([this]() -> bool { return this->getSet() == nullptr; });
     auto* propSet = new SimulationControlGenericClass<Set*, Model*, Set>(
         model,
         std::bind(&SeizableItem::getSet, this), std::bind(&SeizableItem::setSet, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), "", "Set", "");
+	propSet->setDynamicEnabled([this]() -> bool { return this->getResource() == nullptr; });
+/*
     auto* propLastMemberSeized = new SimulationControlGeneric<unsigned int>(
         std::bind(&SeizableItem::getLastMemberSeized, this), std::bind(&SeizableItem::setLastMemberSeized, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "LastMemberSeized", "");
     auto* propLastPreferedOrder = new SimulationControlGeneric<unsigned int>(
         std::bind(&SeizableItem::getLastPreferedOrder, this), std::bind(&SeizableItem::setLastPreferedOrder, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "LastPreferedOrder", "");
-
+*/
     _addSimulationControl(propIndex);
     _addSimulationControl(propRule);
     _addSimulationControl(propSaveAttribute);
     _addSimulationControl(propQuantityExpression);
     _addSimulationControl(propResource);
     _addSimulationControl(propSet);
-    _addSimulationControl(propLastMemberSeized);
-    _addSimulationControl(propLastPreferedOrder);
+    //_addSimulationControl(propLastMemberSeized);
+    //_addSimulationControl(propLastPreferedOrder);
 }
 
 SeizableItem::SeizableItem(ModelDataDefinition* resourceOrSet, std::string quantityExpression, SeizableItem::SelectionRule selectionRule, std::string saveAttribute, std::string index) {

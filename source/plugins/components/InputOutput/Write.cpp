@@ -42,18 +42,26 @@ Write::Write(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propFilename = new SimulationControlGeneric<std::string>(
 									std::bind(&Write::filename, this), std::bind(&Write::setFilename, this, std::placeholders::_1),
 									Util::TypeOf<Write>(), getName(), "Filename", "");
+	propFilename->setDynamicEnabled([this]()->bool { return this->writeToType() == WriteToType::FILE; });
     SimulationControlGenericEnum<Write::WriteToType, Write>* propWriteToType = new SimulationControlGenericEnum<Write::WriteToType, Write>(
                                     std::bind(&Write::writeToType, this), std::bind(&Write::setWriteToType, this, std::placeholders::_1),
                                     Util::TypeOf<Write>(), getName(), "WriteToType", "");
+	SimulationControlGenericList<std::string, Model*, std::string>* propWriteElements =
+			new SimulationControlGenericList<std::string, Model*, std::string>(
+					_parentModel,
+					[this]() { return this->_writeElements; },
+					[this](std::string text) { this->addWriteElement(std::move(text)); },
+					[this](std::string text) { this->removeWriteElement(std::move(text)); },
+					Util::TypeOf<Write>(), getName(), "WriteElements", "");
 
-	// _parentModel->getControls()->insert();
 	_parentModel->getControls()->insert(propFilename);
     _parentModel->getControls()->insert(propWriteToType);
+	_parentModel->getControls()->insert(propWriteElements);
 
 	// setting properties
-	// _addSimulationControl();
 	_addSimulationControl(propFilename);
     _addSimulationControl(propWriteToType);
+	_addSimulationControl(propWriteElements);
 }
 
 std::string Write::show() {
@@ -85,6 +93,19 @@ void Write::insertText(std::list<std::string> texts) {
 		const bool endsWithNewLine = !last.empty() && last.back() == '\n';
 		if (!endsWithNewLine) {
 			_writeElements->list()->push_back("\n");
+		}
+	}
+}
+
+void Write::addWriteElement(std::string text) {
+	_writeElements->insert(std::move(text));
+}
+
+void Write::removeWriteElement(std::string text) {
+	for (auto it = _writeElements->list()->begin(); it != _writeElements->list()->end(); ++it) {
+		if (*it == text) {
+			_writeElements->list()->erase(it);
+			return;
 		}
 	}
 }
