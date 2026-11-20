@@ -916,7 +916,7 @@ A task moves to `done` only after required validation is green, evidence is revi
 ### AUTO-GUI-003 — Implement static-first main GUI graphical extensions
 
 - Priority: `P1`
-- Status: `running` — bounded F1 source implementation in PR #588; final head CI and integration pending
+- Status: `running` — F1/F2 source slices are locally integrated and validated in the 2026-11-20 consolidation checkpoint; remote WorkInProgress integration and broader G0–G7 scope remain pending
 - Environment: `local` for C++23/Qt6 GUI tests + `github` for PR/CI integration.
 - Authorization: maintainer approved the architectural direction on 2026-11-11 and **unconditionally approved all formal D1–D12 decisions on 2026-11-16**. The approved bounded F1/F2 sequence may proceed under existing validation/branch requirements; **no runtime feature is credited as implemented by documentation alone**, and no future dynamic ABI/loading is authorized.
 - Decision and plan: [GUI extension architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md), [approved formal contract](reference/GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md), [reconciled implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md).
