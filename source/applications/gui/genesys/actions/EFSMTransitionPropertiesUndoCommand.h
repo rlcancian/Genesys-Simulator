@@ -17,6 +17,15 @@ public:
         unsigned int priority = 0;
         std::string triggerEvent;
         std::string probabilityExpression;
+        std::string outputActions;
+        std::string setActions;
+        bool nondeterministic = false;
+        bool defaultTransition = false;
+        bool immediate = false;
+        bool preemptive = false;
+        bool history = false;
+        bool errorTransition = false;
+        bool termination = false;
     };
 
     EFSMTransitionPropertiesUndoCommand(EFSMNetwork* network, EFSMTransition* transition,

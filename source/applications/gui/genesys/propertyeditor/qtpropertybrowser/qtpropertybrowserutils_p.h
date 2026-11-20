@@ -167,7 +167,7 @@ class QtDoubleEdit : public QWidget {
 public:
 	QtDoubleEdit(QWidget* parent = Q_NULLPTR);
 
-	int value();
+	double value();
 	void setValue(double);
 	void setInitialValue(double);
 	void setDecimals(double);

@@ -2,6 +2,8 @@
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../graphicals/GraphicalModelDataDefinition.h"
 #include "../../../graphicals/ModelGraphicsScene.h"
+#include "../../../graphicals/NetworkBendGraphicsItem.h"
+#include "../../../services/NetworkBendDiagramCodec.h"
 #include "../../../services/GraphicalModelBuilder.h"
 
 #include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
@@ -13,6 +15,14 @@
 #include "kernel/util/Util.h"
 
 #include <QDialog>
+#include <QDialogButtonBox>
+#include <QHeaderView>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QTableWidget>
+#include <QVBoxLayout>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsPathItem>
 #include <QGraphicsRectItem>
@@ -30,6 +40,7 @@
 #include <sstream>
 #include <map>
 #include <memory>
+#include <limits>
 #include <utility>
 #include <unordered_set>
 
@@ -66,10 +77,91 @@ void addArrow(QPainterPath& path, const QPointF& tip) {
     path.lineTo(tip - QPointF(std::cos(angle + spread) * length, std::sin(angle + spread) * length));
 }
 
+// This probe deliberately does not evaluate transition guards. The model parser
+// can consume RNG or perform stateful evaluation, which must never be triggered
+// just because Qt repaints a scene or opens an action menu.
+struct CpnPreviewReadiness {
+    bool tokenAndCapacityReady = false;
+    bool guardPending = false;
+    QString explanation;
+};
+
+CpnPreviewReadiness previewCpnReadiness(const ColoredPetriNetNetwork* network, CPNTransition* transition) {
+    if (network == nullptr || transition == nullptr || network->getTransitions() == nullptr
+        || network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) {
+        return {false, false, QObject::tr("Transition does not belong to this CPN Network")};
+    }
+
+    const auto inputs = network->getInputArcs(transition);
+    const auto outputs = network->getOutputArcs(transition);
+    if (inputs.empty() && outputs.empty()) {
+        return {false, false, QObject::tr("No incident arcs: connect a place to this transition")};
+    }
+
+    using ColorCounts = std::map<std::string, unsigned long long>;
+    std::map<PetriPlace*, ColorCounts> required;
+    std::map<PetriPlace*, ColorCounts> produced;
+    const auto accumulate = [](std::map<PetriPlace*, ColorCounts>& amounts,
+                               const CPNArc* arc) -> bool {
+        if (arc == nullptr || arc->getPlace() == nullptr) return false;
+        for (const auto& [color, count] : arc->getInscriptions()) {
+            unsigned long long& total = amounts[arc->getPlace()][color];
+            if (total > std::numeric_limits<unsigned long long>::max() - count) return false;
+            total += count;
+        }
+        return true;
+    };
+
+    for (CPNArc* arc : inputs)
+        if (!accumulate(required, arc))
+            return {false, false, QObject::tr("Invalid or overflowing input arc inscription")};
+    for (CPNArc* arc : outputs)
+        if (!accumulate(produced, arc))
+            return {false, false, QObject::tr("Invalid or overflowing output arc inscription")};
+
+    for (const auto& [place, colors] : required) {
+        for (const auto& [color, count] : colors) {
+            const unsigned int available = place->getTokens(color);
+            if (count > available) {
+                return {false, false,
+                    QObject::tr("%1: color %2 requires %3 tokens, but only %4 are available")
+                        .arg(QString::fromStdString(place->getName()),
+                             QString::fromStdString(color))
+                        .arg(count).arg(available)};
+            }
+        }
+    }
+
+    const auto maxTokens = std::numeric_limits<unsigned int>::max();
+    for (const auto& [place, colors] : produced) {
+        for (const auto& [color, count] : colors) {
+            const unsigned long long available = place->getTokens(color);
+            const unsigned long long consumed = required[place][color];
+            if (count > maxTokens || available - consumed + count > maxTokens) {
+                return {false, false,
+                    QObject::tr("%1: output for color %2 would overflow token capacity")
+                        .arg(QString::fromStdString(place->getName()),
+                             QString::fromStdString(color))};
+            }
+        }
+    }
+
+    if (!transition->getGuardExpression().empty()) {
+        return {true, true, QObject::tr(
+            "Token prerequisites satisfied; guard NOT evaluated in GUI preview. "
+            "The guard is evaluated only when firing is requested or simulation runs.")};
+    }
+    return {true, false, QObject::tr("Enabled by marking and topology (no guard expression)")};
+}
+
 void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
     if (scene == nullptr) return;
     std::unordered_set<CPNArc*> selectedArcs;
+    QHash<QString, QPointF> previousBends;
     for (QGraphicsItem* item : scene->extensionOverlayItems(QString::fromLatin1(kCpnExtensionId))) {
+        auto* graphic = dynamic_cast<NetworkBendGraphicsItem*>(item);
+        if (graphic != nullptr && graphic->hasManualBendPoint())
+            previousBends.insert(graphic->routeKey(), graphic->manualBendPoint());
         if (item != nullptr && item->isSelected() && item->data(1).isValid()) {
             auto* arc = reinterpret_cast<CPNArc*>(static_cast<quintptr>(item->data(1).toULongLong()));
             if (arc != nullptr) selectedArcs.insert(arc);
@@ -90,11 +182,13 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
         QStringList tokens;
         for (const auto& [color, quantity] : *place->getAllTokens())
             if (quantity > 0) tokens << QStringLiteral("%1:%2").arg(QString::fromStdString(color)).arg(quantity);
+        badge->setAcceptedMouseButtons(Qt::NoButton);
         badge->setToolTip(QObject::tr("Current marking: %1")
             .arg(tokens.isEmpty() ? QObject::tr("empty") : tokens.join(QStringLiteral(", "))));
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), badge);
         if (!tokens.isEmpty()) {
             auto* label = new QGraphicsSimpleTextItem(tokens.join(QStringLiteral("\n")));
+            label->setAcceptedMouseButtons(Qt::NoButton);
             label->setBrush(QColor(20, 70, 120));
             label->setPos(bounds.topRight() + QPointF(3, -label->boundingRect().height() / 2.0));
             label->setZValue(-0.6);
@@ -106,41 +200,69 @@ void synchronizeCpnProjection(Simulator*, ModelGraphicsScene* scene) {
         if (graphical == nullptr) continue;
         auto* badge = new QGraphicsRectItem(graphical->sceneBoundingRect().adjusted(-5, -5, 5, 5));
         const bool fired = network->getLastFiredTransition() == transition;
+        const CpnPreviewReadiness preview = previewCpnReadiness(network, transition);
         badge->setPen(QPen(fired ? QColor(225, 90, 35)
-                                  : network->isEnabled(transition) ? QColor(45, 150, 90) : QColor(110, 110, 110),
+                                  : !preview.tokenAndCapacityReady ? QColor(110, 110, 110)
+                                  : preview.guardPending ? QColor(200, 145, 45)
+                                                         : QColor(45, 150, 90),
                               fired ? 4.0 : 2.0));
         badge->setBrush(Qt::NoBrush);
         badge->setZValue(-0.7);
-        badge->setToolTip(fired ? QObject::tr("Last fired CPN transition")
-                                : network->isEnabled(transition) ? QObject::tr("Enabled CPN transition")
-                                                                 : QObject::tr("Disabled CPN transition"));
+        badge->setAcceptedMouseButtons(Qt::NoButton);
+        badge->setToolTip(fired ? QObject::tr("Last fired CPN transition. %1").arg(preview.explanation)
+                                : preview.explanation);
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), badge);
     }
+    qulonglong arcOrdinal = 0;
     for (CPNArc* arc : *network->getArcs()->list()) {
-        if (arc == nullptr) continue;
+        const qulonglong currentOrdinal = arcOrdinal++;
+        if (arc == nullptr || arc->getPlace() == nullptr || arc->getTransition() == nullptr) continue;
         auto* place = scene->findGraphicalModelDataDefinition(arc->getPlace());
         auto* transition = scene->findGraphicalModelDataDefinition(arc->getTransition());
         if (place == nullptr || transition == nullptr) continue;
-        const QPointF placePoint = place->sceneBoundingRect().center();
-        const QPointF transitionPoint = transition->sceneBoundingRect().center();
-        const QPointF start = arc->isInputArc() ? placePoint : transitionPoint;
-        const QPointF end = arc->isInputArc() ? transitionPoint : placePoint;
-        QPainterPath path(start);
-        path.lineTo(end);
-        addArrow(path, end);
-        auto* item = new QGraphicsPathItem(path);
-        const bool participatedInLastFiring = network->getLastFiredTransition() == arc->getTransition();
-        item->setPen(QPen(participatedInLastFiring ? QColor(225, 90, 35) : QColor(90, 75, 115),
-                          participatedInLastFiring ? 3.5 : 2.0));
-        item->setBrush(Qt::NoBrush);
-        item->setZValue(-1.0);
+        const QPointF placeCenter = place->sceneBoundingRect().center();
+        const QPointF transitionCenter = transition->sceneBoundingRect().center();
+        const QPointF start = arc->isInputArc() ? placeCenter : transitionCenter;
+        const QPointF end = arc->isInputArc() ? transitionCenter : placeCenter;
+
+        int rank = 0, count = 0;
+        bool opposite = false;
+        for (CPNArc* candidate : *network->getArcs()->list()) {
+            if (candidate == nullptr || candidate->getPlace() != arc->getPlace()
+                || candidate->getTransition() != arc->getTransition()) continue;
+            if (candidate->getDirection() == arc->getDirection()) {
+                if (candidate == arc) rank = count;
+                ++count;
+            } else {
+                opposite = true;
+            }
+        }
+        const QString key = NetworkBendDiagramCodec::relationKey(
+            currentOrdinal, QString::fromStdString(arc->getPlace()->getName()),
+            QString::fromStdString(arc->getTransition()->getName()),
+            QString::fromStdString(arc->getName()));
+        auto* item = new NetworkBendGraphicsItem(QString::fromLatin1(kCpnExtensionId), key);
+        item->setGeometry(start, end, rank, count, opposite, true);
+        if (previousBends.contains(key)) item->setManualBendPoint(previousBends.value(key));
+        const bool lastFiring = network->getLastFiredTransition() == arc->getTransition();
+        item->setVisiblePen(QPen(lastFiring ? QColor(225, 90, 35) : QColor(90, 75, 115),
+                                 lastFiring ? 3.5 : 2.0));
         item->setData(1, QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(arc)));
-        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
-        item->setToolTip(participatedInLastFiring
+        item->setToolTip(lastFiring
             ? QObject::tr("Last firing: %1").arg(QString::fromStdString(arc->show()))
             : QString::fromStdString(arc->show()));
         scene->addExtensionOverlayItem(QString::fromLatin1(kCpnExtensionId), item);
         if (selectedArcs.contains(arc)) item->setSelected(true);
+
+        QStringList inscriptions;
+        for (const auto& [color, quantity] : arc->getInscriptions()) {
+            if (quantity > 0) inscriptions.append(
+                QStringLiteral("%1:%2").arg(QString::fromStdString(color)).arg(quantity));
+        }
+        if (!inscriptions.isEmpty()) {
+            item->setRouteLabel(inscriptions.join(QStringLiteral(", ")),
+                                QColor(80, 50, 105));
+        }
     }
 }
 
@@ -375,6 +497,238 @@ PetriPlace* selectedPlace(const GuiExtensionRuntimeContext& context) {
     return nullptr;
 }
 
+// Initial marking is editable independent of the current simulation marking.
+class ResetCpnPlaceMarkingUndoCommand final : public QUndoCommand {
+public:
+    ResetCpnPlaceMarkingUndoCommand(ColoredPetriNetNetwork* network, PetriPlace* place,
+                                   ModelGraphicsScene* scene)
+        : _network(network), _place(place), _scene(scene),
+          _before(*place->getAllTokens()), _after(network->getInitialMarking(place)) {
+        setText(QObject::tr("Reset CPN place to initial marking"));
+    }
+    void undo() override { apply(_before); }
+    void redo() override { apply(_after); }
+private:
+    void apply(const std::map<std::string, unsigned int>& marking) {
+        if (_network == nullptr || _place == nullptr
+            || _network->getPlaces()->find(_place) == _network->getPlaces()->list()->end()) {
+            setObsolete(true); return;
+        }
+        _place->clearTokens();
+        for (const auto& [color, count] : marking) _place->setTokens(count, color);
+        synchronizeCpnProjection(nullptr, _scene);
+    }
+    ColoredPetriNetNetwork* _network;
+    PetriPlace* _place;
+    QPointer<ModelGraphicsScene> _scene;
+    std::map<std::string, unsigned int> _before, _after;
+};
+
+class SetCpnCurrentMarkingUndoCommand final : public QUndoCommand {
+public:
+    SetCpnCurrentMarkingUndoCommand(ColoredPetriNetNetwork* network, PetriPlace* place,
+                                    ModelGraphicsScene* scene,
+                                    std::map<std::string, unsigned int> after)
+        : _network(network), _place(place), _scene(scene),
+          _before(*place->getAllTokens()), _after(std::move(after)) {
+        setText(QObject::tr("Edit CPN current marking"));
+    }
+    void redo() override { apply(_after); }
+    void undo() override { apply(_before); }
+private:
+    void apply(const std::map<std::string, unsigned int>& value) {
+        if (_network == nullptr || _place == nullptr || _scene == nullptr
+            || _scene->networkEditorOwner() != _network
+            || _network->getPlaces()->find(_place) == _network->getPlaces()->list()->end()) {
+            setObsolete(true);
+            return;
+        }
+        _place->clearTokens();
+        for (const auto& [color, count] : value) _place->setTokens(count, color);
+        synchronizeCpnProjection(nullptr, _scene);
+    }
+    ColoredPetriNetNetwork* _network;
+    PetriPlace* _place;
+    QPointer<ModelGraphicsScene> _scene;
+    std::map<std::string, unsigned int> _before, _after;
+};
+
+bool canEditCpnPlaceMarking(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
+        && selectedPlace(context) != nullptr;
+}
+
+void editCpnPlaceMarking(const GuiExtensionRuntimeContext& context, bool initial) {
+    if (!canEditCpnPlaceMarking(context)) return;
+    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
+    PetriPlace* place = selectedPlace(context);
+    const std::map<std::string, unsigned int> previous = initial
+        ? network->getInitialMarking(place) : *place->getAllTokens();
+
+    QDialog dialog;
+    dialog.setWindowTitle(QObject::tr("CPN %1 marking — %2")
+        .arg(initial ? QObject::tr("initial") : QObject::tr("current"),
+             QString::fromStdString(place->getName())));
+    dialog.resize(480, 360);
+    QVBoxLayout layout(&dialog);
+    auto* explanation = new QLabel(initial
+        ? QObject::tr("Edit initial tokens by color. Current tokens do not change until reset or simulation restart.")
+        : QObject::tr("Edit current tokens by color. The initial marking remains unchanged."), &dialog);
+    explanation->setWordWrap(true);
+    layout.addWidget(explanation);
+    auto* table = new QTableWidget(0, 2, &dialog);
+    table->setHorizontalHeaderLabels({QObject::tr("Color"), QObject::tr("Token count")});
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    layout.addWidget(table);
+    const auto addRow = [table](const QString& color, unsigned int count) {
+        const int row = table->rowCount();
+        table->insertRow(row);
+        table->setItem(row, 0, new QTableWidgetItem(color));
+        table->setItem(row, 1, new QTableWidgetItem(QString::number(count)));
+    };
+    for (const auto& [color, count] : previous)
+        addRow(QString::fromStdString(color), count);
+
+    QHBoxLayout rowActions;
+    auto* add = new QPushButton(QObject::tr("Add color"), &dialog);
+    auto* remove = new QPushButton(QObject::tr("Remove selected"), &dialog);
+    rowActions.addWidget(add);
+    rowActions.addWidget(remove);
+    layout.addLayout(&rowActions);
+    QObject::connect(add, &QPushButton::clicked, &dialog,
+                     [addRow]() { addRow(QString(), 0); });
+    QObject::connect(remove, &QPushButton::clicked, &dialog, [table]() {
+        if (table->currentRow() >= 0) table->removeRow(table->currentRow());
+    });
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout.addWidget(buttons);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, [&]() {
+        std::map<std::string, unsigned int> marking;
+        for (int row = 0; row < table->rowCount(); ++row) {
+            auto* colorItem = table->item(row, 0);
+            auto* quantityItem = table->item(row, 1);
+            const QString color = colorItem != nullptr ? colorItem->text().trimmed() : QString();
+            const QByteArray quantity = quantityItem != nullptr
+                ? quantityItem->text().trimmed().toLatin1() : QByteArray();
+            unsigned int count = 0;
+            const auto [end, error] = std::from_chars(quantity.constData(),
+                quantity.constData() + quantity.size(), count);
+            if (color.isEmpty() || color.contains(QLatin1Char('=')) || color.contains(QLatin1Char(';'))
+                || error != std::errc{} || end != quantity.constData() + quantity.size()
+                || !marking.emplace(color.toStdString(), count).second) {
+                QMessageBox::warning(&dialog, QObject::tr("Invalid marking"),
+                                     QObject::tr("Each row needs a unique color and a nonnegative integer token count."));
+                return;
+            }
+        }
+        if (marking != previous) {
+            if (initial) {
+                context.graphicsScene->getUndoStack()->push(
+                    new SetCpnInitialMarkingUndoCommand(network, place, context.graphicsScene, std::move(marking)));
+            } else {
+                context.graphicsScene->getUndoStack()->push(
+                    new SetCpnCurrentMarkingUndoCommand(network, place, context.graphicsScene, std::move(marking)));
+            }
+        }
+        dialog.accept();
+    });
+    dialog.exec();
+}
+
+void editCpnPlaceInitialMarking(const GuiExtensionRuntimeContext& context) {
+    editCpnPlaceMarking(context, true);
+}
+
+void editCpnPlaceCurrentMarking(const GuiExtensionRuntimeContext& context) {
+    editCpnPlaceMarking(context, false);
+}
+
+bool canEditCpnArcInscription(const GuiExtensionRuntimeContext& context) {
+    return context.graphicsScene != nullptr && context.graphicsScene->getUndoStack() != nullptr
+        && selectedArc(context) != nullptr;
+}
+
+void editCpnArcInscription(const GuiExtensionRuntimeContext& context) {
+    if (!canEditCpnArcInscription(context)) return;
+    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
+    CPNArc* arc = selectedArc(context);
+    if (network == nullptr || arc == nullptr) return;
+
+    QDialog dialog;
+    dialog.setWindowTitle(QObject::tr("CPN arc inscription — %1")
+        .arg(QString::fromStdString(arc->getName())));
+    dialog.resize(480, 360);
+    QVBoxLayout layout(&dialog);
+    auto* table = new QTableWidget(0, 2, &dialog);
+    table->setHorizontalHeaderLabels({QObject::tr("Color"), QObject::tr("Tokens per firing")});
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    layout.addWidget(table);
+    const auto addRow = [table](const QString& color, unsigned int count) {
+        const int row = table->rowCount();
+        table->insertRow(row);
+        table->setItem(row, 0, new QTableWidgetItem(color));
+        table->setItem(row, 1, new QTableWidgetItem(QString::number(count)));
+    };
+    for (const auto& [color, quantity] : arc->getInscriptions())
+        addRow(QString::fromStdString(color), quantity);
+
+    QHBoxLayout actions;
+    auto* add = new QPushButton(QObject::tr("Add color"), &dialog);
+    auto* remove = new QPushButton(QObject::tr("Remove selected"), &dialog);
+    actions.addWidget(add);
+    actions.addWidget(remove);
+    layout.addLayout(&actions);
+    QObject::connect(add, &QPushButton::clicked, &dialog,
+                     [addRow]() { addRow(QString(), 1u); });
+    QObject::connect(remove, &QPushButton::clicked, &dialog, [table]() {
+        if (table->currentRow() >= 0) table->removeRow(table->currentRow());
+    });
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    layout.addWidget(buttons);
+    QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, [&]() {
+        std::map<std::string, unsigned int> inscription;
+        for (int row = 0; row < table->rowCount(); ++row) {
+            const auto* colorItem = table->item(row, 0);
+            const auto* quantityItem = table->item(row, 1);
+            const QString color = colorItem != nullptr ? colorItem->text().trimmed() : QString();
+            const QByteArray numeric = quantityItem != nullptr
+                ? quantityItem->text().trimmed().toLatin1() : QByteArray();
+            unsigned int value = 0u;
+            const auto [end, ec] = std::from_chars(
+                numeric.constData(), numeric.constData() + numeric.size(), value);
+            if (color.isEmpty() || color.contains(QLatin1Char(';')) || color.contains(QLatin1Char('='))
+                || ec != std::errc{} || end != numeric.constData() + numeric.size()
+                || value == 0u || !inscription.emplace(color.toStdString(), value).second) {
+                QMessageBox::warning(&dialog, QObject::tr("Invalid arc inscription"),
+                    QObject::tr("Use unique colors and strictly positive integer quantities."));
+                return;
+            }
+        }
+        if (inscription != arc->getInscriptions()) {
+            context.graphicsScene->getUndoStack()->push(
+                new EditCpnArcInscriptionUndoCommand(network, arc, context.graphicsScene,
+                                                       std::move(inscription)));
+        }
+        dialog.accept();
+    });
+    dialog.exec();
+}
+
+void resetCpnPlaceToInitialMarking(const GuiExtensionRuntimeContext& context) {
+    if (!canEditCpnPlaceMarking(context)) return;
+    auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
+    auto* place = selectedPlace(context);
+    if (*place->getAllTokens() == network->getInitialMarking(place)) return;
+    context.graphicsScene->getUndoStack()->push(
+        new ResetCpnPlaceMarkingUndoCommand(network, place, context.graphicsScene));
+}
+
 class RemoveCpnNodeUndoCommand final : public QUndoCommand {
 public:
     RemoveCpnNodeUndoCommand(ColoredPetriNetNetwork* network, PetriPlace* place, ModelGraphicsScene* scene)
@@ -549,7 +903,7 @@ bool canFireSelectedTransition(const GuiExtensionRuntimeContext& context) {
     if (context.graphicsScene == nullptr || context.graphicsScene->getUndoStack() == nullptr) return false;
     auto* network = dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner());
     auto* transition = selectedTransition(context);
-    return network != nullptr && transition != nullptr && network->isEnabled(transition);
+    return previewCpnReadiness(network, transition).tokenAndCapacityReady;
 }
 
 void fireSelectedTransition(const GuiExtensionRuntimeContext& context) {
@@ -573,6 +927,20 @@ public:
             return dynamic_cast<ColoredPetriNetNetwork*>(definition) != nullptr;
         };
         projection.synchronize = synchronizeCpnProjection;
+        projection.sectionName = "ColoredPetriNetBend";
+        projection.captureLayout = [](Simulator*, ModelDataDefinition* owner, ModelGraphicsScene* scene) {
+            return NetworkBendDiagramCodec::capture(owner, scene, QString::fromLatin1(kCpnExtensionId));
+        };
+        projection.restoreLayout = [](Simulator*, ModelDataDefinition* owner,
+                                      ModelGraphicsScene* scene, const std::any& layout) {
+            NetworkBendDiagramCodec::restore(owner, scene, layout, QString::fromLatin1(kCpnExtensionId));
+        };
+        projection.serializeLayouts = NetworkBendDiagramCodec::serialize;
+        projection.parseLayouts = [](Model* model, const QStringList& lines) {
+            return NetworkBendDiagramCodec::parse(model, lines, [](ModelDataDefinition* owner) {
+                return dynamic_cast<ColoredPetriNetNetwork*>(owner) != nullptr;
+            });
+        };
         registry->addDiagramProjection(std::move(projection));
         GuiActionContribution validate;
         validate.id = "modal.cpn.validate-network";
@@ -700,6 +1068,9 @@ public:
             auto* data = graphical != nullptr ? graphical->getDataDefinition() : nullptr;
             if (auto* transition = dynamic_cast<CPNTransition*>(data)) {
                 if (network->getTransitions()->find(transition) == network->getTransitions()->list()->end()) return result;
+                const CpnPreviewReadiness preview = previewCpnReadiness(network, transition);
+                result.push_back(P{"Firing Readiness", preview.explanation.toStdString(), {},
+                                   P::Kind::String, false});
                 result.push_back(P{"Guard Expression", transition->getGuardExpression(), {}, P::Kind::String, true});
                 result.push_back(P{"Priority", std::to_string(transition->getPriority()), {}, P::Kind::Integer, true});
             } else if (auto* place = dynamic_cast<PetriPlace*>(data)) {
@@ -709,6 +1080,13 @@ public:
                     if (!first) marking << ";"; first = false; marking << color << "=" << quantity;
                 }
                 result.push_back(P{"Initial Marking", marking.str(), {}, P::Kind::String, true});
+                std::ostringstream current; bool firstCurrent = true;
+                for (const auto& [color, quantity] : *place->getAllTokens()) {
+                    if (!firstCurrent) current << ";";
+                    firstCurrent = false;
+                    current << color << "=" << quantity;
+                }
+                result.push_back(P{"Current Marking", current.str(), {}, P::Kind::String, false});
             }
             return result;
         };
@@ -745,6 +1123,54 @@ public:
             if (auto* transition = dynamic_cast<CPNTransition*>(dropped)) network->removeTransition(transition);
         };
         registry->addNetworkEditor(std::move(editor));
+        GuiActionContribution editMarking;
+        editMarking.id = "modal.cpn.edit-initial-marking";
+        editMarking.text = "Edit Selected CPN Place Initial Marking...";
+        editMarking.menuPath = "Model";
+        editMarking.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        editMarking.isEnabled = canEditCpnPlaceMarking;
+        editMarking.trigger = editCpnPlaceInitialMarking;
+        registry->addAction(std::move(editMarking));
+
+        GuiActionContribution editCurrentMarking;
+        editCurrentMarking.id = "modal.cpn.edit-current-marking";
+        editCurrentMarking.text = "Edit Selected CPN Place Current Marking...";
+        editCurrentMarking.menuPath = "Model";
+        editCurrentMarking.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        editCurrentMarking.isEnabled = canEditCpnPlaceMarking;
+        editCurrentMarking.trigger = editCpnPlaceCurrentMarking;
+        registry->addAction(std::move(editCurrentMarking));
+
+        GuiActionContribution editArcInscription;
+        editArcInscription.id = "modal.cpn.edit-arc-inscription";
+        editArcInscription.text = "Edit Selected CPN Arc Inscription...";
+        editArcInscription.menuPath = "Model";
+        editArcInscription.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        editArcInscription.isEnabled = canEditCpnArcInscription;
+        editArcInscription.trigger = editCpnArcInscription;
+        registry->addAction(std::move(editArcInscription));
+
+        GuiActionContribution resetMarking;
+        resetMarking.id = "modal.cpn.reset-place-marking";
+        resetMarking.text = "Reset Selected CPN Place to Initial Marking";
+        resetMarking.menuPath = "Model";
+        resetMarking.isVisible = [](const GuiExtensionRuntimeContext& context) {
+            return context.graphicsScene != nullptr
+                && dynamic_cast<ColoredPetriNetNetwork*>(context.graphicsScene->networkEditorOwner()) != nullptr;
+        };
+        resetMarking.isEnabled = canEditCpnPlaceMarking;
+        resetMarking.trigger = resetCpnPlaceToInitialMarking;
+        registry->addAction(std::move(resetMarking));
+
         GuiActionContribution fire;
         fire.id = "modal.cpn.fire-transition";
         fire.text = "Fire Selected Enabled CPN Transition";

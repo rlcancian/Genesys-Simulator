@@ -2,6 +2,8 @@
 #include "../../GuiExtensionPluginCatalog.h"
 #include "../../../graphicals/GraphicalModelDataDefinition.h"
 #include "../../../graphicals/ModelGraphicsScene.h"
+#include "../../../graphicals/NetworkBendGraphicsItem.h"
+#include "../../../services/NetworkBendDiagramCodec.h"
 #include "../../../services/GraphicalModelBuilder.h"
 
 #include "plugins/data/ModalModel/GraphNetwork.h"
@@ -79,73 +81,48 @@ private:
 void synchronizeGraphProjection(Simulator*, ModelGraphicsScene* scene) {
     if (scene == nullptr) return;
     std::unordered_set<GraphEdge*> selectedEdges;
-    for (QGraphicsItem* item : scene->extensionOverlayItems(QString::fromLatin1(kGraphExtensionId))) {
-        if (item != nullptr && item->isSelected() && item->data(1).isValid()) {
-            auto* edge = reinterpret_cast<GraphEdge*>(static_cast<quintptr>(item->data(1).toULongLong()));
+    QHash<QString, QPointF> previousBends;
+    for (QGraphicsItem* old : scene->extensionOverlayItems(QString::fromLatin1(kGraphExtensionId))) {
+        if (old != nullptr && old->isSelected() && old->data(1).isValid()) {
+            auto* edge = reinterpret_cast<GraphEdge*>(static_cast<quintptr>(old->data(1).toULongLong()));
             if (edge != nullptr) selectedEdges.insert(edge);
         }
+        auto* graphic = dynamic_cast<NetworkBendGraphicsItem*>(old);
+        if (graphic != nullptr && graphic->hasManualBendPoint())
+            previousBends.insert(graphic->routeKey(), graphic->manualBendPoint());
     }
     scene->clearExtensionOverlayItems(QString::fromLatin1(kGraphExtensionId));
     auto* network = dynamic_cast<GraphNetwork*>(scene->networkEditorOwner());
     if (network == nullptr) return;
 
     const auto edges = network->getEdges();
-    for (std::size_t index = 0; index < edges.size(); ++index) {
-        GraphEdge* edge = edges[index];
+    for (std::size_t ordinal = 0; ordinal < edges.size(); ++ordinal) {
+        GraphEdge* edge = edges[ordinal];
         if (edge == nullptr || edge->getSource() == nullptr || edge->getDestination() == nullptr) continue;
-        GraphicalModelDataDefinition* source = scene->findGraphicalModelDataDefinition(edge->getSource());
-        GraphicalModelDataDefinition* destination = scene->findGraphicalModelDataDefinition(edge->getDestination());
+        auto* source = scene->findGraphicalModelDataDefinition(edge->getSource());
+        auto* destination = scene->findGraphicalModelDataDefinition(edge->getDestination());
         if (source == nullptr || destination == nullptr) continue;
 
-        const QPointF start = source->sceneBoundingRect().center();
-        const QPointF end = destination->sceneBoundingRect().center();
-        QPainterPath path(start);
-        if (edge->getSource() == edge->getDestination()) {
-            const QRectF nodeBounds = source->sceneBoundingRect();
-            const QPointF top = QPointF(nodeBounds.center().x(), nodeBounds.top());
-            path.moveTo(top);
-            path.cubicTo(top + QPointF(-35, -55), top + QPointF(35, -55), top);
-        } else {
-            const auto parallel = network->getEdgesBetween(edge->getSource(), edge->getDestination());
-            const auto edgePosition = std::find(parallel.begin(), parallel.end(), edge);
-            const std::size_t ordinal = edgePosition == parallel.end()
-                ? 0u : static_cast<std::size_t>(std::distance(parallel.begin(), edgePosition));
-            if (parallel.size() > 1) {
-                const QPointF delta = end - start;
-                const qreal length = std::max<qreal>(1.0, std::hypot(delta.x(), delta.y()));
-                const QPointF normal(-delta.y() / length, delta.x() / length);
-                const qreal offset = (static_cast<qreal>(ordinal) - (parallel.size() - 1) / 2.0) * 22.0;
-                path.quadTo((start + end) / 2.0 + normal * offset, end);
-            } else {
-                path.lineTo(end);
-            }
-        }
-
-        auto* item = new QGraphicsPathItem(path);
-        QPen pen(QColor(65, 75, 90), 2.0);
-        item->setPen(pen);
-        item->setBrush(Qt::NoBrush);
-        item->setZValue(-1.0);
+        const auto parallel = network->getEdgesBetween(edge->getSource(), edge->getDestination());
+        const auto position = std::find(parallel.begin(), parallel.end(), edge);
+        const int rank = position != parallel.end()
+            ? static_cast<int>(std::distance(parallel.begin(), position)) : 0;
+        const bool opposite = network->isDirected() && edge->getSource() != edge->getDestination()
+            && !network->getEdgesBetween(edge->getDestination(), edge->getSource()).empty();
+        const QString key = NetworkBendDiagramCodec::relationKey(
+            static_cast<qulonglong>(ordinal), QString::fromStdString(edge->getSource()->getName()),
+            QString::fromStdString(edge->getDestination()->getName()),
+            QString::fromStdString(edge->getName()));
+        auto* item = new NetworkBendGraphicsItem(QString::fromLatin1(kGraphExtensionId), key);
+        item->setGeometry(source->sceneBoundingRect().center(), destination->sceneBoundingRect().center(),
+                          rank, static_cast<int>(parallel.size()), opposite, network->isDirected());
+        if (previousBends.contains(key)) item->setManualBendPoint(previousBends.value(key));
+        item->setVisiblePen(QPen(QColor(65, 75, 90), 2.0));
         item->setData(0, QString::fromStdString(edge->getName()));
         item->setData(1, QVariant::fromValue<qulonglong>(reinterpret_cast<quintptr>(edge)));
-        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
         QString tip = QString::fromStdString(edge->getName());
         if (edge->hasWeight()) tip += QStringLiteral(" (weight=%1)").arg(edge->getWeight());
         item->setToolTip(tip);
-        if (network->isDirected()) {
-            const QPointF tangent = path.pointAtPercent(0.98) - path.pointAtPercent(0.94);
-            const qreal angle = std::atan2(tangent.y(), tangent.x());
-            const QPointF tipPoint = path.pointAtPercent(1.0);
-            QPainterPath arrow(tipPoint);
-            constexpr qreal arrowLength = 10.0;
-            constexpr qreal arrowAngle = 0.45;
-            arrow.lineTo(tipPoint - QPointF(std::cos(angle - arrowAngle) * arrowLength,
-                                           std::sin(angle - arrowAngle) * arrowLength));
-            arrow.moveTo(tipPoint);
-            arrow.lineTo(tipPoint - QPointF(std::cos(angle + arrowAngle) * arrowLength,
-                                           std::sin(angle + arrowAngle) * arrowLength));
-            item->setPath(path.united(arrow));
-        }
         scene->addExtensionOverlayItem(QString::fromLatin1(kGraphExtensionId), item);
         if (selectedEdges.contains(edge)) item->setSelected(true);
     }
@@ -502,6 +479,20 @@ public:
             return dynamic_cast<GraphNetwork*>(definition) != nullptr;
         };
         projection.synchronize = synchronizeGraphProjection;
+        projection.sectionName = "GraphNetworkBend";
+        projection.captureLayout = [](Simulator*, ModelDataDefinition* owner, ModelGraphicsScene* scene) {
+            return NetworkBendDiagramCodec::capture(owner, scene, QString::fromLatin1(kGraphExtensionId));
+        };
+        projection.restoreLayout = [](Simulator*, ModelDataDefinition* owner,
+                                      ModelGraphicsScene* scene, const std::any& layout) {
+            NetworkBendDiagramCodec::restore(owner, scene, layout, QString::fromLatin1(kGraphExtensionId));
+        };
+        projection.serializeLayouts = NetworkBendDiagramCodec::serialize;
+        projection.parseLayouts = [](Model* model, const QStringList& lines) {
+            return NetworkBendDiagramCodec::parse(model, lines, [](ModelDataDefinition* owner) {
+                return dynamic_cast<GraphNetwork*>(owner) != nullptr;
+            });
+        };
         registry->addDiagramProjection(std::move(projection));
 
         GuiNetworkEditorContribution editor;
