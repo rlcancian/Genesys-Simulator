@@ -1,3 +1,11 @@
+---
+document_type: reference
+authority: technical-reference
+owner: project-maintainer
+last_reviewed: 2026-11-20
+status: draft
+---
+
 # EFSM refinement lifecycle and modal transition qualifiers
 
 **State:** remote implementation awaiting build, tests and desktop validation.  
