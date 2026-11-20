@@ -1,7 +1,11 @@
 #include "GuiExtensionManager.h"
+#include "../graphicals/ModelGraphicsScene.h"
+#include "../actions/AddUndoCommand.h"
 
 #include <QAction>
 #include <QDockWidget>
+#include <QGraphicsItem>
+#include <QUndoStack>
 #include <QMainWindow>
 #include <QMenu>
 #include <QMenuBar>
@@ -12,25 +16,7 @@
 #include <Qt>
 
 #include <algorithm>
-#include <cctype>
-#include <unordered_set>
 #include <utility>
-
-namespace {
-std::string normalizePluginId(std::string text) {
-	std::string normalized;
-	normalized.reserve(text.size());
-	for (unsigned char c : text) {
-		if (!std::isspace(c)) {
-			normalized.push_back(static_cast<char>(std::tolower(c)));
-		}
-	}
-	if (normalized.size() > 3 && normalized.substr(normalized.size() - 3) == ".so") {
-		normalized.erase(normalized.size() - 3);
-	}
-	return normalized;
-}
-} // namespace
 
 GuiExtensionManager::GuiExtensionManager(QMainWindow* mainWindow) : _mainWindow(mainWindow) {
 }
@@ -47,31 +33,189 @@ void GuiExtensionManager::setLoadedModelPluginIds(std::vector<std::string> model
 	_loadedModelPluginIds = std::move(modelPluginIds);
 }
 
+void GuiExtensionManager::setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds) {
+	_systemCapabilityIds = std::move(capabilityIds);
+}
+
+void GuiExtensionManager::setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions) {
+    _modelPluginVersions = std::move(versions);
+}
+
+void GuiExtensionManager::setAvailableSystemCapabilityVersions(std::unordered_map<std::string, std::string> versions) {
+    _systemCapabilityVersions = std::move(versions);
+}
+
 void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	clear();
+	_runtimeContext = context;
 	if (_mainWindow == nullptr) {
 		return;
 	}
 
 	GuiExtensionRegistry registry;
-	for (const GuiExtensionPlugin* plugin : _plugins) {
-		if (plugin == nullptr) {
-			continue;
-		}
-		if (!_isPluginDependenciesSatisfied(plugin)) {
-			continue;
-		}
-		plugin->registerContributions(&registry);
+	GuiExtensionDependencyResolver::Environment env{_loadedModelPluginIds, _systemCapabilityIds};
+	env.modelPluginVersions = _modelPluginVersions;
+	env.systemCapabilityVersions = _systemCapabilityVersions;
+	const auto resolution = GuiExtensionDependencyResolver::resolve(_plugins, env);
+	for (const GuiExtensionPlugin* plugin : resolution.active) {
+		GuiExtensionRegistry contributed;
+		plugin->registerContributions(&contributed);
+		registry.appendEligibleFrom(contributed, [&](const GuiExtensionDependencyGroups& groups) {
+			return GuiExtensionDependencyResolver::contributionEligible(groups, env, resolution);
+		});
 	}
 
 	for (const GuiActionContribution& action : registry.actions()) {
 		_applyActionContribution(action, context);
 	}
+    // F2: a graphical extension contributes an item factory, while generic
+    // host code handles menu placement, scene ownership and existing undo.
+    // Each trigger inserts one real, movable/selectable QGraphicsItem.
+    for (const GuiAnimationToolContribution& tool : registry.animationTools()) {
+        if (tool.id.empty() || !tool.createItem) continue;
+        GuiActionContribution action;
+        action.id = tool.id;
+        action.text = tool.text;
+        action.menuPath = tool.menuPath.empty() ? "View/Animate" : tool.menuPath;
+        action.toolBarId = tool.toolBarId;
+        action.statusTip = tool.statusTip;
+        action.isEnabled = [guard = tool.isEnabled](const GuiExtensionRuntimeContext& current) {
+            if (!current.graphicsScene || !current.graphicsScene->getUndoStack()) return false;
+            return !guard || guard(current);
+        };
+        action.trigger = [factory = tool.createItem, guard = tool.isEnabled](
+            const GuiExtensionRuntimeContext& current) {
+            ModelGraphicsScene* scene = current.graphicsScene;
+            if (!scene || !scene->getUndoStack() || (guard && !guard(current))) return;
+            std::unique_ptr<QGraphicsItem> item = factory(current);
+            if (!item) return;
+            item->setPos(scene->sceneRect().center() - item->boundingRect().center());
+            // QUndoStack::push invokes redo, which registers the item in
+            // ModelGraphicsScene::addDrawing and transfers ownership to scene.
+            scene->getUndoStack()->push(new AddUndoCommand(item.get(), scene));
+            item.release();
+        };
+        _applyActionContribution(action, context);
+    }
 	for (const GuiWindowContribution& window : registry.windows()) {
 		_applyWindowContribution(window, context);
 	}
 	for (const GuiDockContribution& dock : registry.docks()) {
 		_applyDockContribution(dock, context);
+	}
+	_contextMenuContributions = registry.contextMenus();
+	_propertyListContributions = registry.propertyLists();
+	_editingContextContributions = registry.editingContexts();
+	_modelReferenceContributions = registry.modelReferences();
+}
+
+void GuiExtensionManager::populateContextMenu(QMenu* menu, QGraphicsItem* item) const {
+	if (menu == nullptr) return;
+	for (const GuiContextMenuContribution& contribution : _contextMenuContributions) {
+		if (!contribution.populate) continue;
+		if (contribution.isVisible && !contribution.isVisible(_runtimeContext, item)) continue;
+		contribution.populate(menu, _runtimeContext, item);
+	}
+}
+
+void GuiExtensionManager::reconcilePropertyListChange(ModelDataDefinition* owner, ModelGraphicsScene* scene) const {
+	if (owner == nullptr) return;
+	for (const GuiPropertyListContribution& contribution : _propertyListContributions) {
+		if (contribution.reconcile && (!contribution.supports || contribution.supports(owner))) {
+			contribution.reconcile(owner, scene);
+		}
+	}
+}
+
+bool GuiExtensionManager::reconcilePropertyListMove(ModelDataDefinition* owner, ModelGraphicsScene* scene, int from, int to) const {
+	if (owner == nullptr) return false;
+	for (const GuiPropertyListContribution& contribution : _propertyListContributions) {
+		if (contribution.reconcileMove && (!contribution.supports || contribution.supports(owner))) {
+			if (contribution.reconcileMove(owner, scene, from, to)) return true;
+		}
+	}
+	return false;
+}
+
+bool GuiExtensionManager::hasEditingContext(ModelDataDefinition* owner) const {
+	return std::any_of(_editingContextContributions.begin(), _editingContextContributions.end(),
+		[owner](const auto& c) { return c.supports && c.supports(owner); });
+}
+
+ModelDataDefinition* GuiExtensionManager::resolveEditingContextOwner(ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.resolveOwner) {
+			ModelDataDefinition* resolved = c.resolveOwner(owner);
+			return resolved != nullptr ? resolved : owner;
+		}
+	}
+	return owner;
+}
+
+bool GuiExtensionManager::isNetworkEditingContext(ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.isNetwork) return c.isNetwork(owner);
+	}
+	return false;
+}
+
+bool GuiExtensionManager::canOpenEditingContext(Model* model, ModelDataDefinition* owner) const {
+	for (const auto& c : _editingContextContributions) {
+		if (c.supports && c.supports(owner) && c.canOpen) return c.canOpen(model, owner);
+	}
+	return false;
+}
+
+ModelDataDefinition* GuiExtensionManager::currentModelReference(ModelDataDefinition* owner) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.currentReference) return c.currentReference(owner);
+	return nullptr;
+}
+
+ModelDataDefinition* GuiExtensionManager::resolveModelReferenceChoice(ModelDataDefinition* owner, const std::string& choice) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.resolveChoice) return c.resolveChoice(owner, choice);
+	return nullptr;
+}
+
+std::string GuiExtensionManager::formatModelReferenceChoice(ModelDataDefinition* owner, const std::string& property,
+	ModelDataDefinition* ref) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.formatChoice) return c.formatChoice(owner, property, ref);
+	return {};
+}
+
+bool GuiExtensionManager::confirmModelReferenceChange(ModelDataDefinition* owner, ModelDataDefinition* before,
+	ModelDataDefinition* after, QWidget* parent) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.confirmChange) return c.confirmChange(owner, before, after, parent);
+	return true;
+}
+
+void GuiExtensionManager::notifyModelReferenceChanged(ModelDataDefinition* owner, ModelDataDefinition* before,
+	ModelDataDefinition* after, ModelGraphicsScene* scene, ObjectPropertyBrowser* browser) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.referenceChanged) c.referenceChanged(owner, before, after, scene, browser);
+}
+
+void GuiExtensionManager::notifyModelPropertyChanged(ModelDataDefinition* owner, const std::string& property,
+	const std::string& before, const std::string& after, ModelGraphicsScene* scene,
+	ObjectPropertyBrowser* browser) const {
+	for (const auto& c : _modelReferenceContributions)
+		if (c.supports && c.supports(owner) && c.propertyChanged)
+			c.propertyChanged(owner, property, before, after, scene, browser);
+}
+
+void GuiExtensionManager::refreshActionStates(const GuiExtensionRuntimeContext& context) {
+	_runtimeContext = context;
+	for (const auto& entry : _actionContributions) {
+		QAction* action = entry.first;
+		const GuiActionContribution& contribution = entry.second;
+		if (action == nullptr) continue;
+		const bool visible = !contribution.isVisible || contribution.isVisible(_runtimeContext);
+		action->setVisible(visible);
+		if (contribution.isEnabled) action->setEnabled(visible && contribution.isEnabled(_runtimeContext));
+		else action->setEnabled(visible);
 	}
 }
 
@@ -80,6 +224,7 @@ void GuiExtensionManager::clear() {
 		delete action;
 	}
 	_createdActions.clear();
+	_actionContributions.clear();
 
 	for (QDockWidget* dock : _createdDocks) {
 		delete dock;
@@ -90,37 +235,11 @@ void GuiExtensionManager::clear() {
 		delete *it;
 	}
 	_createdMenuActions.clear();
-}
-
-bool GuiExtensionManager::_isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const {
-	if (plugin == nullptr) {
-		return false;
-	}
-
-	const std::vector<std::string> required = plugin->requiredModelPlugins();
-	if (required.empty()) {
-		return true;
-	}
-
-	std::unordered_set<std::string> loaded;
-	loaded.reserve(_loadedModelPluginIds.size());
-	for (const std::string& id : _loadedModelPluginIds) {
-		const std::string normalized = normalizePluginId(id);
-		if (!normalized.empty()) {
-			loaded.insert(normalized);
-		}
-	}
-
-	for (const std::string& dependency : required) {
-		const std::string normalized = normalizePluginId(dependency);
-		if (normalized.empty()) {
-			continue;
-		}
-		if (loaded.find(normalized) == loaded.end()) {
-			return false;
-		}
-	}
-	return true;
+	_contextMenuContributions.clear();
+	_propertyListContributions.clear();
+	_editingContextContributions.clear();
+	_modelReferenceContributions.clear();
+	_runtimeContext = GuiExtensionRuntimeContext{};
 }
 
 QMenu* GuiExtensionManager::_resolveMenuPath(const std::string& menuPath) {
@@ -206,9 +325,6 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	if (_mainWindow == nullptr) {
 		return;
 	}
-	if (contribution.isVisible && !contribution.isVisible(context)) {
-		return;
-	}
 	if (!contribution.trigger) {
 		return;
 	}
@@ -226,8 +342,10 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	if (contribution.isEnabled) {
 		action->setEnabled(contribution.isEnabled(context));
 	}
-	QObject::connect(action, &QAction::triggered, _mainWindow, [contribution, context](bool) {
-		contribution.trigger(context);
+	QObject::connect(action, &QAction::triggered, _mainWindow, [this, contribution](bool) {
+		if (contribution.isVisible && !contribution.isVisible(_runtimeContext)) return;
+		if (contribution.isEnabled && !contribution.isEnabled(_runtimeContext)) return;
+		contribution.trigger(_runtimeContext);
 	});
 
 	if (QMenu* menu = _resolveMenuPath(contribution.menuPath)) {
@@ -238,6 +356,8 @@ void GuiExtensionManager::_applyActionContribution(const GuiActionContribution& 
 	}
 
 	_createdActions.push_back(action);
+	_actionContributions.emplace_back(action, contribution);
+	action->setVisible(!contribution.isVisible || contribution.isVisible(context));
 }
 
 void GuiExtensionManager::_applyWindowContribution(const GuiWindowContribution& contribution, const GuiExtensionRuntimeContext& context) {

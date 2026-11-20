@@ -6,9 +6,12 @@
 #include "../animations/AnimationVariable.h"
 #include "../actions/DeleteUndoCommand.h"
 #include "../codeeditor/CodeEditor.h"
+#include "../tools/expressionbuilder/ExpressionBuilder.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
+#include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../services/GraphicalModelBuilder.h"
+#include "../extensions/GuiExtensionManager.h"
 
 #include <map>
 #include <set>
@@ -16,6 +19,7 @@
 #include <exception>
 #include <utility>
 #include <algorithm>
+#include <memory>
 
 #include <QSignalBlocker>
 #include <QBrush>
@@ -35,12 +39,17 @@
 #include <QStringList>
 #include <QVariant>
 #include <QMenu>
+#include <QComboBox>
+#include <QStandardItemModel>
 #include <QDebug>
 #include <QEvent>
 #include <QMetaObject>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QAbstractSpinBox>
+#include <QDoubleSpinBox>
+#include <QLocale>
+#include <QTimer>
 #include <QKeyEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -52,10 +61,41 @@
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../extensions/GuiExtensionPluginCatalog.h"
 #include "../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
 
 namespace {
+// Code editors own their editing workflow; the expression builder is optional.
+bool requiresDedicatedEditor(const GenesysPropertyDescriptor& desc) {
+    return desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || desc.editorHint == SimulationControlEditorHint::CodeEditor;
+}
+
+class ListAwareEnumEditorFactory final : public QtEnumEditorFactory {
+public:
+    explicit ListAwareEnumEditorFactory(QObject* parent) : QtEnumEditorFactory(parent) {}
+    std::function<void(QtProperty*, QComboBox*)> configureEditor;
+protected:
+    QWidget* createEditor(QtEnumPropertyManager* manager, QtProperty* property, QWidget* parent) override {
+        QWidget* editor = QtEnumEditorFactory::createEditor(manager, property, parent);
+        if (configureEditor) configureEditor(property, qobject_cast<QComboBox*>(editor));
+        return editor;
+    }
+};
+
+class ListMoveUndoCommand final : public QUndoCommand {
+public:
+    ListMoveUndoCommand(int from, int to, std::function<void(int, int)> apply)
+        : _from(from), _to(to), _apply(std::move(apply)) { setText(QStringLiteral("Mover item da lista")); }
+    void undo() override { _apply(_to, _from); }
+    void redo() override { _apply(_from, _to); }
+private:
+    int _from;
+    int _to;
+    std::function<void(int, int)> _apply;
+};
+
 constexpr int kSourceCodePreviewContentLines = 4;
 constexpr int kSourceCodeCompactEditorLines = 5;
 
@@ -122,12 +162,15 @@ class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
     using CommitCallback = std::function<void(QtProperty*, const QVariant&)>;
     using EditorCreationFilter = std::function<bool(QtProperty*)>;
+    // Returns true for numeric editors that must commit spin-button changes immediately.
+    using NumericEditorConfigurator = std::function<bool(QtProperty*, QAbstractSpinBox*)>;
 
     struct EditorState {
         QtVariantPropertyManager* manager = nullptr;
         QtProperty* property = nullptr;
         QWidget* editor = nullptr;
         QVariant originalValue;
+        QVariant lastCommittedValue;
         bool suppressCommit = false;
     };
 
@@ -142,6 +185,10 @@ public:
         _editorCreationFilter = std::move(filter);
     }
 
+    void setNumericEditorConfigurator(NumericEditorConfigurator configure) {
+        _numericEditorConfigurator = std::move(configure);
+    }
+
 protected:
     QWidget* createEditor(QtVariantPropertyManager* manager, QtProperty* property, QWidget* parent) override {
         if (_editorCreationFilter != nullptr && !_editorCreationFilter(property)) {
@@ -152,7 +199,58 @@ protected:
             return editor;
         }
 
-        if (QLineEdit* lineEdit = editor->findChild<QLineEdit*>()) {
+        // Numeric Qt property editors are spin boxes containing an internal QLineEdit.
+        // Detect the semantic editor first so localized display text never crosses the
+        // commit boundary as a QString (for example "0,18" under pt_BR).
+        QAbstractSpinBox* spinBox = qobject_cast<QAbstractSpinBox*>(editor);
+        if (spinBox == nullptr) {
+            spinBox = editor->findChild<QAbstractSpinBox*>();
+        }
+        if (spinBox != nullptr) {
+            const bool liveCommit = _numericEditorConfigurator
+                && _numericEditorConfigurator(property, spinBox);
+            _registerEditor(spinBox, manager, property, editor);
+            if (liveCommit) {
+                if (auto* doubleEditor = qobject_cast<QDoubleSpinBox*>(spinBox)) {
+                    // Keyboard tracking is disabled by QtDoubleEdit, so typed values commit
+                    // once on interpretation while spin-button clicks commit immediately.
+                    QObject::connect(doubleEditor, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+                        this, [this, callback = _commitCallback, property, spinBox](double value) {
+                            auto state = _editorStates.find(spinBox);
+                            if (state == _editorStates.end() || state.value().suppressCommit) return;
+                            const QVariant numericValue(value);
+                            if (state.value().lastCommittedValue == numericValue) return;
+                            state.value().lastCommittedValue = numericValue;
+                            callback(property, numericValue);
+                        });
+                }
+            }
+            if (QLineEdit* spinLineEdit = spinBox->findChild<QLineEdit*>()) {
+                spinLineEdit->installEventFilter(this);
+            }
+            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, this, [this, callback = _commitCallback, property, spinBox]() {
+                const auto stateIt = _editorStates.find(spinBox);
+                if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
+                    stateIt.value().suppressCommit = false;
+                    return;
+                }
+                spinBox->interpretText();
+                const QVariant value = spinBox->property("value");
+                auto state = _editorStates.find(spinBox);
+                if (state != _editorStates.end()) {
+                    if (state.value().lastCommittedValue == value) return;
+                    state.value().lastCommittedValue = value;
+                }
+                callback(property, value);
+            });
+            return editor;
+        }
+
+        QLineEdit* lineEdit = qobject_cast<QLineEdit*>(editor);
+        if (lineEdit == nullptr) {
+            lineEdit = editor->findChild<QLineEdit*>();
+        }
+        if (lineEdit != nullptr) {
             _registerEditor(lineEdit, manager, property, editor);
             QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [this, callback = _commitCallback, property, lineEdit]() {
                 const auto stateIt = _editorStates.find(lineEdit);
@@ -162,26 +260,25 @@ protected:
                 }
                 callback(property, QVariant(lineEdit->text()));
             });
-            return editor;
-        }
-
-        if (QAbstractSpinBox* spinBox = editor->findChild<QAbstractSpinBox*>()) {
-            _registerEditor(spinBox, manager, property, editor);
-            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [this, callback = _commitCallback, property, spinBox]() {
-                const auto stateIt = _editorStates.find(spinBox);
-                if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
-                    stateIt.value().suppressCommit = false;
-                    return;
-                }
-                callback(property, spinBox->property("value"));
-            });
         }
 
         return editor;
     }
 
     bool eventFilter(QObject* watched, QEvent* event) override {
-        auto stateIt = _editorStates.find(watched);
+        QObject* stateOwner = watched;
+        auto stateIt = _editorStates.find(stateOwner);
+        if (stateIt == _editorStates.end()) {
+            // Key events for a spin box are commonly delivered to its internal line edit.
+            // Resolve that child back to the registered numeric editor so Escape keeps the
+            // existing cancel semantics without registering a second commit source.
+            if (auto* lineEdit = qobject_cast<QLineEdit*>(watched)) {
+                if (auto* parentSpinBox = qobject_cast<QAbstractSpinBox*>(lineEdit->parentWidget())) {
+                    stateOwner = parentSpinBox;
+                    stateIt = _editorStates.find(stateOwner);
+                }
+            }
+        }
         if (stateIt == _editorStates.end()) {
             return QtVariantEditorFactory::eventFilter(watched, event);
         }
@@ -190,7 +287,7 @@ protected:
             auto* keyEvent = static_cast<QKeyEvent*>(event);
             if (keyEvent->key() == Qt::Key_Escape) {
                 stateIt.value().suppressCommit = true;
-                _restoreEditorValue(watched, stateIt.value());
+                _restoreEditorValue(stateOwner, stateIt.value());
                 if (stateIt.value().editor != nullptr) {
                     stateIt.value().editor->clearFocus();
                     if (QWidget* parentWidget = stateIt.value().editor->parentWidget()) {
@@ -210,7 +307,9 @@ private:
             return;
         }
 
-        _editorStates.insert(watched, EditorState{manager, property, editor, manager != nullptr && property != nullptr ? manager->value(property) : QVariant(), false});
+        const QVariant original = manager != nullptr && property != nullptr
+            ? manager->value(property) : QVariant();
+        _editorStates.insert(watched, EditorState{manager, property, editor, original, original, false});
         watched->installEventFilter(this);
         QObject::connect(watched, &QObject::destroyed, this, [this, watched]() {
             _editorStates.remove(watched);
@@ -241,6 +340,7 @@ private:
 
     CommitCallback _commitCallback;
     EditorCreationFilter _editorCreationFilter;
+    NumericEditorConfigurator _numericEditorConfigurator;
     QHash<QObject*, EditorState> _editorStates;
 };
 
@@ -396,14 +496,37 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
         });
         commitFactory->setEditorCreationFilter([this](QtProperty* property) {
             const auto binding = _bindings.find(property);
-            return binding == _bindings.end() || !_hasSpecializedEditor(binding.value().descriptor);
+            return binding == _bindings.end() || !requiresDedicatedEditor(binding.value().descriptor);
+        });
+        commitFactory->setNumericEditorConfigurator([this](QtProperty* property, QAbstractSpinBox* editor) {
+            // Network relation probabilities are canonical decimal values (not locale-formatted text).
+            // In pt_BR, a dot typed into an inherited spin box can be treated as a group separator,
+            // silently turning 0.25 into 25. Reject grouping on this bounded numeric editor.
+            const auto binding = _bindings.constFind(property);
+            if (binding == _bindings.constEnd() || binding->kind != BindingKind::GraphicsVariant
+                || property->propertyName() != QStringLiteral("Probability")) return false;
+            auto* doubleEditor = qobject_cast<QDoubleSpinBox*>(editor);
+            if (doubleEditor == nullptr) return false;
+            QLocale locale = QLocale::c();
+            locale.setNumberOptions(locale.numberOptions() | QLocale::RejectGroupSeparator);
+            doubleEditor->setLocale(locale);
+            doubleEditor->setGroupSeparatorShown(false);
+            return true;
         });
         _variantFactory = commitFactory;
     }
 
     if (_enumFactory == nullptr) {
-        // Create the enum factory once for enum editor widgets.
-        _enumFactory = new QtEnumEditorFactory(this);
+        auto* listFactory = new ListAwareEnumEditorFactory(this);
+        listFactory->configureEditor = [this](QtProperty* property, QComboBox* editor) {
+            const auto binding = _bindings.constFind(property);
+            if (binding == _bindings.constEnd() || !binding->isListItemAction || editor == nullptr) return;
+            auto* model = qobject_cast<QStandardItemModel*>(editor->model());
+            if (model == nullptr || editor->count() != 3) return;
+            model->item(1)->setEnabled(binding->listElementIndex > 0);
+            model->item(2)->setEnabled(binding->listElementIndex + 1 < static_cast<int>(binding->descriptor.choices.size()));
+        };
+        _enumFactory = listFactory;
     }
 
     // Bind manager/factory pairs only once to keep browser infrastructure idempotent.
@@ -428,8 +551,6 @@ void ObjectPropertyBrowser::_clearAll() {
     _enumNames.clear();
     _objectListActions.clear();
     _modelObjectActions.clear();
-    _pendingCommittedProperties.clear();
-    _pendingCommittedValues.clear();
 }
 
 void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
@@ -444,6 +565,8 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
     _editableModelObjects.clear();
     _activeKernelObjectReadOnly = false;
     _propertyEditor = nullptr;
+    _pendingListSelection = nullptr;
+    _pendingListSelectionIndex = -1;
     _isRebuildingProperties = false;
     _isNotifyingModelChange = false;
     _pendingRebuild = false;
@@ -462,13 +585,24 @@ void ObjectPropertyBrowser::setModelChangedCallback(ModelChangedCallback callbac
     _modelChangedCallback = std::move(callback);
 }
 
+void ObjectPropertyBrowser::setModelScene(ModelGraphicsScene* scene) {
+    _modelScene = scene;
+}
+
+void ObjectPropertyBrowser::setGuiExtensionManager(GuiExtensionManager* manager) {
+    _guiExtensionManager = manager;
+}
+
+void ObjectPropertyBrowser::refreshAfterUndo() {
+    _notifyModelChangeApplied();
+}
+
 bool ObjectPropertyBrowser::isCommitPipelineBusy() const {
     return _isRebuildingProperties
         || _isNotifyingModelChange
         || _pendingRebuild
         || _isDeferredRebuildScheduled
-        || _isDeferredModelChangedScheduled
-        || !_pendingCommittedProperties.isEmpty();
+        || _isDeferredModelChangedScheduled;
 }
 
 void ObjectPropertyBrowser::setActiveObject(
@@ -505,15 +639,24 @@ void ObjectPropertyBrowser::setActiveObject(
         auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(obj);
         if (graphicalDataDefinition != nullptr) {
             if (graphicalDataDefinition->getDataDefinition() != nullptr) {
-                const QString name = QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName());
-                graphicalDataDefinition->setEditableInPropertyEditor(_editableModelObjects.contains(name));
+                ModelDataDefinition* definition = graphicalDataDefinition->getDataDefinition();
+                const QString name = QString::fromStdString(definition->getName());
+                const QString identity = QStringLiteral("@model-object:%1:%2")
+                    .arg(QString::fromStdString(definition->getClassname()))
+                    .arg(static_cast<qulonglong>(definition->getId()));
+                graphicalDataDefinition->setEditableInPropertyEditor(
+                    _editableModelObjects.contains(name) || _editableModelObjects.contains(identity));
             }
             _activeKernelObjectReadOnly = !graphicalDataDefinition->isEditableInPropertyEditor();
         } else if (mdd != nullptr) {
             // Inspector-driven editing may target a hidden GMDD, so read-only enforcement must
             // also work when there is no graphical QObject backing the selected data definition.
             const QString name = QString::fromStdString(mdd->getName());
-            _activeKernelObjectReadOnly = !_editableModelObjects.contains(name);
+            const QString identity = QStringLiteral("@model-object:%1:%2")
+                .arg(QString::fromStdString(mdd->getClassname()))
+                .arg(static_cast<qulonglong>(mdd->getId()));
+            _activeKernelObjectReadOnly = !_editableModelObjects.contains(name)
+                && !_editableModelObjects.contains(identity);
         }
     }
     _propertyEditor = peg;
@@ -583,6 +726,9 @@ void ObjectPropertyBrowser::_scheduleDeferredRebuild() {
         _isDeferredRebuildScheduled = false;
         if (!_hasValidActiveBindingContext()) {
             qWarning() << "[PropertyEditor] Deferred rebuild canceled due to invalid binding context";
+            // A scene synchronization may have detached the selected GMDD.
+            // There is then no rebuild to perform or wait for.
+            _pendingRebuild = false;
             return;
         }
         _rebuildPropertiesGuarded();
@@ -607,10 +753,9 @@ void ObjectPropertyBrowser::_scheduleDeferredModelChangedCallback() {
             _scheduleDeferredModelChangedCallback();
             return;
         }
-        if (!_hasValidActiveBindingContext()) {
-            qWarning() << "[PropertyEditor] Deferred model-changed callback canceled due to invalid binding context";
-            return;
-        }
+        // The edit already committed. Scene synchronization may have removed
+        // its old selection, but the document still needs its dirty/refresh
+        // notification so that selecting another object works normally.
         QMetaObject::invokeMethod(this, [this]() {
             if (_isRebuildingProperties || _pendingRebuild || _isDeferredRebuildScheduled) {
                 qInfo() << "[PropertyEditor] model-changed callback postponed one more turn due to pending rebuild";
@@ -698,6 +843,22 @@ void ObjectPropertyBrowser::_rebuildProperties() {
     }
 
     _populateKernelProperties(_modelObject);
+    if (_pendingListSelection != nullptr) {
+        for (auto it = _bindings.cbegin(); it != _bindings.cend(); ++it) {
+            if (it.value().isListItemAction && it.value().control == _pendingListSelection
+                && it.value().listElementIndex == _pendingListSelectionIndex) {
+                const auto browserItems = items(it.key());
+                if (!browserItems.isEmpty()) {
+                    QtBrowserItem* selected = browserItems.first();
+                    for (QtBrowserItem* parent = selected->parent(); parent != nullptr; parent = parent->parent()) setExpanded(parent, true);
+                    setCurrentItem(selected);
+                }
+                break;
+            }
+        }
+        _pendingListSelection = nullptr;
+        _pendingListSelectionIndex = -1;
+    }
     qInfo() << "[PropertyEditor] _rebuildProperties exit";
 }
 
@@ -778,9 +939,10 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
 }
 
 bool ObjectPropertyBrowser::_hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const {
-    return desc.supportsListEditor
-        || desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
-        || desc.editorHint == SimulationControlEditorHint::CodeEditor;
+    return desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || desc.editorHint == SimulationControlEditorHint::CodeEditor
+        || desc.editorHint == SimulationControlEditorHint::ParserExpression
+        || (desc.kind == GenesysPropertyKind::String && !desc.readOnly);
 }
 
 QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropertyDescriptor& desc) const {
@@ -791,10 +953,22 @@ QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropert
     if (desc.technicalTypeName == Util::TypeOf<SourceCodeString>()) {
         return "Edit source code...";
     }
+    if (desc.editorHint == SimulationControlEditorHint::CodeEditor) {
+        return "Edit source code...";
+    }
+    if (desc.kind == GenesysPropertyKind::String
+        && desc.editorHint == SimulationControlEditorHint::MultiLineText) {
+        return "Edit text...";
+    }
+    if (desc.kind == GenesysPropertyKind::String) {
+        return "Build expression...";
+    }
 
     switch (desc.editorHint) {
     case SimulationControlEditorHint::CodeEditor:
         return "Edit source code...";
+    case SimulationControlEditorHint::ParserExpression:
+        return "Build expression...";
     case SimulationControlEditorHint::Default:
     case SimulationControlEditorHint::MultiLineText:
     default:
@@ -867,7 +1041,7 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
     QtVariantProperty* property = _variantManager->addProperty(variantType, name);
     property->setValue(_toVariant(desc));
 
-    // Specialized editors stay enabled for selection and shortcuts, but their inline widget is suppressed by the factory.
+    // Only dedicated code editors suppress the inline widget; expression building is optional.
     property->setEnabled(_isKernelEditingEnabled(desc));
 
     // Keep specialized editors discoverable while preserving the generic property browser flow.
@@ -934,7 +1108,7 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
                 }
             }
         } else {
-            choices << QString("Criar novo %1").arg(_modelObjectTypeName(desc));
+            choices << QString("Criar novo %1").arg(control->supportsPositionalListEditing() ? QString::fromStdString(control->getListElementLabel()) : _modelObjectTypeName(desc));
             actions.push_back(ObjectListAction{ObjectListAction::Kind::CreateNew, ""});
         }
     }
@@ -943,7 +1117,7 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
     _objectListActions[property] = actions;
     _enumManager->setEnumNames(property, choices);
     _enumManager->setValue(property, 0);
-    property->setEnabled(!_activeKernelObjectReadOnly);
+    property->setEnabled(_isKernelEditingEnabled(desc));
     property->setToolTip("Expanda para editar os elementos da lista ou selecione uma ação para definir o tipo ou criar um novo elemento.");
     property->setStatusTip("Lista de objetos");
 
@@ -972,15 +1146,51 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
 
     recursionPath.insert(control);
     for (int index = 0; index < itemCount; ++index) {
-        const QString elementName = index < static_cast<int>(desc.choices.size())
-                                        ? QString::fromStdString(desc.choices[static_cast<std::size_t>(index)])
-                                        : QString();
-        const QString groupName = elementName.isEmpty()
-                                      ? QString("Item %1").arg(index + 1)
-                                      : QString("Item %1 - %2").arg(index + 1).arg(elementName);
-
-        QtProperty* elementGroup = _groupManager->addProperty(groupName);
+        const QString elementName = QString::fromStdString(desc.choices[static_cast<std::size_t>(index)]);
+        const QString label = control->supportsPositionalListEditing()
+            ? QString("%1 %2").arg(QString::fromStdString(control->getListElementLabel())).arg(index)
+            : (elementName.isEmpty() ? QString("Item %1").arg(index) : QString("Item %1 - %2").arg(index).arg(elementName));
+        QtProperty* elementGroup = _enumManager->addProperty(label);
+        QStringList itemChoices{QStringLiteral("Item")};
+        std::vector<ObjectListAction> itemActions{{ObjectListAction::Kind::None, ""}};
+        if (control->supportsListElementMove() && _isKernelEditingEnabled(desc)) {
+            itemChoices << QStringLiteral("Mover para cima") << QStringLiteral("Mover para baixo");
+            itemActions.push_back({ObjectListAction::Kind::MoveUp, ""});
+            itemActions.push_back({ObjectListAction::Kind::MoveDown, ""});
+        }
+        if (control->supportsListElementRemoval() && _isKernelEditingEnabled(desc)) {
+            itemChoices << QStringLiteral("Remover item");
+            itemActions.push_back({ObjectListAction::Kind::Remove, ""});
+        }
+        _enumNames[elementGroup] = itemChoices;
+        _objectListActions[elementGroup] = itemActions;
+        _enumManager->setEnumNames(elementGroup, itemChoices);
+        _enumManager->setValue(elementGroup, 0);
+        elementGroup->setEnabled(_isKernelEditingEnabled(desc));
+        Binding itemBinding;
+        itemBinding.owner = _modelObject;
+        itemBinding.control = control;
+        itemBinding.descriptor = desc;
+        itemBinding.isListItemAction = true;
+        itemBinding.listElementIndex = index;
+        _bindings[elementGroup] = itemBinding;
         property->addSubProperty(elementGroup);
+        if (control->supportsPositionalListEditing()) {
+            QtVariantProperty* element = _variantManager->addProperty(QVariant::String, QStringLiteral("Value"));
+            element->setValue(QString::fromStdString(desc.choices[static_cast<std::size_t>(index)]));
+            element->setEnabled(_isKernelEditingEnabled(desc));
+            Binding elementBinding;
+            elementBinding.owner = _modelObject;
+            elementBinding.control = control;
+            elementBinding.descriptor = desc;
+            elementBinding.descriptor.supportsListEditor = false;
+            elementBinding.descriptor.kind = GenesysPropertyKind::String;
+            elementBinding.descriptor.currentValue = desc.choices[static_cast<std::size_t>(index)];
+            elementBinding.listElementIndex = index;
+            _bindings[element] = elementBinding;
+            elementGroup->addSubProperty(element);
+            continue;
+        }
 
         List<SimulationControl*>* elementProperties = control->getEditableChildSimulationControls(index);
         if (elementProperties == nullptr) {
@@ -1018,7 +1228,7 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
 
     QStringList choices;
     std::vector<ModelObjectAction> actions;
-    if (objectExists) {
+    if (objectExists && !desc.keepsExistingObjectChoicesWhenSet) {
         const QString objectName = QString::fromStdString(referencedDataDefinition->getName());
         choices << objectName;
         choices << QString("Selecionar %1 e Editar").arg(referencedType);
@@ -1027,9 +1237,23 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::SelectAndEdit, "", ""});
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::RemoveReference, "", ""});
     } else {
-        choices << "";
+        choices << (referencedType.isEmpty() ? QStringLiteral("") : QString("Selecione %1").arg(referencedType));
         actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
         QSet<QString> seenLabels;
+        if (objectExists && desc.keepsExistingObjectChoicesWhenSet) {
+            const std::string extensionLabel = _guiExtensionManager != nullptr
+                ? _guiExtensionManager->formatModelReferenceChoice(_modelObject, desc.displayName, referencedDataDefinition)
+                : std::string{};
+            const QString currentName = extensionLabel.empty()
+                ? QString::fromStdString(referencedDataDefinition->getName())
+                : QString::fromStdString(extensionLabel);
+            choices[0] = currentName;
+            seenLabels.insert(currentName);
+            if (desc.supportsReferenceRemoval) {
+                choices << QStringLiteral("Remover referência");
+                actions.push_back(ModelObjectAction{ModelObjectAction::Kind::RemoveReference, "", ""});
+            }
+        }
         for (const std::string& choiceValue : desc.choices) {
             const QString choiceLabel = QString::fromStdString(choiceValue);
             if (choiceLabel.isEmpty() || seenLabels.contains(choiceLabel)) {
@@ -1069,15 +1293,15 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
 }
 
 bool ObjectPropertyBrowser::_isObjectListProperty(const GenesysPropertyDescriptor& desc) const {
-    return desc.isList && desc.isClass && desc.supportsListEditor;
+    return desc.isList && desc.supportsListEditor && (desc.isClass || (desc.control != nullptr && desc.control->supportsPositionalListEditing()));
 }
 
 bool ObjectPropertyBrowser::_isKernelEditingEnabled(const GenesysPropertyDescriptor& desc) const {
-    return !_activeKernelObjectReadOnly && !desc.readOnly;
+    return !_activeKernelObjectReadOnly && !desc.readOnly && desc.enabled;
 }
 
 bool ObjectPropertyBrowser::_hasGraphicalRepresentation(const GenesysPropertyDescriptor& desc) const {
-    if (!desc.isModelDataDefinitionReference || desc.currentValue.empty()) {
+    if (!desc.isModelDataDefinitionReference || desc.isInlineObject || desc.currentValue.empty()) {
         return false;
     }
 
@@ -1112,7 +1336,7 @@ bool ObjectPropertyBrowser::_isModelObjectActionProperty(
     SimulationControl* control
     ) const {
     (void)control;
-    return desc.isModelDataDefinitionReference && _modelObject != nullptr;
+    return desc.isModelDataDefinitionReference && !desc.isInlineObject && _modelObject != nullptr;
 }
 
 ObjectPropertyBrowser::ModelObjectRelation ObjectPropertyBrowser::_relationForDataDefinition(
@@ -1171,7 +1395,10 @@ ModelDataDefinition* ObjectPropertyBrowser::_referencedModelDataDefinition(const
     }
 
     ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
-    Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
+    Model* model = binding.descriptor.keepsExistingObjectChoicesWhenSet && _modelObject != nullptr
+                       ? _modelObject->getParentModel()
+                       : nullptr;
+    if (model == nullptr) model = (scene != nullptr && scene->getSimulator() != nullptr &&
                     scene->getSimulator()->getModelManager() != nullptr)
                        ? scene->getSimulator()->getModelManager()->current()
                        : nullptr;
@@ -1497,6 +1724,16 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
         if (reference != nullptr) {
             parent->addSubProperty(reference);
         }
+        if (_isModelObjectActionProperty(desc, control) && control->supportsReferenceChildEditing()) {
+            List<SimulationControl*>* children = control->getEditableChildSimulationControls();
+            if (children != nullptr && !children->empty()) {
+                QtProperty* details = _groupManager->addProperty(QString::fromStdString(desc.displayName + " Details"));
+                parent->addSubProperty(details);
+                for (SimulationControl* child : *children->list()) {
+                    _appendDescriptorRecursively(details, child, recursionPath, depth + 1);
+                }
+            }
+        }
         return;
     }
 
@@ -1605,6 +1842,82 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
 void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
     if (item == nullptr) {
         return;
+    }
+
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    ModelDataDefinition* networkOwner = networkScene != nullptr ? networkScene->networkEditorOwner() : nullptr;
+    const auto networkProperties = GuiExtensionPluginCatalog::networkElementProperties(networkOwner, item);
+    if (!networkProperties.empty()) {
+        QtProperty* elementGroup = _groupManager->addProperty("Network Element");
+        addProperty(elementGroup);
+        for (const auto& descriptor : networkProperties) {
+            const QString propertyName = QString::fromStdString(descriptor.name);
+            auto setter = [this, networkScene, networkOwner, item, propertyName, kind = descriptor.kind](const QVariant& value) {
+                if (networkScene == nullptr || networkScene->networkEditorOwner() != networkOwner
+                    || networkScene->getUndoStack() == nullptr) return;
+                QString serialized;
+                switch (kind) {
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Boolean:
+                    serialized = value.toBool() ? QStringLiteral("true") : QStringLiteral("false");
+                    break;
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Integer:
+                    serialized = QString::number(value.toLongLong());
+                    break;
+                case GuiNetworkEditorContribution::ElementProperty::Kind::Double:
+                    serialized = QString::number(value.toDouble(), 'g', 17);
+                    break;
+                default:
+                    serialized = value.toString();
+                    break;
+                }
+                QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
+                    networkOwner, item, propertyName.toStdString(), serialized.toStdString());
+                if (command != nullptr) {
+                    // indexChanged synchronously regenerates graphical overlays.
+                    // Pushing here can destroy the selected relation (and its active editor)
+                    // in the middle of the spin-box/line-edit commit callback.
+                    const QPointer<ModelGraphicsScene> guardedScene(networkScene);
+                    auto ownedCommand = std::make_shared<std::unique_ptr<QUndoCommand>>(command);
+                    QTimer::singleShot(0, networkScene, [guardedScene, networkOwner, ownedCommand]() {
+                        if (guardedScene != nullptr
+                            && guardedScene->networkEditorOwner() == networkOwner
+                            && guardedScene->getUndoStack() != nullptr)
+                            guardedScene->getUndoStack()->push(ownedCommand->release());
+                    });
+                }
+            };
+            switch (descriptor.kind) {
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Boolean:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::Bool, descriptor.value == "true" || descriptor.value == "1",
+                    std::move(setter), false, descriptor.editable));
+                break;
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Integer:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::Int, QString::fromStdString(descriptor.value).toInt(),
+                    std::move(setter), false, descriptor.editable));
+                break;
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Double: {
+                auto* numeric = _createGraphicsVariantProperty(
+                    propertyName, QVariant::Double, QString::fromStdString(descriptor.value).toDouble(),
+                    std::move(setter), false, descriptor.editable);
+                if (propertyName == QStringLiteral("Probability")) {
+                    numeric->setAttribute("minimum", 0.0);
+                    numeric->setAttribute("maximum", 1.0);
+                    numeric->setAttribute("decimals", 12);
+                    numeric->setAttribute("singleStep", 0.05);
+                }
+                elementGroup->addSubProperty(numeric);
+                break;
+            }
+            case GuiNetworkEditorContribution::ElementProperty::Kind::String:
+            case GuiNetworkEditorContribution::ElementProperty::Kind::Enumeration:
+                elementGroup->addSubProperty(_createGraphicsVariantProperty(
+                    propertyName, QVariant::String, QString::fromStdString(descriptor.value),
+                    std::move(setter), true, descriptor.editable));
+                break;
+            }
+        }
     }
 
     QtProperty* graphicsGroup = _groupManager->addProperty("Graphics");
@@ -2039,6 +2352,33 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
     }
 }
 
+bool ObjectPropertyBrowser::_openExpressionBuilder(QtProperty* property, const Binding& binding) {
+    if (binding.control == nullptr || binding.owner == nullptr ||
+        !_isKernelEditingEnabled(binding.descriptor) || !_hasValidActiveBindingContext(property)) {
+        return false;
+    }
+
+    // The modal editor owns a private text buffer. Cancel never calls the
+    // control setter. Validation is syntax-only, not an expression evaluation.
+    ExpressionBuilder dialog(this);
+    dialog.setWindowTitle(tr("Expression Builder - %1")
+                          .arg(QString::fromStdString(binding.descriptor.displayName)));
+    dialog.setExpressionContext(binding.owner->getParentModel(),
+                                QString::fromStdString(binding.control->getValue()));
+    if (dialog.exec() != QDialog::Accepted || !_hasValidActiveBindingContext(property)) {
+        return false;
+    }
+
+    const QString proposedExpression = dialog.expressionText();
+    if (proposedExpression.toStdString() == binding.control->getValue()) {
+        return true;
+    }
+
+    // The existing kernel-property path performs validation, mutation,
+    // network undo routing and change notification exactly once.
+    return _applyVariantChange(property, proposedExpression, true, true);
+}
+
 bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     if (!_hasValidActiveBindingContext(property)) {
         qWarning() << "[PropertyEditor] openSpecializedEditor aborted due to invalid binding context";
@@ -2063,27 +2403,8 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         return false;
     }
 
-    auto refresh = [this]() {
-        this->_notifyModelChangeApplied();
-    };
-
-    // This block opens the specialized list editor only when the explicit list-editor contract is enabled.
     if (binding.descriptor.supportsListEditor) {
-        if (_propertyEditor == nullptr) {
-            return false;
-        }
-        if (_propertyList != nullptr) {
-            auto found = _propertyList->find(control);
-            if (found == _propertyList->end() || found->second == nullptr) {
-                (*_propertyList)[control] =
-                    new DataComponentProperty(_propertyEditor, control, true, refresh);
-            }
-            (*_propertyList)[control]->open_window();
-        } else {
-            auto* editor = new DataComponentProperty(_propertyEditor, control, true, refresh);
-            editor->open_window();
-        }
-        return true;
+        return false;
     }
 
     if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
@@ -2095,7 +2416,25 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         return _openMultilineTextDialogEditor(binding);
     }
 
+    if (binding.descriptor.editorHint == SimulationControlEditorHint::ParserExpression
+        || binding.descriptor.kind == GenesysPropertyKind::String) {
+        return _openExpressionBuilder(property, binding);
+    }
+
     return false;
+}
+
+void ObjectPropertyBrowser::_applyPositionalListChange() {
+        ModelGraphicsScene* editedScene = _modelScene.data();
+        if (_graphicalObject != nullptr) {
+            if (auto* graphical = dynamic_cast<GraphicalModelDataDefinition*>(_graphicalObject.data())) {
+                if (graphical->scene() != nullptr) editedScene = dynamic_cast<ModelGraphicsScene*>(graphical->scene());
+            }
+        }
+        if (_guiExtensionManager != nullptr) {
+            _guiExtensionManager->reconcilePropertyListChange(_modelObject, editedScene);
+        }
+        this->_notifyModelChangeApplied();
 }
 
 bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding, bool compactEditor) {
@@ -2234,6 +2573,9 @@ bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
         || binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
         return _openTextDialogEditor(binding, true);
@@ -2322,7 +2664,11 @@ bool ObjectPropertyBrowser::_createNewListElementForProperty(QtProperty* propert
     // asks which GMDDs should be visible.
     _materializeAffectedModelDataDefinitions();
     _synchronizeGraphicalModelDataDefinitionsNow();
-    _notifyModelChangeApplied();
+    if (binding.control->supportsPositionalListEditing()) {
+        _applyPositionalListChange();
+    } else {
+        _notifyModelChangeApplied();
+    }
     return true;
 }
 
@@ -2382,7 +2728,10 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
     }
 
     ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
-    Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
+    Model* model = binding.descriptor.keepsExistingObjectChoicesWhenSet && _modelObject != nullptr
+                       ? _modelObject->getParentModel()
+                       : nullptr;
+    if (model == nullptr) model = (scene != nullptr && scene->getSimulator() != nullptr &&
                     scene->getSimulator()->getModelManager() != nullptr)
                        ? scene->getSimulator()->getModelManager()->current()
                        : nullptr;
@@ -2390,19 +2739,19 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
         return false;
     }
 
-    ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
-    bool created = referencedDataDefinition != nullptr;
-    if (referencedDataDefinition == nullptr) {
-        try {
-            const std::string defaultName = _defaultModelObjectName(binding.descriptor, typeName).toStdString();
-            created = typeName.empty()
-                          ? binding.control->createObjectInstance(defaultName)
-                          : binding.control->createObjectInstanceOfType(typeName, defaultName);
-        } catch (...) {
-            created = false;
-        }
-        referencedDataDefinition = _referencedModelDataDefinition(binding);
+    ModelDataDefinition* previousReference = _guiExtensionManager != nullptr
+        ? _guiExtensionManager->currentModelReference(_modelObject) : nullptr;
+    ModelDataDefinition* referencedDataDefinition = nullptr;
+    bool created = false;
+    try {
+        const std::string defaultName = _defaultModelObjectName(binding.descriptor, typeName).toStdString();
+        created = typeName.empty()
+                      ? binding.control->createObjectInstance(defaultName)
+                      : binding.control->createObjectInstanceOfType(typeName, defaultName);
+    } catch (...) {
+        created = false;
     }
+    referencedDataDefinition = _referencedModelDataDefinition(binding);
 
     if (!created || referencedDataDefinition == nullptr) {
         return false;
@@ -2412,7 +2761,16 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
         model->getDataManager()->insert(referencedDataDefinition);
     }
 
+    if (_guiExtensionManager != nullptr) {
+        _guiExtensionManager->notifyModelReferenceChanged(_modelObject, previousReference,
+            _guiExtensionManager->currentModelReference(_modelObject), scene != nullptr ? scene : _modelScene.data(), this);
+    }
+
     _materializeAffectedModelDataDefinitions(referencedDataDefinition);
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
+    }
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -2437,6 +2795,16 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
         return false;
     }
 
+    ModelDataDefinition* previousReference = _guiExtensionManager != nullptr
+        ? _guiExtensionManager->currentModelReference(_modelObject) : nullptr;
+    ModelDataDefinition* selectedReference = _guiExtensionManager != nullptr
+        ? _guiExtensionManager->resolveModelReferenceChoice(_modelObject, objectName.toStdString()) : nullptr;
+    if (_guiExtensionManager != nullptr
+        && !_guiExtensionManager->confirmModelReferenceChange(_modelObject, previousReference, selectedReference, this)) {
+        _scheduleDeferredRebuild();
+        return false;
+    }
+
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
         binding.control,
@@ -2448,10 +2816,24 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
     if (!ok) {
         qWarning() << "[PropertyEditor] failed to set model object reference:"
                    << QString::fromStdString(errorMessage);
+        QMessageBox::warning(this,
+                             tr("Reference was not changed"),
+                             QString::fromStdString(errorMessage));
         _scheduleDeferredRebuild();
         return false;
     }
 
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(
+        _graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    if (_guiExtensionManager != nullptr) {
+        _guiExtensionManager->notifyModelReferenceChanged(_modelObject, previousReference,
+            _guiExtensionManager->currentModelReference(_modelObject), scene != nullptr ? scene : _modelScene.data(), this);
+    }
+
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
+    }
     _materializeAffectedModelDataDefinitions(_referencedModelDataDefinition(binding));
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
@@ -2526,6 +2908,8 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
         return false;
     }
     Model* model = _modelObject != nullptr ? _modelObject->getParentModel() : nullptr;
+    ModelDataDefinition* previousReference = _guiExtensionManager != nullptr
+        ? _guiExtensionManager->currentModelReference(_modelObject) : nullptr;
 
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
@@ -2542,11 +2926,28 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
         return false;
     }
 
-    _materializeAffectedModelDataDefinitions();
-    if (model != nullptr) {
-        model->check();
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(
+        _graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    if (_guiExtensionManager != nullptr) {
+        _guiExtensionManager->notifyModelReferenceChanged(_modelObject, previousReference,
+            _guiExtensionManager->currentModelReference(_modelObject), scene != nullptr ? scene : _modelScene.data(), this);
     }
-    _synchronizeGraphicalModelDataDefinitionsNow();
+
+    // Existing-choice references are non-owning.  Clearing one must not run
+    // the materialization/check path that prunes now-unreferenced definitions.
+    if (!binding.descriptor.keepsExistingObjectChoicesWhenSet) {
+        _materializeAffectedModelDataDefinitions();
+        if (model != nullptr) {
+            model->check();
+        }
+    }
+    if (auto* graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+        graphical != nullptr && graphical->getComponent() == _modelObject) {
+        graphical->synchronizeDynamicPorts();
+    }
+    if (!binding.descriptor.keepsExistingObjectChoicesWhenSet) {
+        _synchronizeGraphicalModelDataDefinitionsNow();
+    }
     _notifyModelChangeApplied();
     return true;
 }
@@ -2622,6 +3023,12 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
                 return _createNewListElementForProperty(property, action.typeName);
             case ObjectListAction::Kind::SetCurrentType:
                 return _setCurrentListElementTypeForProperty(property, action.typeName);
+            case ObjectListAction::Kind::MoveUp:
+                return _moveListItem(property, it.value().listElementIndex - 1);
+            case ObjectListAction::Kind::MoveDown:
+                return _moveListItem(property, it.value().listElementIndex + 1);
+            case ObjectListAction::Kind::Remove:
+                return _removeListItem(property);
             case ObjectListAction::Kind::None:
                 return true;
         }
@@ -2632,6 +3039,107 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
     }
 
     return false;
+}
+
+bool ObjectPropertyBrowser::_moveListItem(QtProperty* property, int destination) {
+    if (isCommitPipelineBusy()) return false;
+    auto it = _bindings.find(property);
+    if (it == _bindings.end() || !_hasValidActiveBindingContext(property)) return false;
+    const Binding binding = it.value();
+    const int from = binding.listElementIndex;
+    if (!binding.isListItemAction || binding.control == nullptr || !binding.control->supportsListElementMove()
+        || !_isKernelEditingEnabled(binding.descriptor) || from < 0 || destination < 0
+        || destination >= static_cast<int>(binding.descriptor.choices.size()) || destination == from) return false;
+
+    QPointer<ObjectPropertyBrowser> browser(this);
+    QPointer<QObject> graphicalObject = _graphicalObject;
+    QPointer<GraphicalModelComponent> graphical = dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data());
+    ModelGraphicsScene* rawScene = _graphicalItem == nullptr ? _modelScene.data() : dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene());
+    QPointer<ModelGraphicsScene> scene(rawScene);
+    SimulationControl* control = binding.control;
+    ModelDataDefinition* owner = binding.owner;
+    auto apply = [browser, graphicalObject, graphical, scene, control, owner](int source, int target) {
+        control->moveListElement(source, target);
+        const bool specializedMove = browser != nullptr && browser->_guiExtensionManager != nullptr
+            && browser->_guiExtensionManager->reconcilePropertyListMove(owner, scene.data(), source, target);
+        if (!specializedMove && owner != nullptr && !control->handlesListMoveReconciliation()) {
+            ModelDataDefinition::CreateInternalData(owner);
+        }
+        QGraphicsItem* graphicalItem = dynamic_cast<QGraphicsItem*>(graphicalObject.data());
+        if (scene != nullptr) {
+            scene->update();
+            scene->notifyGraphicalModelChange(GraphicalModelEvent::EventType::EDIT,
+                graphical != nullptr ? GraphicalModelEvent::EventObjectType::COMPONENT
+                                     : GraphicalModelEvent::EventObjectType::DATADEFINITION, graphicalItem);
+        }
+        if (browser != nullptr && browser->_modelObject == owner) {
+            browser->_pendingListSelection = control;
+            browser->_pendingListSelectionIndex = target;
+            browser->_synchronizeGraphicalModelDataDefinitionsNow();
+            browser->_notifyModelChangeApplied();
+        }
+    };
+    if (scene != nullptr && scene->getUndoStack() != nullptr) {
+        scene->getUndoStack()->push(new ListMoveUndoCommand(from, destination, std::move(apply)));
+    } else {
+        apply(from, destination);
+    }
+    return true;
+}
+
+bool ObjectPropertyBrowser::_removeListItem(QtProperty* property) {
+    if (isCommitPipelineBusy() || !_hasValidActiveBindingContext(property)) return false;
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) return false;
+    const Binding binding = it.value();
+    const int index = binding.listElementIndex;
+    if (!binding.isListItemAction || binding.control == nullptr
+        || !binding.control->supportsListElementRemoval()
+        || !_isKernelEditingEnabled(binding.descriptor)
+        || index < 0 || index >= static_cast<int>(binding.descriptor.choices.size())) {
+        return false;
+    }
+
+    SimulationControl* control = binding.control;
+    ModelDataDefinition* owner = binding.owner;
+    ModelGraphicsScene* scene = _graphicalItem != nullptr && _graphicalItem->scene() != nullptr
+        ? dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene()) : _modelScene.data();
+    QGraphicsItem* graphicalItem = dynamic_cast<QGraphicsItem*>(_graphicalObject.data());
+
+    try {
+        // The control removes only the selected pointer from its owner's list. The referenced
+        // ModelDataDefinition remains registered and owned by the model's DataManager.
+        control->removeListValueAt(index);
+    } catch (const std::exception& e) {
+        qWarning() << "[PropertyEditor] failed to remove list element:" << e.what();
+        _scheduleDeferredRebuild();
+        return false;
+    } catch (...) {
+        qWarning() << "[PropertyEditor] failed to remove list element: unknown error";
+        _scheduleDeferredRebuild();
+        return false;
+    }
+
+    if (owner != nullptr) {
+        ModelDataDefinition::CreateInternalData(owner);
+        std::string validationMessage;
+        ModelDataDefinition::Check(owner, validationMessage);
+    }
+    if (_guiExtensionManager != nullptr) {
+        _guiExtensionManager->reconcilePropertyListChange(owner, scene);
+    }
+    if (scene != nullptr) {
+        scene->update();
+        scene->notifyGraphicalModelChange(
+            GraphicalModelEvent::EventType::EDIT,
+            dynamic_cast<GraphicalModelComponent*>(_graphicalObject.data()) != nullptr
+                ? GraphicalModelEvent::EventObjectType::COMPONENT
+                : GraphicalModelEvent::EventObjectType::DATADEFINITION,
+            graphicalItem);
+    }
+    _synchronizeGraphicalModelDataDefinitionsNow();
+    _notifyModelChangeApplied();
+    return true;
 }
 
 bool ObjectPropertyBrowser::_applyModelObjectReferenceSelection(QtProperty* property, int value) {
@@ -2678,7 +3186,7 @@ bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) 
         return false;
     }
 
-    if (binding.descriptor.supportsInlineExpansion || _hasSpecializedEditor(binding.descriptor)) {
+    if (binding.descriptor.supportsInlineExpansion || requiresDedicatedEditor(binding.descriptor)) {
         return false;
     }
 
@@ -2696,7 +3204,8 @@ bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) 
         || binding.descriptor.kind == GenesysPropertyKind::Unknown;
 }
 
-bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVariant& value, bool committed) {
+bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVariant& value, bool committed,
+                                               bool specializedEditorCommit) {
     qInfo() << "[PropertyEditor] _applyVariantChange property="
             << (property != nullptr ? property->propertyName() : QString("<null>"))
             << " committed=" << committed;
@@ -2721,7 +3230,8 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         return false;
     }
 
-    if (binding.descriptor.supportsInlineExpansion || _hasSpecializedEditor(binding.descriptor)
+    if (binding.descriptor.supportsInlineExpansion
+        || (requiresDedicatedEditor(binding.descriptor) && !specializedEditorCommit)
         || binding.descriptor.kind == GenesysPropertyKind::Enum
         || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
         return false;
@@ -2738,6 +3248,40 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         return false;
     }
 
+    if (binding.listElementIndex >= 0) {
+        binding.control->replaceListValueAt(binding.listElementIndex, newValue);
+        binding.descriptor.currentValue = newValue;
+        _applyPositionalListChange();
+        return true;
+    }
+
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    if (networkScene != nullptr && networkScene->networkEditorOwner() != nullptr
+        && networkScene->getUndoStack() != nullptr) {
+        if (QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
+                networkScene->networkEditorOwner(), binding.owner,
+                binding.descriptor.displayName, newValue)) {
+            // A Network property undo command can synchronously rebuild the
+            // Property Editor and invalidate its active Qt editor during this callback.
+            // Commit after the current event; cancel if the owner context changes.
+            const QPointer<ModelGraphicsScene> guardedScene(networkScene);
+            const QPointer<ObjectPropertyBrowser> guardedBrowser(this);
+            ModelDataDefinition* const networkOwner = networkScene->networkEditorOwner();
+            auto commandOwner = std::make_shared<std::unique_ptr<QUndoCommand>>(command);
+            QTimer::singleShot(0, networkScene,
+                [guardedScene, guardedBrowser, networkOwner, commandOwner]() {
+                    if (guardedScene == nullptr || guardedBrowser == nullptr
+                        || guardedScene->networkEditorOwner() != networkOwner
+                        || guardedScene->getUndoStack() == nullptr) return;
+                    guardedScene->getUndoStack()->push(commandOwner->release());
+                    if (guardedBrowser != nullptr)
+                        guardedBrowser->_notifyModelChangeApplied();
+                });
+            binding.descriptor.currentValue = newValue;
+            return true;
+        }
+    }
+
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
         binding.control,
@@ -2750,6 +3294,14 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         _scheduleDeferredRebuild();
         qWarning() << "[PropertyEditor] variant apply failed to apply value. Scheduled deferred rebuild";
         return false;
+    }
+
+    ModelGraphicsScene* propertyScene = _graphicalItem != nullptr
+        ? dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene()) : nullptr;
+    if (propertyScene == nullptr) propertyScene = _modelScene.data();
+    if (_guiExtensionManager != nullptr) {
+        _guiExtensionManager->notifyModelPropertyChanged(binding.owner, binding.descriptor.displayName,
+            binding.descriptor.currentValue, newValue, propertyScene, this);
     }
 
     binding.descriptor.currentValue = newValue;
@@ -2821,30 +3373,18 @@ void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property, const
     }
 
     const QVariant pendingValue = committedValue.isValid() ? committedValue : _variantManager->value(property);
-    _pendingCommittedProperties.insert(property);
-    _pendingCommittedValues.insert(property, pendingValue);
     qInfo() << "[PropertyEditor] editor commit received for" << property->propertyName();
-    QMetaObject::invokeMethod(this, [this, property]() {
-        if (!_pendingCommittedProperties.contains(property)) {
-            return;
-        }
-        if (!_hasValidActiveBindingContext(property)) {
-            qWarning() << "[PropertyEditor] queued commit aborted due to invalid binding context";
-            _pendingCommittedProperties.remove(property);
-            _pendingCommittedValues.remove(property);
-            return;
-        }
-        const QVariant committedValue = _pendingCommittedValues.value(property, _variantManager->value(property));
-        qInfo() << "[PropertyEditor] queued commit apply for" << property->propertyName();
-        _pendingCommittedProperties.remove(property);
-        _pendingCommittedValues.remove(property);
-        auto bindingIt = _bindings.find(property);
-        if (bindingIt != _bindings.end() && bindingIt.value().kind == BindingKind::GraphicsVariant) {
-            _applyGraphicsVariantChange(property, committedValue, true);
-            return;
-        }
-        _applyVariantChange(property, committedValue, true);
-    }, Qt::QueuedConnection);
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] editor commit ignored because active binding context became invalid";
+        return;
+    }
+
+    auto bindingIt = _bindings.find(property);
+    if (bindingIt != _bindings.end() && bindingIt.value().kind == BindingKind::GraphicsVariant) {
+        _applyGraphicsVariantChange(property, pendingValue, true);
+        return;
+    }
+    _applyVariantChange(property, pendingValue, true);
 }
 
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
@@ -2870,42 +3410,23 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
 
     const Binding& binding = it.value();
     const bool requiresCommit = _requiresCommitConfirmation(binding);
-    const bool committed = _pendingCommittedProperties.contains(property);
 
     if (binding.kind == BindingKind::GraphicsVariant) {
-        if (requiresCommit && !committed) {
+        if (requiresCommit) {
             qInfo() << "[PropertyEditor] graphics valueChanged treated as transient for" << property->propertyName();
             return;
         }
-        if (committed) {
-            const QVariant pendingValue = _pendingCommittedValues.value(property);
-            if (pendingValue.isValid() && pendingValue != value) {
-                return;
-            }
-            _pendingCommittedProperties.remove(property);
-            _pendingCommittedValues.remove(property);
-        }
-        _applyGraphicsVariantChange(property, value, committed || !requiresCommit);
+        _applyGraphicsVariantChange(property, value, true);
         qInfo() << "[PropertyEditor] valueChanged exit";
         return;
     }
 
-    if (requiresCommit && !committed) {
+    if (requiresCommit) {
         qInfo() << "[PropertyEditor] valueChanged treated as transient for" << property->propertyName();
         return;
     }
 
-    if (committed) {
-        const QVariant pendingValue = _pendingCommittedValues.value(property);
-        if (pendingValue.isValid() && pendingValue != value) {
-            qInfo() << "[PropertyEditor] valueChanged waiting for committed value for" << property->propertyName();
-            return;
-        }
-        _pendingCommittedProperties.remove(property);
-        _pendingCommittedValues.remove(property);
-    }
-
-    _applyVariantChange(property, value, committed || !requiresCommit);
+    _applyVariantChange(property, value, true);
     qInfo() << "[PropertyEditor] valueChanged exit";
 }
 
@@ -2943,7 +3464,7 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         return;
     }
 
-    if (binding.isObjectListAction) {
+    if (binding.isObjectListAction || binding.isListItemAction) {
         _applyObjectListSelection(property, value);
         qInfo() << "[PropertyEditor] enumValueChanged exit";
         return;
@@ -2999,6 +3520,32 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         newValue = std::to_string(value);
     } else {
         return;
+    }
+
+    ModelGraphicsScene* networkScene = _modelScene.data();
+    if (networkScene != nullptr && networkScene->networkEditorOwner() != nullptr
+        && networkScene->getUndoStack() != nullptr) {
+        if (QUndoCommand* command = GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
+                networkScene->networkEditorOwner(), binding.owner,
+                binding.descriptor.displayName, newValue)) {
+            // A Network property undo command can synchronously rebuild the
+            // Property Editor and invalidate its active Qt editor during this callback.
+            // Commit after the current event; cancel if the owner context changes.
+            const QPointer<ModelGraphicsScene> guardedScene(networkScene);
+            const QPointer<ObjectPropertyBrowser> guardedBrowser(this);
+            ModelDataDefinition* const networkOwner = networkScene->networkEditorOwner();
+            auto commandOwner = std::make_shared<std::unique_ptr<QUndoCommand>>(command);
+            QTimer::singleShot(0, networkScene,
+                [guardedScene, guardedBrowser, networkOwner, commandOwner]() {
+                    if (guardedScene == nullptr || guardedBrowser == nullptr
+                        || guardedScene->networkEditorOwner() != networkOwner
+                        || guardedScene->getUndoStack() == nullptr) return;
+                    guardedScene->getUndoStack()->push(commandOwner->release());
+                    if (guardedBrowser != nullptr)
+                        guardedBrowser->_notifyModelChangeApplied();
+                });
+            return;
+        }
     }
 
     std::string errorMessage;
@@ -3079,6 +3626,22 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
         return;
     }
 
+    if (binding.isListItemAction
+        && (binding.control->supportsListElementMove() || binding.control->supportsListElementRemoval())
+        && _isKernelEditingEnabled(binding.descriptor)) {
+        QMenu menu(this);
+        QAction* up = binding.control->supportsListElementMove() ? menu.addAction(QStringLiteral("Mover para cima")) : nullptr;
+        QAction* down = binding.control->supportsListElementMove() ? menu.addAction(QStringLiteral("Mover para baixo")) : nullptr;
+        QAction* remove = binding.control->supportsListElementRemoval() ? menu.addAction(QStringLiteral("Remover item")) : nullptr;
+        if (up != nullptr) up->setEnabled(binding.listElementIndex > 0);
+        if (down != nullptr) down->setEnabled(binding.listElementIndex + 1 < static_cast<int>(binding.descriptor.choices.size()));
+        QAction* selected = menu.exec(event->globalPos());
+        if (selected == up) _moveListItem(item->property(), binding.listElementIndex - 1);
+        else if (selected == down) _moveListItem(item->property(), binding.listElementIndex + 1);
+        else if (selected == remove) _removeListItem(item->property());
+        return;
+    }
+
     if (binding.isModelObjectAction) {
         QtTreePropertyBrowser::contextMenuEvent(event);
         return;
@@ -3092,10 +3655,18 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     QMenu menu(this);
     QAction* editAction = nullptr;
     QAction* createAction = nullptr;
-    if (_hasSpecializedEditor(binding.descriptor)) {
+    QAction* expressionAction = nullptr;
+    const bool editingEnabled = _isKernelEditingEnabled(binding.descriptor);
+    if (editingEnabled && _hasSpecializedEditor(binding.descriptor)) {
         editAction = menu.addAction(_specializedEditorActionText(binding.descriptor));
     }
-    if (binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
+    const bool hasExpressionAlternative = editingEnabled
+        && binding.descriptor.kind == GenesysPropertyKind::String
+        && binding.descriptor.editorHint != SimulationControlEditorHint::ParserExpression;
+    if (hasExpressionAlternative) {
+        expressionAction = menu.addAction(QStringLiteral("Build expression..."));
+    }
+    if (editingEnabled && binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
         createAction = menu.addAction("Create object");
     }
     if (editAction == nullptr && createAction == nullptr) {
@@ -3106,6 +3677,11 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
 
     if (chosen == editAction && editAction != nullptr) {
         _openSpecializedEditor(item->property());
+    } else if (chosen == expressionAction && expressionAction != nullptr) {
+        const auto currentBinding = _bindings.find(item->property());
+        if (currentBinding != _bindings.end()) {
+            _openExpressionBuilder(item->property(), currentBinding.value());
+        }
     } else if (chosen == createAction && createAction != nullptr) {
         _createObjectForProperty(item->property());
     }

@@ -1,3 +1,5 @@
+include(GNUInstallDirs)
+
 add_subdirectory(data)
 add_subdirectory(components)
 
@@ -21,3 +23,18 @@ target_link_libraries(genesys_plugins_components_minimal
 )
 
 target_compile_features(genesys_plugins_components_minimal PUBLIC cxx_std_23)
+target_compile_definitions(genesys_plugins_components_minimal PRIVATE
+    "GENESYS_CPPFORG_INSTALL_INCLUDE_ROOT=\"${CMAKE_INSTALL_DATADIR}/genesys/source\"")
+
+# CppForG compiles C++ hooks after installation, so ship the matching kernel
+# and plugin headers beside the application data tree.
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/source/"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/genesys/source"
+    FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*.hpp"
+        PATTERN "*.tpp"
+        PATTERN "*.inl"
+        PATTERN "*.ipp"
+        PATTERN "*.inc"
+)

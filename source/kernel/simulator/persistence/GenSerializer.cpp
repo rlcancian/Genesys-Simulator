@@ -1,11 +1,155 @@
 #include "GenSerializer.h"
 
 #include <cassert>
-#include <regex>
+#include <cctype>
+#include <string_view>
 #include <vector>
 #include <algorithm>
 
 #include "../Simulator.h"
+
+
+namespace {
+
+bool requiresEscapedTextLiteral(std::string_view value) {
+    return value.find('"') != std::string_view::npos
+        || value.find('\\') != std::string_view::npos
+        || value.find('\n') != std::string_view::npos
+        || value.find('\r') != std::string_view::npos
+        || value.find('\t') != std::string_view::npos;
+}
+
+std::string encodeTextLiteral(std::string_view value) {
+    if (!requiresEscapedTextLiteral(value)) {
+        return "\"" + std::string(value) + "\"";
+    }
+
+    std::string encoded;
+    encoded.reserve(value.size() + 3);
+    encoded += "e\"";
+    for (const char ch : value) {
+        switch (ch) {
+        case '\\':
+            encoded += "\\\\";
+            break;
+        case '"':
+            encoded += "\\\"";
+            break;
+        case '\n':
+            encoded += "\\n";
+            break;
+        case '\r':
+            encoded += "\\r";
+            break;
+        case '\t':
+            encoded += "\\t";
+            break;
+        default:
+            encoded += ch;
+            break;
+        }
+    }
+    encoded += '"';
+    return encoded;
+}
+
+void skipWhitespace(std::string_view line, std::size_t& position) {
+    while (position < line.size()
+           && std::isspace(static_cast<unsigned char>(line[position])) != 0) {
+        ++position;
+    }
+}
+
+bool parseBareToken(std::string_view line, std::size_t& position, std::string& value) {
+    skipWhitespace(line, position);
+    const std::size_t start = position;
+    while (position < line.size()
+           && std::isspace(static_cast<unsigned char>(line[position])) == 0) {
+        ++position;
+    }
+    if (position == start) {
+        return false;
+    }
+    value.assign(line.substr(start, position - start));
+    return true;
+}
+
+bool parseTextOrBareValue(std::string_view line,
+                          std::size_t& position,
+                          std::string& value,
+                          bool& isText) {
+    skipWhitespace(line, position);
+    if (position >= line.size()) {
+        value.clear();
+        isText = false;
+        return true;
+    }
+
+    const bool escapedLiteral =
+        line[position] == 'e'
+        && position + 1 < line.size()
+        && line[position + 1] == '"';
+    const bool quotedLiteral = line[position] == '"';
+
+    if (!escapedLiteral && !quotedLiteral) {
+        isText = false;
+        return parseBareToken(line, position, value);
+    }
+
+    isText = true;
+    position += escapedLiteral ? 2 : 1;
+    value.clear();
+
+    while (position < line.size()) {
+        const char ch = line[position++];
+        if (ch == '"') {
+            return true;
+        }
+
+        if (!escapedLiteral || ch != '\\') {
+            value += ch;
+            continue;
+        }
+
+        if (position >= line.size()) {
+            return false;
+        }
+
+        const char escaped = line[position++];
+        switch (escaped) {
+        case '"':
+            value += '"';
+            break;
+        case '\\':
+            value += '\\';
+            break;
+        case 'n':
+            value += '\n';
+            break;
+        case 'r':
+            value += '\r';
+            break;
+        case 't':
+            value += '\t';
+            break;
+        default:
+            return false;
+        }
+    }
+
+    return false;
+}
+
+void restoreLegacySpaceEscapes(std::string& value) {
+    constexpr std::string_view marker = "\\_";
+    std::size_t position = 0;
+    while ((position = value.find(marker, position)) != std::string::npos) {
+        value.replace(position, marker.size(), " ");
+        ++position;
+    }
+}
+
+} // namespace
 
 GenSerializer::GenSerializer(Model *model) :
 _model(model) {
@@ -18,7 +162,7 @@ PersistenceRecord* GenSerializer::newPersistenceRecord() {
 
 bool GenSerializer::dump(std::ostream& output) {
 	auto fields = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
-	bool found, err;
+	bool found;
 
 	output << "# Genesys Simulation Model\n";
 	output << "# Simulator, Model and Simulation infos\n";
@@ -36,63 +180,92 @@ bool GenSerializer::dump(std::ostream& output) {
 	if (found) output << linearize(fields.get());
 
 	output << "\n# Model Data Definitions\n";
-	err = for_each([&](auto& key) {
+	const int dataErrors = for_each([&](const std::string& key) {
 		fields->clear();
-		get(key, fields.get());
-		auto type = fields->loadField("typename");
+		if (!get(key, fields.get())) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_MISSING category=ModelDataDefinition stage=lookup");
+			return 1;
+		}
+		const auto type = fields->loadField("typename");
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
-				Plugin * plugin = _model->getParentSimulator()->getPluginManager()->find(type);
-			if (plugin == nullptr) return 1;
-				if (plugin->getPluginInfo()->isComponent()) return 0;
-						_model->getTracer()->trace(linearize(fields.get()));
-						output << linearize(fields.get());
-					return 0;
-				});
+		Plugin* plugin = _model->getParentSimulator()->getPluginManager()->find(type);
+		if (plugin == nullptr) {
+			_model->getTracer()->trace(TraceManager::Level::L4_warning, "SERIALIZER_PLUGIN_NOT_FOUND category=unresolved pass=DataDefinitions"
+				" stage=plugin_lookup typename=\"" + type + "\" id="
+				+ std::to_string(fields->loadField("id", 0u)));
+			// Some model data definitions are transient runtime objects (for example
+			// Entity) and intentionally have no persistence plugin. Keep them alive
+			// in the running model, but omit their unsupported record from the save.
+			return 0;
+		}
+		if (plugin->getPluginInfo()->isComponent()) return 0;
+		_model->getTracer()->trace(linearize(fields.get()));
+		output << linearize(fields.get());
+		if (!output.good()) {
+			_model->getTracer()->traceError("SERIALIZER_STREAM_WRITE_FAILED category=ModelDataDefinition stage=dump");
+			return 1;
+		}
+		return 0;
+	});
 
 	output << "\n# Model Components\n";
-	err = for_each([&](auto& key) {
+	const int componentErrors = for_each([&](const std::string& key) {
 		fields->clear();
-		get(key, fields.get());
-		auto type = fields->loadField("typename");
+		if (!get(key, fields.get())) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_MISSING category=ModelComponent stage=lookup");
+			return 1;
+		}
+		const auto type = fields->loadField("typename");
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
-				Plugin * plugin = _model->getParentSimulator()->getPluginManager()->find(type);
-			if (plugin == nullptr) return 1;
-				if (!plugin->getPluginInfo()->isComponent()) return 0;
-						_model->getTracer()->trace(linearize(fields.get()));
-						output << linearize(fields.get());
-					return 0;
-				});
+		Plugin* plugin = _model->getParentSimulator()->getPluginManager()->find(type);
+		if (plugin == nullptr) {
+			_model->getTracer()->trace(TraceManager::Level::L4_warning, "SERIALIZER_PLUGIN_NOT_FOUND category=unresolved pass=ModelComponents"
+				" stage=plugin_lookup typename=\"" + type + "\" id="
+				+ std::to_string(fields->loadField("id", 0u)));
+			// Continue serializing the remaining components and data definitions.
+			return 0;
+		}
+		if (!plugin->getPluginInfo()->isComponent()) return 0;
+		_model->getTracer()->trace(linearize(fields.get()));
+		output << linearize(fields.get());
+		if (!output.good()) {
+			_model->getTracer()->traceError("SERIALIZER_STREAM_WRITE_FAILED category=ModelComponent stage=dump");
+			return 1;
+		}
+		return 0;
+	});
 
-	return !err;
+	if (!output.good()) {
+		_model->getTracer()->traceError("SERIALIZER_STREAM_WRITE_FAILED category=Model stage=dump");
+	}
+	// Both passes contribute to the result; the second must never erase the first.
+	return dataErrors == 0 && componentErrors == 0 && output.good();
 }
 
 std::string GenSerializer::linearize(PersistenceRecord *fields) {
-	// linearize fields
 	std::string id, type, name, attrs;
 	for (auto& it : *fields) {
 		auto field = it.second;
-		if (field.first == "id") id = field.second;
-		else if (field.first == "typename") type = field.second;
-		else if (field.first == "name") name = "\"" + field.second + "\"";
-		else {
-			auto& key = field.first;
-			auto escaped = field.second;
-			// add quotes when needed
-			if (field.kind == PersistenceRecord::Entry::Kind::text) {
-				escaped = "\"" + escaped + "\"";
-			}
-			attrs += key + "=" + escaped + " ";
+		if (field.first == "id") {
+			id = field.second;
+		} else if (field.first == "typename") {
+			type = field.second;
+		} else if (field.first == "name") {
+			name = encodeTextLiteral(field.second);
+		} else {
+			const auto& key = field.first;
+			const std::string serializedValue =
+				field.kind == PersistenceRecord::Entry::Kind::text
+					? encodeTextLiteral(field.second)
+					: field.second;
+			attrs += key + "=" + serializedValue + " ";
 		}
 	}
 
-	// add padding
 	while (id.length() < 3) id += " ";
 	while (type.length() < 10) type += " ";
 
-	// compose line
-	std::string line = id + " " + type + " " + name + " " + attrs + "\n";
-
-	return line;
+	return id + " " + type + " " + name + " " + attrs + "\n";
 };
 
 bool GenSerializer::load(std::istream& input) {
@@ -100,86 +273,102 @@ bool GenSerializer::load(std::istream& input) {
 	std::string line;
 	while (std::getline(input, line) && res) {
 		line = Util::Trim(line);
-		if (line.substr(0, 1) == "#" || line.empty()) continue;
+		if (line.empty() || line.front() == '#') {
+			continue;
+		}
+
+		// Older hand-authored Gro model fixtures stored multiline sourceCode
+		// inside a raw quoted literal. Current serialization uses e"..." for
+		// text containing newlines; accept the legacy form when its closing
+		// quote is a standalone line, then normalize it before normal parsing.
+		constexpr std::string_view legacySourceCodePrefix = "sourceCode=\"";
+		const std::size_t legacySourceCodeStart = line.find(legacySourceCodePrefix);
+		if (legacySourceCodeStart != std::string::npos &&
+		    legacySourceCodeStart + legacySourceCodePrefix.size() == line.size()) {
+			std::string legacySourceCode = "\n";
+			std::string continuation;
+			bool foundClosingQuote = false;
+			while (std::getline(input, continuation)) {
+				if (Util::Trim(continuation) == "\"") {
+					foundClosingQuote = true;
+					break;
+				}
+				legacySourceCode += continuation;
+				legacySourceCode += '\n';
+			}
+			if (!foundClosingQuote) {
+				return false;
+			}
+			line = line.substr(0, legacySourceCodeStart + std::string_view("sourceCode=").size()) +
+			       encodeTextLiteral(legacySourceCode);
+		}
+
 		_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, line);
 
-		// replaces every "quoted" string by {stringX}
-		std::regex regexQuoted("\"([^\"]*)\"");
-		auto matches_begin = std::sregex_iterator(line.begin(), line.end(), regexQuoted);
-		auto matches_end = std::sregex_iterator();
-		std::unordered_map<std::string, std::string> strings{};
-		int i = 0;
-		for (std::sregex_iterator it = matches_begin; it != matches_end; it++, i++) {
-			std::string match_str = (*it).str();
-			std::string subst = "{string" + std::to_string(i) + "}";
-			strings[subst] = match_str;
-		}
-		for (auto& it : strings) {
-			std::string match_str = it.second;
-			unsigned int pos = line.find(match_str, 0);
-			line.replace(pos, match_str.length(), it.first);
+		std::size_t position = 0;
+		std::string idToken;
+		std::string type;
+		std::string name;
+		bool nameIsText = false;
+
+		if (!parseBareToken(line, position, idToken)
+			|| !parseBareToken(line, position, type)
+			|| !parseTextOrBareValue(line, position, name, nameIsText)) {
+			return false;
 		}
 
-		// split on " "
-		std::regex regex{R"([\s]+)"};
-		std::sregex_token_iterator tit{line.begin(), line.end(), regex, -1};
-		std::vector<std::string> lstfields{tit,{}};
-		auto fields = std::unique_ptr<PersistenceRecord>(this->newPersistenceRecord());
-		// for each field, separate key and value and form a record
-        //regex = {R"([=]+)"};
-        regex = std::regex(R"([=]+)");
+		auto fields = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
+		fields->insert({"id", idToken, PersistenceRecord::Entry::Kind::numeric});
+		fields->insert({"typename", type, PersistenceRecord::Entry::Kind::text});
+		fields->insert({"name", name, PersistenceRecord::Entry::Kind::text});
 
-
-		// token-position index is per line (id, typename, name), independent from quoted-string placeholders.
-		i = 0;
-		for (auto it = lstfields.begin(); it != lstfields.end(); it++, i++) {
-			std::string key, val;
-			// 
-			tit = {(*it).begin(), (*it).end(), regex, -1};
-			std::vector<std::string> veckeyval = {tit,{}};
-			veckeyval[0] = Util::Trim((veckeyval[0]));
-			if (veckeyval[0] != "") {
-				if (veckeyval.size() > 1) {
-					veckeyval[1] = Util::Trim((veckeyval[1]));
-					if (veckeyval[1].substr(0, 1) == "\"" && veckeyval[1].substr(veckeyval[1].length() - 1, 1) == "\"") { // remove ""
-						veckeyval[1] = veckeyval[1].substr(1, veckeyval[1].length() - 2);
-					}
-					veckeyval[1] = std::regex_replace(veckeyval[1], std::regex("\\\\_"), " ");
-					key = veckeyval[0];
-					val = veckeyval[1];
-				} else {
-					if (i == 0) {
-						key = "id";
-						val = veckeyval[0];
-					} else if (i == 1) {
-						key = "typename";
-						val = veckeyval[0];
-					} else if (i == 2) {
-						key = "name";
-						val = veckeyval[0];
-					} else {
-						key = veckeyval[0];
-						val = "";
-					}
-				}
+		while (true) {
+			skipWhitespace(line, position);
+			if (position >= line.size()) {
+				break;
 			}
-			// replaces back {stringX} by the strings themselves before saving
-			auto sit = strings.find(val);
-			if (sit != strings.end()) {
-				auto& str = sit->second;
-				val = str.substr(1, str.length() - 2);
-				fields->insert({key, val, PersistenceRecord::Entry::Kind::text});
-			} else {
-				fields->insert({key, val, PersistenceRecord::Entry::Kind::numeric});
+
+			const std::size_t keyStart = position;
+			while (position < line.size()
+				   && line[position] != '='
+				   && std::isspace(static_cast<unsigned char>(line[position])) == 0) {
+				++position;
 			}
+			if (position == keyStart) {
+				return false;
+			}
+
+			const std::string key(line.substr(keyStart, position - keyStart));
+			skipWhitespace(line, position);
+			if (position >= line.size() || line[position] != '=') {
+				return false;
+			}
+			++position;
+
+			std::string value;
+			bool isText = false;
+			if (!parseTextOrBareValue(line, position, value, isText)) {
+				return false;
+			}
+			if (!isText) {
+				restoreLegacySpaceEscapes(value);
+			}
+
+			fields->insert({
+				key,
+				value,
+				isText ? PersistenceRecord::Entry::Kind::text
+				       : PersistenceRecord::Entry::Kind::numeric
+			});
 		}
 
-		// then, save each record
-		std::string type = fields->loadField("typename", "");
-		if (type == "") return false;
-		Util::identification id = fields->loadField("id", 0);
-		std::string name = id == 0 ? type : fields->loadField("name", "_" + std::to_string(id));
-		res = put(name, type, id, fields.get());
+		if (type.empty()) {
+			return false;
+		}
+		const Util::identification id = fields->loadField("id", 0);
+		const std::string recordName =
+			id == 0 ? type : fields->loadField("name", "_" + std::to_string(id));
+		res = put(recordName, type, id, fields.get());
 	}
 	return res;
 }
@@ -199,6 +388,16 @@ bool GenSerializer::put(const std::string name, const std::string type, const Ut
 	if (id != 0) saved->saveField("name", name);
 	saved->saveField("typename", type);
 	saved->saveField("id", id);
+	if (_components.find(name) != _components.end()) {
+		// Two live objects ended up saved under the same name; this map is keyed by name
+		// alone across both data definitions and components, so the earlier entry is about
+		// to be silently discarded. Model-wide uniqueness should already be enforced at
+		// ModelDataDefinition::setName(), so this is a defense-in-depth diagnostic for any
+		// residual/legacy case that bypassed it.
+		_model->getTracer()->traceError(
+			"SERIALIZER_DUPLICATE_NAME Saved model has two objects named \"" + name + "\" (typename \"" + type
+			+ "\"); the earlier entry will be overwritten and lost.");
+	}
 	_components[name] = std::move(saved);
 	return true;
 }

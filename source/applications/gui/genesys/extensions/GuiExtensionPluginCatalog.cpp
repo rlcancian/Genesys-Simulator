@@ -1,5 +1,10 @@
 #include "GuiExtensionPluginCatalog.h"
+#include "../graphicals/ModelGraphicsScene.h"
 #include "../systempreferences.h"
+#include "kernel/simulator/model/ModelDataDefinition.h"
+#include "kernel/simulator/model/ModelComponent.h"
+#include "../graphicals/GraphicalModelComponent.h"
+#include "../graphicals/GraphicalModelItemRenderStrategy.h"
 
 #include <algorithm>
 #include <cctype>
@@ -16,6 +21,9 @@
 #include <QJsonValue>
 #include <QString>
 #include <QProcessEnvironment>
+#include <QMetaObject>
+#include <QPointer>
+#include <QThread>
 
 namespace {
 std::vector<const GuiExtensionPlugin*>& registryStorage() {
@@ -23,18 +31,30 @@ std::vector<const GuiExtensionPlugin*>& registryStorage() {
 	return plugins;
 }
 
+GuiExtensionDependencyResolver::Environment& dependencyEnvironment() {
+    static GuiExtensionDependencyResolver::Environment environment{{}, {}, false};
+    return environment;
+}
+
+// Per-contribution eligibility is evaluated from the same active extension set
+// used for menus, diagram projections and model editors.
+GuiExtensionRegistry eligibleContributions(const GuiExtensionPlugin* plugin) {
+    GuiExtensionRegistry contributions;
+    if (!plugin) return contributions;
+    GuiExtensionRegistry declared;
+    plugin->registerContributions(&declared);
+    const auto resolution = GuiExtensionPluginCatalog::resolution();
+    const auto& environment = dependencyEnvironment();
+    contributions.appendEligibleFrom(declared, [&](const GuiExtensionDependencyGroups& groups) {
+        return GuiExtensionDependencyResolver::contributionEligible(groups, environment, resolution);
+    });
+    return contributions;
+}
+
 using PresentationMap = std::unordered_map<std::string, GuiExtensionPresentationMetadata>;
 
 std::string normalizeId(const std::string& input) {
-	std::string normalized;
-	normalized.reserve(input.size());
-	for (unsigned char c : input) {
-		if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
-			continue;
-		}
-		normalized.push_back(static_cast<char>(std::tolower(c)));
-	}
-	return normalized;
+    return GuiExtensionDependencyResolver::normalizeId(input);
 }
 
 std::string normalizeId(const QString& input) {
@@ -226,12 +246,42 @@ const std::vector<const GuiExtensionPlugin*>& GuiExtensionPluginCatalog::plugins
 	return registryStorage();
 }
 
+void GuiExtensionPluginCatalog::setAvailableModelPluginIds(std::vector<std::string> pluginIds) {
+    dependencyEnvironment().modelPluginIds = std::move(pluginIds);
+    dependencyEnvironment().modelPluginIdsKnown = true;
+}
+
+void GuiExtensionPluginCatalog::clearAvailableModelPluginInventory() {
+    dependencyEnvironment().modelPluginIds.clear();
+    dependencyEnvironment().modelPluginVersions.clear();
+    dependencyEnvironment().modelPluginIdsKnown = false;
+}
+
+void GuiExtensionPluginCatalog::setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds) {
+    dependencyEnvironment().systemCapabilityIds = std::move(capabilityIds);
+}
+
+void GuiExtensionPluginCatalog::setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions) {
+    dependencyEnvironment().modelPluginVersions = std::move(versions);
+}
+
+void GuiExtensionPluginCatalog::setAvailableSystemCapabilityVersions(std::unordered_map<std::string, std::string> versions) {
+    dependencyEnvironment().systemCapabilityVersions = std::move(versions);
+}
+
+static std::vector<const GuiExtensionPlugin*> configuredPlugins();
+
+GuiExtensionDependencyResolver::Result GuiExtensionPluginCatalog::resolution() {
+    return GuiExtensionDependencyResolver::resolve(configuredPlugins(), dependencyEnvironment());
+}
+
 std::vector<const GuiExtensionPlugin*> GuiExtensionPluginCatalog::resolvedPlugins() {
+    return resolution().active;
+}
+
+static std::vector<const GuiExtensionPlugin*> configuredPlugins() {
 	const std::vector<const GuiExtensionPlugin*>& registered = registryStorage();
 	QJsonObject config = loadConfigObject();
-	if (config.isEmpty()) {
-		return std::vector<const GuiExtensionPlugin*>(registered.begin(), registered.end());
-	}
 
 	const std::unordered_set<std::string> enabledIds = parseIdList(config.value("enabled"));
 	const std::unordered_set<std::string> disabledIds = parseIdList(config.value("disabled"));
@@ -282,6 +332,295 @@ void GuiExtensionPluginCatalog::registerPlugin(const GuiExtensionPlugin* plugin)
 	if (std::find(registry.begin(), registry.end(), plugin) == registry.end()) {
 		registry.push_back(plugin);
 	}
+}
+
+void GuiExtensionPluginCatalog::notifySimulationStart(Simulator* simulator, QMainWindow* window) {
+    if (simulator == nullptr || window == nullptr) return;
+    for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+        if (plugin == nullptr) continue;
+        GuiExtensionRegistry registry;
+        plugin->registerContributions(&registry);
+        for (const GuiSimulationStartContribution& contribution : registry.simulationStarts()) {
+            if (contribution.onSimulationStart) contribution.onSimulationStart(simulator, window);
+        }
+    }
+}
+
+void GuiExtensionPluginCatalog::synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene) {
+	if (scene == nullptr) return;
+	for (const GuiDiagramProjectionContribution& projection : diagramProjectionContributions()) {
+		if (projection.synchronize) projection.synchronize(simulator, scene);
+	}
+}
+
+void GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(Simulator* simulator,
+                                                                            ModelGraphicsScene* scene) {
+	if (scene == nullptr) return;
+	if (QThread::currentThread() == scene->thread()) {
+		synchronizeDiagramProjections(simulator, scene);
+		return;
+	}
+	QPointer<ModelGraphicsScene> guardedScene(scene);
+	QMetaObject::invokeMethod(scene, [guardedScene]() {
+		if (guardedScene != nullptr) {
+			synchronizeDiagramProjections(guardedScene->getSimulator(), guardedScene);
+		}
+	}, Qt::QueuedConnection);
+}
+
+std::vector<GuiDiagramProjectionContribution> GuiExtensionPluginCatalog::diagramProjectionContributions() {
+	std::vector<GuiDiagramProjectionContribution> projections;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		const auto& registered = registry.diagramProjections();
+		projections.insert(projections.end(), registered.begin(), registered.end());
+	}
+	return projections;
+}
+
+bool GuiExtensionPluginCatalog::hasNetworkEditor(ModelDataDefinition* owner) {
+	if (owner == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors())
+			if (editor.supports && editor.supports(owner)) return true;
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::hasEditingContext(ModelDataDefinition* owner) {
+	if (owner == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiEditingContextContribution& context : registry.editingContexts())
+			if (context.supports && context.supports(owner)) return true;
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::canDeleteNetworkElement(ModelDataDefinition* owner, QGraphicsItem* element) {
+	if (owner == nullptr || element == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors())
+			if (editor.supports && editor.supports(owner) && editor.canDeleteElement
+				&& editor.canDeleteElement(owner, element)) return true;
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::ownsEditableNetworkDataDefinition(
+	ModelDataDefinition* owner, ModelDataDefinition* candidate) {
+	if (owner == nullptr || candidate == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.ownsEditableDataDefinition
+				&& editor.ownsEditableDataDefinition(owner, candidate)) return true;
+		}
+	}
+	return false;
+}
+
+QUndoCommand* GuiExtensionPluginCatalog::createNetworkDataDefinitionPropertyCommand(
+	ModelDataDefinition* owner, ModelDataDefinition* candidate,
+	const std::string& propertyName, const std::string& value) {
+	if (owner == nullptr || candidate == nullptr) return nullptr;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (!editor.supports || !editor.supports(owner) || !editor.ownsEditableDataDefinition
+				|| !editor.ownsEditableDataDefinition(owner, candidate)
+				|| !editor.createDataDefinitionPropertyCommand) continue;
+			if (QUndoCommand* command = editor.createDataDefinitionPropertyCommand(
+					owner, candidate, propertyName, value)) return command;
+		}
+	}
+	return nullptr;
+}
+
+bool GuiExtensionPluginCatalog::canStartNetworkRelationCreation(
+	ModelDataDefinition* owner, QGraphicsItem* source) {
+	if (owner == nullptr || source == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.canStartRelationCreation
+				&& editor.canStartRelationCreation(owner, source)) return true;
+		}
+	}
+	return false;
+}
+
+QUndoCommand* GuiExtensionPluginCatalog::createNetworkRelationCommand(
+	ModelDataDefinition* owner, QGraphicsItem* source, QGraphicsItem* destination) {
+	if (owner == nullptr || source == nullptr || destination == nullptr) return nullptr;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (!editor.supports || !editor.supports(owner) || !editor.createRelationCommand) continue;
+			if (QUndoCommand* command = editor.createRelationCommand(owner, source, destination)) return command;
+		}
+	}
+	return nullptr;
+}
+
+std::vector<GuiNetworkEditorContribution::ElementProperty>
+GuiExtensionPluginCatalog::networkElementProperties(ModelDataDefinition* owner, QGraphicsItem* element) {
+	if (owner == nullptr || element == nullptr) return {};
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (!editor.supports || !editor.supports(owner) || !editor.elementProperties) continue;
+			auto properties = editor.elementProperties(owner, element);
+			if (!properties.empty()) return properties;
+		}
+	}
+	return {};
+}
+
+QUndoCommand* GuiExtensionPluginCatalog::createNetworkElementPropertyCommand(
+	ModelDataDefinition* owner, QGraphicsItem* element,
+	const std::string& propertyName, const std::string& value) {
+	if (owner == nullptr || element == nullptr) return nullptr;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (!editor.supports || !editor.supports(owner) || !editor.elementProperties
+				|| !editor.createElementPropertyCommand) continue;
+			if (editor.elementProperties(owner, element).empty()) continue;
+			if (QUndoCommand* command = editor.createElementPropertyCommand(
+					owner, element, propertyName, value)) return command;
+		}
+	}
+	return nullptr;
+}
+
+bool GuiExtensionPluginCatalog::acceptsNetworkEditorDrop(
+	ModelDataDefinition* owner, const std::string& pluginType, bool isComponent) {
+	if (owner == nullptr || pluginType.empty() || isComponent) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.acceptsDrop
+				&& editor.acceptsDrop(owner, pluginType, isComponent)) return true;
+		}
+	}
+	return false;
+}
+
+void GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionDrop(
+	ModelDataDefinition* owner, ModelDataDefinition* dropped) {
+	if (owner == nullptr || dropped == nullptr) return;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.acceptsDrop
+				&& editor.acceptsDrop(owner, dropped->getClassname(), false)
+				&& editor.onDataDefinitionDropped) {
+				editor.onDataDefinitionDropped(owner, dropped);
+				return;
+			}
+		}
+	}
+}
+
+void GuiExtensionPluginCatalog::notifyNetworkEditorDataDefinitionRemoved(
+		ModelDataDefinition* owner, ModelDataDefinition* dropped) {
+	if (owner == nullptr || dropped == nullptr) return;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiNetworkEditorContribution& editor : registry.networkEditors()) {
+			if (editor.supports && editor.supports(owner) && editor.onDataDefinitionRemoved) {
+				editor.onDataDefinitionRemoved(owner, dropped);
+				return;
+			}
+		}
+	}
+}
+
+void GuiExtensionPluginCatalog::restoreDiagramProjections(
+	Simulator* simulator, ModelDataDefinition* owner, ModelGraphicsScene* scene,
+	const std::function<std::any(const std::string&, unsigned long)>& layoutProvider) {
+	if (owner == nullptr || scene == nullptr || !layoutProvider) return;
+	for (const GuiDiagramProjectionContribution& diagram : diagramProjectionContributions()) {
+		if (!diagram.supports || !diagram.supports(owner) || !diagram.restoreLayout) continue;
+		diagram.restoreLayout(simulator, owner, scene,
+		                     layoutProvider(diagram.id, static_cast<unsigned long>(owner->getId())));
+	}
+}
+
+void GuiExtensionPluginCatalog::configureComponentVisualization(GraphicalModelComponent* component) {
+	if (component == nullptr || component->getComponent() == nullptr) return;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.configure) {
+				contribution.configure(component);
+				return;
+			}
+		}
+	}
+}
+
+bool GuiExtensionPluginCatalog::animateComponentArrival(ModelGraphicsScene* scene, GraphicalModelComponent* component, bool visible) {
+	if (scene == nullptr || component == nullptr || component->getComponent() == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateArrival) {
+				contribution.animateArrival(scene, component, visible);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::animateComponentDeparture(ModelGraphicsScene* scene, GraphicalModelComponent* component) {
+	if (scene == nullptr || component == nullptr || component->getComponent() == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiComponentVisualizationContribution& contribution : registry.componentVisualizations()) {
+			if (contribution.supports && contribution.supports(component->getComponent()) && contribution.animateDeparture) {
+				contribution.animateDeparture(scene, component);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool GuiExtensionPluginCatalog::configureDataDefinitionRendering(
+	ModelDataDefinition* definition, GraphicalModelItemRenderContext* context) {
+	if (definition == nullptr || context == nullptr) return false;
+	for (const GuiExtensionPlugin* plugin : resolvedPlugins()) {
+		if (plugin == nullptr) continue;
+		GuiExtensionRegistry registry = eligibleContributions(plugin);
+		for (const GuiDataDefinitionRenderingContribution& contribution : registry.dataDefinitionRenderings()) {
+			if (contribution.supports && contribution.supports(definition) && contribution.configure) {
+				contribution.configure(definition, context);
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 GuiExtensionPluginAutoRegistrar::GuiExtensionPluginAutoRegistrar(const GuiExtensionPlugin* plugin) {

@@ -175,6 +175,7 @@ void StochasticTranslation::_initBetweenReplications() {
 }
 
 void StochasticTranslation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "StochasticTranslation executes translation update", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_wholeCellState == nullptr) {

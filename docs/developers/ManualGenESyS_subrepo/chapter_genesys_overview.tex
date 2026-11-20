@@ -1,0 +1,223 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{What is GenESyS}
+\label{chap:o_que_e_o_genesys}
+
+\section{Introduction}
+\label{sec:cap1_introducao}
+
+\textit{GenESyS} is a systems simulator designed to serve, at the same time, as a practical modeling and simulation tool and as a software base for expansion and research. In this book, however, these two dimensions will not be treated simultaneously. The order was deliberately reversed in favor of usage. First, the reader will learn how to work with \textit{GenESyS} as a simulator user. Then, already familiar with the application and models, you will begin to study it as a software system and as an extensible platform.
+
+This choice is important. A common mistake when approaching an academically rich simulation is to start with its most internal aspects: classes, subsystems, parser, \textit{plugins}, execution infrastructure. Although all of this is essential, this is not the best entry point for those who want to really put the system to work. The most productive path begins with use: understanding what the simulator offers, how the user sees it, how models are opened, executed and observed, and how the interface organizes this work.
+
+This chapter, therefore, fulfills a guidance function. It introduces \textit{GenESyS} as a working environment for modeling and simulation, defines the role of the graphical interface as the main point of user interaction, and explains how the rest of the manual is organized. The objective is not yet to teach how to install the system or use its menus in detail, but to establish a sufficiently clear vision so that the next chapters make sense as a natural continuation.
+
+\section{Purpose of GenESyS}
+\label{sec:cap1_finalidade}
+
+\textit{GenESyS} should be understood, firstly, as an environment for working with simulation models. This means that its value to the user is not just in ``running'' a program, but in enabling a complete cycle of working with models: opening, examining, parameterizing, executing, observing, comparing, recording and improving.
+
+From a practical point of view, this environment needs to support a set of activities that the user performs recurrently:
+
+\begin{itemize}
+\item load existing models;
+\item inspect its structure;
+\item change parameters and properties;
+\item run the simulation;
+\item observe the dynamics of the model;
+\item interpret initial results;
+\item save modified versions of the work.
+\end{itemize}
+
+\textit{GenESyS} was designed exactly for this type of use. Instead of being just an isolated program, it presents itself as a workspace where the model is the central object of interaction. The user does not only deal with abstract commands, but with concrete entities from the simulation domain: components, flows, supporting data, simulated time, events, results and complementary representations of the same model.
+
+\subsection{GenESyS as a modeling and simulation tool}
+\label{subsec:cap1_genesys_ferramenta}
+
+When seen from the user's perspective, \textit{GenESyS} is a modeling and simulation tool. This means that the main question stops being ``how was the software implemented?'' and becomes ``how is the model built, executed and observed within the software?''.
+
+This shift in perspective is essential to the first part of this manual. The user wants to know:
+\begin{itemize}
+\item how to get the simulator;
+\item how to get it up and running;
+\item how to open example models;
+\item how to use the graphical interface;
+\item how to run simulations;
+\item how to understand what the system is showing.
+\end{itemize}
+
+It is exactly this path that will be followed in the first chapters.
+
+\subsection{GenESyS as an evolving system}
+\label{subsec:cap1_genesys_sistema_evolucao}
+
+Although this chapter treats \textit{GenESyS} primarily as a user tool, it is important to note at the outset that it is also an evolving software project. This means that, behind the graphical application and the models that the user manipulates, there is an internal infrastructure made up of a kernel, parser, \textit{plugins}, auxiliary applications and test engines.
+
+This dimension, however, should not interfere with the reader's initial path. The fact that the system can also be studied and improved as software does not change the learning order proposed in this book. First, the reader will use the simulator. Afterwards, you will study its implementation.
+
+\section{How the User Works with GenESyS}
+\label{sec:cap1_como_usuario_trabalha}
+
+The user's work with \textit{GenESyS} can be described as a relatively clear flow, although composed of several complementary steps. In a typical situation, the user:
+
+\begin{enumerate}
+\item obtains the project and prepares the environment;
+\item compiles and starts the application;
+\item opens the graphical interface;
+\item load an already saved model or start a new one;
+\item inspects model elements;
+\item runs the simulation;
+\item observe your behavior and results;
+\item saves the work and its variations.
+\end{enumerate}
+
+This flow is more important than it might seem at first glance. It defines not only the way the user works with the simulator, but also the organization of the first half of the book. Each of the next chapters will delve deeper into one of these steps.
+
+\begin{table}[htbp]
+\centering
+\caption{User Workflow in GenESyS.}
+ \label{tab:cap1_fluxo_usuario}
+\small
+ \begin{tabular}{|p{3.6cm}|p{7.0cm}|}
+\hline
+\textbf{Step} & \textbf{Practical goal} \\
+\hline
+Get the system & Access the code, dependencies, and required environment \\
+\hline
+Compile and start & Run the graphical application \\
+\hline
+Open a model & Work on a concrete case within the simulator \\
+\hline
+Explore the GUI & Understand how the interface organizes the model and simulation \\
+\hline
+Run the model & Observe simulated system dynamics \\
+\hline
+Inspect results & Read early signals of model behavior and performance \\
+\hline
+Save and Continue & Preserve work and prepare new iterations \\
+\hline
+ \end{tabular}
+\end{table}
+
+The most important aspect here is that \textit{GenESyS} should not be used as an isolated command system, but as an iterative work environment. The user opens models, explores, modifies, executes, compares and reexecutes. It is this iterative nature that makes the GUI so important in the initial use of the tool.
+
+\section{The Graphical Interface as the Main Point of Use}
+\label{sec:cap1_gui_ponto_principal}
+
+In this first part of the manual, the graphical interface will be treated as the main way of using \textit{GenESyS}. This decision is not just editorial; it arises from the expected usage profile of the simulator user. Those who are working with models, especially in the initial learning phase, need a more direct, more visible and more guided form of interaction than the mere manipulation of internal project artifacts.
+
+The GUI precisely fulfills this role. It organizes the model as a visual and operational object. Through it, the user can:
+\begin{itemize}
+\item open saved models;
+\item observe its structure;
+\item browse elements and properties;
+\item trigger simulation commands;
+\item monitor system behavior;
+\item access complementary views of the model, including its textual description.
+\end{itemize}
+
+That's why this book won't start with terminal applications or examples implemented in \texttt{C++}. These artifacts are important, but they belong to the developer's field. For the user, the most natural path is the graphical interface and the already saved models.
+
+\subsection{Why GUI comes before language}
+\label{subsec:cap1_gui_antes_linguagem}
+
+Another important decision is the order between GUI and language. The \textit{GenESyS} language, presented to the user through the \textit{Simulang} tab, will only make sense after the reader has already developed a concrete notion of the model in the graphical interface. If the language text is introduced too early, it tends to be perceived as an opaque formalism. On the other hand, after the user has seen the model in the GUI, run its simulation and observed its elements, the textual description starts to function as a second way of reading the same system.
+
+This order is pedagogically superior:
+\begin{enumerate}
+\item first, the user sees and manipulates the model;
+\item he then notes how this model can also be described verbatim.
+\end{enumerate}
+
+Thus, language enters as a deepening and not as an initial obstacle.
+
+\section{Example Models as a Gateway}
+\label{sec:cap1_modelos_exemplo_porta_entrada}
+
+Initial contact with a simulator is rarely more productive when starting from scratch. For most users, the best way to get into the system is to open an existing model, look at how it is organized, and use that case as a basis for exploration. \textit{GenESyS} follows exactly this logic.
+
+Here, example models play a didactic and operational role at the same time. They are didactic because they help the user to see concrete cases of using the tool. And they are operational because they can already be opened, executed, inspected and modified within the GUI.
+
+By starting with a saved model, the user does not have to face all the initial difficulties simultaneously:
+\begin{itemize}
+\item learn the interface;
+\item choose components;
+\item set parameters;
+\item organize the flow;
+\item check whether the model is coherent.
+\end{itemize}
+
+Instead, he starts working with a model that already exists and can focus his attention on understanding the simulator. This will be the strategy adopted in the next chapters.
+
+\section{What the Reader Will Find in This Manual}
+\label{sec:cap1_o_que_o_leitor_encontrara}
+
+This book is organized into two clearly distinct parts.
+
+The first part is the \textit{User Manual}. In it, the reader will learn how to:
+\begin{itemize}
+\item get the project;
+\item prepare the environment;
+\item compile the application;
+\item open the GUI;
+\item work with example models;
+\item run simulations;
+\item observe model results and representations.
+\end{itemize}
+
+The second part is the \textit{Developer Manual}. In it, the focus shifts from simulator operation to internal structure. The reader will study:
+\begin{itemize}
+\item the organization of the source code;
+\item the simulator kernel;
+\item components and \textit{data definitions};
+\item the \textit{plugins} system;
+\item the parser and internal language;
+\item auxiliary applications, tools and tests.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+ \caption{Overall structure of the GenESyS manual.}
+ \label{tab:cap1_estrutura_manual}
+\small
+ \begin{tabular}{|p{2.8cm}|p{8.0cm}|}
+\hline
+\textbf{Book part} & \textbf{Main purpose} \\
+\hline
+User Manual & Teach how to use GenESyS as a modeling and simulation application, with an emphasis on the GUI and saved models \\
+\hline
+Developer Manual & Teach how to understand, extend and improve GenESyS as a software project \\
+\hline
+ \end{tabular}
+\end{table}
+
+This division should not be seen as mere editorial convenience. It corresponds to two real ways of working with the system. First, the reader needs to be able to use the simulator. Then, if you wish, you can understand and modify its implementation.
+
+\section{How to Read This Book in the Most Beneficial Way}
+\label{sec:cap1_como_ler_livro}
+
+There are at least two main reader profiles for this manual.
+
+The first is the reader who just wants to use \textit{GenESyS} as a simulator. In this case, the natural reading is linear throughout the first part of the book, with special attention to the chapters on installation, GUI, example models, execution and observation of results.
+
+The second is the reader who, in addition to using the system, intends to study it and improve it as a developer. For this profile, the best strategy is to first also go through the user part. This prevents the internal architecture from being studied too abstractly. A developer who has already seen the GUI in operation and opened real models then better understands the role of the kernel, the parser and the \textit{plugins}.
+
+In other words, the first part of the book is not just preparatory for the user; it also prepares the future developer to read the system from the correct point of view.
+
+\section{Final Considerations}
+\label{sec:cap1_consideracoes_finais}
+
+This chapter introduced \textit{GenESyS} as a modeling and simulation tool, emphasizing the user perspective. The most important point to remember is that the system must initially be understood as a work environment and not as an object of architectural analysis. For the user, the natural path begins with the graphical interface, saved models and the execution of concrete cases. Only then does it make sense to delve deeper into the textual language of the model and, further, into the internal structure of the software.
+
+This order does not reduce \textit{GenESyS}'s wealth; on the contrary, it makes it more accessible. By starting with use, the reader builds a concrete basis for everything that comes later. With this established, the next natural step is to prepare the working environment, that is, obtain the project, install the dependencies, compile the application and achieve the first functional execution of the GUI.
+
+Test your understanding of this content by answering the following questions:
+
+\begin{enumerate}
+\item Why does this book start by treating \textit{GenESyS} as a tool before treating it as a software project?
+
+\item What is the advantage of adopting the GUI as the main entry point for the user?
+
+\item Why should the \textit{Simulang} tab and template language be presented only after the graphical interface?
+
+\item Why are example models the best gateway for the first practical contact with the simulator?
+\end{enumerate}

@@ -1,0 +1,411 @@
+---
+document_type: status
+authority: current-state
+owner: project-maintainer
+last_updated: 2026-11-19
+update_on: merged-change-or-material-status-change
+status: active
+tracks: 511
+---
+
+# GenESyS Current Status
+
+## 1. Purpose
+
+This is the single current operational state for AI-assisted work in `rlcancian/Genesys-Simulator`.
+
+Use it for current branch/checkpoint state, validated baselines, blockers and next eligible work. Detailed executed results belong under `history/evidence/`; tasks and decisions belong in the two canonical backlogs.
+
+## 2. Repository state
+
+- **Branch consolidation checkpoint (2026-11-20):** a local integration
+  worktree based on `82f57c203` cleanly combined the Modal/Network GUI branch
+  (#591), GUI extension dependency resolution (F1), the descendant animation
+  tool slice (F2), and the formal architecture review (#587). Consolidated
+  local validation passed 2329/2329 unit tests, 3/3 smoke tests and the
+  `gui-app` build. This checkpoint is not a remote merge yet; conflicting
+  Read, ContinuousModels, packaging and historical branches remain listed in
+  [`branch consolidation evidence`](history/evidence/2026/11/2026-11-20_branch_consolidation.md).
+
+- Active integration branch: `WorkInProgress`.
+- **Set Queue Property Editor recovery (2026-11-19):** a new MainWindow regression reproduced the maintainer's report: removing one Queue from a two-member Set left the Property Editor empty for subsequent component selections. The cause was a canceled deferred rebuild retaining `_pendingRebuild=true`, compounded by inspector tree refresh clearing a still-valid Set selection. The browser now clears stale rebuild state and delivers the committed edit notification; the inspector preserves the selected DataDefinition by identity when it remains in the current model. The removed Queue remains registered. Focused Qt 28/28, focused ASan/UBSan 2/2, full unit 2,203 active, GUI build and documentation governance passed locally. See [evidence](history/evidence/2026/11/2026-11-19_gui_set_queue_selection_recovery.md).
+- **GUI classroom stabilization (2026-11-19, direct `WorkInProgress` work):** focused Qt widget regressions exposed and fixed a deferred Property Editor callback SIGSEGV, save failures that replaced the previous `.gen` and cleared dirty state, stale hidden-text `.gen` export, failed-open Undo loss, and dirty-state/selection errors when switching models. Ten consecutive property edits produced no temporary model serialization by Linux inotify; three saved/reloaded classroom models each executed ten entities. Focused Qt 13/13, ASan/UBSan 2/2, unit 2,202 active, kernel 2,213 active, smoke 3/3, GUI build, Xvfb startup, manual PDF and documentation governance passed locally. Full human desktop drag/drop and deletion of a referenced Resource were not exercised; classroom release readiness remains unestablished. See [evidence](history/evidence/2026/11/2026-11-19_gui_classroom_stabilization.md).
+- **GUI model validation and property editing (PR #590):** merged to `WorkInProgress` at `09967000173c61337a0515ea7e33aa875e258d6c` from source head `39abc33c77945a897bfc97cf5db7b2fad363729b`. Corrections cover recoverable parser/reference discovery errors on invalid expressions, editable `Variable::InitialValue`, generic editable String expression building without losing inline editing, Set member removal without deleting referenced Resource/Queue definitions, and suppression of temporary disk serialization for hidden SimulLang/C++ views while preserving dirty state. Local final-head validation before integration: `tests-unit` 2,189 passed (+4 disabled, 2 skipped), `tests-kernel-unit` 2,230 passed (+4 disabled, 2 skipped), `tests-smoke` 3/3 and `gui-app` build passed; manual PDF regenerated/validated at 400 pages. Post-merge `WorkInProgress` revalidation: unit 2,189 passed/0 failed, kernel 2,200 passed/0 failed, smoke 3/3, and the portable GUI package build succeeded. Hosted checks passed for manual, package build/lifecycle, smoke, GUI diagnostics, shell/worker/launcher/tools, AI Assistant, Data Analyser and Optimizer. Six final hosted reruns were cancelled before completion (four during dependency installation, kernel at CTest, GUI during dependency installation); local equivalents passed. Save/Save As dialogs were not manually exercised. See [post-merge evidence](history/evidence/2026/11/2026-11-19_gui_property_editor_and_model_validation.md).
+- **Application/plugin naming and version identity (AUTO-APP-004):** merged in PR #585 at `bbb73fae6d83b892515c5dceb849d7a0e6c94eb9`. The three renamed plugin IDs have load-time legacy aliases; the round-trip test passes. Production applications build; `tests-unit` 2,147 and `tests-kernel-unit` 2,158 passed (+4 disabled each), smoke 3/3, and focused Launcher tests 34/34. All 20 hosted checks passed, including GUI/app builds, manuals, Debian package/lifecycle, plugin archive inspection and docs governance. See [execution evidence](history/evidence/2026/11/2026-11-15_minor_application_changes.md).
+- **C++ runtime integration (AUTO-CPP-001):** PR [#576](https://github.com/rlcancian/Genesys-Simulator/pull/576) merged to `WorkInProgress` at `ad62e3d05c18c0022f42ca266ddaad5eb6a6810d` (source head `4f3d2705ece5993ab5f65b7702c3598aaf2d3c80`). Focused dynamic integration tests proved generated C++ executes on entity arrival through `Create → CppForG → Dispose`, changes a real `Entity` attribute, and forwards exactly one entity to Dispose. Local unit/kernel/smoke, GUI/shell/worker/example builds, ASan/UBSan/LSan and all final-head hosted checks passed. Native hook code runs in-process and is not sandboxed. Full details: [validation ledger](history/evidence/2026/11/VALIDATION_LEDGER.md). The existing source-editor backlog item remains limited to property persistence; AUTO-CPP-001 records the separate runtime/compiler scope.
+- **Plugin-specific GUI extraction (HUM-ARCH-006 / AUTO-GUI-004):** E0–E5 implementation and validation are complete on `WiP202611/gui-plugin-specific-extraction` in draft [PR #579](https://github.com/rlcancian/Genesys-Simulator/pull/579). GUI app and `tests-unit` builds passed; CTest passed 2,121 active tests (four disabled), focused renderer tests passed 11/11, and documentation governance passed. The full suite found a Submodel component-drop regression; fix `18a86f434` passed the isolated regression and complete local suite. All hosted checks passed on `288c20e04ee790c8649e14c2c799fbf2978f3ce5`, including unit, kernel, smoke, GUI, integrated-tools, launcher and Debian package/lifecycle. PR remains draft awaiting review; no merge. Residual host specifics: Decide initial semantic-port setup and a Queue drawing-tool placeholder. See [execution plan](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md) and [closeout evidence](history/evidence/2026/11/2026-11-13_gui_plugin_extraction_closeout.md). Draft #575 remains historical and superseded for execution.
+- **Approved future GUI architecture (decision 2026-11-11):** static-first, contribution-based graphical extensions, with optional kernel/system dependencies, insertable model-scene animations, renderer/service providers, GUI event routing and lossless preservation of missing-extension graphical records. See [architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md), [implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md), `HUM-ARCH-004` and non-ready `AUTO-GUI-003`. **Design/documentation only; no implementation, build evidence or dynamic loading.** Documentation PR #574.
+- **ModalNetwork GUI evolution (AUTO-MODAL-005):** G0, A1–A5, B1–B5, C1–C6 and D1–D5 were integrated by PR #577, merge commit `1811a7ae6834af5d26f4c9c4de0cec8252bd88eb`, with all 19 final-head GitHub checks passing. The development continued in PR #578 and is now integrated at merge commit `0624d84b462919b235e31a625bdd75de3876ff72`. See [execution plan](reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md) and [progress evidence](history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md).
+- **Universal Network element editing (AUTO-MODAL-006):** integrated by PR #578, merge commit `0624d84b462919b235e31a625bdd75de3876ff72` into `WorkInProgress` on 2026-11-13. EFSM, Graph/DirectedGraph/DAG, Markov and CPN share the extension-backed relation gesture and Property Editor element-property contract; formalism topology, ownership, undo/redo and projection selection are covered. All 18 final-head GitHub checks passed, including unit, kernel, smoke, GUI builds, plugin/archive inspection, standalone tools, Debian package/Lintian and package lifecycle. Local GUI target passed 155/155 on rerun; Graph/DAG/Markov/CPN kernel persistence tests passed 45/45; GUI app build and documentation governance passed. The first full GUI test invocation had an intermittent SIGSEGV that did not reproduce on rerun. Manual interactive desktop smoke remains unperformed. See [progress evidence](history/evidence/2026/11/2026-11-12_modal_network_gui_implementation_progress.md).
+- Historical consolidated source checkpoint (2026-11-07; not the current HEAD): `46bdedfc94ac9ae6144675fe6b2a64c0c5e98460` (2026-11-07), merge commit for PR #562. PR #560 (Report Issue) is integrated at `82cb4bdb28d698daea14dc01914797cb59f6d1ed`; PR #562 (Standalone Tools) is integrated at the current HEAD. Final-head ordinary/kernel/smoke, GUI, menu integration, Debian package/lifecycle and manual checks passed before merge. The post-merge Debian package and lifecycle workflow `42321785787` also passed on this exact HEAD (package, inventory, AppStream, Lintian and install/reinstall/remove/purge). Consolidated evidence: [`history/evidence/2026/11/2026-11-07_november_consolidation.md`](history/evidence/2026/11/2026-11-07_november_consolidation.md).
+- Report Issue provides a no-relay browser handoff and an optional asynchronous HTTPS relay; the live relay-to-GitHub path was not exercised. Standalone Tools menu actions launched all three expected child processes with visible windows under the final-head Xvfb test. Transfer automated persistence/runtime regressions remain in the integrated tests, but the complete interactive desktop drag/drop and Property Editor workflow remains unverified; the historical LeakSanitizer report is not classified as resolved.
+- **ModalModel GUI frozen MVP:** all **8/8 milestones (100%)** are implemented and accepted under the 2026-10-30 maintainer mandate. PR #551 merged at `17338f8e566f87fc3b06eb422a5dd354e6d57b02`; PR #552 merged at `51851415fb8abe33f08a67d1d571ad233ab081a5`; documentation reconciliations followed in PRs #553/#554. At PR #551 head `a9d718b5b085c47a5a9aeee4b41a25a98716b7d7`, `tests-unit` and `tests-kernel-unit` each passed 1,963 tests with four disabled; smoke passed 3/3; `gui-app` built; 37 focused EFSM tests passed; targeted ASan/UBSan covered deletion and mixed undo/redo (LSan disabled); hosted checks passed, including Debian package lifecycle and documentation governance. PR #552's integrated save/reopen-to-kernel-activation regression passed and all eight hosted checks were green. Developer Manual (390 pages) and User Manual (3,981 pages, EFSM guide page 177) were regenerated and inspected; User Manual wording/PDF were refreshed in PR #555. Full evidence: [`history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md`](history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md) and [`history/evidence/2026/10/2026-10-30_modal_efsm_user_manual_final.md`](history/evidence/2026/10/2026-10-30_modal_efsm_user_manual_final.md).
+- Model-editor code integration checkpoint: `WorkInProgress` at `957c66503c8966de95b4d34b047ff03dc256efcb` (PR #565 merge, verified 2026-11-05); subsequent evidence/documentation commits may advance the branch without changing this source checkpoint.
+- GenESyS model-editor fixes are integrated: PR #559 (`3ae85774949ebc87e521a2409eecf8f086bcc43b`) covers save preparation, Decide positional ports, code-source properties, Remove/PickUp identity and the component-only main palette; PR #563 (`185b03c70d932f010beed2f30ba6b17ef328087f`) adds Octave source fields; PR #565 (`957c66503c8966de95b4d34b047ff03dc256efcb`) completes Decide condition undo/redo. Validation details are in [`history/evidence/2026/11/VALIDATION_LEDGER.md`](history/evidence/2026/11/VALIDATION_LEDGER.md).
+- PR #545 is integrated. It corrects complex `.gen` text persistence (including exact `GroProgram::sourceCode` round-trip), localized double commits in the Qt Property Editor, automatic semantic SimulLang/TextCodeEditor synchronization, and graphical/kernel connection ownership required by undo/redo. Final evidence: `tests-unit` 1846/1846 executed passed plus 4 historical disabled tests (run `37861026075`), `tests-kernel-unit` 1846/1846 and `tests-smoke` 3/3 (run `37861026002`), focused ASan+UBSan connection undo/redo green (run `37860210595`, job `113593863912`), and manual LaTeX/figure-spec validation with regenerated `docs/ManualGenESyS.pdf` green (run `37860534212`, artifact `11585458197`).
+- Immediately preceding integrated Modal/Network-relevant merges on this line:
+  - PR #533 (`85626d3a`) — expose official `tests-unit` / `tests-kernel-unit` / `tests-smoke` presets;
+  - PR #534 (`dd7bd649`) — EFSM configurable conflict policy;
+  - PR #535 (`de0fbc1f`) — Model-file EFSM/Modal persistence + DTMC reproducibility;
+  - PR #536 (`5494b237`) — canonical `LoadInstance` reuse (identity / no duplicate FSMState/Graph/CPN elements);
+  - PR #537 (`e0a6a73b`) — full Model round-trips for Graph/DTMC/CPN + Modal execute-after-load;
+  - PR #538 (`811c2525`) — `ModalModelDefault` List container ownership;
+  - PR #540 (`a913a07a`) — EFSM/Markov heap transition ownership + `DefaultNode` List dtor;
+  - PR #541 (`5bd10bb5`) — legacy wrapper/node-list/`PetriTransition` removal + smart-app migration;
+  - PR #542 (`4d83e940`) — documentation/evidence reconciliation declaring the Modal/Network backend gate passed.
+- Latest integrated documentation-migration checkpoint: `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` — completion record through PR #519; later topic-specific documentation includes the Modal/Network close-out in PR #542.
+- Final documentation-governance completion validation:
+  - documentation-governance run `29939815697`: passed;
+  - ordinary CI run `29939816032`: configure, build, CTest and GUI GMDD diagnostics passed.
+- AI-assistant documentation migration D0–D6: complete according to its historical acceptance record. Issue #511 is closed; under the current status semantics, historical closure/completion wording is not automatically equivalent to the newer `done_confirmed` state unless explicitly revalidated under that criterion.
+- Stable promotion target: `20262`, only near the end of the second semester of 2026.
+- Release readiness: **not established**.
+- GenESyS manual restructuring and governance follow-up: in progress on
+  `docs/manual-genesys-restructure-20260722`; PDF regeneration completed
+  2026-08-20 (Section 14).
+- Per-user runtime Launcher/Dispatcher (PR #521, merge `d88b4b20b5163891e47c9e63bb04eca68a9e40d0`)
+  and its integration into the Debian package (PR #522, merge
+  `d8fce9562617525657e8cbf9870b32323364773f`) are integrated. Section 14
+  records the current package/lifecycle validation scope.
+- Governance reconciliation after the Launcher/Debian merges (PR #523,
+  merge `7855af78c06583eaf4732a62aaa7ea085160da7d`) is integrated.
+- Arena ↔ GenESyS compatibility audit and Advanced Transfer/parser
+  closeout (PR #527, merged 2026-08-30) is integrated: `Distance`,
+  `Segment`, `Conveyor`, `Transporter` data definitions; completed
+  `Storage`/`Store`/`Unstore`/`DropOff` and `Access`/`Exit`/`Start`/`Stop`/`Move`
+  components; the compatibility matrix closed through Advanced Transfer,
+  with Flow Process classified and the parser/Arena Variables Guide overlap
+  documented. `Network`, `NetworkLink`, `ActivityArea` and CTMC-class
+  features remain intentionally out of this scope — see
+  [`reference/ARENA_GENESYS_COMPATIBILITY.md`](reference/ARENA_GENESYS_COMPATIBILITY.md).
+  A dedicated maintainer-decision note for `Process::AllocationType` versus
+  the internal `Delay` allocation category was also added:
+  [`reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md`](reference/PROCESS_ALLOCATIONTYPE_DELAY_DECISION.md).
+  Validation snapshot at merge time: focused Arena/MaterialHandling tests
+  green (28/28), `tests-smoke` green (3/3), `tests-kernel-unit` green except
+  the preexisting `genesys_test_optimizer_ownership_contract_NOT_BUILT`
+  failure (Section 4); `tests-unit` still shows 13 unrelated WholeCell/Bio
+  failures tied to a plugin-loading path involving `attribute.so`, outside
+  this scope and not yet triaged into a backlog entry.
+- The ModalModel/network-of-computation implementation cycle represented by
+  PR #528 (merge `e0185163`) and PR #529 (merge `fdae135b`), both 2026-08-31,
+  is integrated. Historical evidence from that cycle records
+  `DefaultNetwork`/`DefaultNode`, the `ModalModelDefault` bridge,
+  `EFSMNetwork`, the `GraphNetwork` family, `MarkovChainNetwork` and
+  `ColoredPetriNetNetwork`, with a kernel-unit snapshot of 1810/1810 executed
+  tests passed and 4 preexisting disabled tests. This is historical evidence,
+  not current-HEAD execution evidence.
+- `AUTO-MODAL-001` must now be interpreted as **closed**: its development
+  cycle is inactive, but this does **not** prove that the full approved
+  ModalModel/DefaultNetwork architecture is complete. The current Modal/Network
+  development is **not `done_confirmed`**.
+- Current backend baseline verification was executed locally on 2026-09-20 against
+  `5bd10bb5` (toolchain: g++ 13.3.0, CMake 3.28.3, Ninja 1.11.1):
+  - `tests-unit`: 1,834 registered; 1,830 executed/passed; 0 failed; 4 disabled;
+  - `tests-kernel-unit`: 1,834 registered; 1,830 executed/passed; 0 failed; 4 disabled;
+  - `tests-smoke`: 3/3 passed;
+  - focused Modal/Network suite: 73/73 passed.
+  Persistence identity, full-model round-trips, EFSM/Markov transition ownership,
+  and physical removal of legacy `ModalModelFSM`/`ModalModelPetriNet`/node-list
+  path are confirmed. **Backend gate: PASSED.** Global Modal/Network remains
+  **not `done_confirmed`** because GUI is a separate approved phase
+  (`HUM-MODAL-002`). `AUTO-MODAL-002` backend scope: `done_confirmed`. Guide:
+  [`reference/MODAL_NETWORK_COMPLETION_PLAN.md`](reference/MODAL_NETWORK_COMPLETION_PLAN.md).
+- Historical `.gen` compatibility is explicitly **not a requirement** for the
+  Modal/Network continuation. Current supported persistence/round-trip remains
+  a requirement.
+- Maintainer decisions recorded 2026-09-18 for the continuation include:
+  a pragmatic GenESyS CPN subset rather than a full academic CPN target;
+  eventual Cellular Automata migration to `DefaultNetwork`, deferred until the
+  current architecture is complete and validated; and configurable EFSM
+  multiple-enabled-transition semantics with three modes: model error,
+  nondeterministic random choice through the GenESyS RNG/sampler, and
+  deterministic priority.
+- Obsolete Modal/Network classes must be removed from the `source/` tree once
+  current dependency analysis proves their migration/removal is safe. They
+  must not be retained under another `source/` subdirectory. This decision is
+  motivated by the current recursive `*.cpp` discovery in
+  `source/plugins/components/CMakeLists.txt`, which would continue compiling
+  component sources placed in nested directories. Do not complicate CMake
+  solely to retain obsolete implementation files; Git history is the archive.
+- Historical checkpoint before the editor delivery: the Modal/Network GUI was
+  deferred. On
+  **2026-10-29**, the maintainer explicitly activated G0 (inventory/diagram
+  record contract), then G1 (read-only EFSM viewer), and **subsequently chose
+  the shared submodel canvas/level filtering (Alternative A)** rather than an
+  independent Network scene, preserving process-vs-Network semantics. This
+  checkpoint is superseded by the accepted eight-milestone editor in §2 and the
+  2026-10-30 evidence linked there.
+  See [`reference/MODAL_NETWORK_GUI_ARCHITECTURE.md`](reference/MODAL_NETWORK_GUI_ARCHITECTURE.md)
+  and [`reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md).
+- Maintainer direction recorded 2026-10-04: the next Modal/Network backend research phase is an academically grounded **continuous-time Markov chain / Markov jump process for biochemical reaction networks**. The first step is specification and validation design, explicitly reconciling the existing WholeCell Gillespie SSA path with `DefaultNetwork` and the GenESyS event calendar; see [`reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`](reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md). That biochemical/CTMC work is separate from the EFSM GUI MVP, which is now integrated; no other formalism editor is claimed.
+
+## 3. Technical baseline
+
+Intended platform:
+
+- Ubuntu 24.04;
+- CMake 3.24 or newer;
+- Ninja;
+- C++23 with compiler extensions disabled;
+- Qt6-only support direction;
+- Google Test through the configured system/bundled fallback.
+
+Recent CI evidence used CMake 3.31.6, Ninja 1.13.2 and G++ 13.3.0. Those exact versions describe recorded runs, not immutable minimum requirements.
+
+## 4. Exact core test baseline
+
+Current exact inventory on the backend implementation checkpoint `5bd10bb5` (executed 2026-09-20 locally):
+
+- registered: 1,834;
+- executed/passed: 1,830;
+- failed: 0;
+- disabled: 4 historical duplicate Search/Remove blocks.
+
+The same inventory was observed for both `tests-unit` and `tests-kernel-unit`. `tests-smoke` is 3/3 passed. Focused Modal/Network tests are 73/73 passed. PR #542 is documentation-only and does not alter that source/runtime baseline.
+
+Equivalent active Search/Remove tests are mandatory, so the four disabled blocks remain source-cleanup debt rather than current behavioral coverage gaps.
+
+Validated core paths include ordinary unit CI, GUI GMDD diagnostics, kernel/direct runner/CTest inventory, three smoke tests, focused plugin-completion ASan/LSan, AI plugin tests, legacy solver regression, Search/Remove runtime, Queue/Station/Delay/Resource lifecycle and the optimizer non-copy/non-move contract.
+
+The older Phase 0 inventory (1,721/1,717/0/4) and the 2026-08-31 Modal/Network checkpoint (1,810 executed) remain historical evidence only.
+
+## 5. Integrated bounded work
+
+Completed historical work includes:
+
+- CI trigger corrections and AI test aggregation;
+- reusable Phase 0 validation;
+- legacy Simpson/unsupported-derivative stabilization;
+- Search/Remove and runtime statistics/accounting lifecycle corrections;
+- plugin-completion ownership correction and focused sanitizer;
+- optimizer copy/move barrier;
+- static plugin target/codemodel/link/symbol evidence;
+- standalone shell and worker health validation;
+- Data Analyser, Optimizer and AI Assistant GUI startup validation.
+
+Executed details are indexed in [`history/evidence/2026/07/VALIDATION_LEDGER.md`](history/evidence/2026/07/VALIDATION_LEDGER.md).
+
+Historical completion wording in this section records prior task acceptance under the rules then in force; it is not an automatic `done_confirmed` classification under the status semantics adopted on 2026-09-18.
+
+## 6. Application status
+
+| Application/path | Validated scope | Status | Main remaining gap |
+|---|---|---|---|
+| Shell | preset/build/scripted commands/plugin count/exit | partially validated | model load/run and autoload deployment |
+| Worker | preset/build/loopback health/exact JSON/bounded exit | partially validated | bind, auth, TLS, quotas, protected endpoints, isolation |
+| Main GUI | focused GMDD tests | partially validated | standalone startup and minimal interaction |
+| Data Analyser GUI | Xvfb window/liveness/teardown | startup validated | analysis workflows and scientific correctness |
+| Optimizer GUI | Xvfb window/liveness/teardown | startup validated | real algorithms and Level 3 workflow |
+| AI Assistant GUI | no-credential Xvfb startup/teardown | startup validated | provider/credentials/redaction/failure workflow |
+| HTTP Worker GUI | target/preset known | not independently validated | bounded startup/workflow |
+| Do Experiments GUI | intentionally absent | not started | backend/product/workflow definition |
+| Model-specific apps | historical bounded sweep | snapshot only | current revalidation and known failures |
+
+Startup does not imply functional or scientific maturity.
+
+## 7. Open architecture, security and science boundaries
+
+- issue #492: canonical static component-target architecture;
+- issue #496: shell `autoloadplugins.txt` deployment/search/fallback contract;
+- issue #500: worker bind-address contract;
+- `HUM-SEC-002`: worker authentication architecture;
+- `HUM-SEC-004`: runtime signing public key provisioning for per-user Launcher updates;
+- `HUM-SCI-001`: authoritative numerical/statistical reference packages;
+- `HUM-SCI-002`: modal/hybrid time synchronization contract; now directly relevant to the planned biochemical CTMC phase because sampled CTMC holding times must be reconciled with the GenESyS event calendar;
+- `HUM-OPT-001`: initial optimizer algorithm/benchmark package;
+- `HUM-VC-001`: initial AI virtual-cell organism/use case/data package;
+- `HUM-REL-001`: final supported set and promotion gate.
+
+For Modal/Network, the decisions recorded on 2026-09-18 remove the previously assumed need for a human decision about historical `.gen` compatibility, CPN target depth, Cellular Automata direction, EFSM multiple-enabled-transition policy, and retention of obsolete source classes. Any remaining implementation uncertainty in those areas is a current-code/current-test verification question, not permission to invent a new policy.
+
+These other listed boundaries must not be guessed by autonomous agents.
+
+## 8. Ownership, scientific and maturity boundaries
+
+Confirmed only for exercised ownership paths: temporary plugin-completion Model uses RAII, helper responses are released, focused ASan/LSan is clean, and `OptimizerDefaultImpl1` cannot be copied/moved.
+
+Not established: repository-wide leak freedom, thread safety, broad UBSan/Valgrind, complete optimizer behavior, broad numerical/statistical validation, biological predictive validity or release readiness.
+
+For Modal/Network specifically, the backend-gate ownership/lifetime paths changed in PRs #538/#540 were mapped and validated on `5bd10bb5`, including focused ASan/LSan evidence for EFSM and Markov transition ownership. This is bounded evidence for the exercised Modal/Network paths, not a claim of repository-wide leak freedom.
+
+Whole-cell/biochemical/AI virtual-cell work remains experimental/research-oriented. Software maturity and scientific claim level remain independent. The planned biochemical CTMC phase must add reference-backed scientific validation before maturity claims are raised.
+
+## 9. Documentation migration result
+
+| Phase | Status | PR / merge | Result |
+|---|---|---|---|
+| D0 | done (historical) | #512 / `958cdc6f63c02d004f1ffdf55e104b58a245bb88` | canonical layer and runbooks |
+| D1 | done (historical) | #513 / `b48697e77d39b25cafc19271ce574bdead60f94d` | normative governance consolidated |
+| D2 | done (historical) | #514 / `53b49f7518509823fe2265a3f017b5aa76f09d2f` | sole current state and backlogs |
+| D3 | done (historical) | #515 / `ca910a2fbe4504ef8520ef48b8b377da7e9e02ca` | date-first evidence ledger |
+| D4 | done (historical) | #516 / `d375d9e68e5c1dc84e214a772fb15cb05944f0d8` | six technical references and active-root cleanup |
+| D6 | done (historical) | #517 / `c9c76c3d62633b69a7d18d899aa764b7ebdf69a5` | single oldies tracker; 25 retained files protected |
+| D5 | done (historical) | #518 / `610d8ab21c87cfd11663af78370b39262cf4da81` | local and GitHub Actions governance enforcement |
+| Completion | done (historical) | #519 / `c023a2ef3722a2b8ea0e33db2b9fb0dd002f31a1` | final canonical record and issue closure basis |
+
+All migration source branches through PR #519 were removed automatically after merge.
+
+## 10. Final governed structure
+
+The top level of `docs/ai_assistants/` contains exactly:
+
+- `README.md`;
+- `GOVERNANCE.md`;
+- `ARCHITECTURE.md`;
+- `STATUS.md`;
+- `BACKLOG_AUTONOMOUS.md`;
+- `BACKLOG_HUMAN.md`.
+
+Supporting material is routed through:
+
+- `runbooks/`;
+- `reference/`;
+- `history/`;
+- `archive/`;
+- retained non-authoritative `oldies/`.
+
+The structure is enforced by `.github/workflows/genesys-docs-governance.yml` and `scripts/validate-ai-docs.py`.
+
+## 11. Historical retention state
+
+- `archive/OLDIES_REVIEW.md` is the only active tracker for the 25 retained historical files.
+- No content file under `oldies/` was deleted or modified by D6.
+- Every retained file remains `retained-review-pending` and not deletion-ready.
+- Deletion remains prohibited before 2026-11-01 and additionally requires individual review, explicit maintainer approval and a dedicated deletion PR.
+
+## 12. Autonomous eligibility after migration
+
+The documentation-migration-specific freeze has ended.
+
+Previously paused technical tasks remain `paused`; they do not resume automatically. A maintainer must explicitly activate the selected next task in `BACKLOG_AUTONOMOUS.md`.
+
+For Modal/Network, `AUTO-MODAL-001` is `closed` and `AUTO-MODAL-002` backend scope is `done_confirmed`. The next maintainer-selected direction is the academic biochemical CTMC phase defined in `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`. Its immediate work is specification/current-code audit/reference-validation design; runtime implementation must not begin by assumption while the `HUM-SCI-002` simulation-time contract remains unresolved.
+
+## 13. Ongoing governance
+
+- Future AI-assistant documentation changes must pass the focused governance workflow.
+- Canonical facts, tasks, decisions, evidence and historical material must remain in their designated locations.
+- The completed migration record is `history/migrations/ai_docs_governance_completion_20260722.md`.
+- `closed` must not be used as evidence of implementation completeness.
+- `done_confirmed` is reserved for a task/scope that is fully developed according to its approved plan, built, tested, functioning, verified, documented and accepted with no known unmet acceptance criterion in that scope.
+- Existing historical `done` labels remain legacy records until individually reconciled; they are not automatically upgraded to `done_confirmed`.
+
+## 14. Launcher and Debian packaging
+
+- Per-user runtime Launcher/Dispatcher (`AUTO-APP-003`): PR #521, merge
+  `d88b4b20b5163891e47c9e63bb04eca68a9e40d0`. `genesys-launcher` and
+  `genesys-dispatch` select between a validated per-user runtime
+  (`~/.local/share/genesys/current`) and a system fallback, with fail-closed
+  signature verification and no network activity outside the launcher.
+- Launcher integrated into the Debian package (`AUTO-PKG-001`): PR #522,
+  merge `d8fce9562617525657e8cbf9870b32323364773f`.
+- Package split: `genesys-common` (launcher, dispatcher,
+  `/etc/genesys/update.conf`, public `genesys-mcp`), `genesys-shell`,
+  `genesys-worker` (also owns the legacy `genesys-web` command),
+  `genesys-gui` (depends on the three above), and `genesys-web` (payload-free
+  transitional package depending on `genesys-worker`).
+- `.github/workflows/genesys-debian-package.yml` build job (`dpkg-buildpackage`,
+  package/AppStream/Lintian verification) and lifecycle-validation job
+  (`packaging/linux/validate-debian-lifecycle.sh`) are both green on the
+  PR-head run `32421072334` (head `368091693c613d5d090cc564f028c957a38c4668`)
+  and on the post-merge `WorkInProgress` push run `32422514020` (merge
+  `d8fce9562617525657e8cbf9870b32323364773f`): `lintian` and
+  `lintian --fail-on error` report zero findings across the 5 produced
+  `.deb` files, `appstreamcli validate --no-net` passes, and the full
+  install/ownership/non-root-user/system-fallback/per-user-runtime/
+  admin-policy/six-invalid-runtime-case/integrity/reinstall/remove/purge
+  lifecycle completes successfully.
+- `genesys-mcp` has a public dispatcher entry point but intentionally no
+  Debian system fallback (`source/applications/mcp/` is Python, out of the
+  Debian build contract); the dispatcher returns a controlled diagnostic
+  (exit 127) instead.
+- Remaining boundary: `HUM-SEC-004` (runtime signing public key
+  provisioning) is required before per-user runtime updates can be enabled;
+  as shipped, `/etc/genesys/update.conf` keeps remote updates disabled and
+  `require_signature=true`. No GitHub Release, PPA/APT repository, or
+  package signing was produced by this work; `genesys-debian-packages` is a
+  workflow artifact, not a distribution channel.
+
+## 15. Historical ModalModel / DefaultNetwork backend checkpoint (2026-09-20)
+
+At that checkpoint, the backend gate had passed on implementation checkpoint
+`5bd10bb5`; `AUTO-MODAL-002` covered backend scope, while the GUI was still
+deferred. The following entries are historical evidence, not current state.
+Current state is in [§2](#2-repository-state) and the 2026-10-30 closeout
+evidence.
+
+Completed since the 2026-09-19 baseline on `dd7bd649`:
+
+1. public test presets restored (#533);
+2. EFSM conflict policy implemented and merged (#534);
+3. Model-file EFSM/Modal persistence + DTMC reproducibility (#535);
+4. canonical LoadInstance reuse fixing duplicate DataDefinitions after Model reload (#536);
+5. full Model round-trips for Graph/DTMC/CPN and Modal execute-after-load (#537);
+6. `ModalModelDefault` List ownership (#538);
+7. EFSM/Markov heap transition ownership + `DefaultNode` List dtor (#540);
+8. legacy wrappers/node-list/`PetriTransition` removed; smart apps migrated (#541);
+9. focused Modal/Network 73/73; unit 1830/1830 (+4 disabled); smoke 3/3;
+10. backend-gate documentation/evidence reconciled (#542).
+
+Remaining at the historical 2026-09-20 backend checkpoint:
+
+1. GUI/editor phase — subsequently completed and accepted as 8/8 milestones through PRs #551/#552;
+2. Cellular Automata migration — still deferred;
+3. process-lifetime plugin-template Buffer leaks outside Modal ownership.
+
+Next maintainer-selected backend research phase:
+
+1. academically grounded CTMC / Markov jump process for biochemical reaction networks;
+2. reconcile `MarkovChainNetwork` (DTMC), existing `StochasticReactionComponent`/`StochasticReactionRule`, GenESyS RNG and simulation/event time;
+3. establish reference-backed CME/SSA semantics and analytical/statistical validation before runtime implementation;
+4. detailed plan: `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`.
+
+**Backend gate (completed mission):** PASSED.
+
+**Historical gate state:** global Modal/Network `done_confirmed` was not applicable until the GUI phase was decided/executed. The EFSM GUI phase is now accepted at 8/8; current status and evidence are in §2.
+
+The authoritative completed-backend guide remains `reference/MODAL_NETWORK_COMPLETION_PLAN.md`. The next backend research plan is `reference/MODAL_CTMC_BIOCHEMICAL_PLAN.md`.
+Evidence: `history/evidence/2026/09/2026-09-20_modal_backend_gate_closure.md`.
+
+### GUI captions and model inspector — 2026-11-17
+
+Direct maintainer-authorized WorkInProgress update: Label-first captions with
+Name-only fallback, and repair of inspector population/tab-refresh ordering for
+single graphical selection. See
+[bounded validation evidence](history/evidence/2026/11/GUI_CAPTIONS_SELECTION_20261117.md).
+
+### Multiline graphical labels — 2026-11-17
+
+Shared Classic/Organic caption layout wraps Label by bold font metrics, measures
+all lines, and proportionally fits overflow without discarding content or changing
+item geometry. See [validation](history/evidence/2026/11/GUI_LABEL_WRAPPING_20261117.md).
+
+### Optional expression editing — 2026-11-17
+
+Editable ParserExpression strings retain inline commit and optional Build expression
+menu action. Dedicated code editors retain exclusive workflows. Focused Qt regression:
+16/16 PASS; [evidence](history/evidence/2026/11/INLINE_EXPRESSIONS_20261117.md).
+
+### Release runtime abort — 2026-11-17
+
+Over-release now produces a caught runtime diagnostic instead of terminating the
+application via assert. User-model inconsistency remains to diagnose from the
+model file. [Evidence](history/evidence/2026/11/RELEASE_ABORT_20261117.md).
+
+### Direct graphical associations — 2026-11-18
+
+Shared GUI link collection stops at referenced model objects and deduplicates by
+target/type, while recursive object discovery remains intact. Seize/Release Set
+requests show component -> Set -> members; explicit Resource requests survive.
+[Evidence](history/evidence/2026/11/DIRECT_GUI_ASSOCIATIONS_20261118.md).
+
+### Model round-trip and Resource Set requests — 2026-11-18
+
+Direct maintainer-authorized WorkInProgress correction preserves convergent/cyclic
+graphical edges and logical ports, actual visual state, saved colors and final
+connection anchors. Seize string defaults and legacy NUL handling, deferred Set
+member resolution, and bounded shared Seize/Release selection cover demonstrated
+load/runtime failures. The supplied 05 model still needs an explicit Release
+identity policy change; its original file is preserved. See
+[validation and configuration boundary](history/evidence/2026/11/MODEL_ROUNDTRIP_20261118.md).

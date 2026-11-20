@@ -156,6 +156,7 @@ void CellDivisionEvent::_onDispatchEvent(Entity* entity, unsigned int inputPortN
 	}
 
 	if (_checkDivisionCondition()) {
+		traceSimulation(this, "CellDivisionEvent applies cell division", TraceManager::Level::L7_internal);
 		_applyDivision();
 		_lastDivided = true;
 		++_divisionCount;
@@ -177,6 +178,8 @@ void CellDivisionEvent::_onDispatchEvent(Entity* entity, unsigned int inputPortN
 			_forwardEntity(entity, 0u);
 		}
 	} else {
+		traceSimulation(this, "CellDivisionEvent keeps cell on normal path", TraceManager::Level::L7_internal);
+		traceSimulation(this, "Division condition not met for mass=" + std::to_string(_wholeCellState->getCellMass()), TraceManager::Level::L9_mostDetailed);
 		_forwardEntity(entity, 0u);
 	}
 }

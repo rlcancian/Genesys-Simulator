@@ -16,7 +16,6 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
-#include "kernel/simulator/PluginManager.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -32,13 +31,20 @@ ModelDataDefinition* Signal::NewInstance(Model* model, std::string name) {
 }
 
 Signal::Signal(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Signal>(), name) {
+	SimulationControlGenericClass<SignalData*, Model*, SignalData>* propSignalData = new SimulationControlGenericClass<SignalData*, Model*, SignalData>(
+									_parentModel,
+									std::bind(&Signal::getSignalData, this), std::bind(&Signal::setSignalData, this, std::placeholders::_1),
+									Util::TypeOf<Signal>(), getName(), "SignalData", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Signal::limitExpression, this), std::bind(&Signal::setLimitExpression, this, std::placeholders::_1),
 									Util::TypeOf<Signal>(), getName(), "LimitExpression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 
+	_parentModel->getControls()->insert(propSignalData);
 	_parentModel->getControls()->insert(propExpression);
 
 	// setting properties
+	_addSimulationControl(propSignalData);
 	_addSimulationControl(propExpression);
 }
 
@@ -52,6 +58,10 @@ std::string Signal::show() {
 
 void Signal::setSignalData(SignalData* signal) {
 	_signalData = signal;
+}
+
+SignalData* Signal::getSignalData() const {
+	return _signalData;
 }
 
 // public static
@@ -76,8 +86,13 @@ PluginInformation* Signal::GetPluginInformation() {
 // protected must override
 
 void Signal::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Signal triggers its configured SignalData", TraceManager::Level::L7_internal);
+	if (_signalData == nullptr) {
+		traceError("Signal cannot execute without a SignalData reference");
+		return;
+	}
 	unsigned int limit = _parentModel->parseExpression(_limitExpression);
-	traceSimulation(this, "Triggering signal \""+_signalData->getName()+"\" with limit \""+_limitExpression+"\"="+std::to_string(limit));
+	traceSimulation(this, "Triggering signal \""+_signalData->getName()+"\" with limit \""+_limitExpression+"\"="+std::to_string(limit), TraceManager::Level::L8_detailed);
 	unsigned int freed = _signalData->generateSignal(_signalData->getId(),limit);
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
@@ -147,11 +162,6 @@ void Signal::_initBetweenReplications() {
 // void Signal::_createInternalStatisticReporters() { }
 
 void Signal::_createEditableDataDefinitions() {
-	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-	// Preserve loaded/configured association; only create SignalData if none is already associated.
-	if (_signalData == nullptr) {
-		_signalData = pm->newInstance<SignalData>(_parentModel);
-	}
 	if (_signalData != nullptr) {
 		_optionalEditableDataDefinitionInsert("SignalData", _signalData);
 	} else {

@@ -42,23 +42,26 @@ Queue::Queue(Model* model, std::string name) : ModelDataDefinition(model, Util::
 				std::bind(&Queue::getAttributeName, this),
 				std::bind(&Queue::setAttributeName, this, std::placeholders::_1),
 				Util::TypeOf<Queue>(), getName(), "AttributeName", "");
+	propAttributeName->setDynamicEnabled([this]()->bool{return this->getOrderRule()==OrderRule::HIGHESTVALUE || this->getOrderRule()==OrderRule::SMALLESTVALUE;});
 	SimulationControlGenericEnum<Queue::OrderRule, Queue>* propOrderRule = new SimulationControlGenericEnum<Queue::OrderRule, Queue>(
-                std::bind(&Queue::getOrderRule, this),
-                std::bind(&Queue::setOrderRule, this, std::placeholders::_1),
-                Util::TypeOf<Queue>(), getName(), "OrderRule", "");
+				std::bind(&Queue::getOrderRule, this),
+				std::bind(&Queue::setOrderRule, this, std::placeholders::_1),
+				Util::TypeOf<Queue>(), getName(), "OrderRule", "");
+	/*
 	SimulationControlGeneric<int>* propOrderRuleInt = new SimulationControlGeneric<int>(
 				std::bind(&Queue::getOrderRuleInt, this),
 				std::bind(&Queue::setOrderRuleInt, this, std::placeholders::_1),
 				Util::TypeOf<Queue>(), getName(), "OrderRuleInt", "");
+	*/
 
 	_parentModel->getControls()->insert(propAttributeName);
 	_parentModel->getControls()->insert(propOrderRule);
-	_parentModel->getControls()->insert(propOrderRuleInt);
+	//_parentModel->getControls()->insert(propOrderRuleInt);
 
 	// setting properties
-    _addSimulationControl(propAttributeName);
-    _addSimulationControl(propOrderRule);
-	_addSimulationControl(propOrderRuleInt);
+	_addSimulationControl(propAttributeName);
+	_addSimulationControl(propOrderRule);
+	//_addSimulationControl(propOrderRuleInt);
 
 	_configureListComparator();
 }
@@ -81,12 +84,13 @@ std::string Queue::show() {
 void Queue::insertElement(Waiting* modeldatum) {
 	modeldatum->setArrivalOrder(_nextArrivalOrder++);
 	if (_reportStatistics) {
+		_initCStats();
 		double tnow = 0.0;
 		if (_parentModel->getSimulation() != nullptr) {
 			tnow = _parentModel->getSimulation()->getSimulatedTime();
 		}
 		double duration = tnow - _lastTimeNumberInQueueChanged;
-		this->_cstatNumberInQueue->getStatistics()->getCollector()->addValue(_list->size(), duration); // save the OLD quantity and for how long it was there
+		_cstatNumberInQueue->getStatistics()->getCollector()->addValue(_list->size(), duration); // save the OLD quantity and for how long it was there
 		_lastTimeNumberInQueueChanged = tnow;
 	}
 	_list->insert(modeldatum);
@@ -97,15 +101,16 @@ void Queue::removeElement(Waiting* modeldatum) {
 		return;
 	}
 	if (_reportStatistics) {
+		_initCStats();
 		double tnow = 0.0;
 		if (_parentModel->getSimulation() != nullptr) {
 			tnow = _parentModel->getSimulation()->getSimulatedTime();
 		}
 		double duration = tnow - _lastTimeNumberInQueueChanged;
-		this->_cstatNumberInQueue->getStatistics()->getCollector()->addValue(_list->size(), duration); // save the OLD quantity and for how long it was there
+		_cstatNumberInQueue->getStatistics()->getCollector()->addValue(_list->size(), duration); // save the OLD quantity and for how long it was there
 		_lastTimeNumberInQueueChanged = tnow;
 		double timeInQueue = tnow - modeldatum->getTimeStartedWaiting();
-		this->_cstatTimeInQueue->getStatistics()->getCollector()->addValue(timeInQueue);
+		_cstatTimeInQueue->getStatistics()->getCollector()->addValue(timeInQueue);
 	}
 	_list->remove(modeldatum);
 	delete modeldatum;
@@ -218,6 +223,8 @@ void Queue::_createInternalStatisticReporters() {
 	if (_reportStatistics) {
 		if (_cstatNumberInQueue == nullptr) {
 			_cstatNumberInQueue = new StatisticsCollector(_parentModel, getName() + "." + "NumberInQueue", this);
+		}
+		if (_cstatTimeInQueue == nullptr) {
 			_cstatTimeInQueue = new StatisticsCollector(_parentModel, getName() + "." + "TimeInQueue", this);
 		}
 		if (_cstatNumberInQueue != nullptr) {
@@ -242,6 +249,12 @@ ParserChangesInformation * Queue::_getParserChangesInformation() {
 	//changes->getProductionToAdd()->insert(...);
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
+}
+
+void Queue::_initCStats() {
+	if (_reportStatistics && (_cstatNumberInQueue == nullptr || _cstatTimeInQueue == nullptr)) {
+		_createInternalStatisticReporters();
+	}
 }
 
 void Queue::_configureListComparator() {

@@ -1,6 +1,12 @@
 #include "plugins/components/ModalModel/PetriPlace.h"
+#include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/model/Model.h"
 
 PetriPlace::PetriPlace(Model* model, std::string name) : DefaultNode(model, Util::TypeOf<PetriPlace>(), name) {
+}
+
+PetriPlace::~PetriPlace() {
+	delete _tokensByColor;
 }
 
 unsigned int PetriPlace::getTokens(std::string color) const {
@@ -9,6 +15,10 @@ unsigned int PetriPlace::getTokens(std::string color) const {
 		return 0;
 	}
 	return it->second;
+}
+
+void PetriPlace::setTokens(unsigned int quantity, std::string color) {
+	(*_tokensByColor)[color] = quantity;
 }
 
 void PetriPlace::addTokens(unsigned int quantity, std::string color) {
@@ -24,6 +34,10 @@ bool PetriPlace::removeTokens(unsigned int quantity, std::string color) {
 	return true;
 }
 
+void PetriPlace::clearTokens() {
+	_tokensByColor->clear();
+}
+
 std::map<std::string, unsigned int>* PetriPlace::getAllTokens() {
 	return _tokensByColor;
 }
@@ -37,7 +51,18 @@ PluginInformation* PetriPlace::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* PetriPlace::LoadInstance(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* PetriPlace::LoadInstance(Model* model, PersistenceRecord *fields) {
+	// Prefer the canonical ModelDataManager instance when nested network fields and
+	// top-level serialization both refer to the same named place.
+	const std::string name = fields->loadField("name", std::string(""));
+	if (model != nullptr && !name.empty()) {
+		if (PetriPlace* existing = dynamic_cast<PetriPlace*>(
+				model->getDataManager()->getDataDefinition(Util::TypeOf<PetriPlace>(), name))) {
+			// Do not re-apply fields: a later top-level load must not wipe
+			// associations already resolved by a nested network load.
+			return existing;
+		}
+	}
 	PetriPlace* component = new PetriPlace(model);
 	component->_loadInstance(fields);
 	return component;

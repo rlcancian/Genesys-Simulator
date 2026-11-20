@@ -14,6 +14,7 @@
 #include "PluginInformation.h"
 
 #include <cctype>
+#include <utility>
 
 //using namespace GenesysKernel;
 
@@ -259,6 +260,14 @@ void PluginInformation::setCategory(std::string _category) {
 
 std::string PluginInformation::getCategory() const {
 	return _category;
+}
+
+void PluginInformation::setDataDefinitionBaseTypeName(std::string typeName) {
+	_dataDefinitionBaseTypeName = std::move(typeName);
+}
+
+const std::string& PluginInformation::getDataDefinitionBaseTypeName() const {
+	return _dataDefinitionBaseTypeName;
 }
 
 std::string PluginInformation::categoryFolderName(const std::string& category) {

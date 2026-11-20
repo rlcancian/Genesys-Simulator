@@ -39,6 +39,7 @@ protected:
 	virtual void _createNonEditableDataDefinitions() override;
 
 private:
+	PythonForG(Model* model, std::string name, bool createOwnedRuntime);
 	bool _validateInitCode(const std::string& candidate, std::string& errorMessage) const;
 	bool _validateDispatchCode(const std::string& candidate, std::string& errorMessage) const;
 

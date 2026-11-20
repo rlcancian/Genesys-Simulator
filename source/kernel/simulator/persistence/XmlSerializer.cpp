@@ -323,6 +323,16 @@ bool XmlSerializer::put(const std::string name, const std::string type, const Ut
 		_metaobjects[unaliased] = std::move(saved);
 	} else {
 		if (id != 0) saved->saveField("name", name);
+		if (_components.find(name) != _components.end()) {
+			// Two live objects ended up saved under the same name; this map is keyed by name
+			// alone across both data definitions and components, so the earlier entry is
+			// about to be silently discarded. Model-wide uniqueness should already be
+			// enforced at ModelDataDefinition::setName(), so this is a defense-in-depth
+			// diagnostic for any residual/legacy case that bypassed it.
+			_model->getTracer()->traceError(
+				"Saved model has two objects named \"" + name + "\" (typename \"" + unaliased
+				+ "\"); the earlier entry will be overwritten and lost.");
+		}
 		_components[name] = std::move(saved);
 	}
 

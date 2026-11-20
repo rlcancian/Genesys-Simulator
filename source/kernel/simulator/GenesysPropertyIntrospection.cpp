@@ -88,6 +88,8 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.technicalTypeName = control->propertyType();
     desc.kind = deduceKind(control);
     desc.readOnly = control->isReadOnly();
+    desc.enabled = control->isEnabled();
+    desc.hasDynamicEnabledCondition = control->hasDynamicEnabledCondition();
     desc.isList = control->getIsList();
     desc.isClass = control->getIsClass();
     desc.isEnum = control->getIsEnum();
@@ -95,6 +97,8 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.supportsInlineExpansion = control->supportsInlineExpansion();
     desc.supportsListEditor = control->supportsListEditor();
     desc.supportsExistingObjectSelection = control->supportsExistingObjectSelection();
+    desc.supportsReferenceRemoval = control->supportsReferenceRemoval();
+    desc.keepsExistingObjectChoicesWhenSet = control->keepsExistingObjectChoicesWhenSet();
     desc.supportsObjectCreation = control->supportsObjectCreation();
     desc.supportsNewListElementCreation = control->supportsNewListElementCreation();
     desc.editorHint = control->preferredEditorHint();

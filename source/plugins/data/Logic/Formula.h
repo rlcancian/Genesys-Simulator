@@ -19,6 +19,23 @@
 #include "kernel/simulator/Plugin.h"
 //#include "kernel/simulator/Parser_if.h"
 
+/*!
+ * \brief Data definition holding one or more named parser expressions,
+ * optionally indexed to represent a 1D/2D array of expressions.
+ *
+ * Arena correspondence: the "Expression module" (Rockwell Automation,
+ * *Getting Started with Arena*, "The Advanced Process Panel", p. 70), which
+ * defines named expressions (optionally arrays) that may combine numbers,
+ * distributions, operators, attributes and variables, and are referenced by
+ * name elsewhere in the model. \c setExpression()/getExpression() with a
+ * textual index are the closest correspondence to Arena's Rows/Columns
+ * indexing; \c getValue() evaluates the stored expression through the
+ * parser.
+ *
+ * Known differences from Arena: there is no declared Data Type (Real /
+ * String / Native) and no external-file linkage (File Name, Recordset) to
+ * source expression values from outside the model.
+ */
 class Formula : public ModelDataDefinition {
 public:
 	/*!

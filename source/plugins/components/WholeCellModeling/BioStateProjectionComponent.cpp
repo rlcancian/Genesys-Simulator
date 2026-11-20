@@ -190,6 +190,7 @@ void BioStateProjectionComponent::_onDispatchEvent(Entity* entity, unsigned int 
 	}
 
 	ModelDataManager* dataManager = _parentModel->getDataManager();
+	traceSimulation(this, "BioStateProjectionComponent projects biochemical state into WholeCellState", TraceManager::Level::L7_internal);
 	for (const Projection& projection : _projections) {
 		auto* source = dynamic_cast<BioSpecies*>(dataManager->getDataDefinition(Util::TypeOf<BioSpecies>(), projection.sourceSpeciesName));
 		if (source == nullptr) {
@@ -208,6 +209,7 @@ void BioStateProjectionComponent::_onDispatchEvent(Entity* entity, unsigned int 
 		} else {
 			_wholeCellState->setMetaboliteAmount(targetKey, projectedValue);
 		}
+		traceSimulation(this, "Projection \"" + projection.sourceSpeciesName + "\" -> \"" + targetKey + "\" value=" + std::to_string(projectedValue), TraceManager::Level::L9_mostDetailed);
 	}
 
 	_lastSucceeded = true;

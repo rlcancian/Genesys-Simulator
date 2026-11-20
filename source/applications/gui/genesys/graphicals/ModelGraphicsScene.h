@@ -33,16 +33,20 @@
 #define MODELGRAPHICSSCENE_H
 
 #include <QGraphicsScene>
+#include <QMetaObject>
 #include <QGraphicsProxyWidget>
 #include <QGraphicsRectItem>
 #include <QTreeWidgetItem>
 #include <QUndoStack>
 #include <QAction>
+#include <QHash>
+#include <QList>
+#include <QString>
 #include <QEventLoop>
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalComponentPort.h"
 #include "graphicals/GraphicalDiagramConnection.h"
-#include "propertyeditor/DataComponentProperty.h"
+class DataComponentProperty;
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"
@@ -110,6 +114,8 @@ public:
     // Disable copy assignment to prevent shallow copies of GUI-owned resources.
     ModelGraphicsScene& operator=(const ModelGraphicsScene& other) = delete;
     virtual ~ModelGraphicsScene();
+    /** @brief Clears the scene and all formal-network projection bookkeeping. */
+    void clear();
 public: // editing graphic model
     enum DrawingMode{
         NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED,
@@ -156,6 +162,7 @@ public: // editing graphic model
     void insertComponent(GraphicalModelComponent* gmc, QList<GraphicalConnection *> *inputConnections, QList<GraphicalConnection *> *outputConnections, bool addGMC = true, bool addAllGMC = true, bool notify = false);
     /** @brief Removes a graphical connection and updates the source/destination items. */
     void removeGraphicalConnection(GraphicalConnection* graphicalConnection, GraphicalModelComponent *source, GraphicalModelComponent *destination, bool notify = false);
+    void removeGraphicalConnectionVisual(GraphicalConnection* graphicalConnection);
     /** @brief Removes the connection from the kernel model while keeping scene state consistent. */
     void removeConnectionInModel(GraphicalConnection* graphicalConnection, GraphicalModelComponent *source);
     /** @brief Adds one freeform drawing geometry item to the scene. */
@@ -223,6 +230,14 @@ public: // editing graphic model
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
     /** @brief Finds one graphical data definition by kernel pointer. */
     GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
+    /** @brief Clears scene-owned graphical overlays contributed by one GUI extension. */
+    void clearExtensionOverlayItems(const QString& extensionId);
+    /** @brief Adds a scene-owned graphical overlay item for one GUI extension. */
+    void addExtensionOverlayItem(const QString& extensionId, QGraphicsItem* item);
+    /** @brief Returns the currently registered overlay items for one GUI extension. */
+    QList<QGraphicsItem*> extensionOverlayItems(const QString& extensionId) const;
+    /** @brief Clears all extension overlays before the scene clears its owned items. */
+    void clearExtensionOverlayItems();
     /** @brief Resolves the source component associated with one graphical connection. */
     GraphicalModelComponent* resolveSourceComponent(GraphicalConnection* connection) const;
     /** @brief Resolves the destination component associated with one graphical connection. */
@@ -428,6 +443,13 @@ public:
     bool hasModelLevelFilter() const;
     /** @brief Returns the active level used by rebuild services when the filter is enabled. */
     unsigned int modelLevelFilter() const;
+    /** @brief Associates this scoped scene with the non-owning formalism Network it edits. */
+    void setNetworkEditorOwner(ModelDataDefinition* owner);
+    /** @brief Returns the non-owning formalism Network associated with this scene, if any. */
+    ModelDataDefinition* networkEditorOwner() const;
+    bool beginNetworkRelationCreation(QGraphicsItem* source);
+    void cancelNetworkRelationCreation();
+    bool isNetworkRelationCreationActive() const;
     /** @brief Shows or hides internal data definitions. */
     void setShowInternalDataDefinitions(bool show);
     /** @brief Returns whether internal data definitions are visible. */
@@ -467,9 +489,9 @@ public:
     /** @brief Handles animation state changes for transition-driven event loops. */
     void handleAnimationStateChanged(QAbstractAnimation::State newState, QEventLoop* loop, Event* event, AnimationTransition* animationTransition);
     /** @brief Creates the queue-insert animation overlay for one component. */
-    void animateQueueInsert(ModelComponent *component, bool visivible);
+    void animateEntityArrival(ModelComponent *component, bool visible);
     /** @brief Creates the queue-remove animation overlay for one component. */
-    void animateQueueRemove(ModelComponent *component);
+    void animateEntityDeparture(ModelComponent *component);
     /** @brief Updates the counter animation overlay. */
     void animateCounter();
     /** @brief Updates the variable animation overlay. */
@@ -517,6 +539,7 @@ private:
     QList<GraphicalModelDataDefinition*> _allGraphicalModelDataDefinitions;
     QList<GraphicalDiagramConnection*> _allGraphicalDiagramConnections;
     QUndoStack *_undoStack = nullptr;
+    QMetaObject::Connection _undoProjectionRefreshConnection;
     QMap<QGraphicsItemGroup *, QList<GraphicalModelComponent *> > _listComponentsGroup;
     QMap<QGraphicsItem *, QPointF> _oldPositionsItems;
     QList<Counter *> *_counters = new QList<Counter *>();
@@ -566,6 +589,7 @@ private:
     QList<QGraphicsItem*>* _graphicalModelDataDefinitions = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalConnections = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalDiagramConnections = new QList<QGraphicsItem*>();
+    QHash<QString, QList<QGraphicsItem*>> _extensionOverlayItems;
     QList<QGraphicsItem*>* _graphicalAssociations = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalGeometries = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalAnimations = new QList<QGraphicsItem*>();
@@ -584,6 +608,8 @@ private:
     // static graphical synchronization calls can keep the same scope as the active view.
     bool _hasModelLevelFilter = false;
     unsigned int _modelLevelFilter = 0;
+    ModelDataDefinition* _networkEditorOwner = nullptr;
+    QGraphicsItem* _networkRelationSource = nullptr;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

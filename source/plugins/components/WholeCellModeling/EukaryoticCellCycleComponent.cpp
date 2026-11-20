@@ -370,6 +370,7 @@ void EukaryoticCellCycleComponent::_initBetweenReplications() {
 }
 
 void EukaryoticCellCycleComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "EukaryoticCellCycleComponent advances the configured cell-cycle state", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 	if (_wholeCellState == nullptr) {
 		traceSimulation(this, TraceManager::Level::L1_errorFatal,

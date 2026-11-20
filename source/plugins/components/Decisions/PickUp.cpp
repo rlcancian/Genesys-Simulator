@@ -12,6 +12,8 @@
  */
 
 #include "plugins/components/Decisions/PickUp.h"
+#include "kernel/simulator/model/Model.h"
+#include <exception>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -24,12 +26,21 @@ ModelDataDefinition* PickUp::NewInstance(Model* model, std::string name) {
 	return new PickUp(model, name);
 }
 
-PickUp::PickUp(Model* model, std::string name) : Remove(model, name) {
-	//Util::TypeOf<PickUp>();
+ModelComponent* PickUp::LoadInstance(Model* model, PersistenceRecord* fields) {
+	auto* instance = new PickUp(model);
+	try {
+		instance->_loadInstance(fields);
+	} catch (const std::exception& e) {
+		instance->traceError("Failed to load PickUp instance: " + std::string(e.what()));
+	}
+	return instance;
+}
+
+PickUp::PickUp(Model* model, std::string name) : Remove(model, std::move(name), Util::TypeOf<PickUp>()) {
 }
 
 PluginInformation* PickUp::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Remove>(), &Remove::LoadInstance, &Remove::NewInstance);
+	PluginInformation* info = new PluginInformation(Util::TypeOf<PickUp>(), &PickUp::LoadInstance, &PickUp::NewInstance);
 	info->setCategory("Decisions");
 	info->insertDynamicLibFileDependence("remove.so");
 	info->setMinimumOutputs(2);

@@ -273,6 +273,7 @@ bool GeneticCircuitSimulate::simulateCircuit(Model* model, GeneticCircuit* genet
 }
 
 void GeneticCircuitSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "GeneticCircuitSimulate invokes the configured genetic circuit", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	std::string errorMessage;

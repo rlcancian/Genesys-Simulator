@@ -76,6 +76,8 @@ int mainGraphicQtApp(int argc, char *argv[]) {
 	QApplication a(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("GenESyS"));
     QCoreApplication::setApplicationName(QStringLiteral("Genesys-Simulator"));
+    QCoreApplication::setApplicationVersion(QStringLiteral("261115"));
+    a.setProperty("versionName", QStringLiteral("inaiera"));
     SystemPreferences::load();
     GuiThemeManager::applyApplicationTheme(&a);
 	MainWindow w;

@@ -17,26 +17,15 @@
 #include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
-Dropoff module
-DESCRIPTION
-The Dropoff module removes a specified number of entities from the entity’s group
-and sends them to another module, as specified by a graphical connection. Group
-user-defined attribute value and internal attributes may be given to the dropped-off
-entities based on a specified rule.
-TYPICAL USES
-* Loading shelves with product
-* Separating a form for use in various departments
-PROMPTS
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Quantity Number of entities that will be dropped off from an incoming
-representative grouped entity.
-Starting Rank Starting rank of the entities to be dropped off, based on the
-entities in the group.
-Member Attributes Method of determining how to assign the representative entity
-attribute values (other than costs/times) to the dropped-off
-original entities.
-Attribute Name Name of representative entity attribute(s) assigned to droppedoff original entities of the group
+ * \brief Placeholder for releasing a subset of a batched group's members.
+ *
+ * Arena correspondence: the "Dropoff module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Advanced Process Panel", p. 54).
+ *
+ * \warning Incomplete stub template: this class declares no fields at all,
+ * and `_onDispatchEvent()` unconditionally forwards the entity without
+ * interacting with any EntityGroup. See
+ * `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.17.
  */
 class DropOff : public ModelComponent {
 public: // constructors
@@ -44,6 +33,11 @@ public: // constructors
 	virtual ~DropOff() = default;
 public: // virtual
 	virtual std::string show() override;
+public:
+    void setQuantityExpression(std::string quantityExpression);
+    std::string getQuantityExpression() const;
+    void setStartingRankExpression(std::string startingRankExpression);
+    std::string getStartingRankExpression() const;
 public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -64,6 +58,12 @@ protected:
 
 private: // methods
 private: // attributes 1:1
+    const struct DEFAULT_VALUES {
+        const std::string quantityExpression = "1";
+        const std::string startingRankExpression = "1";
+    } DEFAULT;
+    std::string _quantityExpression = DEFAULT.quantityExpression;
+    std::string _startingRankExpression = DEFAULT.startingRankExpression;
 private: // attributes 1:n
 };
 

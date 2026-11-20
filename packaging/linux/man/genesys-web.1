@@ -1,0 +1,38 @@
+.TH GENESYS-WEB 1 "2026-08-20" "GenESyS" "GenESyS Manual"
+.SH NAME
+genesys-web \- legacy command alias for the GenESyS HTTP worker
+.SH SYNOPSIS
+.B genesys-web
+.RI [ application-arguments ...]
+.SH DESCRIPTION
+.B genesys-web
+is a compatibility public entry point preserved from the historical
+.B genesys-web
+Debian package. The canonical application and package are now
+.BR genesys-worker (1);
+.B genesys-web
+remains available as a command alias so scripts and habits from older
+installations keep working.
+.PP
+.B genesys-web
+is a small wrapper that execs
+.BR /usr/libexec/genesys/genesys-dispatch (8)
+with
+.BR "--app genesys-web" .
+The dispatcher resolves
+.B genesys-web
+as a compatibility alias for the
+.B genesys-worker
+application when selecting either the per-user runtime or the
+Debian-provided system fallback, and then replaces itself with the selected
+executable. All arguments given to
+.B genesys-web
+are forwarded unchanged.
+.PP
+.B genesys-web
+never performs a network update check.
+.SH EXIT STATUS
+The exit status of the selected worker executable, or 127 if no valid runtime
+could be selected.
+.SH SEE ALSO
+.BR genesys-worker (1)

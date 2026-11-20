@@ -32,6 +32,11 @@ public:
 	OptimizerDefaultImpl1();
 	virtual ~OptimizerDefaultImpl1();
 
+	OptimizerDefaultImpl1(const OptimizerDefaultImpl1&) = delete;
+	OptimizerDefaultImpl1& operator=(const OptimizerDefaultImpl1&) = delete;
+	OptimizerDefaultImpl1(OptimizerDefaultImpl1&&) = delete;
+	OptimizerDefaultImpl1& operator=(OptimizerDefaultImpl1&&) = delete;
+
 public:
 	virtual void setModel(Model* model) override;
 	virtual bool setModelFilename(const std::string& filename) override;

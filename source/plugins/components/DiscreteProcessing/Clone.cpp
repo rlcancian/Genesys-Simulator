@@ -34,6 +34,7 @@ Clone::Clone(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propNumClone = new SimulationControlGeneric<std::string>(
 									std::bind(&Clone::getNumClonesExpression, this), std::bind(&Clone::setNumClonesExpression, this, std::placeholders::_1),
 									Util::TypeOf<Clone>(), getName(), "NumClonesExpression", "");
+	propNumClone->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 
 	_parentModel->getControls()->insert(propNumClone);
 
@@ -116,7 +117,7 @@ void Clone::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 // protected virtual -- could be overriden 
 
-//ParserChangesInformation* DummyElement::_getParserChangesInformation() {}
+//ParserChangesInformation* TemplateDataDefinition::_getParserChangesInformation() {}
 
 bool Clone::_check(std::string& errorMessage) {
 	return _parentModel->checkExpression(_numClonesExpression, "Num clones", errorMessage);

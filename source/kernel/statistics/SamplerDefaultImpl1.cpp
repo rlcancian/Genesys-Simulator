@@ -202,7 +202,7 @@ double SamplerDefaultImpl1::sampleDiscrete(double *prob, double *value, int size
 	const double x = random();
 	for (int i = 0; i < size; i++) {
 		cdf += prob[i];
-		if (x <= cdf) {
+		if (x < cdf) {
 			return value[i];
 		}
 	}

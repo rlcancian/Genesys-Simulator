@@ -24,7 +24,9 @@
 #include "qtpropertybrowser/qtpropertymanager.h"
 #include "qtpropertybrowser/qteditorfactory.h"
 
-#include "DataComponentProperty.h"
+class DataComponentProperty;
+class ModelGraphicsScene;
+class GuiExtensionManager;
 #include "DataComponentEditor.h"
 #include "ComboBoxEnum.h"
 
@@ -53,7 +55,10 @@ public:
 
     void clearCurrentlyConnectedObject();
     void setModelChangedCallback(ModelChangedCallback callback);
+    void setModelScene(ModelGraphicsScene* scene);
+    void setGuiExtensionManager(GuiExtensionManager* manager);
     bool isCommitPipelineBusy() const;
+    void refreshAfterUndo();
 
 private:
     enum class ActiveMode {
@@ -76,7 +81,9 @@ private:
         bool isObjectSelector = false;
         bool isModelObjectAction = false;
         bool isObjectListAction = false;
+        bool isListItemAction = false;
         bool isMultilineTextAction = false;
+        int listElementIndex = -1;
         QGraphicsItem* graphicsItem = nullptr;
         bool graphicsRequiresCommit = false;
         std::function<void(const QVariant&)> graphicsVariantSetter;
@@ -94,7 +101,10 @@ private:
         enum class Kind {
             None,
             CreateNew,
-            SetCurrentType
+            SetCurrentType,
+            MoveUp,
+            MoveDown,
+            Remove
         };
 
         Kind kind = Kind::None;
@@ -149,6 +159,9 @@ private:
     bool _isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const;
     void _materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition = nullptr) const;
     bool _createNewListElementForProperty(QtProperty* property, const std::string& typeName = "");
+    bool _moveListItem(QtProperty* property, int destination);
+    bool _removeListItem(QtProperty* property);
+    void _applyPositionalListChange();
     bool _setCurrentListElementTypeForProperty(QtProperty* property, const std::string& typeName);
     bool _createModelObjectForProperty(QtProperty* property, const std::string& typeName = "");
     bool _setModelObjectReferenceForProperty(QtProperty* property, const QString& objectName);
@@ -188,6 +201,7 @@ private:
     bool _openSpecializedEditor(QtProperty* property);
     bool _openTextDialogEditor(const Binding& binding, bool compactEditor);
     bool _openMultilineTextDialogEditor(const Binding& binding);
+    bool _openExpressionBuilder(QtProperty* property, const Binding& binding);
     bool _createObjectForProperty(QtProperty* property);
 
 protected:
@@ -222,6 +236,8 @@ private:
 private:
     // Track the selected graphical object safely in case Qt destroys it during callbacks.
     QPointer<QObject> _graphicalObject = nullptr;
+    QPointer<ModelGraphicsScene> _modelScene = nullptr;
+    GuiExtensionManager* _guiExtensionManager = nullptr;
     QGraphicsItem* _graphicalItem = nullptr;
     ModelDataDefinition* _modelObject = nullptr;
     ActiveMode _activeMode = ActiveMode::None;
@@ -246,14 +262,15 @@ private:
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
     QMap<QtProperty*, std::vector<ObjectListAction>> _objectListActions;
+    SimulationControl* _pendingListSelection = nullptr;
+    int _pendingListSelectionIndex = -1;
     QMap<QtProperty*, std::vector<ModelObjectAction>> _modelObjectActions;
-    QSet<QtProperty*> _pendingCommittedProperties;
-    QMap<QtProperty*, QVariant> _pendingCommittedValues;
     ModelChangedCallback _modelChangedCallback;
 
 private:
     bool _requiresCommitConfirmation(const Binding& binding) const;
-    bool _applyVariantChange(QtProperty* property, const QVariant& value, bool committed);
+    bool _applyVariantChange(QtProperty* property, const QVariant& value, bool committed,
+                             bool specializedEditorCommit = false);
     bool _applyGraphicsVariantChange(QtProperty* property, const QVariant& value, bool committed);
     bool _applyGraphicsEnumChange(QtProperty* property, int value);
 

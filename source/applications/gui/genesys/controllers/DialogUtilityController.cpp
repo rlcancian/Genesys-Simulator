@@ -12,6 +12,7 @@
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../services/ToolLauncher.h"
+#include "../tools/expressionbuilder/ParserFunctionCatalog.h"
 
 #include "kernel/simulator/Simulator.h"
 #include "../../../../kernel/simulator/model/Model.h"
@@ -101,13 +102,7 @@ struct DataSummary {
     double cv = 0.0;
 };
 
-struct ParserFunctionInfo {
-    QString category;
-    QString name;
-    QString syntax;
-    QString description;
-    QString example;
-};
+
 
 struct ParserGrammarNodeInfo {
     QString id;
@@ -190,55 +185,6 @@ static bool parseNumericDataset(const QString& fileName, QList<double>* numericV
     return true;
 }
 
-static QVector<ParserFunctionInfo> parserFunctionCatalog() {
-    return {
-        {QObject::tr("Arithmetic"), QStringLiteral("round"), QStringLiteral("round(expression)"), QObject::tr("Rounds a numeric expression to the nearest integer."), QStringLiteral("round(3.7)")},
-        {QObject::tr("Arithmetic"), QStringLiteral("trunc"), QStringLiteral("trunc(expression)"), QObject::tr("Removes the fractional part of a numeric expression."), QStringLiteral("trunc(3.7)")},
-        {QObject::tr("Arithmetic"), QStringLiteral("frac"), QStringLiteral("frac(expression)"), QObject::tr("Returns only the fractional part of a numeric expression."), QStringLiteral("frac(3.7)")},
-        {QObject::tr("Arithmetic"), QStringLiteral("mod"), QStringLiteral("mod(expression, expression)"), QObject::tr("Integer remainder of the first expression divided by the second."), QStringLiteral("mod(17, 5)")},
-        {QObject::tr("Arithmetic"), QStringLiteral("min"), QStringLiteral("min(expression, expression)"), QObject::tr("Returns the smaller of two numeric expressions."), QStringLiteral("min(10, 4)")},
-        {QObject::tr("Arithmetic"), QStringLiteral("max"), QStringLiteral("max(expression, expression)"), QObject::tr("Returns the larger of two numeric expressions."), QStringLiteral("max(10, 4)")},
-        {QObject::tr("Math"), QStringLiteral("exp"), QStringLiteral("exp(expression)"), QObject::tr("Natural exponential function."), QStringLiteral("exp(1)")},
-        {QObject::tr("Math"), QStringLiteral("sqrt"), QStringLiteral("sqrt(expression)"), QObject::tr("Square root of a numeric expression."), QStringLiteral("sqrt(16)")},
-        {QObject::tr("Math"), QStringLiteral("log"), QStringLiteral("log(expression)"), QObject::tr("Base-10 logarithm."), QStringLiteral("log(100)")},
-        {QObject::tr("Math"), QStringLiteral("ln"), QStringLiteral("ln(expression)"), QObject::tr("Natural logarithm."), QStringLiteral("ln(exp(1))")},
-        {QObject::tr("Trigonometry"), QStringLiteral("sin"), QStringLiteral("sin(expression)"), QObject::tr("Sine of an angle in radians."), QStringLiteral("sin(0)")},
-        {QObject::tr("Trigonometry"), QStringLiteral("cos"), QStringLiteral("cos(expression)"), QObject::tr("Cosine of an angle in radians."), QStringLiteral("cos(0)")},
-        {QObject::tr("Logic"), QStringLiteral("if"), QStringLiteral("if(condition, trueExpression, falseExpression)"), QObject::tr("Evaluates one expression when condition is non-zero and another when condition is zero."), QStringLiteral("if(2 > 1, 10, 20)")},
-        {QObject::tr("Logic"), QStringLiteral("if"), QStringLiteral("if(condition, trueExpression)"), QObject::tr("Returns the true expression when condition is non-zero, otherwise returns zero."), QStringLiteral("if(1, 42)")},
-        {QObject::tr("Logic"), QStringLiteral("operators"), QStringLiteral("<, >, <=, >=, ==, <>, !=, and, or, nand, xor, not"), QObject::tr("Relational and logical operators return numeric booleans, 1 for true and 0 for false."), QStringLiteral("(2 <= 3) and not false")},
-        {QObject::tr("Random"), QStringLiteral("rnd"), QStringLiteral("rnd"), QObject::tr("Uniform random value in [0, 1]."), QStringLiteral("rnd")},
-        {QObject::tr("Random"), QStringLiteral("expo"), QStringLiteral("expo(mean)"), QObject::tr("Exponential random variate using the configured sampler."), QStringLiteral("expo(5)")},
-        {QObject::tr("Random"), QStringLiteral("norm"), QStringLiteral("norm(mean, stddev)"), QObject::tr("Normal random variate."), QStringLiteral("norm(10, 2)")},
-        {QObject::tr("Random"), QStringLiteral("unif"), QStringLiteral("unif(min, max)"), QObject::tr("Uniform random variate between min and max."), QStringLiteral("unif(1, 10)")},
-        {QObject::tr("Random"), QStringLiteral("weib"), QStringLiteral("weib(shape, scale)"), QObject::tr("Weibull random variate."), QStringLiteral("weib(2, 10)")},
-        {QObject::tr("Random"), QStringLiteral("logn"), QStringLiteral("logn(mean, stddev)"), QObject::tr("Lognormal random variate."), QStringLiteral("logn(1, 0.25)")},
-        {QObject::tr("Random"), QStringLiteral("gamm"), QStringLiteral("gamm(shape, scale)"), QObject::tr("Gamma random variate."), QStringLiteral("gamm(2, 3)")},
-        {QObject::tr("Random"), QStringLiteral("erla"), QStringLiteral("erla(mean, m)"), QObject::tr("Erlang random variate."), QStringLiteral("erla(8, 2)")},
-        {QObject::tr("Random"), QStringLiteral("tria"), QStringLiteral("tria(min, mode, max)"), QObject::tr("Triangular random variate."), QStringLiteral("tria(1, 3, 8)")},
-        {QObject::tr("Random"), QStringLiteral("beta"), QStringLiteral("beta(alpha, beta, infLimit, supLimit)"), QObject::tr("Scaled beta random variate."), QStringLiteral("beta(2, 5, 0, 1)")},
-        {QObject::tr("Simulation"), QStringLiteral("tnow"), QStringLiteral("tnow"), QObject::tr("Current simulated time."), QStringLiteral("tnow")},
-        {QObject::tr("Simulation"), QStringLiteral("tfin"), QStringLiteral("tfin"), QObject::tr("Configured replication length."), QStringLiteral("tfin")},
-        {QObject::tr("Simulation"), QStringLiteral("maxrep"), QStringLiteral("maxrep"), QObject::tr("Configured number of replications."), QStringLiteral("maxrep")},
-        {QObject::tr("Simulation"), QStringLiteral("numrep"), QStringLiteral("numrep"), QObject::tr("Current replication number."), QStringLiteral("numrep")},
-        {QObject::tr("Simulation"), QStringLiteral("ident"), QStringLiteral("ident"), QObject::tr("Current entity id, when an event/entity context exists."), QStringLiteral("ident")},
-        {QObject::tr("Simulation"), QStringLiteral("entitieswip"), QStringLiteral("entitieswip"), QObject::tr("Number of entity data definitions in the model."), QStringLiteral("entitieswip")},
-        {QObject::tr("Collectors"), QStringLiteral("tavg"), QStringLiteral("tavg(statisticsCollector)"), QObject::tr("Time-average value of a StatisticsCollector."), QStringLiteral("tavg(MyCollector)")},
-        {QObject::tr("Collectors"), QStringLiteral("count"), QStringLiteral("count(counter)"), QObject::tr("Current value of a Counter."), QStringLiteral("count(MyCounter)")},
-        {QObject::tr("Queue"), QStringLiteral("nq"), QStringLiteral("nq(queue)"), QObject::tr("Number of entities waiting in a queue."), QStringLiteral("nq(MyQueue)")},
-        {QObject::tr("Queue"), QStringLiteral("firstinq"), QStringLiteral("firstinq(queue)"), QObject::tr("Id of the first entity waiting in a queue, or zero when empty."), QStringLiteral("firstinq(MyQueue)")},
-        {QObject::tr("Queue"), QStringLiteral("saque"), QStringLiteral("saque(queue, attribute)"), QObject::tr("Sum of an attribute over entities waiting in a queue."), QStringLiteral("saque(MyQueue, MyAttribute)")},
-        {QObject::tr("Queue"), QStringLiteral("aque"), QStringLiteral("aque(queue, rank, attribute)"), QObject::tr("Attribute value of an entity at a queue rank."), QStringLiteral("aque(MyQueue, 1, MyAttribute)")},
-        {QObject::tr("Resource"), QStringLiteral("mr"), QStringLiteral("mr(resource)"), QObject::tr("Resource capacity."), QStringLiteral("mr(MyResource)")},
-        {QObject::tr("Resource"), QStringLiteral("nr"), QStringLiteral("nr(resource)"), QObject::tr("Number of busy units in a resource."), QStringLiteral("nr(MyResource)")},
-        {QObject::tr("Resource"), QStringLiteral("state"), QStringLiteral("state(resource)"), QObject::tr("Numeric state of a resource."), QStringLiteral("state(MyResource)")},
-        {QObject::tr("Resource"), QStringLiteral("irf"), QStringLiteral("irf(resource)"), QObject::tr("Returns 1 when a resource is failed, otherwise 0."), QStringLiteral("irf(MyResource)")},
-        {QObject::tr("Resource"), QStringLiteral("setsum"), QStringLiteral("setsum(set)"), QObject::tr("Counts busy resources in a set."), QStringLiteral("setsum(MySet)")},
-        {QObject::tr("Set"), QStringLiteral("numset"), QStringLiteral("numset(set)"), QObject::tr("Number of model data definitions in a set."), QStringLiteral("numset(MySet)")},
-        {QObject::tr("Entity Group"), QStringLiteral("numgr"), QStringLiteral("numgr(group)"), QObject::tr("Entity group function token recognized by the lexer."), QStringLiteral("numgr(MyGroup)")},
-        {QObject::tr("Entity Group"), QStringLiteral("atrgr"), QStringLiteral("atrgr(group, attribute)"), QObject::tr("Entity group attribute function token recognized by the lexer."), QStringLiteral("atrgr(MyGroup, MyAttribute)")}
-    };
-}
 
 static QString parserDotText() {
     return QStringLiteral(
@@ -465,43 +411,6 @@ static void showRichAboutDialog(QWidget* owner,
     dialog.exec();
 }
 
-static QString trimmedTail(const QString& text, int maxCharacters = 12000) {
-    const QString normalized = text.trimmed();
-    if (normalized.size() <= maxCharacters) {
-        return normalized;
-    }
-    return QStringLiteral("...[truncated]...\n") + normalized.right(maxCharacters);
-}
-
-static QString readTextFileTail(const QString& absolutePath, int maxBytes = 32768) {
-    QFile file(absolutePath);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QString();
-    }
-
-    if (file.size() <= maxBytes) {
-        return QString::fromUtf8(file.readAll()).trimmed();
-    }
-
-    file.seek(std::max<qint64>(0, file.size() - maxBytes));
-    return QStringLiteral("...[truncated]...\n") + QString::fromUtf8(file.readAll()).trimmed();
-}
-
-static QByteArray captureWidgetScreenshotPng(QWidget* widget) {
-    QByteArray bytes;
-    if (widget == nullptr) {
-        return bytes;
-    }
-
-    const QPixmap screenshot = widget->grab();
-    if (screenshot.isNull()) {
-        return bytes;
-    }
-    QBuffer buffer(&bytes);
-    buffer.open(QIODevice::WriteOnly);
-    screenshot.save(&buffer, "PNG");
-    return bytes;
-}
 } // namespace
 
 // Initialize the Phase 11 controller with narrow dependencies and persisted GUI state references.
@@ -612,94 +521,15 @@ void DialogUtilityController::onActionAboutGetInvolvedTriggered() {
                         html);
 }
 
-/*! \brief Opens the GUI issue-report flow, captures runtime context, and submits the payload to the configured relay.
+/*! \brief Opens the privacy-first issue form without collecting model or diagnostic data.
  *
- * The report draft can include the current model text, console tail, simulation and report logs,
- * the latest process log, and an optional screenshot. The submission result is then surfaced back
- * to the user, including a browser link when the relay returns a created GitHub issue URL.
+ * The dialogue selects a configured HTTPS relay or the standard GitHub browser
+ * flow. It owns its asynchronous request so a failed submission preserves fields.
  */
 void DialogUtilityController::onActionAboutReportIssueTriggered() {
     DialogReportIssue dialog(_ownerWidget);
-    QString relayStatusMessage;
-    const bool relayConfigured = IssueReportRelayService::isEndpointConfigured(&relayStatusMessage);
-    dialog.setRelayConfigurationStatus(IssueReportRelayService::configuredEndpoint(),
-                                       relayConfigured,
-                                       relayStatusMessage);
-
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
-
-    const IssueReportDraft draft = dialog.draft();
-
-    IssueReportRuntimeContext runtimeContext;
-    runtimeContext.applicationName = QCoreApplication::applicationName().trimmed();
-    runtimeContext.applicationVersion = QCoreApplication::applicationVersion().trimmed();
-    if (runtimeContext.applicationVersion.isEmpty()) {
-        runtimeContext.applicationVersion = QObject::tr("unknown");
-    }
-    runtimeContext.qtVersion = QString::fromLatin1(QT_VERSION_STR);
-    runtimeContext.operatingSystem = QSysInfo::prettyProductName();
-
-    if (_simulator != nullptr && _simulator->getModelManager() != nullptr
-        && _simulator->getModelManager()->current() != nullptr) {
-        runtimeContext.currentModelName =
-                QString::fromStdString(_simulator->getModelManager()->current()->getInfos()->getName());
-    } else {
-        runtimeContext.currentModelName = QObject::tr("none");
-    }
-
-    if (draft.includeModelText && _ui != nullptr && _ui->TextCodeEditor != nullptr) {
-        runtimeContext.currentModelSimulanguage = trimmedTail(_ui->TextCodeEditor->toPlainText(), 64000);
-    }
-    if (_ui != nullptr && _ui->textEdit_Console != nullptr) {
-        runtimeContext.consoleTail = trimmedTail(_ui->textEdit_Console->toPlainText());
-    }
-    if (_ui != nullptr && _ui->textEdit_Simulation != nullptr) {
-        runtimeContext.simulationTail = trimmedTail(_ui->textEdit_Simulation->toPlainText());
-    }
-    if (_ui != nullptr && _ui->textEdit_Reports != nullptr) {
-        runtimeContext.reportsTail = trimmedTail(_ui->textEdit_Reports->toPlainText());
-    }
-    if (draft.includeLogTail) {
-        runtimeContext.processLogTail =
-                readTextFileTail(QDir::current().absoluteFilePath(QStringLiteral("crashesAndLogs.log")));
-    }
-    if (draft.includeScreenshot) {
-        runtimeContext.screenshotPngBase64 = captureWidgetScreenshotPng(_ownerWidget).toBase64();
-    }
-
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    const IssueReportSubmissionResult result = IssueReportRelayService::submit(draft, runtimeContext);
-    QApplication::restoreOverrideCursor();
-
-    if (!result.success) {
-        QMessageBox::warning(_ownerWidget,
-                             QObject::tr("Report Issue"),
-                             QObject::tr("The report could not be submitted.\n\n%1")
-                                 .arg(result.errorMessage));
-        return;
-    }
-
-    QMessageBox box(_ownerWidget);
-    box.setIcon(QMessageBox::Information);
-    box.setWindowTitle(QObject::tr("Issue submitted"));
-    box.setText(QObject::tr("The report was delivered to the configured relay and a GitHub issue was created."));
-    if (!result.issueUrl.isEmpty()) {
-        box.setInformativeText(QObject::tr("Issue #%1 created.\n\nOpen the issue in your browser?")
-                                   .arg(result.issueNumber > 0 ? QString::number(result.issueNumber)
-                                                               : QObject::tr("unknown")));
-        QPushButton* openButton = box.addButton(QObject::tr("Open Issue"), QMessageBox::AcceptRole);
-        box.addButton(QMessageBox::Close);
-        box.exec();
-        if (box.clickedButton() == openButton) {
-            QDesktopServices::openUrl(QUrl(result.issueUrl));
-        }
-    } else {
-        box.setInformativeText(QObject::tr("The relay did not return a browseable issue URL."));
-        box.addButton(QMessageBox::Close);
-        box.exec();
-    }
+    dialog.setRelayAvailable(IssueReportRelayService::isEndpointConfigured());
+    dialog.exec();
 }
 
 // Preserve the existing find dialog workflow using the current scene.

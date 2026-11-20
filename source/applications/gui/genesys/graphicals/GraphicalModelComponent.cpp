@@ -35,10 +35,13 @@
 #include "ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "UtilGUI.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "kernel/simulator/model/Model.h"
 #include <QPainter>
 #include <QRgba64>
 #include <QSet>
 #include <QDebug>
+#include <limits>
 
 GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position,
                                                  QColor color, QGraphicsItem* parent) : GraphicalModelDataDefinition(
@@ -104,6 +107,20 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	unsigned int numInputPorts = std::max<unsigned int>(
 		component->getConnectionManager()->getCurrentInputConnectionsSize(),
 		plugin->getPluginInfo()->getMinimumInputs());
+	numInputPorts = std::max(numInputPorts, component->getConnectionManager()->getMinInputConnections());
+	if (component->getDynamicInputPortCount() >= 0) {
+		numInputPorts = std::max(numInputPorts, static_cast<unsigned int>(component->getDynamicInputPortCount()));
+	}
+    // Input cardinality caches do not describe the highest logical input rank.
+    // Reconstructed edges must still have a graphical endpoint at that rank.
+    for (auto* origin : *component->getParentModel()->getComponentManager()->getAllComponents()) {
+        for (const auto& [output, connection] : *origin->getConnectionManager()->connections()) {
+            (void) output;
+            if (connection && connection->component == component
+                && connection->channel.portNumber < std::numeric_limits<unsigned int>::max())
+                numInputPorts = std::max(numInputPorts, connection->channel.portNumber + 1);
+        }
+    }
 	qreal step = (double)_height / (double)(numInputPorts + 1);
 	for (unsigned int i = 0; i < numInputPorts; i++) {
 		port = new GraphicalComponentPort(this, true, i, parent);
@@ -114,9 +131,25 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 		this->_graphicalInputPorts.append(port);
 	}
 	py = 0;
+	unsigned int declaredOutputPorts = plugin->getPluginInfo()->getMinimumOutputs();
+	if (auto* decide = dynamic_cast<Decide*>(component); decide != nullptr) {
+		declaredOutputPorts = decide->getConditions()->size() + 1;
+	}
 	unsigned int numOutputPorts = std::max<unsigned int>(
-		component->getConnectionManager()->getCurrentOutputConnectionsSize(),
-		plugin->getPluginInfo()->getMinimumOutputs());
+		component->getConnectionManager()->getCurrentOutputConnectionsSize(), declaredOutputPorts);
+	numOutputPorts = std::max(numOutputPorts, component->getConnectionManager()->getMinOutputConnections());
+	if (component->getDynamicOutputPortCount() >= 0) {
+		numOutputPorts = std::max(numOutputPorts, static_cast<unsigned int>(component->getDynamicOutputPortCount()));
+	}
+    for (const auto& [output, connection] : *component->getConnectionManager()->connections()) {
+        if (connection && output < std::numeric_limits<unsigned int>::max())
+            numOutputPorts = std::max(numOutputPorts, output + 1);
+    }
+	if (dynamic_cast<Decide*>(component) != nullptr) {
+		// A Decide's semantic ports are defined by its ordered conditions, even if
+		// a malformed/stale connection map contains an out-of-range key.
+		numOutputPorts = declaredOutputPorts;
+	}
 	step = (double)_height / (double)(numOutputPorts + 1);
 	for (unsigned int i = 0; i < numOutputPorts; i++) {
 		port = new GraphicalComponentPort(this, false, i, parent);
@@ -126,6 +159,123 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 		port->setParentItem(this);
 		this->_graphicalOutputPorts.append(port);
 	}
+}
+
+void GraphicalModelComponent::editOutputPort(unsigned int index, bool inserted) {
+	if (index > static_cast<unsigned int>(_graphicalOutputPorts.size())) return;
+	if (inserted) {
+		auto* port = new GraphicalComponentPort(this, false, index, nullptr);
+		port->setParentItem(this);
+		port->setX(_width - port->width());
+		_graphicalOutputPorts.insert(static_cast<int>(index), port);
+	} else {
+		if (index >= static_cast<unsigned int>(_graphicalOutputPorts.size())) return;
+		GraphicalComponentPort* port = _graphicalOutputPorts.at(static_cast<int>(index));
+		const QList<GraphicalConnection*> attached = *port->getConnections();
+		for (GraphicalConnection* connection : attached) {
+			if (connection == nullptr) continue;
+			if (auto* modelScene = dynamic_cast<ModelGraphicsScene*>(connection->scene())) {
+				modelScene->removeGraphicalConnectionVisual(connection);
+			} else {
+				if (connection->scene() != nullptr) connection->scene()->removeItem(connection);
+				delete connection;
+			}
+		}
+		_graphicalOutputPorts.removeAt(static_cast<int>(index));
+		delete port;
+	}
+
+	const unsigned int count = static_cast<unsigned int>(_graphicalOutputPorts.size());
+	const qreal step = static_cast<qreal>(_height) / static_cast<qreal>(count + 1);
+	for (unsigned int portIndex = 0; portIndex < count; ++portIndex) {
+		GraphicalComponentPort* port = _graphicalOutputPorts.at(static_cast<int>(portIndex));
+		port->setPortNum(portIndex);
+		port->setY(step * static_cast<qreal>(portIndex + 1) - port->height() / 2);
+		for (GraphicalConnection* connection : *port->getConnections()) {
+			if (connection != nullptr && connection->getSourceGraphicalPort() == port) {
+				connection->setSourcePortNumber(portIndex);
+				connection->updateDimensionsAndPosition();
+			}
+		}
+	}
+}
+
+void GraphicalModelComponent::moveOutputPort(unsigned int from, unsigned int to) {
+	if (_graphicalOutputPorts.isEmpty() || from >= static_cast<unsigned int>(_graphicalOutputPorts.size() - 1)
+		|| to >= static_cast<unsigned int>(_graphicalOutputPorts.size() - 1) || from == to) return;
+	_graphicalOutputPorts.move(static_cast<int>(from), static_cast<int>(to));
+	const unsigned int count = static_cast<unsigned int>(_graphicalOutputPorts.size());
+	const qreal step = static_cast<qreal>(_height) / static_cast<qreal>(count + 1);
+	for (unsigned int index = 0; index < count; ++index) {
+		GraphicalComponentPort* port = _graphicalOutputPorts.at(static_cast<int>(index));
+		port->setPortNum(index);
+		port->setY(step * static_cast<qreal>(index + 1) - port->height() / 2);
+		for (GraphicalConnection* connection : *port->getConnections()) {
+			if (connection != nullptr && connection->getSourceGraphicalPort() == port) {
+				connection->setSourcePortNumber(index);
+				connection->updateDimensionsAndPosition();
+			}
+		}
+	}
+}
+
+void GraphicalModelComponent::synchronizeDynamicPorts() {
+	if (_component == nullptr) return;
+	const int dynamicInputs = _component->getDynamicInputPortCount();
+	const int dynamicOutputs = _component->getDynamicOutputPortCount();
+	if (dynamicInputs < 0 && dynamicOutputs < 0) return;
+
+	auto synchronize = [this](QList<GraphicalComponentPort*>& ports, unsigned int desiredCount, bool input) {
+		for (unsigned int index = static_cast<unsigned int>(ports.size()); index > desiredCount; --index) {
+			GraphicalComponentPort* port = ports.at(static_cast<int>(index - 1));
+			if (port != nullptr && !port->getConnections()->isEmpty()) break;
+			ports.removeAt(static_cast<int>(index - 1));
+			delete port;
+		}
+		while (static_cast<unsigned int>(ports.size()) < desiredCount) {
+			const unsigned int index = static_cast<unsigned int>(ports.size());
+			auto* port = new GraphicalComponentPort(this, input, index, nullptr);
+			port->setParentItem(this);
+			port->setX(input ? 0 : _width - port->width());
+			ports.append(port);
+		}
+		const unsigned int count = static_cast<unsigned int>(ports.size());
+		const qreal step = static_cast<qreal>(_height) / static_cast<qreal>(count + 1);
+		for (unsigned int index = 0; index < count; ++index) {
+			GraphicalComponentPort* port = ports.at(static_cast<int>(index));
+			port->setPortNum(index);
+			port->setY(step * static_cast<qreal>(index + 1) - port->height() / 2);
+			for (GraphicalConnection* connection : *port->getConnections()) {
+				if (connection == nullptr) continue;
+				if (input && connection->getDestinationGraphicalPort() == port) {
+					connection->setDestinationPortNumber(index);
+				} else if (!input && connection->getSourceGraphicalPort() == port) {
+					connection->setSourcePortNumber(index);
+				}
+				connection->updateDimensionsAndPosition();
+			}
+		}
+	};
+
+	if (dynamicInputs >= 0) {
+		unsigned int required = static_cast<unsigned int>(dynamicInputs);
+		for (GraphicalComponentPort* port : _graphicalInputPorts) {
+			if (port != nullptr && !port->getConnections()->isEmpty()) {
+				required = std::max(required, port->portNum() + 1);
+			}
+		}
+		synchronize(_graphicalInputPorts, required, true);
+	}
+	if (dynamicOutputs >= 0) {
+		unsigned int required = static_cast<unsigned int>(dynamicOutputs);
+		for (GraphicalComponentPort* port : _graphicalOutputPorts) {
+			if (port != nullptr && !port->getConnections()->isEmpty()) {
+				required = std::max(required, port->portNum() + 1);
+			}
+		}
+		synchronize(_graphicalOutputPorts, required, false);
+	}
+	update();
 }
 
 GraphicalModelComponent::GraphicalModelComponent(const GraphicalModelComponent& orig) : GraphicalModelDataDefinition(
@@ -161,8 +311,12 @@ GraphicalModelItemRenderContext GraphicalModelComponent::renderContext() const {
 	context.kind = GraphicalModelItemRenderContext::ItemKind::Component;
 	context.bounds = boundingRect();
 	context.fillColor = _color;
-	context.primaryText = QString::fromStdString(_component->getName());
-	context.secondaryText = QString::fromStdString(_component->getLabel());
+	context.primaryText = QString::fromStdString(_component->getLabel());
+	context.secondaryText = QString::fromStdString(_component->getName());
+	if (context.primaryText.trimmed().isEmpty()) {
+		context.primaryText = context.secondaryText;
+		context.secondaryText.clear();
+	}
 	context.tertiaryText = QString(); //QString::fromStdString(_component->getClassname());
 	context.selected = isSelected();
 	context.breakpoint = _component != nullptr && _component->hasBreakpointAt();
@@ -319,183 +473,84 @@ void GraphicalModelComponent::setAnimationImageName(QString name) {
 }
 
 
-// Em caso de possuir Queue
+QMap<ModelDataDefinition*, QPair<unsigned int, unsigned int>>* GraphicalModelComponent::getAnimationTrackMap() { return _animationTrackMap; }
+QList<QList<GraphicalImageAnimation*>*>* GraphicalModelComponent::getAnimationTracks() { return _animationTracks; }
 
-QMap<Queue*, QPair<unsigned int, unsigned int>>* GraphicalModelComponent::getMapQueue() {
-	return _mapQueue;
+void GraphicalModelComponent::resetAnimationTracks() {
+	clearAnimationTracks();
+	_hasAnimationTracks = false;
 }
 
-QList<QList<GraphicalImageAnimation*>*>* GraphicalModelComponent::getImagesQueue() {
-	return _imagesQueue;
-}
-
-void GraphicalModelComponent::verifyQueue() {
-	clearQueues();
-
-	std::map<std::string, ModelDataDefinition*>* internalData = this->getComponent()->getInternalData();
-	std::map<std::string, ModelDataDefinition*>* attachedData = this->getComponent()->getAttachedData();
-
-	QList<ModelDataDefinition*> qListInternalData;
-	QList<ModelDataDefinition*> qListAttachedData;
-	QList<Queue*> queues;
-
-	for (auto it = internalData->begin(); it != internalData->end(); ++it) {
-		qListInternalData.append(it->second);
-	}
-
-	for (auto it = attachedData->begin(); it != attachedData->end(); ++it) {
-		qListAttachedData.append(it->second);
-	}
-
-	for (ModelDataDefinition* internalData : qListInternalData) {
-		if (internalData->getClassname() == "Queue") {
-			Queue* queue = dynamic_cast<Queue*>(internalData);
-			if (queue) {
-				queues.append(queue);
-				_imagesQueue->append(new QList<GraphicalImageAnimation*>);
-			}
-		}
-	}
-
-	for (ModelDataDefinition* attachedData : qListAttachedData) {
-		if (attachedData->getClassname() == "Queue") {
-			Queue* queue = dynamic_cast<Queue*>(attachedData);
-			if (queue) {
-				queues.append(queue);
-				_imagesQueue->append(new QList<GraphicalImageAnimation*>);
-			}
-		}
-	}
-
-	if (_component->getClassname() == "PickStation") {
-		_imagesQueue->append(new QList<GraphicalImageAnimation*>);
-		_hasQueue = true;
-	}
-
-	if (!queues.empty()) {
-		populateMapQueue(queues);
-		_hasQueue = true;
+void GraphicalModelComponent::addAnimationTrack(ModelDataDefinition* source, unsigned int index, unsigned int currentSize) {
+	_animationTracks->append(new QList<GraphicalImageAnimation*>);
+	if (source != nullptr) {
+		_animationTrackMap->insert(source, qMakePair(index, currentSize));
+		_hasAnimationTracks = true;
 	}
 }
 
-bool GraphicalModelComponent::hasQueue() {
-	return _hasQueue;
+void GraphicalModelComponent::addUnmappedAnimationTrack() {
+	_animationTracks->append(new QList<GraphicalImageAnimation*>);
+	_hasAnimationTracks = true;
 }
 
-bool GraphicalModelComponent::compareQueuesById(const Queue* a, const Queue* b) {
-	return a->getId() < b->getId();
+bool GraphicalModelComponent::hasAnimationTracks() const { return _hasAnimationTracks; }
+
+unsigned int GraphicalModelComponent::getAnimationTrackIndex(ModelDataDefinition* source) const {
+	return _animationTrackMap->value(source).first;
 }
 
-unsigned int GraphicalModelComponent::getIndexQueue(Queue* queue) {
-	QPair<unsigned int, unsigned int> pairIndexSize = _mapQueue->value(queue);
-	return pairIndexSize.first;
+unsigned int GraphicalModelComponent::getAnimationTrackSize(ModelDataDefinition* source) const {
+	return _animationTrackMap->value(source).second;
 }
 
-unsigned int GraphicalModelComponent::getSizeQueue(Queue* queue) {
-	QPair<unsigned int, unsigned int> pairIndexSize = _mapQueue->value(queue);
-	return pairIndexSize.second;
+bool GraphicalModelComponent::insertAnimationImage(ModelDataDefinition* source, GraphicalImageAnimation* image, unsigned int newSize) {
+	if (!_animationTrackMap->contains(source)) return false;
+	const unsigned int index = getAnimationTrackIndex(source);
+	if (index >= static_cast<unsigned int>(_animationTracks->size())) return false;
+	_animationTracks->at(static_cast<int>(index))->append(image);
+	_animationTrackMap->insert(source, qMakePair(index, newSize));
+	return true;
 }
 
-void GraphicalModelComponent::populateMapQueue(QList<Queue*> queues) {
-	QList<Queue*> sortedQueues = queues;
-	std::sort(sortedQueues.begin(), sortedQueues.end(), &compareQueuesById);
+QList<GraphicalImageAnimation*>* GraphicalModelComponent::removeAnimationImages(ModelDataDefinition* source, unsigned int quantityRemoved, unsigned int newSize) {
+	if (!_animationTrackMap->contains(source)) return nullptr;
+	const unsigned int index = getAnimationTrackIndex(source);
+	if (index >= static_cast<unsigned int>(_animationTracks->size())) return nullptr;
+	auto* images = _animationTracks->at(static_cast<int>(index));
+	if (images == nullptr || images->isEmpty()) return nullptr;
+	auto* removed = new QList<GraphicalImageAnimation*>;
+	quantityRemoved = std::min(quantityRemoved, static_cast<unsigned int>(images->size()));
+	for (unsigned int i = 0; i < quantityRemoved; ++i) removed->append(images->takeLast());
+	_animationTrackMap->insert(source, qMakePair(index, newSize));
+	return removed->isEmpty() ? (delete removed, nullptr) : removed;
+}
 
-	for (Queue* queue : queues) {
-		_mapQueue->insert(queue, qMakePair(sortedQueues.indexOf(queue), (unsigned int)queue->size()));
+bool GraphicalModelComponent::insertAnimationImage(GraphicalImageAnimation* image) {
+	if (_animationTracks->isEmpty() || _animationTracks->first() == nullptr) return false;
+	_animationTracks->first()->append(image);
+	return true;
+}
+
+GraphicalImageAnimation* GraphicalModelComponent::removeAnimationImage() {
+	if (_animationTracks->isEmpty() || _animationTracks->first() == nullptr || _animationTracks->first()->isEmpty()) return nullptr;
+	return _animationTracks->first()->takeLast();
+}
+
+void GraphicalModelComponent::setAnimationTracksVisible(bool visible) {
+	for (auto* track : *_animationTracks) if (track != nullptr) for (auto* image : *track) if (image != nullptr) image->setVisible(visible);
+}
+
+void GraphicalModelComponent::clearAnimationTracks() {
+	for (auto* track : *_animationTracks) {
+		if (track == nullptr) continue;
+		for (auto* image : *track) delete image;
+		track->clear();
+		delete track;
 	}
-}
-
-bool GraphicalModelComponent::insertImageQueue(Queue* queue, GraphicalImageAnimation* image) {
-	if ((unsigned int)_imagesQueue->size() == getIndexQueue(queue) + 1) {
-		QList<GraphicalImageAnimation*>* imagesList = _imagesQueue->at(getIndexQueue(queue));
-		imagesList->append(image);
-		actualizeMapQueue(queue);
-
-		return true;
-	}
-
-	return false;
-}
-
-bool GraphicalModelComponent::insertImageQueue(GraphicalImageAnimation* image) {
-	if (!_imagesQueue->empty()) {
-		QList<GraphicalImageAnimation*>* imagesList = _imagesQueue->at(0);
-		imagesList->append(image);
-		return true;
-	}
-	return false;
-}
-
-QList<GraphicalImageAnimation*>* GraphicalModelComponent::removeImageQueue(Queue* queue, unsigned int quantityRemoved) {
-	if ((unsigned int)_imagesQueue->size() == getIndexQueue(queue) + 1) {
-		QList<GraphicalImageAnimation*>* imagesList = _imagesQueue->at(getIndexQueue(queue));
-
-		if (imagesList) {
-			if (!imagesList->empty()) {
-				QList<GraphicalImageAnimation*>* imagesRemoved = new QList<GraphicalImageAnimation*>();
-
-				if (quantityRemoved > (unsigned int)imagesList->size()) {
-					quantityRemoved = imagesList->size();
-				}
-
-				for (unsigned int i = 0; i < quantityRemoved; i++) {
-					imagesRemoved->append(imagesList->last());
-					imagesList->removeLast();
-				}
-
-				actualizeMapQueue(queue);
-
-				if (!imagesRemoved->empty())
-					return imagesRemoved;
-			}
-		}
-	}
-	return nullptr;
-}
-
-GraphicalImageAnimation* GraphicalModelComponent::removeImageQueue() {
-	if (!_imagesQueue->empty()) {
-		QList<GraphicalImageAnimation*>* imagesList = _imagesQueue->at(0);
-
-		if (imagesList) {
-			if (!imagesList->empty()) {
-				GraphicalImageAnimation* imageRemoved = imagesList->last();
-
-				if (imageRemoved) {
-					imagesList->removeLast();
-					return imageRemoved;
-				}
-			}
-		}
-	}
-
-	return nullptr;
-}
-
-void GraphicalModelComponent::actualizeMapQueue(Queue* queue) {
-	_mapQueue->insert(queue, qMakePair(getIndexQueue(queue), queue->size()));
-}
-
-void GraphicalModelComponent::visivibleImageQueue(bool visivible) {
-	for (QList<GraphicalImageAnimation*>* imagesList : *_imagesQueue) {
-		for (GraphicalImageAnimation* image : *imagesList) {
-			image->setVisible(visivible);
-		}
-	}
-}
-
-void GraphicalModelComponent::clearQueues() {
-	for (QList<GraphicalImageAnimation*>* imagesList : *_imagesQueue) {
-		for (GraphicalImageAnimation* image : *imagesList) {
-			delete image;
-		}
-		imagesList->clear();
-		delete imagesList;
-	}
-	_imagesQueue->clear();
-	_mapQueue->clear();
-	// Keep logical queue state synchronized with structural queue cleanup.
-	_hasQueue = false;
+	_animationTracks->clear();
+	_animationTrackMap->clear();
+	_hasAnimationTracks = false;
 }
 
 /*

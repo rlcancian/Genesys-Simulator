@@ -20,8 +20,8 @@
 
 // Model Components
 #include "plugins/components/Logic/Create.h"
-#include "plugins/components/MaterialHandling/Route.h"
-#include "plugins/components/MaterialHandling/Enter.h"
+#include "plugins/components/Transfer/Route.h"
+#include "plugins/components/Transfer/Enter.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/Logic/Dispose.h"
 

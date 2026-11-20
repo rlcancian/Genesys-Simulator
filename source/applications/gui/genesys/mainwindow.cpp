@@ -47,6 +47,7 @@
 #include "controllers/GraphicalContextMenuController.h"
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
+#include "graphicals/EFSMTransitionGraphicsItem.h"
 #include "extensions/GuiExtensionContracts.h"
 #include "extensions/GuiExtensionManager.h"
 #include "extensions/GuiExtensionPluginCatalog.h"
@@ -70,11 +71,20 @@
 #include <sstream>
 #include <cstdlib>
 #include <algorithm>
+#include <unordered_map>
 #include <cmath>
 #include <limits>
 //#include <streambuf>
 // QT
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QDialog>
+#include <QFormLayout>
+#include <QDialogButtonBox>
+#include <QLineEdit>
+#include <QSpinBox>
+#include <QCheckBox>
+#include <QComboBox>
 #include <QTextStream>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -277,6 +287,22 @@ static bool fillPlotItem(ModelDataDefinition* data, QString* category, ReportPlo
     return true;
 }
 
+// The kernel plugin registry is the authoritative source of model-plugin versions.
+std::unordered_map<std::string, std::string> collectLoadedModelPluginVersions(const Simulator* simulator) {
+    std::unordered_map<std::string, std::string> versions;
+    if (simulator == nullptr || simulator->getPluginManager() == nullptr) return versions;
+    PluginManager* manager = simulator->getPluginManager();
+    for (unsigned int index = 0; index < manager->size(); ++index) {
+        Plugin* plugin = manager->getAtRank(index);
+        if (plugin == nullptr || plugin->getPluginInfo() == nullptr) continue;
+        const auto* info = plugin->getPluginInfo();
+        if (!info->getPluginTypename().empty()) {
+            versions.emplace(info->getPluginTypename(), info->getVersion());
+        }
+    }
+    return versions;
+}
+
 std::vector<std::string> collectLoadedModelPluginIds(const Simulator* simulator) {
 	std::vector<std::string> ids;
 	if (simulator == nullptr || simulator->getPluginManager() == nullptr) {
@@ -307,12 +333,15 @@ SaveModelFormat requestedSaveModelFormat(const QString& selectedPath) {
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
     _actionModelPrevious = new QAction(tr("Previous Model"), this);
+    _actionModelPrevious->setObjectName(QStringLiteral("actionModelPrevious"));
     _actionModelPrevious->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp));
     connect(_actionModelPrevious, &QAction::triggered, this, [this]() { _activatePreviousModel(); });
     _actionModelNext = new QAction(tr("Next Model"), this);
+    _actionModelNext->setObjectName(QStringLiteral("actionModelNext"));
     _actionModelNext->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
     connect(_actionModelNext, &QAction::triggered, this, [this]() { _activateNextModel(); });
     _actionOpenSelectedSubmodel = new QAction(tr("Open Submodel"), this);
+    _actionOpenSelectedSubmodel->setObjectName(QStringLiteral("actionOpenSelectedSubmodel"));
     _actionOpenSelectedSubmodel->setToolTip(tr("Open a graphical tab scoped to the selected item's internal model level."));
     connect(_actionOpenSelectedSubmodel, &QAction::triggered, this, [this]() { _openSelectedSubmodel(); });
     _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
@@ -344,7 +373,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->treeWidget_Plugins->viewport()->setAcceptDrops(false);
     ui->treeWidget_Plugins->setDropIndicatorShown(false);
     ui->treeWidget_Plugins->setContextMenuPolicy(Qt::CustomContextMenu);
-    ui->treeWidget_Plugins->setSortingEnabled(false);
+    ui->treeWidget_Plugins->setSortingEnabled(true);
+    ui->treeWidget_Plugins->sortItems(0, Qt::AscendingOrder);
     //
     // Genesys Simulator
     simulator = new Simulator();
@@ -441,7 +471,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // set current tabs
     ui->tabWidgetCentral->setCurrentIndex(CONST.TabCentralModelIndex);
-    ui->tabWidgetModel->setCurrentIndex(CONST.TabModelSimLangIndex);
+    ui->tabWidgetModel->setCurrentIndex(CONST.TabModelDataDefinitionsIndex);
     ui->tabWidgetSimulation->setCurrentIndex(CONST.TabSimulationBreakpointsIndex);
     ui->tabWidgetReports->setCurrentIndex(CONST.TabReportReportIndex);
     {
@@ -451,6 +481,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         if (modelDiagramTabIndex >= 0) {
             ui->tabWidgetModel->setTabVisible(modelDiagramTabIndex, false);
         }
+        const int simLanguageTabIndex = ui->tabWidgetModel->indexOf(ui->tabModelSimLanguage);
+        if (simLanguageTabIndex >= 0) {
+            ui->tabWidgetModel->setTabVisible(simLanguageTabIndex, false);
+        }
+        const int cppTabIndex = ui->tabWidgetModel->indexOf(ui->tabModelCpp);
+        if (cppTabIndex >= 0) {
+            ui->tabWidgetModel->setTabVisible(cppTabIndex, false);
+        }
+        ui->tabWidgetModel->setCurrentWidget(ui->tabModelDataDefinitions);
     }
     //
     // adjust toolbars position and ranking
@@ -519,7 +558,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             ui->textEdit_Reports->clear();
             _clearReportsResultsTable();
             _clearReportsPlots();
-        });
+        },
+        [this]() { return ui->tabWidgetCentral->currentWidget() == ui->tabCentralModel; },
+        [this]() {
+            ui->tabWidgetCentral->setCurrentWidget(ui->tabCentralSimulation);
+            ui->tabWidgetSimulation->setCurrentWidget(ui->tabDebugTraces);
+        },
+        [this]() { return ui->actionAnimation == nullptr || ui->actionAnimation->isChecked(); });
     // Initialize the Phase 7 model-lifecycle controller after simulator/UI/callback dependencies are ready.
     _modelLifecycleController = std::make_unique<ModelLifecycleController>(
         this,
@@ -551,7 +596,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Add a runtime About action instead of extending the generated .ui file.
     QAction* actionAboutReportIssue = new QAction(tr("Report Issue"), this);
     actionAboutReportIssue->setObjectName(QStringLiteral("actionAboutReportIssue"));
-    actionAboutReportIssue->setToolTip(tr("Report a bug, problem, or suggestion using the configured secure relay."));
+    actionAboutReportIssue->setToolTip(tr("Report a bug, problem, or suggestion to the GenESyS project."));
     actionAboutReportIssue->setIcon(QIcon(":/icons2/resources/icons/pack2/ico/90.ico"));
     connect(actionAboutReportIssue, &QAction::triggered, this, [this]() {
         if (_dialogUtilityController != nullptr) {
@@ -576,6 +621,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // system preferences
     SystemPreferences::load();
+    // Reapply the effective (default or persisted) diagnostic level after loading preferences.
+    simulator->getTraceManager()->setTraceLevel(SystemPreferences::traceLevel());
     _refreshRecentModelsMenu();
     GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
     if (SystemPreferences::autoLoadPlugins()) {
@@ -700,6 +747,7 @@ MainWindow::GraphicalModelViewContext* MainWindow::_ensureRootModelViewContext(M
     context->graphicsView = graphicsView;
     if (graphicsView->getScene() != nullptr) {
         graphicsView->getScene()->setModelLevelFilter(context->modelLevel);
+        graphicsView->getScene()->setNetworkEditorOwner(nullptr);
     }
     _rootViewContextsByModel[model] = context;
     return context;
@@ -746,6 +794,7 @@ ModelGraphicsView* MainWindow::_ensureSubmodelViewContext(ModelDataDefinition* o
     context->graphicsView = graphicsView;
     if (graphicsView->getScene() != nullptr) {
         graphicsView->getScene()->setModelLevelFilter(context->modelLevel);
+        graphicsView->getScene()->setNetworkEditorOwner(owner);
     }
     GraphicalModelViewContext* rawContext = context.get();
     _viewContextsByGraphicsView.emplace(graphicsView, std::move(context));
@@ -761,6 +810,15 @@ ModelGraphicsView* MainWindow::_ensureSubmodelViewContext(ModelDataDefinition* o
 
     _activateModelGraphicsView(graphicsView);
     _generateGraphicalModelFromModel();
+    if (_graphicalModelSerializer != nullptr && graphicsView->getScene() != nullptr) {
+        GuiExtensionPluginCatalog::restoreDiagramProjections(
+            simulator, owner, graphicsView->getScene(),
+            [this, rootModel](const std::string& extensionId, unsigned long networkId) {
+                return _graphicalModelSerializer != nullptr
+                    ? _graphicalModelSerializer->networkDiagramLayout(rootModel, extensionId, networkId)
+                    : std::any{};
+            });
+    }
     _updateModelTabs();
     _actualizeActions();
     _actualizeTabPanes();
@@ -776,6 +834,8 @@ void MainWindow::_closeSubmodelViewContext(ModelGraphicsView* graphicsView) {
     if (context == nullptr || context->kind != GraphicalModelViewContextKind::Submodel) {
         return;
     }
+
+    _captureNetworkDiagramLayoutForContext(context);
 
     const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
     if (tabIndex >= 0) {
@@ -858,10 +918,14 @@ ModelDataDefinition* MainWindow::_selectedSubmodelOwner() const {
 
     QGraphicsItem* item = selectedItems.first();
     if (auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(item)) {
-        return graphicalComponent->getComponent();
+        ModelDataDefinition* owner = graphicalComponent->getComponent();
+        return _guiExtensionManager != nullptr
+            ? _guiExtensionManager->resolveEditingContextOwner(owner) : owner;
     }
     if (auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
-        return graphicalDataDefinition->getDataDefinition();
+        ModelDataDefinition* owner = graphicalDataDefinition->getDataDefinition();
+        return _guiExtensionManager != nullptr
+            ? _guiExtensionManager->resolveEditingContextOwner(owner) : owner;
     }
     return nullptr;
 }
@@ -874,6 +938,10 @@ bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
     Model* model = simulator->getModelManager()->current();
     if (model == nullptr) {
         return false;
+    }
+
+    if (_guiExtensionManager != nullptr && _guiExtensionManager->hasEditingContext(owner)) {
+        return _guiExtensionManager->canOpenEditingContext(model, owner);
     }
 
     const unsigned int submodelLevel = static_cast<unsigned int>(owner->getId());
@@ -981,88 +1049,43 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
     _syncCurrentModelDocumentState();
     Model* model = simulator->getModelManager()->current();
     QString baseFileName = _modelSaveBaseFilename(_modelFilenames[model]);
-
+    SaveModelFormat format = requestedSaveModelFormat(_modelFilenames[model]);
     if (promptForFilename || baseFileName.isEmpty()) {
-        QString selectedFileName = QFileDialog::getSaveFileName(this,
-                                                                QObject::tr("Save Model"),
-                                                                baseFileName,
-                                                                QObject::tr("Graphical Genesys Model (*.gui);;Genesys Model (*.gen)"),
-                                                                nullptr,
-                                                                QFileDialog::DontUseNativeDialog);
+        QString selectedFilter = format == SaveModelFormat::KernelGen
+            ? tr("Genesys Model (*.gen)") : tr("Graphical Genesys Model (*.gui)");
+        const QString selectedFileName = QFileDialog::getSaveFileName(
+            this, tr("Save Model"), baseFileName,
+            tr("Graphical Genesys Model (*.gui);;Genesys Model (*.gen)"),
+            &selectedFilter, QFileDialog::DontUseNativeDialog);
         if (selectedFileName.isEmpty()) {
             return false;
         }
         baseFileName = _modelSaveBaseFilename(selectedFileName);
-        const SaveModelFormat selectedFormat = requestedSaveModelFormat(selectedFileName);
-        if (selectedFormat == SaveModelFormat::KernelGen) {
-            _insertCommandInConsole("save " + selectedFileName.toStdString());
-
-            if (!_setSimulationModelBasedOnText()) {
-                QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
-                return false;
-            }
-
-            const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
-            const QString textFilename = baseFileName + ".gen";
-            QFile saveFile(textFilename);
-            if (!saveFile.open(QIODevice::WriteOnly)) {
-                QMessageBox::information(this, QObject::tr("Unable to access file to save"), saveFile.errorString());
-                return false;
-            }
-
-            if (!_saveTextModel(&saveFile, textToSave)) {
-                saveFile.close();
-                QMessageBox::warning(this, "Save Model", "Error while saving model text.");
-                return false;
-            }
-            saveFile.close();
-
-            _modelFilenames[model] = baseFileName;
-            _modelfilename = baseFileName;
-            _modelTextContents[model] = textToSave;
-            _modelTextHasChanged[model] = false;
-            _modelGraphicalHasChanged[model] = false;
-            _textModelHasChanged = false;
-            _graphicalModelHasChanged = false;
-            model->setHasChanged(false);
-
-            SystemPreferences::pushRecentModelFile(textFilename.toStdString());
-            SystemPreferences::save();
-            if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
-                ui->graphicsView->getScene()->getUndoStack() != nullptr) {
-                ui->graphicsView->getScene()->getUndoStack()->clear();
-            }
-            _updateModelTabs();
-            _actualizeActions();
-            return true;
-        }
+        format = QFileInfo(selectedFileName).suffix().isEmpty()
+            ? (selectedFilter == tr("Genesys Model (*.gen)") ? SaveModelFormat::KernelGen : SaveModelFormat::GraphicalGui)
+            : requestedSaveModelFormat(selectedFileName);
     }
 
-    _insertCommandInConsole("save " + baseFileName.toStdString());
-
-    if (!_setSimulationModelBasedOnText()) {
-        QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
+    const QString filename = baseFileName + (format == SaveModelFormat::KernelGen ? ".gen" : ".gui");
+    _insertCommandInConsole("save " + filename.toStdString());
+    // Both formats serialize the live model transactionally. A failed transient
+    // text refresh must never overwrite a valid file or mark the document clean.
+    const bool saved = format == SaveModelFormat::KernelGen
+        ? model->save(filename.toStdString()) : _saveGraphicalModel(filename);
+    if (!saved) {
+        QMessageBox::warning(this, "Save Model", "Error while saving model. The previous file was preserved.");
         return false;
     }
 
-    const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
-
-    const QString graphicalFilename = baseFileName + ".gui";
-    if (!_saveGraphicalModel(graphicalFilename)) {
-        QMessageBox::warning(this, "Save Model", "Error while saving graphical model.");
-        return false;
-    }
-
-    _modelFilenames[model] = baseFileName;
-    _modelfilename = baseFileName;
-    _modelTextContents[model] = textToSave;
+    _modelFilenames[model] = filename;
+    _modelfilename = filename;
     _modelTextHasChanged[model] = false;
     _modelGraphicalHasChanged[model] = false;
     _textModelHasChanged = false;
     _graphicalModelHasChanged = false;
     model->setHasChanged(false);
 
-    SystemPreferences::pushRecentModelFile(graphicalFilename.toStdString());
+    SystemPreferences::pushRecentModelFile(filename.toStdString());
     SystemPreferences::save();
     if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
         ui->graphicsView->getScene()->getUndoStack() != nullptr) {
@@ -1149,6 +1172,7 @@ bool MainWindow::_closeModel(Model* model) {
         return false;
     }
 
+    _syncCurrentModelDocumentState();
     if (!simulator->getModelManager()->setCurrent(model)) {
         return false;
     }
@@ -1171,6 +1195,9 @@ bool MainWindow::_closeModel(Model* model) {
     }
     _clearModelGraphicsViewForClose(closingView);
     _removeModelTab(model);
+    if (_graphicalModelSerializer != nullptr) {
+        _graphicalModelSerializer->forgetNetworkDiagramLayouts(model);
+    }
     simulator->getModelManager()->remove(model);
     ui->progressBarSimulation->setValue(0);
     ui->actionActivateGraphicalSimulation->setChecked(false);
@@ -1270,11 +1297,21 @@ void MainWindow::_activateModelGraphicsView(ModelGraphicsView* graphicsView, boo
     ui->graphicsView = graphicsView;
     _configureModelGraphicsView(ui->graphicsView);
     _initModelGraphicsView();
+    _reloadPluginCatalogForCurrentContext();
     GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
 
     if (rebuildControllers) {
         _rebuildViewDependentControllers();
     }
+}
+
+void MainWindow::_reloadPluginCatalogForCurrentContext() {
+    if (_pluginCatalogController == nullptr || ui == nullptr || ui->graphicsView == nullptr
+        || ui->graphicsView->getScene() == nullptr) return;
+    ModelDataDefinition* editorOwner = ui->graphicsView->getScene()->networkEditorOwner();
+    _pluginCatalogController->reloadFromPluginManager(
+        _guiExtensionManager != nullptr && _guiExtensionManager->isNetworkEditingContext(editorOwner)
+            ? editorOwner : nullptr);
 }
 
 ModelGraphicsView* MainWindow::_ensureModelTab(Model* model) {
@@ -1482,9 +1519,12 @@ void MainWindow::_activatePreviousModel() {
     if (simulator == nullptr || simulator->getModelManager() == nullptr) {
         return;
     }
+    _syncCurrentModelDocumentState();
     Model* model = simulator->getModelManager()->previous();
     if (model != nullptr) {
         _ensureModelTab(model);
+        _restoreModelDocumentState(model);
+        ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
         _actualizeActions();
         _actualizeTabPanes();
     }
@@ -1494,9 +1534,12 @@ void MainWindow::_activateNextModel() {
     if (simulator == nullptr || simulator->getModelManager() == nullptr) {
         return;
     }
+    _syncCurrentModelDocumentState();
     Model* model = simulator->getModelManager()->next();
     if (model != nullptr) {
         _ensureModelTab(model);
+        _restoreModelDocumentState(model);
+        ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
         _actualizeActions();
         _actualizeTabPanes();
     }
@@ -1605,7 +1648,9 @@ void MainWindow::_rebuildViewDependentControllers() {
                                                                             [this]() { _generateGraphicalModelFromModel(); },
                                                                             [this]() { on_actionShowInternalElements_triggered(); },
                                                                             [this]() { on_actionShowEditableElements_triggered(); },
-                                                                            [this]() { on_actionShowAttachedElements_triggered(); });
+                                                                            [this]() { on_actionShowAttachedElements_triggered(); },
+                                                                            _diagramLayoutsByModel,
+                                                                            _unknownDiagramSectionsByModel);
     _propertyEditorController = std::make_unique<PropertyEditorController>(
         ui->treeViewPropertyEditor,
         ui->graphicsView,
@@ -1613,10 +1658,19 @@ void MainWindow::_rebuildViewDependentControllers() {
         propertyList,
         propertyEditorUI,
         propertyBox,
-        [this]() { _actualizeModelSimLanguage(); },
+        [this]() {
+            // A committed Property Editor change has already mutated the kernel model.
+            // Keep the text cache invalidated, but mark the graphical/kernel document dirty.
+            // SimulLang and C++ are hidden and are generated only on an explicit save/export.
+            _actualizeModelTextHasChanged(false);
+            _graphicalModelHasChanged = true;
+            if (Model* model = simulator->getModelManager()->current()) {
+                _modelGraphicalHasChanged[model] = true;
+                model->setHasChanged(true);
+            }
+        },
         [this](bool force) { _actualizeModelComponents(force); },
         [this](bool force) { _actualizeModelDataDefinitions(force); },
-        [this]() { _actualizeModelCppCode(); },
         [this]() { return _createModelImage(); },
         [this]() { _actualizeTabPanes(); },
         [this]() { _actualizeActions(); });
@@ -1647,7 +1701,10 @@ void MainWindow::_rebuildViewDependentControllers() {
         ui,
         _actionOpenSelectedSubmodel,
         [this]() { return ui->graphicsView->getScene(); },
-        [this]() { _actualizeActions(); });
+        [this]() { _actualizeActions(); },
+        [this](QMenu* menu, QGraphicsItem* item) {
+            if (_guiExtensionManager != nullptr) _guiExtensionManager->populateContextMenu(menu, item);
+        });
     ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
                                                  &GraphicalContextMenuController::handleGraphicsViewContextMenu);
     _dialogUtilityController = std::make_unique<DialogUtilityController>(
@@ -1661,9 +1718,7 @@ void MainWindow::_rebuildViewDependentControllers() {
         [this]() { _actualizeActions(); },
         [this]() { _actualizeTabPanes(); },
         [this]() {
-            if (_pluginCatalogController != nullptr) {
-                _pluginCatalogController->reloadFromPluginManager();
-            }
+            _reloadPluginCatalogForCurrentContext();
             _refreshGuiExtensions();
         },
         [this]() { return myScene(); },
@@ -1691,9 +1746,17 @@ void MainWindow::_refreshGuiExtensions() {
     extensionContext.ui = ui;
     extensionContext.graphicsView = ui->graphicsView;
     extensionContext.graphicsScene = ui->graphicsView->getScene();
-    _guiExtensionManager->setLoadedModelPluginIds(collectLoadedModelPluginIds(simulator));
+    const auto loadedModelPluginIds = collectLoadedModelPluginIds(simulator);
+    GuiExtensionPluginCatalog::setAvailableModelPluginIds(loadedModelPluginIds);
+    _guiExtensionManager->setLoadedModelPluginIds(loadedModelPluginIds);
+    const auto loadedModelPluginVersions = collectLoadedModelPluginVersions(simulator);
+    GuiExtensionPluginCatalog::setAvailableModelPluginVersions(loadedModelPluginVersions);
+    _guiExtensionManager->setAvailableModelPluginVersions(loadedModelPluginVersions);
     _guiExtensionManager->setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
     _guiExtensionManager->rebuild(extensionContext);
+    if (ui->treeViewPropertyEditor != nullptr) {
+        ui->treeViewPropertyEditor->setGuiExtensionManager(_guiExtensionManager.get());
+    }
 }
 
 void MainWindow::_disconnectSceneSignals(const char* context) {
@@ -1736,29 +1799,15 @@ void MainWindow::refreshGuiExtensions() {
 }
 
 void MainWindow::refreshPluginCatalog() {
-	if (_pluginCatalogController != nullptr) {
-		_pluginCatalogController->reloadFromPluginManager();
-	}
+	_reloadPluginCatalogForCurrentContext();
 }
 
 void MainWindow::_onPropertyEditorModelChanged() {
-    qInfo() << "[MainWindow] _onPropertyEditorModelChanged enter";
-    // Keep this wrapper for compatibility during the incremental Phase 6 refactor.
-    if (_propertyEditorController != nullptr && !_isDeferredPropertyEditorModelChangedScheduled) {
-        _isDeferredPropertyEditorModelChangedScheduled = true;
-        qInfo() << "[MainWindow] scheduling deferred property-editor model-changed handling";
-        QMetaObject::invokeMethod(this, [this]() {
-            _isDeferredPropertyEditorModelChangedScheduled = false;
-            if (_propertyEditorController == nullptr) {
-                return;
-            }
-            qInfo() << "[MainWindow] property-editor pipeline active before controller callback="
-                    << _propertyEditorController->isPostCommitPipelineActive();
-            qInfo() << "[MainWindow] executing deferred property-editor model-changed handling";
-            _propertyEditorController->onPropertyEditorModelChanged();
-        }, Qt::QueuedConnection);
+    if (_propertyEditorController != nullptr) {
+        // The controller records dirty state immediately and coalesces widget work
+        // using a callback whose lifetime ends with this view's controller.
+        _propertyEditorController->onPropertyEditorModelChanged();
     }
-    qInfo() << "[MainWindow] _onPropertyEditorModelChanged exit";
 }
 
 
@@ -1796,6 +1845,11 @@ void MainWindow::_actualizeActions() {
             const QList<QGraphicsItem*> selectedItems = scene->selectedItems();
             const QList<QGraphicsItem*> userOperableSelection = scene->userOperableItems(selectedItems);
             canCutCopyDelete = !userOperableSelection.isEmpty();
+            if (!canCutCopyDelete && scene->hasModelLevelFilter() && scene->modelLevelFilter() != 0
+                && selectedItems.size() == 1) {
+                canCutCopyDelete = GuiExtensionPluginCatalog::canDeleteNetworkElement(
+                    scene->networkEditorOwner(), selectedItems.first());
+            }
             canPaste = !_draw_copy->empty() || !_gmc_copies->empty() || !_group_copy->empty() || !_ports_copies->empty();
 
             int selectedComponents = 0;
@@ -1815,6 +1869,16 @@ void MainWindow::_actualizeActions() {
     }
     // Lock GUI interactions tied to model editing while simulation is running or paused.
     const bool simulationInteractionLocked = opened && (running || paused);
+    if (_guiExtensionManager != nullptr) {
+        GuiExtensionRuntimeContext extensionContext;
+        extensionContext.simulator = simulator;
+        extensionContext.mainWindow = this;
+        extensionContext.ui = ui;
+        extensionContext.graphicsView = ui != nullptr ? ui->graphicsView : nullptr;
+        extensionContext.graphicsScene = extensionContext.graphicsView != nullptr
+            ? extensionContext.graphicsView->getScene() : nullptr;
+        _guiExtensionManager->refreshActionStates(extensionContext);
+    }
 
     //
     ui->graphicsView->setEnabled(opened);
@@ -1835,6 +1899,12 @@ void MainWindow::_actualizeActions() {
         _actionModelNext->setEnabled(opened && simulator->getModelManager()->canGoNext() && !simulationInteractionLocked);
     }
     if (_actionOpenSelectedSubmodel != nullptr) {
+        const bool selectedNetwork = _guiExtensionManager != nullptr
+            && _guiExtensionManager->isNetworkEditingContext(_selectedSubmodelOwner());
+        _actionOpenSelectedSubmodel->setText(selectedNetwork ? tr("Open Network") : tr("Open Submodel"));
+        _actionOpenSelectedSubmodel->setToolTip(selectedNetwork
+            ? tr("Open the selected Network's graphical context.")
+            : tr("Open a graphical tab scoped to the selected item's internal model level."));
         _actionOpenSelectedSubmodel->setEnabled(opened
                                                 && !simulationInteractionLocked
                                                 && _canOpenSubmodelFor(_selectedSubmodelOwner()));
@@ -1902,7 +1972,8 @@ void MainWindow::_actualizeActions() {
     }
 
     //slider animation speed
-    ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused && animationEnabled);
+    //ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused && animationEnabled);
+    ui->horizontalSliderAnimationSpeed->setEnabled(animationEnabled);
 
     ui->actionSelectAll->setEnabled(opened && !simulationInteractionLocked);
 
@@ -1917,9 +1988,9 @@ void MainWindow::_actualizeTabPanes() {
             index = ui->tabWidgetModel->currentIndex();
             if (ui->tabWidgetModel->currentIndex() == CONST.TabModelDiagramIndex) {
                 _createModelImage();
-            } else if (index == CONST.TabModelSimLangIndex) {
+            } else if (index == CONST.TabModelSimLangIndex && ui->tabWidgetModel->isTabVisible(index)) {
                 this->_actualizeModelSimLanguage();
-            } else if (index == CONST.TabModelCppCodeIndex) {
+            } else if (index == CONST.TabModelCppCodeIndex && ui->tabWidgetModel->isTabVisible(index)) {
                 _actualizeModelCppCode();
             } else if (index == CONST.TabModelComponentsIndex) {
                 _actualizeModelComponents(true);

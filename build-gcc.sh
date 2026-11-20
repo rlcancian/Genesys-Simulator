@@ -84,7 +84,7 @@ Examples:
   ./build-gcc.sh terminal-app
   ./build-gcc.sh worker-app
   ./build-gcc.sh gui-app
-  ./build-gcc.sh smart:Smart_ModalModelFSM
+  ./build-gcc.sh smart:Smart_ModalModelDefaultNetwork
   ./build-gcc.sh example:smarts/Smart_PythonForG.cpp --class Smart_PythonForG
 HELP
 }
@@ -99,7 +99,7 @@ Presets:
   terminal-app
   worker-app
   gui-app
-  smart:Smart_ModalModelFSM
+  smart:Smart_ModalModelDefaultNetwork
   smart:Smart_SeizeDelayRelease
   smart:Smart_SeizeDelayReleaseMany
   smart:Smart_SeizeDelayReleaseNoDataDefs

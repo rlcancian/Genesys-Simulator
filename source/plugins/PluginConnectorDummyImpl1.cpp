@@ -33,7 +33,7 @@
 #include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
 #include "plugins/components/WholeCellModeling/StochasticTranscription.h"
 #include "plugins/components/WholeCellModeling/StochasticTranslation.h"
-#include "plugins/components/MaterialHandling/Access.h"
+#include "plugins/components/Transfer/Access.h"
 #include "components/Logic/Assign.h"
 #include "plugins/components/Grouping/Batch.h"
 #include "plugins/components/DiscreteProcessing/Buffer.h"
@@ -44,40 +44,41 @@
 #include "plugins/components/AI/AIAssistant.h"
 #include "components/Logic/Create.h"
 #include "plugins/components/Decisions/Decide.h"
-#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/Continuous/DiffEquations.h"
 #include "components/Logic/Dispose.h"
 #include "plugins/components/Decisions/DropOff.h"
-#include "plugins/components/Template/DummyComponent.h"
-#include "plugins/components/MaterialHandling/Enter.h"
-#include "plugins/components/MaterialHandling/Exit.h"
-#include "plugins/components/MaterialHandling/Leave.h"
+#include "plugins/components/Template/TemplateComponent.h"
+#include "plugins/components/Transfer/Enter.h"
+#include "plugins/components/Transfer/Exit.h"
+#include "plugins/components/Transfer/Leave.h"
+#include "plugins/components/Transfer/Label.h"
+#include "plugins/components/Transfer/Goto.h"
+#include "plugins/components/Transfer/Move.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 //#include "../../plugins/components/Octave.h"
-#include "components/MaterialHandling/PickStation.h"
+#include "components/Transfer/PickStation.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
-#include "plugins/components/ModalModel/ModalModelFSM.h"
-#include "plugins/components/ModalModel/ModalModelPetriNet.h"
-//#include "../../plugins/components/Read.h"
+#include "plugins/components/InputOutput/Read.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
 #include "plugins/components/InputOutput/Record.h"
-#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/Transfer/Route.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
-#include "plugins/components/MaterialHandling/Start.h"
+#include "plugins/components/Transfer/Start.h"
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Synchronization/Signal.h"
 #include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
-#include "plugins/components/MaterialHandling/Stop.h"
-#include "plugins/components/MaterialHandling/Store.h"
+#include "plugins/components/Transfer/Stop.h"
+#include "plugins/components/Transfer/Store.h"
 #include "plugins/components/Grouping/Separate.h"
 #include "components/ModalModel/Submodel.h"
-#include "plugins/components/MaterialHandling/Unstore.h"
+#include "plugins/components/Transfer/Unstore.h"
 #include "plugins/components/Synchronization/Wait.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/Continuous/LSODE.h"
@@ -104,23 +105,39 @@
 #include "plugins/data/ExternalIntegration/PythonRuntime.h"
 #include "plugins/data/AI/AISupport.h"
 #include "plugins/data/Continuous/ODESolver.h"
-#include "plugins/data/Template/DummyElement.h"
+#include "plugins/data/Template/TemplateDataDefinition.h"
 #include "plugins/data/Grouping/EntityGroup.h"
+#include "plugins/data/ModalModel/DefaultNetwork.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/ModalModel/GraphNode.h"
+#include "plugins/data/ModalModel/GraphEdge.h"
+#include "plugins/data/ModalModel/GraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedGraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
+#include "plugins/data/ModalModel/MarkovState.h"
+#include "plugins/data/ModalModel/MarkovChainNetwork.h"
+#include "plugins/data/ModalModel/CPNTransition.h"
+#include "plugins/data/ModalModel/CPNArc.h"
+#include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/InputOutput/File.h"
 #include "data/Logic/Formula.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
-#include "data/Logic/Label.h"
+#include "data/Transfer/LabelDefinition.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
-#include "plugins/data/MaterialHandling/Sequence.h"
+#include "plugins/data/Transfer/Distance.h"
+#include "plugins/data/Transfer/Conveyor.h"
+#include "plugins/data/Transfer/Sequence.h"
+#include "plugins/data/Transfer/Segment.h"
 #include "data/Logic/Set.h"
 #include "plugins/data/Synchronization/SignalData.h"
 #include "data/ExternalIntegration/SPICERunner.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "plugins/data/ExternalIntegration/OctaveRunner.h"
-#include "plugins/data/MaterialHandling/Station.h"
-#include "plugins/data/MaterialHandling/Storage.h"
+#include "plugins/data/Transfer/Station.h"
+#include "plugins/data/Transfer/Storage.h"
+#include "plugins/data/Transfer/Transporter.h"
 #include "data/Logic/Variable.h"
 //#include "../../plugins/data/Expression.h"
 //#include "../../plugins/data/Conveyor.h"
@@ -179,14 +196,28 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("buffer.so");
     filenames->insert("create.so");
     filenames->insert("dispose.so");
-    filenames->insert("dummy.so");
-    filenames->insert("dummyelement.so");
+	    filenames->insert("templatecomponent.so");
+	    filenames->insert("templatedatadefinition.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
+    filenames->insert("defaultnetwork.so");
+    filenames->insert("efsmnetwork.so");
+    filenames->insert("graphnode.so");
+    filenames->insert("graphedge.so");
+    filenames->insert("graphnetwork.so");
+    filenames->insert("directedgraphnetwork.so");
+    filenames->insert("directedacyclicgraphnetwork.so");
+    filenames->insert("markovstate.so");
+    filenames->insert("markovchainnetwork.so");
+    filenames->insert("cpntransition.so");
+    filenames->insert("cpnarc.so");
+    filenames->insert("coloredpetrinetnetwork.so");
     filenames->insert("formula.so");
     filenames->insert("groprogram.so");
     filenames->insert("bacteriasignalgrid.so");
+    filenames->insert("labeldefinition.so");
     filenames->insert("label.so");
+    filenames->insert("goto.so");
     filenames->insert("queue.so");
     filenames->insert("resource.so");
     filenames->insert("variable.so");
@@ -201,7 +232,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("biosimulatorrunner.so");
     filenames->insert("cellularautomata.so");
     filenames->insert("clone.so");
-    filenames->insert("ModalModelDefault.so");
+	    filenames->insert("ModalModel.so");
     filenames->insert("decide.so");
     filenames->insert("delay.so");
     filenames->insert("dropoff.so");
@@ -229,9 +260,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("continuoussystemcomponent.so");
     //filenames->insert("finiteelement.so");
     filenames->insert("old_odeelement.so");
-    filenames->insert("modalmodelfsm.so");
     filenames->insert("fsmstate.so");
-    filenames->insert("modalmodelpetrinet.so");
     //filenames->insert("finitevolume.so");
     filenames->insert("cppcompiler.so");
     filenames->insert("odesolver.so");
@@ -244,24 +273,27 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("rsimulatorrunner.so");
     filenames->insert("octave.so");
     filenames->insert("file.so");
-    //filenames->insert("read.so");
+    filenames->insert("read.so");
     filenames->insert("write.so");
     filenames->insert("access.so");
+    filenames->insert("conveyor.so");
     filenames->insert("defaultnode.so");
+    filenames->insert("distance.so");
     filenames->insert("enter.so");
     filenames->insert("exit.so");
     filenames->insert("leave.so");
+    filenames->insert("move.so");
     filenames->insert("pickstation.so");
     filenames->insert("petriplace.so");
     filenames->insert("route.so");
     filenames->insert("rsimulator.so");
+    filenames->insert("segment.so");
     filenames->insert("start.so");
     filenames->insert("stop.so");
     filenames->insert("station.so");
+    filenames->insert("transporter.so");
     filenames->insert("sequence.so");
     /*
-    if (fn == "cellularautomata.so");"modalmodelfsm.so");
-    filenames->insert(("modalmodelpetrinet.so"
     filenames->insert("efsmData.so");
     filenames->insert("efsm.so");
     filenames->insert("fsm_state.so");
@@ -347,22 +379,50 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Create::GetPluginInformation;
     else if (fn == "dispose.so")
         GetInfo = &Dispose::GetPluginInformation;
-    else if (fn == "dummy.so")
-        GetInfo = &DummyComponent::GetPluginInformation;
-    else if (fn == "dummyelement.so")
-        GetInfo = &DummyElement::GetPluginInformation;
+	else if (fn == "templatecomponent.so" || fn == "dummy.so")
+        GetInfo = &TemplateComponent::GetPluginInformation;
+	else if (fn == "templatedatadefinition.so" || fn == "dummyelement.so")
+        GetInfo = &TemplateDataDefinition::GetPluginInformation;
     else if (fn == "entitygroup.so")
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")
         GetInfo = &Failure::GetPluginInformation;
+    else if (fn == "defaultnetwork.so")
+        GetInfo = &DefaultNetwork::GetPluginInformation;
+    else if (fn == "efsmnetwork.so")
+        GetInfo = &EFSMNetwork::GetPluginInformation;
+    else if (fn == "graphnode.so")
+        GetInfo = &GraphNode::GetPluginInformation;
+    else if (fn == "graphedge.so")
+        GetInfo = &GraphEdge::GetPluginInformation;
+    else if (fn == "graphnetwork.so")
+        GetInfo = &GraphNetwork::GetPluginInformation;
+    else if (fn == "directedgraphnetwork.so")
+        GetInfo = &DirectedGraphNetwork::GetPluginInformation;
+    else if (fn == "directedacyclicgraphnetwork.so")
+        GetInfo = &DirectedAcyclicGraphNetwork::GetPluginInformation;
+    else if (fn == "markovstate.so")
+        GetInfo = &MarkovState::GetPluginInformation;
+    else if (fn == "markovchainnetwork.so")
+        GetInfo = &MarkovChainNetwork::GetPluginInformation;
+    else if (fn == "cpntransition.so")
+        GetInfo = &CPNTransition::GetPluginInformation;
+    else if (fn == "cpnarc.so")
+        GetInfo = &CPNArc::GetPluginInformation;
+    else if (fn == "coloredpetrinetnetwork.so")
+        GetInfo = &ColoredPetriNetNetwork::GetPluginInformation;
     else if (fn == "formula.so")
         GetInfo = &Formula::GetPluginInformation;
     else if (fn == "groprogram.so")
         GetInfo = &GroProgram::GetPluginInformation;
     else if (fn == "bacteriasignalgrid.so")
         GetInfo = &BacteriaSignalGrid::GetPluginInformation;
+    else if (fn == "labeldefinition.so")
+        GetInfo = &LabelDefinition::GetPluginInformation;
     else if (fn == "label.so")
         GetInfo = &Label::GetPluginInformation;
+    else if (fn == "goto.so")
+        GetInfo = &Goto::GetPluginInformation;
     else if (fn == "queue.so")
         GetInfo = &Queue::GetPluginInformation;
     else if (fn == "resource.so")
@@ -391,8 +451,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &CellularAutomataComp::GetPluginInformation;
     else if (fn == "clone.so")
         GetInfo = &Clone::GetPluginInformation;
-    else if (fn == "ModalModelDefault.so")
-        GetInfo = &ModalModelDefault::GetPluginInformation;
+	else if (fn == "ModalModel.so" || fn == "ModalModelDefault.so")
+	    GetInfo = &ModalModel::GetPluginInformation;
     else if (fn == "decide.so")
         GetInfo = &Decide::GetPluginInformation;
     else if (fn == "delay.so")
@@ -446,12 +506,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
     //else if (fn == "finiteelement.so")
     else if (fn == "old_odeelement.so")
         GetInfo = &OLD_ODEelement::GetPluginInformation;
-    else if (fn == "modalmodelfsm.so")
-        GetInfo = &ModalModelFSM::GetPluginInformation;
     else if (fn == "fsmstate.so")
         GetInfo = &FSMState::GetPluginInformation;
-    else if (fn == "modalmodelpetrinet.so")
-        GetInfo = &ModalModelPetriNet::GetPluginInformation;
     //    GetInfo = &LSODE::GetPluginInformation;
     //else if (fn == "finitevolume.so")
     //    GetInfo = &LSODE::GetPluginInformation;
@@ -477,20 +533,26 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
     	GetInfo = &OctaveRunner::GetPluginInformation;
     else if (fn == "file.so")
         GetInfo = &File::GetPluginInformation;
-    //else if (fn == "read.so")
-    //    GetInfo = &Read::GetPluginInformation;
+    else if (fn == "read.so")
+        GetInfo = &Read::GetPluginInformation;
     else if (fn == "write.so")
         GetInfo = &Write::GetPluginInformation;
     else if (fn == "access.so")
         GetInfo = &Access::GetPluginInformation;
+    else if (fn == "conveyor.so")
+        GetInfo = &Conveyor::GetPluginInformation;
     else if (fn == "defaultnode.so")
         GetInfo = &DefaultNode::GetPluginInformation;
+    else if (fn == "distance.so")
+        GetInfo = &Distance::GetPluginInformation;
     else if (fn == "enter.so")
         GetInfo = &Enter::GetPluginInformation;
     else if (fn == "exit.so")
         GetInfo = &Exit::GetPluginInformation;
     else if (fn == "leave.so")
         GetInfo = &Leave::GetPluginInformation;
+    else if (fn == "move.so")
+        GetInfo = &Move::GetPluginInformation;
     else if (fn == "pickstation.so")
         GetInfo = &PickStation::GetPluginInformation;
     else if (fn == "petriplace.so")
@@ -499,12 +561,16 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Route::GetPluginInformation;
     else if (fn == "rsimulator.so")
         GetInfo = &RSimulator::GetPluginInformation;
+    else if (fn == "segment.so")
+        GetInfo = &Segment::GetPluginInformation;
     else if (fn == "start.so")
         GetInfo = &Start::GetPluginInformation;
     else if (fn == "stop.so")
         GetInfo = &Stop::GetPluginInformation;
     else if (fn == "station.so")
         GetInfo = &Station::GetPluginInformation;
+    else if (fn == "transporter.so")
+        GetInfo = &Transporter::GetPluginInformation;
     else if (fn == "sequence.so")
         GetInfo = &Sequence::GetPluginInformation;
     /*

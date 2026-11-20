@@ -66,7 +66,13 @@ public:
 
     /** @brief Rebuilds the full scene model representation from kernel source components. */
     void generateGraphicalModelFromModel();
-    /** @brief Synchronizes only data-definition graphical layer with current model preserving existing layout. */
+    /**
+     * @brief Synchronizes graphical data definitions while preserving existing layout.
+     * @details A non-root level discovers its directly registered ModelDataDefinitions
+     * even without process components or attached/internal links. Root-level visibility
+     * retains the established process-association behavior. This does not draw
+     * mathematical Network transitions or change domain object ownership.
+     */
     static void synchronizeGraphicalDataDefinitionsLayer(Simulator* simulator, ModelGraphicsScene* scene);
 
 private:

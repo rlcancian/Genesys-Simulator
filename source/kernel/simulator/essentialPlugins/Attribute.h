@@ -27,42 +27,24 @@
 //namespace GenesysKernel {
 
 /*!
- Attribute module
-DESCRIPTION
-This data module is used to define an attribute’s dimension, data type and initial
-value(s). An attribute is a characteristic of all entities created, but with a specific
-value that can differ from one entity to another. Attributes can be referenced in other
-modules (for example, the Decide module), can be reassigned a new value with the
-Assign module, and can be used in any expression. Attribute values are unique for
-each entity, as compared to Variables which are global to the simulation module.
-There are three methods for manually editing the Initial Values of an Attribute
-module:
-- Using the standard spreadsheet interface. In the module spreadsheet,
-  right-click on the Initial Values cell and select the Edit via spreadsheet
-  menu item. The values for two-dimensional arrays should be entered one
-  column at a time. Array elements not explicitly assigned are assumed to
-  have the last entered value.
-- Using the module dialog box. In the module spreadsheet, right-click on any
-  cell and select the Edit via dialog menu item. The values for two-dimensional
-  arrays should be entered one column at a time. Array elements not explicitly
-  assigned are assumed to have the last entered value.
-- Using the two-dimensional (2-D) spreadsheet interface. In the module
-  spreadsheet, click on the Initial Values cell.
-TYPICAL USES
-* Due date of an order (entity)
-* Priority of an order (entity)
-* Color of a part (entity)
- PROMPTS
- Prompt Description
-Name The unique name of the attribute being defined.
-Rows Number of rows in a one- or two-dimensional attribute.
-Columns Number of columns in a two-dimensional attribute.
-Data Type The data type of the values stored in the attribute. Valid types are
-Real and String. The default type is Real.
-Initial Values Lists the initial value or values of the attribute. You can assign
-new values to the attribute by using the Assign module.
-Initial Value Entity attribute value when entity is created and enters the
-system.
+ * \brief Data definition declaring one named, per-entity attribute (its
+ * dimensionality and sparse initial values), shared across every entity
+ * created in the model.
+ *
+ * Arena correspondence: the "Attribute module" (Rockwell Automation,
+ * *Getting Started with Arena*, "The Basic Process Panel", p. 43), which
+ * defines an attribute's rows/columns, data type and initial value(s).
+ * Attribute values are per-entity (each Entity instance holds its own
+ * store), which is the same distinction Arena makes between per-entity
+ * Attributes and global Variables — see Variable, which extends this class
+ * to add global (model-wide) storage.
+ *
+ * Initial values are kept as a sparse, indexed store (SparseValueStore)
+ * addressed by a scalar or textual index, and can also be edited through the
+ * bracket-notation text form (\c getInitialValuesText()/setInitialValuesText()).
+ *
+ * Known difference from Arena: only a numeric (\c double) value type is
+ * modeled; Arena's "String" data type has no equivalent here.
  */
 class Attribute : public ModelDataDefinition {
 public:

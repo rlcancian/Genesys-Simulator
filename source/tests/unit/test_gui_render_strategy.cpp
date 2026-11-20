@@ -9,6 +9,10 @@
 #include <QByteArray>
 #include <QColor>
 #include <QImage>
+#include <QFontMetrics>
+#include <QFile>
+#include <QStandardPaths>
+#include <QTransform>
 #include <QLineF>
 #include <QPainter>
 #include <QPointF>
@@ -62,6 +66,20 @@ GraphicalModelItemRenderContext geneticPartContext(const QString& partType) {
     context.semanticClassName = QStringLiteral("GeneticCircuitPart");
     context.semanticSubtype = partType;
     context.fillColor = QColor(72, 124, 179, 210);
+    context.hasSpecializedGlyph = true;
+    context.specializedAccent = partType.contains(QStringLiteral("promoter"), Qt::CaseInsensitive)
+                                    ? QColor(64, 170, 120)
+                                    : QColor(52, 152, 219);
+    if (partType.contains(QStringLiteral("promoter"), Qt::CaseInsensitive)) {
+        context.specializedShape.moveTo(18, 28);
+        context.specializedShape.lineTo(118, 28);
+        context.specializedShape.lineTo(142, 40);
+        context.specializedShape.lineTo(118, 52);
+        context.specializedShape.lineTo(18, 52);
+        context.specializedShape.closeSubpath();
+    } else {
+        context.specializedShape.addRoundedRect(QRectF(24, 28, 112, 24), 6, 6);
+    }
     return context;
 }
 
@@ -73,6 +91,20 @@ GraphicalModelItemRenderContext geneticRegulationContext(const QString& regulati
     context.semanticClassName = QStringLiteral("GeneticRegulation");
     context.semanticSubtype = regulationType;
     context.fillColor = QColor(214, 82, 102, 210);
+    context.hasSpecializedGlyph = true;
+    context.specializedAccent = regulationType.contains(QStringLiteral("activation"), Qt::CaseInsensitive)
+                                    ? QColor(64, 170, 120)
+                                    : QColor(214, 82, 102);
+    context.specializedShape.addRoundedRect(QRectF(24, 28, 112, 24), 12, 12);
+    if (regulationType.contains(QStringLiteral("activation"), Qt::CaseInsensitive)) {
+        context.specializedShape.moveTo(132, 40);
+        context.specializedShape.lineTo(118, 31);
+        context.specializedShape.lineTo(118, 49);
+        context.specializedShape.closeSubpath();
+    } else {
+        context.specializedDetails.moveTo(126, 31);
+        context.specializedDetails.lineTo(126, 49);
+    }
     return context;
 }
 
@@ -115,7 +147,7 @@ int countDifferentPixels(const QImage& left, const QImage& right) {
 } // namespace
 
 TEST(GuiRenderStrategy, SelectsStrategyFromInterfaceStylePreference) {
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     EXPECT_STREQ("classic", GraphicalModelItemRenderer::currentStrategy().name());
 
     SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Modern);
@@ -126,7 +158,7 @@ TEST(GuiRenderStrategy, ClassicAndOrganicStrategiesHaveDifferentHitShapes) {
     const auto dataContext = baseContext(GraphicalModelItemRenderContext::ItemKind::DataDefinition);
     const auto componentContext = baseContext(GraphicalModelItemRenderContext::ItemKind::Component);
 
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     const QPainterPath classicDataShape = GraphicalModelItemRenderer::shape(dataContext);
     const QPainterPath classicComponentShape = GraphicalModelItemRenderer::shape(componentContext);
 
@@ -146,7 +178,7 @@ TEST(GuiRenderStrategy, ClassicAndOrganicStrategiesHaveDifferentHitShapes) {
 TEST(GuiRenderStrategy, OrganicRenderingIsNonBlankAndVisiblyDifferentFromClassic) {
     const auto context = baseContext(GraphicalModelItemRenderContext::ItemKind::Component);
 
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     const QImage classicImage = render(context);
 
     SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Modern);
@@ -161,7 +193,7 @@ TEST(GuiRenderStrategy, GeneticCircuitPartUsesSpecializedGlyphInClassicAndOrgani
     const auto genericContext = baseContext(GraphicalModelItemRenderContext::ItemKind::DataDefinition);
     const auto promoterContext = geneticPartContext(QStringLiteral("Promoter"));
 
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     const QPainterPath genericClassicShape = GraphicalModelItemRenderer::shape(genericContext);
     const QPainterPath promoterClassicShape = GraphicalModelItemRenderer::shape(promoterContext);
     const QImage genericClassicImage = render(genericContext);
@@ -187,7 +219,7 @@ TEST(GuiRenderStrategy, GeneticRegulationUsesSpecializedGlyphInClassicAndOrganic
     const auto activationContext = geneticRegulationContext(QStringLiteral("Activation"));
     const auto repressionContext = geneticRegulationContext(QStringLiteral("Repression"));
 
-    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Arena);
     const QPainterPath genericClassicShape = GraphicalModelItemRenderer::shape(genericContext);
     const QPainterPath activationClassicShape = GraphicalModelItemRenderer::shape(activationContext);
     const QPainterPath repressionClassicShape = GraphicalModelItemRenderer::shape(repressionContext);
@@ -312,11 +344,105 @@ TEST(GuiDataDefinitionLayout, RadialLayerKeepsLowerChildrenOnSameArcSide) {
     EXPECT_GT(secondLayer.y(), parentBounds.bottom());
 }
 
+TEST(SystemPreferencesTest, TraceLevelDefaultsToMostDetailedAndPreservesSavedChoice) {
+    const QString preferencesFile = SystemPreferences::configFilePath();
+    QFile::remove(preferencesFile);
+
+    EXPECT_FALSE(SystemPreferences::load());
+    EXPECT_EQ(SystemPreferences::traceLevel(), TraceManager::Level::L9_mostDetailed);
+
+    SystemPreferences::setTraceLevel(TraceManager::Level::L7_internal);
+    ASSERT_TRUE(SystemPreferences::save());
+    SystemPreferences::resetToDefaults();
+    ASSERT_TRUE(SystemPreferences::load());
+    EXPECT_EQ(SystemPreferences::traceLevel(), TraceManager::Level::L7_internal);
+
+    QFile::remove(preferencesFile);
+    SystemPreferences::resetToDefaults();
+}
+
 int main(int argc, char** argv) {
     qputenv("QT_QPA_PLATFORM", QByteArray("offscreen"));
+    QStandardPaths::setTestModeEnabled(true);
     QApplication app(argc, argv);
     ::testing::InitGoogleTest(&argc, argv);
     const int result = RUN_ALL_TESTS();
     SystemPreferences::resetToDefaults();
     return result;
+}
+
+TEST(GuiRenderStrategy, PrimaryCaptionWrapsWithoutLineLimitOrOverlap) {
+    QFont font("DejaVu Sans", 12);
+    QFont bold(font);
+    bold.setBold(true);
+    const qreal width = QFontMetrics(bold).horizontalAdvance("Label Label") + 8;
+    for (int count : {1, 2, 3, 4, 7}) {
+        auto context = baseContext(GraphicalModelItemRenderContext::ItemKind::Component);
+        context.primaryText = QStringList(count * 2, "Label").join(' ');
+        context.secondaryText = "Name";
+        const QRectF area(0, 0, width, 500);
+        const auto layout = GraphicalModelItemRenderer::layoutText(context, area, font);
+        ASSERT_EQ(layout.lines.size(), count + 1);
+        EXPECT_DOUBLE_EQ(layout.scale, 1.0);
+        QStringList recovered;
+        for (int i = 0; i < count; ++i) {
+            const auto& line = layout.lines[i];
+            EXPECT_TRUE(line.font.bold());
+            EXPECT_EQ(line.alignment, Qt::AlignHCenter);
+            recovered << line.text;
+            EXPECT_TRUE(area.contains(line.rect));
+            EXPECT_LE(line.rect.bottom(), layout.lines[i + 1].rect.top());
+        }
+        EXPECT_EQ(recovered.join(' '), context.primaryText);
+        EXPECT_FALSE(layout.lines.last().font.bold());
+        EXPECT_LT(layout.lines.last().font.pointSizeF(), layout.lines.first().font.pointSizeF());
+    }
+}
+
+TEST(GuiRenderStrategy, OversizedCaptionFitsBothDimensionsAndPreservesAllCharacters) {
+    for (auto kind : {GraphicalModelItemRenderContext::ItemKind::Component,
+                      GraphicalModelItemRenderContext::ItemKind::DataDefinition}) {
+        auto context = baseContext(kind);
+        context.primaryText = QString(400, 'W');
+        context.secondaryText = "Model_Name";
+        const QRectF area(10, 10, 130, 55);
+        const auto layout = GraphicalModelItemRenderer::layoutText(context, area, QFont("DejaVu Sans", 12));
+        ASSERT_GT(layout.lines.size(), 4);
+        EXPECT_LT(layout.scale, 1);
+        QTransform transform;
+        transform.translate(area.center().x(), area.center().y());
+        transform.scale(layout.scale, layout.scale);
+        transform.translate(-area.center().x(), -area.center().y());
+        QString recovered;
+        QRectF previous;
+        for (const auto& line : layout.lines) {
+            if (line.font.bold()) recovered += line.text;
+            auto rect = transform.mapRect(line.rect);
+            EXPECT_TRUE(area.contains(rect));
+            if (!previous.isNull()) EXPECT_LE(previous.bottom(), rect.top() + 1e-9);
+            previous = rect;
+        }
+        EXPECT_EQ(recovered, context.primaryText);
+        for (auto style : {SystemPreferences::InterfaceStyle::Arena, SystemPreferences::InterfaceStyle::Modern}) {
+            SystemPreferences::setInterfaceStyle(style);
+            auto noText = context;
+            noText.primaryText.clear(); noText.secondaryText.clear();
+            const QImage image = render(context);
+            const QImage blank = render(noText);
+            EXPECT_GT(countDifferentPixels(image, blank), 0);
+            const QRectF bounds = context.bounds.translated(24, 24);
+            for (int y = 0; y < image.height(); ++y) {
+                for (int x = 0; x < image.width(); ++x) {
+                    if (image.pixel(x, y) != blank.pixel(x, y))
+                        EXPECT_TRUE(bounds.contains(QPointF(x, y)));
+                }
+            }
+            if (kind == GraphicalModelItemRenderContext::ItemKind::Component) {
+                auto preview = context;
+                preview.primaryText = QString::fromUtf8("Processamento de pedidos de clientes com prioridade elevada");
+                render(preview).save(style == SystemPreferences::InterfaceStyle::Arena
+                                    ? "/tmp/genesys-wrap-classic.png" : "/tmp/genesys-wrap-organic.png");
+            }
+        }
+    }
 }

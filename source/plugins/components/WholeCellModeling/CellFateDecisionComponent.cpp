@@ -157,6 +157,8 @@ void CellFateDecisionComponent::_onDispatchEvent(Entity* entity, unsigned int in
 	}
 
 	_lastRoutedPort = _selectOutputPort();
+	traceSimulation(this, "CellFateDecisionComponent selected output " + std::to_string(_lastRoutedPort), TraceManager::Level::L7_internal);
+	traceSimulation(this, "Cell lifecycle phase=\"" + _wholeCellState->getLifecyclePhase() + "\", viable=" + std::to_string(_wholeCellState->isViable()), TraceManager::Level::L9_mostDetailed);
 	_forwardEntity(entity, _lastRoutedPort);
 }
 

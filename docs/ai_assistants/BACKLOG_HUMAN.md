@@ -1,0 +1,489 @@
+---
+document_type: backlog
+authority: human-decision-source
+owner: project-maintainer
+last_updated: 2026-11-16
+review_cadence: on-decision-or-status-change
+status: active
+tracks: 511
+---
+
+# GenESyS Human Decision Backlog
+
+## 1. Purpose
+
+This file records decisions that an AI agent must not make by assumption. Each entry identifies the evidence, options, recommendation, and implementation work that becomes eligible after a maintainer decision.
+
+A decision recorded here is not implemented automatically unless a corresponding autonomous task is created or activated in `BACKLOG_AUTONOMOUS.md`.
+
+## 2. Decision status values
+
+- `open` — human decision required;
+- `research-needed` — more evidence must be collected before deciding;
+- `decision-recorded` — choice made; implementation may still be pending;
+- `implemented` — approved choice implemented and validated;
+- `deferred` — intentionally postponed;
+- `cancelled` — no longer part of the project plan.
+
+## 3. Architectural decisions
+
+### HUM-MODAL-001 — Legacy ModalModel wrapper and persistence compatibility
+
+- Priority: `P1`
+- Status: `done_confirmed`
+- Decision: historical `.gen` compatibility is not a requirement for the current continuation; current persistence must remain supported, and obsolete wrappers may be removed only after current consumers, registrations, tests, examples and persistence paths are migrated and proven unnecessary.
+- Confirmed evidence:
+  - `ModalModelDefault` supports a `DefaultNetwork` bridge with explicit input/output bindings;
+  - `EFSMNetwork`, `MarkovChainNetwork`, `GraphNetwork` and `ColoredPetriNetNetwork` are registered network data definitions;
+  - `ModalModelFSM` and `ModalModelPetriNet` were removed from `source/` after smart-app consumers migrated to `ModalModelDefault` + networks (PR #541);
+  - the legacy `ModalModelDefault` node-list execution path and `PetriTransition` were removed with #541;
+  - probabilistic paths use a resettable GenESyS kernel sampler instead of `std::rand()`.
+- Decision source: maintainer reconciliation recorded in PR #532 on 2026-09-18; implementation closed by PR #541 on 2026-09-20.
+- Implementation status: completed and integrated on `WorkInProgress` HEAD `5bd10bb5`.
+- Decision unlocks: GUI phase under `HUM-MODAL-002` on the stabilized backend.
+- Must not be combined with: full CPN variable binding, GUI network editor implementation, broad ModelDataManager ownership redesign or dynamic-plugin migration.
+
+### HUM-MODAL-002 — GUI editor architecture for DataDefinition-based networks
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision: stabilize and verify the backend first; then use a dedicated network/data-definition editor or bounded read-only first slice, keeping formal-network topology distinct from process `Connection` topology and keeping network semantics in the backend.
+- Confirmed evidence:
+  - `DefaultNode` is now a `ModelDataDefinition`;
+  - graph, EFSM, Markov and CPN topology elements belong to network data definitions;
+  - `GraphEdge` and `CPNArc` are not process `Connection` objects;
+  - `ModalModelDefault` mirrors the attached network's logical port schema. The integrated EFSM GUI supports selected-adapter bindings with undo/redo; a MainWindow save/reopen regression now activates the restored Network through the kernel. Full user interaction is covered by the bounded GUI evidence linked below.
+- Options:
+  - add a dedicated network/data-definition editor independent from the process-flow canvas;
+  - add modal-network editing panels inside the existing component property editor;
+  - provide model-file/API construction first and defer GUI editing;
+  - temporarily expose only read-only network visualization until editing contracts are stable.
+- Recommendation retained: implement the GUI only after backend contracts and the compatibility/persistence audit are stable; do not overload the existing process `Connection` canvas with graph/CPN arcs.
+- Implementation status: backend prerequisite closed (`AUTO-MODAL-002` / #541). **GUI phase explicitly activated on 2026-10-29; on 2026-10-30 the maintainer authorized autonomous continuation through all five remaining milestones.** The complete eight-milestone EFSM editor is implemented, validated and integrated by PR #551 (merge `17338f8e566f87fc3b06eb422a5dd354e6d57b02`). The merge included green local baselines and hosted checks, manuals and evidence. Post-merge PR #552 adds a regression that activates the GUI-created, saved and reloaded EFSM through the kernel, and reconciles current status/evidence. Evidence: [`history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md`](history/evidence/2026/10/2026-10-30_modal_efsm_postmerge_closeout.md).
+- **DEC-MODAL-GUI-20261029 (revised and approved):** adopt **Alternative A**: evolve and reuse the existing submodel scene/view/tab infrastructure and existing `level` filter for both process and mathematical-model editing contexts. Add formalism-specific projection/commands rather than an independent `GraphicalNetworkScene`. `ModalModelDefault` remains a process `ModelComponent` adapter; `DefaultNetwork` remains potentially shared mathematical data; mathematical arcs are never process `Connection` objects. The first GUI visual slice remains read-only EFSM.
+- **DEC-MODAL-LEVEL-20261029 (approved):** reinterpret `ModelDataDefinition::getLevel()` / `setModelLevel()` as **editing-context membership**: root is `0`; non-root level equals the `getId()` of the context-defining `ModelDataDefinition` (including `ModelComponent`, which inherits from it). For a ModalModel, resolve the attached Network; use the **Network ID** as the submodel level, never the adapter ID. Level does not transfer ownership, imply Entity flow, or represent ordinal depth. This contract requires normalizing Network-owned data definitions on programmatic insertion and preserving the same result after load.
+- Approved implementation and handoff plan: [`reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](reference/MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md). The existing G0–G6 GUI reference remains the conceptual architecture; `AUTO-MODAL-003` owns G0 preparation/codec and `AUTO-MODAL-004` is the dependent G1 viewer.
+- Decision unlocks:
+  - GUI creation/editing of network-owned nodes, places, transitions, arcs and graph edges;
+  - synchronized `ModalModelDefault` input/output bindings;
+  - visual distinction between process topology and mathematical/formal network topology.
+- Must not be combined with: process `Connection` payload generalization or release/promotion gates.
+
+### HUM-MODAL-003 — Complete ModalModel/Network graphical editor evolution (2026-11-12)
+
+- Priority: P1.
+- Status: decision-recorded; **full sequential local implementation expressly authorized**.
+- Decision: the ONLY Network-related contextual action on ModalModelDefault is **Open Network**, enabled only for a valid, model-registered reference. Create/select/replace/remove references exclusively through the Property Editor. Also support Open Network on graphical Network DataDefinition. No implicit creation on double-click.
+- Architecture: preserve DefaultNetwork polymorphism, existing GraphNetwork->DefaultNetwork inheritance, shared Network ID/context and model ownership; use existing GUI extension framework, static-first; no new kernel Qt dependency or dynamic GUI loading.
+- Scope: full G0, A1–A5, B1–B5, C1–C6, D1–D5 implementation, including Graph/DTMC/CPN contextual editors and truthful EFSM/DTMC/CPN visual runtime animation plus graph structural-algorithm visualization. Essential risk-proportionate validation, continuous autonomous execution, no intermediate approvals for decisions already covered.
+- Approved execution plan: [Modal Network GUI Evolution Plan](reference/MODAL_NETWORK_GUI_EVOLUTION_PLAN.md).
+- Execution task: AUTO-MODAL-005 in BACKLOG_AUTONOMOUS.md; local development branch, suggested WiP20261112/modal_model_gui, target review then human-controlled merge to WorkInProgress.
+- Human stop gates: only genuine unforeseen substantive architectural/scientific/persistence/security decision or execution blocker. No automatic final merge.
+
+### HUM-MODAL-004 — Universal Network element editing in Property Editor (2026-11-13)
+
+- Priority: P1.
+- Status: decision-recorded; implementation expressly authorized.
+- Decision: mathematical nodes and relations in topological Networks must be selectable and editable through the shared Property Editor; relation creation uses a common source-double-click/destination-click gesture with formalism validation and undo/redo.
+- Scope: finish EFSM first, including state and transition properties, graphical transition creation, persistence and removal of EFSM edit dialogs; then apply the shared capabilities to Graph/DirectedGraph/DAG, Markov and CPN without fabricating domain types or simulation semantics.
+- Constraints: retain real domain ownership and identity, preserve formalism topology and persistence, reject invalid operations before mutation, and keep Qt out of kernel classes.
+- Execution task: AUTO-MODAL-006 in BACKLOG_AUTONOMOUS.md on `WiP20261112/modal_model_gui`; no automatic merge to WorkInProgress.
+
+### HUM-ARCH-001 — Static component target consolidation
+
+- Priority: `P1`
+- Status: `open`
+- Tracking issue: #492
+- Decision required: choose the architecture that replaces the current duplicate `genesys_plugins_components` and `genesys_plugins_components_minimal` source aggregation.
+- Confirmed evidence:
+  - both targets compile the same 84 component `.cpp` files;
+  - GLPK compile behavior differs when GLPK is present;
+  - runtime consumers primarily use the target named `minimal`;
+  - the continuous-diffusion test reaches both archives;
+  - duplicate compilation/storage is active;
+  - no active duplicate-symbol linker failure was demonstrated.
+- Options:
+  - **A — one canonical static component archive**;
+  - **B — define a real explicit minimal subset plus full archive**;
+  - **C — common object/core composition with explicitly defined facades**;
+  - **D — defer until dynamic migration**, not recommended because current ambiguity remains.
+- Recommendation: Option A unless a concrete supported lightweight runtime requirement is identified.
+- Decision unlocks:
+  - a bounded CMake target correction;
+  - consistent GLPK configuration;
+  - removal/compatibility handling for the duplicate target;
+  - present/absent GLPK validation.
+- Must not be combined with: dynamic ABI implementation, GUI changes, worker security, or plugin source reorganization by domain.
+
+### HUM-ARCH-002 — `autoloadplugins.txt` deployment and fallback contract
+
+- Priority: `P1`
+- Status: `open`
+- Tracking issue: #496
+- Decision required: define where static/dynamic plugin autoload configuration belongs and how applications search for it.
+- Confirmed evidence:
+  - shell startup succeeds through static plugin registration;
+  - runtime attempts to find `autoloadplugins.txt` beside the executable;
+  - the file was absent in the validated build tree;
+  - missing-file diagnostics do not currently prevent static fallback.
+- Options:
+  - copy/install beside executable;
+  - application data/config directory;
+  - repository/build-tree development fallback;
+  - static builds skip file lookup unless explicitly configured;
+  - documented ordered multi-location search.
+- Recommendation: define an ordered platform-aware configuration search with explicit static fallback and diagnostics, avoiding repository-relative assumptions in installed builds.
+- Decision unlocks: focused shell/application deployment tests and packaging integration.
+
+### HUM-ARCH-003 — Explicit AOP-lite aspect pipeline
+
+- Priority: `P2`
+- Status: `decision-recorded`
+- Decision: future cross-cutting concerns in GenESyS should begin with an
+  explicit C++23 `AspectPipeline` around selected service boundaries, rather
+  than immediate AspectC++ weaving or Clang source transformation.
+- Scope: provide reusable hooks for logging, timing/metrics, audit context and
+  carefully bounded cache use cases while preserving kernel, parser, plugin,
+  GUI, persistence and scientific semantics.
+- Non-goals: no automatic weaving, compiler fork, plugin ABI change, broad
+  logging replacement or cache of scientific state without a proven
+  invalidation contract.
+- Plan: [`reference/AOP_LITE_ASPECT_PIPELINE_PLAN.md`](reference/AOP_LITE_ASPECT_PIPELINE_PLAN.md).
+- Decision source: maintainer instruction recorded on 2026-10-15 in the
+  current development conversation.
+- Implementation status: not started; a bounded executable task must be added
+  to `BACKLOG_AUTONOMOUS.md` before implementation.
+- Decision unlocks: contract design and a focused first implementation task for
+  the explicit pipeline.
+- Must not be combined with: AspectC++ adoption, Clang rewriting, dynamic
+  plugin migration, persistence redesign or scientific algorithm changes.
+
+### HUM-ARCH-004 — Main GUI graphical extension architecture
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-11-11 (explicit maintainer approval during architecture discussion).
+- Decision: evolve the existing pure-abstract C++ `GuiExtensionPlugin` and `GuiExtensionRegistry`, with one contribution-registration method (not a virtual method per UI feature). Extend contribution categories as needed for menus/actions/toolbars, windows/docks, in-scene animations/factories, component renderers and replaceable service providers.
+- Dependencies: declare required simulation/model plugin(s) rather than composing or owning a kernel `Plugin`; support separate types for GUI-extension dependencies and system capabilities. A graphical-only extension can have no kernel plugin dependency. Never auto-install system requirements.
+- Architectural boundaries: kernel/parser/simulation plugins remain Qt/GUI-independent; the **generic main GUI must not include or hardcode optional concrete plugin types**. Route kernel events through the GUI and notify interested graphical extensions; reuse existing scene/editor infrastructure. Save graphics with stable IDs and preserve absent-extension animation records by default, offering explicit user-confirmed discard on resave.
+- Placement: retain framework classes in `source/applications/gui/genesys/extensions/`; propose `source/applications/gui/genesys/extensions/plugins/` for concrete graphical plugin implementations, without immediate large-scale file moves or separate library targets.
+- Future constraint: static registration and compilation for now. Actual shared-library packaging, dynamic load/unload, active-object/callback lifetime protection, hot reload and the Qt/C++ adapter to the approved stable versioned C ABI are **deferred** and require a separate explicit decision/plan. Kernel plugin-target duplication issue #492 remains independent.
+- Scope clarification: historical student PR #436 and DCS-5 artifacts are non-authoritative examples, not approved patches. Existing Tools/Extensions windows (e.g. Bacteria Colony) are to be phased out only after equivalent insertable model-scene animations are verified.
+- **Formal ratification (2026-11-16):** the maintainer expressly approved all D1–D12 of [the formal post-extraction contract](reference/GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md). Decisions include: one `GuiExtensionPlugin` base and composition; minimal real-use contribution types; typed required/optional dependencies with explicit ALL/ANY grouping and optional per-contribution eligibility; deterministic exclusive provider selection; explicit item ownership; GUI-thread event/snapshot bridge; lossless unknown GUI records; bounded host capabilities; stable IDs/namespaces; and a separate future dynamic/ABI project.
+- Implementation status: **architecture ratified, general C++ architecture not implemented or validated**. The first bounded G0/G1/G2 implementation can be prepared under `AUTO-GUI-003` with actual source/tests and safety gates; no automatic approval of unreviewed C++ API signatures or dynamic loading.
+- Approved references: [conceptual architecture](reference/GUI_EXTENSIONS_ARCHITECTURE.md), [formal approved contract](reference/GUI_EXTENSIONS_FORMAL_CONTRACT_REVIEW.md) and [implementation plan](reference/GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md).
+- Decision unlocks: planning and future separately authorized bounded GUI refactors. Stop for maintainer if kernel semantics, unsupported persistence migration, stable ABI policy or dynamic loading becomes part of the proposed change.
+- Non-goals: no dynamic plugin migration, hot unload guards, kernel model semantics changes, broad CMake reorganization or GUI framework rewrite.
+
+
+### HUM-ARCH-006 — Extraction-first isolation of plugin-specific GUI behavior
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-11-13, after integration of ModalModel/Network PRs #577 and #578.
+- Maintainer decision: **choose generic registry dispatch (alternative B)** over relocating code while retaining direct `MainWindow -> Decide` references. Reuse `source/applications/gui/genesys/extensions/plugins/` and the already-implemented GUI contributions; avoid another framework or new source-root `plugins/integrated_codes`.
+- Change in sequence: do not finalize a broad animation/window/renderer GUI-plugin API before extracting currently embedded domain-specific behavior from MainWindow, generic dialogs/controllers, Property Editor, scene and plugin tree. Catalogue the *actual* needs demonstrated by the extractions, then evolve shared contracts. The preceding G0–G7 execution strategy from the unmerged draft PR #575 is superseded as a work order, **not as an architectural invariant**.
+- First bounded slice: BioReaction/BioSpecies context menu -> `GuiContextMenuContribution` from a biochemical extension; then Decide Conditions/ports/undo, ModalModel/Network edit contexts, specialized scene graphics and finally contract consolidation.
+- Validation: fast affected Qt6 build, 1–3 relevant focused tests per extraction and small GUI interaction check when possible; full required regression/CI at integration. No silent data loss, behavioral change or bypass of mandatory merge gates.
+- Preconditions satisfied: completed prior Modal/Network PRs integrated into `WorkInProgress`. Current HEAD must be rechecked before each *new* development branch; no need to repeat an exhaustive repository-wide audit for each extracted behavior.
+- Future constraints: still static registration; no dynamic shared-object loading/unloading, ABI implementation, wide CMake changes, kernel/algorithm changes or GUI rewrite.
+- Implementation: [extraction-first plan](reference/GUI_EXTENSIONS_EXTRACTION_PLAN.md); `AUTO-GUI-004` / [PR #579](https://github.com/rlcancian/Genesys-Simulator/pull/579).
+
+## 4. Security and deployment decisions
+
+### HUM-SEC-001 — Worker bind-address contract
+
+- Priority: `P1`
+- Status: `open`
+- Tracking issue: #500
+- Decision required: choose safe default and configuration semantics for worker listener binding.
+- Confirmed evidence:
+  - validated worker listens on `0.0.0.0`;
+  - the health request was sent through loopback;
+  - the approved deployment profile is controlled academic intranet;
+  - explicit private-interface selection and deny-by-default behavior are required.
+- Options:
+  - loopback default with explicit private address for lab deployment;
+  - mandatory configured address with startup refusal when absent;
+  - enumerate/allowlist private interfaces;
+  - retain wildcard only behind an explicit unsafe/development opt-in.
+- Recommendation: loopback default plus explicit configured private address; reject wildcard unless explicitly enabled for a controlled environment.
+- Decision unlocks: worker CLI/config changes, focused listener tests, packaging/service configuration.
+
+### HUM-SEC-002 — Worker authentication mechanism
+
+- Priority: `P1`
+- Status: `open`
+- Decision required: select the primary authentication mechanism for the controlled academic intranet profile.
+- Principal candidates:
+  - mutual TLS for managed laboratory machines;
+  - short-lived signed tokens over TLS;
+  - institutional identity integration;
+  - hybrid mTLS machine identity plus user/job authorization.
+- Required inputs:
+  - laboratory device management capability;
+  - certificate/secret provisioning and rotation process;
+  - user versus machine identity requirements;
+  - offline/private-network constraints;
+  - revocation and audit requirements.
+- Recommendation: use mTLS for managed machines when operationally feasible, with short-lived signed authorization tokens for user/job scope where needed.
+- Decision unlocks: threat model, credential lifecycle, protected endpoint tests, TLS configuration, audit schema.
+
+### HUM-SEC-003 — AI provider secret storage and invocation policy
+
+- Priority: `P1`
+- Status: `research-needed`
+- Decision required: approve the supported credential backends and fallback behavior for desktop/server environments.
+- Known concern: secret handling must keep values out of argv, logs, repository files, browser-visible configuration, and generated model artifacts.
+- Required evidence:
+  - current `AISecretStore` behavior on Ubuntu;
+  - Secret Service integration availability;
+  - headless/server fallback requirements;
+  - redaction/error-path tests;
+  - packaging dependencies.
+- Decision unlocks: secret-store hardening and provider integration tests.
+
+### HUM-SEC-004 — Runtime signing public key provisioning
+
+- Priority: `P1`
+- Status: `open`
+- Decision required: provision an approved OpenPGP keypair for signing per-user
+  GenESyS runtime release bundles, and install the corresponding public key at
+  the path the Launcher already expects
+  (`/usr/share/genesys/keys/update.gpg`, `GENESYS_UPDATE_KEYRING_PATH`).
+- Confirmed evidence:
+  - `source/applications/launcher/` already implements `gpgv`-based,
+    fail-closed signature verification (`GpgvSignatureVerifier`) and the
+    Debian package's `/etc/genesys/update.conf` ships with
+    `require_signature=true` and remote updates disabled
+    (`enabled=false`, no `manifest_url`);
+  - no keypair, private key, or plausible-looking placeholder fingerprint
+    exists anywhere in the repository or CI configuration, and none was
+    invented while integrating the Launcher into the Debian package
+    (PR #522);
+  - without a provisioned public key, per-user runtime updates remain
+    fail-closed by construction — this is the current, intentional, safe
+    state, not a defect.
+- Decision required from the maintainer:
+  - who holds the private signing key and how it is protected (HSM,
+    offline key, CI secret, etc.);
+  - the key generation/rotation/revocation process;
+  - whether a single key or a key hierarchy (e.g. release + emergency
+    revocation) is used;
+  - where the corresponding public key is published/pinned for
+    installation by the Debian package.
+- Decision unlocks: installing the public key file, enabling
+  `require_signature=true` against a real signature, and eventually the
+  deferred `Runtime Release Publishing` phase (signed
+  `genesys-runtime-<version>-ubuntu24.04-x86_64.tar.zst` bundles). This
+  decision must not be made by an AI agent, and no CI workflow should
+  generate or embed a production private key.
+
+### HUM-PKG-002 — Portable Linux user-space installer authorization
+
+- Priority: `P1`
+- Status: `decision-recorded`
+- Decision date: 2026-10-15
+- Decision authority: GenESyS maintainer, by direct instruction in the active
+  implementation session.
+- Decision: authorize a bounded local implementation and validation task for a
+  Linux x86_64 Ubuntu 24.04-baseline portable distribution, delivered as one
+  offline `.tar.gz` that installs into a normal user's home directory without
+  root, `sudo`, system package installation, compilers, CMake, Ninja, Qt6 SDK,
+  or network access on the destination computer.
+- Approved boundaries:
+  - reuse the current Launcher/Dispatcher and XDG runtime contracts where
+    possible;
+  - keep remote updates disabled and signature verification fail-closed;
+  - preserve Debian packaging and static plugins;
+  - include the Worker only as a non-service application and do not redesign
+    its bind, authentication or TLS contracts;
+  - preserve the MCP compatibility diagnostic without claiming a functional
+    MCP server;
+  - permit a portable-distribution snapshot version derived from an explicit
+    numeric override or a deterministic local commit-based identifier, without
+    changing global project version policy;
+  - do not publish releases, promote stable branches, or alter unrelated
+    scientific, persistence, security or product behavior.
+- Decision unlocks: creation of `AUTO-PKG-002`, local installer/build/staging
+  scripts, minimal packaging/runtime adaptations, offline lifecycle tests,
+  dependency inspection and local artifact generation.
+- Related open decisions remain unaffected: `HUM-SEC-004`,
+  `HUM-ARCH-002`, `HUM-PROD-001` and `HUM-REL-001` are not resolved or
+  reinterpreted by this authorization.
+
+### HUM-DOC-001 — Manual figure automation stack
+
+- Priority: `P2`
+- Status: `research-needed`
+- Decision required: choose the approved automation path for manual screenshots
+  and developer diagrams.
+- Candidate areas to evaluate:
+  - Qt test automation;
+  - Xvfb or a comparable virtual desktop setup;
+  - screenshot tooling available on the target platform;
+  - TikZ, PlantUML, Graphviz, or Doxygen-based diagram generation;
+  - repository-local scripts for capture, normalization, and validation.
+- Recommendation: prefer repository-local, reproducible generation first; add
+  external tooling only after explicit review and compatibility evidence.
+- Decision unlocks: a bounded automation implementation and updated manual
+  figure workflow.
+
+## 5. Numerical and statistical decisions
+
+### HUM-SCI-001 — Authoritative numerical/statistical reference package
+
+- Priority: `P0/P1`
+- Status: `research-needed`
+- Source plan: `genesys_numerical_statistical_references_plan.md`
+- Decision/input required from maintainer:
+  - bibliography and exact formulations;
+  - parameterization conventions;
+  - relevant thesis/book/paper sections;
+  - legal reference datasets;
+  - expected outputs and tolerances;
+  - comparator implementations and versions.
+- Priority domains:
+  - numerical integration/differentiation;
+  - probability distributions;
+  - confidence intervals and hypothesis tests;
+  - chi-square and Kolmogorov–Smirnov diagnostics;
+  - distribution fitting;
+  - input/output analysis;
+  - ODE/PDE/diffusion;
+  - DOE/RSM/ANOVA;
+  - optimization performance assessment.
+- Recommendation: begin with methods that directly affect user-visible p-values, CDFs, fitting, and current solver callers.
+- Decision unlocks: reference-backed regression tests and scientific maturity classification.
+
+### HUM-SCI-002 — Modal/hybrid time synchronization contract
+
+- Priority: `P1`
+- Status: `research-needed`
+- Decision required: define the semantic relationship among discrete-event time, solver internal time, fixed/adaptive steps, event boundaries, and state publication.
+- Required evidence:
+  - current `ModelSimulation` event flow;
+  - continuous and biochemical plugin behavior;
+  - representative deterministic models;
+  - unit and time-dimension conventions;
+  - expected handling of events inside a continuous step.
+- Decision unlocks: formal interface contract and regression fixtures.
+
+## 6. Optimization decisions
+
+### HUM-OPT-001 — Initial real Optimizer algorithm and research package
+
+- Priority: `P1`
+- Status: `research-needed`
+- Source plan: `genesys_multiobjective_optimizer_future_plan.md`
+- Decision/input required:
+  - professor's thesis citation and relevant chapters;
+  - algorithm names/variants;
+  - pseudocode or source code;
+  - licensing/ownership status;
+  - benchmark problems and expected results;
+  - decision-variable, objective, constraint, archive, indicator, and stopping semantics.
+- Recorded research direction:
+  - evolutionary multiobjective optimization;
+  - Pareto dominance and external archives;
+  - hypervolume and contribution;
+  - ETH Zürich/Eckart Zitzler/PISA lineage;
+  - SPEA/SPEA2, IBEA, HypE, ZDT/DTLZ and related benchmarks;
+  - statistical comparison of stochastic runs.
+- Recommendation: implement deterministic contracts and primitives first, then one explicitly selected reference or thesis-derived algorithm.
+- Decision unlocks: architecture tasks O0–O5 and eventual Level 3 workflow.
+
+### HUM-OPT-002 — Supported optimizer problem scope
+
+- Priority: `P1`
+- Status: `open`
+- Decision required: define the first supported problem classes.
+- Questions:
+  - continuous, integer, categorical, or mixed decisions;
+  - deterministic versus stochastic simulation responses;
+  - constrained versus unconstrained;
+  - number of objectives;
+  - model mutation and response extraction contract;
+  - replication/noise policy.
+- Decision unlocks: stable `OptimizationProblem`, candidate, evaluator, and GUI configuration contracts.
+
+## 7. Whole-cell, biochemical, and AI virtual-cell decisions
+
+### HUM-VC-001 — First bounded AI virtual-cell use case
+
+- Priority: `P1/P2`
+- Status: `research-needed`
+- Source direction: `genesys_ai_virtual_cell_research_direction.md`
+- Decision required:
+  - organism, preferably a bounded yeast or microbial system;
+  - exact biological question;
+  - mechanistic modules included;
+  - datasets and licenses;
+  - calibration/validation protocol;
+  - scientific claim level;
+  - external tools and laboratory integration boundary.
+- Recommendation: choose a narrow mechanistic perturbation-response or metabolic/regulatory use case with public curated data and explicit invariants before attempting whole-organism breadth.
+- Decision unlocks: work packages VC0–VC6 and a concrete benchmark repository structure.
+
+### HUM-VC-002 — SBML supported subset and compatibility target
+
+- Priority: `P1`
+- Status: `open`
+- Decision required:
+  - SBML level/version;
+  - supported packages;
+  - required constructs and annotations;
+  - unsupported-construct behavior;
+  - round-trip guarantees;
+  - comparator/reference models.
+- Decision unlocks: import/export support matrix, diagnostics, round-trip fixtures, and compatibility claims.
+
+## 8. Product and release decisions
+
+### HUM-PROD-001 — Supported feature set for semester stability
+
+- Priority: `P1`, near release window
+- Status: `deferred`
+- Decision required: define which features are included in the supported set for `20262` and which are experimental, disabled, removed, or deferred.
+- Constraint: every supported feature must reach at least Level 3 — Beta.
+- Decision unlocks: final maturity matrix, release notes, package scope, and promotion gate.
+
+### HUM-REL-001 — Final `20262` promotion gate and waiver authority
+
+- Priority: `P1`, end of semester
+- Status: `deferred`
+- Decision required near the promotion window:
+  - mandatory build/test/application/model/package/security/documentation checks;
+  - P0/P1 definitions;
+  - allowed waivers and approving authority;
+  - rollback procedure;
+  - exact supported platform/package set.
+- Recorded timing: promotion only at the end of the second semester of 2026.
+- No ordinary PR should attempt this promotion.
+
+## 9. Historical documentation decision
+
+### HUM-DOC-002 — Final deletion approval for `oldies/`
+
+- Priority: `P2`
+- Status: `deferred`
+- Earliest gate: after 2026-11-01
+- Preconditions:
+  - every historical file reviewed;
+  - useful content consolidated;
+  - rejected content explicitly classified;
+  - active links removed or updated;
+  - preservation tag/branch or Git-history reference prepared;
+  - dedicated deletion PR reviewed.
+- Decision unlocks: removal of `oldies/` and temporary migration trackers.
+
+## 10. Recording a decision
+
+When the maintainer decides an entry:
+
+1. record the chosen option and date in this file or a dedicated ADR/reference document;
+2. update the entry to `decision-recorded`;
+3. create or activate a bounded task in `BACKLOG_AUTONOMOUS.md`;
+4. identify acceptance criteria and rollback;
+5. do not modify source in the same documentation-only decision commit unless explicitly requested;
+6. after implementation and validation, mark the decision `implemented` and update `STATUS.md`.

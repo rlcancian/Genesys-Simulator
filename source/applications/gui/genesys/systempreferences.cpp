@@ -114,7 +114,7 @@ void SystemPreferences::resetToDefaults() {
     _lastModelFilename.clear();
     _recentModelFiles.clear();
     _recentModelFilesLimit = 10;
-    _traceLevel = TraceManager::Level::L7_internal;
+    _traceLevel = TraceManager::Level::L9_mostDetailed;
     _visualTheme = VisualTheme::Light;
     _interfaceStyle = InterfaceStyle::Modern;
     _applicationFontPointSize = 0;
@@ -423,7 +423,7 @@ QString SystemPreferences::visualThemeToString(VisualTheme value) {
 }
 
 SystemPreferences::InterfaceStyle SystemPreferences::interfaceStyleFromString(const QString& value) {
-    return value.trimmed().toLower() == "modern" ? InterfaceStyle::Modern : InterfaceStyle::Classic;
+    return value.trimmed().toLower() == "modern" ? InterfaceStyle::Modern : InterfaceStyle::Arena;
 }
 
 QString SystemPreferences::interfaceStyleToString(InterfaceStyle value) {

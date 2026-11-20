@@ -57,6 +57,10 @@ public: //! new public user methods for this component
 	 * \return Connection manager that stores outgoing connections.
 	 */
     ConnectionManager* getConnectionManager() const;
+	/** Returns -1 when this component uses its registered static port schema. */
+	virtual int getDynamicInputPortCount() const { return -1; }
+	/** Returns -1 when this component uses its registered static port schema. */
+	virtual int getDynamicOutputPortCount() const { return -1; }
     /*!
 	 * \brief Connects this component to another component.
 	 * \param component Target component.

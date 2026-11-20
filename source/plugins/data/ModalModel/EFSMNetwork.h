@@ -1,0 +1,115 @@
+/*
+ * File:   EFSMNetwork.h
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
+ *
+ * Created on 30 de Agosto de 2026
+ */
+
+#ifndef EFSMNETWORK_H
+#define EFSMNETWORK_H
+
+#include "DefaultNetwork.h"
+#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
+#include "plugins/components/ModalModel/FSMState.h"
+
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+
+class Sampler_if;
+
+/*!
+ * \brief Extended finite-state-machine network specialization.
+ *
+ * `EFSMNetwork` owns the modal state machine semantics that used to live in
+ * `ModalModel`: the current state, the initial state, state nodes and
+ * EFSM transitions. A `ModalModel` only adapts process entities to this
+ * network through explicit input/output bindings.
+ *
+ * Transition ownership: `addTransition()` and persistence reload take exclusive
+ * ownership of heap-allocated `EFSMTransition` objects and delete them from the
+ * network destructor / reload path. Callers must not stack-allocate transitions
+ * that are registered with the network and must not delete them separately.
+ *
+ * This first implementation supports one deterministic activation step:
+ * evaluate outgoing transitions of the current state, select the enabled
+ * transition with the lowest priority value, update the current state, and
+ * expose the transition output expression on output port 0 when present.
+ */
+class EFSMNetwork : public DefaultNetwork {
+public:
+	enum class ConflictPolicy : unsigned int {
+		MODEL_ERROR = 0,
+		NONDETERMINISTIC_CHOICE = 1,
+		DETERMINISTIC_PRIORITY = 2
+	};
+
+	EFSMNetwork(Model* model, std::string name = "");
+	virtual ~EFSMNetwork() override;
+
+public: // static
+	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord* fields);
+	static PluginInformation* GetPluginInformation();
+	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
+
+public:
+	void addState(FSMState* state);
+	void removeState(FSMState* state);
+	List<FSMState*>* getStates() const;
+	void addTransition(EFSMTransition* transition);
+	void removeTransition(EFSMTransition* transition);
+	/**
+	 * Detaches an owned transition without destroying it. The returned owner can
+	 * safely retain the transition for an undo command. `ordinal` receives its
+	 * former persisted sequence position. Returns empty if it is not registered.
+	 */
+	std::unique_ptr<EFSMTransition> detachTransition(EFSMTransition* transition, unsigned int* ordinal = nullptr);
+	/** Reattaches a detached transition at its prior sequence position. Ownership
+	 * transfers to the network only when this returns true.
+	 */
+	bool restoreTransition(EFSMTransition* transition, unsigned int ordinal);
+	List<EFSMTransition*>* getTransitions() const;
+	void setInitialState(FSMState* state);
+	FSMState* getInitialState() const;
+	FSMState* getCurrentState() const;
+	EFSMTransition* getLastTransition() const;
+	void setCurrentState(FSMState* state);
+	void setConflictPolicy(ConflictPolicy policy);
+	ConflictPolicy getConflictPolicy() const;
+    void setMaxImmediateTransitionsPerActivation(unsigned int maximum);
+    unsigned int getMaxImmediateTransitionsPerActivation() const;
+    const std::string& getLastRefinementError() const;
+    bool postfireRefinement() override;
+	static std::string convertConflictPolicyToString(ConflictPolicy policy);
+	static ConflictPolicy convertStringToConflictPolicy(const std::string& policy);
+
+public:
+	virtual std::string show() override;
+
+protected:
+	virtual bool _loadInstance(PersistenceRecord* fields) override;
+	virtual void _saveInstance(PersistenceRecord* fields, bool saveDefaultValues) override;
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _initBetweenReplications() override;
+	virtual NetworkActivationResult _activate(const NetworkActivationFrame& frame) override;
+
+private:
+	FSMState* _resolveInitialState();
+	void _destroyOwnedTransitions();
+
+private:
+	List<FSMState*>* _states = new List<FSMState*>();
+	List<EFSMTransition*>* _transitions = new List<EFSMTransition*>();
+	FSMState* _initialState = nullptr;
+	FSMState* _currentState = nullptr;
+	EFSMTransition* _lastTransition = nullptr;
+	ConflictPolicy _conflictPolicy = ConflictPolicy::DETERMINISTIC_PRIORITY;
+	Sampler_if* _sampler = nullptr;
+    unsigned int _maxImmediateTransitionsPerActivation = 64;
+    bool _stateJustEntered = true;
+    std::unordered_set<DefaultNetwork*> _initializedRefinements;
+    std::string _lastRefinementError;
+};
+
+#endif /* EFSMNETWORK_H */

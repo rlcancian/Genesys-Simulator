@@ -1,0 +1,281 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Components, \textit{model data} and \textit{plugins} system}
+\label{chap:componentes_model_data_plugins}
+
+\section{Introduction}
+\label{sec:cap8_introducao}
+
+After studying the core of the simulator at its most central level, the next step is to understand what concrete objects the model is made of. In other words, if the previous chapter answered the question ``how does GenESyS represent and execute a model?'', this chapter answers another equally important question: ``what are the elements that make up this model within the software?''.
+
+In GenESyS, this answer is not reduced to a single class type. The model is built on a fundamental architectural distinction between:
+\begin{itemize}
+ \item template components;
+ \item \textit{model data definitions}.
+\end{itemize}
+
+This distinction is especially important because it organizes the entire way the simulator represents the main flow of a system and the data infrastructure that supports it. Furthermore, it is from here that the extensibility mechanism via \textit{plugins} gains clarity. New components and new model data can be introduced to the system without the core having to be rewritten as a monolithic block.
+
+This chapter delves deeper into this architecture. First, it discusses the \texttt{ModelDataDefinition} base class. Then, it shows how \texttt{ModelComponent} specializes it to represent behavior in the model flow. It then discusses the importance of internal and attached data, the relationship between composition and aggregation, and finally situates the \textit{plugins} mechanism as a way to expand the system in a consistent manner.
+
+\section{\texttt{ModelDataDefinition} as model base class}
+\label{sec:cap8_modeldatadefinition}
+
+The \texttt{ModelDataDefinition} class occupies a structural role in GenESyS. Its documentation describes it as the basis for any model data, such as queues, resources, variables, and other elements, and also for any model components. This means that it defines a common infrastructure that will be shared both by elements that support the simulation and by elements that directly participate in the model flow.
+
+This design decision is extremely important. Instead of completely separating flow components and supporting data into unrelated hierarchies, GenESyS makes them both share a common foundation. With this, the software gains:
+\begin{itemize}
+ \item a uniform identification and naming mechanism;
+ \item common persistence support;
+ \item common verification support;
+ \item common infrastructure for creating internal and attached data;
+ \item standardized tracing mechanisms and simulation controls.
+\end{itemize}
+
+In architectural terms, this makes the model more coherent. Instead of two uncommunicating universes, there is a unified hierarchy in which components and data are different species of model elements.
+
+\subsection{Core responsibilities of \texttt{ModelDataDefinition}}
+\label{subsec:cap8_responsabilidades_modeldatadefinition}
+
+Reading the class shows some particularly relevant responsibilities:
+\begin{itemize}
+ \item maintain element identity and name;
+ \item offer persistence infrastructure;
+ \item allow local verification of the element;
+ \item sustain internal and attached data;
+ \item offer integration with parser and simulation controls;
+ \item provide tracing mechanisms;
+ \item defines extension point for creating related data.
+\end{itemize}
+
+This means that \texttt{ModelDataDefinition} is not just a convenient abstract superclass. It is a real block of infrastructure on which the rest of the model rests.
+
+\subsection{Internal Data and Attached Data}
+\label{subsec:cap8_internal_attached_data}
+
+One of the most interesting aspects of the \texttt{ModelDataDefinition} class is the explicit distinction between \textit{internal data} and \textit{attached data}. This distinction, which has already been important in previous discussions of the book, appears here as part of the system's basic infrastructure.
+
+\begin{itemize}
+ \item \textbf{Internal data} corresponds to elements internal to the object, maintained by composition.
+ \item \textbf{Attached data} corresponds to referenced data, maintained by aggregation.
+\end{itemize}
+
+This distinction is architecturally very valuable. It allows the software to clearly represent both elements that structurally belong to a component and elements that are only associated with it. In other words, GenESyS does not treat all relationships between model objects in the same way, and this greatly improves the clarity of the system's internal semantics.
+
+\subsection{Persistence and Verification as Base Responsibilities}
+\label{subsec:cap8_persistencia_verificacao_base}
+
+Another important aspect is that persistence and verification already appear in the base class. This shows that the system expects model elements to be:
+\begin{itemize}
+ \item loaded;
+ \item saved;
+ \item validated;
+ \item reconstituted;
+ \item prepared for simulation.
+\end{itemize}
+
+By concentrating this infrastructure at the base, GenESyS avoids unnecessary repetition in subclasses and imposes consistent discipline on model extensions.
+
+\section{\texttt{ModelComponent} as behavioral specialization}
+\label{sec:cap8_modelcomponent}
+
+The \texttt{ModelComponent} class inherits from \texttt{ModelDataDefinition} and adds a decisive dimension to it: behavior guided by entity arrival and event triggering. Its documentation describes it as a block that represents a specific behavior to be simulated and that is activated when an entity arrives at the component.
+
+This formulation is extremely important because it defines the place of the components in the GenESyS architecture. A component is not just a visual object nor just a nominal block of the model. It is a unit of behavior within the flow of the modeled system.
+
+\subsection{The Idea of Flow Between Components}
+\label{subsec:cap8_ideia_fluxo_componentes}
+
+A model built with \texttt{ModelComponent} is, in essence, a set of interconnected components. The global behavior of the model emerges from the path of entities through this flow. This explains why the class maintains a \texttt{ConnectionManager} and provides connection operations between components.
+
+This is one of the big differences between \texttt{ModelComponent} and a generic \textit{model data definition}:
+\begin{itemize}
+ \item a component directly participates in the flow logic;
+ \item model data can support this flow without itself being part of the main path.
+\end{itemize}
+
+\subsection{Event dispatch and \texttt{\_onDispatchEvent}}
+\label{subsec:cap8_dispatch_event_ondispatch}
+
+The \texttt{ModelComponent} class makes it clear, through its interface, that each concrete component must implement a specific dispatch behavior. This appears in the protected and pure virtual method \texttt{\_onDispatchEvent(Entity*, unsigned int)}. It is at this point that the specific semantics of each concrete component comes into existence.
+
+This architectural choice is particularly good because it separates:
+\begin{itemize}
+ \item the common infrastructure of the components;
+ \item the particular behavior of each type of component.
+\end{itemize}
+
+With this, GenESyS can have a well-defined base class, but still maintain highly specialized subclasses.
+
+\subsection{Components as Specialized Model Data}
+\label{subsec:cap8_componentes_modeldata_especializados}
+
+The fact that \texttt{ModelComponent} inherits from \texttt{ModelDataDefinition} has profound consequences:
+\begin{itemize}
+ \item a component also has a name, identity and persistence;
+ \item a component can also have internal and attached data;
+ \item a component participates in the common verification infrastructure;
+ \item a component naturally integrates with the rest of the model's semantics.
+\end{itemize}
+
+This avoids an artificial separation between data structure and behavioral structure. Instead, the system recognizes that a component is also an element of the model, just endowed with a specific behavioral role.
+
+\section{Main Flow and Supporting Data}
+\label{sec:cap8_fluxo_principal_dados_apoio}
+
+One of the most important ideas that the developer needs to consolidate is the difference between:
+\begin{itemize}
+ \item the main flow of the model;
+ \item the supporting data that supports this flow.
+\end{itemize}
+
+In practice:
+\begin{itemize}
+ \item the main flow is composed of connected components;
+ \item supporting data includes queues, resources, attributes, variables, collectors, counters and other related objects.
+\end{itemize}
+
+This distinction is central because it guides both the modeling and extension of the software. Many design errors occur precisely when trying to treat a support element as if it were a component of the flow, or vice versa.
+
+\subsection{Why This Distinction Improves the Architecture}
+\label{subsec:cap8_por_que_distincao_melhora_arquitetura}
+
+By separating main stream and supporting data, GenESyS gains clarity:
+\begin{itemize}
+ \item procedural behavior is concentrated in components;
+ \item support objects are represented as model data;
+ \item the relationship between the two can be expressed in an explicit and controlled way;
+ \item the system becomes more extensible.
+\end{itemize}
+
+This also improves the readability of the software. The developer can more easily identify whether a new element they want to implement should be a component, model data, or a combination of the two by composition or aggregation.
+
+\section{Composition, Aggregation, and the Internal Model Design}
+\label{sec:cap8_composicao_agregacao}
+
+The infrastructure of \texttt{ModelDataDefinition} and \texttt{ModelComponent} reveals that GenESyS takes the distinction between composition and aggregation seriously.
+
+In composition, the internal element structurally belongs to the object that contains it. In practical terms, this means that it is created, maintained, and destroyed as part of the main object's lifecycle. In aggregation, on the contrary, there is only a reference or link to existing data in the model, without absorbing its life cycle.
+
+This distinction is particularly useful when a component:
+\begin{itemize}
+ \item internally maintains its own counters or statistics;
+ \item or references external objects such as queues and resources.
+\end{itemize}
+
+Without this separation, the system would run the risk of producing ill-defined links between model elements, making persistence, removal, verification and reuse difficult.
+
+\subsection{Internal data as a composition relationship}
+\label{subsec:cap8_internaldata_composicao}
+
+When a component or model data maintains \textit{internal data}, it is explaining a composition relationship. This is often suitable for elements that:
+\begin{itemize}
+ \item exists only to support the internal functioning of that object;
+ \item don't make sense as model-independent objects;
+ \item should disappear along with the main object.
+\end{itemize}
+
+\subsection{Attached data as an aggregation relationship}
+\label{subsec:cap8_attacheddata_agregacao}
+
+When an object maintains \textit{attached data}, what exists is an aggregation relationship. The referenced data continues to exist in the model as its own object, and can be shared, referenced by other elements and persisted independently.
+
+This separation between composition and aggregation makes the GenESyS architecture much cleaner and more semantically expressive.
+
+\section{The \textit{plugins} system}
+\label{sec:cap8_sistema_plugins}
+
+The presence of \textit{plugins} is one of the most important features of GenESyS as extensible software. The \texttt{Simulator} class itself already makes this evident when exposing a \texttt{PluginManager}. In the current repository, the plugin implementations are built as static libraries and linked into the simulator, while the connector and manager layers organize metadata, discovery and instantiation. This shows that the \textit{plugins} mechanism is neither improvised nor peripheral; it is a structural part of the system, but not a set of independent runtime packages.
+
+For the developer, the consequence is clear: expanding GenESyS does not necessarily mean directly modifying the kernel. In many cases, the most appropriate strategy is to introduce new capabilities through \textit{plugins}. This is especially true for:
+\begin{itemize}
+ \item new components;
+ \item new \textit{data definitions};
+ \item new language extensions;
+ \item new specialized behaviors.
+\end{itemize}
+
+\subsection{Why \textit{plugins} are important}
+\label{subsec:cap8_por_que_plugins_importantes}
+
+Without \textit{plugins}, the system's growth would depend on increasingly profound changes to the core. This would tend to make the software more rigid and more difficult to maintain. With \textit{plugins}, the project gains:
+\begin{itemize}
+ \item modularity;
+ \item extensibility;
+ \item domain specialization;
+ \item greater separation between stable infrastructure and additional functionality.
+\end{itemize}
+
+This is an especially appropriate architectural decision for a simulator that aims to be generic and expandable. At the current stage, that extensibility is expressed at build and link time, not as a separate deployable plugin runtime. Any future ABI boundary belongs to a later architectural decision, not to the present contract described here.
+
+\subsection{Components and Data as Natural Extensions}
+\label{subsec:cap8_componentes_dados_extensoes_naturais}
+
+From the model's point of view, many \textit{plugins} precisely materialize as new components and new data. This means that the architecture discussed so far, \texttt{ModelDataDefinition}, \texttt{ModelComponent}, internal data, and attached data, is not just a matter of internal elegance. It is the foundation on which the system's extensibility rests.
+
+In other words, understanding the architecture of the model elements is also understanding the architecture of \textit{plugins}.
+
+\section{How to Think About a New Extension}
+\label{sec:cap8_como_pensar_nova_extensao}
+
+A developer looking to extend GenESyS should start with a very simple question:
+\begin{quote}
+ What exactly am I trying to introduce into the system?
+\end{quote}
+
+From this question, it is usually possible to distinguish some cases:
+
+\begin{itemize}
+ \item a new behavior in the model flow;
+ \item new data supporting the model;
+ \item a new combination of behavior and internal data;
+ \item a new language or parser needs;
+ \item a new application or tool.
+\end{itemize}
+
+If the need is for new behavior in the flow, the extension will probably be in the form of new \texttt{ModelComponent}. If it is a new backing object, it will probably take the form of new \texttt{ModelDataDefinition}. If it involves both, it will be necessary to think carefully about the composition, aggregation and internal relationships of the new element.
+
+\section{Misreading This Chapter Avoids}
+\label{sec:cap8_leitura_errada_evita}
+
+This chapter seeks to avoid a very common misreading: imagining that the GenESyS model is composed only of visual boxes in the GUI. In reality, the model is a much richer structure, supported by a hierarchy of classes and a clear architectural distinction between behavior and data.
+
+It also seeks to avoid another error: imagining that \textit{plugins} are just dynamic loading details or independent runtime packages. In GenESyS, they are part of the system's growth logic and, in the current implementation, are aggregated through static libraries and connector-managed metadata. Extensibility is not an appendix; it is an architectural principle.
+
+\begin{table}[htbp]
+ \centering
+ \caption{Central Distinctions for Understanding the Model Structure in GenESyS.}
+ \label{tab:cap8_distincoes_centrais}
+ \small
+ \begin{tabular}{|p{3.4cm}|p{6.9cm}|}
+ \hline
+ \textbf{Distinction} & \textbf{Architectural Meaning} \\
+ \hline
+ \texttt{ModelComponent} vs. \texttt{ModelDataDefinition} & Difference between in-stream behavior and model data/infrastructure \\
+ \hline
+ Main stream vs. supporting data & Difference between procedural path and elements that support execution \\
+ \hline
+ Internal data vs. data & Difference between composition and aggregation within the model \\
+ \hline
+ Kernel vs. \textit{plugins} & Difference between core infrastructure and specialized extensions \\
+ \hline
+ \end{tabular}
+\end{table}
+
+\section{Final Considerations}
+\label{sec:cap8_consideracoes_finais}
+
+This chapter showed that the GenESyS model is structured based on a coherent and extensible architecture. The \texttt{ModelDataDefinition} class provides the base infrastructure for model elements. The \texttt{ModelComponent} class specializes this base to represent behavior in the flow. The distinction between main flow and supporting data, as well as between composition and aggregation, clearly organizes the internal semantics of the system. Finally, the \textit{plugins} mechanism appears as a natural consequence of this architecture, allowing the simulator to be expanded within the current static-linking and metadata-based infrastructure without losing coherence.
+
+With this, the reader already has the necessary basis to understand how new elements can be introduced into the system. The next natural step is to study the subsystem that connects the language, expressions and semantics of the model: the GenESyS parser and its relationship with the simulator's internal language.
+
+Test your understanding of this content by answering the following questions:
+
+\begin{enumerate}
+ \item Why does \texttt{ModelComponent} inherit from \texttt{ModelDataDefinition}?
+
+\item How does the distinction between main stream and supporting data help you understand the structure of the model?
+
+\item What is the difference between \textit{internal data} and \textit{attached data} in the internal design of GenESyS?
+
+\item Why should the \textit{plugins} system be understood as a structural part of the architecture and not just as an optional extension mechanism?
+\end{enumerate}

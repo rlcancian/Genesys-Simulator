@@ -1,0 +1,238 @@
+name: GenESyS AI Assistant GUI Validation
+
+run-name: GenESyS AI Assistant GUI | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - CMakeLists.txt
+      - CMakePresets.json
+      - source/applications/gui/CMakeLists.txt
+      - source/applications/gui/ai_assistant/**
+      - source/applications/gui/genesys/tools/ai_assistant/**
+      - source/kernel/**
+      - source/parser/**
+      - source/plugins/**
+      - source/tools/**
+      - .github/workflows/genesys-ai-assistant-gui-validation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-ai-assistant-gui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-ai-assistant-gui:
+    name: Configure, build and start AI Assistant under Xvfb
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build and X11 dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            qt6-base-dev \
+            qt6-base-dev-tools \
+            xvfb \
+            xdotool \
+            x11-utils \
+            libxkbcommon-x11-0 \
+            libxcb-cursor0 \
+            libsbml5-dev \
+            libglpk-dev \
+            ngspice \
+            r-base \
+            octave
+
+      - name: Record toolchain
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ai-assistant-gui-evidence
+          git rev-parse HEAD | tee ai-assistant-gui-evidence/head-sha.txt
+          cmake --version | tee ai-assistant-gui-evidence/cmake-version.txt
+          ninja --version | tee ai-assistant-gui-evidence/ninja-version.txt
+          g++ --version | tee ai-assistant-gui-evidence/gxx-version.txt
+          qmake6 -query QT_VERSION | tee ai-assistant-gui-evidence/qt-version.txt
+          Xvfb -version > ai-assistant-gui-evidence/xvfb-version.txt 2>&1 || true
+
+      - name: Configure AI Assistant preset
+        run: |
+          set -Eeuo pipefail
+          cmake --preset gui-ai-assistant 2>&1 | tee ai-assistant-gui-evidence/configure.log
+
+      - name: Build AI Assistant preset
+        run: |
+          set -Eeuo pipefail
+          cmake --build --preset gui-ai-assistant --parallel "$(nproc)" 2>&1 \
+            | tee ai-assistant-gui-evidence/build.log
+
+      - name: Locate AI Assistant executable
+        run: |
+          set -Eeuo pipefail
+          mapfile -t candidates < <(find build/gui-ai-assistant -type f -name genesys-ai-assistant-gui -perm -111 | sort)
+          if [[ ${#candidates[@]} -ne 1 ]]; then
+            printf 'Expected exactly one executable named genesys-ai-assistant-gui, found %d\n' "${#candidates[@]}" >&2
+            printf '%s\n' "${candidates[@]}" >&2
+            exit 1
+          fi
+          printf '%s\n' "${candidates[0]}" | tee ai-assistant-gui-evidence/executable-path.txt
+          ldd "${candidates[0]}" | tee ai-assistant-gui-evidence/ldd.txt
+
+      - name: Run bounded Xvfb startup workflow
+        run: |
+          set -Eeuo pipefail
+
+          executable="$(cat ai-assistant-gui-evidence/executable-path.txt)"
+          display_number=99
+          export DISPLAY=":${display_number}"
+          export QT_QPA_PLATFORM=xcb
+          printf '%s\n' "${DISPLAY}" | tee ai-assistant-gui-evidence/display.txt
+
+          xvfb_pid=""
+          app_pid=""
+          cleanup() {
+            set +e
+            if [[ -n "${app_pid}" ]] && kill -0 "${app_pid}" 2>/dev/null; then
+              kill -TERM "${app_pid}" 2>/dev/null || true
+              for _ in $(seq 1 50); do
+                kill -0 "${app_pid}" 2>/dev/null || break
+                sleep 0.1
+              done
+              kill -KILL "${app_pid}" 2>/dev/null || true
+              wait "${app_pid}" 2>/dev/null || true
+            fi
+            if [[ -n "${xvfb_pid}" ]] && kill -0 "${xvfb_pid}" 2>/dev/null; then
+              kill -TERM "${xvfb_pid}" 2>/dev/null || true
+              wait "${xvfb_pid}" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          Xvfb "${DISPLAY}" -screen 0 1280x1024x24 -nolisten tcp \
+            > ai-assistant-gui-evidence/xvfb.log 2>&1 &
+          xvfb_pid=$!
+          printf '%s\n' "${xvfb_pid}" | tee ai-assistant-gui-evidence/xvfb-pid.txt
+
+          display_ready=false
+          for _ in $(seq 1 100); do
+            if ! kill -0 "${xvfb_pid}" 2>/dev/null; then
+              cat ai-assistant-gui-evidence/xvfb.log >&2
+              echo 'Xvfb exited before the display became ready.' >&2
+              exit 1
+            fi
+            if xdpyinfo -display "${DISPLAY}" > ai-assistant-gui-evidence/xdpyinfo.txt 2>&1; then
+              display_ready=true
+              break
+            fi
+            sleep 0.1
+          done
+          if [[ "${display_ready}" != true ]]; then
+            cat ai-assistant-gui-evidence/xvfb.log >&2
+            echo 'Xvfb display did not become ready.' >&2
+            exit 1
+          fi
+
+          "${executable}" > ai-assistant-gui-evidence/application.log 2>&1 &
+          app_pid=$!
+          printf '%s\n' "${app_pid}" | tee ai-assistant-gui-evidence/application-pid.txt
+
+          window_found=false
+          for _ in $(seq 1 150); do
+            if ! kill -0 "${app_pid}" 2>/dev/null; then
+              cat ai-assistant-gui-evidence/application.log >&2
+              echo 'AI Assistant exited before creating a window.' >&2
+              exit 1
+            fi
+            if xdotool search --pid "${app_pid}" > ai-assistant-gui-evidence/window-ids.txt 2>/dev/null \
+               && [[ -s ai-assistant-gui-evidence/window-ids.txt ]]; then
+              window_found=true
+              break
+            fi
+            sleep 0.1
+          done
+
+          xwininfo -root -tree > ai-assistant-gui-evidence/window-tree.txt 2>&1 || true
+          if [[ "${window_found}" != true ]]; then
+            cat ai-assistant-gui-evidence/application.log >&2
+            cat ai-assistant-gui-evidence/window-tree.txt >&2
+            echo 'No X11 window was associated with the AI Assistant process.' >&2
+            exit 1
+          fi
+
+          sleep 2
+          if ! kill -0 "${app_pid}" 2>/dev/null; then
+            cat ai-assistant-gui-evidence/application.log >&2
+            echo 'AI Assistant did not remain alive during the bounded startup interval.' >&2
+            exit 1
+          fi
+
+          ps -o pid,ppid,stat,etime,cmd -p "${app_pid}" \
+            | tee ai-assistant-gui-evidence/application-process.txt
+
+          kill -TERM "${app_pid}"
+          for _ in $(seq 1 100); do
+            kill -0 "${app_pid}" 2>/dev/null || break
+            sleep 0.1
+          done
+          if kill -0 "${app_pid}" 2>/dev/null; then
+            cat ai-assistant-gui-evidence/application.log >&2
+            echo 'AI Assistant did not terminate after SIGTERM.' >&2
+            exit 1
+          fi
+
+          set +e
+          wait "${app_pid}"
+          app_rc=$?
+          set -e
+          printf '%s\n' "${app_rc}" | tee ai-assistant-gui-evidence/application-exit-code.txt
+          app_pid=""
+
+          if [[ "${app_rc}" -ne 143 ]]; then
+            echo "Expected SIGTERM exit code 143, got ${app_rc}." >&2
+            exit 1
+          fi
+
+          if pgrep -af genesys-ai-assistant-gui > ai-assistant-gui-evidence/residual-application-processes.txt; then
+            cat ai-assistant-gui-evidence/residual-application-processes.txt >&2
+            echo 'An AI Assistant process remained after controlled termination.' >&2
+            exit 1
+          fi
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          set +e
+          ps -ef > ai-assistant-gui-evidence/processes-after-run.txt 2>&1 || true
+          pgrep -af genesys-ai-assistant-gui > ai-assistant-gui-evidence/ai-assistant-processes-after-run.txt 2>&1 || true
+          pgrep -af Xvfb > ai-assistant-gui-evidence/xvfb-processes-after-run.txt 2>&1 || true
+          find build/gui-ai-assistant -type f \( \
+            -name CMakeOutput.log \
+            -o -name CMakeError.log \
+          \) -exec cp --parents {} ai-assistant-gui-evidence/ \; 2>/dev/null || true
+
+      - name: Upload AI Assistant GUI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-ai-assistant-gui-validation
+          path: ai-assistant-gui-evidence/
+          if-no-files-found: error

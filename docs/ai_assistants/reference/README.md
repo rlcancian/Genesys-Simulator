@@ -1,0 +1,196 @@
+---
+document_type: reference-index
+authority: informative
+owner: project-maintainer
+last_reviewed: 2026-11-11
+status: active
+tracks: 511
+---
+
+# GenESyS AI Assistant Reference Documentation
+
+## 1. Purpose
+
+This directory contains task-specific technical guidance that is too detailed for canonical governance and architecture.
+
+Read only the references required by the selected task. Current state remains in [`../STATUS.md`](../STATUS.md), and pending work remains in the canonical backlogs.
+
+## 2. Reference set
+
+### [`BUILD_TEST_PACKAGING.md`](BUILD_TEST_PACKAGING.md)
+
+Use for:
+
+- CMake/Ninja/CTest presets;
+- CI and sanitizer routing;
+- application startup-validation patterns;
+- Docker helpers;
+- Debian lifecycle;
+- Doxygen/generated documentation.
+
+### [`KERNEL_PARSER_OWNERSHIP.md`](KERNEL_PARSER_OWNERSHIP.md)
+
+Use for:
+
+- kernel lifecycle;
+- parser contracts;
+- pointer/reference ownership;
+- persistence impact;
+- C++23 modernization;
+- regression/sanitizer strategy.
+
+### [`PLUGINS.md`](PLUGINS.md)
+
+Use for:
+
+- plugin registration/factories;
+- component/data-definition contracts;
+- metadata/persistence/ownership;
+- static target discipline;
+- optional dependencies;
+- future stable C ABI.
+
+### [`SCIENTIFIC_DOMAINS.md`](SCIENTIFIC_DOMAINS.md)
+
+Use for:
+
+- continuous/hybrid/modal/Petri/cellular models;
+- numerical/statistical validation;
+- biochemical/SBML/whole-cell;
+- AI virtual-cell direction;
+- scientific claim levels.
+
+### [`APPLICATIONS_TOOLS_MODELS.md`](APPLICATIONS_TOOLS_MODELS.md)
+
+Use for:
+
+- shell/worker/Qt6 applications;
+- model-specific generation;
+- property editors;
+- Data Analyser, Optimizer, AI Assistant and DOE;
+- application launch/install boundaries.
+
+### [`API_INTEGRATIONS.md`](API_INTEGRATIONS.md)
+
+Use for:
+
+- facade and shell command coverage;
+- Python-facing APIs;
+- AI providers;
+- generated code/external processes;
+- worker/HTTP boundary;
+- issue-report relay and public compatibility.
+
+### [`manual_figure_automation_plan.md`](manual_figure_automation_plan.md)
+
+Use for:
+
+- future manual screenshot automation;
+- developer diagram generation planning;
+- figure governance and stop-gate decisions.
+
+### [`ARENA_GENESYS_COMPATIBILITY.md`](ARENA_GENESYS_COMPATIBILITY.md)
+
+Use for:
+
+- traceable Arena ↔ GenESyS data-definition/component equivalence audit;
+- confirmed/partial/missing/different classification per Arena module;
+- open questions requiring a maintainer decision before closing a gap.
+
+### [`BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md`](BACTERIA_COLONY_GRO_INTEGRATION_PLAN.md)
+
+Use for:
+
+- the Gro (University of Washington) bacterial micro-colony language
+  integration continuation under `BiochemicalSimulation`/`BacteriaColony`;
+- the original-Gro reference baseline (grammar, builtins, signal/
+  diffusion, growth/division, world-step order) and its licensing
+  boundary;
+- the current GenESyS language/builtin/example compatibility matrices;
+- the phased plan, known deviations, explicitly unsupported behavior and
+  open decisions for this integration.
+
+### [`BACTERIA_COLONY_AGENT_HANDOFF.md`](BACTERIA_COLONY_AGENT_HANDOFF.md)
+
+Use for:
+
+- the current, versioned ChatGPT-to-Codex instructions and decisions for the
+  BacteriaColony integration;
+- the communication protocol used to continue work without copying prompts
+  or reports between conversations.
+
+### [`BACTERIA_COLONY_AGENT_REPORT.md`](BACTERIA_COLONY_AGENT_REPORT.md)
+
+Use for:
+
+- the Codex-authored current execution report, branch/HEAD, commits, tests,
+  blockers and review request;
+- the link to immutable dated validation evidence, where applicable.
+  This is a mutable task handoff, not a replacement for canonical STATUS.
+
+### [`GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md`](GENESYS_MODAL_MODEL_NETWORK_ARCHITECTURE.md)
+
+Use for:
+
+- ModalModel/DefaultNetwork architecture and process-versus-network-domain boundary;
+- EFSM/DTMC/CPN formalism semantics and original scope;
+- historical migration rationale and the design integrated in PRs #528/#529.
+
+For continuation work, read it together with the newer completion plan below. When the older reference leaves a Modal/Network item open or treats legacy `.gen` compatibility or a broader CPN feature set as mandatory, apply the maintainer decisions recorded in the completion plan.
+
+### [`MODAL_NETWORK_COMPLETION_PLAN.md`](MODAL_NETWORK_COMPLETION_PLAN.md)
+
+Use for:
+
+- the current maintainer decisions for completing and verifying ModalModel/DefaultNetwork;
+- the distinction between historical implementation evidence and current-head verification;
+- the verification-led roadmap for DefaultNetwork, ModalModelDefault, EFSM, Graph, DTMC and the pragmatic CPN subset;
+- safe legacy removal via `git rm` after dependency proof (never a `source/.../deprecated/` quarantine);
+- the three-mode EFSM conflict policy;
+- the deferred Cellular Automata -> DefaultNetwork migration;
+- the `done_confirmed` completion gate before broad GUI work or later CA migration.
+
+### [`MODAL_CTMC_BIOCHEMICAL_PLAN.md`](MODAL_CTMC_BIOCHEMICAL_PLAN.md)
+
+Use for the next backend research phase after the Modal/Network backend gate:
+
+- academically grounded CTMC / Markov jump process semantics for biochemical reaction networks;
+- reconciliation of the existing DTMC, WholeCell Gillespie SSA, stochastic reaction rules and `DefaultNetwork` architecture;
+- reaction stoichiometry, propensities/hazards, generator/CME semantics and exact SSA validation;
+- the mandatory GenESyS simulation-time/event-calendar integration gate under `HUM-SCI-002`;
+- analytical/statistical fixtures and authoritative literature required before runtime implementation.
+
+### [`MODAL_NETWORK_GUI_ARCHITECTURE.md`](MODAL_NETWORK_GUI_ARCHITECTURE.md)
+
+Use for the Qt6 Network editor/viewer conceptual architecture, with its process-versus-Network separation approved by the maintainer on 2026-10-29. Proposed GUI class names still require current-code implementation and validation.
+
+### [`MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md`](MODAL_NETWORK_GUI_IMPLEMENTATION_PLAN.md)
+
+Use for the approved 2026-10-29 hierarchical Network-view decision,
+the source-backed G0.1 GUI inventory, the proposed versioned diagram
+record contract, G0.2 acceptance criteria, the read-only EFSM G1 slice,
+subsequent G2–G6 gates, and eventual local-agent handoff.
+
+### [`GUI_EXTENSIONS_ARCHITECTURE.md`](GUI_EXTENSIONS_ARCHITECTURE.md)
+
+Use for the maintainer-approved (2026-11-11) static-first graphical plugin architecture: pure abstract C++ extension contract, registered GUI contributions, optional kernel/system dependencies, in-scene animations, GUI event bridge, unknown-extension persistence, configurable renderers/services, application-local directory layout and **future-only** dynamic ABI/unload constraints.
+
+### [`GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md`](GUI_EXTENSIONS_IMPLEMENTATION_PLAN.md)
+
+Use for the gated G0–G7 implementation roadmap, acceptance and negative tests, incremental migration of queue/resource/station and biological/cellular animations, review/rollback policy, current blockers and deferred dynamic-load design. Planning approval is not permission for autonomous source changes.
+
+
+## 3. Reference rules
+
+Reference files:
+
+- must not duplicate current CI status or backlog state;
+- must distinguish current code, executed evidence, strong indications and historical findings;
+- must link to canonical policy/state and source paths when material;
+- must not authorize unresolved architecture/security/scientific/product decisions;
+- should remain scoped enough for task-specific AI retrieval;
+- must be updated when the underlying public contract changes.
+
+## 4. Historical source preservation
+
+The former topic guides and plans are consolidated during D4. Exact prior text remains in Git history. The D4 migration record maps former paths to these references and records any remaining backlog destination.

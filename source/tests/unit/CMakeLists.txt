@@ -35,6 +35,19 @@ if(NOT TARGET genesys_tools)
     add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-unit-tests)
 endif()
 
+genesys_add_unit_test(genesys_test_cppforg_dynamic
+    test_cppforg_dynamic.cpp
+    genesys_kernel_simulator_runtime
+    genesys_plugins_components_minimal
+)
+set_target_properties(genesys_test_cppforg_dynamic PROPERTIES ENABLE_EXPORTS ON)
+
+genesys_add_unit_test(genesys_test_cppcompiler_dynamic
+    test_cppcompiler_dynamic.cpp
+    genesys_kernel_simulator_runtime
+    genesys_plugins_components_minimal
+)
+
 genesys_add_unit_test(genesys_test_simulator_runtime
     test_simulator_runtime.cpp
     genesys_tools
@@ -69,12 +82,48 @@ genesys_add_unit_test(genesys_test_support_persistence
     genesys_kernel_util
 )
 
+genesys_add_unit_test(genesys_test_gen_serializer_text
+    test_gen_serializer_text.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+)
+
+genesys_add_unit_test(genesys_test_genesys_gro_fixtures
+    test_genesys_gro_fixtures.cpp
+    genesys_plugins_components_minimal
+)
+target_compile_definitions(genesys_test_genesys_gro_fixtures
+    PRIVATE
+        GENESYS_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+
+genesys_add_unit_test(genesys_test_transfer_label_goto
+    test_transfer_label_goto.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
+genesys_add_unit_test(genesys_test_read_component
+    test_read_component.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
 genesys_add_unit_test(genesys_test_runtime_pluginmanager
     test_runtime_pluginmanager.cpp
     genesys_kernel_simulator_runtime
     genesys_kernel_util
     genesys_plugins_components_minimal
     genesys_kernel_simulator_runtime
+)
+
+genesys_add_unit_test(genesys_test_bacteria_colony_viewer_coordinates
+    test_bacteria_colony_viewer_coordinates.cpp
 )
 
 genesys_add_unit_test(genesys_test_ai_plugins
@@ -179,6 +228,8 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
         "${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/*.cpp"
     )
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/build/")
+    # Keep standalone QtTest executables out of the existing GTest/GMDD bundle.
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/tests/")
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/main\.cpp$")
     list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/qcustomplot\.cpp$")
 
@@ -188,6 +239,14 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
 
     add_executable(genesys_test_gui_gmdd_layout
         test_gui_gmdd_layout.cpp
+        test_gui_submodel_level.cpp
+        test_gui_property_editor.cpp
+        test_gui_expression_builder.cpp
+        test_gui_efsm_diagram_persistence.cpp
+        test_gui_model_save_diagnostics.cpp
+        test_gui_model_roundtrip.cpp
+        test_gui_extension_dependencies.cpp
+        test_gui_animation_tool_f2.cpp
         ${GENESYS_QT_GUI_TEST_SOURCES}
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/GenesysQtGUI_resources.qrc
         ${CMAKE_SOURCE_DIR}/source/applications/gui/genesys/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
@@ -313,6 +372,10 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_cellular_automata_neighborhood
         genesys_test_support_modelmanager
         genesys_test_support_persistence
+        genesys_test_gen_serializer_text
+        genesys_test_genesys_gro_fixtures
+        genesys_test_transfer_label_goto
+        genesys_test_read_component
         genesys_test_runtime_pluginmanager
         genesys_test_support_oneventmanager
         genesys_test_support_parsermanager
@@ -387,6 +450,7 @@ gtest_discover_tests(genesys_test_kernel_simulator_method_inventory
 set_property(TARGET genesys_test_kernel_simulator_method_inventory PROPERTY FOLDER tests/unit)
 
 add_dependencies(genesys_kernel_unit_tests genesys_test_kernel_simulator_method_inventory)
+add_dependencies(genesys_kernel_unit_tests genesys_test_bacteria_colony_viewer_coordinates)
 
 add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_util>
@@ -396,6 +460,9 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_cellular_automata_neighborhood>
     COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_persistence>
+    COMMAND $<TARGET_FILE:genesys_test_gen_serializer_text>
+    COMMAND $<TARGET_FILE:genesys_test_transfer_label_goto>
+    COMMAND $<TARGET_FILE:genesys_test_read_component>
     COMMAND $<TARGET_FILE:genesys_test_runtime_pluginmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_oneventmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_parsermanager>

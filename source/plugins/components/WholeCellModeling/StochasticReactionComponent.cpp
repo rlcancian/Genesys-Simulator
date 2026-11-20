@@ -144,6 +144,7 @@ void StochasticReactionComponent::_initBetweenReplications() {
 }
 
 void StochasticReactionComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "StochasticReactionComponent executes one configured reaction update", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	const std::vector<StochasticReactionRule*> rules = _collectRules();

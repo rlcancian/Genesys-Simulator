@@ -1,0 +1,126 @@
+name: GenESyS Shell Validation
+
+run-name: GenESyS Shell | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - CMakeLists.txt
+      - CMakePresets.json
+      - autoloadplugins.txt
+      - source/applications/shell/**
+      - source/applications/BaseGenesysTerminalApplication.*
+      - source/kernel/**
+      - source/parser/**
+      - source/plugins/**
+      - source/tools/**
+      - .github/workflows/genesys-shell-validation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-shell-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-shell:
+    name: Configure, build and exercise genesys_shell
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            libsbml5-dev \
+            libglpk-dev \
+            ngspice \
+            r-base \
+            octave
+
+      - name: Record toolchain
+        run: |
+          set -Eeuo pipefail
+          mkdir -p shell-evidence
+          git rev-parse HEAD | tee shell-evidence/head-sha.txt
+          cmake --version | tee shell-evidence/cmake-version.txt
+          ninja --version | tee shell-evidence/ninja-version.txt
+          g++ --version | tee shell-evidence/gxx-version.txt
+
+      - name: Configure shell preset
+        run: |
+          set -Eeuo pipefail
+          cmake --preset genesys_shell 2>&1 | tee shell-evidence/configure.log
+
+      - name: Build shell preset
+        run: |
+          set -Eeuo pipefail
+          cmake --build --preset genesys_shell --parallel "$(nproc)" 2>&1 \
+            | tee shell-evidence/build.log
+
+      - name: Locate shell executable
+        run: |
+          set -Eeuo pipefail
+          mapfile -t candidates < <(find build/genesys_shell -type f -name genesys_shell -perm -111 | sort)
+          if [[ ${#candidates[@]} -ne 1 ]]; then
+            printf 'Expected exactly one executable named genesys_shell, found %d\n' "${#candidates[@]}" >&2
+            printf '%s\n' "${candidates[@]}" >&2
+            exit 1
+          fi
+          printf '%s\n' "${candidates[0]}" | tee shell-evidence/executable-path.txt
+
+      - name: Run non-interactive shell workflow
+        run: |
+          set -Eeuo pipefail
+          executable="$(cat shell-evidence/executable-path.txt)"
+          timeout 30s "${executable}" \
+            "facade get-name" \
+            "facade get-version" \
+            "plugin count" \
+            "exit" \
+            > shell-evidence/shell-run.log 2>&1
+          cat shell-evidence/shell-run.log
+
+          grep -Fq "Genesys Shell is running." shell-evidence/shell-run.log
+          grep -Fq "Installed plugins:" shell-evidence/shell-run.log
+          grep -Fq "Quiting. Bye." shell-evidence/shell-run.log
+
+          if grep -Eq 'Command ".*" not found' shell-evidence/shell-run.log; then
+            echo "The scripted workflow contained an unknown shell command." >&2
+            exit 1
+          fi
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          set +e
+          find build/genesys_shell -type f \( \
+            -name CMakeOutput.log \
+            -o -name CMakeError.log \
+          \) -exec cp --parents {} shell-evidence/ \; 2>/dev/null || true
+
+      - name: Upload shell evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-shell-validation
+          path: shell-evidence/
+          if-no-files-found: error

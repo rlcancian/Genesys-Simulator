@@ -3,7 +3,9 @@
 #include <string>
 #include <sstream>
 #include <functional>
+#include <iterator>
 #include <list>
+#include <memory>
 #include <vector>
 #include <stdexcept>
 #include <type_traits>
@@ -153,7 +155,8 @@ public:
 enum class SimulationControlEditorHint {
     Default,
     CodeEditor,
-    MultiLineText
+    MultiLineText,
+    ParserExpression
 };
 
 /**
@@ -164,6 +167,8 @@ enum class SimulationControlEditorHint {
  */
 class SimulationControl: public SimulationResponse {
 public:
+    using DynamicEnabledCondition = std::function<bool()>;
+
     SimulationControl(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false,  bool isClass=false, bool isEnum=false)
         : SimulationResponse(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 	}
@@ -177,6 +182,26 @@ public:
 		return msg;
 	}
 	bool isReadOnly() const { return _readonly; }
+	/**
+	 * @brief Evaluates the optional dynamic enabled-state predicate.
+	 *
+	 * A control without a predicate is enabled.  Predicates are evaluated on
+	 * every query, so the result always reflects the current model state.  An
+	 * exception raised by a predicate is intentionally propagated to the caller;
+	 * predicates are kernel code and their failures must remain diagnosable.
+	 */
+	bool isEnabled() const {
+		return !_dynamicEnabledCondition || _dynamicEnabledCondition();
+	}
+	bool hasDynamicEnabledCondition() const {
+		return static_cast<bool>(_dynamicEnabledCondition);
+	}
+	void setDynamicEnabled(DynamicEnabledCondition condition) {
+		_dynamicEnabledCondition = std::move(condition);
+	}
+	void clearDynamicEnabledCondition() {
+		_dynamicEnabledCondition = nullptr;
+	}
 public:
     virtual void setValue(std::string value, bool remove=false) = 0;
     /**
@@ -211,8 +236,31 @@ public:
     virtual bool supportsInlineExpansion() const { return getIsClass() && !getIsList(); }
     // This method exposes whether the property should be edited by the dedicated list editor.
     virtual bool supportsListEditor() const { return getIsList(); }
+    virtual bool supportsPositionalListEditing() const { return false; }
+    virtual std::string getListElementLabel() const { return "Item"; }
+    virtual bool supportsListElementMove() const { return false; }
+    virtual bool supportsListElementRemoval() const { return false; }
+    virtual bool handlesListMoveReconciliation() const { return false; }
+    virtual void moveListElement(int from, int to) {
+        (void)from; (void)to;
+        throw std::logic_error("List movement is not supported");
+    }
+    virtual void insertListValueAt(int index, const std::string& value) {
+        (void)index; (void)value;
+        throw std::logic_error("Positional list insertion is not supported");
+    }
+    virtual void replaceListValueAt(int index, const std::string& value) {
+        (void)index; (void)value;
+        throw std::logic_error("Positional list editing is not supported");
+    }
+    virtual void removeListValueAt(int index) {
+        (void)index;
+        throw std::logic_error("Positional list removal is not supported");
+    }
     // This method exposes whether the property supports choosing an existing object instance.
     virtual bool supportsExistingObjectSelection() const { return false; }
+    virtual bool supportsReferenceRemoval() const { return false; }
+    virtual bool keepsExistingObjectChoicesWhenSet() const { return false; }
     // This method exposes whether the property supports creating a new object instance.
     virtual bool supportsObjectCreation() const { return false; }
     // This method exposes whether the property supports typed creation of a new list element.
@@ -239,6 +287,9 @@ public:
     virtual bool isInlineObjectProperty() const {
         return supportsInlineExpansion() && !isModelDataDefinitionReference();
     }
+    // Opt-in for reference properties whose referenced object's controls should
+    // appear beneath the reference in the Property Editor.
+    virtual bool supportsReferenceChildEditing() const { return false; }
     // This method provides an explicit object-creation operation for class-like properties.
     virtual bool createObjectInstance(const std::string& value = "") {
         (void)value;
@@ -292,6 +343,7 @@ protected:
 	}
 	bool _readonly = false;
     SimulationControlEditorHint _preferredEditorHint = SimulationControlEditorHint::Default;
+	DynamicEnabledCondition _dynamicEnabledCondition;
 };
 
 // -----------------------------------------------------------
@@ -622,6 +674,18 @@ public:
 		}
 		if constexpr (std::is_same_v<T, std::string>) {
 			_setter(value);
+		} else if constexpr (std::is_same_v<T, bool>) {
+			const auto first = value.find_first_not_of(" \t\n\r");
+			const auto last = value.find_last_not_of(" \t\n\r");
+			const std::string normalized = first == std::string::npos
+				? "" : value.substr(first, last - first + 1);
+			if (normalized == "true" || normalized == "1") {
+				_setter(true);
+			} else if (normalized == "false" || normalized == "0") {
+				_setter(false);
+			} else {
+				throw std::invalid_argument("Invalid boolean property value: " + value);
+			}
 		} else {
 			std::istringstream auxStr(value);
 			T tVal{};
@@ -686,12 +750,21 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericClass: public SimulationControl {
 public:
     using Creator = std::function<T(M, const std::string&)>;
-    SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+    using NameResolver = std::function<T(const std::string&)>;
+    using ChoicesProvider = std::function<List<std::string>*()>;
+    using CreatableTypesProvider = std::function<List<std::string>*()>;
+    SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr, bool includeDerivedTypes=false, bool inlineObjectProperty=false, NameResolver nameResolver=nullptr, ChoicesProvider choicesProvider=nullptr, CreatableTypesProvider creatableTypesProvider=nullptr, bool keepsChoicesWhenSet=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 		static_assert(std::is_pointer<T>::value, "SimulationControlGenericClass requires pointer type T");
 		_model = model;
 		_getter= getter;
 		_setter = setter;
         _creator = creator;
+        _includeDerivedTypes = includeDerivedTypes;
+        _inlineObjectProperty = inlineObjectProperty;
+        _nameResolver = nameResolver;
+        _choicesProvider = choicesProvider;
+        _creatableTypesProvider = creatableTypesProvider;
+        _keepsChoicesWhenSet = keepsChoicesWhenSet;
 		_readonly = setter == nullptr;
 		_propertyType = Util::TypeOf<C>();
 	}
@@ -722,24 +795,36 @@ public:
         // value.pop_back();
 		T newVal;
 
-        for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
-            if (modeldata->getName() == value) {
-                exists = true;
-                newVal = static_cast<T>(modeldata);
-                break;
-            };
-        };
+		if (_nameResolver) {
+			newVal = _nameResolver(value);
+			exists = newVal != nullptr;
+		} else if (_includeDerivedTypes) {
+			for (C* compatible : _model->getDataManager()->template getDataDefinitionsAssignableTo<C>()) {
+				if (compatible->getName() == value) {
+						exists = true;
+						newVal = compatible;
+					break;
+				}
+			}
+		} else {
+			for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
+				if (modeldata->getName() == value) {
+					exists = true;
+					newVal = static_cast<T>(modeldata);
+					break;
+				};
+			};
+		}
 
 		if (!exists) {
-            if (_creator != nullptr) {
-                newVal = _creator(_model, value);
-            } else {
-			    newVal = new C(_model, value);
-            }
-            if (newVal == nullptr) {
-                throw std::logic_error("SimulationControlGenericClass creator returned null");
-            }
-		 	_model->getDataManager()->insert(newVal);
+			if (_keepsChoicesWhenSet) {
+				throw std::invalid_argument("ModelDataDefinition reference does not exist: " + value);
+			}
+			newVal = _creator ? _creator(_model, value) : new C(_model, value);
+			if (newVal == nullptr) {
+				throw std::logic_error("SimulationControlGenericClass creator returned null");
+			}
+			_model->getDataManager()->insert(newVal);
 		}
 
 		_setter(newVal);
@@ -753,10 +838,20 @@ public:
     virtual bool supportsInlineExpansion() const override { return true; }
     // This method marks class references as selectable from existing ModelDataDefinition instances.
     virtual bool supportsExistingObjectSelection() const override { return true; }
+    // This selector contract also disables implicit creation when a supplied reference name is unresolved.
+    virtual bool keepsExistingObjectChoicesWhenSet() const override { return _keepsChoicesWhenSet; }
+    // Existing-object selectors represent non-owning references, so they may be
+    // cleared without deleting the referenced definition from the model.
+    virtual bool supportsReferenceRemoval() const override { return _keepsChoicesWhenSet && !_readonly; }
     // This method marks class references as creatable when writable.
     virtual bool supportsObjectCreation() const override { return !_readonly; }
-    // This method marks class references as non-inline object payloads.
-    virtual bool isInlineObjectProperty() const override { return false; }
+    virtual List<std::string>* getCreatableReferenceTypes() override {
+        if (_creatableTypesProvider) return _creatableTypesProvider();
+        return nullptr;
+    }
+    // Internal references can expose their child controls inline while remaining
+    // read-only as references, so the GUI cannot replace or remove owned data.
+    virtual bool isInlineObjectProperty() const override { return _inlineObjectProperty; }
     // Property Editor advanced editing experiment, step 1:
     // ModelDataDefinition references must report whether the referenced object
     // actually exists. Previously the base implementation always returned true,
@@ -783,17 +878,47 @@ public:
         if (name.empty()) {
             return false;
         }
-        setValue(name, false);
+        T created = _creator ? _creator(_model, name) : new C(_model, name);
+        if (created == nullptr) throw std::logic_error("SimulationControlGenericClass creator returned null");
+        _model->getDataManager()->insert(created);
+        _setter(created);
         return hasObjectInstance();
     }
 
-    virtual List<std::string>* getStrValues() override {
-        List<std::string>* strOptions = new List<std::string>();
-        for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
-            if (modeldata != nullptr) {
-                strOptions->insert(modeldata->getName());
+    virtual bool createObjectInstanceOfType(const std::string& typeName, const std::string& value = "") override {
+        if (typeName.empty()) return createObjectInstance(value);
+        if (_creatableTypesProvider) {
+            std::unique_ptr<List<std::string>> types(_creatableTypesProvider());
+            bool supported = false;
+            if (types) {
+                for (const std::string& type : *types->list()) {
+                    if (type == typeName) {
+                        supported = true;
+                        break;
+                    }
+                }
             }
+            if (!supported) return false;
+        } else if (typeName != _propertyType) {
+            return false;
         }
+        return createObjectInstance(value);
+    }
+
+    virtual List<std::string>* getStrValues() override {
+        if (_choicesProvider) {
+            return _choicesProvider();
+        }
+        List<std::string>* strOptions = new List<std::string>();
+		if (_includeDerivedTypes) {
+			for (C* compatible : _model->getDataManager()->template getDataDefinitionsAssignableTo<C>()) {
+				strOptions->insert(compatible->getName());
+			}
+		} else {
+			for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
+				if (modeldata != nullptr) strOptions->insert(modeldata->getName());
+			}
+		}
         return strOptions;
     }
 
@@ -812,6 +937,12 @@ private:
 	GetterGeneric<T> _getter;
 	SetterGeneric<T> _setter;
     Creator _creator;
+    bool _includeDerivedTypes{false};
+    bool _inlineObjectProperty{false};
+    NameResolver _nameResolver;
+    ChoicesProvider _choicesProvider;
+    CreatableTypesProvider _creatableTypesProvider;
+    bool _keepsChoicesWhenSet{false};
 };
 
 // @ToDo: (pequena alteração): remove typename C
@@ -990,6 +1121,39 @@ public:
     }
     // This method marks scalar lists as editable through the list editor in the universal contract.
     virtual bool supportsListEditor() const override { return true; }
+    virtual bool supportsPositionalListEditing() const override { return std::is_same_v<T, std::string> && !_readonly; }
+    virtual bool supportsListElementMove() const override { return !_readonly; }
+    virtual void moveListElement(int from, int to) override {
+        _ensureWritable("move list element for");
+        auto* values = _getter()->list();
+        if (from < 0 || to < 0 || static_cast<std::size_t>(from) >= values->size() || static_cast<std::size_t>(to) >= values->size()) throw std::out_of_range("list index");
+        if (from == to) return;
+        auto source = std::next(values->begin(), from);
+        auto destination = std::next(values->begin(), to);
+        if (from < to) ++destination;
+        values->splice(destination, *values, source);
+    }
+    virtual bool supportsNewListElementCreation() const override { return supportsPositionalListEditing(); }
+    virtual bool createNewListElement(const std::string& value = "") override {
+        if constexpr (std::is_same_v<T, std::string>) {
+            _ensureWritable("create list element for");
+            _adder(value);
+            return true;
+        }
+        return false;
+    }
+    virtual void replaceListValueAt(int index, const std::string& value) override {
+        if constexpr (std::is_same_v<T, std::string>) {
+            _ensureWritable("edit list element for");
+            List<T>* values = _getter();
+            if (index < 0 || static_cast<std::size_t>(index) >= values->size()) {
+                throw std::out_of_range("list index");
+            }
+            values->setAtRank(index, value);
+        } else {
+            SimulationControl::replaceListValueAt(index, value);
+        }
+    }
 
 private:
 	M _model;
@@ -1002,6 +1166,7 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericListPointer: public SimulationControl {
 public:
     using Creator = std::function<T(M, const std::string&)>;
+    using ListMoveHandler = std::function<void(int, int)>;
     using TypedCreator = std::function<T(M)>;
     using ElementTypeNamesGetter = std::function<std::vector<std::string>()>;
     using CurrentElementTypeGetter = std::function<std::string()>;
@@ -1063,6 +1228,35 @@ public:
     };
     // This method marks pointer lists as editable through the list editor in the universal contract.
     virtual bool supportsListEditor() const override { return true; }
+    virtual bool supportsListElementMove() const override { return !_readonly; }
+    virtual bool supportsListElementRemoval() const override { return !_readonly && _remover != nullptr; }
+    virtual void removeListValueAt(int index) override {
+        _ensureWritable("remove list element from");
+        List<T>* values = _getter();
+        if (index < 0 || static_cast<std::size_t>(index) >= values->size()) {
+            throw std::out_of_range("list index");
+        }
+        if (!_remover) {
+            throw std::logic_error("SimulationControlGenericListPointer remover is not defined");
+        }
+        _remover(values->getAtRank(static_cast<unsigned int>(index)));
+    }
+    virtual bool handlesListMoveReconciliation() const override { return static_cast<bool>(_listMoveHandler); }
+    void setListMoveHandler(ListMoveHandler handler) { _listMoveHandler = std::move(handler); }
+    virtual void moveListElement(int from, int to) override {
+        _ensureWritable("move list element for");
+        auto* values = _getter()->list();
+        if (from < 0 || to < 0 || static_cast<std::size_t>(from) >= values->size() || static_cast<std::size_t>(to) >= values->size()) throw std::out_of_range("list index");
+        if (from == to) return;
+        if (_listMoveHandler) {
+            _listMoveHandler(from, to);
+            return;
+        }
+        auto source = std::next(values->begin(), from);
+        auto destination = std::next(values->begin(), to);
+        if (from < to) ++destination;
+        values->splice(destination, *values, source);
+    }
     // This method marks pointer lists as supporting explicit typed element creation when writable.
     virtual bool supportsNewListElementCreation() const override { return !_readonly; }
     // This method exposes concrete types for polymorphic pointer lists such as Set members.
@@ -1199,6 +1393,7 @@ private:
 
 private:
     M _model;
+	ListMoveHandler _listMoveHandler;
 	GetterGeneric<List<T>*> _getter;
 	AdderGeneric<T> _adder;
     RemoverGeneric<T> _remover;

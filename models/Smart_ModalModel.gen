@@ -5,13 +5,13 @@
 0   ModelSimulation "" traceLevel=9 terminatingCondition="count(Dispose_1.CountNumberIn)>30" 
 
 # Model Data Definitions
-134 EntityType "entitytype" 
-135 Attribute  "Entity.ArrivalTime" 
-136 Attribute  "Entity.Type" 
-138 Attribute  "Entity.ModalModel.ModalModelDefault_1.CurrentNode" 
-139 Attribute  "Entity.ModalModel.ModalModelDefault_1.LastNode" 
+136 EntityType "entitytype" 
+137 Attribute  "Entity.ArrivalTime" 
+138 Attribute  "Entity.Type" 
+140 Attribute  "Entity.ModalModel.ModalModelDefault_1.CurrentNode" 
+141 Attribute  "Entity.ModalModel.ModalModelDefault_1.LastNode" 
 
 # Model Components
-132 Create     "Create_1" entityType="entitytype" nextId=137 
-137 ModalModelDefault "ModalModelDefault_1" nextId=140 
-140 Dispose    "Dispose_1" nexts=0 
+134 Create     "Create_1" entityType="entitytype" nextId=139 
+139 ModalModelDefault "ModalModelDefault_1" nextId=142 
+142 Dispose    "Dispose_1" nexts=0 

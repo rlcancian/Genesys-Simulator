@@ -1,0 +1,398 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{The Main Graphical Application}
+\label{chap:main-graphical-application}
+
+This chapter documents the current \texttt{genesys-gui} surface as it exists
+in the \texttt{WorkInProgress} branch at commit
+\texttt{7cc6458da93c5099d7f1f5dda7535f5a761999ea}. It is grounded in the
+present Qt window layout and in the controllers that now split the main window
+into narrower responsibilities.
+
+\noindent\textbf{Objective.} Describe the real top-level GUI, the visible
+panels, and the user-facing actions that anchor day-to-day model work.
+
+\noindent\textbf{Audience.} Users who start with the graphical interface and
+need to understand where to load models, edit them, inspect traces, and launch
+simulation runs.
+
+\noindent\textbf{Scope.} Cover the main window layout, menus, toolbars, model
+trees, property editor, console, result panes, simulation controls, tool
+actions, and the safe shutdown path.
+
+\noindent\textbf{Status.} Partially validated by code inspection and by the
+current branch structure; visual screenshots are intentionally represented by
+compilable placeholders until the final images are produced.
+
+The GUI is the main composition root for the desktop workflow. It wires the
+model lifecycle, scene interaction, trace rendering, property editing, plugin
+catalog updates, and simulation event handling through dedicated controllers.
+That makes the window easier to document in slices: the frame itself, the
+navigation widgets, the editable scene, the trace and results panes, and the
+simulation configuration path.
+
+The rest of this chapter follows that order through
+Section~\ref{sec:main-graphical-application-layout},
+Section~\ref{sec:main-graphical-application-menus},
+Section~\ref{sec:main-graphical-application-trees},
+Section~\ref{sec:main-graphical-application-scene},
+Section~\ref{sec:main-graphical-application-trace},
+Section~\ref{sec:main-graphical-application-simulation},
+Section~\ref{sec:main-graphical-application-actions}, and
+Section~\ref{sec:main-graphical-application-closure}.
+
+\section{Main window layout}
+\label{sec:main-graphical-application-layout}
+
+The central window is built by \texttt{mainwindow.ui} and initialized by
+\texttt{mainwindow.cpp}. The root widget owns the standard Qt menus, the
+toolbars, the central tab sets, the dock widgets, and the scene/view pair that
+renders the current model. The central surface is split across:
+\begin{itemize}
+\item \texttt{tabWidgetCentral};
+\item \texttt{tabWidgetModel};
+\item \texttt{tabWidgetSimulation};
+\item \texttt{tabWidgetReports};
+\item \texttt{dockWidgetPropertyEditor};
+\item \texttt{dockWidgetConsole};
+\item the graphical view backed by \texttt{ModelGraphicsScene}.
+\end{itemize}
+
+The layout is intentionally split into a model-editing center and supporting
+inspection panes. The editor area keeps the scene, text model, simulation
+trace tabs, and report tabs visible as separate work surfaces instead of
+collapsing everything into one monolithic canvas. That separation matches the
+current controller split and makes it easier to explain which actions are
+always available and which are disabled while a simulation is running.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:main-graphical-window-annotated
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow.h
+%   - source/applications/gui/genesys/mainwindow.cpp
+% Purpose:
+%   Show the main Qt window with its dock widgets, tab widgets, scene view, and primary action areas.
+% Required visual content:
+%   - full main window frame
+%   - central model/simulation/report tabs
+%   - property editor and console docks
+%   - annotated scene/view region
+% Accessibility description:
+%   A labeled overview of the main GUI frame so the reader can map the rest of the chapter to the window.
+% Validation:
+%   The screenshot must match the current WorkInProgress branch and the visible widgets named in mainwindow.ui.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/main-graphical-window-annotated}
+\caption{Annotated main GUI window showing the primary workspace and supporting panes.}
+\label{fig:main-graphical-window-annotated}
+\end{figure}
+
+Figure~\ref{fig:main-graphical-window-annotated} is the anchor for the rest of
+this chapter. It should be read together with the menus in
+Figure~\ref{fig:main-graphical-menus} and the scene/editor panes in
+Figures~\ref{fig:main-graphical-component-tree},
+\ref{fig:main-graphical-property-editor}, and
+\ref{fig:main-graphical-graphics-area}.
+
+\section{Menus and toolbars}
+\label{sec:main-graphical-application-menus}
+
+The top-level menus are the normal entry points for model lifecycle, editing,
+simulation, tools, and about/help actions. The current menu surface includes
+Model, Edit, View, Simulation, Tools, and About. The Model menu owns new,
+open, recent, save, close, information, check, and model-navigation actions.
+The Edit menu exposes undo, redo, find, replace, clipboard, grouping, and
+ungrouping actions. The View and drawing toolbars control zoom, grid/ruler
+visibility, guides, snapping, alignment, and graphical selection behavior.
+
+The toolbar set is arranged as a compact action strip around the main window.
+The current code adds the model, edit, view, arrange, draw, simulation,
+graphical-model, animate, and about toolbars to the top and left areas, then
+locks them down to the top area at runtime so the workspace stays predictable.
+That is the correct reading of the GUI: the toolbars are a command surface, not
+independent windows.
+
+Several actions are intentionally state-gated. When no model is open, the GUI
+disables most editing and simulation controls. When a simulation is active, it
+locks the edit, view, drawing, and property-editing paths so the runtime state
+cannot be damaged by concurrent edits.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:main-graphical-menus
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow.cpp
+% Purpose:
+%   Show the menu bar and toolbar cluster with the current action groupings.
+% Required visual content:
+%   - Model/Edit/View/Simulation/Tools/About menus
+%   - the top and left toolbar groups
+%   - visible enabled/disabled states for representative actions
+% Accessibility description:
+%   A guide to where the user finds the main commands and how they are grouped.
+% Validation:
+%   The screenshot must reflect the current menu names and runtime gating behavior.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/main-graphical-menus}
+\caption{Menu bar and toolbar grouping in the main GUI.}
+\label{fig:main-graphical-menus}
+\end{figure}
+
+\section{Model trees and property editor}
+\label{sec:main-graphical-application-trees}
+
+The left-hand navigation and the property editor are where the current model
+becomes inspectable. The component tree lists model components and reflects the
+scene selection. The data-definition tree lists the current model data
+definitions. The plugin tree shows loaded plugins and their catalog entries.
+The property editor on the right mirrors the selected model object and is kept
+in sync with scene selection changes and tree selection changes.
+
+The important behavior here is synchronization. Selecting an item in the tree
+or in the scene should drive the property editor to the same model object. The
+code keeps that linkage in the composition root and in the property-editor
+controller rather than leaving it implicit. That is why the chapter should
+describe the trees as coordinated views of the model, not as independent
+widgets.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:main-graphical-component-tree
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow.h
+%   - source/applications/gui/genesys/controllers/ModelInspectorController.cpp
+% Purpose:
+%   Show the component tree and its relation to the model and scene selection.
+% Required visual content:
+%   - treeWidgetComponents
+%   - treeWidgetDataDefnitions or adjacent data-definition tree
+%   - treeWidget_Plugins if visible in the same workspace capture
+% Accessibility description:
+%   A structural view of the model browser area that explains how items are organized.
+% Validation:
+%   The screenshot must show actual model objects from the documented commit, not placeholders.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/main-graphical-component-tree}
+\caption{Model browsing area with the component and data-definition trees.}
+\label{fig:main-graphical-component-tree}
+\end{figure}
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:main-graphical-property-editor
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/controllers/PropertyEditorController.cpp
+% Purpose:
+%   Show the docked property editor used to edit the selected model object.
+% Required visual content:
+%   - property editor dock
+%   - representative editable fields
+%   - visible selection context where practical
+% Accessibility description:
+%   A close-up of the inspector used to edit object properties from the scene or trees.
+% Validation:
+%   The screenshot must reflect the current selection-driven property browser behavior.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/main-graphical-property-editor}
+\caption{Docked property editor synchronized with the current selection.}
+\label{fig:main-graphical-property-editor}
+\end{figure}
+
+\section{Scene and graphical editing}
+\label{sec:main-graphical-application-scene}
+
+The graphics view is the primary editing surface for model diagrams.
+The backing scene is \texttt{ModelGraphicsScene}.
+That scene receives the draw, arrange, zoom, grouping, connection, and
+visibility commands exposed by the menus and toolbars. The visible editing
+modes include the normal selection flow and the drawing and animation actions
+for lines, rectangles, ellipses, polygons, text, counters, variables, queues,
+stations, entities, events, attributes, statistics, plots, and simulated
+time.
+
+The chapter should also make clear that the scene is not just a canvas. It is
+the coordination point for undo, graphical connections, selection, visibility
+filters, and graphical simulation overlays. That is why the current GUI
+maintains separate actions for grid, ruler, guides, snap, recursive visibility,
+attached elements, and editable elements. Those options do not merely change
+appearance; they change how the model is navigated and edited.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:main-graphical-graphics-area
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/controllers/SceneToolController.cpp
+% Purpose:
+%   Show the graphics view and the visible scene editing aids.
+% Required visual content:
+%   - model graphics area
+%   - grid/ruler/guides/snap state where possible
+%   - a representative model diagram or open scene
+% Accessibility description:
+%   The main interactive canvas for placing and connecting model components.
+% Validation:
+%   The screenshot must match the scene tools and visibility controls documented in this chapter.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/main-graphical-graphics-area}
+\caption{Graphical editing area and scene-level interaction aids.}
+\label{fig:main-graphical-graphics-area}
+\end{figure}
+
+\section{Trace, console, and reports}
+\label{sec:main-graphical-application-trace}
+
+The lower and side output panes are where the GUI exposes runtime feedback.
+The main console receives normal traces and errors. The simulation pane shows
+simulation-specific traces. The reports pane shows report-oriented output and
+the summary results that are emitted when the model or runtime suppresses a
+full automatic report dialog.
+
+This is implemented through the trace bridge controller instead of through
+ad hoc widget writes in the window class. The practical effect for the reader
+is that the console, simulation output, and reports output are separate sinks
+with different meanings. A general trace does not prove a simulation completed,
+and a report pane does not mean the model was scientifically validated. The
+chapter should say that explicitly so the interface is not overread.
+
+Figure~\ref{fig:main-graphical-trace-panel} captures the trace-oriented panes,
+while Figure~\ref{fig:main-graphical-results-panel} captures the report and
+result-oriented panes that appear after a run.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:main-graphical-trace-panel
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.ui
+%   - source/applications/gui/genesys/controllers/TraceConsoleController.cpp
+%   - source/applications/gui/genesys/mainwindow.cpp
+% Purpose:
+%   Show the console and simulation trace panes with their live output roles.
+% Required visual content:
+%   - main console pane
+%   - simulation trace pane
+%   - report text pane when visible
+% Accessibility description:
+%   The runtime feedback region used for traces, errors, and simulation messages.
+% Validation:
+%   The screenshot must correspond to the live trace routing described in code.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/main-graphical-trace-panel}
+\caption{Console and trace panes used for runtime feedback.}
+\label{fig:main-graphical-trace-panel}
+\end{figure}
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:main-graphical-results-panel
+% Source of truth:
+%   - source/applications/gui/genesys/mainwindow.cpp
+%   - source/applications/gui/genesys/controllers/SimulationEventController.cpp
+%   - source/tools/Statistics/SimulationResultsDataset.cpp
+% Purpose:
+%   Show the reports and results region after a simulation or replication completes.
+% Required visual content:
+%   - reports tab or results table
+%   - representative summary output or plot region
+%   - state that indicates finished or suppressed report display
+% Accessibility description:
+%   The area where a user inspects summaries, traces, and result-oriented views.
+% Validation:
+%   The screenshot must come from the current reporting behavior and not from mock data.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/main-graphical-results-panel}
+\caption{Results and reports area after execution.}
+\label{fig:main-graphical-results-panel}
+\end{figure}
+
+\section{Simulation controls and configuration}
+\label{sec:main-graphical-application-simulation}
+
+The simulation menu and the dedicated toolbar expose start, stop, pause,
+resume, step, and configuration actions. The configuration action opens the
+simulation configuration dialog, which mirrors the live \texttt{ModelSimulation}
+state and lets the user edit replication counts, time units, warm-up period,
+termination condition, step-by-step execution, pause behavior, and local
+parallelization settings. The dialog also carries a distributed-parallelization
+placeholder button, which is explicitly documented in the code as a future
+extension rather than as a finished backend integration.
+
+This is the right place to mention the state gating again. The GUI enables the
+simulation actions only when the current model and runtime state permit them.
+That means the chapter should describe the controls as available commands with
+preconditions, not as always-active buttons.
+
+Figure~\ref{fig:main-graphical-simulation-config} shows the dialog surface the
+user reaches from this command.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:main-graphical-simulation-config
+% Source of truth:
+%   - source/applications/gui/genesys/dialogs/dialogsimulationconfigure.ui
+%   - source/applications/gui/genesys/dialogs/dialogsimulationconfigure.h
+%   - source/applications/gui/genesys/dialogs/dialogsimulationconfigure.cpp
+%   - source/applications/gui/genesys/controllers/ModelLifecycleController.cpp
+% Purpose:
+%   Show the simulation configuration dialog used by the main GUI.
+% Required visual content:
+%   - replication and time-unit fields
+%   - warm-up and termination settings
+%   - pause/step-by-step controls
+%   - local parallelization controls
+%   - distributed-parallelization placeholder area or button
+% Accessibility description:
+%   A configuration dialog for the runtime parameters that drive simulation execution.
+% Validation:
+%   The dialog capture must match the live fields loaded from ModelSimulation and ExperimentManager.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/main-graphical-simulation-config}
+\caption{Simulation configuration dialog opened from the main GUI.}
+\label{fig:main-graphical-simulation-config}
+\end{figure}
+
+\section{Available, incomplete, and experimental actions}
+\label{sec:main-graphical-application-actions}
+
+The current GUI exposes a small number of actions that should be documented as
+present but not necessarily mature. The visible example is the legacy
+\texttt{ToolsExperimentation} slot, which remains in the class but does not
+currently map to a live QAction in \texttt{mainwindow.ui}. That is a
+compatibility artifact, not a user-facing feature. The chapter should call
+such items out plainly so readers can distinguish implemented commands from
+historical wiring and future scaffolding.
+
+More generally, the GUI uses explicit state checks to keep incomplete or
+dangerous actions disabled when they should not run. The documentation should
+reflect that contract instead of implying that every listed slot is a polished
+feature. This is especially important for the simulation toolbar, the plugin
+manager entry point, and the graphical simulation toggle.
+
+\section{Safe closure}
+\label{sec:main-graphical-application-closure}
+
+Closing the main window is not a trivial hide-and-exit operation. The current
+window class coordinates pending-change checks, scene cleanup, trace shutdown,
+signal disconnection, and model persistence prompts before allowing the
+application to exit. In practice, that means the user can close the window
+without losing the current model accidentally, but only after the current
+dirty state has been reviewed.
+
+The chapter should end by telling the user that the GUI is a coordinated
+workspace, not a thin shell around a single canvas. The model tree, property
+editor, scene, trace panes, and simulation dialog all participate in that
+workspace and are kept consistent by the controller layer.

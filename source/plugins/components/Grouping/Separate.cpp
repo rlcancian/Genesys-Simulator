@@ -46,6 +46,7 @@ ModelComponent* Separate::LoadInstance(Model* model, PersistenceRecord *fields) 
 }
 
 void Separate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Separate releases members from an entity group", TraceManager::Level::L7_internal);
 	// This path handles split-existing-batch semantics using the representative "Entity.Group" marker.
 	unsigned int entityGroupId = entity->getAttributeValue("Entity.Group"); //This attribute refers to the Batch internal modeldatum EntityGroup (which may contain several groups --map--
 	if (entityGroupId == 0) {

@@ -64,8 +64,10 @@ public:
 	GraphicalConnection::ConnectionType connectionType() const;
     /** @brief Returns source output port index associated with model connection. */
     unsigned int getPortSourceConnection() const;
+    void setSourcePortNumber(unsigned int portNumber);
     /** @brief Returns destination input port index associated with model connection. */
     unsigned int getPortDestinationConnection() const;
+	void setDestinationPortNumber(unsigned int portNumber);
 	/** @brief Sets routing type used during painting. */
 	void setConnectionType(GraphicalConnection::ConnectionType newConnectionType);
     /** @brief Returns sampled scene points used for serialization/inspection. */

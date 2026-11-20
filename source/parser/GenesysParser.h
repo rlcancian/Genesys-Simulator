@@ -45,11 +45,13 @@
 #ifndef YY_YY_GENESYSPARSER_H_INCLUDED
 # define YY_YY_GENESYSPARSER_H_INCLUDED
 // "%code requires" blocks.
-#line 9 "bisonparser.yy"
+#line 11 "bisonparser.yy"
 
 	#include <string>
 	#include <cmath>
 	#include <algorithm>
+	#include <utility>
+	#include <vector>
 	#include "obj_t.h"
 	#include "kernel/util/Util.h"
 	#include "kernel/simulator/essentialPlugins/Attribute.h"
@@ -85,7 +87,7 @@
 
 	class genesyspp_driver;
 
-#line 89 "../GenesysParser.h"
+#line 91 "../GenesysParser.h"
 
 # include <cassert>
 # include <cstdlib> // std::abort
@@ -225,7 +227,7 @@
 #endif
 
 namespace yy {
-#line 229 "../GenesysParser.h"
+#line 231 "../GenesysParser.h"
 
 
 
@@ -545,7 +547,6 @@ namespace yy {
       // mathFunction
       // probFunction
       // userFunction
-      // listaparm
       // illegal
       // attribute
       // simulationResponse
@@ -558,6 +559,9 @@ namespace yy {
 
       // indexList
       char dummy2[sizeof (std::string)];
+
+      // listaparm
+      char dummy3[sizeof (std::vector<std::pair<double, double>>)];
     };
 
     /// The size of the largest semantic type.
@@ -985,7 +989,6 @@ namespace yy {
       case symbol_kind::S_mathFunction: // mathFunction
       case symbol_kind::S_probFunction: // probFunction
       case symbol_kind::S_userFunction: // userFunction
-      case symbol_kind::S_listaparm: // listaparm
       case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
       case symbol_kind::S_simulationResponse: // simulationResponse
@@ -999,6 +1002,10 @@ namespace yy {
 
       case symbol_kind::S_indexList: // indexList
         value.move< std::string > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_listaparm: // listaparm
+        value.move< std::vector<std::pair<double, double>> > (std::move (that.value));
         break;
 
       default:
@@ -1046,6 +1053,20 @@ namespace yy {
       {}
 #else
       basic_symbol (typename Base::kind_type t, const std::string& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, std::vector<std::pair<double, double>>&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const std::vector<std::pair<double, double>>& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1177,7 +1198,6 @@ switch (yykind)
       case symbol_kind::S_mathFunction: // mathFunction
       case symbol_kind::S_probFunction: // probFunction
       case symbol_kind::S_userFunction: // userFunction
-      case symbol_kind::S_listaparm: // listaparm
       case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
       case symbol_kind::S_simulationResponse: // simulationResponse
@@ -1191,6 +1211,10 @@ switch (yykind)
 
       case symbol_kind::S_indexList: // indexList
         value.template destroy< std::string > ();
+        break;
+
+      case symbol_kind::S_listaparm: // listaparm
+        value.template destroy< std::vector<std::pair<double, double>> > ();
         break;
 
       default:
@@ -3273,7 +3297,6 @@ switch (yykind)
       case symbol_kind::S_mathFunction: // mathFunction
       case symbol_kind::S_probFunction: // probFunction
       case symbol_kind::S_userFunction: // userFunction
-      case symbol_kind::S_listaparm: // listaparm
       case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
       case symbol_kind::S_simulationResponse: // simulationResponse
@@ -3287,6 +3310,10 @@ switch (yykind)
 
       case symbol_kind::S_indexList: // indexList
         value.copy< std::string > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_listaparm: // listaparm
+        value.copy< std::vector<std::pair<double, double>> > (YY_MOVE (that.value));
         break;
 
       default:
@@ -3421,7 +3448,6 @@ switch (yykind)
       case symbol_kind::S_mathFunction: // mathFunction
       case symbol_kind::S_probFunction: // probFunction
       case symbol_kind::S_userFunction: // userFunction
-      case symbol_kind::S_listaparm: // listaparm
       case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
       case symbol_kind::S_simulationResponse: // simulationResponse
@@ -3435,6 +3461,10 @@ switch (yykind)
 
       case symbol_kind::S_indexList: // indexList
         value.move< std::string > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_listaparm: // listaparm
+        value.move< std::vector<std::pair<double, double>> > (YY_MOVE (s.value));
         break;
 
       default:
@@ -3503,7 +3533,7 @@ switch (yykind)
 
 
 } // yy
-#line 3507 "../GenesysParser.h"
+#line 3537 "../GenesysParser.h"
 
 
 

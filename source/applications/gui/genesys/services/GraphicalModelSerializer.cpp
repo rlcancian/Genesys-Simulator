@@ -1,4 +1,5 @@
 #include "GraphicalModelSerializer.h"
+#include "../extensions/GuiExtensionPluginCatalog.h"
 #include "GraphicalModelBuilder.h"
 
 #include "../TraitsGUI.h"
@@ -46,6 +47,8 @@
 #include <QStringList>
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
+#include <cerrno>
 #include <set>
 #include <vector>
 
@@ -135,7 +138,7 @@ QColor pluginCategoryColor(const QString& categoryPath) {
     if (top == QStringLiteral("InputOutput")) {
         return QColor(Qt::darkCyan);
     }
-    if (top == QStringLiteral("MaterialHandling")) {
+    if (top == QStringLiteral("Transfer")) {
         return QColor(Qt::darkBlue);
     }
     if (top == QStringLiteral("Decisions")) {
@@ -226,18 +229,28 @@ bool parsePersistedBool(const QString& text) {
 }
 
 bool containsPersistenceMarkers(const QString& text) {
-    return text.contains("# Genesys Simulation Model")
-           || text.contains("# Genesys Graphic Model")
-           || text.contains("# 0 Show")
-           || text.contains("# 0 GUI")
-           || text.contains("# Draws")
-           || text.contains("# Animations")
-           || text.contains("# Graphical Plugins")
-           || text.contains("# Graphical Model Data Definitions")
-           || text.contains("# Graphical Model Components")
-           || text.contains("# Groups")
-           || text.contains("# Model Data Definitions")
-           || text.contains("# Model Components");
+    if (text.contains("# Genesys Simulation Model")
+        || text.contains("# Genesys Graphic Model")
+        || text.contains("# 0 Show")
+        || text.contains("# 0 GUI")
+        || text.contains("# Draws")
+        || text.contains("# Animations")
+        || text.contains("# Graphical Plugins")
+        || text.contains("# Graphical Model Data Definitions")
+        || text.contains("# Graphical Model Components")
+        || text.contains("# Groups")
+        || text.contains("# Model Data Definitions")
+        || text.contains("# Model Components")) {
+        return true;
+    }
+    for (const GuiDiagramProjectionContribution& diagram
+         : GuiExtensionPluginCatalog::diagramProjectionContributions()) {
+        if (!diagram.sectionName.empty()
+            && text.contains(QStringLiteral("# ") + QString::fromStdString(diagram.sectionName))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 QString recoverFromUtf16Mojibake(const QString& mojibakeText) {
@@ -348,7 +361,9 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
                                                    std::function<void()> rebuildGraphicalModelFromModel,
                                                    std::function<void()> applyShowInternalElements,
                                                    std::function<void()> applyShowEditableElements,
-                                                   std::function<void()> applyShowAttachedElements)
+                                                   std::function<void()> applyShowAttachedElements,
+                                                   std::shared_ptr<GuiDiagramLayoutsByModel> diagramLayoutsByModel,
+                                                   std::shared_ptr<GuiUnknownDiagramSectionsByModel> unknownDiagramSectionsByModel)
     : _simulator(simulator),
       _ownerWidget(ownerWidget),
       _modelTextEditor(modelTextEditor),
@@ -368,7 +383,40 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
       _rebuildGraphicalModelFromModel(std::move(rebuildGraphicalModelFromModel)),
       _applyShowInternalElements(std::move(applyShowInternalElements)),
       _applyShowEditableElements(std::move(applyShowEditableElements)),
-      _applyShowAttachedElements(std::move(applyShowAttachedElements)) {}
+      _applyShowAttachedElements(std::move(applyShowAttachedElements)),
+      _diagramLayoutsByModel(diagramLayoutsByModel != nullptr
+                                 ? std::move(diagramLayoutsByModel)
+                                 : std::make_shared<GuiDiagramLayoutsByModel>()),
+      _unknownDiagramSectionsByModel(unknownDiagramSectionsByModel != nullptr
+                                         ? std::move(unknownDiagramSectionsByModel)
+                                         : std::make_shared<GuiUnknownDiagramSectionsByModel>()) {}
+
+void GraphicalModelSerializer::setNetworkDiagramLayout(
+    Model* model, const std::string& extensionId, unsigned long networkId, std::any layout) {
+    if (model == nullptr || extensionId.empty()) return;
+    auto& layoutsByExtension = (*_diagramLayoutsByModel)[model];
+    auto& layouts = layoutsByExtension[extensionId];
+    if (!layout.has_value()) layouts.erase(networkId);
+    else layouts.insert_or_assign(networkId, std::move(layout));
+    if (layouts.empty()) layoutsByExtension.erase(extensionId);
+    if (layoutsByExtension.empty()) _diagramLayoutsByModel->erase(model);
+}
+
+std::any GraphicalModelSerializer::networkDiagramLayout(
+    Model* model, const std::string& extensionId, unsigned long networkId) const {
+    if (model == nullptr) return {};
+    const auto modelIt = _diagramLayoutsByModel->find(model);
+    if (modelIt == _diagramLayoutsByModel->end()) return {};
+    const auto extensionIt = modelIt->second.find(extensionId);
+    if (extensionIt == modelIt->second.end()) return {};
+    const auto layoutIt = extensionIt->second.find(networkId);
+    return layoutIt != extensionIt->second.end() ? layoutIt->second : std::any{};
+}
+
+void GraphicalModelSerializer::forgetNetworkDiagramLayouts(Model* model) {
+    _diagramLayoutsByModel->erase(model);
+    _unknownDiagramSectionsByModel->erase(model);
+}
 
 /**
  * @brief Encodes free-form GUI text so it survives tab-separated persistence.
@@ -573,16 +621,28 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             return false;
         }
 
-        // Persist the canonical kernel state directly into the .gui file before appending GUI overlays.
-        if (!_simulator->getModelManager()->saveModel(filename.toStdString())) {
+        // Write both the kernel model and the GUI overlay into a temp file, then atomically
+        // rename it over the real destination only once everything below succeeds. Writing
+        // either pass directly against `filename` would truncate/replace the previous good
+        // save before the new one is known to be complete.
+        const QString tempFilename = filename + ".tmp";
+
+        // Persist the canonical kernel state into the temp file before appending GUI overlays.
+        if (!_simulator->getModelManager()->saveModel(tempFilename.toStdString())) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_KERNEL_FAILED stage=kernel_save; inspect preceding SAVE_DIAGNOSTIC/SERIALIZER_* errors");
             QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"), QObject::tr("Could not save kernel model to file."));
+            QFile::remove(tempFilename);
             return false;
         }
 
-        QFile saveFile(filename);
+        QFile saveFile(tempFilename);
         if (!saveFile.open(QIODevice::Append | QIODevice::Text)) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_OVERLAY_OPEN_FAILED stage=overlay_open error=" + saveFile.errorString().toStdString());
             QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
                                      saveFile.errorString());
+            QFile::remove(tempFilename);
             return false;
         }
 
@@ -597,17 +657,17 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             << Qt::endl;
         QString line = "0 Show ";
         line += "zoom=" + QString::number(_zoomSlider->value());
-        line += ", grid=" + QString::number(_actionShowGrid->isChecked());
-        line += ", rule=" + QString::number(_actionShowRule->isChecked());
-        line += ", snap=" + QString::number(_actionShowSnap->isChecked());
-        line += ", guides=" + QString::number(_actionShowGuides->isChecked());
-        line += ", internals=" + QString::number(_actionShowInternalElements->isChecked()
-                                                 || _actionShowEditableElements->isChecked());
-        line += ", attached=" + QString::number(_actionShowAttachedElements->isChecked());
-        line += ", statistics=" + QString::number(_actionShowInternalElements->isChecked());
-        line += ", editable=" + QString::number(_actionShowEditableElements->isChecked());
-        line += ", shared=" + QString::number(_actionShowAttachedElements->isChecked());
-        line += ", recursive=" + QString::number(_actionShowRecursiveElements->isChecked());
+        line += ", grid=" + QString::number(_graphicsView->getScene()->isGridVisible());
+        line += ", rule=" + QString::number(_graphicsView->isRuleVisible());
+        line += ", snap=" + QString::number(_graphicsView->getScene()->getSnapToGrid());
+        line += ", guides=" + QString::number(_graphicsView->isGuidesVisible());
+        line += ", internals=" + QString::number(_graphicsView->getScene()->showStatisticsDataDefinitions()
+                                                 || _graphicsView->getScene()->showEditableDataDefinitions());
+        line += ", attached=" + QString::number(_graphicsView->getScene()->showSharedDataDefinitions());
+        line += ", statistics=" + QString::number(_graphicsView->getScene()->showStatisticsDataDefinitions());
+        line += ", editable=" + QString::number(_graphicsView->getScene()->showEditableDataDefinitions());
+        line += ", shared=" + QString::number(_graphicsView->getScene()->showSharedDataDefinitions());
+        line += ", recursive=" + QString::number(_graphicsView->getScene()->showRecursiveDataDefinitions());
         line += ", viewpoint=(" + QString::number(_graphicsView->horizontalScrollBar()->value()) + "," + QString::number(_graphicsView->verticalScrollBar()->value()) + ")";
         out << commentedLine(line) << Qt::endl;
 
@@ -622,7 +682,11 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             if (geometries != nullptr) {
                 for (QGraphicsItem* item : *geometries) {
                     if (item == nullptr) {
-                        continue;
+                        _simulator->getModelManager()->current()->getTracer()->traceError(
+                            "GUI_SAVE_OVERLAY_SERIALIZATION_FAILED stage=draws reason=null_drawing");
+                        saveFile.close();
+                        QFile::remove(tempFilename);
+                        return false;
                     }
                     const int persistedId = nextAutonomousItemId--;
                     persistedItemIds.insert(item, persistedId);
@@ -689,6 +753,12 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                         line += encodePersistedText(textItem->font().toString());
                         line += QString(" \t textwidth=%1").arg(textItem->textWidth(), 0, 'f', 4);
                         out << commentedLine(line) << Qt::endl;
+                    } else {
+                        _simulator->getModelManager()->current()->getTracer()->traceError(
+                            "Unable to save graphical model: unsupported drawing item type");
+                        saveFile.close();
+                        QFile::remove(tempFilename);
+                        return false;
                     }
                 }
             }
@@ -877,10 +947,13 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     for (QGraphicsItem* child : group->childItems()) {
                         if (persistedItemIds.contains(child)) {
                             members << QString::number(persistedItemIds.value(child));
+                        } else {
+                            _simulator->getModelManager()->current()->getTracer()->traceError(
+                                "GUI_SAVE_OVERLAY_SERIALIZATION_FAILED stage=groups reason=unregistered_item");
+                            saveFile.close();
+                            QFile::remove(tempFilename);
+                            return false;
                         }
-                    }
-                    if (members.isEmpty()) {
-                        continue;
                     }
                     const int groupId = nextAutonomousItemId--;
                     persistedItemIds.insert(group, groupId);
@@ -889,11 +962,84 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                 }
             }
             out << sectionFooterLine();
+
+            Model* currentModel = _simulator->getModelManager()->current();
+            std::set<QString> emittedDiagramSections;
+            for (const GuiDiagramProjectionContribution& diagram
+                 : GuiExtensionPluginCatalog::diagramProjectionContributions()) {
+                if (diagram.sectionName.empty() || !diagram.serializeLayouts) continue;
+                const QString sectionName = QString::fromStdString(diagram.sectionName);
+                emittedDiagramSections.insert(sectionName);
+                GuiDiagramLayouts layouts;
+                const auto modelIt = _diagramLayoutsByModel->find(currentModel);
+                if (modelIt != _diagramLayoutsByModel->end()) {
+                    const auto extensionIt = modelIt->second.find(diagram.id);
+                    if (extensionIt != modelIt->second.end()) layouts = extensionIt->second;
+                }
+                const QStringList records = diagram.serializeLayouts(_simulator, layouts);
+                auto& unknownSections = (*_unknownDiagramSectionsByModel)[currentModel];
+                if (records.isEmpty()) unknownSections.erase(sectionName);
+                else unknownSections[sectionName] = records;
+                out << sectionHeaderLine(sectionName);
+                for (const QString& record : records) {
+                    out << record << Qt::endl;
+                }
+                out << sectionFooterLine();
+            }
+            const auto unknownModelIt = _unknownDiagramSectionsByModel->find(currentModel);
+            if (unknownModelIt != _unknownDiagramSectionsByModel->end()) {
+                for (const auto& [sectionName, records] : unknownModelIt->second) {
+                    if (emittedDiagramSections.find(sectionName) != emittedDiagramSections.end()) continue;
+                    out << sectionHeaderLine(sectionName);
+                    for (const QString& record : records) out << record << Qt::endl;
+                    out << sectionFooterLine();
+                }
+            }
+            if (_unknownDiagramSectionsByModel->contains(currentModel)
+                && _unknownDiagramSectionsByModel->at(currentModel).empty()) {
+                _unknownDiagramSectionsByModel->erase(currentModel);
+            }
+
         }
 
+        if (out.status() != QTextStream::Status::Ok) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_OVERLAY_WRITE_FAILED stage=overlay_stream");
+            saveFile.close();
+            QFile::remove(tempFilename);
+            return false;
+        }
+        if (!saveFile.flush()) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_OVERLAY_FLUSH_FAILED stage=overlay_flush error=" + saveFile.errorString().toStdString());
+            saveFile.close();
+            QFile::remove(tempFilename);
+            return false;
+        }
         saveFile.close();
+        if (saveFile.error() != QFile::NoError) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_OVERLAY_CLOSE_FAILED stage=overlay_close error=" + saveFile.errorString().toStdString());
+            QFile::remove(tempFilename);
+            return false;
+        }
+
+        if (std::rename(tempFilename.toStdString().c_str(), filename.toStdString().c_str()) != 0) {
+            const int renameError = errno;
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_RENAME_FAILED stage=overlay_rename errno=" + std::to_string(renameError));
+            QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"),
+                                 QObject::tr("Could not replace destination file with the newly saved content."));
+            QFile::remove(tempFilename);
+            return false;
+        }
         return true;
     } catch (const std::exception&) {
+        if (_simulator != nullptr && _simulator->getModelManager() != nullptr
+            && _simulator->getModelManager()->current() != nullptr) {
+            _simulator->getModelManager()->current()->getTracer()->traceError(
+                "GUI_SAVE_OVERLAY_EXCEPTION stage=overlay_serialization exception=std::exception");
+        }
         return false;
     }
 }
@@ -918,6 +1064,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     if (extension.compare("gui", Qt::CaseInsensitive) != 0) {
         model = _simulator->getModelManager()->loadModel(file.fileName().toStdString());
         if (model != nullptr) {
+            _diagramLayoutsByModel->erase(model);
+            _unknownDiagramSectionsByModel->erase(model);
             _rebuildGraphicalModelFromModel();
         }
         return model;
@@ -938,6 +1086,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QStringList groups;
     QStringList dataDefinitions;
     QStringList components;
+    QHash<QString, QStringList> diagramSections;
+    GuiUnknownDiagramSections unknownDiagramSections;
 
     enum class GuiSection {
         Header,
@@ -946,6 +1096,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         Plugins,
         DataDefinitions,
         Components,
+        DiagramExtension,
+        UnknownDiagram,
         Groups,
         LegacyCounters,
         LegacyVariables,
@@ -958,6 +1110,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
     bool guiBlockStarted = false;
     GuiSection activeSection = GuiSection::Header;
+    QString activeDiagramExtensionId;
+    QString activeDiagramSectionName;
+    QString activeUnknownDiagramSection;
+    const auto diagramContributions = GuiExtensionPluginCatalog::diagramProjectionContributions();
 
     for (const QString& line : lines) {
         const QString normalized = stripGuiCommentPrefix(line);
@@ -1000,8 +1156,30 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             activeSection = GuiSection::Components;
             continue;
         }
+        bool matchedDiagramSection = false;
+        for (const GuiDiagramProjectionContribution& diagram : diagramContributions) {
+            if (!diagram.sectionName.empty()
+                && normalized.compare(QString::fromStdString(diagram.sectionName), Qt::CaseInsensitive) == 0) {
+                activeSection = GuiSection::DiagramExtension;
+                activeDiagramExtensionId = QString::fromStdString(diagram.id);
+                activeDiagramSectionName = QString::fromStdString(diagram.sectionName);
+                matchedDiagramSection = true;
+                break;
+            }
+        }
+        if (matchedDiagramSection) {
+            continue;
+        }
         if (normalized.compare("Groups", Qt::CaseInsensitive) == 0) {
             activeSection = GuiSection::Groups;
+            continue;
+        }
+
+        // View-state directives are header records, not section comments. Keep
+        // them in the header collection so zoom and visibility flags restore.
+        if (activeSection == GuiSection::Header
+            && QRegularExpression("^0\\s+(GUI|Show|View)\\s+").match(normalized).hasMatch()) {
+            gui.append(normalized);
             continue;
         }
 
@@ -1031,6 +1209,13 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             continue;
         }
 
+        if (line.trimmed().startsWith('#') && !normalized.contains('\t')) {
+            activeSection = GuiSection::UnknownDiagram;
+            activeUnknownDiagramSection = normalized;
+            unknownDiagramSections[activeUnknownDiagramSection];
+            continue;
+        }
+
         switch (activeSection) {
             case GuiSection::Draws:
                 geometries.append(normalized);
@@ -1045,6 +1230,13 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 break;
             case GuiSection::Components:
                 components.append(normalized);
+                break;
+            case GuiSection::DiagramExtension:
+                diagramSections[activeDiagramExtensionId].append(normalized);
+                unknownDiagramSections[activeDiagramSectionName].append(line);
+                break;
+            case GuiSection::UnknownDiagram:
+                unknownDiagramSections[activeUnknownDiagramSection].append(line);
                 break;
             case GuiSection::Groups:
                 groups.append(normalized);
@@ -1081,19 +1273,22 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QString newFilename = QString("/tempFile-%1.gen").arg(currentDateTime.toString("yyyy-MM-dd-hh-mm-ss"));
     QString filePath = QDir::tempPath() + newFilename;
     QFile tempFile(filePath);
-    tempFile.open(QIODevice::ReadWrite | QIODevice::Text);
+    if (tempFile.open(QIODevice::ReadWrite | QIODevice::Text)) {
+        QTextStream outStream(&tempFile);
+        outStream.setEncoding(QStringConverter::Utf8);
+        outStream.setGenerateByteOrderMark(false);
+        for (const QString& line : simulLang) {
+            outStream << line << Qt::endl;
+        }
+        outStream.flush();
 
-    QTextStream outStream(&tempFile);
-    outStream.setEncoding(QStringConverter::Utf8);
-    outStream.setGenerateByteOrderMark(false);
-    for (const QString& line : simulLang) {
-        outStream << line << Qt::endl;
+        model = _simulator->getModelManager()->loadModel(tempFile.fileName().toStdString());
+        tempFile.close();
+        QFile::remove(tempFile.fileName());
+    } else {
+        QMessageBox::warning(_ownerWidget, QObject::tr("Open Model"),
+                             QObject::tr("Could not create a temporary file to load the model."));
     }
-    outStream.flush();
-
-    model = _simulator->getModelManager()->loadModel(tempFile.fileName().toStdString());
-    tempFile.close();
-    QFile::remove(tempFile.fileName());
 
     if (model != nullptr) {
         ModelGraphicsScene* scene = _graphicsView->getScene();
@@ -1137,13 +1332,6 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         bool hasPersistedViewState = false;
         int restoredViewpointX = 0;
         int restoredViewpointY = 0;
-        const bool hasExplicitVisualOverlay = !geometries.isEmpty()
-                                               || !animations.isEmpty()
-                                               || !counters.isEmpty()
-                                               || !variables.isEmpty()
-                                               || !timers.isEmpty()
-                                               || !placeholders.isEmpty()
-                                               || !groups.isEmpty();
         QHash<int, QGraphicsItem*> persistedItems;
         QHash<Util::identification, PersistedComponentState> persistedComponentsById;
         QHash<Util::identification, PersistedDataDefinitionState> persistedDataDefinitionsById;
@@ -1388,15 +1576,11 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             QPointF componentPos(state.position.x(), state.position.y() - existingComponent->getHeight() / 2.0);
             existingComponent->setPos(componentPos);
             existingComponent->setOldPosition(componentPos);
-            if (_simulator != nullptr && _simulator->getPluginManager() != nullptr && existingComponent->getComponent() != nullptr) {
-                Plugin* plugin = _simulator->getPluginManager()->find(existingComponent->getComponent()->getClassname());
-                if (plugin != nullptr && !hasExplicitVisualOverlay) {
-                    existingComponent->setColor(pluginCategoryColor(QString::fromStdString(plugin->getPluginInfo()->getCategory())));
-                } else if (state.hasColor) {
-                    existingComponent->setColor(state.color);
-                }
-            } else if (state.hasColor) {
+            if (state.hasColor) {
                 existingComponent->setColor(state.color);
+            } else if (_simulator && _simulator->getPluginManager() && existingComponent->getComponent()) {
+                auto* plugin = _simulator->getPluginManager()->find(existingComponent->getComponent()->getClassname());
+                if (plugin) existingComponent->setColor(pluginCategoryColor(QString::fromStdString(plugin->getPluginInfo()->getCategory())));
             }
             restorePortPositions(existingComponent, state.portPositions);
             persistedItems.insert(static_cast<int>(state.componentId), existingComponent);
@@ -1408,6 +1592,19 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         // Rebuild data-definition visibility after applying persisted header flags and component positions.
         // Persisted GMDD positions are restored immediately after this synchronization pass.
         GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, scene);
+
+        auto& modelLayouts = (*_diagramLayoutsByModel)[model];
+        for (const GuiDiagramProjectionContribution& diagram
+             : GuiExtensionPluginCatalog::diagramProjectionContributions()) {
+            if (diagram.sectionName.empty() || !diagram.parseLayouts) continue;
+            const GuiDiagramLayouts layouts = diagram.parseLayouts(
+                model, diagramSections.value(QString::fromStdString(diagram.id)));
+            if (layouts.empty()) modelLayouts.erase(diagram.id);
+            else modelLayouts.insert_or_assign(diagram.id, layouts);
+        }
+        if (modelLayouts.empty()) _diagramLayoutsByModel->erase(model);
+        if (unknownDiagramSections.empty()) _unknownDiagramSectionsByModel->erase(model);
+        else _unknownDiagramSectionsByModel->insert_or_assign(model, std::move(unknownDiagramSections));
 
         if (!dataDefinitions.empty()) {
             // Parse persisted data definition layout metadata for id-based and fallback lookup.
@@ -1511,14 +1708,18 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 }
                 ModelDataManager* dataManager = model->getDataManager();
                 const std::string className = state.className.trimmed().toStdString();
-                if (state.dataId > 0) {
-                    ModelDataDefinition* byId = dataManager->getDataDefinition(className, state.dataId);
-                    if (byId != nullptr) {
-                        return byId;
+                // Names are the compatibility key for legacy graphical rows. Prefer
+                // an exact class/name match before trusting a possibly stale GUI id;
+                // if a rename left the name stale, the stable kernel id remains the
+                // fallback identity.
+                if (!state.name.trimmed().isEmpty()) {
+                    ModelDataDefinition* byName = dataManager->getDataDefinition(className, state.name.toStdString());
+                    if (byName != nullptr) {
+                        return byName;
                     }
                 }
-                if (!state.name.trimmed().isEmpty()) {
-                    return dataManager->getDataDefinition(className, state.name.toStdString());
+                if (state.dataId > 0) {
+                    return dataManager->getDataDefinition(className, state.dataId);
                 }
                 return nullptr;
             };
@@ -1546,7 +1747,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
                 gmdd->setPos(state.position);
                 gmdd->setOldPosition(state.position.x(), state.position.y());
-                if (state.dataId > 0) {
+                if (state.dataId > 0 && state.dataId == dataDefinition->getId()) {
                     persistedItems.insert(static_cast<int>(state.dataId), gmdd);
                 }
                 if (state.itemId != 0) {
@@ -1565,18 +1766,19 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
                     ModelDataDefinition* dataDefinition = gmdd->getDataDefinition();
                     bool applied = false;
-                    auto byId = persistedDataDefinitionsById.find(dataDefinition->getId());
-                    if (byId != persistedDataDefinitionsById.end()) {
-                        applyPersistedDataDefinitionState(byId.value());
+                    const QString fallbackKey = QString::fromStdString(dataDefinition->getClassname()) + "#"
+                                                + QString::fromStdString(dataDefinition->getName());
+                    auto byClassAndName = persistedDataDefinitionsByClassAndName.find(fallbackKey);
+                    if (byClassAndName != persistedDataDefinitionsByClassAndName.end()) {
+                        applyPersistedDataDefinitionState(byClassAndName.value());
                         applied = true;
                     }
 
                     if (!applied) {
-                        const QString fallbackKey = QString::fromStdString(dataDefinition->getClassname()) + "#"
-                                                    + QString::fromStdString(dataDefinition->getName());
-                        auto byClassAndName = persistedDataDefinitionsByClassAndName.find(fallbackKey);
-                        if (byClassAndName != persistedDataDefinitionsByClassAndName.end()) {
-                            applyPersistedDataDefinitionState(byClassAndName.value());
+                        auto byId = persistedDataDefinitionsById.find(dataDefinition->getId());
+                        if (byId != persistedDataDefinitionsById.end()
+                            && byId.value().className == QString::fromStdString(dataDefinition->getClassname())) {
+                            applyPersistedDataDefinitionState(byId.value());
                         }
                     }
                 }
@@ -2154,10 +2356,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     }
                 }
 
-                if (!pending.memberIds.isEmpty()) {
-                    if (!groupIdOk) {
-                        pending.groupId = 0;
-                    }
+                if (groupIdOk) {
                     pendingGroups.append(pending);
                 }
             }
@@ -2181,7 +2380,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                             groupComponents.append(component);
                         }
                     }
-                    if (!allResolved || groupItems.isEmpty()) {
+                    if (!allResolved) {
                         ++i;
                         continue;
                     }
@@ -2232,7 +2431,12 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
         // Recompute diagram-arrow endpoints after all persisted positions and groups are restored.
         // Without this pass, arrows can remain anchored to pre-restore coordinates.
+        for (auto* item : *scene->getGraphicalConnections()) {
+            if (auto* connection = dynamic_cast<GraphicalConnection*>(item))
+                connection->updateDimensionsAndPosition();
+        }
         scene->actualizeDiagramArrows();
+        GuiExtensionPluginCatalog::synchronizeDiagramProjections(_simulator, scene);
 
         if (hasPersistedViewState) {
             QPointer<ModelGraphicsView> targetView(_graphicsView);

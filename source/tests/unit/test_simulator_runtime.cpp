@@ -17,21 +17,30 @@
 #include "kernel/simulator/Event.h"
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "../../plugins/data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/ResourceSetSelection.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
-#include "plugins/data/MaterialHandling/Sequence.h"
+#include "plugins/data/Transfer/Conveyor.h"
+#include "plugins/data/Transfer/Distance.h"
+#include "plugins/data/Transfer/Sequence.h"
+#include "plugins/data/Transfer/Segment.h"
+#include "plugins/data/Transfer/Transporter.h"
 #include "../../plugins/data/Synchronization/SignalData.h"
-#include "../../plugins/data/MaterialHandling/Station.h"
+#include "../../plugins/data/Transfer/Station.h"
 #include "../../plugins/data/Logic/Set.h"
-#include "plugins/data/Logic/Label.h"
-#include "../../plugins/data/MaterialHandling/Storage.h"
+#include "plugins/data/Transfer/LabelDefinition.h"
+#include "plugins/components/Transfer/Label.h"
+#include "../../plugins/data/Transfer/Storage.h"
 #include "../../plugins/data/InputOutput/File.h"
 #include "../../plugins/data/ExternalIntegration/CppCompiler.h"
 #include "../../plugins/data/ExternalIntegration/PythonRuntime.h"
@@ -57,7 +66,7 @@
 #include "plugins/components/WholeCellModeling/MetabolicStateProjectionComponent.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "../../plugins/data/Logic/AssignmentItem.h"
-#include "plugins/data/Template/DummyElement.h"
+#include "plugins/data/Template/TemplateDataDefinition.h"
 #include "kernel/util/Util.h"
 #include "tools/Biochemical/MassActionOdeSystem.h"
 #include "tools/Continuous/RungeKutta4OdeSolver.h"
@@ -80,22 +89,33 @@
 #undef protected
 #undef private
 #include "plugins/components/DiscreteProcessing/Delay.h"
+#include "../../plugins/components/Decisions/DropOff.h"
 #include "../../plugins/components/Logic/Dispose.h"
 #include "plugins/components/Grouping/Batch.h"
 #include "plugins/components/Grouping/Separate.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "../../plugins/components/Logic/Assign.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
+#include "../../plugins/components/Transfer/Access.h"
+#include "../../plugins/components/Transfer/Exit.h"
+#include "../../plugins/components/Transfer/Move.h"
+#include "../../plugins/components/Transfer/Start.h"
+#include "../../plugins/components/Transfer/Store.h"
+#include "../../plugins/components/Transfer/Stop.h"
+#include "../../plugins/components/Transfer/Unstore.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "../../plugins/components/MaterialHandling/PickStation.h"
+#include "../../plugins/components/Transfer/Enter.h"
+#include "../../plugins/components/Transfer/PickStation.h"
+#include "../../plugins/components/Transfer/Route.h"
 #undef protected
 #undef private
 #define private public
@@ -348,9 +368,9 @@ public:
     }
 };
 
-class DummyElementProbe : public DummyElement {
+class TemplateDataDefinitionProbe : public TemplateDataDefinition {
 public:
-    DummyElementProbe(Model* model, const std::string& name = "") : DummyElement(model, name) {}
+    TemplateDataDefinitionProbe(Model* model, const std::string& name = "") : TemplateDataDefinition(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -408,6 +428,82 @@ public:
 
     void AttachDataProbe(const std::string& key, ModelDataDefinition* data) {
         _attachedDataInsert(key, data);
+    }
+};
+
+class DistanceProbe : public Distance {
+public:
+    DistanceProbe(Model* model, const std::string& name = "") : Distance(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class SegmentProbe : public Segment {
+public:
+    SegmentProbe(Model* model, const std::string& name = "") : Segment(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class ConveyorProbe : public Conveyor {
+public:
+    ConveyorProbe(Model* model, const std::string& name = "") : Conveyor(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class TransporterProbe : public Transporter {
+public:
+    TransporterProbe(Model* model, const std::string& name = "") : Transporter(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
     }
 };
 
@@ -577,6 +673,44 @@ public:
 
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
         _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class RouteProbe : public Route {
+public:
+    RouteProbe(Model* model, const std::string& name = "") : Route(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class EnterProbe : public Enter {
+public:
+    EnterProbe(Model* model, const std::string& name = "") : Enter(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -809,6 +943,10 @@ public:
         _createInternalAndAttachedData();
     }
 
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
     Counter* NumberOutProbe() const {
         return _numberOut;
     }
@@ -818,9 +956,63 @@ static void DrainFutureEvents(Model* model) {
     while (!model->getFutureEvents()->empty()) {
         Event* event = model->getFutureEvents()->front();
         model->getFutureEvents()->pop_front();
-        ModelComponent::DispatchEvent(event);
+        if (auto* internalEvent = dynamic_cast<InternalEvent*>(event); internalEvent != nullptr) {
+            internalEvent->dispatchEvent();
+        } else {
+            ModelComponent::DispatchEvent(event);
+        }
         delete event;
     }
+}
+
+TEST(SimulatorRuntimeTest, CreateHonorsMaxCreationsForInitialAndPartialArrivalBatches) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EntityType entityType(model, "CreateLimitEntity");
+    CreateProbe create(model, "CreateLimit");
+    CollectorSinkComponentProbe sink(model, "CreateLimitSink");
+    create.setEntityType(&entityType);
+    create.setReportStatistics(false);
+    create.setEntitiesPerCreation(3);
+    create.setMaxCreations(10);
+    create.setTimeBetweenCreationsExpression("1");
+    create.connectTo(&sink);
+
+    create.InitBetweenReplicationsProbe();
+    ASSERT_EQ(model->getFutureEvents()->size(), 3u);
+    DrainFutureEvents(model);
+
+    EXPECT_EQ(create.getEntitiesCreated(), 10u);
+    EXPECT_EQ(sink.ReceivedEntities().size(), 10u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
+TEST(SimulatorRuntimeTest, CreateSchedulesFiniteZeroIntervalArrivalsAndResetsForNextReplication) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EntityType entityType(model, "CreateZeroIntervalEntity");
+    CreateProbe create(model, "CreateZeroInterval");
+    CollectorSinkComponentProbe sink(model, "CreateZeroIntervalSink");
+    create.setEntityType(&entityType);
+    create.setReportStatistics(false);
+    create.setEntitiesPerCreation(1);
+    create.setMaxCreations(4);
+    create.setTimeBetweenCreationsExpression("0");
+    create.connectTo(&sink);
+
+    create.InitBetweenReplicationsProbe();
+    DrainFutureEvents(model);
+    EXPECT_EQ(create.getEntitiesCreated(), 4u);
+    EXPECT_EQ(sink.ReceivedEntities().size(), 4u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+
+    create.InitBetweenReplicationsProbe();
+    DrainFutureEvents(model);
+    EXPECT_EQ(create.getEntitiesCreated(), 4u);
+    EXPECT_EQ(sink.ReceivedEntities().size(), 8u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
 }
 
 static std::string JoinTraceErrors(Model* model) {
@@ -894,9 +1086,9 @@ public:
     }
 };
 
-class LabelProbe : public Label {
+class LabelProbe : public LabelDefinition {
 public:
-    LabelProbe(Model* model, const std::string& name = "") : Label(model, name) {}
+    LabelProbe(Model* model, const std::string& name = "") : LabelDefinition(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -925,6 +1117,190 @@ public:
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
         _saveInstance(fields, saveDefaultValues);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class StoreProbe : public Store {
+public:
+    StoreProbe(Model* model, const std::string& name = "") : Store(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class UnstoreProbe : public Unstore {
+public:
+    UnstoreProbe(Model* model, const std::string& name = "") : Unstore(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class DropOffProbe : public DropOff {
+public:
+    DropOffProbe(Model* model, const std::string& name = "") : DropOff(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class AccessProbe : public Access {
+public:
+    AccessProbe(Model* model, const std::string& name = "") : Access(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class ExitProbe : public Exit {
+public:
+    ExitProbe(Model* model, const std::string& name = "") : Exit(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class StartProbe : public Start {
+public:
+    StartProbe(Model* model, const std::string& name = "") : Start(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class StopProbe : public Stop {
+public:
+    StopProbe(Model* model, const std::string& name = "") : Stop(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class MoveProbe : public Move {
+public:
+    MoveProbe(Model* model, const std::string& name = "") : Move(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -961,8 +1337,9 @@ public:
         _saveInstance(fields, saveDefaultValues);
     }
 
-    CompilationResult InvokeCompilerProbe(const std::string& command) {
-        return _invokeCompiler(command);
+    CompilationResult InvokeCompilerProbe(const std::vector<std::string>& arguments,
+                                          const std::string& outputPath) {
+        return _invokeCompiler(arguments, outputPath);
     }
 };
 
@@ -1961,6 +2338,82 @@ TEST(SimulatorRuntimeTest, AttributeInitialValuePropertyUsesMultiLineTextEditorH
 
     ASSERT_NE(initialValueControl, nullptr);
     EXPECT_EQ(initialValueControl->preferredEditorHint(), SimulationControlEditorHint::MultiLineText);
+}
+
+TEST(SimulatorRuntimeTest, InvalidDecideExpressionReferenceDiscoveryIsRecoverable) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Decide decide(model, "InvalidExpressionDecide");
+    decide.addConditions("unit(0,1) < 0.6");
+    std::string errorMessage;
+    EXPECT_NO_THROW(EXPECT_FALSE(ModelDataDefinition::Check(&decide, errorMessage)));
+    EXPECT_NE(errorMessage.find("unit(0,1)"), std::string::npos);
+    EXPECT_NO_THROW(EXPECT_FALSE(ModelDataDefinition::Check(&decide, errorMessage)));
+}
+
+TEST(SimulatorRuntimeTest, LoadingInvalidDecideExpressionIsRecoverableAndDoesNotPoisonNextLoad) {
+    const std::string invalidPath = "/tmp/genesys_invalid_decide_" + std::to_string(::getpid()) + ".gen";
+    const std::string validPath = "/tmp/genesys_valid_decide_" + std::to_string(::getpid()) + ".gen";
+    ::unlink(invalidPath.c_str());
+    ::unlink(validPath.c_str());
+
+    Simulator sourceSimulator;
+    sourceSimulator.getPluginManager()->autoInsertPlugins();
+    Model* invalidModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(invalidModel, nullptr);
+    auto* invalidDecide = new Decide(invalidModel, "InvalidPersistedDecide");
+    invalidDecide->addConditions("unit(0,1) < 0.6");
+    ASSERT_TRUE(invalidModel->save(invalidPath));
+
+    Model* validModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(validModel, nullptr);
+    auto* validDecide = new Decide(validModel, "ValidPersistedDecide");
+    validDecide->addConditions("1 < 2");
+    ASSERT_TRUE(validModel->save(validPath));
+
+    Simulator loadedSimulator;
+    loadedSimulator.getPluginManager()->autoInsertPlugins();
+    Model* loadedInvalid = nullptr;
+    EXPECT_NO_THROW(loadedInvalid = loadedSimulator.getModelManager()->loadModel(invalidPath));
+    ASSERT_NE(loadedInvalid, nullptr);
+    auto* restoredInvalid = dynamic_cast<Decide*>(
+        loadedInvalid->getComponentManager()->find("InvalidPersistedDecide"));
+    ASSERT_NE(restoredInvalid, nullptr);
+    std::string validationErrors;
+    EXPECT_FALSE(ModelDataDefinition::Check(restoredInvalid, validationErrors));
+    EXPECT_NE(validationErrors.find("unit(0,1)"), std::string::npos);
+
+    Model* loadedValid = nullptr;
+    EXPECT_NO_THROW(loadedValid = loadedSimulator.getModelManager()->loadModel(validPath));
+    ASSERT_NE(loadedValid, nullptr);
+    EXPECT_NE(loadedValid->getComponentManager()->find("ValidPersistedDecide"), nullptr);
+    ::unlink(invalidPath.c_str());
+    ::unlink(validPath.c_str());
+}
+
+TEST(SimulatorRuntimeTest, InvalidExpressionReferenceDiscoveryDoesNotThrowForSyntaxOrLexicalErrors) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Variable variable(model, "VariableA");
+    std::map<std::string, std::list<std::string>*> references;
+    EXPECT_NO_THROW(model->checkReferencesToDataDefinitions("VariableA + 1", &references));
+    ASSERT_TRUE(references.find(Util::TypeOf<Variable>()) != references.end());
+    ASSERT_NE(references[Util::TypeOf<Variable>()], nullptr);
+    EXPECT_EQ(references[Util::TypeOf<Variable>()]->front(), "VariableA");
+    for (auto& entry : references) delete entry.second;
+    references.clear();
+
+    // Distribution syntax is parsed without evaluating or sampling it.
+    EXPECT_NO_THROW(model->checkReferencesToDataDefinitions("unif(0,1)", &references));
+    EXPECT_TRUE(references.empty());
+
+    EXPECT_NO_THROW(model->checkReferencesToDataDefinitions("VariableA + (", &references));
+    for (auto& entry : references) delete entry.second;
+    references.clear();
+    EXPECT_NO_THROW(model->checkReferencesToDataDefinitions("VariableA + @", &references));
+    for (auto& entry : references) delete entry.second;
 }
 
 TEST(SimulatorRuntimeTest, ModelDataDefinitionAccessorsExposeStableStateAndMetadata) {
@@ -3011,7 +3464,7 @@ TEST(SimulatorRuntimeTest, SequenceSaveAndLoadPreservesStationAndLabelPerStep) {
     ASSERT_NE(model, nullptr);
 
     Station station(model, "SequencePersistStation");
-    Label label(model, "SequencePersistLabel");
+    LabelDefinition label(model, "SequencePersistLabel");
     SequenceProbe source(model, "SequencePersistRoutingSource");
     source.getSteps()->insert(new SequenceStep(&station));
     source.getSteps()->insert(new SequenceStep(&label));
@@ -3041,7 +3494,7 @@ TEST(SimulatorRuntimeTest, SequenceRecheckRemovesObsoleteAttachedData) {
 
     Station stationA(model, "SequenceRecheckStationA");
     Station stationB(model, "SequenceRecheckStationB");
-    Label labelA(model, "SequenceRecheckLabelA");
+    LabelDefinition labelA(model, "SequenceRecheckLabelA");
     SequenceProbe sequence(model, "SequenceRecheck");
     sequence.getSteps()->insert(new SequenceStep(&stationA));
     sequence.getSteps()->insert(new SequenceStep(&stationB));
@@ -3077,7 +3530,7 @@ TEST(SimulatorRuntimeTest, SequenceCheckFailsForEmptyStep) {
 
     std::string errorMessage;
     EXPECT_FALSE(sequence.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("must reference a Station or a Label"), std::string::npos);
+    EXPECT_NE(errorMessage.find("must reference a Station or a LabelDefinition"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
@@ -3098,6 +3551,155 @@ TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
     EXPECT_TRUE(errorMessage.empty());
 }
 
+TEST(SimulatorRuntimeTest, DistanceCheckFailsForMissingOrInvalidEntries) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DistanceProbe distance(model, "DistanceInvalid");
+    std::string errorMessage;
+    EXPECT_FALSE(distance.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("has no entries"), std::string::npos);
+
+    distance.insertEntry(new DistanceEntry("", "B", -1.0, true));
+    errorMessage.clear();
+    EXPECT_FALSE(distance.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("beginning station"), std::string::npos);
+    EXPECT_NE(errorMessage.find("negative distance"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, DistanceSupportsDirectAndBidirectionalLookup) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DistanceProbe distance(model, "DistanceLookup");
+    distance.insertEntry(new DistanceEntry("A", "B", 5.5, true));
+    distance.insertEntry(new DistanceEntry("B", "C", 2.0, false));
+
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("A", "B"), 5.5);
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("B", "A"), 5.5);
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("B", "C"), 2.0);
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("C", "B"), -1.0);
+    EXPECT_DOUBLE_EQ(distance.getDistanceBetween("A", "C"), -1.0);
+}
+
+TEST(SimulatorRuntimeTest, DistanceSaveAndLoadPreservesEntries) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DistanceProbe source(model, "DistancePersistSource");
+    source.insertEntry(new DistanceEntry("DockA", "DockB", 3.25, true));
+    source.insertEntry(new DistanceEntry("DockB", "DockC", 4.75, false));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    DistanceProbe loaded(model, "DistancePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getEntries()->size(), 2u);
+
+    auto entries = loaded.getEntries()->list();
+    auto it = entries->begin();
+    DistanceEntry* first = *it++;
+    DistanceEntry* second = *it++;
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    EXPECT_EQ(first->fromStationName, "DockA");
+    EXPECT_EQ(first->toStationName, "DockB");
+    EXPECT_DOUBLE_EQ(first->length, 3.25);
+    EXPECT_TRUE(first->bidirectional);
+    EXPECT_EQ(second->fromStationName, "DockB");
+    EXPECT_EQ(second->toStationName, "DockC");
+    EXPECT_DOUBLE_EQ(second->length, 4.75);
+    EXPECT_FALSE(second->bidirectional);
+}
+
+TEST(SimulatorRuntimeTest, DistancePluginInformationExposesMaterialHandlingCategory) {
+    std::unique_ptr<PluginInformation> info(Distance::GetPluginInformation());
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<Distance>());
+    EXPECT_EQ(info->getCategory(), "Transfer");
+}
+
+TEST(SimulatorRuntimeTest, SegmentCheckFailsForMissingStationsAndNegativeLengths) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SegmentProbe segment(model, "SegmentInvalid");
+    segment.insertStep(new SegmentStep("A", 1.0));
+    std::string errorMessage;
+    EXPECT_FALSE(segment.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("needs at least two stations"), std::string::npos);
+
+    segment.insertStep(new SegmentStep("", -3.0));
+    errorMessage.clear();
+    EXPECT_FALSE(segment.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("must define a station"), std::string::npos);
+    EXPECT_NE(errorMessage.find("negative length"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SegmentReturnsAccumulatedDistanceOnlyInForwardOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SegmentProbe segment(model, "SegmentLookup");
+    segment.insertStep(new SegmentStep("A", 2.0));
+    segment.insertStep(new SegmentStep("B", 3.5));
+    segment.insertStep(new SegmentStep("C", 0.0));
+
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("A", "B"), 2.0);
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("A", "C"), 5.5);
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("B", "C"), 3.5);
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("C", "B"), -1.0);
+    EXPECT_DOUBLE_EQ(segment.getDistanceBetween("A", "Missing"), -1.0);
+}
+
+TEST(SimulatorRuntimeTest, SegmentSaveAndLoadPreservesOrderedSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SegmentProbe source(model, "SegmentPersistSource");
+    source.insertStep(new SegmentStep("Paint", 1.5));
+    source.insertStep(new SegmentStep("Dry", 2.0));
+    source.insertStep(new SegmentStep("Pack", 0.0));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SegmentProbe loaded(model, "SegmentPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getSteps()->size(), 3u);
+
+    auto steps = loaded.getSteps()->list();
+    auto it = steps->begin();
+    SegmentStep* first = *it++;
+    SegmentStep* second = *it++;
+    SegmentStep* third = *it++;
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    ASSERT_NE(third, nullptr);
+    EXPECT_EQ(first->stationName, "Paint");
+    EXPECT_DOUBLE_EQ(first->lengthToNext, 1.5);
+    EXPECT_EQ(second->stationName, "Dry");
+    EXPECT_DOUBLE_EQ(second->lengthToNext, 2.0);
+    EXPECT_EQ(third->stationName, "Pack");
+    EXPECT_DOUBLE_EQ(third->lengthToNext, 0.0);
+}
+
+TEST(SimulatorRuntimeTest, SegmentPluginInformationExposesMaterialHandlingCategory) {
+    std::unique_ptr<PluginInformation> info(Segment::GetPluginInformation());
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<Segment>());
+    EXPECT_EQ(info->getCategory(), "Transfer");
+}
+
 TEST(SimulatorRuntimeTest, LabelCheckFailsWithoutEnteringComponent) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -3106,7 +3708,7 @@ TEST(SimulatorRuntimeTest, LabelCheckFailsWithoutEnteringComponent) {
     LabelProbe label(model, "LabelCheckMissingDestination");
     std::string errorMessage;
     EXPECT_FALSE(label.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("entering component was not defined"), std::string::npos);
+    EXPECT_NE(errorMessage.find("has no valid owning Label receiver"), std::string::npos);
     EXPECT_EQ(label.getAttachedData()->count("EnteringLabelComponent"), 0u);
 }
 
@@ -3115,15 +3717,18 @@ TEST(SimulatorRuntimeTest, LabelCheckPassesWithValidEnteringComponentAndAttaches
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    LabelProbe label(model, "LabelCheckValidDestination");
+    Label receiver(model, "LabelCheckReceiver");
     CollectorSinkComponentProbe sink(model, "LabelCheckSink");
-    label.setEnterIntoLabelComponent(&sink);
+    receiver.connectTo(&sink);
+    auto* definition = receiver.getLabelDefinition();
+    ASSERT_NE(definition, nullptr);
+    EXPECT_EQ(definition->getEnterIntoLabelComponent(), &receiver);
+    EXPECT_EQ(receiver.getInternalData("LabelDefinition"), definition);
 
     std::string errorMessage;
-    EXPECT_TRUE(label.CheckProbe(errorMessage));
+    EXPECT_TRUE(ModelDataDefinition::Check(definition, errorMessage)) << errorMessage;
     EXPECT_TRUE(errorMessage.empty());
-    ASSERT_EQ(label.getAttachedData()->count("EnteringLabelComponent"), 1u);
-    EXPECT_EQ(label.getAttachedData()->at("EnteringLabelComponent"), &sink);
+    EXPECT_TRUE(ModelComponent::Check(&receiver));
 }
 
 TEST(SimulatorRuntimeTest, LabelLoadWithMissingEnteringComponentRemainsTraceableAndCheckFails) {
@@ -3133,7 +3738,7 @@ TEST(SimulatorRuntimeTest, LabelLoadWithMissingEnteringComponentRemainsTraceable
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
-    fields.saveField("typename", Util::TypeOf<Label>());
+    fields.saveField("typename", Util::TypeOf<LabelDefinition>());
     fields.saveField("id", 1u);
     fields.saveField("name", "LabelLoadMissingDestination");
     fields.saveField("reportStatistics", true);
@@ -3147,7 +3752,7 @@ TEST(SimulatorRuntimeTest, LabelLoadWithMissingEnteringComponentRemainsTraceable
 
     std::string errorMessage;
     EXPECT_FALSE(loaded.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("entering component was not defined"), std::string::npos);
+    EXPECT_NE(errorMessage.find("has no valid owning Label receiver"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, LabelSendEntityWithoutDestinationDoesNotCrash) {
@@ -3164,14 +3769,13 @@ TEST(SimulatorRuntimeTest, LabelShowIncludesLabelAndEnteringComponent) {
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    LabelProbe label(model, "LabelShowProbe");
-    CollectorSinkComponentProbe sink(model, "LabelShowSink");
-    label.setLabel("Station-Transfer");
-    label.setEnterIntoLabelComponent(&sink);
-
-    const std::string shown = label.show();
-    EXPECT_NE(shown.find("label=\"Station-Transfer\""), std::string::npos);
-    EXPECT_NE(shown.find("enteringComponent=LabelShowSink"), std::string::npos);
+    Label receiver(model, "LabelShowReceiver");
+    auto* definition = receiver.getLabelDefinition();
+    ASSERT_NE(definition, nullptr);
+    definition->setLabel("Station-Transfer");
+    const std::string shown = definition->show();
+    EXPECT_NE(shown.find("Station-Transfer"), std::string::npos);
+    EXPECT_NE(shown.find("enteringComponent=LabelShowReceiver"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, LabelSaveAndLoadRoundTripPreservesLabelAndEnteringComponentName) {
@@ -3179,11 +3783,8 @@ TEST(SimulatorRuntimeTest, LabelSaveAndLoadRoundTripPreservesLabelAndEnteringCom
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    CollectorSinkComponentProbe sink(model, "LabelPersistSink");
     LabelProbe source(model, "LabelPersistSource");
     source.setLabel("QueueToSink");
-    source.setEnterIntoLabelComponent(&sink);
-
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
@@ -3191,11 +3792,12 @@ TEST(SimulatorRuntimeTest, LabelSaveAndLoadRoundTripPreservesLabelAndEnteringCom
     LabelProbe loaded(model, "LabelPersistLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
     EXPECT_EQ(loaded.getLabel(), "QueueToSink");
-    EXPECT_EQ(loaded.getEnterIntoLabelComponent(), &sink);
-
+    // The receiver reference is no longer persisted on LabelDefinition.
+    // It is reconstructed exclusively from the owning Label component.
+    EXPECT_EQ(loaded.getEnterIntoLabelComponent(), nullptr);
     std::string errorMessage;
-    EXPECT_TRUE(loaded.CheckProbe(errorMessage));
-    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_FALSE(loaded.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("has no valid owning Label receiver"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, SetDestructorDeletesOwnedContainerButNotMembers) {
@@ -3545,22 +4147,432 @@ TEST(SimulatorRuntimeTest, StorageRegistersMainControlsAsOwnedProperties) {
     EXPECT_TRUE(hasUnitsPerArea);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementDefaultsAreInitializedAsExpected) {
+TEST(SimulatorRuntimeTest, StorageStoreAndUnstoreUpdateCurrentOccupationAndResetBetweenReplications) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElement element(model, "DummyDefaults");
+    StorageProbe storage(model, "StorageRuntimeOccupation");
+    storage.setCapacity(3u);
+
+    EXPECT_TRUE(storage.store(2u));
+    EXPECT_EQ(storage.getCurrentOccupation(), 2u);
+    EXPECT_FALSE(storage.store(2u));
+    EXPECT_EQ(storage.getCurrentOccupation(), 2u);
+
+    EXPECT_TRUE(storage.unstore(1u));
+    EXPECT_EQ(storage.getCurrentOccupation(), 1u);
+    EXPECT_FALSE(storage.unstore(2u));
+    EXPECT_EQ(storage.getCurrentOccupation(), 1u);
+
+    storage.InitBetweenReplicationsProbe();
+    EXPECT_EQ(storage.getCurrentOccupation(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, StoreDispatchIncrementsStorageAndForwardsEntity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "StoreDispatchStorage");
+    storage.setCapacity(5u);
+    StoreProbe store(model, "StoreDispatch");
+    CollectorSinkComponentProbe sink(model, "StoreDispatchSink");
+    store.setStorage(&storage);
+    store.setQuantityExpression("2");
+    store.connectTo(&sink);
+
+    std::string errorMessage;
+    ASSERT_TRUE(store.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("StoreDispatchEntity", true);
+    store.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    EXPECT_EQ(storage.getCurrentOccupation(), 2u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+}
+
+TEST(SimulatorRuntimeTest, StoreSaveAndLoadPreserveStorageAndQuantityExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorePersistStorage");
+    StoreProbe source(model, "StorePersistSource");
+    source.setStorage(&storage);
+    source.setQuantityExpression("3");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    StoreProbe loaded(model, "StorePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getStorage(), &storage);
+    EXPECT_EQ(loaded.getQuantityExpression(), "3");
+}
+
+TEST(SimulatorRuntimeTest, UnstoreDispatchDecrementsStorageAndForwardsEntity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "UnstoreDispatchStorage");
+    storage.setCapacity(5u);
+    ASSERT_TRUE(storage.store(4u));
+    UnstoreProbe unstore(model, "UnstoreDispatch");
+    CollectorSinkComponentProbe sink(model, "UnstoreDispatchSink");
+    unstore.setStorage(&storage);
+    unstore.setQuantityExpression("3");
+    unstore.connectTo(&sink);
+
+    std::string errorMessage;
+    ASSERT_TRUE(unstore.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("UnstoreDispatchEntity", true);
+    unstore.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    EXPECT_EQ(storage.getCurrentOccupation(), 1u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+}
+
+TEST(SimulatorRuntimeTest, UnstoreDispatchDoesNotForwardWhenStorageLacksRequestedQuantity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "UnstoreInsufficientStorage");
+    storage.setCapacity(5u);
+    ASSERT_TRUE(storage.store(1u));
+    UnstoreProbe unstore(model, "UnstoreInsufficient");
+    CollectorSinkComponentProbe sink(model, "UnstoreInsufficientSink");
+    unstore.setStorage(&storage);
+    unstore.setQuantityExpression("2");
+    unstore.connectTo(&sink);
+
+    Entity* entity = model->createEntity("UnstoreInsufficientEntity", true);
+    unstore.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    EXPECT_EQ(storage.getCurrentOccupation(), 1u);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+}
+
+TEST(SimulatorRuntimeTest, DropOffCheckRequiresGroupAttributeAndTwoOutputs) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DropOffProbe dropoff(model, "DropOffCheck");
+    std::string errorMessage;
+    EXPECT_FALSE(dropoff.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("two output connections"), std::string::npos);
+
+    Attribute entityGroup(model, "Entity.Group");
+    CollectorSinkComponentProbe sink(model, "DropOffCheckSink");
+    CollectorSinkComponentProbe removed(model, "DropOffRemovedSink");
+    dropoff.connectTo(&sink);
+    dropoff.getConnectionManager()->insertAtPort(1, new Connection{&removed, {0, ""}});
+
+    errorMessage.clear();
+    EXPECT_TRUE(dropoff.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, DropOffDispatchReleasesConfiguredMembersAndKeepsRepresentativeGrouped) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Attribute entityGroupAttribute(model, "Entity.Group");
+    EntityGroup entityGroup(model, "DropOffGroup");
+    DropOffProbe dropoff(model, "DropOffDispatch");
+    CollectorSinkComponentProbe representativeSink(model, "DropOffRepresentativeSink");
+    CollectorSinkComponentProbe removedSink(model, "DropOffRemovedDispatchSink");
+    dropoff.connectTo(&representativeSink);
+    dropoff.getConnectionManager()->insertAtPort(1, new Connection{&removedSink, {0, ""}});
+    dropoff.setQuantityExpression("2");
+    dropoff.setStartingRankExpression("2");
+
+    EntityType groupedType(model, "DropOffGroupedType");
+    Entity* representative = model->createEntity("DropOffRepresentative", true);
+    Entity* memberA = model->createEntity("DropOffMemberA", true);
+    Entity* memberB = model->createEntity("DropOffMemberB", true);
+    Entity* memberC = model->createEntity("DropOffMemberC", true);
+    representative->setEntityType(&groupedType);
+    memberA->setEntityType(&groupedType);
+    memberB->setEntityType(&groupedType);
+    memberC->setEntityType(&groupedType);
+
+    entityGroup.insertElement(representative->getId(), memberA);
+    entityGroup.insertElement(representative->getId(), memberB);
+    entityGroup.insertElement(representative->getId(), memberC);
+    representative->setAttributeValue(entityGroupAttribute.getId(), entityGroup.getId());
+    memberA->setAttributeValue(entityGroupAttribute.getId(), entityGroup.getId());
+    memberB->setAttributeValue(entityGroupAttribute.getId(), entityGroup.getId());
+    memberC->setAttributeValue(entityGroupAttribute.getId(), entityGroup.getId());
+
+    std::string errorMessage;
+    ASSERT_TRUE(dropoff.CheckProbe(errorMessage)) << errorMessage;
+
+    dropoff.DispatchEventProbe(representative);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(representativeSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(representativeSink.ReceivedEntities()[0], representative);
+    ASSERT_EQ(removedSink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(removedSink.ReceivedEntities()[0], memberB);
+    EXPECT_EQ(removedSink.ReceivedEntities()[1], memberC);
+    EXPECT_EQ(memberB->getAttributeValue(entityGroupAttribute.getId()), 0.0);
+    EXPECT_EQ(memberC->getAttributeValue(entityGroupAttribute.getId()), 0.0);
+    EXPECT_EQ(memberA->getAttributeValue(entityGroupAttribute.getId()), static_cast<double>(entityGroup.getId()));
+    ASSERT_NE(entityGroup.getGroup(representative->getId()), nullptr);
+    ASSERT_EQ(entityGroup.getGroup(representative->getId())->size(), 1u);
+    EXPECT_EQ(entityGroup.getGroup(representative->getId())->getAtRank(0), memberA);
+}
+
+TEST(SimulatorRuntimeTest, DropOffSaveAndLoadPreserveExpressions) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DropOffProbe source(model, "DropOffPersistSource");
+    source.setQuantityExpression("4");
+    source.setStartingRankExpression("3");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    DropOffProbe loaded(model, "DropOffPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getQuantityExpression(), "4");
+    EXPECT_EQ(loaded.getStartingRankExpression(), "3");
+}
+
+TEST(SimulatorRuntimeTest, ConveyorCheckRoundTripAndResetPreserveMinimumRuntimeContract) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Segment segment(model, "ConveyorSegment");
+    segment.insertStep(new SegmentStep("S1", 2.5));
+    segment.insertStep(new SegmentStep("S2", 1.0));
+    segment.insertStep(new SegmentStep("S3", 0.0));
+
+    ConveyorProbe conveyor(model, "ConveyorData");
+    conveyor.setSegment(&segment);
+    conveyor.setVelocity(3.0);
+    conveyor.setCapacity(2u);
+    conveyor.setInitiallyActive(false);
+
+    std::string errorMessage;
+    ASSERT_TRUE(conveyor.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_DOUBLE_EQ(conveyor.getDistanceBetween("S1", "S3"), 3.5);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    conveyor.SaveInstanceProbe(&fields, true);
+
+    ConveyorProbe loaded(model, "LoadedConveyor");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getSegment(), &segment);
+    EXPECT_DOUBLE_EQ(loaded.getVelocity(), 3.0);
+    EXPECT_EQ(loaded.getCapacity(), 2u);
+    EXPECT_FALSE(loaded.isInitiallyActive());
+    EXPECT_FALSE(loaded.isActive());
+
+    conveyor.setActive(true);
+    ASSERT_TRUE(conveyor.access(2u));
+    conveyor.InitBetweenReplicationsProbe();
+    EXPECT_FALSE(conveyor.isActive());
+    EXPECT_EQ(conveyor.getCurrentAllocation(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, StartAccessExitAndStopDriveMinimumConveyorFlow) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Segment segment(model, "ConveyorRuntimeSegment");
+    segment.insertStep(new SegmentStep("AccessStation", 1.0));
+    segment.insertStep(new SegmentStep("ExitStation", 0.0));
+
+    ConveyorProbe conveyor(model, "ConveyorRuntime");
+    conveyor.setSegment(&segment);
+    conveyor.setVelocity(1.0);
+    conveyor.setCapacity(2u);
+    conveyor.setInitiallyActive(false);
+
+    StartProbe start(model, "ConveyorStart");
+    AccessProbe access(model, "ConveyorAccess");
+    ExitProbe exit(model, "ConveyorExit");
+    StopProbe stop(model, "ConveyorStop");
+    CollectorSinkComponentProbe sink(model, "ConveyorSink");
+    start.setConveyor(&conveyor);
+    start.setVelocityExpression("4.5");
+    access.setConveyor(&conveyor);
+    access.setQuantityExpression("2");
+    exit.setConveyor(&conveyor);
+    exit.setQuantityExpression("2");
+    stop.setConveyor(&conveyor);
+    start.connectTo(&access);
+    access.connectTo(&exit);
+    exit.connectTo(&stop);
+    stop.connectTo(&sink);
+
+    std::string errorMessage;
+    ASSERT_TRUE(start.CheckProbe(errorMessage)) << errorMessage;
+    errorMessage.clear();
+    ASSERT_TRUE(access.CheckProbe(errorMessage)) << errorMessage;
+    errorMessage.clear();
+    ASSERT_TRUE(exit.CheckProbe(errorMessage)) << errorMessage;
+    errorMessage.clear();
+    ASSERT_TRUE(stop.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("ConveyorEntity", true);
+    start.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    EXPECT_DOUBLE_EQ(conveyor.getVelocity(), 4.5);
+    EXPECT_FALSE(conveyor.isActive());
+    EXPECT_EQ(conveyor.getCurrentAllocation(), 0u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+}
+
+TEST(SimulatorRuntimeTest, TransporterCheckRoundTripAndResetPreserveDistanceDrivenTravel) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station source(model, "TransporterSource");
+    Station destination(model, "TransporterDestination");
+    Distance distance(model, "TransporterDistance");
+    distance.insertEntry(new DistanceEntry("TransporterSource", "TransporterDestination", 9.0, true));
+
+    TransporterProbe transporter(model, "TransporterData");
+    transporter.setDistance(&distance);
+    transporter.setInitialStation(&source);
+    transporter.setSpeed(3.0);
+    transporter.setInitiallyActive(true);
+
+    std::string errorMessage;
+    ASSERT_TRUE(transporter.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_DOUBLE_EQ(transporter.getTravelTime(&source, &destination), 3.0);
+    ASSERT_TRUE(transporter.reserve());
+    transporter.releaseAt(&destination);
+    EXPECT_EQ(transporter.getCurrentStation(), &destination);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    transporter.SaveInstanceProbe(&fields, true);
+
+    TransporterProbe loaded(model, "LoadedTransporter");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getDistance(), &distance);
+    EXPECT_EQ(loaded.getInitialStation(), &source);
+    EXPECT_DOUBLE_EQ(loaded.getSpeed(), 3.0);
+
+    transporter.InitBetweenReplicationsProbe();
+    EXPECT_EQ(transporter.getCurrentStation(), &source);
+    EXPECT_FALSE(transporter.isBusy());
+    EXPECT_TRUE(transporter.isActive());
+}
+
+TEST(SimulatorRuntimeTest, MoveDispatchSchedulesArrivalAndReleasesTransporterAtDestination) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station sourceStation(model, "MoveSourceStation");
+    Station destinationStation(model, "MoveDestinationStation");
+    Enter destinationEnter(model, "MoveDestinationEnter");
+    CollectorSinkComponentProbe sink(model, "MoveSink");
+    destinationEnter.setStation(&destinationStation);
+    destinationEnter.setReportStatistics(false);
+    destinationEnter.connectTo(&sink);
+
+    Distance distance(model, "MoveDistance");
+    distance.insertEntry(new DistanceEntry("MoveSourceStation", "MoveDestinationStation", 6.0, true));
+
+    TransporterProbe transporter(model, "MoveTransporter");
+    transporter.setDistance(&distance);
+    transporter.setInitialStation(&sourceStation);
+    transporter.setSpeed(2.0);
+
+    MoveProbe move(model, "MoveDispatch");
+    move.setReportStatistics(false);
+    move.setTransporter(&transporter);
+    move.setStation(&destinationStation);
+
+    EntityType entityType(model, "MoveEntityType");
+    entityType.setReportStatistics(false);
+    Entity* entity = model->createEntity("MoveEntity", true);
+    entity->setEntityType(&entityType);
+    sourceStation.enter(entity);
+
+    std::string errorMessage;
+    ASSERT_TRUE(move.CheckProbe(errorMessage)) << errorMessage;
+
+    move.DispatchEventProbe(entity);
+    EXPECT_TRUE(transporter.isBusy());
+    DrainFutureEvents(model);
+
+    EXPECT_FALSE(transporter.isBusy());
+    EXPECT_EQ(transporter.getCurrentStation(), &destinationStation);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+    EXPECT_EQ(entity->getAttributeValue("Entity.Station"), static_cast<double>(destinationStation.getId()));
+}
+
+TEST(SimulatorRuntimeTest, MoveSaveAndLoadPreserveTransporterAndStationExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station destination(model, "MovePersistStation");
+    Distance distance(model, "MovePersistDistance");
+    Station initialStation(model, "MovePersistInitial");
+    Transporter transporter(model, "MovePersistTransporter");
+    transporter.setDistance(&distance);
+    transporter.setInitialStation(&initialStation);
+
+    MoveProbe source(model, "MovePersistSource");
+    source.setTransporter(&transporter);
+    source.setStation(&destination);
+    source.setStationExpression(std::to_string(destination.getId()));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    MoveProbe loaded(model, "MovePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getTransporter(), &transporter);
+    EXPECT_EQ(loaded.getStation(), &destination);
+    EXPECT_EQ(loaded.getStationExpression(), std::to_string(destination.getId()));
+}
+
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionDefaultsAreInitializedAsExpected) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    TemplateDataDefinition element(model, "DummyDefaults");
     EXPECT_EQ(element.getSomeString(), "Test");
     EXPECT_EQ(element.getSomeUint(), 1u);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementSettersAndGettersRemainCoherent) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionSettersAndGettersRemainCoherent) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElement element(model, "DummySetters");
+    TemplateDataDefinition element(model, "DummySetters");
     element.setSomeString("TemplateValue");
     element.setSomeUint(42u);
 
@@ -3568,12 +4580,12 @@ TEST(SimulatorRuntimeTest, DummyElementSettersAndGettersRemainCoherent) {
     EXPECT_EQ(element.getSomeUint(), 42u);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementCheckFailsForInvalidConfiguration) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionCheckFailsForInvalidConfiguration) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElementProbe element(model, "DummyInvalid");
+    TemplateDataDefinitionProbe element(model, "DummyInvalid");
     element.setSomeString("");
     element.setSomeUint(0u);
 
@@ -3583,12 +4595,12 @@ TEST(SimulatorRuntimeTest, DummyElementCheckFailsForInvalidConfiguration) {
     EXPECT_NE(errorMessage.find("SomeUint must be greater than zero"), std::string::npos);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementCheckPassesForValidConfiguration) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionCheckPassesForValidConfiguration) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElementProbe element(model, "DummyValid");
+    TemplateDataDefinitionProbe element(model, "DummyValid");
     element.setSomeString("Ok");
     element.setSomeUint(3u);
 
@@ -3597,12 +4609,12 @@ TEST(SimulatorRuntimeTest, DummyElementCheckPassesForValidConfiguration) {
     EXPECT_TRUE(errorMessage.empty());
 }
 
-TEST(SimulatorRuntimeTest, DummyElementShowIncludesMainConfiguredFields) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionShowIncludesMainConfiguredFields) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElement element(model, "DummyShow");
+    TemplateDataDefinition element(model, "DummyShow");
     element.setSomeString("Alpha");
     element.setSomeUint(8u);
 
@@ -3611,12 +4623,12 @@ TEST(SimulatorRuntimeTest, DummyElementShowIncludesMainConfiguredFields) {
     EXPECT_NE(info.find("someUint=8"), std::string::npos);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementSaveAndLoadRoundTripPreservesParameters) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionSaveAndLoadRoundTripPreservesParameters) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElementProbe source(model, "DummySource");
+    TemplateDataDefinitionProbe source(model, "DummySource");
     source.setSomeString("Persisted");
     source.setSomeUint(77u);
 
@@ -3624,18 +4636,18 @@ TEST(SimulatorRuntimeTest, DummyElementSaveAndLoadRoundTripPreservesParameters) 
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
 
-    DummyElementProbe loaded(model, "DummyLoaded");
+    TemplateDataDefinitionProbe loaded(model, "DummyLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
     EXPECT_EQ(loaded.getSomeString(), "Persisted");
     EXPECT_EQ(loaded.getSomeUint(), 77u);
 }
 
-TEST(SimulatorRuntimeTest, DummyElementRegistersMainControlsAsOwnedProperties) {
+TEST(SimulatorRuntimeTest, TemplateDataDefinitionRegistersMainControlsAsOwnedProperties) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    DummyElement element(model, "DummyProperties");
+    TemplateDataDefinition element(model, "DummyProperties");
     auto* controls = element.getSimulationControls();
     ASSERT_NE(controls, nullptr);
     EXPECT_GE(controls->size(), 2u);
@@ -3799,6 +4811,24 @@ TEST(SimulatorRuntimeTest, SignalDataDestructorHandlesOwnedHandlersLifecycle) {
     EXPECT_NO_THROW(delete signal);
 }
 
+TEST(SimulatorRuntimeTest, WaitAndSignalMaterializationDoesNotCreateReferences) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    WaitProbe wait(model, "WaitNoImplicitReferences");
+    SignalProbe signal(model, "SignalNoImplicitReferences");
+
+    ASSERT_EQ(wait.getQueue(), nullptr);
+    ASSERT_EQ(wait.getSignalData(), nullptr);
+    ASSERT_EQ(signal.getSignalData(), nullptr);
+    wait.CreateInternalAndAttachedDataProbe();
+    signal.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(wait.getQueue(), nullptr);
+    EXPECT_EQ(wait.getSignalData(), nullptr);
+    EXPECT_EQ(signal.getSignalData(), nullptr);
+    EXPECT_EQ(wait.getInternalData()->count("Queue"), 0u);
+}
+
 TEST(SimulatorRuntimeTest, SignalDataInitBetweenReplicationsResetsRemainsToLimit) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -3873,7 +4903,9 @@ TEST(SimulatorRuntimeTest, WaitAndSignalPersistenceRoundTripPreservesSharedSigna
     ASSERT_NE(model, nullptr);
 
     SignalDataProbe sharedSignalData(model, "SharedSignalData");
+    Queue* sharedQueue = new Queue(model, "WaitPersistQueue");
     WaitProbe sourceWait(model, "WaitPersistSource");
+    sourceWait.setQueue(sharedQueue);
     sourceWait.setWaitType(Wait::WaitType::WaitForSignal);
     sourceWait.setSignalData(&sharedSignalData);
 
@@ -3892,11 +4924,58 @@ TEST(SimulatorRuntimeTest, WaitAndSignalPersistenceRoundTripPreservesSharedSigna
     ASSERT_TRUE(loadedWait.LoadInstanceProbe(&waitFields));
     ASSERT_TRUE(loadedSignal.LoadInstanceProbe(&signalFields));
 
+    EXPECT_EQ(loadedWait.getQueue(), sharedQueue);
+
     ASSERT_NE(loadedWait._signalData, nullptr);
     ASSERT_NE(loadedSignal.SignalDataPtrProbe(), nullptr);
     EXPECT_EQ(loadedWait._signalData, &sharedSignalData);
     EXPECT_EQ(loadedSignal.SignalDataPtrProbe(), &sharedSignalData);
     EXPECT_EQ(loadedWait._signalData, loadedSignal.SignalDataPtrProbe());
+}
+
+TEST(SimulatorRuntimeTest, WaitAndSignalGenRoundTripPreservesOneSharedSignalData) {
+    const std::string filename = "/tmp/genesys_wait_signal_shared_data_" + std::to_string(::getpid()) + ".gen";
+    ::unlink(filename.c_str());
+
+    Simulator sourceSimulator;
+    sourceSimulator.getPluginManager()->autoInsertPlugins();
+    Model* sourceModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(sourceModel, nullptr);
+
+    auto* sharedData = new SignalData(sourceModel, "SharedSignalData");
+    auto* sharedQueue = new Queue(sourceModel, "SharedWaitQueue");
+    auto* wait = new Wait(sourceModel, "WaitSharedSignalData");
+    wait->setQueue(sharedQueue);
+    wait->setWaitType(Wait::WaitType::WaitForSignal);
+    wait->setSignalData(sharedData);
+    auto* signal = new Signal(sourceModel, "SignalSharedSignalData");
+    signal->setSignalData(sharedData);
+
+    ASSERT_TRUE(sourceModel->save(filename));
+
+    Simulator loadedSimulator;
+    loadedSimulator.getPluginManager()->autoInsertPlugins();
+    Model* loadedModel = loadedSimulator.getModelManager()->loadModel(filename);
+    ASSERT_NE(loadedModel, nullptr);
+
+    auto* loadedWait = dynamic_cast<Wait*>(loadedModel->getComponentManager()->find("WaitSharedSignalData"));
+    auto* loadedSignal = dynamic_cast<Signal*>(loadedModel->getComponentManager()->find("SignalSharedSignalData"));
+    auto* loadedData = dynamic_cast<SignalData*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<SignalData>(), "SharedSignalData"));
+    auto* loadedQueue = dynamic_cast<Queue*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<Queue>(), "SharedWaitQueue"));
+    ASSERT_NE(loadedWait, nullptr);
+    ASSERT_NE(loadedSignal, nullptr);
+    ASSERT_NE(loadedData, nullptr);
+    ASSERT_NE(loadedQueue, nullptr);
+    EXPECT_EQ(loadedWait->getQueue(), loadedQueue);
+    EXPECT_EQ(loadedWait->getSignalData(), loadedData);
+    EXPECT_EQ(loadedSignal->getSignalData(), loadedData);
+    EXPECT_EQ(loadedWait->getSignalData(), loadedSignal->getSignalData());
+    EXPECT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<SignalData>()), 1u);
+    EXPECT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Queue>()), 1u);
+
+    ::unlink(filename.c_str());
 }
 
 TEST(SimulatorRuntimeTest, SignalCheckRequiresSignalDataAndValidLimitExpression) {
@@ -4019,6 +5098,55 @@ TEST(SimulatorRuntimeTest, WaitForSignalLimitZeroDoesNotReleaseQueuedEntities) {
     signalData.generateSignal(0.0, 10u);
     EXPECT_EQ(wait.TriggerSignalHandlerProbe(&signalData), 0u);
     EXPECT_EQ(wait.getQueue()->size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, SignalReleasesEntityWaitingOnSharedSignalDataInSimulation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "SharedSignalE2EEntity");
+    auto* queue = new Queue(model, "SharedSignalE2EQueue");
+    auto* signalData = new SignalData(model, "SharedSignalE2EData");
+    auto* wait = new Wait(model, "SharedSignalE2EWait");
+    auto* signal = new Signal(model, "SharedSignalE2ESignal");
+    auto* waitEntitySource = new Create(model, "SharedSignalE2EWaitSource");
+    auto* signalEntitySource = new Create(model, "SharedSignalE2ESignalSource");
+    auto* waitDispose = new Dispose(model, "SharedSignalE2EWaitDispose");
+    auto* signalDispose = new Dispose(model, "SharedSignalE2ESignalDispose");
+
+    wait->setQueue(queue);
+    wait->setSignalData(signalData);
+    wait->setWaitType(Wait::WaitType::WaitForSignal);
+    wait->setLimitExpression("1");
+    signal->setSignalData(signalData);
+    ASSERT_TRUE(signalData->hasSignalDataEventHandler(wait));
+    waitEntitySource->setEntityType(entityType);
+    waitEntitySource->setFirstCreation(0.0);
+    waitEntitySource->setTimeBetweenCreationsExpression("100");
+    waitEntitySource->setMaxCreations(1ul);
+    signalEntitySource->setEntityType(entityType);
+    signalEntitySource->setFirstCreation(1.0);
+    signalEntitySource->setTimeBetweenCreationsExpression("100");
+    signalEntitySource->setMaxCreations(1ul);
+
+    waitEntitySource->connectTo(wait);
+    wait->connectTo(waitDispose);
+    signalEntitySource->connectTo(signal);
+    signal->connectTo(signalDispose);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(3.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+    model->getSimulation()->start();
+
+    EXPECT_EQ(wait->getQueue(), queue);
+    EXPECT_EQ(wait->getSignalData(), signalData);
+    EXPECT_EQ(signal->getSignalData(), signalData);
+    EXPECT_EQ(queue->size(), 0u);
+    EXPECT_EQ(signalData->remainsToLimit(), 0u);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Entity>()), 0u);
 }
 
 TEST(SimulatorRuntimeTest, SignalAndWaitSharedSignalDataRemainCoherentAfterRecheck) {
@@ -4225,6 +5353,193 @@ TEST(SimulatorRuntimeTest, PickStationDispatchChoosesStationAndStoresSelectedId)
     ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
     EXPECT_EQ(sink.ReceivedEntities()[0], entity);
     EXPECT_EQ(entity->getAttributeValue(savedStationAttribute.getId()), stationB.getId());
+}
+
+TEST(SimulatorRuntimeTest, RouteCheckAcceptsLabelDestinationWithoutStation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CollectorSinkComponentProbe sink(model, "RouteLabelCheckSink");
+    Label receiver(model, "RouteLabelReceiver");
+    receiver.connectTo(&sink);
+
+    RouteProbe route(model, "RouteToLabel");
+    route.setRouteDestinationType(Route::DestinationType::Label);
+    route.setLabel(receiver.getLabelDefinition());
+    route.setRouteTimeExpression("0.0");
+
+    std::string errorMessage;
+    EXPECT_TRUE(route.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, EnterStationReferenceCanBeSelectedAndRemovedThroughSimulationControl) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "EnterReferenceStation");
+    EnterProbe enter(model, "EnterReference");
+    SimulationControl* stationControl = nullptr;
+    for (SimulationControl* control : *enter.getSimulationControls()->list()) {
+        if (control != nullptr && control->getName() == "Station") {
+            stationControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(stationControl, nullptr);
+    EXPECT_TRUE(stationControl->keepsExistingObjectChoicesWhenSet());
+
+    stationControl->setValue(station.getName());
+    EXPECT_EQ(enter.getStation(), &station);
+    EXPECT_EQ(station.getEnterIntoStationComponent(), &enter);
+
+    EXPECT_NO_THROW(stationControl->setValue("", true));
+    EXPECT_EQ(enter.getStation(), nullptr);
+    EXPECT_EQ(station.getEnterIntoStationComponent(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), station.getName()), &station);
+}
+
+TEST(SimulatorRuntimeTest, EnterStationReplacementPreservesCardinalityAndSharedRouteReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station stationA(model, "EnterStationA");
+    Station stationB(model, "EnterStationB");
+    EnterProbe first(model, "FirstEnter");
+    EnterProbe second(model, "SecondEnter");
+    RouteProbe route(model, "RouteSharingStation");
+
+    first.setStation(&stationA);
+    route.setStation(&stationA);
+    EXPECT_EQ(route.getStation(), &stationA);
+    EXPECT_EQ(stationA.getEnterIntoStationComponent(), &first);
+
+    first.setStation(&stationB);
+    EXPECT_EQ(stationA.getEnterIntoStationComponent(), nullptr);
+    EXPECT_EQ(stationB.getEnterIntoStationComponent(), &first);
+    EXPECT_EQ(route.getStation(), &stationA);
+
+    second.setStation(&stationB);
+    EXPECT_EQ(second.getStation(), nullptr);
+    EXPECT_EQ(stationB.getEnterIntoStationComponent(), &first);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationA.getName()), &stationA);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationB.getName()), &stationB);
+}
+
+TEST(SimulatorRuntimeTest, TransferComponentsDoNotMaterializeExternalDefinitionsDuringPreparation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EnterProbe enter(model, "UnconfiguredEnter");
+    RouteProbe route(model, "UnconfiguredRoute");
+    MoveProbe move(model, "UnconfiguredMove");
+    StoreProbe store(model, "UnconfiguredStore");
+    UnstoreProbe unstore(model, "UnconfiguredUnstore");
+
+    enter.CreateInternalAndAttachedDataProbe();
+    route.CreateInternalAndAttachedDataProbe();
+    move.CreateInternalAndAttachedDataProbe();
+    store.CreateInternalAndAttachedDataProbe();
+    unstore.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(enter.getStation(), nullptr);
+    EXPECT_EQ(route.getStation(), nullptr);
+    EXPECT_EQ(route.getLabel(), nullptr);
+    EXPECT_EQ(move.getStation(), nullptr);
+    EXPECT_EQ(move.getTransporter(), nullptr);
+    EXPECT_EQ(store.getStorage(), nullptr);
+    EXPECT_EQ(unstore.getStorage(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Station>())->size(), 0u);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Transporter>())->size(), 0u);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Storage>())->size(), 0u);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<LabelDefinition>())->size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, RouteSaveAndLoadPreservesStationExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RouteProbe source(model, "RoutePersistSource");
+    source.setRouteDestinationType(Route::DestinationType::Station);
+    source.setStationExpression("42");
+    source.setRouteTimeExpression("3.5");
+    source.setRouteTimeTimeUnit(Util::TimeUnit::minute);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    RouteProbe loaded(model, "RoutePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRouteDestinationType(), Route::DestinationType::Station);
+    EXPECT_EQ(loaded.getStationExpression(), "42");
+    EXPECT_EQ(loaded.getRouteTimeExpression(), "3.5");
+    EXPECT_EQ(loaded.getRouteTimeTimeUnit(), Util::TimeUnit::minute);
+}
+
+TEST(SimulatorRuntimeTest, RouteDispatchUsesStationExpressionToReachResolvedEnterComponent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "RouteExprStation");
+    Enter enter(model, "RouteExprEnter");
+    CollectorSinkComponentProbe sink(model, "RouteExprSink");
+    EntityType routeEntityType(model, "RouteExprType");
+    enter.setStation(&station);
+    enter.setReportStatistics(false);
+    enter.connectTo(&sink);
+
+    RouteProbe route(model, "RouteExprDispatcher");
+    route.setReportStatistics(false);
+    route.setRouteDestinationType(Route::DestinationType::Station);
+    route.setStationExpression(std::to_string(station.getId()));
+    route.setRouteTimeExpression("0.0");
+
+    std::string errorMessage;
+    ASSERT_TRUE(route.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("RouteExprEntity", true);
+    entity->setEntityType(&routeEntityType);
+    route.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+}
+
+TEST(SimulatorRuntimeTest, RouteDispatchUsesLabelEnterComponentWhenDelayExpires) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CollectorSinkComponentProbe sink(model, "RouteLabelSink");
+    Label receiver(model, "RouteLabelReceiver");
+    receiver.connectTo(&sink);
+    EntityType routeEntityType(model, "RouteLabelType");
+
+    RouteProbe route(model, "RouteLabelDispatcher");
+    route.setReportStatistics(false);
+    route.setRouteDestinationType(Route::DestinationType::Label);
+    route.setLabel(receiver.getLabelDefinition());
+    route.setRouteTimeExpression("2.0");
+
+    std::string errorMessage;
+    ASSERT_TRUE(route.CheckProbe(errorMessage)) << errorMessage;
+
+    Entity* entity = model->createEntity("RouteLabelEntity", true);
+    entity->setEntityType(&routeEntityType);
+    route.DispatchEventProbe(entity);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+
+    DrainFutureEvents(model);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
 }
 
 TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {
@@ -4560,6 +5875,8 @@ TEST(SimulatorRuntimeTest, MatchPersistenceRoundTripPreservesRuleQueueCountMatch
     source.setNumberOfQueues(4);
     source.setMatchSize("3");
     source.setAttributeName("Color");
+    source.setQueueOrderRule(Queue::OrderRule::SMALLESTVALUE);
+    source.setQueueOrderAttributeName("Price");
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
@@ -4571,6 +5888,78 @@ TEST(SimulatorRuntimeTest, MatchPersistenceRoundTripPreservesRuleQueueCountMatch
     EXPECT_EQ(loaded.getNumberOfQueues(), 4u);
     EXPECT_EQ(loaded.getMatchSize(), "3");
     EXPECT_EQ(loaded.getAttributeName(), "Color");
+    EXPECT_EQ(loaded.getQueueOrderRule(), Queue::OrderRule::SMALLESTVALUE);
+    EXPECT_EQ(loaded.getQueueOrderAttributeName(), "Price");
+}
+
+TEST(SimulatorRuntimeTest, MatchPropagatesCommonQueueOrderingToExistingAndNewQueues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    MatchProbe match(model, "MatchQueueOrdering");
+    match.setNumberOfQueues(2);
+    match.setQueueOrderAttributeName("Price");
+    match.setQueueOrderRule(Queue::OrderRule::HIGHESTVALUE);
+    match.CreateInternalAndAttachedDataProbe();
+
+    auto getMatchQueue = [model](const std::string& name) {
+        return dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), name));
+    };
+    Queue* q0 = getMatchQueue("MatchQueueOrdering.Queue0");
+    Queue* q1 = getMatchQueue("MatchQueueOrdering.Queue1");
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
+    EXPECT_EQ(q0->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q1->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q0->getAttributeName(), "Price");
+    EXPECT_EQ(q1->getAttributeName(), "Price");
+
+    for (Queue::OrderRule rule : {Queue::OrderRule::FIFO, Queue::OrderRule::LIFO,
+                                  Queue::OrderRule::HIGHESTVALUE, Queue::OrderRule::SMALLESTVALUE}) {
+        match.setQueueOrderRule(rule);
+        EXPECT_EQ(q0->getOrderRule(), rule);
+        EXPECT_EQ(q1->getOrderRule(), rule);
+    }
+
+    match.setNumberOfQueues(3);
+    match.CreateInternalAndAttachedDataProbe();
+    Queue* q2 = getMatchQueue("MatchQueueOrdering.Queue2");
+    ASSERT_NE(q2, nullptr);
+    EXPECT_EQ(q2->getOrderRule(), match.getQueueOrderRule());
+    EXPECT_EQ(q2->getAttributeName(), "Price");
+}
+
+TEST(SimulatorRuntimeTest, MatchQueueOrderingAndInternalQueuesSurviveGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* match = new Match(model, "MatchQueueRoundTrip");
+    match->setNumberOfQueues(3);
+    match->setQueueOrderRule(Queue::OrderRule::SMALLESTVALUE);
+    match->setQueueOrderAttributeName("Cost");
+    ModelComponent::CreateInternalData(match);
+
+    const std::string path = "/tmp/genesys_match_queue_roundtrip_" + std::to_string(getpid()) + ".gen";
+    std::remove(path.c_str());
+    ASSERT_TRUE(model->save(path));
+    Model* loaded = simulator.getModelManager()->loadModel(path);
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedMatch = dynamic_cast<Match*>(loaded->getComponentManager()->find("MatchQueueRoundTrip"));
+    ASSERT_NE(loadedMatch, nullptr);
+    EXPECT_EQ(loadedMatch->getNumberOfQueues(), 3u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Queue>()), 3u);
+
+    ModelComponent::CreateInternalData(loadedMatch);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Queue>()), 3u);
+    for (unsigned int i = 0; i < 3; ++i) {
+        auto* queue = dynamic_cast<Queue*>(loaded->getDataManager()->getDataDefinition(
+            Util::TypeOf<Queue>(), "MatchQueueRoundTrip.Queue" + std::to_string(i)));
+        ASSERT_NE(queue, nullptr);
+        EXPECT_EQ(queue->getOrderRule(), Queue::OrderRule::SMALLESTVALUE);
+        EXPECT_EQ(queue->getAttributeName(), "Cost");
+    }
+    std::remove(path.c_str());
 }
 
 TEST(SimulatorRuntimeTest, MatchCheckValidatesQueueCountMatchSizeAndByAttributeContract) {
@@ -5366,6 +6755,28 @@ TEST(SimulatorRuntimeTest, AssignmentSetterUpdatesTypeConsistently) {
     EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Attribute>());
 }
 
+TEST(SimulatorRuntimeTest, AssignmentBooleanControlAcceptsTextAndNumericValuesWithoutLosingState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    Assignment assignment(model, "Entity.boolDestination", "1", true);
+    SimulationControl* destinationType = nullptr;
+    for (SimulationControl* control : *assignment.getSimulationControls()->list()) {
+        if (control->getName() == "DestinationIsAttribute") destinationType = control;
+    }
+    ASSERT_NE(destinationType, nullptr);
+    for (const auto& [text, expected] : std::vector<std::pair<std::string, bool>>{
+             {"false", false}, {"true", true}, {"0", false}, {"1", true},
+             {" false ", false}, {" true ", true}}) {
+        destinationType->setValue(text);
+        EXPECT_EQ(assignment.isAttributeNotVariable(), expected);
+        EXPECT_EQ(assignment.getTypeDC(), expected ? Util::TypeOf<Attribute>() : Util::TypeOf<Variable>());
+    }
+    for (const auto& invalid : {"", "maybe", "2", "true trailing"}) {
+        EXPECT_THROW(destinationType->setValue(invalid), std::invalid_argument);
+        EXPECT_TRUE(assignment.isAttributeNotVariable());
+    }
+}
+
 TEST(SimulatorRuntimeTest, AssignmentSaveLoadRoundTripPreservesDestinationExpressionAndType) {
     Assignment source("Entity.attrRoundTrip", "3+4", true);
     source.setAttributeNotVariable(false);
@@ -5429,7 +6840,7 @@ TEST(SimulatorRuntimeTest, AssignListEditorCreationExposesAssignmentChildPropert
 
     EXPECT_NE(std::find(childNames.begin(), childNames.end(), "Destination"), childNames.end());
     EXPECT_NE(std::find(childNames.begin(), childNames.end(), "Expression"), childNames.end());
-    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "AttributeNotVariable"), childNames.end());
+    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "DestinationIsAttribute"), childNames.end());
 }
 
 TEST(SimulatorRuntimeTest, AssignAddAssignmentMaterializesChildPropertiesForSimpleAssignment) {
@@ -5583,7 +6994,7 @@ TEST(SimulatorRuntimeTest, AssignGuiDestinationEditCreatesAndAttachesDestination
     for (SimulationControl* child : *childControls->list()) {
         if (child->getName() == "Destination") {
             destinationControl = child;
-        } else if (child->getName() == "AttributeNotVariable") {
+        } else if (child->getName() == "DestinationIsAttribute") {
             attributeNotVariableControl = child;
         }
     }
@@ -5622,6 +7033,24 @@ TEST(SimulatorRuntimeTest, AssignDispatchWritesIndexedAttributeAndVariableValues
     EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.attrIndexedDispatch", ""), 0.0);
     EXPECT_DOUBLE_EQ(variable->getValue("2,3"), 22.0);
     EXPECT_DOUBLE_EQ(variable->getValue(""), 0.0);
+}
+
+TEST(SimulatorRuntimeTest, AssignDiscExpressionWritesValidAttributeAndVariableValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    new Attribute(model, "Entity.discAttribute");
+    auto* variable = new Variable(model, "discVariable");
+    AssignProbe assign(model, "AssignDisc");
+    assign.connectTo(new Dispose(model, "AssignDiscSink"));
+    assign.addAssignment(new Assignment("Entity.discAttribute", "DISC(0.6,1,1,2)", true));
+    assign.addAssignment(new Assignment("discVariable", "DISC(1,5)", false));
+    Entity* entity = model->createEntity("AssignDiscEntity", true);
+    ASSERT_NE(entity, nullptr);
+    assign.DispatchEventProbe(entity);
+    const double attribute = entity->getAttributeValue("Entity.discAttribute");
+    EXPECT_TRUE(attribute == 1.0 || attribute == 2.0);
+    EXPECT_DOUBLE_EQ(variable->getValue(), 5.0);
 }
 
 TEST(SimulatorRuntimeTest, CreateCheckFailsForAmbiguousTimeBetweenConfiguration) {
@@ -5887,6 +7316,7 @@ TEST(SimulatorRuntimeTest, CppCompilerShowIncludesMainObservabilityFields) {
     compiler.setCompilerCommand("clang++");
     compiler.setOutputDir("out");
     compiler.setTempDir("tmp");
+    // A persisted flag must not claim a handle is loaded when dlopen failed.
     compiler.setLibraryLoaded(true);
 
     const std::string shown = compiler.show();
@@ -5895,7 +7325,7 @@ TEST(SimulatorRuntimeTest, CppCompilerShowIncludesMainObservabilityFields) {
     EXPECT_NE(shown.find("compilerCommand=\"clang++\""), std::string::npos);
     EXPECT_NE(shown.find("outputDir=\"out\""), std::string::npos);
     EXPECT_NE(shown.find("tempDir=\"tmp\""), std::string::npos);
-    EXPECT_NE(shown.find("libraryLoaded=true"), std::string::npos);
+    EXPECT_NE(shown.find("libraryLoaded=false"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, CppCompilerPersistenceRoundTripPreservesMainFields) {
@@ -5909,11 +7339,13 @@ TEST(SimulatorRuntimeTest, CppCompilerPersistenceRoundTripPreservesMainFields) {
     source.setCompilerCommand("clang++");
     source.setOutputDir("persist-out");
     source.setTempDir("persist-tmp");
-    source.setLibraryLoaded(true);
+    source.setLibraryLoaded(true); // No artifact exists, so the runtime state stays false.
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
+    // Old models may persist this UI flag, but no dlopen handle survives reload.
+    fields.saveField("libraryLoaded", true, false, true);
 
     CppCompilerProbe loaded(model, "CppCompilerPersistLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
@@ -5922,7 +7354,7 @@ TEST(SimulatorRuntimeTest, CppCompilerPersistenceRoundTripPreservesMainFields) {
     EXPECT_EQ(loaded.getCompilerCommand(), "clang++");
     EXPECT_EQ(loaded.getOutputDir(), "persist-out");
     EXPECT_EQ(loaded.getTempDir(), "persist-tmp");
-    EXPECT_TRUE(loaded.IsLibraryLoaded());
+    EXPECT_FALSE(loaded.IsLibraryLoaded());
 }
 
 TEST(SimulatorRuntimeTest, CppCompilerInvokeCompilerSeparatesStdoutAndStderrLogs) {
@@ -5941,15 +7373,19 @@ TEST(SimulatorRuntimeTest, CppCompilerInvokeCompilerSeparatesStdoutAndStderrLogs
     compiler.setTempDir(tempDir);
     const std::string outputPath = outputDir + Util::DirSeparator() + "invoke_result.bin";
     compiler.setOutputFilename(outputPath);
-    const std::string command = "sh -c \"echo STDOUT_LINE; echo STDERR_LINE 1>&2; touch " + outputPath + "\"";
-    CppCompiler::CompilationResult result = compiler.InvokeCompilerProbe(command);
+    const std::vector<std::string> command = {
+        "/usr/bin/python3", "-c",
+        "import pathlib,sys; print('STDOUT_LINE'); print('STDERR_LINE', file=sys.stderr); pathlib.Path(sys.argv[1]).touch()",
+        outputPath
+    };
+    CppCompiler::CompilationResult result = compiler.InvokeCompilerProbe(command, outputPath);
 
     EXPECT_TRUE(result.success);
     EXPECT_NE(result.compilationStdOutput.find("STDOUT_LINE"), std::string::npos);
     EXPECT_EQ(result.compilationStdOutput.find("STDERR_LINE"), std::string::npos);
     EXPECT_NE(result.compilationErrOutput.find("STDERR_LINE"), std::string::npos);
     EXPECT_EQ(result.compilationErrOutput.find("STDOUT_LINE"), std::string::npos);
-    EXPECT_EQ(result.destinationPath, tempDir + Util::DirSeparator());
+    EXPECT_EQ(result.destinationPath, outputPath);
 
     Util::FileDelete(outputPath);
     ::rmdir(outputDir.c_str());
@@ -10176,7 +11612,12 @@ TEST(SimulatorRuntimeTest, PythonForGCreatesInternalRuntimeAndPersistsConfigurat
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
 
-    PythonForGProbe loaded(model, "PyComponentLoaded");
+    // A persistence load reconstructs a model in a fresh Model/DataManager.
+    // Loading this record into the same model would make the source component
+    // and the probe both claim exclusive ownership of its PythonRuntime.
+    Model* loadedModel = simulator.getModelManager()->newModel();
+    ASSERT_NE(loadedModel, nullptr);
+    PythonForGProbe loaded(loadedModel, "PyComponentLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
     EXPECT_EQ(loaded.getInitBetweenReplicationCode(), "simulator.trace('init')");
     EXPECT_EQ(loaded.getOnDispatchEventCode(), "simulator.trace(entity.getName())");
@@ -10843,4 +12284,310 @@ TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {
     EXPECT_NE(generated.find("Delay_A->connectTo(Dispose_A, 0);"), std::string::npos);
     EXPECT_NE(generated.find("sim->setNumberOfReplications(7);"), std::string::npos);
     EXPECT_NE(generated.find("sim->setReplicationLength(42.000000, Util::TimeUnit::minute);"), std::string::npos);
+}
+
+namespace {
+class ReleaseDispatchProbe : public Release {
+public:
+    using Release::Release;
+    using Release::_onDispatchEvent;
+};
+}
+TEST(SimulatorRuntimeTest, ReleaseExcessQuantityReportsErrorWithoutChangingResource) {
+    Simulator simulator;
+    auto* model = simulator.getModelManager()->newModel();
+    auto* resource = new Resource(model, "OverReleaseResource");
+    ASSERT_TRUE(resource->seize(1));
+    auto* release = new ReleaseDispatchProbe(model, "InvalidRelease");
+    release->addReleaseRequests(new SeizableItem(resource, "2"));
+    auto* entity = model->createEntity("OverReleaseEntity", true);
+    try {
+        release->_onDispatchEvent(entity, 0);
+        FAIL() << "Expected runtime diagnostic";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string(error.what()).find("OverReleaseResource"), std::string::npos);
+        EXPECT_NE(std::string(error.what()).find("InvalidRelease"), std::string::npos);
+    }
+    EXPECT_EQ(resource->getNumberBusy(), 1u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
+TEST(SimulatorRuntimeTest, ReleaseValidQuantityStillReleasesAndRoutesEntity) {
+    Simulator simulator;
+    auto* model = simulator.getModelManager()->newModel();
+    auto* resource = new Resource(model, "ValidReleaseResource");
+    ASSERT_TRUE(resource->seize(1));
+    auto* release = new ReleaseDispatchProbe(model, "ValidRelease");
+    release->setReportStatistics(false);
+    auto* sink = new Dispose(model, "ReleaseSink");
+    release->getConnectionManager()->insert(sink);
+    release->addReleaseRequests(new SeizableItem(resource, "1"));
+    auto* entity = model->createEntity("ValidReleaseEntity", true);
+    EXPECT_NO_THROW(release->_onDispatchEvent(entity, 0));
+    EXPECT_EQ(resource->getNumberBusy(), 0u);
+    ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+    EXPECT_EQ(model->getFutureEvents()->front()->getComponent(), sink);
+    EXPECT_EQ(model->getFutureEvents()->front()->getEntity(), entity);
+}
+
+TEST(SimulatorRuntimeTest, SimulationReportsOverReleaseWithoutAbortingProcess) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    auto* model = simulator.getModelManager()->newModel();
+    auto* create = new Create(model, "OverReleaseSource");
+    create->setMaxCreations(1);
+    auto* release = new Release(model, "OverReleaseDuringSimulation");
+    auto* resource = new Resource(model, "UnseizedResource");
+    release->addReleaseRequests(new SeizableItem(resource, "1"));
+    auto* sink = new Dispose(model, "OverReleaseSink");
+    create->getConnectionManager()->insert(release);
+    release->getConnectionManager()->insert(sink);
+    model->getSimulation()->setReplicationLength(1.0, Util::TimeUnit::second);
+    ASSERT_TRUE(model->check());
+    EXPECT_NO_THROW(model->getSimulation()->start());
+    EXPECT_EQ(resource->getNumberBusy(), 0u);
+    bool found = false;
+    for (const auto& message : *model->getTracer()->errorMessages()->list()) {
+        if (message.find("Error executing component") != std::string::npos &&
+            message.find("OverReleaseDuringSimulation") != std::string::npos) found = true;
+    }
+    EXPECT_TRUE(found);
+}
+
+TEST(SimulatorRuntimeTest, SeizePriorityExpressionRoundTripPreservesStringsAndRecoversLegacyNul) {
+    for (const auto& expression : {std::string(), std::string("2 + 3"), std::string(1,'\0'), std::string("2+\0",3)}) {
+        Simulator simulator;
+        simulator.getPluginManager()->autoInsertPlugins();
+        auto* model = simulator.getModelManager()->newModel();
+        auto* resource = new Resource(model,"PriorityResource");
+        auto* queue = new Queue(model,"PriorityQueue");
+        auto* seize = new Seize(model,"PrioritySeize");
+        seize->setLabel("Persisted label");
+        seize->setQueue(queue);
+        seize->addRequest(new SeizableItem(resource));
+        seize->setPriorityExpression(expression);
+        const auto id = seize->getId();
+        const std::string path = "/tmp/genesys-priority-" + std::to_string(getpid()) + ".gen";
+        ASSERT_TRUE(model->save(path));
+        for (int round=0; round<2; ++round) {
+            Simulator restored;
+            restored.getPluginManager()->autoInsertPlugins();
+            ASSERT_NE(restored.getModelManager()->loadModel(path), nullptr);
+            auto* loaded = dynamic_cast<Seize*>(restored.getModelManager()->current()->getComponentManager()->find("PrioritySeize"));
+            ASSERT_NE(loaded,nullptr);
+            EXPECT_EQ(loaded->getId(),id);
+            EXPECT_EQ(loaded->getLabel(),"Persisted label");
+            EXPECT_EQ(loaded->getPriorityExpression(), expression==std::string(1,'\0') ? "" : expression);
+            EXPECT_EQ(loaded->getSeizeRequests()->getAtRank(0)->getResource()->getName(),"PriorityResource");
+            if (expression.size()>1 && expression.find('\0')!=std::string::npos) {
+                std::string errors;
+                EXPECT_FALSE(ModelDataDefinition::Check(loaded,errors));
+                EXPECT_NE(errors.find("NUL"),std::string::npos);
+            }
+            ASSERT_TRUE(restored.getModelManager()->current()->save(path));
+        }
+        std::remove(path.c_str());
+    }
+}
+
+TEST(SimulatorRuntimeTest, ResourceSetSelectionHandlesTiesZeroCapacityAndInvalidRequests) {
+    Simulator simulator;
+    auto* model = simulator.getModelManager()->newModel();
+    auto* a = new Resource(model,"SelectA");
+    auto* b = new Resource(model,"SelectB");
+    auto* set = new Set(model,"SelectionSet");
+    set->addElementSet(a);set->addElementSet(b);
+    SeizableItem request(set,"1",SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
+    EXPECT_EQ(selectRequestResource(model,&request,true,"ReleaseTest").resource,a);
+    a->seize(1);
+    EXPECT_EQ(selectRequestResource(model,&request,true,"ReleaseTest").resource,b);
+    b->seize(1);
+    EXPECT_EQ(selectRequestResource(model,&request,true,"ReleaseTest").resource,a);
+    request.setSelectionRule(SeizableItem::SelectionRule::RANDOM);
+    for (int i=0;i<100;++i) EXPECT_LT(selectRequestResource(model,&request,true,"ReleaseTest").index,2u);
+    request.setSelectionRule(SeizableItem::SelectionRule::SPECIFICMEMBER);
+    for (auto index : {"-1","2","0.5","", "1 +"}) {
+        request.setSaveAttribute(index);
+        EXPECT_THROW(selectRequestResource(model,&request,true,"ReleaseTest"),std::runtime_error);
+    }
+    set->getElementSet()->clear();
+    EXPECT_THROW(selectRequestResource(model,&request,true,"ReleaseTest"),std::runtime_error);
+    set->getElementSet()->insert(new Queue(model,"InvalidMember"));
+    EXPECT_THROW(selectRequestResource(model,&request,true,"ReleaseTest"),std::runtime_error);
+}
+
+TEST(SimulatorRuntimeTest, SeizeAcceptsEmptySaveAttributeButReleaseRequiresItForSpecificSetMember) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* resourceA = new Resource(model, "OptionalSaveResourceA");
+    auto* resourceB = new Resource(model, "OptionalSaveResourceB");
+    auto* set = new Set(model, "OptionalSaveSet");
+    set->addElementSet(resourceA);
+    set->addElementSet(resourceB);
+    auto* queue = new Queue(model, "OptionalSaveQueue");
+    auto* singleResourceSeize = new Seize(model, "OptionalSaveSingleResource");
+    singleResourceSeize->setQueue(queue);
+    singleResourceSeize->addRequest(new SeizableItem(resourceA, "1"));
+    std::string singleResourceErrors;
+    EXPECT_TRUE(ModelDataDefinition::Check(singleResourceSeize, singleResourceErrors)) << singleResourceErrors;
+    auto* seize = new Seize(model, "OptionalSaveSeize");
+    seize->setQueue(queue);
+    auto* request = new SeizableItem(set, "1", SeizableItem::SelectionRule::SPECIFICMEMBER, "", "1");
+    seize->addRequest(request);
+    std::string errors;
+    EXPECT_TRUE(ModelDataDefinition::Check(seize, errors)) << errors;
+    EXPECT_EQ(selectRequestResource(model, request, false, "OptionalSaveSeize").resource, resourceB);
+
+    request->setSelectionRule(SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
+    errors.clear();
+    EXPECT_TRUE(ModelDataDefinition::Check(seize, errors)) << errors;
+    request->setIndex("1+");
+    request->setSelectionRule(SeizableItem::SelectionRule::SPECIFICMEMBER);
+    errors.clear();
+    EXPECT_FALSE(ModelDataDefinition::Check(seize, errors));
+    request->setIndex("2");
+    EXPECT_THROW(selectRequestResource(model, request, false, "OptionalSaveSeize"), std::runtime_error);
+
+    auto* release = new Release(model, "OptionalSaveRelease");
+    auto* releaseRequest = new SeizableItem(set, "1", SeizableItem::SelectionRule::SPECIFICMEMBER);
+    release->addReleaseRequests(releaseRequest);
+    errors.clear();
+    EXPECT_FALSE(ModelDataDefinition::Check(release, errors));
+    EXPECT_NE(errors.find("Release.SaveAttribute"), std::string::npos);
+    releaseRequest->setSaveAttribute("Entity.SavedMember");
+    errors.clear();
+    EXPECT_TRUE(ModelDataDefinition::Check(release, errors)) << errors;
+}
+
+TEST(SimulatorRuntimeTest, SeizeDynamicSetSelectionReleasesTheSavedMember) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* first = new Resource(model, "DynamicFirst");
+    auto* second = new Resource(model, "DynamicSecond");
+    auto* set = new Set(model, "DynamicResources");
+    set->addElementSet(first);
+    set->addElementSet(second);
+    auto* queue = new Queue(model, "DynamicQueue");
+    auto* create = new Create(model, "DynamicSource");
+    create->setMaxCreations(1);
+    create->setTimeBetweenCreationsExpression("1");
+    auto* seize = new Seize(model, "DynamicSeize");
+    seize->setQueue(queue);
+    seize->addRequest(new SeizableItem(set, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY,
+                                        "Entity.DynamicMember"));
+    auto* release = new Release(model, "DynamicRelease");
+    release->addReleaseRequests(new SeizableItem(set, "1", SeizableItem::SelectionRule::SPECIFICMEMBER,
+                                                  "Entity.DynamicMember"));
+    auto* dispose = new Dispose(model, "DynamicSink");
+    create->connectTo(seize);
+    seize->connectTo(release);
+    release->connectTo(dispose);
+    model->getSimulation()->setReplicationLength(10.0, Util::TimeUnit::second);
+    ASSERT_TRUE(model->check());
+    model->getSimulation()->start();
+    EXPECT_EQ(first->getNumberBusy(), 0u);
+    EXPECT_EQ(second->getNumberBusy(), 0u);
+    EXPECT_TRUE(model->getFutureEvents()->empty());
+}
+
+TEST(SimulatorRuntimeTest, SetMembersCreatedAfterSetSurviveTwoRoundTrips) {
+    for (bool queues : {false,true}) {
+        Simulator source;source.getPluginManager()->autoInsertPlugins();
+        auto* model=source.getModelManager()->newModel();auto* set=new Set(model,"ForwardSet");
+        for(int i=0;i<4;++i)set->addElementSet(queues?static_cast<ModelDataDefinition*>(new Queue(model,"Member"+std::to_string(i))):static_cast<ModelDataDefinition*>(new Resource(model,"Member"+std::to_string(i))));
+        const std::string file="/tmp/genesys-forward-set-"+std::to_string(getpid())+".gen";
+        ASSERT_TRUE(model->save(file));
+        for(int round=0;round<2;++round){
+            Simulator restored;restored.getPluginManager()->autoInsertPlugins();ASSERT_NE(restored.getModelManager()->loadModel(file),nullptr);
+            auto* loaded=dynamic_cast<Set*>(restored.getModelManager()->current()->getDataManager()->getDataDefinition("Set","ForwardSet"));ASSERT_NE(loaded,nullptr);
+            ASSERT_EQ(loaded->getElementSet()->size(),4u);
+            for(int i=0;i<4;++i)EXPECT_EQ(loaded->getElementSet()->getAtRank(i)->getName(),"Member"+std::to_string(i));
+            ASSERT_TRUE(restored.getModelManager()->current()->save(file));
+        }
+        std::remove(file.c_str());
+    }
+}
+
+TEST(SimulatorRuntimeTest, ReleaseCyclicalAdvancesThroughSetMembersAfterSuccessfulRelease) {
+    Simulator simulator;auto* model=simulator.getModelManager()->newModel();
+    auto* set=new Set(model,"CyclicalResources");
+    for(int i=0;i<3;++i){auto* r=new Resource(model,"Cyclical"+std::to_string(i));r->seize(1);set->addElementSet(r);}
+    auto* release=new ReleaseDispatchProbe(model,"CyclicalRelease");release->setReportStatistics(false);
+    release->getConnectionManager()->insert(new Dispose(model,"Sink"));
+    auto* request=new SeizableItem(set,"1",SeizableItem::SelectionRule::CYCLICAL);release->addReleaseRequests(request);
+    auto* entity=model->createEntity("CyclicalEntity",true);
+    for(unsigned int expected:{1u,2u,0u}){
+        release->_onDispatchEvent(entity,0);
+        EXPECT_EQ(request->getLastMemberSeized(),expected);
+        EXPECT_EQ(dynamic_cast<Resource*>(set->getElementSet()->getAtRank(expected))->getNumberBusy(),0u);
+    }
+}
+
+TEST(SimulatorRuntimeTest, SimulationControlDynamicEnabledDefaultsToEnabled) {
+    std::string value = "initial";
+    SimulationControlString control(
+        [&]() { return value; },
+        [&](std::string next) { value = std::move(next); },
+        "Test", "Element", "Expression");
+
+    EXPECT_TRUE(control.isEnabled());
+    EXPECT_FALSE(control.hasDynamicEnabledCondition());
+}
+
+TEST(SimulatorRuntimeTest, SimulationControlDynamicEnabledIsEvaluatedOnEveryQuery) {
+    std::string value = "initial";
+    bool enabled = false;
+    SimulationControlString control(
+        [&]() { return value; },
+        [&](std::string next) { value = std::move(next); },
+        "Test", "Element", "Expression");
+
+    control.setDynamicEnabled([&]() { return enabled; });
+    EXPECT_TRUE(control.hasDynamicEnabledCondition());
+    EXPECT_FALSE(control.isEnabled());
+
+    enabled = true;
+    EXPECT_TRUE(control.isEnabled());
+
+    control.clearDynamicEnabledCondition();
+    EXPECT_FALSE(control.hasDynamicEnabledCondition());
+    EXPECT_TRUE(control.isEnabled());
+}
+
+TEST(SimulatorRuntimeTest, PropertyIntrospectionReportsDynamicEnabledStateIndependentlyOfReadOnly) {
+    std::string value = "initial";
+    bool enabled = false;
+    SimulationControlString control(
+        [&]() { return value; },
+        [&](std::string next) { value = std::move(next); },
+        "Test", "Element", "Expression");
+    control.setDynamicEnabled([&]() { return enabled; });
+
+    auto descriptor = GenesysPropertyIntrospection::describe(&control);
+    EXPECT_FALSE(descriptor.readOnly);
+    EXPECT_FALSE(descriptor.enabled);
+    EXPECT_TRUE(descriptor.hasDynamicEnabledCondition);
+
+    enabled = true;
+    descriptor = GenesysPropertyIntrospection::describe(&control);
+    EXPECT_FALSE(descriptor.readOnly);
+    EXPECT_TRUE(descriptor.enabled);
+    EXPECT_TRUE(descriptor.hasDynamicEnabledCondition);
+}
+
+TEST(SimulatorRuntimeTest, DynamicEnabledPredicateExceptionsRemainObservable) {
+    std::string value = "initial";
+    SimulationControlString control(
+        [&]() { return value; },
+        [&](std::string next) { value = std::move(next); },
+        "Test", "Element", "Expression");
+    control.setDynamicEnabled([]() -> bool {
+        throw std::runtime_error("dynamic enabled failure");
+    });
+
+    EXPECT_THROW(control.isEnabled(), std::runtime_error);
+    EXPECT_THROW(GenesysPropertyIntrospection::describe(&control), std::runtime_error);
 }

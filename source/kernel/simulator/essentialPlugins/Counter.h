@@ -29,7 +29,7 @@ class Counter : public ModelDataDefinition {
 public:
 	/*! \brief Creates a counter model datum with optional parent relationship. */
 	Counter(Model* model, std::string name = "", ModelDataDefinition* parent = nullptr);
-	virtual ~Counter() = default;
+	virtual ~Counter() override;
 public:
 	virtual std::string show() override;
 public: // public static methods
@@ -67,6 +67,7 @@ protected: //! could be overriden by derived classes
 private:
 	ModelDataDefinition* _parent;
 	double /*unsigned long*/ _count = 0;
+	SimulationResponse* _countValueResponse = nullptr;
 };
-//namespace\\}
+//namespace\}
 #endif /* COUNTERDEFAULTIMPL1_H */

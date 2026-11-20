@@ -1,8 +1,11 @@
 %{ /* -*- C++ -*- */
 # include <cerrno>
+# include <charconv>
 # include <climits>
 # include <cstdlib>
+# include <stdexcept>
 # include <string>
+# include <string_view>
 # include <locale>
 # include <list>
 #include <iostream>
@@ -43,6 +46,20 @@
 
 // The location of the current token.
 static yy::location loc;
+
+// Genesys expressions always use '.' as the decimal separator.  Do not use
+// atof/strtod here: both obey the process LC_NUMERIC locale and can silently
+// parse "0.5" as 0 in locales whose decimal separator is ','.
+static double parseGenesysNumericLiteral(const char* text) {
+  const std::string_view literal(text);
+  double value = 0.0;
+  const auto result = std::from_chars(
+      literal.data(), literal.data() + literal.size(), value, std::chars_format::general);
+  if (result.ec != std::errc() || result.ptr != literal.data() + literal.size()) {
+    throw std::invalid_argument("invalid numeric literal: " + std::string(literal));
+  }
+  return value;
+}
 %}
 %option noyywrap nounput batch noinput
 
@@ -82,7 +99,7 @@ L      [A-Za-z0-9_.]+
        //std::string text("Found Float: ");
        //text += yytext;
        //driver.getModel()->getTraceManager()->trace(TraceManager::Level::L9_mostDetailed, text);
-       return yy::genesyspp_parser::make_NUMD(obj_t(atof(yytext),std::string("Float")), loc);
+       return yy::genesyspp_parser::make_NUMD(obj_t(parseGenesysNumericLiteral(yytext),std::string("Float")), loc);
      }
 
 {DD}  {
@@ -91,7 +108,7 @@ L      [A-Za-z0-9_.]+
        //std::string text("Found Decimal: ");
        //text += yytext;
        //driver.getModel()->getTraceManager()->trace(TraceManager::Level::L9_mostDetailed, text);
-       return yy::genesyspp_parser::make_NUMD(obj_t(atof(yytext),std::string("Decimal")), loc);
+       return yy::genesyspp_parser::make_NUMD(obj_t(parseGenesysNumericLiteral(yytext),std::string("Decimal")), loc);
       }
 
 %{// special symbols %}
@@ -222,7 +239,13 @@ L      [A-Za-z0-9_.]+
 [ \t\n]        ;
 
 {L}   {
-        ModelDataDefinition* datadef; 
+        ModelDataDefinition* datadef;
+        // Numeric expressions can be parsed without a model or an entity.
+        // A missing symbol is reported separately from a grammar error.
+        if (driver.isSyntaxOnly() && driver.getModel() == nullptr) {
+            driver.noteUnresolvedIdentifier(std::string(yytext));
+            return yy::genesyspp_parser::make_NUMD(obj_t(0, std::string(yytext)), loc);
+        } 
 
 		//std::cout << "Verificando o que é o Literal \""+std::string(yytext)+"\"\n";
 		//std::cout << driver.getModel()->getInfos()->getName() << std::endl;
@@ -330,10 +353,14 @@ L      [A-Za-z0-9_.]+
         //Case not found retturns a illegal token
 		//datadef = driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Set>(), std::string(yytext));
 		//std::cout << "NOT FOUND " << std::string(yytext) << std::endl;
+        if (driver.isSyntaxOnly()) {
+            driver.noteUnresolvedIdentifier(std::string(yytext));
+            return yy::genesyspp_parser::make_NUMD(obj_t(0, std::string(yytext)), loc);
+        }
         return yy::genesyspp_parser::make_ILLEGAL(obj_t(0, std::string(yytext)), loc);
       }
 
-.       {return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string(yytext)), loc);}
+.       {if (driver.isSyntaxOnly()) driver.noteInvalidCharacter(std::string(yytext)); return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string(yytext)), loc);}
 
 <<EOF>> {return yy::genesyspp_parser::make_END(loc);}
 

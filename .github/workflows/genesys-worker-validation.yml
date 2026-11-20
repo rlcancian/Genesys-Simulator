@@ -1,0 +1,195 @@
+name: GenESyS Worker Validation
+
+run-name: GenESyS Worker | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - CMakeLists.txt
+      - CMakePresets.json
+      - source/applications/worker/**
+      - source/kernel/**
+      - source/parser/**
+      - source/plugins/**
+      - source/tools/**
+      - .github/workflows/genesys-worker-validation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-worker-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-worker:
+    name: Configure, build and exercise genesys-worker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build and runtime dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            curl \
+            iproute2 \
+            libsbml5-dev \
+            libglpk-dev \
+            ngspice \
+            r-base \
+            octave
+
+      - name: Record toolchain
+        run: |
+          set -Eeuo pipefail
+          mkdir -p worker-evidence
+          git rev-parse HEAD | tee worker-evidence/head-sha.txt
+          cmake --version | tee worker-evidence/cmake-version.txt
+          ninja --version | tee worker-evidence/ninja-version.txt
+          g++ --version | tee worker-evidence/gxx-version.txt
+          curl --version | tee worker-evidence/curl-version.txt
+
+      - name: Configure worker preset
+        run: |
+          set -Eeuo pipefail
+          cmake --preset genesys_worker_app 2>&1 | tee worker-evidence/configure.log
+
+      - name: Build worker preset
+        run: |
+          set -Eeuo pipefail
+          cmake --build --preset genesys_worker_app --parallel "$(nproc)" 2>&1 \
+            | tee worker-evidence/build.log
+
+      - name: Locate worker executable
+        run: |
+          set -Eeuo pipefail
+          mapfile -t candidates < <(find build/genesys_worker_app -type f -name genesys-worker -perm -111 | sort)
+          if [[ ${#candidates[@]} -ne 1 ]]; then
+            printf 'Expected exactly one executable named genesys-worker, found %d\n' "${#candidates[@]}" >&2
+            printf '%s\n' "${candidates[@]}" >&2
+            exit 1
+          fi
+          printf '%s\n' "${candidates[0]}" | tee worker-evidence/executable-path.txt
+
+      - name: Run bounded localhost health workflow
+        run: |
+          set -Eeuo pipefail
+
+          executable="$(cat worker-evidence/executable-path.txt)"
+          port="$(python3 - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+              sock.bind(("127.0.0.1", 0))
+              print(sock.getsockname()[1])
+          PY
+          )"
+          printf '%s\n' "${port}" | tee worker-evidence/port.txt
+
+          worker_pid=""
+          cleanup() {
+            if [[ -n "${worker_pid}" ]] && kill -0 "${worker_pid}" 2>/dev/null; then
+              kill "${worker_pid}" 2>/dev/null || true
+              wait "${worker_pid}" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          "${executable}" --port "${port}" --max-requests 1 \
+            > worker-evidence/worker.log 2>&1 &
+          worker_pid=$!
+          printf '%s\n' "${worker_pid}" | tee worker-evidence/worker-pid.txt
+
+          listener_found=false
+          for _ in $(seq 1 100); do
+            if ! kill -0 "${worker_pid}" 2>/dev/null; then
+              cat worker-evidence/worker.log >&2
+              echo "Worker exited before opening its listener." >&2
+              exit 1
+            fi
+            if ss -ltnp 2>/dev/null | grep -E "[:.]${port}([[:space:]]|$)" > worker-evidence/listener.txt; then
+              listener_found=true
+              break
+            fi
+            sleep 0.1
+          done
+
+          if [[ "${listener_found}" != true ]]; then
+            ss -ltnp > worker-evidence/listeners-all.txt 2>&1 || true
+            cat worker-evidence/worker.log >&2
+            echo "Worker did not open the expected listener." >&2
+            exit 1
+          fi
+
+          cat worker-evidence/listener.txt
+
+          curl --silent --show-error --max-time 10 \
+            --dump-header worker-evidence/health-headers.txt \
+            --output worker-evidence/health-body.json \
+            "http://127.0.0.1:${port}/health"
+
+          for _ in $(seq 1 100); do
+            if ! kill -0 "${worker_pid}" 2>/dev/null; then
+              break
+            fi
+            sleep 0.1
+          done
+
+          if kill -0 "${worker_pid}" 2>/dev/null; then
+            cat worker-evidence/worker.log >&2
+            echo "Worker did not exit after serving the configured request limit." >&2
+            exit 1
+          fi
+
+          wait "${worker_pid}"
+          worker_pid=""
+
+          cat worker-evidence/health-headers.txt
+          cat worker-evidence/health-body.json
+          cat worker-evidence/worker.log
+
+          grep -Eq '^HTTP/1\.[01] 200 ' worker-evidence/health-headers.txt
+          grep -Fq '[genesys-worker] listening on port' worker-evidence/worker.log
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          body = json.loads(Path("worker-evidence/health-body.json").read_text())
+          assert body == {"ok": True, "status": "up"}, body
+          PY
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          set +e
+          ss -ltnp > worker-evidence/listeners-after-run.txt 2>&1 || true
+          pgrep -af genesys-worker > worker-evidence/processes-after-run.txt 2>&1 || true
+          find build/genesys_worker_app -type f \( \
+            -name CMakeOutput.log \
+            -o -name CMakeError.log \
+          \) -exec cp --parents {} worker-evidence/ \; 2>/dev/null || true
+
+      - name: Upload worker evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-worker-validation
+          path: worker-evidence/
+          if-no-files-found: error

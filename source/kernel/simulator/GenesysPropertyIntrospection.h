@@ -31,6 +31,8 @@ struct GenesysPropertyDescriptor {
     GenesysPropertyKind kind = GenesysPropertyKind::Unknown;
 
     bool readOnly = true;
+    bool enabled = true;
+    bool hasDynamicEnabledCondition = false;
     bool isList = false;
     bool isClass = false;
     bool isEnum = false;
@@ -39,6 +41,8 @@ struct GenesysPropertyDescriptor {
     bool supportsInlineExpansion = false;
     bool supportsListEditor = false;
     bool supportsExistingObjectSelection = false;
+    bool supportsReferenceRemoval = false;
+    bool keepsExistingObjectChoicesWhenSet = false;
     bool supportsObjectCreation = false;
     bool supportsNewListElementCreation = false;
     SimulationControlEditorHint editorHint = SimulationControlEditorHint::Default;

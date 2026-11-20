@@ -46,6 +46,7 @@
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QMenu>
 #include <QtCore/QLocale>
+#include <cmath>
 
 QT_BEGIN_NAMESPACE
 
@@ -404,14 +405,17 @@ QtDoubleEdit::QtDoubleEdit(QWidget* parent) :
 
 	m_initialvalue = m_doublespinbox->value();
 	connect(m_doublespinbox, &QDoubleSpinBox::valueChanged, this, &QtDoubleEdit::valueChanged);
-	connect(m_doublespinbox, &QDoubleSpinBox::valueChanged, this, [&] {
-		int e10 = pow(10, m_doublespinbox->decimals());
-		m_button->setEnabled(int(m_initialvalue + 0.5) * e10 != int(m_doublespinbox->value() + 0.5) * e10); });
+	connect(m_doublespinbox, &QDoubleSpinBox::valueChanged, this, [this](double value) {
+		// Never convert 10^decimals to int: a 12-decimal probability overflows
+		// 32-bit precision factors, and rounding before multiplication loses fractions.
+		const double epsilon = 0.5 * std::pow(10.0, -m_doublespinbox->decimals());
+		m_button->setEnabled(std::fabs(m_initialvalue - value) > epsilon);
+	});
 	connect(m_button, &QPushButton::clicked, this, [&] { m_doublespinbox->setValue(m_initialvalue); });
 	setFocusProxy(m_doublespinbox);
 }
 
-int QtDoubleEdit::value()
+double QtDoubleEdit::value()
 {
 	return m_doublespinbox->value();
 }
@@ -423,9 +427,9 @@ void QtDoubleEdit::setValue(double val)
 
 void QtDoubleEdit::setInitialValue(double val)
 {
-	int e10 = pow(10, m_doublespinbox->decimals());
 	m_initialvalue = val;
-	m_button->setEnabled(int(val + 0.5) * e10 != int(m_doublespinbox->value() + 0.5) * e10);
+	const double epsilon = 0.5 * std::pow(10.0, -m_doublespinbox->decimals());
+	m_button->setEnabled(std::fabs(val - m_doublespinbox->value()) > epsilon);
 }
 
 void QtDoubleEdit::setDecimals(double val)

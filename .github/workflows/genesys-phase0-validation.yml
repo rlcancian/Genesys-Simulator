@@ -1,0 +1,130 @@
+name: GenESyS Phase 0 Validation
+
+run-name: GenESyS Phase 0 | ${{ github.event_name }} | ref=${{ github.ref_name }} | sha=${{ github.sha }}
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - CMakeLists.txt
+      - CMakePresets.json
+      - source/**
+      - .github/workflows/genesys-phase0-validation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: genesys-phase0-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  QT_QPA_PLATFORM: offscreen
+  CTEST_OUTPUT_ON_FAILURE: "1"
+
+jobs:
+  baseline:
+    name: Validate ${{ matrix.preset }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        preset:
+          - tests-kernel-unit
+          - tests-smoke
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show validation metadata
+        run: |
+          set -Eeuo pipefail
+          echo "event_name=${{ github.event_name }}"
+          echo "repository=${{ github.repository }}"
+          echo "ref=${GITHUB_REF}"
+          echo "sha=${GITHUB_SHA}"
+          echo "preset=${{ matrix.preset }}"
+
+      - name: Install build dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-dev \
+            libsbml5-dev \
+            ngspice \
+            r-base \
+            octave \
+            qt6-base-dev \
+            qt6-tools-dev \
+            qt6-tools-dev-tools \
+            libgl1-mesa-dev
+
+      - name: Show toolchain baseline
+        run: |
+          set -Eeuo pipefail
+          cmake --version
+          ninja --version
+          g++ --version
+          python3 --version
+
+      - name: Configure preset
+        run: |
+          set -Eeuo pipefail
+          cmake --list-presets=all
+          cmake --preset "${{ matrix.preset }}"
+
+      - name: Build preset
+        run: |
+          set -Eeuo pipefail
+          cmake --build --preset "${{ matrix.preset }}" --parallel "$(nproc)"
+
+      - name: Capture CTest inventory
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "phase0-evidence/${{ matrix.preset }}"
+          ctest --preset "${{ matrix.preset }}" -N \
+            | tee "phase0-evidence/${{ matrix.preset }}/ctest-inventory.log"
+
+      - name: Run CTest preset
+        run: |
+          set -Eeuo pipefail
+          ctest --preset "${{ matrix.preset }}" --output-on-failure \
+            | tee "phase0-evidence/${{ matrix.preset }}/ctest-run.log"
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          set +e
+          evidence="phase0-evidence/${{ matrix.preset }}"
+          mkdir -p "${evidence}"
+          git rev-parse HEAD > "${evidence}/head-sha.txt"
+          cmake --version > "${evidence}/cmake-version.txt" 2>&1
+          ninja --version > "${evidence}/ninja-version.txt" 2>&1
+          g++ --version > "${evidence}/gxx-version.txt" 2>&1
+          find build -type f \( \
+              -name CMakeOutput.log \
+              -o -name CMakeError.log \
+              -o -name LastTest.log \
+            \) -exec cp --parents {} "${evidence}" \; 2>/dev/null || true
+
+      - name: Upload Phase 0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesys-phase0-${{ matrix.preset }}
+          path: phase0-evidence/${{ matrix.preset }}/
+          if-no-files-found: error

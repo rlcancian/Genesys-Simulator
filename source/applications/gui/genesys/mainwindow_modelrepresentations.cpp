@@ -17,9 +17,12 @@
 #include "services/CppModelExporter.h"
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 
 // Kernel
 #include "kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/model/ModelDataManager.h"
+#include "kernel/util/Util.h"
 
 #include <string>
 #include <fstream>
@@ -49,6 +52,8 @@
 #include <QSignalBlocker>
 #include <QTimer>
 #include <QUrl>
+#include <QThread>
+#include <QPointer>
 
 void MainWindow::_actualizeModelSimLanguage() {
     // Keep this wrapper as part of the final compatibility façade for model-language synchronization.
@@ -143,14 +148,44 @@ bool MainWindow::_saveTextModel(QFile *saveFile, QString data)
 bool MainWindow::_saveGraphicalModel(QString filename)
 {
     // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
+    if (simulator != nullptr && simulator->getModelManager() != nullptr) {
+        Model* model = simulator->getModelManager()->current();
+        if (model != nullptr) {
+            for (const auto& [view, ownedContext] : _viewContextsByGraphicsView) {
+                (void)view;
+                GraphicalModelViewContext* context = ownedContext.get();
+                if (context != nullptr && context->rootModel == model) {
+                    _captureNetworkDiagramLayoutForContext(context);
+                }
+            }
+        }
+    }
     const bool saved = _graphicalModelSerializer->saveGraphicalModel(filename);
     if (saved && simulator != nullptr && simulator->getModelManager() != nullptr) {
         if (Model* model = simulator->getModelManager()->current()) {
-            _modelFilenames[model] = _modelSaveBaseFilename(filename);
+            _modelFilenames[model] = filename;
             _updateModelTabs();
         }
     }
     return saved;
+}
+
+void MainWindow::_captureNetworkDiagramLayoutForContext(GraphicalModelViewContext* context) {
+    if (_graphicalModelSerializer == nullptr || context == nullptr
+        || context->kind != GraphicalModelViewContextKind::Submodel || context->rootModel == nullptr
+        || context->ownerDataDefinition == nullptr || context->graphicsView == nullptr
+        || context->graphicsView->getScene() == nullptr) {
+        return;
+    }
+    for (const GuiDiagramProjectionContribution& diagram
+         : GuiExtensionPluginCatalog::diagramProjectionContributions()) {
+        if (!diagram.supports || !diagram.supports(context->ownerDataDefinition) || !diagram.captureLayout) continue;
+        std::any layout = diagram.captureLayout(simulator, context->ownerDataDefinition,
+                                                context->graphicsView->getScene());
+        _graphicalModelSerializer->setNetworkDiagramLayout(
+            context->rootModel, diagram.id,
+            static_cast<unsigned long>(context->ownerDataDefinition->getId()), std::move(layout));
+    }
 }
 
 Model *MainWindow::_loadGraphicalModel(std::string filename) {
@@ -173,7 +208,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
         _modelGraphicsViews[model] = ui->graphicsView;
         _modelsByGraphicsView[ui->graphicsView] = model;
         _ensureRootModelViewContext(model, ui->graphicsView);
-        _modelFilenames[model] = _modelSaveBaseFilename(QString::fromStdString(filename));
+        _modelFilenames[model] = QString::fromStdString(filename);
         _updateModelTabs();
         return model;
     }
@@ -223,9 +258,32 @@ void MainWindow::_actualizeModelDataDefinitions(bool force) {
 }
 
 void MainWindow::_actualizeGraphicalModel(SimulationEvent * re) {
+    if (re == nullptr) return;
+
+    // Simulation callbacks may be delivered by a worker thread. Keep all widget/scene
+    // access on the GUI thread, and make the queued callback harmless during shutdown.
+    if (QThread::currentThread() != thread()) {
+        QPointer<MainWindow> guardedWindow(this);
+        QMetaObject::invokeMethod(this, [guardedWindow]() {
+            if (guardedWindow == nullptr) return;
+            ModelGraphicsScene* scene = guardedWindow->myScene();
+            if (scene != nullptr && scene->getSimulator() != nullptr) {
+                GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
+                    scene->getSimulator(), scene);
+            }
+        }, Qt::QueuedConnection);
+        return;
+    }
+
     Event* event = re->getCurrentEvent();
-    if (event != nullptr) {
+    if (event != nullptr && ui != nullptr && ui->graphicsView != nullptr) {
         ui->graphicsView->selectModelComponent(event->getComponent());
+    }
+    // Projections reflect only mathematical state produced by this real event.
+    ModelGraphicsScene* scene = myScene();
+    if (scene != nullptr && scene->getSimulator() != nullptr) {
+        GuiExtensionPluginCatalog::synchronizeDiagramProjectionsOnSceneThread(
+            scene->getSimulator(), scene);
     }
 }
 

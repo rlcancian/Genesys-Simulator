@@ -42,10 +42,18 @@ void EntityType::_initBetweenReplications() {
 }
 
 EntityType::~EntityType() {
-	// remove all CStats
+	if (_statisticsCollectors == nullptr) {
+		return;
+	}
+	// The statistics collectors are owned by the ModelDataDefinition association
+	// graph. Keep manager bookkeeping consistent here and release only this
+	// auxiliary non-owning list wrapper; the base destructor releases the objects.
 	for (StatisticsCollector* cstat : *_statisticsCollectors->list()) {
 		_parentModel->getDataManager()->remove(Util::TypeOf<StatisticsCollector>(), cstat);
 	}
+	_statisticsCollectors->clear();
+	delete _statisticsCollectors;
+	_statisticsCollectors = nullptr;
 }
 
 std::string EntityType::show() {

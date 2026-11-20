@@ -1,7 +1,13 @@
 #ifndef GRAPHICALMODELSERIALIZER_H
 #define GRAPHICALMODELSERIALIZER_H
 
+#include "../extensions/GuiExtensionContracts.h"
+
+#include <QHash>
+
 #include <functional>
+#include <any>
+#include <memory>
 #include <string>
 
 class Simulator;
@@ -55,7 +61,9 @@ public:
                              std::function<void()> rebuildGraphicalModelFromModel,
                              std::function<void()> applyShowInternalElements,
                              std::function<void()> applyShowEditableElements,
-                             std::function<void()> applyShowAttachedElements);
+                             std::function<void()> applyShowAttachedElements,
+                             std::shared_ptr<GuiDiagramLayoutsByModel> diagramLayoutsByModel = nullptr,
+                             std::shared_ptr<GuiUnknownDiagramSectionsByModel> unknownDiagramSectionsByModel = nullptr);
 
     /**
      * @brief Saves textual model language using the established compatibility format.
@@ -72,6 +80,15 @@ public:
      * @return Loaded kernel model pointer or nullptr when loading fails.
      */
     Model* loadGraphicalModel(const std::string& filename) const;
+
+    /** @brief Stores a GUI-only formalism layout payload for a model, extension and Network ID. */
+    void setNetworkDiagramLayout(Model* model, const std::string& extensionId,
+                                 unsigned long networkId, std::any layout);
+    /** @brief Returns one opaque GUI-only layout payload, or an empty value when absent. */
+    std::any networkDiagramLayout(Model* model, const std::string& extensionId,
+                                  unsigned long networkId) const;
+    /** @brief Drops cached extension layouts when their owning root model is closed. */
+    void forgetNetworkDiagramLayouts(Model* model);
 
 private:
     // Encode free text fields into a tab-safe persisted value.
@@ -100,6 +117,11 @@ private:
     std::function<void()> _applyShowInternalElements;
     std::function<void()> _applyShowEditableElements;
     std::function<void()> _applyShowAttachedElements;
+
+    // Type-erased extension layouts keyed by root model, extension ID and Network ID.
+    // Shared because serializer instances are rebuilt when the active view changes.
+    std::shared_ptr<GuiDiagramLayoutsByModel> _diagramLayoutsByModel;
+    std::shared_ptr<GuiUnknownDiagramSectionsByModel> _unknownDiagramSectionsByModel;
 };
 
 #endif // GRAPHICALMODELSERIALIZER_H

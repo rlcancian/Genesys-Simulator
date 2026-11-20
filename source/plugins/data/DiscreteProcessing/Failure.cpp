@@ -50,18 +50,21 @@ Failure::Failure(Model* model, std::string name) : ModelDataDefinition(model, Ut
 	SimulationControlGeneric<std::string>* propCountExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Failure::getCountExpression, this), std::bind(&Failure::setCountExpression, this, std::placeholders::_1),
 									Util::TypeOf<Failure>(), getName(), "CountExpression", "");															
+	propCountExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGenericEnum<Util::TimeUnit, Util>* propDownUnitTime = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
 									std::bind(&Failure::getDownTimeTimeUnit, this),	std::bind(&Failure::setDownTimeTimeUnit, this, std::placeholders::_1),
 									Util::TypeOf<Failure>(), getName(), "DownTimeTimeUnit", "");
 	SimulationControlGeneric<std::string>* propDownTimeExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Failure::getDownTimeExpression, this), std::bind(&Failure::setDownTimeExpression, this, std::placeholders::_1),
 									Util::TypeOf<Failure>(), getName(), "DownTimeExpression", "");
+	propDownTimeExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGenericEnum<Util::TimeUnit, Util>* propUpUnitTime = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
 									std::bind(&Failure::getUpTimeTimeUnit, this),	std::bind(&Failure::setUpTimeTimeUnit, this, std::placeholders::_1),
 									Util::TypeOf<Failure>(), getName(), "UpTimeTimeUnit", "");
 	SimulationControlGeneric<std::string>* propUpTimeExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Failure::getUpTimeExpression, this), std::bind(&Failure::setUpTimeExpression, this, std::placeholders::_1),
 									Util::TypeOf<Failure>(), getName(), "UpTimeExpression", "");
+	propUpTimeExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGenericEnum<Failure::FailureRule, Failure>* propFailureRule = new SimulationControlGenericEnum<Failure::FailureRule, Failure>(
                                     std::bind(&Failure::getFailureRule, this), std::bind(&Failure::setFailureRule, this, std::placeholders::_1),
                                     Util::TypeOf<Failure>(), getName(), "FailureType", "");

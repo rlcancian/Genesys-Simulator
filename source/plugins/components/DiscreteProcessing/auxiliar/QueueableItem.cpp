@@ -37,28 +37,31 @@ void QueueableItem::_ensureSimulationControls(Model* model) {
 	auto* propIndex = new SimulationControlGeneric<std::string>(
 		std::bind(&QueueableItem::getIndex, this), std::bind(&QueueableItem::setIndex, this, std::placeholders::_1),
 		Util::TypeOf<QueueableItem>(), getName(), "Index", "");
+	propIndex->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
+	propIndex->setDynamicEnabled([this]() -> bool { return this->getSet() != nullptr; });
 	auto* propQueue = new SimulationControlGenericClass<Queue*, Model*, Queue>(
 		model,
 		std::bind(&QueueableItem::getQueue, this), std::bind(&QueueableItem::setQueue, this, std::placeholders::_1),
 		Util::TypeOf<QueueableItem>(), "", "Queue", "");
+	propQueue->setDynamicEnabled([this]() -> bool { return this->getSet() == nullptr; });
 	auto* propSet = new SimulationControlGenericClass<Set*, Model*, Set>(
 		model,
 		std::bind(&QueueableItem::getSet, this), std::bind(&QueueableItem::setSet, this, std::placeholders::_1),
 		Util::TypeOf<QueueableItem>(), "", "Set", "");
+	propSet->setDynamicEnabled([this]() -> bool { return this->getQueue() == nullptr; });
+	/*
 	auto* propType = new SimulationControlGenericEnum<QueueableItem::QueueableType, QueueableItem>(
 		std::bind(&QueueableItem::getQueueableType, this),
 		std::bind(&QueueableItem::setQueueableType, this, std::placeholders::_1),
 		Util::TypeOf<QueueableItem>(), getName(), "QueueableType", "");
-
+	*/
 	model->getControls()->insert(propIndex);
 	model->getControls()->insert(propQueue);
 	model->getControls()->insert(propSet);
-	model->getControls()->insert(propType);
 
 	_addSimulationControl(propIndex);
 	_addSimulationControl(propQueue);
 	_addSimulationControl(propSet);
-	_addSimulationControl(propType);
 }
 
 QueueableItem::QueueableItem(ModelDataDefinition* queueOrSet, QueueableItem::QueueableType queueableType, std::string index) {
@@ -108,13 +111,16 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 			} else if (_queueableType == QueueableItem::QueueableType::SET) {
 				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _queueableName);
 			}
-			if (_queueOrSet == nullptr) {
-				auto model = _modeldataManager->getParentModel();
-				if (_queueableType == QueueableItem::QueueableType::SET) {
-					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Set>(model, _queueableName);
-				} else {
-					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, _queueableName);
-				}
+			if (_queueOrSet == nullptr && !_queueableName.empty()) {
+				// Do not fabricate a fresh stand-in Queue/Set here: the referenced object is
+				// missing from the file being loaded (dangling reference), and creating a new
+				// default one silently would insert an unrelated duplicate instead of surfacing
+				// the real problem.
+				_modeldataManager->getParentModel()->getTracer()->traceError(
+					"QueueableItem could not resolve referenced " +
+					(_queueableType == QueueableItem::QueueableType::SET ? std::string("Set") : std::string("Queue")) +
+					" named '" + _queueableName + "' on loading");
+				res = false;
 			}
 			if (Set* set = dynamic_cast<Set*>(_queueOrSet)) {
 				// Loading a QueueableItem re-applies the same Set member-type contract used by
@@ -124,7 +130,6 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 			}
 			_ensureSimulationControls(_modeldataManager->getParentModel());
 		}
-		assert(_queueOrSet != nullptr);
 	} catch (...) {
 		res = false;
 	}

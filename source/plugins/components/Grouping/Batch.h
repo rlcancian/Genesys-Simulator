@@ -18,37 +18,18 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "../../data/Grouping/EntityGroup.h"
 /*!
-Batch module
-DESCRIPTION
-This module is intended as the grouping mechanism within the simulation model.
-Batches can be permanently or temporarily grouped. Temporary batches must later be
-split using the Separate module.
-Batches may be made with any specified number of entering entities or may be
-matched together based on an attribute. Entities arriving at the Batch module are
-placed in a queue until the required number of entities has accumulated. Once
-accumulated, a new representative entity is created.
-TYPICAL USES
-* Collect a number of parts before starting processing
-* Reassemble previously separated copies of a form
-* Bring together a patient and his record before commencing an appointment
-PROMPTS
-Prompt Description
-Name Unique module identifier displayed on the module shape.
-Type Method of batching entities together.
-Batch Size Number of entities to be batched.
-Save Criterion Method for assigning representative entity’s user-defined
-attribute values.
-Rule Determines how incoming entities will be batched. Any Entity
-will take the first “Batch Size” number of entities and put them
-together. By Attribute signifies that the values of the specified
-attribute must match for entities to be grouped. For example, if
-Attribute Name is Color, all entities must have the same Color
-value to be grouped; otherwise, they will wait at the module for
-additional incoming entities.
-Attribute Name Name of the attribute whose value must match the value of the
-other incoming entities in order for a group to be made. Applies
-only when Rule is By Attribute.
-Representative Entity The entity type for the representative entity. 
+ * \brief Accumulates entities in an internal queue until a batch is
+ * complete, then dispatches one representative entity for the group.
+ *
+ * Arena correspondence: the "Batch module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", p. 38).
+ * \c BatchType (Temporary/Permanent), \c Rule (Any/ByAttribute) +
+ * \c _attributeName, and \c GroupedAttribs (FirstEntity/LastEntity/
+ * SumAttributes) map directly onto Arena's Type, Rule/Attribute Name, and
+ * Save Criterion (First/Last/Sum) fields; \c _batchSize is a parsed
+ * expression generalizing Arena's static number; \c _groupedEntityType is
+ * the Representative Entity type. A temporary batch is later split back
+ * into its original members by Separate.
  */
 class Batch : public ModelComponent {
 public:

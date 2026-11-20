@@ -2,9 +2,13 @@
 #define GUIEXTENSIONPLUGINCATALOG_H
 
 #include "GuiExtensionContracts.h"
+#include "GuiExtensionDependencyResolver.h"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include <functional>
+#include <any>
 
 struct GuiExtensionPresentationMetadata {
 	std::string category;
@@ -16,8 +20,44 @@ class GuiExtensionPluginCatalog {
 public:
 	static const std::vector<const GuiExtensionPlugin*>& plugins();
 	static std::vector<const GuiExtensionPlugin*> resolvedPlugins();
+	static void setAvailableModelPluginIds(std::vector<std::string> pluginIds);
+	static void clearAvailableModelPluginInventory();
+	static void setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds);
+	static void setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions);
+	static void setAvailableSystemCapabilityVersions(std::unordered_map<std::string, std::string> versions);
+	static GuiExtensionDependencyResolver::Result resolution();
 	static GuiExtensionPresentationMetadata presentationMetadata(const std::string& extensionId);
 	static void registerPlugin(const GuiExtensionPlugin* plugin);
+	/** Notify GUI extensions before the first simulation event is dispatched. */
+	static void notifySimulationStart(Simulator* simulator, QMainWindow* window);
+	static std::vector<GuiDiagramProjectionContribution> diagramProjectionContributions();
+	static bool ownsEditableNetworkDataDefinition(ModelDataDefinition* owner, ModelDataDefinition* candidate);
+	static bool hasNetworkEditor(ModelDataDefinition* owner);
+	static bool hasEditingContext(ModelDataDefinition* owner);
+	static bool canDeleteNetworkElement(ModelDataDefinition* owner, QGraphicsItem* element);
+	static QUndoCommand* createNetworkDataDefinitionPropertyCommand(
+		ModelDataDefinition* owner, ModelDataDefinition* candidate,
+		const std::string& propertyName, const std::string& value);
+	static bool canStartNetworkRelationCreation(ModelDataDefinition* owner, QGraphicsItem* source);
+	static QUndoCommand* createNetworkRelationCommand(
+		ModelDataDefinition* owner, QGraphicsItem* source, QGraphicsItem* destination);
+	static std::vector<GuiNetworkEditorContribution::ElementProperty> networkElementProperties(
+		ModelDataDefinition* owner, QGraphicsItem* element);
+	static QUndoCommand* createNetworkElementPropertyCommand(
+		ModelDataDefinition* owner, QGraphicsItem* element,
+		const std::string& propertyName, const std::string& value);
+	static bool acceptsNetworkEditorDrop(ModelDataDefinition* owner, const std::string& pluginType, bool isComponent);
+	static void notifyNetworkEditorDataDefinitionDrop(ModelDataDefinition* owner, ModelDataDefinition* dropped);
+	static void notifyNetworkEditorDataDefinitionRemoved(ModelDataDefinition* owner, ModelDataDefinition* dropped);
+	static void synchronizeDiagramProjections(Simulator* simulator, ModelGraphicsScene* scene);
+	static void synchronizeDiagramProjectionsOnSceneThread(Simulator* simulator, ModelGraphicsScene* scene);
+	static void restoreDiagramProjections(
+		Simulator* simulator, ModelDataDefinition* owner, ModelGraphicsScene* scene,
+		const std::function<std::any(const std::string&, unsigned long)>& layoutProvider);
+	static void configureComponentVisualization(GraphicalModelComponent* component);
+	static bool animateComponentArrival(ModelGraphicsScene* scene, GraphicalModelComponent* component, bool visible);
+	static bool animateComponentDeparture(ModelGraphicsScene* scene, GraphicalModelComponent* component);
+	static bool configureDataDefinitionRendering(ModelDataDefinition* definition, GraphicalModelItemRenderContext* context);
 };
 
 class GuiExtensionPluginAutoRegistrar {

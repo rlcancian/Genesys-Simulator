@@ -15,7 +15,6 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
-#include "kernel/simulator/PluginManager.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -44,27 +43,41 @@ Wait::Wait(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 	SimulationControlGeneric<std::string>* propCondition = new SimulationControlGeneric<std::string>(
 									std::bind(&Wait::getCondition, this), std::bind(&Wait::setCondition, this, std::placeholders::_1),
 									Util::TypeOf<Wait>(), getName(), "Condition", "");
+	propCondition->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
+	propCondition->setDynamicEnabled([this]() -> bool {return this->getWaitType()==WaitType::ScanForCondition;});
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Wait::getlimitExpression, this), std::bind(&Wait::setLimitExpression, this, std::placeholders::_1),
 									Util::TypeOf<Wait>(), getName(), "LimitExpression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     SimulationControlGenericEnum<Wait::WaitType, Wait>* propWaitType = new SimulationControlGenericEnum<Wait::WaitType, Wait>(
                                     std::bind(&Wait::getWaitType, this), std::bind(&Wait::setWaitType, this, std::placeholders::_1),
                                     Util::TypeOf<Wait>(), getName(), "WaitType", "");
 	SimulationControlGenericClass<Queue*, Model*, Queue>* propQueue = new SimulationControlGenericClass<Queue*, Model*, Queue>(
 									_parentModel,
 									std::bind(&Wait::getQueue, this), std::bind(&Wait::setQueue, this, std::placeholders::_1),
-									Util::TypeOf<Wait>(), getName(), "Queue", "");																			
+									Util::TypeOf<Wait>(), getName(), "Queue", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
+	SimulationControlGenericClass<SignalData*, Model*, SignalData>* propSignalData = new SimulationControlGenericClass<SignalData*, Model*, SignalData>(
+									_parentModel,
+									std::bind(&Wait::getSignalData, this), std::bind(&Wait::setSignalData, this, std::placeholders::_1),
+									Util::TypeOf<Wait>(), getName(), "SignalData", "", false, true, false, nullptr, false, false, nullptr, nullptr, nullptr, true);
+	propSignalData->setDynamicEnabled([this]() -> bool {return this->getWaitType()==WaitType::WaitForSignal;});
 
 	_parentModel->getControls()->insert(propQueue);
+	_parentModel->getControls()->insert(propSignalData);
     _parentModel->getControls()->insert(propWaitType);
 	_parentModel->getControls()->insert(propCondition);
 	_parentModel->getControls()->insert(propExpression);
 
 	// setting properties
 	_addSimulationControl(propQueue);
+	_addSimulationControl(propSignalData);
     _addSimulationControl(propWaitType);
 	_addSimulationControl(propCondition);
 	_addSimulationControl(propExpression);
+}
+
+Wait::~Wait() {
+	if (_signalData != nullptr) _signalData->removeSignalDataEventHandler(this);
 }
 
 // public
@@ -74,7 +87,16 @@ std::string Wait::show() {
 }
 
 void Wait::setSignalData(SignalData* signal) {
+	if (_signalData != signal && _signalData != nullptr) _signalData->removeSignalDataEventHandler(this);
 	_signalData = signal;
+	if (_signalData != nullptr && _waitType == WaitType::WaitForSignal) {
+		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Wait>(&Wait::_handlerForSignalDataEvent, this);
+		_signalData->addSignalDataEventHandler(handler, this);
+	}
+}
+
+SignalData* Wait::getSignalData() const {
+	return _signalData;
 }
 
 void Wait::setCondition(std::string _condition) {
@@ -87,6 +109,13 @@ std::string Wait::getCondition() const {
 
 void Wait::setWaitType(WaitType _watType) {
 	this->_waitType = _watType;
+	if (_signalData == nullptr) return;
+	if (_waitType == WaitType::WaitForSignal) {
+		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Wait>(&Wait::_handlerForSignalDataEvent, this);
+		_signalData->addSignalDataEventHandler(handler, this);
+	} else {
+		_signalData->removeSignalDataEventHandler(this);
+	}
 }
 
 Wait::WaitType Wait::getWaitType() const {
@@ -133,6 +162,11 @@ PluginInformation* Wait::GetPluginInformation() {
 // protected virtual must override
 
 void Wait::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Wait evaluates the configured synchronization condition", TraceManager::Level::L7_internal);
+	if (_queue == nullptr || (_waitType == WaitType::WaitForSignal && _signalData == nullptr)) {
+		traceError("Wait cannot execute without its required Queue and SignalData references");
+		return;
+	}
 	std::string message = "Entity is waiting in the queue \"" + _queue->getName() + "\"";
 	if (_waitType == Wait::WaitType::WaitForSignal) {
 		message += " for signal \"" + _signalData->getName() + "\"";
@@ -172,9 +206,7 @@ void Wait::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	if (_queue != nullptr) {
 		fields->saveField("queue", _queue->getName(), "", saveDefaultValues);
 	}
-	if (_waitType == WaitType::WaitForSignal && _signalData != nullptr) {
-		fields->saveField("signalData", _signalData->getName(), "", saveDefaultValues);
-	}
+	if (_signalData != nullptr) fields->saveField("signalData", _signalData->getName(), "", saveDefaultValues);
 }
 
 // protected virtual could override
@@ -183,7 +215,7 @@ bool Wait::_check(std::string& errorMessage) {
 	bool resultAll = true;
 	if (_queue == nullptr) {
 		errorMessage += "Queue is null in Wait \"" + this->getName() + "\"";
-		return false;
+		resultAll = false;
 	}
 	if (_waitType == Wait::WaitType::WaitForSignal) {
 		// Wait/Signal operational contract is based on a shared SignalData instance.
@@ -205,12 +237,13 @@ bool Wait::_check(std::string& errorMessage) {
 }
 
 void Wait::_initBetweenReplications() {
-
+	// @TODO: clear queue and others?
 }
 
 // private
 
 unsigned int Wait::_handlerForSignalDataEvent(SignalData* signalData) {
+	if (_queue == nullptr || signalData == nullptr || signalData != _signalData) return 0;
 	unsigned int freed = 0;
 	unsigned int waitLimit = _parentModel->parseExpression(limitExpression);
 	// Stop when either global signal limit or local wait limit is reached.
@@ -266,17 +299,9 @@ void Wait::_createEditableDataDefinitions() {
 		previouslyAttachedSignalData->removeSignalDataEventHandler(this);
 	}
 
-	if (_waitType == Wait::WaitType::WaitForSignal) {
-		if (_signalData == nullptr) {
-			PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-			_signalData = pm->newInstance<SignalData>(_parentModel);
-		}
-		if (_signalData == nullptr) {
-			_optionalEditableDataDefinitionRemove("SignalData");
-			return;
-		}
+	if (_signalData != nullptr) {
 		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Wait>(&Wait::_handlerForSignalDataEvent, this);
-		_signalData->addSignalDataEventHandler(handler, this);
+		if (_waitType == Wait::WaitType::WaitForSignal) _signalData->addSignalDataEventHandler(handler, this);
 		_optionalEditableDataDefinitionInsert("SignalData", _signalData);
 	} else {
 		_optionalEditableDataDefinitionRemove("SignalData");
@@ -284,14 +309,6 @@ void Wait::_createEditableDataDefinitions() {
 }
 
 void Wait::_createNonEditableDataDefinitions() {
-	// internal
-	if (_queue == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-		_queue = pm->newInstance<Queue>(_parentModel, getName() + ".Queue");
-	}
-	if (_queue != nullptr) {
-		_mandatoryNonEditableDataDefinitionInsert("Queue", _queue);
-	} else {
-		_mandatoryNonEditableDataDefinitionRemove("Queue");
-	}
+	if (_queue != nullptr) _optionalEditableDataDefinitionInsert("Queue", _queue);
+	else _optionalEditableDataDefinitionRemove("Queue");
 }

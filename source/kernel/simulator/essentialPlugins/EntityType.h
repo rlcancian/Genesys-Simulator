@@ -24,7 +24,24 @@
 //namespace GenesysKernel {
 
 /*!
- * 
+ * \brief Data definition describing one class of entity that Create-family
+ * components may instantiate at simulation time.
+ *
+ * Arena correspondence: the "Entity module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", pp. 44-45), which defines
+ * an entity type's initial picture, holding cost/hour and initial
+ * value-added/non-value-added/waiting/transfer/other cost attributes.
+ *
+ * Confirmed in this class: initial picture (\c initialPicture) and initial
+ * value-added, non-value-added, waiting and other costs. \c
+ * setInitialWaitingCost()/initialWaitingCost() and the sibling VA/NVA/Other
+ * accessors are the closest correspondence to Arena's four cost categories.
+ *
+ * Known differences from Arena: there is no explicit "Holding Cost/Hour"
+ * field, and Arena's fifth cost category ("Initial Transfer Cost") has no
+ * dedicated accessor here; a maintainer should decide whether to add them or
+ * keep the current four-category cost model. Runtime entities created from
+ * an EntityType are instances of Entity, not of this class.
  */
 class EntityType : public ModelDataDefinition {
 public:

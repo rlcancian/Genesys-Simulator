@@ -232,6 +232,7 @@ bool ModelDataDefinition::_loadInstance(PersistenceRecord* fields) {
 	_label = fields->loadField("label", "");
 	this->_reportStatistics = fields->
 		loadField("reportStatistics", TraitsKernel<ModelDataDefinition>::reportStatistics);
+	_modelLevel = fields->loadField("modelLevel", 0u);
 
 	return true;
 }
@@ -243,6 +244,7 @@ void ModelDataDefinition::_saveInstance(PersistenceRecord* fields, bool saveDefa
 	fields->saveField("label", _label, "", saveDefaultValues);
 	fields->saveField("reportStatistics", _reportStatistics, TraitsKernel<ModelDataDefinition>::reportStatistics,
 	                  saveDefaultValues);
+	fields->saveField("modelLevel", _modelLevel, 0u, saveDefaultValues);
 }
 
 void ModelDataDefinition::_createInternalStatisticReporters() { }
@@ -345,6 +347,10 @@ std::map<std::string, ModelDataDefinition*>* ModelDataDefinition::getAttachedDat
 	return _dataAssociations.getAttachedData();
 }
 
+std::map<std::string, ModelDataDefinition*>* ModelDataDefinition::getOptionalEditableDataDefinitions() const {
+	return _dataAssociations.getOptionalEditableDataDefinitions();
+}
+
 Util::identification ModelDataDefinition::getId() const {
 	return _id;
 }
@@ -438,6 +444,7 @@ ModelDataDefinition* ModelDataDefinition::LoadInstance(Model* model, Persistence
 		newElement->_loadInstance(fields);
 	}
 	catch (const std::exception& e) {
+		newElement->traceError("Error loading modeldatum " + newElement->show(), e);
 	}
 	return newElement;
 }
@@ -453,6 +460,7 @@ void ModelDataDefinition::SaveInstance(PersistenceRecord* fields, ModelDataDefin
 		modeldatum->_saveInstance(fields, modeldatum->_getSaveDefaultsOption());
 	}
 	catch (const std::exception& e) {
+		modeldatum->traceError("Error saving modeldatum " + modeldatum->show(), e);
 	}
 }
 
@@ -464,6 +472,7 @@ bool ModelDataDefinition::Check(ModelDataDefinition* modeldatum, std::string& er
 			res = modeldatum->_check(errorMessage);
 		}
 		catch (const std::exception& e) {
+			modeldatum->traceError("Error checking modeldatum " + modeldatum->show(), e);
 		}
 	}
 	Util::DecIndent();
@@ -480,6 +489,7 @@ void ModelDataDefinition::CreateInternalData(ModelDataDefinition* modeldatum) {
 		Util::DecIndent();
 	}
 	catch (const std::exception& e) {
+		modeldatum->traceError("Error creating internal data for modeldatum " + modeldatum->show(), e);
 	};
 }
 

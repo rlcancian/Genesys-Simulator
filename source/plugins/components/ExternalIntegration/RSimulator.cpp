@@ -52,11 +52,12 @@ RSimulator::RSimulator(Model* model, std::string name)
 	SimulationControlGeneric<std::string>* propWorkingDirectory = new SimulationControlGeneric<std::string>(
 			std::bind(&RSimulator::getWorkingDirectory, this), std::bind(&RSimulator::setWorkingDirectory, this, std::placeholders::_1),
 			Util::TypeOf<RSimulator>(), getName(), "WorkingDirectory", "");
-	SimulationControlGeneric<std::string>* propPreludeScript = new SimulationControlGeneric<std::string>(
-			std::bind(&RSimulator::getPreludeScript, this), std::bind(&RSimulator::setPreludeScript, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propPreludeScript = new SimulationControlSourceCodeString(
+									[this]() { return SourceCodeString(getPreludeScript()); }, [this](SourceCodeString value) { setPreludeScript(value.str()); },
 			Util::TypeOf<RSimulator>(), getName(), "PreludeScript", "");
-	SimulationControlGeneric<std::string>* propCommandList = new SimulationControlGeneric<std::string>(
-			std::bind(&RSimulator::getCommandList, this), std::bind(&RSimulator::setCommandList, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propCommandList = new SimulationControlSourceCodeString(
+			[this]() { return SourceCodeString(getCommandList()); },
+			[this](SourceCodeString value) { setCommandList(value.str()); },
 			Util::TypeOf<RSimulator>(), getName(), "CommandList", "");
 
 	_parentModel->getControls()->insert(propRExecutable);
@@ -168,6 +169,7 @@ RSimulatorRunner* RSimulator::getRunner() {
 
 void RSimulator::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void) inputPortNumber;
+	traceSimulation(this, "RSimulator executes configured R commands", TraceManager::Level::L7_internal);
 
 	_ensureRunner();
 	_syncRunnerConfiguration();
@@ -223,7 +225,7 @@ bool RSimulator::_loadInstance(PersistenceRecord *fields) {
 		for (unsigned int i = 0u; i < commandCount; i++) {
 			_commands->insert(fields->loadField("command" + Util::StrIndex(i), ""));
 		}
-		_syncRunnerConfiguration();
+		_createEditableDataDefinitions();
 	}
 	return res;
 }
@@ -266,7 +268,12 @@ bool RSimulator::_check(std::string& errorMessage) {
 
 void RSimulator::_ensureRunner() {
 	if (_runner == nullptr) {
-		_runner = new RSimulatorRunner(_parentModel, getName() + ".RSimulatorRunner");
+		_runner = dynamic_cast<RSimulatorRunner*>(_parentModel->getDataManager()->getDataDefinition(
+			Util::TypeOf<RSimulatorRunner>(), getName() + ".RSimulatorRunner"));
+		if (_runner == nullptr) {
+			_runner = new RSimulatorRunner(_parentModel, getName() + ".RSimulatorRunner");
+		}
+		_syncRunnerConfiguration();
 	}
 }
 

@@ -16,6 +16,7 @@
 
 #include <list>
 #include <map>
+#include <vector>
 #include "../../util/List.h"
 #include "ModelDataDefinition.h"
 
@@ -119,6 +120,18 @@ public:
 	 * \return Snapshot list of current data-definition class names returned by value.
 	 */
 	std::list<std::string> getDataDefinitionClassnames() const;
+	template<typename T>
+	std::vector<T*> getDataDefinitionsAssignableTo() const {
+		std::vector<T*> matches;
+		for (const std::string& type : getDataDefinitionClassnames()) {
+			List<ModelDataDefinition*>* definitions = getDataDefinitionList(type);
+			if (definitions == nullptr) continue;
+			for (ModelDataDefinition* definition : *definitions->list()) {
+				if (T* compatible = dynamic_cast<T*>(definition); compatible != nullptr) matches.push_back(compatible);
+			}
+		}
+		return matches;
+	}
 
 	//private:
 public:

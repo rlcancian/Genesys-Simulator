@@ -9,6 +9,7 @@
 
 class Plugin;
 class Simulator;
+class ModelDataDefinition;
 class QPlainTextEdit;
 class QPoint;
 class QString;
@@ -42,9 +43,9 @@ public:
                             std::map<std::string, QColor>* pluginCategoryColor);
 
     /** @brief Inserts one plugin entry into the categorized plugin tree representation. */
-    void insertPluginUI(Plugin* plugin) const;
+    void insertPluginUI(Plugin* plugin, ModelDataDefinition* networkEditorOwner = nullptr) const;
     /** @brief Rebuilds the categorized plugin tree from the current PluginManager state. */
-    void reloadFromPluginManager() const;
+    void reloadFromPluginManager(ModelDataDefinition* networkEditorOwner = nullptr) const;
     /** @brief Applies the default expansion policy for plugin category roots. */
     void applyCategoryExpansionPolicy() const;
     /** @brief Shows the plugin-tree context menu used to reorder top-level categories. */

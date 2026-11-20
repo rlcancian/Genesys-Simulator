@@ -1,4 +1,5 @@
 #include "CppSerializer.h"
+#include "ConnectionPersistence.h"
 
 #include <cassert>
 #include <cctype>
@@ -260,9 +261,18 @@ bool CppSerializer::dump(std::ostream& output) {
         std::string origin = identifiersById[id];
         //
         unsigned short nextSize = var->loadField("nexts", 1);
-        for (unsigned short i = 0; i < nextSize; i++) {
+        const auto outputPorts = nextSize == 0 ? std::vector<unsigned int>{} : connectionOutputPorts(*var);
+        if (outputPorts.size() != nextSize) {
+            _model->getTracer()->traceError("connection count does not match saved ports for component " + std::to_string(id));
+            return false;
+        }
+        bool contiguous = true;
+        for (std::size_t index = 0; index < outputPorts.size(); ++index) {
+            if (outputPorts[index] != index) { contiguous = false; break; }
+        }
+        for (unsigned int outputPort : outputPorts) {
             // target id
-            Util::identification nextId = var->loadField("nextId" + Util::StrIndex(i), 0);
+            Util::identification nextId = var->loadField("nextId" + Util::StrIndex(outputPort), 0);
             if (nextSize == 1) nextId = var->loadField("nextId", static_cast<unsigned int>(nextId));
             // id -> component
             ModelComponent* nextComponent = cm->find(nextId);
@@ -271,12 +281,15 @@ bool CppSerializer::dump(std::ostream& output) {
                 return false;
             }
             // target port
-            unsigned short nextPort = var->loadField("nextinputPortNumber" + Util::StrIndex(i), 0);
+            unsigned short nextPort = var->loadField("nextinputPortNumber" + Util::StrIndex(outputPort), 0);
             // connect
             auto target = identifiersById[nextComponent->getId()];
-            output << indent(1)
-                // << (origin.find(".") != std::string::npos || target.find(".") != std::string::npos ? "// " : "")
-                << origin + "->connectTo(" + target + ", " + std::to_string(nextPort) + ");\n";
+            if (contiguous) {
+                output << indent(1) << origin + "->connectTo(" + target + ", " + std::to_string(nextPort) + ");\n";
+            } else {
+                output << indent(1) << origin + "->getConnectionManager()->insertAtPort(" + std::to_string(outputPort)
+                    + ", new Connection{" + target + ", {" + std::to_string(nextPort) + ", \"\"}});\n";
+            }
         }
     }
     output << indent(1) << "\n";

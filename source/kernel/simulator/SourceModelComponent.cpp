@@ -15,6 +15,8 @@
 #include "model/Model.h"
 #include "PropertyGenesys.h"
 
+#include <algorithm>
+
 //using namespace GenesysKernel;
 
 SourceModelComponent::SourceModelComponent(Model* model, std::string componentTypename, std::string name) : ModelComponent(model, componentTypename, name) {
@@ -28,15 +30,17 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 				std::bind(&SourceModelComponent::getEntitiesPerCreation, this),
 				std::bind(&SourceModelComponent::setEntitiesPerCreation, this, std::placeholders::_1),
 				className, name, "EntitiesPerCreation", "The amount of entities to be created on each arrival");
-	// SimulationControlString* propMaxCreation = new SimulationControlString(
-	// 			std::bind(&SourceModelComponent::getMaxCreations, this),
-	// 			std::bind(&SourceModelComponent::setMaxCreations, this, std::placeholders::_1),
-	// 			className, name, "MaxCreations", "");
+	SimulationControlString* propMaxCreation = new SimulationControlString(
+				std::bind(&SourceModelComponent::getMaxCreations, this),
+				std::bind(static_cast<void (SourceModelComponent::*)(std::string)>(&SourceModelComponent::setMaxCreations), this, std::placeholders::_1),
+				className, name, "MaxCreations", "Maximum number of entities created during one replication");
+	propMaxCreation->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propTimeBetweenCreations = new SimulationControlGeneric<std::string>(
 				std::bind(&SourceModelComponent::getTimeBetweenCreationsExpression, this),
 				std::bind(&SourceModelComponent::setTimeBetweenCreationsExpression, this, std::placeholders::_1, Util::TimeUnit::unknown),
 				className, name, "TimeBetweenArrivals", "Expression that defines the interval between two consecutive arrivals");
-    SimulationControlGenericEnum<Util::TimeUnit, Util>* propTimeUnit = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
+	propTimeBetweenCreations->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
+	SimulationControlGenericEnum<Util::TimeUnit, Util>* propTimeUnit = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
 				std::bind(&SourceModelComponent::getTimeUnit, this),
 				std::bind(&SourceModelComponent::setTimeUnit, this, std::placeholders::_1),
 				className, name, "TimeUnit", "The time unit of time between arrivals");
@@ -49,7 +53,7 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 
 	_parentModel->getControls()->insert(propFirstCreation);
 	_parentModel->getControls()->insert(propEntitiesPerCreation);
-	// _parentModel->getControls()->insert(propMaxCreation);
+	_parentModel->getControls()->insert(propMaxCreation);
 	_parentModel->getControls()->insert(propTimeBetweenCreations);
 	_parentModel->getControls()->insert(propTimeUnit);
 	_parentModel->getControls()->insert(propEntityType);
@@ -57,7 +61,7 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 	// setting properties
 	_addSimulationControl(propFirstCreation);
 	_addSimulationControl(propEntitiesPerCreation);
-	// _addSimulationControl(propMaxCreation);
+	_addSimulationControl(propMaxCreation);
 	_addSimulationControl(propTimeBetweenCreations);
 	_addSimulationControl(propTimeUnit);
 	_addSimulationControl(propEntityType);
@@ -93,13 +97,19 @@ bool SourceModelComponent::_loadInstance(PersistenceRecord *fields) {
 }
 
 void SourceModelComponent::_initBetweenReplications() {
-	for (unsigned int i=0; i<this->_entitiesPerCreation; i++) {
+	const double parsedMaxCreations = _parentModel->parseExpression(_maxCreationsExpression);
+	const unsigned int maxCreations = parsedMaxCreations <= 0.0 ? 0u
+			: parsedMaxCreations >= static_cast<double>(std::numeric_limits<unsigned int>::max())
+				? std::numeric_limits<unsigned int>::max()
+				: static_cast<unsigned int>(parsedMaxCreations);
+	const unsigned int initialCreations = std::min(_entitiesPerCreation, maxCreations);
+	for (unsigned int i = 0; i < initialCreations; i++) {
 		Entity* newEntity = _parentModel->createEntity(_entityType->getName() + "_%", false);
 		newEntity->setEntityType(_entityType);
 		Event* newEvent = new Event(_firstCreation, newEntity, this);
 		_parentModel->getFutureEvents()->insert(newEvent);
 	}
-	_entitiesCreatedSoFar = _entitiesPerCreation;
+	_entitiesCreatedSoFar = initialCreations;
 }
 
 void SourceModelComponent::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
@@ -119,6 +129,7 @@ void SourceModelComponent::_saveInstance(PersistenceRecord *fields, bool saveDef
 bool SourceModelComponent::_check(std::string& errorMessage) {
 	bool resultAll = true;
     resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<EntityType>(), _entityType, "entitytype", errorMessage);
+	resultAll &= _parentModel->checkExpression(this->_maxCreationsExpression, "max creations", errorMessage);
     resultAll &= _parentModel->checkExpression(this->_timeBetweenCreationsExpression, "time between creations", errorMessage);
 	return resultAll;
 }

@@ -19,7 +19,18 @@
 #include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
- This component ...
+ * \brief Writes one or more literal/expression text lines to the screen
+ * (trace output) or to a file.
+ *
+ * Arena correspondence: the write-only slice of Arena's "ReadWrite module"
+ * (Rockwell Automation, *Getting Started with Arena*, "The Advanced
+ * Process Panel", p. 58). `WriteToType` (`SCREEN/FILE`) matches Arena's
+ * corresponding output destinations.
+ *
+ * Known difference from Arena: there is no read direction at all (no
+ * component reads a value from Screen/File/Attribute/Variable back into
+ * the model), and no structured recordset integration with File (§5.10) —
+ * see `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.16.
  */
 class Write : public ModelComponent {
 public:
@@ -34,6 +45,8 @@ public: // constructors
 
 public:
 	void insertText(std::list<std::string> texts);
+	void addWriteElement(std::string text);
+	void removeWriteElement(std::string text);
 	void setFilename(std::string _filename);
 	std::string filename() const;
 	void setWriteToType(WriteToType _writeToType);

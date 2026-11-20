@@ -1,0 +1,419 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Application Overview}
+\label{chap:application-overview}
+
+This chapter maps the current GenESyS application family and explains which
+executable a reader should open for each common workflow. It is intentionally
+grounded in the current repository state, not in historical names or planned
+future layouts.
+
+The overview is split into four groups:
+\begin{itemize}
+\item the main interactive entry points;
+\item the standalone Qt frontends;
+\item the model-specific application route;
+\item the planned-but-not-implemented DOE route.
+\end{itemize}
+
+Figure~\ref{fig:application-family-tree} summarizes that family tree. Chapter~\ref{chap:application-overview} then introduces the entry-point map in
+Section~\ref{sec:application-overview-entry-points}, expands the core entry
+points in Section~\ref{sec:application-overview-core-entry-points}, covers the
+standalone Qt frontends in Section~\ref{sec:application-overview-standalone-qt-frontends},
+describes the model-specific route in Section~\ref{sec:application-overview-model-specific},
+and closes with the final choice flow in Section~\ref{sec:application-overview-choice}.
+The following sections spell out the target, executable, purpose,
+dependencies, public, status, evidence level, limitations, and the chapter
+where each application is documented in more detail.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:application-family-tree
+% Source of truth:
+%   - source/applications/gui/CMakeLists.txt
+%   - source/applications/gui/genesys/CMakeLists.txt
+%   - source/applications/gui/httpworker/CMakeLists.txt
+%   - source/applications/gui/dataanalyser/CMakeLists.txt
+%   - source/applications/gui/optimizer/CMakeLists.txt
+%   - source/applications/gui/ai_assistant/CMakeLists.txt
+%   - source/applications/modelSpecific/CMakeLists.txt
+%   - docs/ai_assistants/STATUS.md
+% Purpose:
+%   Show the current GenESyS application families and their relationships.
+% Required visual content:
+%   - main GUI as the primary entry point
+%   - shell and worker as core support applications
+%   - HTTP Worker GUI, Data Analyser, Optimizer, and AI Assistant as standalone Qt frontends
+%   - model-specific applications as a selectable family
+%   - Do Experiments as planned but not implemented
+% Accessibility description:
+%   A family-tree diagram that lets the reader choose the correct entry point quickly.
+% Validation:
+%   Each node must correspond to a real target, executable, or intentional absence in the current tree.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/application-family-tree}
+\caption{Current GenESyS application family and intended usage groups.}
+\label{fig:application-family-tree}
+\end{figure}
+
+\section{Choosing the right entry point}
+\label{sec:application-overview-entry-points}
+
+If the goal is interactive model work, start with the main GUI. If the goal is
+scripted or terminal-driven execution, start with the shell. If the goal is to
+serve or control jobs through the worker runtime, use the worker. If the goal
+is a specialized Qt helper, use one of the standalone frontends. If the goal
+is to run a selected example from \texttt{source/applications/modelSpecific},
+use the model-specific application route. If the goal is DOE functionality, no
+application exists yet and the plan remains intentionally unimplemented.
+
+Figure~\ref{fig:application-choice-flow} condenses that choice into a simple
+decision path for readers who want the shortest route to the right executable.
+
+\section{Core entry points}
+\label{sec:application-overview-core-entry-points}
+
+\subsection{Main GUI}
+\label{subsec:application-overview-main-gui}
+
+The main GUI is the canonical interactive entry point for model editing and
+simulation work. It is the first application a new user should open when the
+goal is to inspect, edit, or execute a model visually.
+
+\noindent\textbf{Target.} \texttt{genesys\_gui\_application}, exposed through the aggregate \texttt{genesys\_gui} target.
+
+\noindent\textbf{Executable.} \texttt{genesys-gui}.
+
+\noindent\textbf{Purpose.} Primary Qt editor and simulation front end for day-to-day model work.
+
+\noindent\textbf{Dependencies.} Qt6 Core, Gui, Widgets, PrintSupport, and Network, with Qt5 fallback in the current CMake code, plus the shared kernel, parser, plugin, simulator, worker-support, and tools libraries linked by the GUI target.
+
+\noindent\textbf{Public.} General users, model authors, and reviewers who need the main interactive workspace.
+
+\noindent\textbf{Status.} Partially validated.
+
+\noindent\textbf{Evidence.} The installed launcher, build-tree startup, and About-dialog version check are documented in Chapter~\ref{chap:user-installation}; the current status ledger records focused GMDD diagnostics but not a full end-to-end interaction certification.
+
+\noindent\textbf{Limitations.} Startup and focused GUI checks do not prove complete workflows or scientific correctness.
+
+\noindent\textbf{Chapter.} Chapter~\ref{chap:main-graphical-application}.
+
+\subsection{Shell}
+\label{subsec:application-overview-shell}
+
+The shell is the command-line entry point for scripted or terminal-based work.
+It is the right choice when the user wants direct control over model loading,
+commands, and repeatable text-driven execution.
+
+\noindent\textbf{Target.} \texttt{genesys\_shell}.
+
+\noindent\textbf{Executable.} \texttt{genesys\_shell}.
+
+\noindent\textbf{Purpose.} Command-line front end for scripted model loading, command routing, and interactive terminal usage.
+
+\noindent\textbf{Dependencies.} Kernel utility and statistics libraries, parser, plugins, and simulator support/runtime libraries.
+
+\noindent\textbf{Public.} Advanced users, automation scripts, and developers who prefer a terminal workflow.
+
+\noindent\textbf{Status.} Partially validated.
+
+\noindent\textbf{Evidence.} The current status ledger records preset/build coverage, scripted command handling, plugin count reporting, and exit behavior.
+
+\noindent\textbf{Limitations.} This chapter does not claim GUI workflows, file-based plugin autoload, or broader deployment behavior for the shell.
+
+\noindent\textbf{Chapter.} Chapter~\ref{chap:shell-usage}.
+
+\subsection{Worker}
+\label{subsec:application-overview-worker}
+
+The worker is the HTTP/background runtime that serves simulation-related
+requests. It is not a GUI helper and it is not approved for public Internet
+exposure by default.
+
+\noindent\textbf{Target.} \texttt{genesys\_worker\_app}.
+
+\noindent\textbf{Executable.} \texttt{genesys-worker}.
+
+\noindent\textbf{Purpose.} Service runtime for controlled worker jobs, session handling, and backend request processing.
+
+\noindent\textbf{Dependencies.} \texttt{genesys\_worker\_core} plus the shared kernel, parser, plugins, simulator support/runtime libraries, and the worker HTTP/session/auth stack.
+
+\noindent\textbf{Public.} Operators and integration code in controlled academic or intranet-style deployments.
+
+\noindent\textbf{Status.} Partially validated.
+
+\noindent\textbf{Evidence.} The current status ledger records preset/build coverage, loopback health checks, exact JSON responses, and bounded exit behavior.
+
+\noindent\textbf{Limitations.} Public bind, authentication, TLS, quotas, isolation, and audit controls are still separate security requirements, so startup evidence does not establish deployment readiness.
+
+\noindent\textbf{Chapter.} Chapter~\ref{chap:worker-usage-and-security}.
+
+\section{Standalone Qt frontends}
+\label{sec:application-overview-standalone-qt-frontends}
+
+Figure~\ref{fig:application-executable-matrix} groups the executable targets
+with the shared backend libraries they rely on. This makes the current build
+surface easier to scan without pretending that the helper windows are a single
+monolithic executable.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:application-executable-matrix
+% Source of truth:
+%   - source/applications/gui/CMakeLists.txt
+%   - source/applications/gui/genesys/CMakeLists.txt
+%   - source/applications/gui/httpworker/CMakeLists.txt
+%   - source/applications/gui/dataanalyser/CMakeLists.txt
+%   - source/applications/gui/optimizer/CMakeLists.txt
+%   - source/applications/gui/ai_assistant/CMakeLists.txt
+% Purpose:
+%   Show which GUI targets are paired with which shared backend libraries.
+% Required visual content:
+%   - one row per executable target
+%   - the main GUI, HTTP Worker GUI, Data Analyser, Optimizer, and AI Assistant targets
+%   - the shared runtime libraries used by each target
+% Accessibility description:
+%   A matrix that helps readers understand the separation between executables and reusable backends.
+% Validation:
+%   Each target and backend family must match the current CMake files.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/application-executable-matrix}
+\caption{Executable targets and shared backend library families for the current GUI applications.}
+\label{fig:application-executable-matrix}
+\end{figure}
+
+\subsection{HTTP Worker GUI}
+\label{subsec:application-overview-http-worker-gui}
+
+The HTTP Worker GUI is the control dialog for the worker runtime. It exists to
+support the worker-focused deployment path and to provide a graphical front end
+around the worker service layer.
+
+\noindent\textbf{Target.} \texttt{genesys\_httpworker\_gui\_application}.
+
+\noindent\textbf{Executable.} \texttt{genesys-httpworker-gui}.
+
+\noindent\textbf{Purpose.} Qt control window for worker-related configuration and interaction.
+
+\noindent\textbf{Dependencies.} Qt6 or Qt5 Core, Gui, and Widgets, plus \texttt{genesys\_worker\_core}.
+
+\noindent\textbf{Public.} Operators and developers who need a graphical worker control surface.
+
+\noindent\textbf{Status.} Defined in CMake, but not independently validated beyond the current target and preset evidence.
+
+\noindent\textbf{Evidence.} The current build files and presets define the application route and executable name.
+
+\noindent\textbf{Limitations.} There is no separate startup or interaction certification yet, so this application should be treated as present but lightly evidenced.
+
+\noindent\textbf{Chapter.} Chapter~\ref{chap:standalone-tools}.
+
+\subsection{Data Analyser}
+\label{subsec:application-overview-data-analyser}
+
+The Data Analyser is a specialized Qt window for data-analysis workflows. It
+is useful when the user wants a dedicated analysis surface instead of the main
+model editor.
+
+\noindent\textbf{Target.} \texttt{genesys\_dataanalyser\_gui\_application}.
+
+\noindent\textbf{Executable.} \texttt{genesys-dataanalyser-gui}.
+
+\noindent\textbf{Purpose.} Dedicated analysis frontend for imported or prepared data.
+
+\noindent\textbf{Dependencies.} Qt6 or Qt5 Core, Gui, and Widgets, plus the shared kernel, parser, plugins, simulator support/runtime, and tools libraries.
+
+\noindent\textbf{Public.} Users who need a dedicated analysis workspace.
+
+\noindent\textbf{Status.} Startup validated.
+
+\noindent\textbf{Evidence.} The current status ledger records Xvfb window creation, liveness, and controlled teardown.
+
+\noindent\textbf{Limitations.} Startup does not establish analysis correctness, workflow completeness, or Level 3 scientific maturity.
+
+\noindent\textbf{Chapter.} Chapter~\ref{chap:standalone-tools}.
+
+\subsection{Optimizer}
+\label{subsec:application-overview-optimizer}
+
+The Optimizer is the optimization-oriented Qt frontend. It is the GUI entry
+point for optimization work when the user wants a standalone workspace instead
+of the main editor.
+
+\noindent\textbf{Target.} \texttt{genesys\_optimizer\_gui\_application}.
+
+\noindent\textbf{Executable.} \texttt{genesys-optimizer-gui}.
+
+\noindent\textbf{Purpose.} Dedicated optimization frontend for the current optimizer scaffold.
+
+\noindent\textbf{Dependencies.} Qt6 or Qt5 Core, Gui, and Widgets, plus the shared kernel, parser, plugins, simulator support/runtime, and tools libraries.
+
+\noindent\textbf{Public.} Advanced users and developers experimenting with optimization workflows.
+
+\noindent\textbf{Status.} Startup validated.
+
+\noindent\textbf{Evidence.} The current status ledger records Xvfb window creation, liveness, and controlled teardown.
+
+\noindent\textbf{Limitations.} Startup does not prove a selected optimization algorithm, full workflow maturity, or validated scientific output.
+
+\noindent\textbf{Chapter.} Chapter~\ref{chap:standalone-tools}.
+
+\subsection{AI Assistant}
+\label{subsec:application-overview-ai-assistant}
+
+The AI Assistant is the dedicated Qt frontend for assistant-oriented
+interaction. It is separated from the main GUI so the assistant workflow can be
+handled independently.
+
+\noindent\textbf{Target.} \texttt{genesys\_ai\_assistant\_gui\_application}.
+
+\noindent\textbf{Executable.} \texttt{genesys-ai-assistant-gui}.
+
+\noindent\textbf{Purpose.} Dedicated assistant UI for prompt, tool, and response workflows.
+
+\noindent\textbf{Dependencies.} Qt6 or Qt5 Core, Gui, and Widgets, plus the shared kernel, parser, plugins, simulator support/runtime, and tools libraries.
+
+\noindent\textbf{Public.} Users and developers who need a separate assistant-oriented application surface.
+
+\noindent\textbf{Status.} Startup validated.
+
+\noindent\textbf{Evidence.} The current status ledger records no-credential Xvfb startup and teardown.
+
+\noindent\textbf{Limitations.} Startup does not establish provider integration, credential handling, redaction, or failure workflow maturity.
+
+\noindent\textbf{Chapter.} Chapter~\ref{chap:standalone-tools}.
+
+\section{Model-specific applications}
+\label{sec:application-overview-model-specific}
+
+Figure~\ref{fig:application-maturity-map} places the current families on a
+simple maturity ladder. The intent is to prevent overclaiming: different
+applications are at different evidence levels, and startup alone is not the
+same as full workflow validation.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:application-maturity-map
+% Source of truth:
+%   - docs/ai_assistants/STATUS.md
+%   - docs/ai_assistants/ARCHITECTURE.md
+%   - docs/ai_assistants/reference/APPLICATIONS_TOOLS_MODELS.md
+% Purpose:
+%   Show the current maturity and evidence level of each application family.
+% Required visual content:
+%   - partially validated core applications
+%   - startup-validated standalone Qt frontends
+%   - snapshot-only model-specific applications
+%   - intentionally absent Do Experiments route
+% Accessibility description:
+%   A maturity chart that distinguishes availability from validation depth.
+% Validation:
+%   The labels must match the current status ledger and architecture notes.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/application-maturity-map}
+\caption{Current application maturity and evidence levels.}
+\label{fig:application-maturity-map}
+\end{figure}
+
+The model-specific application route builds one selected example from
+\path{source/applications/modelSpecific}. The current CMake logic treats the
+selection as a build-time input, so the exact executable contents depend on the
+selected source file.
+
+\noindent\textbf{Target.} \path{genesys_modelspecific_app}. The selected source file is provided by \path{GENESYS_MODELSPECIFIC_APP}.
+
+\noindent\textbf{Executable.} \path{genesys_modelspecific_app}. A legacy compatibility copy named \path{genesys_terminal_application} is created after the build.
+
+\noindent\textbf{Purpose.} Build and run one selected model-specific example or teaching application from the model-specific tree.
+
+\noindent\textbf{Dependencies.} The shared kernel, parser, plugins, simulator support/runtime libraries, and the selected model-specific source and header files.
+
+\noindent\textbf{Public.} Advanced users, instructors, and maintainers who need concrete example flows.
+
+\noindent\textbf{Status.} Snapshot only.
+
+\noindent\textbf{Evidence.} The current status ledger treats the family as a historical bounded sweep that still needs current revalidation.
+
+\noindent\textbf{Limitations.} There is no single fixed executable payload; the selected example determines the runtime behavior, and each selection must be rechecked on the current branch.
+
+\noindent\textbf{Chapter.} Chapter~\ref{chap:model-specific-and-advanced-examples}.
+
+\subsection{Do Experiments}
+\label{subsec:application-overview-do-experiments}
+
+The DOE route is intentionally not implemented yet. The CMake umbrella knows
+that the feature is planned, but the repository does not provide a real empty
+application for it.
+
+\noindent\textbf{Target.} None yet.
+
+\noindent\textbf{Executable.} None yet.
+
+\noindent\textbf{Purpose.} Future design-of-experiments functionality, once a bounded backend and product contract exist.
+
+\noindent\textbf{Dependencies.} No implemented application route yet.
+
+\noindent\textbf{Public.} None yet.
+
+\noindent\textbf{Status.} Not started; intentionally unavailable.
+
+\noindent\textbf{Evidence.} The GUI umbrella emits a fatal configuration error when the feature flag is enabled, which confirms that the repository does not ship a placeholder executable.
+
+\noindent\textbf{Limitations.} Readers should not expect a launcher, preset, or runnable window for this route until the backend/product definition is completed.
+
+\noindent\textbf{Chapter.} No dedicated user chapter yet.
+
+\section{How to choose}
+\label{sec:application-overview-choice}
+
+Figure~\ref{fig:application-choice-flow} turns the application map into a
+decision tree. The reader should use it as a quick answer to the question
+``which application should I open first?'' without needing to inspect the full
+source tree. For direct lookup, Section~\ref{subsec:application-overview-main-gui}
+covers the main GUI, Section~\ref{subsec:application-overview-shell} covers the
+shell, Section~\ref{subsec:application-overview-worker} covers the worker,
+Section~\ref{subsec:application-overview-http-worker-gui} covers the HTTP
+Worker GUI, Section~\ref{subsec:application-overview-data-analyser} covers the
+Data Analyser, Section~\ref{subsec:application-overview-optimizer} covers the
+Optimizer, Section~\ref{subsec:application-overview-ai-assistant} covers the
+AI Assistant, Section~\ref{sec:application-overview-model-specific} covers
+the model-specific route, and Section~\ref{subsec:application-overview-do-experiments}
+covers the intentionally absent DOE path.
+
+% FIGURE-SPEC-BEGIN
+% ID: fig:application-choice-flow
+% Source of truth:
+%   - docs/ai_assistants/STATUS.md
+%   - docs/ai_assistants/ARCHITECTURE.md
+%   - source/applications/gui/CMakeLists.txt
+%   - source/applications/modelSpecific/CMakeLists.txt
+% Purpose:
+%   Show how a reader chooses the correct GenESyS application for a task.
+% Required visual content:
+%   - decision path for main GUI, shell, worker, standalone tools, model-specific apps, and no-DOE path
+%   - a clear branch for intentionally absent Do Experiments support
+% Accessibility description:
+%   A simple flowchart that avoids overloading the reader with build details.
+% Validation:
+%   The flow must match the current application inventory and status notes.
+% FIGURE-SPEC-END
+\begin{figure}[htbp]
+\centering
+\figureplaceholder{figs/generated/application-choice-flow}
+\caption{Decision flow for selecting the right GenESyS application.}
+\label{fig:application-choice-flow}
+\end{figure}
+
+In practical terms, the choice is simple:
+\begin{itemize}
+\item edit or inspect a model visually: open the main GUI;
+\item run scripts or terminal commands: open the shell;
+\item serve controlled jobs: open the worker;
+\item use a helper window for analysis, optimization, or assistant tasks: open the matching standalone frontend;
+\item run a selected teaching or example model: use the model-specific application route;
+\item look for DOE: do not expect an application yet.
+\end{itemize}
+
+The rest of the user manual expands each of those choices in the dedicated
+chapters listed above.

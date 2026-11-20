@@ -1,18 +1,27 @@
 #include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "controllers/PropertyEditorController.h"
+#include "controllers/PluginCatalogController.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
+#include "controllers/SimulationEventController.h"
+#include "extensions/GuiExtensionManager.h"
+#include "animations/AnimationTransition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "codeeditor/CodeEditor.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
 #include "cellular_automata/CellularAutomataViewerWindow.h"
 
 #include "../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../kernel/simulator/essentialPlugins/EntityType.h"
 #include "../../kernel/simulator/persistence/GenSerializer.h"
 #include "../../kernel/simulator/model/Model.h"
 #include "../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
@@ -20,30 +29,606 @@
 #include "../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/Transfer/PickStation.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Assign.h"
+#include "plugins/data/Logic/AssignmentItem.h"
+#include "plugins/data/Logic/Variable.h"
+#include "plugins/components/Synchronization/Signal.h"
+#include "plugins/components/Synchronization/Wait.h"
+#include "applications/gui/genesys/actions/DecideConditionUndoCommand.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/Logic/Set.h"
+#include "plugins/data/Synchronization/SignalData.h"
+#include "plugins/data/ModalModel/GraphNode.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/components/ModalModel/FSMState.h"
 
 #include <gtest/gtest.h>
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
+#include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
+
 
 #include <QApplication>
+#include <QAbstractButton>
 #include <QAction>
 #include <QByteArray>
 #include <QColor>
 #include <QComboBox>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QFile>
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
 #include <QGraphicsTextItem>
 #include <QList>
+#include <QMenu>
+#include <QMainWindow>
 #include <QPlainTextEdit>
+#include <QProgressBar>
 #include <QRectF>
 #include <QScrollBar>
 #include <QSlider>
 #include <QTemporaryDir>
 #include <QTextEdit>
+#include <QTabWidget>
+#include <QTimer>
+#include <QTreeWidget>
 #include <QUndoStack>
+#include <QPushButton>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QTableWidget>
 
 #include <algorithm>
+#include <functional>
+#include <map>
+
+TEST(PluginCatalogPresentation, MainPaletteContainsOnlyComponentsAndReloadIsStable) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    const unsigned int registeredBefore = simulator.getPluginManager()->size();
+    QTreeWidget tree;
+    std::map<std::string, QColor> categoryColors;
+    PluginCatalogController catalog(&simulator, &tree, nullptr, &categoryColors);
+    catalog.reloadFromPluginManager();
+    auto countLeafItems = [&tree, &simulator]() {
+        unsigned int count = 0;
+        std::function<void(QTreeWidgetItem*)> visit = [&](QTreeWidgetItem* item) {
+            if (item->childCount() == 0) {
+                ++count;
+                Plugin* plugin = simulator.getPluginManager()->find(item->text(0).toStdString());
+                EXPECT_NE(plugin, nullptr);
+                if (plugin != nullptr) EXPECT_TRUE(plugin->getPluginInfo()->isComponent());
+            } else {
+                for (int i = 0; i < item->childCount(); ++i) visit(item->child(i));
+            }
+        };
+        for (int i = 0; i < tree.topLevelItemCount(); ++i) visit(tree.topLevelItem(i));
+        return count;
+    };
+    const unsigned int firstCount = countLeafItems();
+    EXPECT_GT(firstCount, 0u);
+    EXPECT_EQ(simulator.getPluginManager()->size(), registeredBefore);
+    catalog.reloadFromPluginManager();
+    EXPECT_EQ(countLeafItems(), firstCount);
+    EXPECT_NE(simulator.getPluginManager()->find(Util::TypeOf<Resource>()), nullptr);
+}
+
+TEST(DecideDynamicPortPresentation, OutputPortCountTracksConditionsPlusElse) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    auto* decide = new Decide(model, "DynamicDecide");
+    auto countPorts = [&](Decide* value) {
+        GraphicalModelComponent graphical(plugin, value, QPointF(100, 100), QColor("#336699"));
+        return graphical.getGraphicalOutputPorts().size();
+    };
+    EXPECT_EQ(countPorts(decide), 1);
+    decide->addConditions("A > 0");
+    EXPECT_EQ(countPorts(decide), 2);
+    GraphicalModelComponent graphical(plugin, decide, QPointF(100, 100), QColor("#336699"));
+    graphical.editOutputPort(1, true);
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 3);
+    graphical.editOutputPort(1, false);
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 2);
+    decide->addConditions("B > 0");
+    decide->addConditions("C > 0");
+    EXPECT_EQ(countPorts(decide), 4);
+}
+
+TEST(DecideDynamicPortPresentation, AppliesQueuedConditionPortEditsInOrder) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    auto* decide = new Decide(model, "QueuedDynamicDecide");
+    GraphicalModelComponent graphical(plugin, decide, QPointF(100, 100), Qt::blue);
+
+    // Model the queued Property Editor callback: several list edits may have
+    // happened before the event loop delivers its refresh.
+    decide->editConditionInsertAt(0, "first");
+    decide->editConditionInsertAt(1, "second");
+    decide->editConditionInsertAt(1, "middle");
+    decide->editConditionRemoveAt(1);
+
+    unsigned int index = 0;
+    bool inserted = false;
+    while (decide->takeConditionPortEdit(index, inserted)) {
+        graphical.editOutputPort(index, inserted);
+    }
+
+    ASSERT_EQ(decide->getConditions()->size(), 2u);
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "first");
+    EXPECT_EQ(decide->getConditions()->getAtRank(1), "second");
+    EXPECT_EQ(graphical.getGraphicalOutputPorts().size(), 3); // two conditions + Else
+    for (int port = 0; port < graphical.getGraphicalOutputPorts().size(); ++port) {
+        EXPECT_EQ(graphical.getGraphicalOutputPorts().at(port)->portNum(), static_cast<unsigned int>(port));
+    }
+}
+
+TEST(DecideConditionUndo, MoveKeepsGraphicalConnectionsAndElseThroughUndoRedo) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* decide = new Decide(model, "MoveGraphicalDecide");
+    decide->addConditions("first");
+    decide->addConditions("second");
+    decide->addConditions("third");
+    auto* target = new Dispose(model, "MoveGraphicalTarget");
+    auto* elseTarget = new Dispose(model, "MoveGraphicalElse");
+    Plugin* decidePlugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    Plugin* disposePlugin = simulator.getPluginManager()->find(Util::TypeOf<Dispose>());
+    ASSERT_NE(decidePlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(decidePlugin, decide, QPointF(100, 100), Qt::blue);
+    auto* graphicalTarget = new GraphicalModelComponent(disposePlugin, target, QPointF(400, 100), Qt::blue);
+    auto* graphicalElse = new GraphicalModelComponent(disposePlugin, elseTarget, QPointF(400, 300), Qt::blue);
+    scene.addItem(graphical);
+    scene.addItem(graphicalTarget);
+    scene.addItem(graphicalElse);
+    auto* firstConnection = new Connection{target, {0}};
+    auto* elseConnection = new Connection{elseTarget, {0}};
+    decide->getConnectionManager()->insertAtPort(0, firstConnection);
+    decide->getConnectionManager()->insertAtPort(3, elseConnection);
+    auto* firstPort = graphical->getGraphicalOutputPorts().at(0);
+    auto* elsePort = graphical->getGraphicalOutputPorts().at(3);
+    const qreal firstPosition = firstPort->y();
+    const qreal elsePosition = elsePort->y();
+    scene.addGraphicalConnection(firstPort, graphicalTarget->getGraphicalInputPorts().at(0), 0, 0);
+    scene.addGraphicalConnection(elsePort, graphicalElse->getGraphicalInputPorts().at(0), 0, 0);
+    ASSERT_EQ(firstPort->getConnections()->size(), 1);
+    auto* graphicalConnection = firstPort->getConnections()->front();
+
+    decide->moveCondition(0, 2);
+    graphical->moveOutputPort(0, 2);
+    Decide::ConditionEdit edit{Decide::ConditionEdit::Kind::Move, 0};
+    edit.destinationIndex = 2;
+    undoStack.push(new DecideConditionUndoCommand(decide, graphical, edit));
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), firstPort);
+    EXPECT_EQ(firstPort->portNum(), 2u);
+    EXPECT_EQ(graphicalConnection->getPortSourceConnection(), 2u);
+    EXPECT_GT(firstPort->y(), firstPosition);
+    EXPECT_EQ(graphicalConnection->getSourceGraphicalPort(), firstPort);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(3), elsePort);
+    EXPECT_EQ(elsePort->y(), elsePosition);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(3), elseConnection);
+    undoStack.undo();
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(0), firstPort);
+    EXPECT_EQ(firstPort->portNum(), 0u);
+    EXPECT_EQ(firstPort->y(), firstPosition);
+    EXPECT_EQ(graphicalConnection->getPortSourceConnection(), 0u);
+    undoStack.redo();
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), firstPort);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(3), elsePort);
+}
+
+TEST(DecideConditionUndo, RemoveUndoRedoRestoresOnlyTheRemovedConnectionAndElse) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* decide = new Decide(model, "UndoDecide");
+    decide->addConditions("first");
+    decide->addConditions("second");
+    auto* removedTarget = new Dispose(model, "RemovedTarget");
+    auto* elseTarget = new Dispose(model, "ElseTarget");
+    Plugin* decidePlugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    Plugin* disposePlugin = simulator.getPluginManager()->find(Util::TypeOf<Dispose>());
+    ASSERT_NE(decidePlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphicalDecide = new GraphicalModelComponent(decidePlugin, decide, QPointF(100, 100), Qt::blue);
+    auto* graphicalRemovedTarget = new GraphicalModelComponent(disposePlugin, removedTarget, QPointF(400, 100), Qt::blue);
+    auto* graphicalElseTarget = new GraphicalModelComponent(disposePlugin, elseTarget, QPointF(400, 300), Qt::blue);
+    scene.addItem(graphicalDecide);
+    scene.addItem(graphicalRemovedTarget);
+    scene.addItem(graphicalElseTarget);
+    scene.getGraphicalModelComponents()->append(graphicalDecide);
+    scene.getGraphicalModelComponents()->append(graphicalRemovedTarget);
+    scene.getGraphicalModelComponents()->append(graphicalElseTarget);
+
+    auto* removedConnection = new Connection{removedTarget, {0}};
+    auto* elseConnection = new Connection{elseTarget, {0}};
+    decide->getConnectionManager()->insertAtPort(0, removedConnection);
+    decide->getConnectionManager()->insertAtPort(2, elseConnection);
+    scene.addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(0),
+        graphicalRemovedTarget->getGraphicalInputPorts().at(0), 0, 0);
+    scene.addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(2),
+        graphicalElseTarget->getGraphicalInputPorts().at(0), 0, 0);
+
+    decide->editConditionRemoveAt(0);
+    unsigned int changedIndex = 0;
+    bool inserted = true;
+    ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
+    EXPECT_EQ(changedIndex, 0u);
+    EXPECT_FALSE(inserted);
+    graphicalDecide->editOutputPort(changedIndex, inserted);
+    Decide::ConditionEdit edit;
+    ASSERT_TRUE(decide->takeConditionEdit(edit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphicalDecide, edit));
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 2);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), elseConnection);
+    EXPECT_EQ(scene.getGraphicalConnections()->size(), 1);
+
+    undoStack.undo();
+    ASSERT_EQ(decide->getConditions()->size(), 2u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 3);
+    ASSERT_NE(decide->getConnectionManager()->getConnectionAtPort(0), nullptr);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0)->component, removedTarget);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), elseConnection);
+    ASSERT_EQ(scene.getGraphicalConnections()->size(), 2);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->at(0))->getDestinationGraphicalComponent(), graphicalElseTarget);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->at(1))->getDestinationGraphicalComponent(), graphicalRemovedTarget);
+
+    undoStack.redo();
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    ASSERT_EQ(graphicalDecide->getGraphicalOutputPorts().size(), 2);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), elseConnection);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), nullptr);
+    ASSERT_EQ(scene.getGraphicalConnections()->size(), 1);
+    EXPECT_EQ(dynamic_cast<GraphicalConnection*>(scene.getGraphicalConnections()->front())->getDestinationGraphicalComponent(), graphicalElseTarget);
+}
+
+TEST(DecideConditionUndo, InsertAndReplaceUndoRedoRestoreOrderedConditionTextAndPorts) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* decide = new Decide(model, "UndoInsertDecide");
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    ASSERT_NE(plugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 800, 600);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(plugin, decide, QPointF(100, 100), Qt::blue);
+    scene.addItem(graphical);
+    scene.getGraphicalModelComponents()->append(graphical);
+
+    decide->editConditionInsertAt(0, "x > 0");
+    unsigned int changedIndex = 0;
+    bool inserted = false;
+    ASSERT_TRUE(decide->takeConditionPortEdit(changedIndex, inserted));
+    graphical->editOutputPort(changedIndex, inserted);
+    Decide::ConditionEdit insertEdit;
+    ASSERT_TRUE(decide->takeConditionEdit(insertEdit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphical, insertEdit));
+    ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+    undoStack.undo();
+    EXPECT_TRUE(decide->getConditions()->empty());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), 1);
+    undoStack.redo();
+    ASSERT_EQ(decide->getConditions()->size(), 1u);
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+
+    decide->editConditionReplaceAt(0, "x >= 0");
+    Decide::ConditionEdit replaceEdit;
+    ASSERT_TRUE(decide->takeConditionEdit(replaceEdit));
+    undoStack.push(new DecideConditionUndoCommand(decide, graphical, replaceEdit));
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x >= 0");
+    undoStack.undo();
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
+    undoStack.redo();
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "x >= 0");
+}
+
+namespace {
+QtProperty* findPropertyByName(QtProperty* property, const QString& name) {
+    if (property == nullptr) return nullptr;
+    if (property->propertyName() == name) return property;
+    for (QtProperty* child : property->subProperties()) {
+        if (QtProperty* found = findPropertyByName(child, name)) return found;
+    }
+    return nullptr;
+}
+
+void openCodeEditor(ObjectPropertyBrowser* browser, const QString& propertyName,
+                    const std::function<void(QDialog*)>& interactWithDialog) {
+    QtProperty* property = nullptr;
+    for (QtProperty* root : browser->properties()) {
+        if ((property = findPropertyByName(root, propertyName)) != nullptr) break;
+    }
+    ASSERT_NE(property, nullptr);
+    const QList<QtBrowserItem*> items = browser->items(property);
+    ASSERT_FALSE(items.isEmpty());
+    browser->setCurrentItem(items.front());
+    QTimer::singleShot(0, browser, [interactWithDialog]() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        ASSERT_NE(dialog, nullptr);
+        interactWithDialog(dialog);
+    });
+    QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(browser, &enter);
+}
+}
+
+TEST(SourceCodePropertyEditor, CancelLeavesTheOriginalCodeUntouched) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* cpp = new CppForG(model, "CancelableCpp");
+    cpp->setOnDispatchEventCode("original\nline");
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, cpp);
+    QApplication::processEvents();
+
+    openCodeEditor(&browser, "OnDispatchEventCode", [](QDialog* dialog) {
+        auto* editor = dialog->findChild<CodeEditor*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        ASSERT_NE(editor, nullptr);
+        ASSERT_NE(buttons, nullptr);
+        editor->setPlainText("discard this");
+        buttons->button(QDialogButtonBox::Cancel)->click();
+    });
+    EXPECT_EQ(cpp->getOnDispatchEventCode(), "original\nline");
+}
+
+TEST(GraphNodePropertyEditor, ExposesTheInheritedNodeNameProperty) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    GraphNode node(model, "EditableNode");
+
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, &node);
+    QApplication::processEvents();
+
+    QtProperty* name = nullptr;
+    for (QtProperty* root : browser.properties()) {
+        if ((name = findPropertyByName(root, QStringLiteral("Name"))) != nullptr) break;
+    }
+    ASSERT_NE(name, nullptr);
+    EXPECT_FALSE(browser.items(name).isEmpty());
+}
+
+TEST(SimulationEventController, StartPauseResumeAndEndKeepAnimationLifecycleConsistent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    QLabel replicationLabel;
+    QProgressBar progressBar;
+    QTableWidget eventsTable;
+    eventsTable.setColumnCount(3);
+    QTableWidget entitiesTable;
+    QTableWidget variablesTable;
+    QTextEdit simulationText;
+    QTextEdit reportsText;
+    QTabWidget centralTabs;
+    QAction graphicalSimulation;
+    QAction animationsEnabled;
+    animationsEnabled.setCheckable(true);
+    animationsEnabled.setChecked(true);
+    bool modelChecked = true;
+    int actionRefreshCount = 0;
+    SimulationEventController controller(
+        &simulator, graphicsView.getScene(), &graphicsView, &replicationLabel, &progressBar,
+        &eventsTable, &entitiesTable, &variablesTable, &simulationText, &reportsText,
+        &centralTabs, &graphicalSimulation, &animationsEnabled, &modelChecked, 0,
+        SimulationEventController::Callbacks{
+            [&actionRefreshCount]() { ++actionRefreshCount; },
+            {}, {}, {}, {}});
+
+    AnimationTransition::setPause(true);
+    AnimationTransition::setRunning(false);
+    controller.onSimulationStartHandler(nullptr);
+    EXPECT_TRUE(AnimationTransition::isRunning());
+    EXPECT_FALSE(AnimationTransition::isPaused());
+
+    controller.onSimulationPausedHandler(nullptr);
+    controller.onSimulationResumeHandler(nullptr);
+    EXPECT_GE(actionRefreshCount, 3);
+
+    AnimationTransition::setPause(true);
+    controller.onSimulationEndHandler(nullptr);
+    EXPECT_FALSE(AnimationTransition::isRunning());
+    EXPECT_FALSE(AnimationTransition::isPaused());
+    EXPECT_FALSE(modelChecked);
+
+    controller.onSimulationStartHandler(nullptr);
+    EXPECT_TRUE(AnimationTransition::isRunning());
+    controller.onSimulationEndHandler(nullptr);
+    EXPECT_FALSE(AnimationTransition::isRunning());
+}
+
+TEST(SimulationEventController, ResumeWithAnimationsDisabledDestroysPausedTransitionsWithoutRestarting) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    QLabel replicationLabel;
+    QProgressBar progressBar;
+    QTableWidget eventsTable;
+    QTableWidget entitiesTable;
+    QTableWidget variablesTable;
+    QTextEdit simulationText;
+    QTextEdit reportsText;
+    QTabWidget centralTabs;
+    QAction graphicalSimulation;
+    QAction animationsEnabled;
+    animationsEnabled.setCheckable(true);
+    animationsEnabled.setChecked(false);
+    bool modelChecked = true;
+    SimulationEventController controller(
+        &simulator, graphicsView.getScene(), &graphicsView, &replicationLabel, &progressBar,
+        &eventsTable, &entitiesTable, &variablesTable, &simulationText, &reportsText,
+        &centralTabs, &graphicalSimulation, &animationsEnabled, &modelChecked, 0,
+        SimulationEventController::Callbacks{[]() {}, {}, {}, {}, {}});
+
+    auto* pausedTransitions = new QList<AnimationTransition*>();
+    pausedTransitions->append(new AnimationTransition(nullptr, nullptr, nullptr, false));
+    graphicsView.getScene()->getAnimationPaused()->insert(nullptr, pausedTransitions);
+    AnimationTransition::setRunning(true);
+    AnimationTransition::setPause(true);
+
+    controller.onSimulationResumeHandler(nullptr);
+
+    EXPECT_TRUE(graphicsView.getScene()->getAnimationPaused()->isEmpty());
+    EXPECT_FALSE(AnimationTransition::isRunning());
+    EXPECT_FALSE(AnimationTransition::isPaused());
+}
+
+TEST(SimulationEventController, RealSimulationCanPauseStepResumeAndRefreshReplications) {
+    class EventBridge {
+    public:
+        SimulationEventController* controller = nullptr;
+        void onStart(SimulationEvent* event) { controller->onSimulationStartHandler(event); }
+        void onReplicationStart(SimulationEvent* event) { controller->onReplicationStartHandler(event); }
+        void onProcess(SimulationEvent* event) { controller->onProcessEventHandler(event); }
+        void onPaused(SimulationEvent* event) { controller->onSimulationPausedHandler(event); }
+        void onResume(SimulationEvent* event) { controller->onSimulationResumeHandler(event); }
+        void onEnd(SimulationEvent* event) { controller->onSimulationEndHandler(event); }
+    };
+
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* entityType = new EntityType(model, "GuiLifecycleEntity");
+    auto* create = new Create(model, "GuiLifecycleCreate");
+    auto* dispose = new Dispose(model, "GuiLifecycleDispose");
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(1);
+    create->connectTo(dispose);
+    model->getSimulation()->setReplicationLength(1.0);
+    model->getSimulation()->setNumberOfReplications(2);
+    model->getSimulation()->setPauseOnEvent(true);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    QLabel replicationLabel;
+    QProgressBar progressBar;
+    QTableWidget eventsTable;
+    eventsTable.setColumnCount(3);
+    QTableWidget entitiesTable;
+    QTableWidget variablesTable;
+    QTextEdit simulationText;
+    QTextEdit reportsText;
+    QTabWidget centralTabs;
+    QAction graphicalSimulation;
+    QAction animationsEnabled;
+    animationsEnabled.setCheckable(true);
+    animationsEnabled.setChecked(true);
+    bool modelChecked = true;
+    int processedEvents = 0;
+    int graphicalRefreshes = 0;
+    SimulationEventController controller(
+        &simulator, graphicsView.getScene(), &graphicsView, &replicationLabel, &progressBar,
+        &eventsTable, &entitiesTable, &variablesTable, &simulationText, &reportsText,
+        &centralTabs, &graphicalSimulation, &animationsEnabled, &modelChecked, 0,
+        SimulationEventController::Callbacks{
+            []() {},
+            [&processedEvents](SimulationEvent*) { ++processedEvents; },
+            [](bool) {}, [](bool) {},
+            [&graphicalRefreshes](SimulationEvent*) { ++graphicalRefreshes; }});
+    EventBridge bridge;
+    bridge.controller = &controller;
+    model->getOnEventManager()->addOnSimulationStartHandler(&bridge, &EventBridge::onStart);
+    model->getOnEventManager()->addOnReplicationStartHandler(&bridge, &EventBridge::onReplicationStart);
+    model->getOnEventManager()->addOnProcessEventHandler(&bridge, &EventBridge::onProcess);
+    model->getOnEventManager()->addOnSimulationPausedHandler(&bridge, &EventBridge::onPaused);
+    model->getOnEventManager()->addOnSimulationResumeHandler(&bridge, &EventBridge::onResume);
+    model->getOnEventManager()->addOnSimulationEndHandler(&bridge, &EventBridge::onEnd);
+
+    model->getSimulation()->start();
+    ASSERT_TRUE(model->getSimulation()->isPaused());
+    ASSERT_EQ(processedEvents, 1);
+    EXPECT_EQ(graphicalRefreshes, 1);
+
+    model->getSimulation()->step();
+    ASSERT_TRUE(model->getSimulation()->isPaused());
+    EXPECT_EQ(processedEvents, 2);
+    EXPECT_EQ(graphicalRefreshes, 2);
+
+    model->getSimulation()->setPauseOnEvent(false);
+    model->getSimulation()->start();
+    EXPECT_FALSE(model->getSimulation()->isRunning());
+    EXPECT_EQ(model->getSimulation()->getCurrentReplicationNumber(), 3u);
+    ASSERT_EQ(eventsTable.rowCount(), 2);
+    ASSERT_NE(eventsTable.item(0, 2), nullptr);
+    ASSERT_NE(eventsTable.item(1, 2), nullptr);
+    EXPECT_TRUE(eventsTable.item(0, 2)->text().startsWith(QStringLiteral("Replication ")));
+    EXPECT_TRUE(eventsTable.item(1, 2)->text().startsWith(QStringLiteral("Replication ")));
+    EXPECT_NE(eventsTable.item(0, 2)->text(), eventsTable.item(1, 2)->text());
+    EXPECT_EQ(processedEvents, 4);
+    EXPECT_EQ(graphicalRefreshes, 4);
+    EXPECT_FALSE(AnimationTransition::isRunning());
+    EXPECT_FALSE(modelChecked);
+}
+
+TEST(SourceCodePropertyEditor, ApplyCommitsCodeWithoutClosingTheEditor) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    auto* cpp = new CppForG(model, "ApplicableCpp");
+    ObjectPropertyBrowser browser;
+    browser.setActiveObject(nullptr, cpp);
+    QApplication::processEvents();
+
+    openCodeEditor(&browser, "OnDispatchEventCode", [](QDialog* dialog) {
+        auto* editor = dialog->findChild<CodeEditor*>();
+        auto* apply = dialog->findChild<QPushButton*>(QString(), Qt::FindDirectChildrenOnly);
+        if (apply == nullptr) {
+            for (QPushButton* button : dialog->findChildren<QPushButton*>()) {
+                if (button->text() == "Apply") { apply = button; break; }
+            }
+        }
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        ASSERT_NE(editor, nullptr);
+        ASSERT_NE(apply, nullptr);
+        ASSERT_NE(buttons, nullptr);
+        editor->setPlainText("applied\nλ");
+        apply->click();
+        EXPECT_EQ(dialog->result(), 0);
+        buttons->button(QDialogButtonBox::Cancel)->click();
+    });
+    EXPECT_EQ(cpp->getOnDispatchEventCode(), "applied\nλ");
+}
 
 namespace {
 
@@ -281,6 +866,65 @@ TEST(GuiGmddLayout, SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRow
     }));
 }
 
+TEST(GuiDiscreteProcessingVisualization, ExtensionConfiguresGenericQueueTracksAndPickStationTrack) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* queue = new Queue(model, "VisualizationQueue");
+    auto* seize = new Seize(model, "VisualizationSeize");
+    (*seize->getAttachedData())[queue->getName()] = queue;
+    Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
+    ASSERT_NE(seizePlugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 800, 600);
+    scene.setSimulator(&simulator);
+    GraphicalModelComponent graphicalSeize(seizePlugin, seize, QPointF(0, 0), Qt::blue);
+    scene.addItem(&graphicalSeize);
+
+    GuiExtensionPluginCatalog::configureComponentVisualization(&graphicalSeize);
+    ASSERT_TRUE(graphicalSeize.hasAnimationTracks());
+    ASSERT_TRUE(graphicalSeize.getAnimationTrackMap()->contains(queue));
+    EXPECT_EQ(graphicalSeize.getAnimationTrackIndex(queue), 0u);
+    EXPECT_EQ(graphicalSeize.getAnimationTrackSize(queue), 0u);
+    ASSERT_TRUE(GuiExtensionPluginCatalog::animateComponentArrival(&scene, &graphicalSeize, true));
+    ASSERT_EQ(graphicalSeize.getAnimationTracks()->at(0)->size(), 1);
+    ASSERT_TRUE(GuiExtensionPluginCatalog::animateComponentDeparture(&scene, &graphicalSeize));
+    EXPECT_TRUE(graphicalSeize.getAnimationTracks()->at(0)->isEmpty());
+
+    auto* pickStation = new PickStation(model, "VisualizationPickStation");
+    Plugin* pickPlugin = pluginManager->find(Util::TypeOf<PickStation>());
+    ASSERT_NE(pickPlugin, nullptr);
+    GraphicalModelComponent graphicalPickStation(pickPlugin, pickStation, QPointF(100, 0), Qt::blue);
+    GuiExtensionPluginCatalog::configureComponentVisualization(&graphicalPickStation);
+    ASSERT_TRUE(graphicalPickStation.hasAnimationTracks());
+    EXPECT_TRUE(graphicalPickStation.getAnimationTrackMap()->isEmpty());
+    ASSERT_EQ(graphicalPickStation.getAnimationTracks()->size(), 1);
+}
+
+TEST(GuiGeneticRendering, RegisteredExtensionProvidesPartAndRegulationGlyphs) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GeneticCircuitPart part(model, "RenderingPart");
+    part.setPartType("Promoter");
+    GeneticRegulation regulation(model, "RenderingRegulation");
+    regulation.setRegulationType("Repression");
+
+    GraphicalModelDataDefinition partItem(nullptr, &part, QPointF(0, 0));
+    GraphicalModelDataDefinition regulationItem(nullptr, &regulation, QPointF(200, 0));
+    const QPainterPath partShape = partItem.shape();
+    const QPainterPath regulationShape = regulationItem.shape();
+    EXPECT_FALSE(partShape.isEmpty());
+    EXPECT_FALSE(regulationShape.isEmpty());
+    EXPECT_LT(partShape.boundingRect().width(), partItem.boundingRect().width());
+    EXPECT_LT(regulationShape.boundingRect().width(), regulationItem.boundingRect().width());
+}
+
 TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsEditable) {
     Simulator simulator;
     PluginManager* pluginManager = simulator.getPluginManager();
@@ -333,18 +977,151 @@ TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsE
         &propertyList,
         &propertyEditorUi,
         &propertyCombo,
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-        {});
+        {}, {}, {}, {}, {}, {});
 
     queueGmdd->setSelected(true);
     controller.sceneSelectionChanged();
 
     EXPECT_TRUE(queueGmdd->isEditableInPropertyEditor());
+}
+
+TEST(GuiGmddLayout, AssignVariableInitialValueIsEditableThroughPropertyEditorAndPersists) {
+    Simulator simulator;
+    auto* plugins = simulator.getPluginManager();
+    ASSERT_NE(plugins, nullptr);
+    plugins->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* assign = new Assign(model, "AssignVariableForEditor");
+    assign->addAssignment(new Assignment(model, "EditorVariable", "1", false));
+    auto* variable = dynamic_cast<Variable*>(
+        model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "EditorVariable"));
+    ASSERT_NE(variable, nullptr);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setShowEditableDataDefinitions(true);
+    scene->setShowSharedDataDefinitions(true);
+    auto* assignPlugin = plugins->find(Util::TypeOf<Assign>());
+    ASSERT_NE(assignPlugin, nullptr);
+    scene->addItem(new GraphicalModelComponent(assignPlugin, assign, QPointF(300, 300), Qt::blue));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+
+    auto* graphicalVariable = findGraphicalDataDefinition(*scene, variable);
+    ASSERT_NE(graphicalVariable, nullptr);
+    ASSERT_TRUE(graphicalVariable->isEditableInPropertyEditor());
+
+    ObjectPropertyBrowser browser;
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    PropertyEditorController controller(&browser, &graphicsView, &propertyEditor,
+        &propertyList, &propertyEditorUi, &propertyCombo, {}, {}, {}, {}, {}, {});
+    graphicalVariable->setSelected(true);
+    controller.sceneSelectionChanged();
+    QApplication::processEvents();
+
+    std::function<QtBrowserItem*(const QList<QtBrowserItem*>&)> findInitialValue =
+        [&](const QList<QtBrowserItem*>& items) -> QtBrowserItem* {
+            for (QtBrowserItem* item : items) {
+                if (item != nullptr && item->property() != nullptr
+                    && item->property()->propertyName() == QStringLiteral("InitialValue")) return item;
+                if (item != nullptr) {
+                    if (auto* child = findInitialValue(item->children())) return child;
+                }
+            }
+            return nullptr;
+        };
+    auto* initialValue = findInitialValue(browser.topLevelItems());
+    ASSERT_NE(initialValue, nullptr);
+    ASSERT_TRUE(initialValue->property()->isEnabled());
+
+    bool dialogEdited = false;
+    QTimer::singleShot(0, [&]() {
+        auto* dialog = qobject_cast<QDialog*>(QApplication::activeModalWidget());
+        if (dialog == nullptr) return;
+        auto* editor = dialog->findChild<QPlainTextEdit*>();
+        auto* buttons = dialog->findChild<QDialogButtonBox*>();
+        if (editor == nullptr || buttons == nullptr) return;
+        editor->setPlainText(QStringLiteral("37.5"));
+        QPushButton* applyButton = nullptr;
+        for (QAbstractButton* button : buttons->buttons()) {
+            if (button->text() == QStringLiteral("Apply")) applyButton = qobject_cast<QPushButton*>(button);
+        }
+        if (applyButton == nullptr || buttons->button(QDialogButtonBox::Ok) == nullptr) return;
+        applyButton->click();
+        dialogEdited = variable->getInitialValuesText() == "37.5";
+        buttons->button(QDialogButtonBox::Ok)->click();
+    });
+    ASSERT_TRUE(QMetaObject::invokeMethod(&browser, "enumValueChanged", Qt::DirectConnection,
+        Q_ARG(QtProperty*, initialValue->property()), Q_ARG(int, 1)));
+    EXPECT_TRUE(dialogEdited);
+    EXPECT_EQ(variable->getInitialValuesText(), "37.5");
+
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    const std::string path = directory.filePath(QStringLiteral("variable-initial-value.gen")).toStdString();
+    ASSERT_TRUE(model->save(path));
+    Simulator restoredSimulator;
+    restoredSimulator.getPluginManager()->autoInsertPlugins();
+    auto* restoredModel = restoredSimulator.getModelManager()->loadModel(path);
+    ASSERT_NE(restoredModel, nullptr);
+    auto* restoredVariable = dynamic_cast<Variable*>(
+        restoredModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "EditorVariable"));
+    ASSERT_NE(restoredVariable, nullptr);
+    EXPECT_EQ(restoredVariable->getInitialValuesText(), "37.5");
+}
+
+TEST(GuiGmddLayout, EFSMNetworkMemberSelectionEnablesStatePropertiesByIdentity) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    EFSMNetwork network(model, "IdentityEditableNetwork");
+    FSMState state(model, "IdentityEditableState");
+    network.addState(&state);
+    ASSERT_TRUE(GuiExtensionPluginCatalog::ownsEditableNetworkDataDefinition(&network, &state));
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setNetworkEditorOwner(&network);
+    scene->setModelLevelFilter(static_cast<unsigned int>(network.getId()));
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+    GraphicalModelDataDefinition* graphicalState = findGraphicalDataDefinition(*scene, &state);
+    ASSERT_NE(graphicalState, nullptr);
+
+    ObjectPropertyBrowser propertyBrowser;
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    PropertyEditorController controller(
+        &propertyBrowser, &graphicsView, &propertyEditor, &propertyList,
+        &propertyEditorUi, &propertyCombo, {}, {}, {}, {}, {}, {});
+
+    graphicalState->setSelected(true);
+    controller.sceneSelectionChanged();
+    QApplication::processEvents();
+    EXPECT_TRUE(graphicalState->isEditableInPropertyEditor());
+    std::function<QtBrowserItem*(const QList<QtBrowserItem*>&)> findProperty =
+        [&](const QList<QtBrowserItem*>& items) -> QtBrowserItem* {
+            for (QtBrowserItem* item : items) {
+                if (item->property()->propertyName() == QStringLiteral("Entry Action Expression")) {
+                    return item;
+                }
+                if (QtBrowserItem* child = findProperty(item->children())) return child;
+            }
+            return nullptr;
+        };
+    QtBrowserItem* entryAction = findProperty(propertyBrowser.topLevelItems());
+    ASSERT_NE(entryAction, nullptr);
+    EXPECT_TRUE(entryAction->property()->isEnabled());
 }
 
 TEST(GuiGmddLayout, ComponentLoadRestoresEditableAuxiliaryItemControlsAndResourceEditability) {
@@ -468,13 +1245,7 @@ TEST(GuiGmddLayout, ComponentLoadRestoresEditableAuxiliaryItemControlsAndResourc
         &propertyList,
         &propertyEditorUi,
         &propertyCombo,
-        {},
-        {},
-        {},
-        {},
-        {},
-        {},
-        {});
+        {}, {}, {}, {}, {}, {});
     scene->clearSelection();
     loadedResourceGmdd->setSelected(true);
     controller.sceneSelectionChanged();
@@ -633,7 +1404,28 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
     scene->getGraphicalModelComponents()->append(graphicalSeize);
     scene->getAllComponents()->append(graphicalSeize);
     ASSERT_NE(graphicalSeize, nullptr);
-    const QString expectedCategoryColor = QColor(Qt::darkGreen).name(QColor::HexRgb);
+    auto* movedDecide = new Decide(model, "Decide_SerializerMove");
+    movedDecide->addConditions("1");
+    movedDecide->addConditions("0");
+    auto* movedTarget = new Dispose(model, "Dispose_SerializerMove");
+    Plugin* decidePlugin = pluginManager->find(Util::TypeOf<Decide>());
+    Plugin* disposePlugin = pluginManager->find(Util::TypeOf<Dispose>());
+    ASSERT_NE(decidePlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+    auto* graphicalDecide = new GraphicalModelComponent(decidePlugin, movedDecide, QPointF(100, 100), Qt::blue);
+    auto* graphicalTarget = new GraphicalModelComponent(disposePlugin, movedTarget, QPointF(400, 100), Qt::blue);
+    scene->addItem(graphicalDecide);
+    scene->addItem(graphicalTarget);
+    scene->getGraphicalModelComponents()->append(graphicalDecide);
+    scene->getGraphicalModelComponents()->append(graphicalTarget);
+    scene->getAllComponents()->append(graphicalDecide);
+    scene->getAllComponents()->append(graphicalTarget);
+    movedDecide->getConnectionManager()->insertAtPort(0, new Connection{movedTarget, {0}});
+    scene->addGraphicalConnection(graphicalDecide->getGraphicalOutputPorts().at(0),
+        graphicalTarget->getGraphicalInputPorts().at(0), 0, 0);
+    movedDecide->moveCondition(0, 1);
+    graphicalDecide->moveOutputPort(0, 1);
+    const QString expectedCategoryColor = graphicalSeize->getColor().name(QColor::HexRgb);
 
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
     auto* queueGmdd = findGraphicalDataDefinition(*scene, queue);
@@ -764,6 +1556,15 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
     GraphicalModelComponent* loadedComponent = findGraphicalComponentByName(*scene, "Seize_Serializer");
     ASSERT_NE(loadedComponent, nullptr);
     EXPECT_EQ(loadedComponent->getColor().name(QColor::HexRgb), expectedCategoryColor);
+    auto* loadedDecide = dynamic_cast<Decide*>(loadedModel->getComponentManager()->find("Decide_SerializerMove"));
+    ASSERT_NE(loadedDecide, nullptr);
+    EXPECT_EQ(loadedDecide->getConditions()->getAtRank(1), "1");
+    ASSERT_NE(loadedDecide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+    EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(1)->component->getName(), "Dispose_SerializerMove");
+    auto* loadedGraphicalDecide = findGraphicalComponentByName(*scene, "Decide_SerializerMove");
+    ASSERT_NE(loadedGraphicalDecide, nullptr);
+    ASSERT_EQ(loadedGraphicalDecide->getGraphicalOutputPorts().at(1)->getConnections()->size(), 1);
+    EXPECT_EQ(loadedGraphicalDecide->getGraphicalOutputPorts().at(1)->getConnections()->front()->getPortSourceConnection(), 1u);
 
     GraphicalModelDataDefinition* loadedQueueGmdd = findGraphicalDataDefinitionByTypeAndName(
         *scene,
@@ -790,6 +1591,245 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
             EXPECT_NEAR(restoredLine.y2(), expectedLine.y2(), 0.5);
         }
     }
+}
+
+// Regression coverage for the GUI model save/load bug investigation: the
+// existing SerializerRoundTrip* tests above use exactly one Queue + one
+// Seize, with no "next" connections and no cross-component shared
+// reference -- the two scenarios that most plausibly explain a complex,
+// long-edited model failing to reload correctly. This test exercises a
+// small but genuinely "complex" model (two components, a next connection,
+// and a Resource referenced by both) through the real file-based
+// saveGraphicalModel/loadGraphicalModel path.
+TEST(GuiGmddLayout, SerializerRoundTripRestoresConnectedComponentsAndSharedReference) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue* queue = new Queue(model, "Queue_Complex");
+    Resource* resource = new Resource(model, "Resource_Complex");
+    auto* memberResource = new Resource(model, "SetMember_Complex");
+    auto* resourceSet = new Set(model, "ResourceSet_Complex");
+    resourceSet->addElementSet(memberResource);
+    Seize* seize = new Seize(model, "Seize_Complex");
+    Release* release = new Release(model, "Release_Complex");
+    auto* sharedSignalData = new SignalData(model, "SignalData_Complex");
+    auto* wait = new Wait(model, "Wait_Complex");
+    auto* signal = new Signal(model, "Signal_Complex");
+    ASSERT_NE(queue, nullptr);
+    ASSERT_NE(resource, nullptr);
+    ASSERT_NE(seize, nullptr);
+    ASSERT_NE(release, nullptr);
+    ASSERT_NE(sharedSignalData, nullptr);
+    ASSERT_NE(wait, nullptr);
+    ASSERT_NE(signal, nullptr);
+
+    wait->setWaitType(Wait::WaitType::WaitForSignal);
+    wait->setQueue(queue);
+    wait->setSignalData(sharedSignalData);
+    signal->setSignalData(sharedSignalData);
+
+    seize->setQueueableItem(new QueueableItem(queue));
+    seize->addRequest(new SeizableItem(resource));
+    release->addReleaseRequests(new SeizableItem(resource));
+    seize->addRequest(new SeizableItem(resourceSet));
+    release->addReleaseRequests(new SeizableItem(resourceSet));
+    seize->connectTo(release, 0);
+    ModelDataDefinition::CreateInternalData(seize);
+    ModelDataDefinition::CreateInternalData(release);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    QUndoStack undoStack;
+    scene->setUndoStack(&undoStack);
+    scene->setShowEditableDataDefinitions(true);
+    scene->setShowStatisticsDataDefinitions(true);
+    scene->setShowSharedDataDefinitions(true);
+    scene->setShowRecursiveDataDefinitions(true);
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    scene->setPropertyEditor(&propertyEditor);
+    scene->setPropertyList(&propertyList);
+    scene->setPropertyEditorUI(&propertyEditorUi);
+    scene->setComboBox(&propertyCombo);
+
+    Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
+    Plugin* releasePlugin = pluginManager->find(Util::TypeOf<Release>());
+    Plugin* waitPlugin = pluginManager->find(Util::TypeOf<Wait>());
+    Plugin* signalPlugin = pluginManager->find(Util::TypeOf<Signal>());
+    ASSERT_NE(seizePlugin, nullptr);
+    ASSERT_NE(releasePlugin, nullptr);
+    ASSERT_NE(waitPlugin, nullptr);
+    ASSERT_NE(signalPlugin, nullptr);
+    auto* graphicalSeize = new GraphicalModelComponent(seizePlugin, seize, QPointF(400.0, 400.0), QColor("#336699"));
+    auto* graphicalRelease = new GraphicalModelComponent(releasePlugin, release, QPointF(700.0, 400.0), QColor("#884422"));
+    auto* graphicalWait = new GraphicalModelComponent(waitPlugin, wait, QPointF(400.0, 700.0), QColor("#336699"));
+    auto* graphicalSignal = new GraphicalModelComponent(signalPlugin, signal, QPointF(700.0, 700.0), QColor("#884422"));
+    scene->addItem(graphicalSeize);
+    scene->getGraphicalModelComponents()->append(graphicalSeize);
+    scene->getAllComponents()->append(graphicalSeize);
+    scene->addItem(graphicalRelease);
+    scene->getGraphicalModelComponents()->append(graphicalRelease);
+    scene->getAllComponents()->append(graphicalRelease);
+    scene->addItem(graphicalWait);
+    scene->getGraphicalModelComponents()->append(graphicalWait);
+    scene->getAllComponents()->append(graphicalWait);
+    scene->addItem(graphicalSignal);
+    scene->getGraphicalModelComponents()->append(graphicalSignal);
+    scene->getAllComponents()->append(graphicalSignal);
+
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+
+    QPlainTextEdit modelTextEditor;
+    modelTextEditor.setPlainText(QString::fromStdString(model->showLanguage()));
+    QTextEdit console;
+    QSlider zoomSlider;
+    zoomSlider.setRange(10, 400);
+    zoomSlider.setValue(100);
+    QAction actionShowGrid;
+    QAction actionShowRule;
+    QAction actionShowSnap;
+    QAction actionShowGuides;
+    QAction actionShowInternalElements;
+    QAction actionShowEditableElements;
+    QAction actionShowAttachedElements;
+    QAction actionShowRecursiveElements;
+    actionShowGrid.setCheckable(true);
+    actionShowRule.setCheckable(true);
+    actionShowSnap.setCheckable(true);
+    actionShowGuides.setCheckable(true);
+    actionShowInternalElements.setCheckable(true);
+    actionShowEditableElements.setCheckable(true);
+    actionShowAttachedElements.setCheckable(true);
+    actionShowRecursiveElements.setCheckable(true);
+    actionShowGrid.setChecked(true);
+    actionShowRule.setChecked(true);
+    actionShowInternalElements.setChecked(true);
+    actionShowEditableElements.setChecked(true);
+    actionShowAttachedElements.setChecked(true);
+    actionShowRecursiveElements.setChecked(true);
+    QString modelFilename;
+    std::map<std::string, QColor> pluginCategoryColor;
+    GraphicalModelBuilder builder(&simulator, &graphicsView, scene, &pluginCategoryColor, &console);
+
+    auto clearSceneForReload = [&]() {
+        scene->grid()->clear();
+        scene->clearGraphicalModelConnections();
+        scene->clearGraphicalModelComponents();
+        scene->clearGraphicalDiagramConnections();
+        scene->clearGraphicalModelDataDefinitions();
+        scene->clearAnimations();
+        scene->clear();
+        scene->getGraphicalModelComponents()->clear();
+        scene->getGraphicalConnections()->clear();
+        scene->getGraphicalModelDataDefinitions()->clear();
+        scene->getGraphicalDiagramsConnections()->clear();
+        scene->getAllComponents()->clear();
+        scene->getAllConnections()->clear();
+        scene->getAllDataDefinitions()->clear();
+        scene->getAllGraphicalDiagramsConnections()->clear();
+    };
+
+    GraphicalModelSerializer serializer(&simulator,
+                                        &graphicsView,
+                                        &modelTextEditor,
+                                        &graphicsView,
+                                        &zoomSlider,
+                                        &actionShowGrid,
+                                        &actionShowRule,
+                                        &actionShowSnap,
+                                        &actionShowGuides,
+                                        &actionShowInternalElements,
+                                        &actionShowEditableElements,
+                                        &actionShowAttachedElements,
+                                        &actionShowRecursiveElements,
+                                        &console,
+                                        &modelFilename,
+                                        clearSceneForReload,
+                                        [&]() { builder.generateGraphicalModelFromModel(); },
+                                        [&]() {
+                                            scene->setShowStatisticsDataDefinitions(actionShowInternalElements.isChecked());
+                                            scene->requestGraphicalDataDefinitionsSync();
+                                        },
+                                        [&]() {
+                                            scene->setShowEditableDataDefinitions(actionShowEditableElements.isChecked());
+                                            scene->requestGraphicalDataDefinitionsSync();
+                                        },
+                                        [&]() {
+                                            scene->setShowSharedDataDefinitions(actionShowAttachedElements.isChecked());
+                                            scene->requestGraphicalDataDefinitionsSync();
+                                        });
+
+    QTemporaryDir temporaryDir;
+    ASSERT_TRUE(temporaryDir.isValid());
+    const QString guiFilename = temporaryDir.filePath("complex_round_trip.gui");
+    ASSERT_TRUE(serializer.saveGraphicalModel(guiFilename));
+
+    Model* loadedModel = serializer.loadGraphicalModel(guiFilename.toStdString());
+    ASSERT_NE(loadedModel, nullptr);
+    QApplication::processEvents();
+
+    Seize* loadedSeize = dynamic_cast<Seize*>(loadedModel->getComponentManager()->find("Seize_Complex"));
+    Release* loadedRelease = dynamic_cast<Release*>(loadedModel->getComponentManager()->find("Release_Complex"));
+    auto* loadedWait = dynamic_cast<Wait*>(loadedModel->getComponentManager()->find("Wait_Complex"));
+    auto* loadedSignal = dynamic_cast<Signal*>(loadedModel->getComponentManager()->find("Signal_Complex"));
+    ASSERT_NE(loadedSeize, nullptr);
+    ASSERT_NE(loadedRelease, nullptr);
+    ASSERT_NE(loadedWait, nullptr);
+    ASSERT_NE(loadedSignal, nullptr);
+
+    // The "next" transfer connection between the two top-level components must survive.
+    ASSERT_GT(loadedSeize->getConnectionManager()->size(), 0u);
+    EXPECT_EQ(loadedSeize->getConnectionManager()->getFrontConnection()->component, loadedRelease);
+
+    // Both components reference the SAME Resource, not two independently-fabricated ones.
+    ASSERT_NE(loadedSeize->getQueueableItem(), nullptr);
+    EXPECT_NE(loadedSeize->getQueueableItem()->getQueue(), nullptr);
+    ASSERT_EQ(loadedSeize->getSeizeRequests()->size(), 2u);
+    ASSERT_EQ(loadedRelease->getReleaseRequests()->size(), 2u);
+    Resource* seizeResource = loadedSeize->getSeizeRequests()->list()->front()->getResource();
+    Resource* releaseResource = loadedRelease->getReleaseRequests()->list()->front()->getResource();
+    ASSERT_NE(seizeResource, nullptr);
+    ASSERT_NE(releaseResource, nullptr);
+    EXPECT_EQ(seizeResource, releaseResource);
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Resource>())->size(), 2u);
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), 1u);
+    EXPECT_NE(loadedWait->getSignalData(), nullptr);
+    EXPECT_EQ(loadedWait->getSignalData(), loadedSignal->getSignalData());
+    EXPECT_EQ(loadedWait->getSignalData()->getName(), "SignalData_Complex");
+    ASSERT_NE(loadedWait->getQueue(), nullptr);
+    EXPECT_EQ(loadedWait->getQueue()->getName(), "Queue_Complex");
+    auto* loadedSet = loadedSeize->getSeizeRequests()->getAtRank(1)->getSet();
+    ASSERT_NE(loadedSet, nullptr);
+    EXPECT_EQ(loadedSet, loadedRelease->getReleaseRequests()->getAtRank(1)->getSet());
+    ASSERT_EQ(loadedSet->getElementSet()->size(), 1u);
+    auto* gset = findGraphicalDataDefinition(*scene, loadedSet);
+    auto* member = findGraphicalDataDefinition(*scene, loadedSet->getElementSet()->getAtRank(0));
+    ASSERT_NE(gset, nullptr);
+    ASSERT_NE(member, nullptr);
+    QGraphicsItem* gs = nullptr;
+    QGraphicsItem* gr = nullptr;
+    for (auto* component : scene->graphicalModelComponentItems()) {
+        if (component->getComponent() == loadedSeize) gs = component;
+        if (component->getComponent() == loadedRelease) gr = component;
+    }
+    ASSERT_NE(gs, nullptr);
+    ASSERT_NE(gr, nullptr);
+    EXPECT_NE(findDiagramConnection(*scene, gset, gs), nullptr);
+    EXPECT_NE(findDiagramConnection(*scene, gset, gr), nullptr);
+    EXPECT_NE(findDiagramConnection(*scene, member, gset), nullptr);
+    EXPECT_EQ(findDiagramConnection(*scene, member, gs), nullptr);
+    EXPECT_EQ(findDiagramConnection(*scene, member, gr), nullptr);
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), 1u);
+    EXPECT_EQ(loadedModel->getDataManager()->getDataDefinitionList(Util::TypeOf<SignalData>())->size(), 1u);
 }
 
 TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
@@ -893,6 +1933,12 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
     scene->insertOldPositionItem(graphicalSeize, graphicalSeize->pos());
     scene->insertOldPositionItem(textItem, textItem->pos());
     scene->insertComponentGroup(group, QList<GraphicalModelComponent*>({graphicalSeize}));
+
+    auto* emptyGroup = new QGraphicsItemGroup();
+    emptyGroup->setHandlesChildEvents(false);
+    scene->addItem(emptyGroup);
+    scene->getGraphicalGroups()->append(emptyGroup);
+    scene->insertOldPositionItem(emptyGroup, emptyGroup->pos());
 
     QPlainTextEdit modelTextEditor;
     modelTextEditor.setPlainText(QString::fromStdString(model->showLanguage()));
@@ -1091,6 +2137,160 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresViewStateGeometriesAndGroups) {
         }
     }
     EXPECT_TRUE(foundGroupWithLoadedComponentAndText);
+
+    bool foundEmptyGroup = false;
+    for (QGraphicsItemGroup* graphicalGroup : *scene->getGraphicalGroups()) {
+        if (graphicalGroup != nullptr && graphicalGroup->childItems().isEmpty()) {
+            foundEmptyGroup = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundEmptyGroup);
+}
+
+TEST(BioReactionContextMenuExtension, RegistersAndRejectsUnrelatedSelection) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+    GuiExtensionRegistry registry;
+    extension->registerContributions(&registry);
+    ASSERT_EQ(registry.contextMenus().size(), 1u);
+    const auto& contribution = registry.contextMenus().front();
+    EXPECT_EQ(contribution.id, "gui.bio.reaction.link-context");
+
+    GuiExtensionRuntimeContext context;
+    EXPECT_FALSE(contribution.isVisible(context, nullptr));
+    QMenu emptyMenu;
+    contribution.populate(&emptyMenu, context, nullptr);
+    EXPECT_TRUE(emptyMenu.actions().isEmpty());
+
+    ModelGraphicsScene scene(0, 0, 640, 480);
+    context.graphicsScene = &scene;
+    EXPECT_FALSE(contribution.isVisible(context, nullptr));
+}
+
+TEST(BioReactionContextMenuExtension, CreatesContextActionsAndDoesNotDuplicateRelations) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+    GuiExtensionRegistry registry;
+    extension->registerContributions(&registry);
+    ASSERT_EQ(registry.contextMenus().size(), 1u);
+    const auto& contribution = registry.contextMenus().front();
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BioReaction reaction(model, "ContextReaction");
+    BioSpecies species(model, "ContextSpecies");
+    ModelGraphicsScene scene(0, 0, 640, 480);
+    auto* reactionItem = new GraphicalModelDataDefinition(nullptr, &reaction, QPointF(80, 80));
+    auto* speciesItem = new GraphicalModelDataDefinition(nullptr, &species, QPointF(290, 80));
+    scene.addItem(reactionItem);
+    scene.addItem(speciesItem);
+    reactionItem->setSelected(true);
+    speciesItem->setSelected(true);
+
+    GuiExtensionRuntimeContext context;
+    context.graphicsScene = &scene;
+    ASSERT_TRUE(contribution.isVisible(context, reactionItem));
+
+    QMenu menu;
+    contribution.populate(&menu, context, reactionItem);
+    ASSERT_EQ(menu.actions().size(), 1);
+    QMenu* relationMenu = menu.actions().front()->menu();
+    ASSERT_NE(relationMenu, nullptr);
+    EXPECT_EQ(relationMenu->title(), QStringLiteral("Biochemical Relation"));
+    const QList<QAction*> actions = relationMenu->actions();
+    ASSERT_EQ(actions.size(), 3);
+    actions.at(0)->trigger();
+    actions.at(0)->trigger();
+    actions.at(1)->trigger();
+    actions.at(2)->trigger();
+    ASSERT_EQ(reaction.getReactants().size(), 1u);
+    ASSERT_EQ(reaction.getProducts().size(), 1u);
+    ASSERT_EQ(reaction.getModifiers().size(), 1u);
+    EXPECT_EQ(reaction.getReactants().front().speciesName, species.getName());
+    EXPECT_EQ(reaction.getProducts().front().speciesName, species.getName());
+    EXPECT_EQ(reaction.getModifiers().front(), species.getName());
+
+    speciesItem->setSelected(false);
+    EXPECT_FALSE(contribution.isVisible(context, reactionItem));
+    QMenu unrelatedMenu;
+    contribution.populate(&unrelatedMenu, context, reactionItem);
+    EXPECT_TRUE(unrelatedMenu.actions().isEmpty());
+}
+
+TEST(BioReactionContextMenuExtension, ManagerUsesCurrentSceneAfterContextSwitch) {
+    const GuiExtensionPlugin* extension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.bio.reaction.context") {
+            extension = plugin;
+            break;
+        }
+    }
+    ASSERT_NE(extension, nullptr);
+
+    QMainWindow mainWindow;
+    GuiExtensionManager manager(&mainWindow);
+    manager.setPlugins({extension});
+    manager.setLoadedModelPluginIds({"BioReaction", "BioSpecies"});
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BioReaction reactionInFirstScene(model, "FirstSceneReaction");
+    BioSpecies speciesInFirstScene(model, "FirstSceneSpecies");
+    BioReaction reactionInSecondScene(model, "SecondSceneReaction");
+    BioSpecies speciesInSecondScene(model, "SecondSceneSpecies");
+
+    ModelGraphicsScene firstScene(0, 0, 640, 480);
+    auto* firstReactionItem = new GraphicalModelDataDefinition(nullptr, &reactionInFirstScene, QPointF(80, 80));
+    auto* firstSpeciesItem = new GraphicalModelDataDefinition(nullptr, &speciesInFirstScene, QPointF(290, 80));
+    firstScene.addItem(firstReactionItem);
+    firstScene.addItem(firstSpeciesItem);
+    firstReactionItem->setSelected(true);
+    firstSpeciesItem->setSelected(true);
+
+    ModelGraphicsScene secondScene(0, 0, 640, 480);
+    auto* secondReactionItem = new GraphicalModelDataDefinition(nullptr, &reactionInSecondScene, QPointF(80, 80));
+    auto* secondSpeciesItem = new GraphicalModelDataDefinition(nullptr, &speciesInSecondScene, QPointF(290, 80));
+    secondScene.addItem(secondReactionItem);
+    secondScene.addItem(secondSpeciesItem);
+
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.mainWindow = &mainWindow;
+    context.graphicsScene = &firstScene;
+    manager.rebuild(context);
+
+    QMenu firstMenu;
+    manager.populateContextMenu(&firstMenu, firstReactionItem);
+    ASSERT_EQ(firstMenu.actions().size(), 1);
+
+    context.graphicsScene = &secondScene;
+    manager.refreshActionStates(context);
+    QMenu emptySecondMenu;
+    manager.populateContextMenu(&emptySecondMenu, secondReactionItem);
+    EXPECT_TRUE(emptySecondMenu.actions().isEmpty());
+
+    secondReactionItem->setSelected(true);
+    secondSpeciesItem->setSelected(true);
+    manager.refreshActionStates(context);
+    QMenu secondMenu;
+    manager.populateContextMenu(&secondMenu, secondReactionItem);
+    ASSERT_EQ(secondMenu.actions().size(), 1);
+    EXPECT_EQ(secondMenu.actions().front()->text(), QStringLiteral("Biochemical Relation"));
 }
 
 int main(int argc, char** argv) {
@@ -1098,4 +2298,210 @@ int main(int argc, char** argv) {
     QApplication app(argc, argv);
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
+}
+
+namespace {
+struct CaptionComponent : GraphicalModelComponent {
+    using GraphicalModelComponent::GraphicalModelComponent;
+    using GraphicalModelComponent::renderContext;
+};
+struct CaptionDefinition : GraphicalModelDataDefinition {
+    using GraphicalModelDataDefinition::GraphicalModelDataDefinition;
+    using GraphicalModelDataDefinition::renderContext;
+};
+}
+TEST(GuiGmddLayout, ObjectCaptionsPreferLabelAndReadLiveProperties) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    auto* model = simulator.getModelManager()->newModel();
+    auto* component = new Create(model, "Create_caption");
+    auto* definition = new Resource(model, "Resource_caption");
+    CaptionComponent gc(simulator.getPluginManager()->find("Create"), component, QPointF(), Qt::blue);
+    CaptionDefinition gd(nullptr, definition, QPointF());
+    for (const auto& label : {std::string("Customer arrivals"), std::string(300, 'L'), std::string()}) {
+        component->setLabel(label);
+        definition->setLabel(label);
+        auto cc = gc.renderContext();
+        auto dc = gd.renderContext();
+        EXPECT_EQ(cc.primaryText.toStdString(), label.empty() ? component->getName() : label);
+        EXPECT_EQ(dc.primaryText.toStdString(), label.empty() ? definition->getName() : label);
+        EXPECT_EQ(cc.secondaryText.toStdString(), label.empty() ? "" : component->getName());
+        EXPECT_EQ(dc.secondaryText.toStdString(), label.empty() ? "" : definition->getName());
+        EXPECT_EQ(dc.semanticClassName.toStdString(), definition->getClassname());
+    }
+    component->setName("UpdatedCaptionName");
+    EXPECT_EQ(gc.renderContext().primaryText, "UpdatedCaptionName");
+}
+
+namespace {
+int associationCount(ModelGraphicsScene& scene, QGraphicsItem* child, QGraphicsItem* parent,
+                     GraphicalDiagramConnection::ConnectionType type = GraphicalDiagramConnection::ConnectionType::ATTACHED) {
+    int count = 0;
+    for (auto* item : *scene.getGraphicalDiagramsConnections()) {
+        auto* edge = dynamic_cast<GraphicalDiagramConnection*>(item);
+        if (edge && edge->getDataDefinition() == child && edge->getLinkedDataDefinition() == parent && edge->getConnectionType() == type) ++count;
+    }
+    return count;
+}
+}
+TEST(GuiGmddLayout, SetAssociationsStayDirectAcrossUpdatesAndExplicitRequests) {
+    Simulator simulator;
+    auto* plugins = simulator.getPluginManager();
+    plugins->autoInsertPlugins();
+    auto* model = simulator.getModelManager()->newModel();
+    std::vector<Resource*> resources;
+    for (int i = 0; i < 4; ++i) resources.push_back(new Resource(model, "Processor" + std::to_string(i)));
+    auto* set = new Set(model, "Processors");
+    for (auto* r : resources) set->addElementSet(r);
+    auto* queue = new Queue(model, "WaitingQueue");
+    auto* seize = new Seize(model, "SeizeSet");
+    auto* release = new Release(model, "ReleaseSet");
+    seize->setQueue(queue);
+    auto* request = new SeizableItem(set);
+    seize->addRequest(request);
+    release->addReleaseRequests(new SeizableItem(set));
+    ModelDataDefinition::CreateInternalData(seize);
+    ModelDataDefinition::CreateInternalData(release);
+    ModelDataDefinition::CreateInternalData(set);
+    // Exercise both Set attachment aliases and the property-list source.
+    std::string errors;
+    ModelDataDefinition::Check(set, errors);
+    ModelGraphicsScene scene(0, 0, 3000, 3000);
+    scene.setSimulator(&simulator);
+    scene.setShowEditableDataDefinitions(true);
+    scene.setShowSharedDataDefinitions(true);
+    scene.setShowStatisticsDataDefinitions(false);
+    scene.setShowRecursiveDataDefinitions(true);
+    auto* gs = new GraphicalModelComponent(plugins->find("Seize"), seize, QPointF(800,800), Qt::blue);
+    scene.addItem(gs);
+    auto* gr = new GraphicalModelComponent(plugins->find("Release"), release, QPointF(1200,800), Qt::blue);
+    scene.addItem(gr);
+    auto sync = [&] { GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene); };
+    sync();
+    auto* gset = findGraphicalDataDefinition(scene, set);
+    ASSERT_NE(gset, nullptr);
+    const auto position = gset->pos();
+    for (int round = 0; round < 2; ++round) {
+        sync();
+        EXPECT_EQ(associationCount(scene, gset, gs), 1);
+        EXPECT_EQ(associationCount(scene, gset, gr), 1);
+        EXPECT_EQ(gset->pos(), position);
+        for (auto* r : resources) {
+            auto* graphic = findGraphicalDataDefinition(scene, r);
+            ASSERT_NE(graphic, nullptr);
+            EXPECT_EQ(associationCount(scene, graphic, gset), 1);
+            EXPECT_EQ(associationCount(scene, graphic, gs), 0);
+            EXPECT_EQ(associationCount(scene, graphic, gr), 0);
+        }
+    }
+    // An independent direct request to a member must survive, without duplicate edges.
+    seize->addRequest(new SeizableItem(resources[0]));
+    seize->addRequest(new SeizableItem(resources[0]));
+    release->addReleaseRequests(new SeizableItem(resources[1]));
+    ModelDataDefinition::CreateInternalData(seize);
+    ModelDataDefinition::CreateInternalData(release);
+    sync();
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, resources[0]), gs), 1);
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, resources[1]), gr), 1);
+    auto* added = new Resource(model, "AddedProcessor");
+    set->addElementSet(added);
+    ModelDataDefinition::CreateInternalData(set);
+    sync();
+    auto* ga = findGraphicalDataDefinition(scene, added);
+    ASSERT_NE(ga, nullptr);
+    EXPECT_EQ(associationCount(scene, ga, gset), 1);
+    EXPECT_EQ(associationCount(scene, ga, gs), 0);
+    set->removeElementSet(added);
+    ModelDataDefinition::CreateInternalData(set);
+    ModelDataDefinition::Check(set, errors);
+    sync();
+    EXPECT_EQ(findGraphicalDataDefinition(scene, added), nullptr);
+    EXPECT_NE(findDiagramConnection(scene, findGraphicalDataDefinition(scene, queue), gs), nullptr);
+    request->setResource(resources[2]);
+    ModelDataDefinition::CreateInternalData(seize);
+    sync();
+    EXPECT_EQ(associationCount(scene, gset, gs), 0);
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, resources[2]), gs), 1);
+    EXPECT_EQ(associationCount(scene, gset, gr), 1);
+    scene.setShowEditableDataDefinitions(false);
+    scene.setShowSharedDataDefinitions(false);
+    sync();
+    EXPECT_EQ(findGraphicalDataDefinition(scene, set), nullptr);
+    scene.setShowEditableDataDefinitions(true);
+    scene.setShowSharedDataDefinitions(true);
+    sync();
+    ASSERT_NE(findGraphicalDataDefinition(scene, set), nullptr);
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, set), gs), 0);
+    EXPECT_EQ(associationCount(scene, findGraphicalDataDefinition(scene, set), gr), 1);
+}
+
+TEST(GuiGmddLayout, BuilderPreservesConvergentEdgesCyclesAndMultipleSources) {
+    for (bool cycle : {false, true}) {
+        Simulator simulator;
+        simulator.getPluginManager()->autoInsertPlugins();
+        auto* model = simulator.getModelManager()->newModel();
+        auto* c1 = new Create(model, "SourceA");
+        auto* c2 = new Create(model, "SourceB");
+        auto* decide = new Decide(model, "Branches");
+        decide->addConditions("1"); decide->addConditions("0");
+        auto* a = new Assign(model, "AssignA");
+        auto* b = new Assign(model, "AssignB");
+        auto* c = new Assign(model, "AssignC");
+        auto* seize = new Seize(model, "SharedSeize");
+        auto* sink = new Dispose(model, "Sink");
+        auto* queue = new Queue(model, "Queue");
+        auto* resource = new Resource(model, "Resource");
+        seize->setQueue(queue); seize->addRequest(new SeizableItem(resource));
+        for (auto* assign : {a,b,c}) assign->getAssignments()->insert(new Assignment(model, "branch", "1"));
+        c1->connectTo(decide); c2->connectTo(decide);
+        decide->getConnectionManager()->insertAtPort(0,new Connection{a,{0}});
+        decide->getConnectionManager()->insertAtPort(1,new Connection{b,{0}});
+        decide->getConnectionManager()->insertAtPort(2,new Connection{c,{0}});
+        a->connectTo(seize); b->connectTo(seize,1); c->connectTo(seize,2);
+        seize->connectTo(cycle ? static_cast<ModelComponent*>(decide) : sink);
+        if (!cycle) EXPECT_TRUE(model->check());
+        ModelGraphicsView view;
+        view.setSimulator(&simulator);
+        auto* scene = view.getScene();
+        QUndoStack undo;
+        scene->setUndoStack(&undo);
+        PropertyEditorGenesys editor;
+        std::map<SimulationControl*, DataComponentProperty*> properties;
+        std::map<SimulationControl*, DataComponentEditor*> editors;
+        std::map<SimulationControl*, ComboBoxEnum*> combos;
+        scene->setPropertyEditor(&editor); scene->setPropertyList(&properties);
+        scene->setPropertyEditorUI(&editors); scene->setComboBox(&combos);
+        QTextEdit console;
+        std::map<std::string,QColor> colors;
+        GraphicalModelBuilder builder(&simulator,&view,scene,&colors,&console);
+        builder.generateGraphicalModelFromModel();
+        EXPECT_EQ(scene->graphicalModelComponentItems().size(), 8);
+        ASSERT_EQ(scene->getGraphicalConnections()->size(), 9);
+        for (auto* component : *model->getComponentManager()->getAllComponents()) {
+            for (auto& [port, connection] : *component->getConnectionManager()->connections()) {
+                int count=0;
+                for (auto* item : *scene->getGraphicalConnections()) {
+                    auto* edge = dynamic_cast<GraphicalConnection*>(item);
+                    ASSERT_NE(edge, nullptr);
+                    if (edge->getSourceGraphicalComponent()->getComponent()==component &&
+                        edge->getDestinationGraphicalComponent()->getComponent()==connection->component &&
+                        edge->getPortSourceConnection()==port && edge->getPortDestinationConnection()==connection->channel.portNumber) ++count;
+                }
+                EXPECT_EQ(count,1) << component->getName() << ":" << port;
+            }
+        }
+    }
+}
+
+TEST(GuiGmddLayout, GridVisibilityMatchesActualLinesAndSurvivesRecreation) {
+    ModelGraphicsScene scene(0,0,1000,1000);
+    for (bool value : {true,false,true,true,false}) {
+        scene.setGridVisible(value);
+        EXPECT_EQ(scene.isGridVisible(),value);
+        ASSERT_FALSE(scene.grid()->lines->empty());
+        for (auto* line : *scene.grid()->lines) EXPECT_EQ(line->isVisible(),value);
+    }
+    scene.showGrid();
+    EXPECT_TRUE(scene.isGridVisible());
+    for (auto* line : *scene.grid()->lines) EXPECT_TRUE(line->isVisible());
 }

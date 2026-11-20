@@ -131,6 +131,7 @@ bool BioRunnerCommand::_check(std::string& errorMessage) {
 // void BioRunnerCommand::_createAttachedAttributes() {}
 
 void BioRunnerCommand::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "BioRunnerCommand invokes its configured biochemical runner", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_runner == nullptr) {

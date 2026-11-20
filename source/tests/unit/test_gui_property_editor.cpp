@@ -1,0 +1,3428 @@
+#include <gtest/gtest.h>
+#include <vector>
+#ifdef __linux__
+#include <sys/inotify.h>
+#include <unistd.h>
+#endif
+
+#include "mainwindow.h"
+#include "actions/AddUndoCommand.h"
+#include "actions/DeleteUndoCommand.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
+#include "graphicals/ModelGraphicsView.h"
+#include "graphicals/ModelGraphicsScene.h"
+#include "graphicals/GraphicalConnection.h"
+#include "graphicals/GraphicalModelComponent.h"
+#include "propertyeditor/ObjectPropertyBrowser.h"
+#include "extensions/GuiExtensionManager.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
+#include "propertyeditor/qtpropertybrowser/qtvariantproperty.h"
+#include "services/ModelLanguageSynchronizer.h"
+
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/model/Model.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/AI/AIAssistant.h"
+#include "plugins/components/Continuous/ContinuousSystemComponent.h"
+#include "plugins/components/Continuous/DiffEquations.h"
+#include "plugins/components/Continuous/LSODE.h"
+#include "plugins/components/ModalModel/ModalModel.h"
+#include "plugins/components/ModalModel/FSMState.h"
+#include "plugins/data/ModalModel/GraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedGraphNetwork.h"
+#include "plugins/data/ModalModel/DirectedAcyclicGraphNetwork.h"
+#include "plugins/data/ModalModel/MarkovChainNetwork.h"
+#include "plugins/data/ModalModel/ColoredPetriNetNetwork.h"
+#include "plugins/components/Template/TemplateComponent.h"
+#include "plugins/components/ExternalIntegration/PythonForG.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
+#include "plugins/components/ExternalIntegration/RSimulator.h"
+#include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/Transfer/PickStation.h"
+#include "plugins/components/Transfer/Enter.h"
+#include "plugins/components/InputOutput/Write.h"
+#include "plugins/components/Synchronization/Match.h"
+#include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
+#include "plugins/components/Synchronization/Signal.h"
+#include "plugins/components/Synchronization/Wait.h"
+#include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
+#include "plugins/data/BiochemicalSimulation/BioNetwork.h"
+#include "plugins/data/BiochemicalSimulation/GroProgram.h"
+#include "plugins/data/Synchronization/SignalData.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
+#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Failure.h"
+#include "plugins/data/Logic/Set.h"
+#include "plugins/data/AI/AISupport.h"
+#include "plugins/data/Continuous/ODESolver.h"
+#include "plugins/data/ExternalIntegration/CppCompiler.h"
+#include "plugins/data/ExternalIntegration/SPICERunner.h"
+#include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
+#include "plugins/data/Template/TemplateDataDefinition.h"
+#include "plugins/data/ModalModel/EFSMNetwork.h"
+#include "plugins/data/Grouping/EntityGroup.h"
+#include "plugins/data/Transfer/Station.h"
+
+#include <functional>
+
+#include <QApplication>
+#include <QCheckBox>
+#include <QComboBox>
+#include <QContextMenuEvent>
+#include <QCoreApplication>
+#include <QDir>
+#include <QDoubleSpinBox>
+#include <QEventLoop>
+#include <QFile>
+#include <QFocusEvent>
+#include <QKeyEvent>
+#include <QLineEdit>
+#include <QMenu>
+#include <QMessageBox>
+#include <QLocale>
+#include <QPlainTextEdit>
+#include <QSet>
+#include <QSpinBox>
+#include <QStandardItemModel>
+#include <QString>
+#include <QTabWidget>
+#include <QTimer>
+#include <QTemporaryDir>
+#include <QUndoStack>
+
+namespace {
+
+QtBrowserItem* findBrowserItemByName(const QList<QtBrowserItem*>& items, const QString& propertyName) {
+    for (QtBrowserItem* item : items) {
+        if (item == nullptr || item->property() == nullptr) {
+            continue;
+        }
+        if (item->property()->propertyName() == propertyName) {
+            return item;
+        }
+        if (QtBrowserItem* child = findBrowserItemByName(item->children(), propertyName)) {
+            return child;
+        }
+    }
+    return nullptr;
+}
+
+void drainGuiEvents() {
+    for (int i = 0; i < 8; ++i) {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    }
+}
+
+void attachDecideGuiExtension(GuiExtensionManager& manager, QMainWindow& host,
+                              Simulator& simulator, ModelGraphicsScene* scene) {
+    const GuiExtensionPlugin* decideExtension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.decide") {
+            decideExtension = plugin;
+            break;
+        }
+    }
+    EXPECT_NE(decideExtension, nullptr);
+    if (decideExtension == nullptr) return;
+    manager.setPlugins({decideExtension});
+    manager.setLoadedModelPluginIds({"Decide"});
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.mainWindow = &host;
+    context.graphicsScene = scene;
+    manager.rebuild(context);
+}
+
+void attachModalModelGuiExtension(GuiExtensionManager& manager, QMainWindow& host,
+                                  Simulator& simulator, ModelGraphicsScene* scene) {
+    const GuiExtensionPlugin* modalExtension = nullptr;
+    for (const GuiExtensionPlugin* plugin : GuiExtensionPluginCatalog::plugins()) {
+        if (plugin != nullptr && plugin->extensionId() == "gui.extensions.modal.context") {
+            modalExtension = plugin;
+            break;
+        }
+    }
+    EXPECT_NE(modalExtension, nullptr);
+    if (modalExtension == nullptr) return;
+    manager.setPlugins({modalExtension});
+    GuiExtensionRuntimeContext context;
+    context.simulator = &simulator;
+    context.mainWindow = &host;
+    context.graphicsScene = scene;
+    manager.rebuild(context);
+}
+
+void acceptModalModelNetworkSchemaConfirmation() {
+    QTimer::singleShot(0, []() {
+        auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        if (message != nullptr && message->button(QMessageBox::Yes) != nullptr) {
+            message->button(QMessageBox::Yes)->click();
+        }
+    });
+}
+
+void rejectModalModelNetworkSchemaConfirmation() {
+    QTimer::singleShot(0, []() {
+        auto* message = qobject_cast<QMessageBox*>(QApplication::activeModalWidget());
+        if (message != nullptr && message->button(QMessageBox::No) != nullptr) {
+            message->button(QMessageBox::No)->click();
+        }
+    });
+}
+
+class ScopedDefaultLocale {
+public:
+    explicit ScopedDefaultLocale(const QLocale& locale)
+        : _previous(QLocale()) {
+        QLocale::setDefault(locale);
+    }
+
+    ~ScopedDefaultLocale() {
+        QLocale::setDefault(_previous);
+    }
+
+private:
+    QLocale _previous;
+};
+
+class GenericDoubleDataDefinition final : public ModelDataDefinition {
+public:
+    explicit GenericDoubleDataDefinition(Model* model)
+        : ModelDataDefinition(model, "GenericDoubleDataDefinition", "GenericDouble_PropertyEditor") {
+        auto* doubleControl = new SimulationControlDouble(
+            [this]() { return _value; },
+            [this](double value) { _value = value; ++_valueSetCount; },
+            getClassname(),
+            getName(),
+            "Value",
+            "Generic SimulationControlDouble regression value");
+        auto* boolControl = new SimulationControlBool(
+            [this]() { return _enabled; },
+            [this](bool enabled) { _enabled = enabled; },
+            getClassname(),
+            getName(),
+            "Enabled",
+            "Generic SimulationControlBool regression value");
+        _parentModel->getControls()->insert(doubleControl);
+        _parentModel->getControls()->insert(boolControl);
+        _addSimulationControl(doubleControl);
+        _addSimulationControl(boolControl);
+    }
+
+    double value() const {
+        return _value;
+    }
+
+    bool enabled() const {
+        return _enabled;
+    }
+
+    int valueSetCount() const {
+        return _valueSetCount;
+    }
+
+private:
+    double _value = 0.0;
+    bool _enabled = false;
+    int _valueSetCount = 0;
+};
+
+} // namespace
+
+void bindEditableKernelObject(ObjectPropertyBrowser& browser,
+                              ModelDataDefinition* object,
+                              int* modelChangedCount = nullptr) {
+    ASSERT_NE(object, nullptr);
+    if (modelChangedCount != nullptr) {
+        browser.setModelChangedCallback([modelChangedCount]() {
+            ++(*modelChangedCount);
+        });
+    }
+
+    QSet<QString> editableObjects;
+    editableObjects.insert(QString::fromStdString(object->getName()));
+    browser.setActiveObject(
+        nullptr,
+        object,
+        {},
+        editableObjects,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr);
+    drainGuiEvents();
+}
+
+void commitTextWithEnter(QLineEdit* lineEdit, const QString& text) {
+    ASSERT_NE(lineEdit, nullptr);
+    lineEdit->setFocus();
+    lineEdit->selectAll();
+    lineEdit->setText(text);
+
+    QKeyEvent press(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &press);
+    QKeyEvent release(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &release);
+    drainGuiEvents();
+}
+
+TEST(CreatePropertyEditor, ExposesEditableMaxCreationsExpression) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Create create(model, "CreateMaxCreationsEditor");
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &create);
+
+    QtBrowserItem* maxCreations = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("MaxCreations"));
+    ASSERT_NE(maxCreations, nullptr);
+    browser.setCurrentItem(maxCreations);
+    browser.editItem(maxCreations);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("2 + 8"));
+    EXPECT_EQ(create.getMaxCreations(), "2 + 8");
+}
+
+TEST(MainWindowSimulationNavigation, StartAndStepFromModelShowSimulationTraces) {
+    for (const char* slot : {"on_actionSimulationStart_triggered", "on_actionSimulationStep_triggered"}) {
+        MainWindow window;
+        window.show();
+        ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+        drainGuiEvents();
+        auto* scene = window.myScene();
+        ASSERT_NE(scene, nullptr);
+        auto* simulator = scene->getSimulator();
+        auto* model = simulator->getModelManager()->current();
+        auto* manager = simulator->getPluginManager();
+        auto* create = manager->newInstance<Create>(model, "NavigationCreate");
+        auto* dispose = manager->newInstance<Dispose>(model, "NavigationDispose");
+        auto* entityType = new EntityType(model, "NavigationEntity");
+        ASSERT_NE(create, nullptr);
+        ASSERT_NE(dispose, nullptr);
+        create->setEntityType(entityType);
+        create->setMaxCreations(1);
+        create->setTimeBetweenCreationsExpression("1");
+        create->connectTo(dispose);
+        model->getSimulation()->setReplicationLength(2.0);
+
+        auto* central = window.findChild<QTabWidget*>("tabWidgetCentral");
+        auto* simulationTabs = window.findChild<QTabWidget*>("tabWidgetSimulation");
+        auto* modelTab = window.findChild<QWidget*>("tabCentralModel");
+        auto* simulationTab = window.findChild<QWidget*>("tabCentralSimulation");
+        auto* tracesTab = window.findChild<QWidget*>("tabDebugTraces");
+        ASSERT_NE(central, nullptr);
+        ASSERT_NE(simulationTabs, nullptr);
+        ASSERT_NE(modelTab, nullptr);
+        ASSERT_NE(simulationTab, nullptr);
+        ASSERT_NE(tracesTab, nullptr);
+        central->setCurrentWidget(modelTab);
+        simulationTabs->setCurrentIndex(0);
+        ASSERT_EQ(central->currentWidget(), modelTab);
+
+        ASSERT_TRUE(QMetaObject::invokeMethod(&window, slot, Qt::DirectConnection));
+        drainGuiEvents();
+        EXPECT_EQ(central->currentWidget(), simulationTab) << central->currentWidget()->objectName().toStdString();
+        EXPECT_EQ(simulationTabs->currentWidget(), tracesTab);
+    }
+}
+
+TEST(MainWindowSimulationNavigation, PreservesNonModelNavigation) {
+    MainWindow window;
+    window.show();
+    auto* central = window.findChild<QTabWidget*>("tabWidgetCentral");
+    auto* simulationTabs = window.findChild<QTabWidget*>("tabWidgetSimulation");
+    auto* reportsTab = window.findChild<QWidget*>("tabCentralWidget");
+    ASSERT_NE(central, nullptr);
+    ASSERT_NE(simulationTabs, nullptr);
+    ASSERT_NE(reportsTab, nullptr);
+    central->setCurrentWidget(reportsTab);
+    simulationTabs->setCurrentIndex(1);
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionSimulationStart_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+    EXPECT_EQ(central->currentWidget(), reportsTab);
+    EXPECT_EQ(simulationTabs->currentIndex(), 1);
+}
+
+TEST(EFSMStatePropertyEditor, ExposesAndEditsStateExpressionsAndFinalFlag) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    FSMState state(model, "PropertyEditorState");
+    EFSMNetwork network(model, "PropertyEditorNetwork");
+    network.addState(&state);
+    ModelGraphicsScene scene(0.0, 0.0, 100.0, 100.0);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    scene.setNetworkEditorOwner(&network);
+
+    ObjectPropertyBrowser browser;
+    browser.setModelScene(&scene);
+    bindEditableKernelObject(browser, &state);
+
+    for (const QString& propertyName : {QStringLiteral("Name"), QStringLiteral("Label"),
+                                         QStringLiteral("Report Statistics"), QStringLiteral("Trace Level"),
+                                         QStringLiteral("Entry Action Expression"),
+                                         QStringLiteral("Exit Action Expression"), QStringLiteral("Final Node"),
+                                         QStringLiteral("Initial Node")}) {
+        QtBrowserItem* property = findBrowserItemByName(browser.topLevelItems(), propertyName);
+        ASSERT_NE(property, nullptr) << propertyName.toStdString();
+        EXPECT_TRUE(property->property()->isEnabled()) << propertyName.toStdString();
+    }
+
+    QtBrowserItem* entryAction = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("Entry Action Expression"));
+    ASSERT_NE(entryAction, nullptr);
+    browser.setCurrentItem(entryAction);
+    browser.editItem(entryAction);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("Counter.Value = Counter.Value + 1"));
+    EXPECT_EQ(state.getEntryActionExpression(), "Counter.Value = Counter.Value + 1");
+    ASSERT_NE(scene.getUndoStack(), nullptr);
+    scene.getUndoStack()->undo();
+    EXPECT_TRUE(state.getEntryActionExpression().empty());
+    scene.getUndoStack()->redo();
+    EXPECT_EQ(state.getEntryActionExpression(), "Counter.Value = Counter.Value + 1");
+
+    QtBrowserItem* finalNode = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Final Node"));
+    ASSERT_NE(finalNode, nullptr);
+    auto* finalNodeProperty = dynamic_cast<QtVariantProperty*>(finalNode->property());
+    ASSERT_NE(finalNodeProperty, nullptr);
+    finalNodeProperty->setValue(true);
+    drainGuiEvents();
+    EXPECT_TRUE(state.isFinalNode());
+
+    QtBrowserItem* initialNode = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Initial Node"));
+    ASSERT_NE(initialNode, nullptr);
+    auto* initialNodeProperty = dynamic_cast<QtVariantProperty*>(initialNode->property());
+    ASSERT_NE(initialNodeProperty, nullptr);
+    initialNodeProperty->setValue(true);
+    drainGuiEvents();
+    EXPECT_EQ(network.getInitialState(), &state);
+}
+
+void selectListItemAction(ObjectPropertyBrowser& browser, const QString& listName,
+                          const QString& itemName, const QString& action) {
+    QtBrowserItem* list = findBrowserItemByName(browser.topLevelItems(), listName);
+    ASSERT_NE(list, nullptr);
+    browser.setExpanded(list, true);
+    QtBrowserItem* item = findBrowserItemByName(list->children(), itemName);
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = nullptr;
+    for (QComboBox* candidate : browser.findChildren<QComboBox*>()) {
+        if (candidate->isVisible() && candidate->findText(action) >= 0) { selector = candidate; break; }
+    }
+    ASSERT_NE(selector, nullptr);
+    selector->setCurrentIndex(selector->findText(action));
+    drainGuiEvents();
+}
+
+TEST(PropertyEditorLists, MovesSimpleAndObjectListItemsByPosition) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    LSODE lsode(model, "LSODE_MoveList");
+    lsode.addDiffEquation("same");
+    lsode.addDiffEquation("same");
+    lsode.addDiffEquation("last");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &lsode);
+    selectListItemAction(browser, "DiffEquations", "DiffEquation 2", "Mover para cima");
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(0), "same");
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(1), "last");
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(2), "same");
+    ASSERT_NE(browser.currentItem(), nullptr);
+    EXPECT_EQ(browser.currentItem()->property()->propertyName(), "DiffEquation 1");
+
+    Assign assign(model, "Assign_MoveList");
+    auto* first = new Assignment("Entity.first", "1");
+    auto* second = new Assignment("Entity.second", "2");
+    assign.addAssignment(first);
+    assign.addAssignment(second);
+    bindEditableKernelObject(browser, &assign);
+    selectListItemAction(browser, "Assignments", "Item 1 - Entity.second", "Mover para cima");
+    EXPECT_EQ(assign.getAssignments()->getAtRank(0), second);
+    EXPECT_EQ(assign.getAssignments()->getAtRank(1), first);
+    selectListItemAction(browser, "Assignments", "Item 0 - Entity.second", "Mover para baixo");
+    EXPECT_EQ(assign.getAssignments()->getAtRank(0), first);
+    EXPECT_EQ(assign.getAssignments()->getAtRank(1), second);
+}
+
+TEST(PropertyEditorLists, RemovesSetResourceAndQueueReferencesWithoutDeletingMembers) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* resourceSet = new Set(model, "EditableResourceSet");
+    auto* resource0 = new Resource(model, "EditableResource0");
+    auto* resource1 = new Resource(model, "EditableResource1");
+    auto* resource2 = new Resource(model, "EditableResource2");
+    resourceSet->addElementSet(resource0);
+    resourceSet->addElementSet(resource1);
+    resourceSet->addElementSet(resource2);
+
+    auto* queueSet = new Set(model, "EditableQueueSet");
+    auto* queue0 = new Queue(model, "EditableQueue0");
+    auto* queue1 = new Queue(model, "EditableQueue1");
+    auto* queue2 = new Queue(model, "EditableQueue2");
+    queueSet->addElementSet(queue0);
+    queueSet->addElementSet(queue1);
+    queueSet->addElementSet(queue2);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, resourceSet);
+    selectListItemAction(browser, "ElementSet", "Item 1 - EditableResource1", "Remover item");
+    ASSERT_EQ(resourceSet->getElementSet()->size(), 2u);
+    EXPECT_EQ(resourceSet->getElementSet()->getAtRank(0), resource0);
+    EXPECT_EQ(resourceSet->getElementSet()->getAtRank(1), resource2);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "EditableResource1"), resource1);
+
+    // Remove the first member, then the last remaining two members, including the singleton case.
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableResource0", "Remover item");
+    ASSERT_EQ(resourceSet->getElementSet()->size(), 1u);
+    EXPECT_EQ(resourceSet->getElementSet()->getAtRank(0), resource2);
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableResource2", "Remover item");
+    EXPECT_EQ(resourceSet->getElementSet()->size(), 0u);
+    resourceSet->addElementSet(resource1);
+    bindEditableKernelObject(browser, resourceSet);
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableResource1", "Remover item");
+    EXPECT_TRUE(resourceSet->getElementSet()->empty());
+
+    bindEditableKernelObject(browser, queueSet);
+    selectListItemAction(browser, "ElementSet", "Item 1 - EditableQueue1", "Remover item");
+    ASSERT_EQ(queueSet->getElementSet()->size(), 2u);
+    EXPECT_EQ(queueSet->getElementSet()->getAtRank(0), queue0);
+    EXPECT_EQ(queueSet->getElementSet()->getAtRank(1), queue2);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "EditableQueue1"), queue1);
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableQueue0", "Remover item");
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableQueue2", "Remover item");
+    EXPECT_EQ(queueSet->getElementSet()->size(), 0u);
+    queueSet->addElementSet(queue1);
+    bindEditableKernelObject(browser, queueSet);
+    selectListItemAction(browser, "ElementSet", "Item 0 - EditableQueue1", "Remover item");
+    EXPECT_TRUE(queueSet->getElementSet()->empty());
+
+    auto* roundTripSet = new Set(model, "EditableRoundTripSet");
+    auto* kept = new Resource(model, "EditableRoundTripKept");
+    auto* removed = new Resource(model, "EditableRoundTripRemoved");
+    roundTripSet->addElementSet(kept);
+    roundTripSet->addElementSet(removed);
+    bindEditableKernelObject(browser, roundTripSet);
+    selectListItemAction(browser, "ElementSet", "Item 1 - EditableRoundTripRemoved", "Remover item");
+    ASSERT_EQ(roundTripSet->getElementSet()->size(), 1u);
+
+    QTemporaryDir temporaryDirectory;
+    ASSERT_TRUE(temporaryDirectory.isValid());
+    const QString path = temporaryDirectory.filePath(QStringLiteral("set-removal-roundtrip.gen"));
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Simulator restored;
+    restored.getPluginManager()->autoInsertPlugins();
+    Model* loaded = restored.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedSet = dynamic_cast<Set*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<Set>(), "EditableRoundTripSet"));
+    ASSERT_NE(loadedSet, nullptr);
+    ASSERT_EQ(loadedSet->getElementSet()->size(), 1u);
+    EXPECT_EQ(loadedSet->getElementSet()->getAtRank(0)->getName(), "EditableRoundTripKept");
+    EXPECT_NE(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "EditableRoundTripRemoved"), nullptr);
+}
+
+TEST(PropertyEditorLists, RemovingQueueFromSetKeepsMainWindowSelectionEditable) {
+    MainWindow window;
+    window.show();
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    auto* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    auto* simulator = scene->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    auto* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+    auto* manager = simulator->getPluginManager();
+    auto* set = manager->newInstance<Set>(model, "SelectionQueueSet");
+    auto* first = manager->newInstance<Queue>(model, "SelectionQueueFirst");
+    auto* second = manager->newInstance<Queue>(model, "SelectionQueueSecond");
+    auto* create = manager->newInstance<Create>(model, "SelectionCreate");
+    auto* seize = manager->newInstance<Seize>(model, "SelectionSeize");
+    ASSERT_NE(set, nullptr);
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(seize, nullptr);
+    set->addElementSet(first);
+    set->addElementSet(second);
+    seize->setQueueableItem(new QueueableItem(set, QueueableItem::QueueableType::SET));
+
+    auto* graphicalCreate = scene->addGraphicalModelComponent(
+        manager->find("Create"), create, QPointF(350, 100));
+    ASSERT_NE(graphicalCreate, nullptr);
+    ASSERT_NE(scene->addGraphicalModelComponent(
+        manager->find("Seize"), seize, QPointF(600, 100)), nullptr);
+    auto* browser = window.findChild<ObjectPropertyBrowser*>("treeViewPropertyEditor");
+    ASSERT_NE(browser, nullptr);
+
+    // Select the Set through the real inspector. Rebuilding that tree after a
+    // list edit is part of the reported failure, unlike a standalone browser.
+    auto* modelTabs = window.findChild<QTabWidget*>("tabWidgetModel");
+    auto* definitions = window.findChild<QTreeWidget*>("treeWidgetDataDefnitions");
+    ASSERT_NE(modelTabs, nullptr);
+    ASSERT_NE(definitions, nullptr);
+    modelTabs->setCurrentWidget(window.findChild<QWidget*>("tabModelComponents"));
+    modelTabs->setCurrentWidget(window.findChild<QWidget*>("tabModelDataDefinitions"));
+    drainGuiEvents();
+    QTreeWidgetItem* setItem = nullptr;
+    std::function<void(QTreeWidgetItem*)> findSet = [&](QTreeWidgetItem* item) {
+        if (item == nullptr || setItem != nullptr) return;
+        if (item->data(0, Qt::UserRole).value<quintptr>() == reinterpret_cast<quintptr>(set)) {
+            setItem = item;
+            return;
+        }
+        for (int i = 0; i < item->childCount(); ++i) findSet(item->child(i));
+    };
+    for (int i = 0; i < definitions->topLevelItemCount(); ++i) findSet(definitions->topLevelItem(i));
+    ASSERT_NE(setItem, nullptr);
+    definitions->setCurrentItem(setItem);
+    drainGuiEvents();
+    ASSERT_NE(findBrowserItemByName(browser->topLevelItems(), "ElementSet"), nullptr);
+    selectListItemAction(*browser, "ElementSet", "Item 0 - SelectionQueueFirst", "Remover item");
+    ASSERT_EQ(set->getElementSet()->size(), 1u);
+    EXPECT_EQ(set->getElementSet()->getAtRank(0), second);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "SelectionQueueFirst"), first);
+    EXPECT_NE(findBrowserItemByName(browser->topLevelItems(), "ElementSet"), nullptr);
+
+    scene->clearSelection();
+    graphicalCreate->setSelected(true);
+    drainGuiEvents();
+    EXPECT_FALSE(browser->isCommitPipelineBusy());
+    auto* firstCreationItem = findBrowserItemByName(browser->topLevelItems(), "FirstCreation");
+    ASSERT_NE(firstCreationItem, nullptr);
+    browser->setCurrentItem(firstCreationItem);
+    browser->editItem(firstCreationItem);
+    drainGuiEvents();
+    auto* firstCreationEditor = browser->findChild<QDoubleSpinBox*>();
+    ASSERT_NE(firstCreationEditor, nullptr);
+    commitTextWithEnter(firstCreationEditor->findChild<QLineEdit*>(), QStringLiteral("3"));
+    drainGuiEvents();
+    EXPECT_DOUBLE_EQ(create->getFirstCreation(), 3.0);
+
+    scene->clearSelection();
+    graphicalCreate->setSelected(true);
+    drainGuiEvents();
+    EXPECT_NE(findBrowserItemByName(browser->topLevelItems(), "FirstCreation"), nullptr);
+}
+
+TEST(PropertyEditorDynamicEnabled, NestedQueueableItemIndexTracksSetReference) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* set = new Set(model, "DynamicQueueSet");
+    Seize seize(model, "DynamicSeize");
+    seize.setQueueableItem(new QueueableItem(model, ""));
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &seize);
+
+    QtBrowserItem* queueableItem = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("QueueableItem"));
+    ASSERT_NE(queueableItem, nullptr);
+    browser.setExpanded(queueableItem, true);
+    drainGuiEvents();
+
+    QtBrowserItem* index = findBrowserItemByName(
+        queueableItem->children(), QStringLiteral("Index"));
+    ASSERT_NE(index, nullptr);
+    EXPECT_FALSE(index->property()->isEnabled());
+
+    seize.getQueueableItem()->setSet(set);
+    browser.objectUpdated();
+    drainGuiEvents();
+    queueableItem = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("QueueableItem"));
+    ASSERT_NE(queueableItem, nullptr);
+    browser.setExpanded(queueableItem, true);
+    index = findBrowserItemByName(queueableItem->children(), QStringLiteral("Index"));
+    ASSERT_NE(index, nullptr);
+    EXPECT_TRUE(index->property()->isEnabled());
+
+    seize.getQueueableItem()->setSet(nullptr);
+    browser.objectUpdated();
+    drainGuiEvents();
+    queueableItem = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("QueueableItem"));
+    ASSERT_NE(queueableItem, nullptr);
+    browser.setExpanded(queueableItem, true);
+    index = findBrowserItemByName(queueableItem->children(), QStringLiteral("Index"));
+    ASSERT_NE(index, nullptr);
+    EXPECT_FALSE(index->property()->isEnabled());
+}
+
+TEST(PropertyEditorLists, WriteElementsAreExposedAsEditableSimulationControl) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Write write(model, "WriteElementsProperty");
+    SimulationControl* elementsControl = nullptr;
+    for (SimulationControl* control : *write.getSimulationControls()->list()) {
+        if (control != nullptr && control->getName() == "WriteElements") {
+            elementsControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(elementsControl, nullptr);
+    EXPECT_TRUE(elementsControl->getIsList());
+    EXPECT_TRUE(elementsControl->supportsListEditor());
+    EXPECT_TRUE(elementsControl->supportsPositionalListEditing());
+
+    ASSERT_TRUE(elementsControl->createNewListElement("literal"));
+    ASSERT_TRUE(elementsControl->createNewListElement("@Entity.Priority"));
+    ASSERT_EQ(elementsControl->getStrValues()->size(), 2u);
+    elementsControl->replaceListValueAt(0, "updated");
+    elementsControl->setValue("@Entity.Priority", true);
+    ASSERT_EQ(elementsControl->getStrValues()->size(), 1u);
+    EXPECT_EQ(elementsControl->getStrValues()->getAtRank(0), "updated");
+}
+
+TEST(PropertyEditorLists, ListItemActionsRespectBoundariesAndReadOnly) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    LSODE lsode(model, "LSODE_ReadOnlyList");
+    lsode.addDiffEquation("first");
+    lsode.addDiffEquation("second");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &lsode);
+    QtBrowserItem* list = findBrowserItemByName(browser.topLevelItems(), "DiffEquations");
+    ASSERT_NE(list, nullptr);
+    browser.setExpanded(list, true);
+    QtBrowserItem* first = findBrowserItemByName(list->children(), "DiffEquation 0");
+    ASSERT_NE(first, nullptr);
+    browser.setCurrentItem(first);
+    browser.editItem(first);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int upIndex = selector->findText("Mover para cima");
+    ASSERT_GE(upIndex, 0);
+    auto* selectorModel = qobject_cast<QStandardItemModel*>(selector->model());
+    ASSERT_NE(selectorModel, nullptr);
+    EXPECT_FALSE(selectorModel->item(upIndex)->isEnabled());
+    EXPECT_GE(selector->findText("Mover para baixo"), 0);
+    QtBrowserItem* last = findBrowserItemByName(list->children(), "DiffEquation 1");
+    ASSERT_NE(last, nullptr);
+    browser.setCurrentItem(last);
+    browser.editItem(last);
+    drainGuiEvents();
+    QComboBox* lastSelector = nullptr;
+    for (QComboBox* candidate : browser.findChildren<QComboBox*>()) {
+        if (candidate->isVisible()) { lastSelector = candidate; break; }
+    }
+    ASSERT_NE(lastSelector, nullptr);
+    auto* lastModel = qobject_cast<QStandardItemModel*>(lastSelector->model());
+    ASSERT_NE(lastModel, nullptr);
+    const int downIndex = lastSelector->findText("Mover para baixo");
+    ASSERT_GE(downIndex, 0);
+    EXPECT_FALSE(lastModel->item(downIndex)->isEnabled());
+    Set resourceSet(model, "ReadOnlySet");
+    auto* resource = new Resource(model, "ReadOnlyResource");
+    resourceSet.addElementSet(resource);
+    browser.setActiveObject(nullptr, &resourceSet, {}, {});
+    drainGuiEvents();
+    list = findBrowserItemByName(browser.topLevelItems(), "ElementSet");
+    ASSERT_NE(list, nullptr);
+    first = findBrowserItemByName(list->children(), "Item 0 - ReadOnlyResource");
+    ASSERT_NE(first, nullptr);
+    EXPECT_FALSE(first->property()->isEnabled());
+    EXPECT_EQ(resourceSet.getElementSet()->getAtRank(0), resource);
+}
+
+TEST(PropertyEditorLists, ContextMenuMovesSelectedItemAndDisablesBoundary) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    LSODE lsode(model, "LSODE_ContextMove");
+    lsode.addDiffEquation("first");
+    lsode.addDiffEquation("second");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &lsode);
+    QtBrowserItem* list = findBrowserItemByName(browser.topLevelItems(), "DiffEquations");
+    ASSERT_NE(list, nullptr);
+    browser.setExpanded(list, true);
+    QtBrowserItem* first = findBrowserItemByName(list->children(), "DiffEquation 0");
+    ASSERT_NE(first, nullptr);
+    browser.setCurrentItem(first);
+    bool checkedMenu = false;
+    QTimer::singleShot(0, [&checkedMenu]() {
+        auto* menu = qobject_cast<QMenu*>(QApplication::activePopupWidget());
+        if (menu == nullptr) return;
+        QAction* up = nullptr;
+        QAction* down = nullptr;
+        for (QAction* action : menu->actions()) {
+            if (action->text() == "Mover para cima") up = action;
+            if (action->text() == "Mover para baixo") down = action;
+        }
+        checkedMenu = up != nullptr && !up->isEnabled() && down != nullptr && down->isEnabled();
+        if (down == nullptr) { menu->close(); return; }
+        menu->setActiveAction(down);
+        QKeyEvent enter(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+        QApplication::sendEvent(menu, &enter);
+    });
+    QContextMenuEvent event(QContextMenuEvent::Mouse, QPoint(5, 5), browser.mapToGlobal(QPoint(5, 5)));
+    QApplication::sendEvent(&browser, &event);
+    drainGuiEvents();
+    EXPECT_TRUE(checkedMenu);
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(0), "second");
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(1), "first");
+}
+
+TEST(PropertyEditorLists, IgnoresStaleActionsBeforeDeferredRebuild) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    LSODE lsode(model, "LSODE_DeferredMove");
+    lsode.addDiffEquation("first");
+    lsode.addDiffEquation("second");
+    lsode.addDiffEquation("third");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &lsode);
+    QtBrowserItem* list = findBrowserItemByName(browser.topLevelItems(), "DiffEquations");
+    ASSERT_NE(list, nullptr);
+    browser.setExpanded(list, true);
+    QtBrowserItem* item = findBrowserItemByName(list->children(), "DiffEquation 1");
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int down = selector->findText("Mover para baixo");
+    const int up = selector->findText("Mover para cima");
+    ASSERT_GE(down, 0);
+    ASSERT_GE(up, 0);
+    selector->setCurrentIndex(down);
+    selector->setCurrentIndex(up);
+    drainGuiEvents();
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(0), "first");
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(1), "third");
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(2), "second");
+}
+
+TEST(PropertyEditorLists, MovesSeizeAndReleaseRequests) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Seize seize(model, "Seize_MoveList");
+    auto* first = new SeizableItem(model, "ResourceFirst");
+    auto* second = new SeizableItem(model, "ResourceSecond");
+    seize.addRequest(first);
+    seize.addRequest(second);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &seize);
+    selectListItemAction(browser, "Requests", "Item 1 - ResourceSecond", "Mover para cima");
+    EXPECT_EQ(seize.getSeizeRequests()->getAtRank(0), second);
+    EXPECT_EQ(seize.getSeizeRequests()->getAtRank(1), first);
+
+    Release release(model, "Release_MoveList");
+    auto* releaseFirst = new SeizableItem(model, "ResourceFirst");
+    auto* releaseSecond = new SeizableItem(model, "ResourceSecond");
+    release.addReleaseRequests(releaseFirst);
+    release.addReleaseRequests(releaseSecond);
+    bindEditableKernelObject(browser, &release);
+    selectListItemAction(browser, "ReleaseRequests", "Item 1 - ResourceSecond", "Mover para cima");
+    EXPECT_EQ(release.getReleaseRequests()->getAtRank(0), releaseSecond);
+    EXPECT_EQ(release.getReleaseRequests()->getAtRank(1), releaseFirst);
+}
+
+TEST(PropertyEditorLists, MovesNonOwningDataDefinitionListsWithoutDeletingMembers) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* first = new Resource(model, "ListMemberFirst");
+    auto* second = new Resource(model, "ListMemberSecond");
+    Set resourceSet(model, "EditableSet");
+    resourceSet.addElementSet(first);
+    resourceSet.addElementSet(second);
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    browser.setModelScene(&scene);
+    bindEditableKernelObject(browser, &resourceSet);
+    selectListItemAction(browser, "ElementSet", "Item 1 - ListMemberSecond", "Mover para cima");
+    EXPECT_EQ(resourceSet.getElementSet()->getAtRank(0), second);
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    drainGuiEvents();
+    drainGuiEvents();
+    EXPECT_EQ(resourceSet.getElementSet()->getAtRank(0), first);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "ListMemberSecond"), second);
+
+    Failure failure(model, "EditableFailure");
+    failure.addResource(first);
+    failure.addResource(second);
+    bindEditableKernelObject(browser, &failure);
+    selectListItemAction(browser, "FalingResources", "Item 1 - ListMemberSecond", "Mover para cima");
+    EXPECT_EQ(failure.falingResources()->getAtRank(0), second);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "ListMemberFirst"), first);
+}
+
+TEST(PropertyEditorLists, MovesPickStationItemsWithMatchingNames) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    PickStation pick(model, "PickStation_MoveList");
+    auto* first = new PickableStationItem(static_cast<Station*>(nullptr), std::string("1"));
+    auto* second = new PickableStationItem(static_cast<Station*>(nullptr), std::string("2"));
+    pick.addPickableStationItem(first);
+    pick.addPickableStationItem(second);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &pick);
+    selectListItemAction(browser, "PickableStationItens", "Item 1", "Mover para cima");
+    EXPECT_EQ(pick.getPickableStationItens()->getAtRank(0), second);
+    EXPECT_EQ(pick.getPickableStationItens()->getAtRank(1), first);
+}
+
+TEST(PropertyEditorLists, ProcessMoveReconcilesInternalReleaseOrder) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Process process(model, "Process_MoveList");
+    auto* firstResource = new Resource(model, "ProcessResourceFirst");
+    auto* secondResource = new Resource(model, "ProcessResourceSecond");
+    auto* first = new SeizableItem(firstResource);
+    auto* second = new SeizableItem(secondResource);
+    process.addSeizeRequest(first);
+    process.addSeizeRequest(second);
+    ModelDataDefinition::CreateInternalData(&process);
+    auto* release = dynamic_cast<Release*>(process.getInternalData("Release"));
+    ASSERT_NE(release, nullptr);
+    ASSERT_EQ(release->getReleaseRequests()->size(), 2u);
+    auto* firstRelease = release->getReleaseRequests()->getAtRank(0);
+    auto* secondRelease = release->getReleaseRequests()->getAtRank(1);
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Process>());
+    ASSERT_NE(plugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(plugin, &process, QPointF(100, 100), Qt::blue);
+    scene.addItem(graphical);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    browser.setActiveObject(graphical, &process, {}, {QString::fromStdString(process.getName())});
+    drainGuiEvents();
+    selectListItemAction(browser, "SeizeRequests", "Item 1 - ProcessResourceSecond", "Mover para cima");
+    EXPECT_EQ(process.getSeizeRequests()->getAtRank(0), second);
+    EXPECT_EQ(process.getSeizeRequests()->getAtRank(1), first);
+    ASSERT_EQ(release->getReleaseRequests()->size(), 2u);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(0)->getResource(), secondResource);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(1)->getResource(), firstResource);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(0), secondRelease);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(1), firstRelease);
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    drainGuiEvents();
+    EXPECT_EQ(process.getSeizeRequests()->getAtRank(0), first);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(0)->getResource(), firstResource);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(0), firstRelease);
+    undoStack.redo();
+    drainGuiEvents();
+    drainGuiEvents();
+    EXPECT_EQ(process.getSeizeRequests()->getAtRank(0), second);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(0)->getResource(), secondResource);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(0), secondRelease);
+}
+
+TEST(PropertyEditorLists, ProcessMoveReconcilesAnInitiallyUnbuiltReleaseList) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Process process(model, "Process_MoveUnbuiltList");
+    auto* firstResource = new Resource(model, "UnbuiltFirst");
+    auto* secondResource = new Resource(model, "UnbuiltSecond");
+    auto* first = new SeizableItem(firstResource);
+    auto* second = new SeizableItem(secondResource);
+    process.addSeizeRequest(first);
+    process.addSeizeRequest(second);
+    auto* release = dynamic_cast<Release*>(process.getInternalData("Release"));
+    ASSERT_NE(release, nullptr);
+    ASSERT_EQ(release->getReleaseRequests()->size(), 0u);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &process);
+    selectListItemAction(browser, "SeizeRequests", "Item 1 - UnbuiltSecond", "Mover para cima");
+    EXPECT_EQ(process.getSeizeRequests()->getAtRank(0), second);
+    ASSERT_EQ(release->getReleaseRequests()->size(), 2u);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(0)->getResource(), secondResource);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(1)->getResource(), firstResource);
+    second->setQuantityExpression("3");
+    selectListItemAction(browser, "SeizeRequests", "Item 0 - UnbuiltSecond", "Mover para baixo");
+    EXPECT_EQ(process.getSeizeRequests()->getAtRank(1), second);
+    EXPECT_EQ(release->getReleaseRequests()->getAtRank(1)->getQuantityExpression(), "3");
+}
+
+TEST(PropertyEditorLists, DecideMovesGraphicalPortsAndConnectionsWithUndoRedo) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* decide = new Decide(model, "Decide_MoveList");
+    decide->addConditions("first");
+    decide->addConditions("second");
+    auto* target = new Dispose(model, "Move_Target");
+    auto* otherwise = new Dispose(model, "Move_Else");
+    Plugin* decidePlugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+    Plugin* disposePlugin = simulator.getPluginManager()->find(Util::TypeOf<Dispose>());
+    ASSERT_NE(decidePlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(decidePlugin, decide, QPointF(100, 100), Qt::blue);
+    auto* targetGraphical = new GraphicalModelComponent(disposePlugin, target, QPointF(400, 100), Qt::blue);
+    auto* elseGraphical = new GraphicalModelComponent(disposePlugin, otherwise, QPointF(400, 300), Qt::blue);
+    scene.addItem(graphical);
+    scene.addItem(targetGraphical);
+    scene.addItem(elseGraphical);
+    scene.getAllComponents()->append(graphical);
+    scene.getAllComponents()->append(targetGraphical);
+    scene.getAllComponents()->append(elseGraphical);
+    auto* firstConnection = new Connection{target, {0}};
+    auto* elseConnection = new Connection{otherwise, {0}};
+    decide->getConnectionManager()->insertAtPort(0, firstConnection);
+    decide->getConnectionManager()->insertAtPort(2, elseConnection);
+    auto* firstPort = graphical->getGraphicalOutputPorts().at(0);
+    auto* elsePort = graphical->getGraphicalOutputPorts().at(2);
+    scene.addGraphicalConnection(firstPort, targetGraphical->getGraphicalInputPorts().at(0), 0, 0);
+    scene.addGraphicalConnection(elsePort, elseGraphical->getGraphicalInputPorts().at(0), 0, 0);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    QMainWindow extensionHost;
+    GuiExtensionManager extensionManager(&extensionHost);
+    attachDecideGuiExtension(extensionManager, extensionHost, simulator, &scene);
+    browser.setGuiExtensionManager(&extensionManager);
+    browser.setActiveObject(graphical, decide, {}, {QString::fromStdString(decide->getName())});
+    drainGuiEvents();
+    selectListItemAction(browser, "Conditions", "Condition 0", "Mover para baixo");
+    EXPECT_EQ(decide->getConditions()->getAtRank(1), "first");
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(1), firstPort);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), elsePort);
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), elseConnection);
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    drainGuiEvents();
+    EXPECT_EQ(decide->getConditions()->getAtRank(0), "first");
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(0), firstPort);
+    ASSERT_NE(browser.currentItem(), nullptr);
+    EXPECT_EQ(browser.currentItem()->property()->propertyName(), "Condition 0");
+    undoStack.redo();
+    drainGuiEvents();
+    EXPECT_EQ(decide->getConditions()->getAtRank(1), "first");
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(1), firstPort);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), elsePort);
+    ASSERT_NE(browser.currentItem(), nullptr);
+    EXPECT_EQ(browser.currentItem()->property()->propertyName(), "Condition 1");
+    browser.setModelScene(&scene);
+    browser.setActiveObject(nullptr, decide, {}, {QString::fromStdString(decide->getName())});
+    drainGuiEvents();
+    selectListItemAction(browser, "Conditions", "Condition 1", "Mover para cima");
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(0), firstPort);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), elsePort);
+    undoStack.undo();
+    drainGuiEvents();
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(1), firstPort);
+    undoStack.redo();
+    drainGuiEvents();
+    EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), firstConnection);
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().at(0), firstPort);
+}
+
+TEST(PropertyEditorLists, AssignmentMoveSupportsUndoAndRedo) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* assign = new Assign(model, "Assign_UndoList");
+    auto* first = new Assignment("Entity.first", "1");
+    auto* second = new Assignment("Entity.second", "2");
+    assign->addAssignment(first);
+    assign->addAssignment(second);
+    Plugin* plugin = simulator.getPluginManager()->find(Util::TypeOf<Assign>());
+    ASSERT_NE(plugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(plugin, assign, QPointF(100, 100), Qt::blue);
+    scene.addItem(graphical);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    browser.setActiveObject(graphical, assign, {}, {QString::fromStdString(assign->getName())});
+    drainGuiEvents();
+    selectListItemAction(browser, "Assignments", "Item 0 - Entity.first", "Mover para baixo");
+    EXPECT_EQ(assign->getAssignments()->getAtRank(1), first);
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    drainGuiEvents();
+    EXPECT_EQ(assign->getAssignments()->getAtRank(0), first);
+    EXPECT_EQ(assign->getAssignments()->getAtRank(1), second);
+    undoStack.redo();
+    drainGuiEvents();
+    EXPECT_EQ(assign->getAssignments()->getAtRank(0), second);
+    EXPECT_EQ(assign->getAssignments()->getAtRank(1), first);
+}
+
+TEST(PropertyEditorLists, InspectorListMoveUsesSceneUndoWithoutGraphicalItem) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    LSODE lsode(model, "LSODE_InspectorUndo");
+    lsode.addDiffEquation("first");
+    lsode.addDiffEquation("second");
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    browser.setModelScene(&scene);
+    bindEditableKernelObject(browser, &lsode);
+    selectListItemAction(browser, "DiffEquations", "DiffEquation 0", "Mover para baixo");
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(0), "second");
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    drainGuiEvents();
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(0), "first");
+    undoStack.redo();
+    drainGuiEvents();
+    EXPECT_EQ(lsode.getDiffEquations()->getAtRank(0), "second");
+}
+
+TEST(PropertyEditorLists, LSODECreatesAndEditsEquationsInPropertyTree) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    LSODE component(model, "LSODE_PropertyEditor");
+    component.addDiffEquation("existing + 1");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* equations = findBrowserItemByName(browser.topLevelItems(), "DiffEquations");
+    ASSERT_NE(equations, nullptr);
+    browser.setCurrentItem(equations);
+    browser.editItem(equations);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int createIndex = selector->findText("Criar novo DiffEquation");
+    ASSERT_GE(createIndex, 0);
+    selector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    ASSERT_EQ(component.getDiffEquations()->size(), 2u);
+
+    equations = findBrowserItemByName(browser.topLevelItems(), "DiffEquations");
+    ASSERT_NE(equations, nullptr);
+    browser.setExpanded(equations, true);
+    QtBrowserItem* equation = findBrowserItemByName(equations->children(), "DiffEquation 1");
+    ASSERT_NE(equation, nullptr);
+    browser.setExpanded(equation, true);
+    QtBrowserItem* equationValue = findBrowserItemByName(equation->children(), "Value");
+    ASSERT_NE(equationValue, nullptr);
+    browser.setCurrentItem(equationValue);
+    browser.editItem(equationValue);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, "-2 * concentration");
+    EXPECT_EQ(component.getDiffEquations()->getAtRank(0), "existing + 1");
+    EXPECT_EQ(component.getDiffEquations()->getAtRank(1), "-2 * concentration");
+}
+
+TEST(PropertyEditorLists, DecideCreationUpdatesGraphicalPortsAndUndo) {
+    for (bool inspector : {false, true}) {
+        Simulator simulator;
+        simulator.getPluginManager()->autoInsertPlugins();
+        Model* model = simulator.getModelManager()->newModel();
+        ASSERT_NE(model, nullptr);
+        auto* decide = new Decide(model, "Decide_CreatePorts");
+        auto* target = new Dispose(model, "Decide_ElseTarget");
+        Plugin* decidePlugin = simulator.getPluginManager()->find(Util::TypeOf<Decide>());
+        Plugin* disposePlugin = simulator.getPluginManager()->find(Util::TypeOf<Dispose>());
+        ASSERT_NE(decidePlugin, nullptr);
+        ASSERT_NE(disposePlugin, nullptr);
+        ModelGraphicsScene scene(0, 0, 1000, 800);
+        QUndoStack undoStack;
+        scene.setUndoStack(&undoStack);
+        auto* graphical = new GraphicalModelComponent(decidePlugin, decide, QPointF(100, 100), Qt::blue);
+        auto* graphicalTarget = new GraphicalModelComponent(disposePlugin, target, QPointF(400, 100), Qt::blue);
+        scene.addItem(graphical);
+        scene.addItem(graphicalTarget);
+        scene.getAllComponents()->append(graphical);
+        scene.getAllComponents()->append(graphicalTarget);
+        auto* connection = new Connection{target, {0}};
+        decide->getConnectionManager()->insertAtPort(0, connection);
+        auto* elsePort = graphical->getGraphicalOutputPorts().at(0);
+        scene.addGraphicalConnection(elsePort, graphicalTarget->getGraphicalInputPorts().at(0), 0, 0);
+        ObjectPropertyBrowser browser;
+        browser.resize(640, 480);
+        browser.show();
+        QMainWindow extensionHost;
+        GuiExtensionManager extensionManager(&extensionHost);
+        attachDecideGuiExtension(extensionManager, extensionHost, simulator, &scene);
+        browser.setGuiExtensionManager(&extensionManager);
+        browser.setModelScene(&scene);
+        browser.setActiveObject(inspector ? nullptr : graphical, decide, {}, {QString::fromStdString(decide->getName())});
+        drainGuiEvents();
+        QtBrowserItem* conditions = findBrowserItemByName(browser.topLevelItems(), "Conditions");
+        ASSERT_NE(conditions, nullptr);
+        browser.setCurrentItem(conditions);
+        browser.editItem(conditions);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int createIndex = selector->findText("Criar novo Condition");
+        ASSERT_GE(createIndex, 0);
+        selector->setCurrentIndex(createIndex);
+        drainGuiEvents();
+        ASSERT_EQ(decide->getConditions()->size(), 1u);
+        ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().at(1), elsePort);
+        EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), connection);
+        ASSERT_TRUE(undoStack.canUndo());
+        undoStack.undo();
+        drainGuiEvents();
+        ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 1);
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().at(0), elsePort);
+        EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), connection);
+        undoStack.redo();
+        drainGuiEvents();
+        ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().at(1), elsePort);
+        EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), connection);
+        conditions = findBrowserItemByName(browser.topLevelItems(), "Conditions");
+        ASSERT_NE(conditions, nullptr);
+        browser.setCurrentItem(conditions);
+        browser.editItem(conditions);
+        drainGuiEvents();
+        selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int secondCreateIndex = selector->findText("Criar novo Condition");
+        ASSERT_GE(secondCreateIndex, 0);
+        selector->setCurrentIndex(secondCreateIndex);
+        drainGuiEvents();
+        ASSERT_EQ(decide->getConditions()->size(), 2u);
+        ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 3);
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), elsePort);
+        EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), connection);
+        undoStack.undo();
+        drainGuiEvents();
+        ASSERT_EQ(decide->getConditions()->size(), 1u);
+        ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 2);
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().at(1), elsePort);
+        undoStack.redo();
+        drainGuiEvents();
+        ASSERT_EQ(graphical->getGraphicalOutputPorts().size(), 3);
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().at(2), elsePort);
+        EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), connection);
+    }
+}
+
+TEST(PropertyEditorLists, DecideCreatesAndEditsConditionInPropertyTree) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Decide decide(model, "Decide_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    QMainWindow extensionHost;
+    GuiExtensionManager extensionManager(&extensionHost);
+    attachDecideGuiExtension(extensionManager, extensionHost, simulator, nullptr);
+    browser.setGuiExtensionManager(&extensionManager);
+    bindEditableKernelObject(browser, &decide);
+
+    QtBrowserItem* conditions = findBrowserItemByName(browser.topLevelItems(), "Conditions");
+    ASSERT_NE(conditions, nullptr);
+    browser.setCurrentItem(conditions);
+    browser.editItem(conditions);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int createIndex = selector->findText("Criar novo Condition");
+    ASSERT_GE(createIndex, 0);
+    selector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    ASSERT_EQ(decide.getConditions()->size(), 1u);
+
+    conditions = findBrowserItemByName(browser.topLevelItems(), "Conditions");
+    ASSERT_NE(conditions, nullptr);
+    browser.setExpanded(conditions, true);
+    QtBrowserItem* condition = findBrowserItemByName(conditions->children(), "Condition 0");
+    ASSERT_NE(condition, nullptr);
+    browser.setExpanded(condition, true);
+    QtBrowserItem* conditionValue = findBrowserItemByName(condition->children(), "Value");
+    ASSERT_NE(conditionValue, nullptr);
+    browser.setCurrentItem(conditionValue);
+    browser.editItem(conditionValue);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, "Entity.Priority > 2");
+    EXPECT_EQ(decide.getConditions()->getAtRank(0), "Entity.Priority > 2");
+}
+
+QDoubleSpinBox* beginDoubleEdit(ObjectPropertyBrowser& browser, const QString& propertyName) {
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+    EXPECT_NE(item, nullptr);
+    if (item == nullptr) {
+        return nullptr;
+    }
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    return browser.findChild<QDoubleSpinBox*>();
+}
+
+QSpinBox* beginIntegerEdit(ObjectPropertyBrowser& browser, const QString& propertyName) {
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+    EXPECT_NE(item, nullptr);
+    if (item == nullptr) {
+        return nullptr;
+    }
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    return browser.findChild<QSpinBox*>();
+}
+
+TEST(PropertyEditorModelDataReference, AIAssistantSelectsAnExistingAISupportInstance) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* sharedSupport = new AISupport(model, "SharedSupport_PropertyEditor");
+    AIAssistant assistant(model, "Assistant_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &assistant);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("AISupport"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int sharedIndex = selector->findText(QString::fromStdString(sharedSupport->getName()));
+    ASSERT_GE(sharedIndex, 0);
+    selector->setCurrentIndex(sharedIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(assistant.getAISupport(), sharedSupport);
+    EXPECT_EQ(assistant.getAISupportName(), "SharedSupport_PropertyEditor");
+    assistant.setAISupportName("LegacySupportName");
+    EXPECT_EQ(assistant.getAISupport(), nullptr);
+    EXPECT_EQ(assistant.getAttachedData()->find("AISupport"), assistant.getAttachedData()->end());
+}
+
+TEST(PropertyEditorModelDataReference, AIAssistantRestoresSelectedSupportBeforeModelCheck) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* support = new AISupport(model, "AISupport_ReferenceRoundTrip");
+    auto* assistant = new AIAssistant(model, "AIAssistant_ReferenceRoundTrip");
+    assistant->setAISupport(support);
+
+    const QString path = QStringLiteral("/tmp/genesys_ai_support_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedAssistant = dynamic_cast<AIAssistant*>(
+        loaded->getComponentManager()->find("AIAssistant_ReferenceRoundTrip"));
+    auto* loadedSupport = dynamic_cast<AISupport*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<AISupport>(), "AISupport_ReferenceRoundTrip"));
+    ASSERT_NE(loadedAssistant, nullptr);
+    ASSERT_NE(loadedSupport, nullptr);
+    EXPECT_EQ(loadedAssistant->getAISupport(), loadedSupport);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<AISupport>()), 1u);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, ContinuousSystemSelectsAnExistingODESolver) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* solver = new ODESolver(model, "SelectedSolver_PropertyEditor");
+    ContinuousSystemComponent component(model, "Continuous_PropertyEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("ODESolver"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int solverIndex = selector->findText(QString::fromStdString(solver->getName()));
+    ASSERT_GE(solverIndex, 0);
+    selector->setCurrentIndex(solverIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getOdeSolver(), solver);
+    ASSERT_NE(component.getAttachedData(), nullptr);
+    ASSERT_TRUE(component.getAttachedData()->contains("ODESolver"));
+    EXPECT_EQ(component.getAttachedData()->at("ODESolver"), solver);
+}
+
+TEST(PropertyEditorModelDataReference, ContinuousSystemRestoresSelectedSolverBeforeModelCheck) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* solver = new ODESolver(model, "ODESolver_ReferenceRoundTrip");
+    auto* component = new ContinuousSystemComponent(model, "ContinuousSystem_ReferenceRoundTrip");
+    component->setOdeSolver(solver);
+
+    const QString path = QStringLiteral("/tmp/genesys_ode_solver_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedComponent = dynamic_cast<ContinuousSystemComponent*>(
+        loaded->getComponentManager()->find("ContinuousSystem_ReferenceRoundTrip"));
+    auto* loadedSolver = dynamic_cast<ODESolver*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<ODESolver>(), "ODESolver_ReferenceRoundTrip"));
+    ASSERT_NE(loadedComponent, nullptr);
+    ASSERT_NE(loadedSolver, nullptr);
+    EXPECT_EQ(loadedComponent->getOdeSolver(), loadedSolver);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<ODESolver>()), 1u);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, ModalModelSelectsPolymorphicNetworkByTypeAndIdentity) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* network = new EFSMNetwork(model, "SharedNetworkName_PropertyEditor");
+    network->addInputPort("Trigger");
+    network->addOutputPort("Result");
+    auto* graphNetwork = new GraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    graphNetwork->addInputPort("Trigger");
+    graphNetwork->addInputPort("GraphInput1");
+    graphNetwork->addOutputPort("Result");
+    graphNetwork->addOutputPort("GraphOutput1");
+    graphNetwork->addOutputPort("GraphOutput2");
+    auto* directedGraph = new DirectedGraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    directedGraph->addInputPort("Trigger");
+    directedGraph->addOutputPort("Result");
+    auto* dag = new DirectedAcyclicGraphNetwork(model, "SharedNetworkName_PropertyEditor");
+    dag->addInputPort("Trigger");
+    dag->addOutputPort("Result");
+    auto* markov = new MarkovChainNetwork(model, "SharedNetworkName_PropertyEditor");
+    markov->addInputPort("Trigger");
+    markov->addOutputPort("Result");
+    auto* cpn = new ColoredPetriNetNetwork(model, "SharedNetworkName_PropertyEditor");
+    std::vector<DefaultNetwork*> networks{
+        network,
+        graphNetwork,
+        directedGraph,
+        dag,
+        markov,
+        cpn
+    };
+    ModalModel component(model, "ModalAdapter_PropertyEditor");
+    Plugin* adapterPlugin = simulator.getPluginManager()->find(Util::TypeOf<ModalModel>());
+    ASSERT_NE(adapterPlugin, nullptr);
+    ModelGraphicsScene scene(0, 0, 1000, 800);
+    QUndoStack undoStack;
+    scene.setUndoStack(&undoStack);
+    auto* graphical = new GraphicalModelComponent(adapterPlugin, &component, QPointF(100, 100), Qt::blue);
+    scene.addItem(graphical);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    QMainWindow extensionHost;
+    GuiExtensionManager extensionManager(&extensionHost);
+    attachModalModelGuiExtension(extensionManager, extensionHost, simulator, &scene);
+    browser.setGuiExtensionManager(&extensionManager);
+    browser.setActiveObject(graphical, &component, {}, {QString::fromStdString(component.getName())});
+    drainGuiEvents();
+
+    QtBrowserItem* item = nullptr;
+    for (DefaultNetwork* candidate : networks) {
+        const QString choice = QStringLiteral("%1::%2 [#%3]")
+            .arg(QString::fromStdString(candidate->getClassname()), QString::fromStdString(candidate->getName()))
+            .arg(candidate->getId());
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        int index = selector->findText(choice);
+        ASSERT_GE(index, 0) << choice.toStdString();
+        if (candidate == networks[1]) {
+            rejectModalModelNetworkSchemaConfirmation();
+            selector->setCurrentIndex(index);
+            drainGuiEvents();
+            EXPECT_EQ(component.getNetwork(), networks[0]);
+            item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+            ASSERT_NE(item, nullptr);
+            browser.setCurrentItem(item);
+            browser.editItem(item);
+            drainGuiEvents();
+            selector = browser.findChild<QComboBox*>();
+            ASSERT_NE(selector, nullptr);
+            index = selector->findText(choice);
+            ASSERT_GE(index, 0);
+        }
+        acceptModalModelNetworkSchemaConfirmation();
+        selector->setCurrentIndex(index);
+        drainGuiEvents();
+        EXPECT_EQ(component.getNetwork(), candidate) << choice.toStdString();
+        EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+        EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+        if (candidate == graphNetwork) {
+            QtBrowserItem* details = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+            ASSERT_NE(details, nullptr);
+            browser.setExpanded(details, true);
+            drainGuiEvents();
+            QtBrowserItem* capability = findBrowserItemByName(details->children(), QStringLiteral("Execution Capability"));
+            ASSERT_NE(capability, nullptr);
+            auto* capabilityProperty = dynamic_cast<QtVariantProperty*>(capability->property());
+            ASSERT_NE(capabilityProperty, nullptr);
+            EXPECT_EQ(capabilityProperty->value().toString(),
+                QStringLiteral("Structural graph; no simulation-time activation events"));
+            EXPECT_FALSE(capability->property()->isEnabled());
+        }
+    }
+    ASSERT_EQ(component.getNetwork(), networks.back());
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), networks[networks.size() - 2]);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+    undoStack.redo();
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), networks.back());
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+
+    const QString graphType = QString::fromStdString(Util::TypeOf<DirectedGraphNetwork>());
+    const QString createLabel = QStringLiteral("Criar novo %1").arg(graphType);
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    auto* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    EXPECT_EQ(selector->findText(QStringLiteral("Criar novo DefaultNetwork")), -1);
+    const int createIndex = selector->findText(createLabel);
+    ASSERT_GE(createIndex, 0);
+    selector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    auto* createdNetwork = dynamic_cast<DirectedGraphNetwork*>(component.getNetwork());
+    ASSERT_NE(createdNetwork, nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int removeIndex = selector->findText(QStringLiteral("Remover referência"));
+    ASSERT_GE(removeIndex, 0);
+    selector->setCurrentIndex(removeIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), nullptr);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(graphType.toStdString(), createdNetwork->getId()), createdNetwork);
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const QString createdChoice = QStringLiteral("%1::%2 [#%3]")
+        .arg(graphType, QString::fromStdString(createdNetwork->getName()))
+        .arg(createdNetwork->getId());
+    const int reattachIndex = selector->findText(createdChoice);
+    ASSERT_GE(reattachIndex, 0);
+    acceptModalModelNetworkSchemaConfirmation();
+    selector->setCurrentIndex(reattachIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), createdNetwork);
+    EXPECT_EQ(graphical->getGraphicalInputPorts().size(), component.getDynamicInputPortCount());
+    EXPECT_EQ(graphical->getGraphicalOutputPorts().size(), component.getDynamicOutputPortCount());
+
+    const DefaultNetwork* bindingNetwork = networks.back();
+    const QString bindingChoice = QStringLiteral("%1::%2 [#%3]")
+        .arg(QString::fromStdString(bindingNetwork->getClassname()), QString::fromStdString(bindingNetwork->getName()))
+        .arg(bindingNetwork->getId());
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int bindingNetworkIndex = selector->findText(bindingChoice);
+    ASSERT_GE(bindingNetworkIndex, 0);
+    acceptModalModelNetworkSchemaConfirmation();
+    selector->setCurrentIndex(bindingNetworkIndex);
+    drainGuiEvents();
+    EXPECT_EQ(component.getNetwork(), bindingNetwork);
+    ASSERT_EQ(component.getNetworkBindingControls().size(),
+        static_cast<std::size_t>(component.getDynamicInputPortCount() + component.getDynamicOutputPortCount()));
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+    ASSERT_NE(item, nullptr);
+    browser.setExpanded(item, true);
+    drainGuiEvents();
+    QtBrowserItem* inputBinding = findBrowserItemByName(item->children(), QStringLiteral("Input Binding 0 (fire)"));
+    QtBrowserItem* outputBinding = findBrowserItemByName(item->children(), QStringLiteral("Output Binding 0 (fired)"));
+    ASSERT_NE(inputBinding, nullptr);
+    ASSERT_NE(outputBinding, nullptr);
+    const std::string previousInputBinding = component.getInputBinding(0);
+    const std::string previousOutputBinding = component.getOutputBinding(0);
+    browser.setCurrentItem(inputBinding);
+    browser.editItem(inputBinding);
+    drainGuiEvents();
+    QLineEdit* bindingEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(bindingEditor, nullptr);
+    commitTextWithEnter(bindingEditor, QStringLiteral("2"));
+    EXPECT_EQ(component.getInputBinding(0), "2");
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Network Details"));
+    ASSERT_NE(item, nullptr);
+    outputBinding = findBrowserItemByName(item->children(), QStringLiteral("Output Binding 0 (fired)"));
+    ASSERT_NE(outputBinding, nullptr);
+    browser.setCurrentItem(outputBinding);
+    browser.editItem(outputBinding);
+    drainGuiEvents();
+    bindingEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(bindingEditor, nullptr);
+    commitTextWithEnter(bindingEditor, QStringLiteral("firedValue"));
+    EXPECT_EQ(component.getOutputBinding(0), "firedValue");
+    ASSERT_TRUE(undoStack.canUndo());
+    undoStack.undo();
+    EXPECT_EQ(component.getOutputBinding(0), previousOutputBinding);
+    undoStack.undo();
+    EXPECT_EQ(component.getInputBinding(0), previousInputBinding);
+    undoStack.redo();
+    EXPECT_EQ(component.getInputBinding(0), "2");
+    undoStack.redo();
+    EXPECT_EQ(component.getOutputBinding(0), "firedValue");
+
+    for (std::size_t index = 0; index < networks.size(); ++index) {
+        auto* adapter = new ModalModel(model, "ProcessAdapter_" + std::to_string(index));
+        auto* processSource = new Create(model, "ProcessSource_" + std::to_string(index));
+        auto* processSink = new Dispose(model, "ProcessSink_" + std::to_string(index));
+        adapter->setNetwork(networks[index]);
+        processSource->getConnectionManager()->insert(adapter);
+        adapter->getConnectionManager()->insert(processSink);
+        EXPECT_EQ(processSource->getConnectionManager()->size(), 1u);
+        EXPECT_EQ(adapter->getConnectionManager()->size(), 1u);
+    }
+}
+
+TEST(PropertyEditorModelDataReference, TemplateComponentExposesItsAssociatedDataDefinitionForEditing) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    TemplateComponent component(model, "Dummy_PropertyEditor");
+    ModelDataDefinition::CreateInternalData(&component);
+    ASSERT_NE(component.getInternalDataDefinition(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(
+                  Util::TypeOf<TemplateDataDefinition>(), component.getInternalDataDefinition()->getName()),
+              component.getInternalDataDefinition());
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("TemplateDataDefinition"));
+    ASSERT_NE(item, nullptr);
+    browser.setExpanded(item, true);
+    drainGuiEvents();
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SomeString")), nullptr);
+}
+
+TEST(PropertyEditorModelDataReference, OwnedRuntimeDefinitionsReattachOnGenLoadWithoutDuplicates) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* dummy = new TemplateComponent(model, "Dummy_InternalRoundTrip");
+    auto* python = new PythonForG(model, "Python_InternalRoundTrip");
+    python->getPythonRuntime()->setPythonExecutable("custom-python");
+    auto* r = new RSimulator(model, "R_InternalRoundTrip");
+    r->setRExecutable("custom-Rscript");
+    r->setPreludeScript("# prelude\nvalue <- 7\n");
+    r->setCommandList("result <- value + 1\n");
+
+    const QString path = QStringLiteral("/tmp/genesys_owned_runtime_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+
+    auto* loadedDummy = dynamic_cast<TemplateComponent*>(loaded->getComponentManager()->find("Dummy_InternalRoundTrip"));
+    auto* loadedPython = dynamic_cast<PythonForG*>(loaded->getComponentManager()->find("Python_InternalRoundTrip"));
+    auto* loadedR = dynamic_cast<RSimulator*>(loaded->getComponentManager()->find("R_InternalRoundTrip"));
+    ASSERT_NE(loadedDummy, nullptr);
+    ASSERT_NE(loadedPython, nullptr);
+    ASSERT_NE(loadedR, nullptr);
+    auto* dummyData = dynamic_cast<TemplateDataDefinition*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<TemplateDataDefinition>(), "Dummy_InternalRoundTrip.TemplateDataDefinition"));
+    auto* pythonRuntime = dynamic_cast<PythonRuntime*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<PythonRuntime>(), "Python_InternalRoundTrip.PythonRuntime"));
+    auto* rRunner = dynamic_cast<RSimulatorRunner*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<RSimulatorRunner>(), "R_InternalRoundTrip.RSimulatorRunner"));
+    ASSERT_NE(dummyData, nullptr);
+    ASSERT_NE(pythonRuntime, nullptr);
+    ASSERT_NE(rRunner, nullptr);
+    EXPECT_EQ(loadedDummy->getInternalDataDefinition(), dummyData);
+    EXPECT_EQ(loadedPython->getPythonRuntime(), pythonRuntime);
+    EXPECT_EQ(pythonRuntime->getPythonExecutable(), "custom-python");
+    EXPECT_EQ(loadedR->getRunner(), rRunner);
+    EXPECT_EQ(rRunner->getRExecutable(), "custom-Rscript");
+    EXPECT_EQ(rRunner->getPreludeScript(), "# prelude\nvalue <- 7\n");
+    EXPECT_EQ(loadedR->getCommandList(), "result <- value + 1");
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<TemplateDataDefinition>()), 1u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<PythonRuntime>()), 1u);
+    EXPECT_EQ(loaded->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<RSimulatorRunner>()), 1u);
+    QFile::remove(path);
+}
+
+TEST(PersistencePluginTypeCompatibility, RenamedPluginsLoadLegacyIdsAndSaveCurrentIds) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* source = simulator.getModelManager()->newModel();
+    ASSERT_NE(source, nullptr);
+
+    auto* templateComponent = new TemplateComponent(source, "TemplateCompatibility");
+    ModelDataDefinition::CreateInternalData(templateComponent);
+    ASSERT_NE(templateComponent->getInternalDataDefinition(), nullptr);
+    templateComponent->getInternalDataDefinition()->setName("TemplateCompatibility.DummyElement");
+    templateComponent->getInternalDataDefinition()->setSomeString("legacy-round-trip");
+
+    auto* network = new EFSMNetwork(source, "CompatibilityNetwork");
+    auto* adapter = new ModalModel(source, "CompatibilityModal");
+    adapter->setNetwork(network);
+
+    const QString currentPath = QDir::temp().filePath(QStringLiteral("genesys_plugin_rename_current.gen"));
+    const QString legacyPath = QDir::temp().filePath(QStringLiteral("genesys_plugin_rename_legacy.gen"));
+    const QString resavedPath = QDir::temp().filePath(QStringLiteral("genesys_plugin_rename_resaved.gen"));
+    QFile::remove(currentPath);
+    QFile::remove(legacyPath);
+    QFile::remove(resavedPath);
+    ASSERT_TRUE(source->save(currentPath.toStdString()));
+
+    QFile currentFile(currentPath);
+    ASSERT_TRUE(currentFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    QString legacyText = QString::fromUtf8(currentFile.readAll());
+    currentFile.close();
+    legacyText.replace(QStringLiteral("TemplateComponent"), QStringLiteral("DummyComponent"));
+    legacyText.replace(QStringLiteral("TemplateDataDefinition"), QStringLiteral("DummyElement"));
+    legacyText.replace(QStringLiteral("ModalModel "), QStringLiteral("ModalModelDefault "));
+    QFile legacyFile(legacyPath);
+    ASSERT_TRUE(legacyFile.open(QIODevice::WriteOnly | QIODevice::Text));
+    ASSERT_EQ(legacyFile.write(legacyText.toUtf8()), legacyText.toUtf8().size());
+    legacyFile.close();
+
+    Model* restored = simulator.getModelManager()->newModel();
+    ASSERT_NE(restored, nullptr);
+    ASSERT_TRUE(restored->load(legacyPath.toStdString()));
+    auto* restoredTemplate = dynamic_cast<TemplateComponent*>(
+        restored->getComponentManager()->find("TemplateCompatibility"));
+    auto* restoredModal = dynamic_cast<ModalModel*>(restored->getComponentManager()->find("CompatibilityModal"));
+    ASSERT_NE(restoredTemplate, nullptr);
+    ASSERT_NE(restoredModal, nullptr);
+    ASSERT_NE(restoredTemplate->getInternalDataDefinition(), nullptr);
+    EXPECT_EQ(restoredTemplate->getInternalDataDefinition()->getSomeString(), "legacy-round-trip");
+    EXPECT_EQ(restoredModal->getNetwork()->getName(), "CompatibilityNetwork");
+
+    ASSERT_TRUE(restored->save(resavedPath.toStdString()));
+    QFile resavedFile(resavedPath);
+    ASSERT_TRUE(resavedFile.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString resavedText = QString::fromUtf8(resavedFile.readAll());
+    EXPECT_NE(resavedText.indexOf(QStringLiteral("TemplateComponent")), -1);
+    EXPECT_NE(resavedText.indexOf(QStringLiteral("TemplateDataDefinition")), -1);
+    EXPECT_NE(resavedText.indexOf(QStringLiteral("ModalModel \"CompatibilityModal\"")), -1);
+    EXPECT_EQ(resavedText.indexOf(QStringLiteral("DummyComponent \"")), -1);
+    EXPECT_EQ(resavedText.indexOf(QStringLiteral("DummyElement \"")), -1);
+    EXPECT_EQ(resavedText.indexOf(QStringLiteral("ModalModelDefault")), -1);
+    QFile::remove(currentPath);
+    QFile::remove(legacyPath);
+    QFile::remove(resavedPath);
+}
+
+TEST(PropertyEditorModelDataReference, PythonForGExposesItsOwnedRuntimeConfiguration) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonForG component(model, "PythonForG_PropertyEditor");
+    ASSERT_NE(component.getPythonRuntime(), nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* runtimeItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("PythonRuntime"));
+    ASSERT_NE(runtimeItem, nullptr);
+    browser.setExpanded(runtimeItem, true);
+    drainGuiEvents();
+    QtBrowserItem* executableItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("PythonExecutable"));
+    ASSERT_NE(executableItem, nullptr);
+    browser.setCurrentItem(executableItem);
+    browser.editItem(executableItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("python3-property-editor"));
+    EXPECT_EQ(component.getPythonRuntime()->getPythonExecutable(), "python3-property-editor");
+}
+
+TEST(PropertyEditorModelDataReference, RSimulatorComponentConfigurationIsTheRunnerSourceOfTruth) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulator component(model, "RSimulator_PropertyEditor");
+    component.setRExecutable("Rscript-custom");
+    component.setWorkingDirectory("/tmp/r-simulator-property-editor");
+    component.setPreludeScript("# multiline prelude\noptions(stringsAsFactors = FALSE)");
+    ASSERT_NE(component.getRunner(), nullptr);
+    EXPECT_EQ(component.getRunner()->getRExecutable(), "Rscript-custom");
+    EXPECT_EQ(component.getRunner()->getWorkingDirectory(), "/tmp/r-simulator-property-editor");
+    EXPECT_EQ(component.getRunner()->getPreludeScript(), "# multiline prelude\noptions(stringsAsFactors = FALSE)");
+}
+
+TEST(PropertyEditorModelDataReference, SearchSelectsEntityGroupWithoutChangingSearchMode) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "SearchGroup_PropertyEditor");
+    Search component(model, "Search_PropertyEditor");
+    component.setSearchInType(Search::SearchInType::ENTITYGROUP);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    EXPECT_EQ(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SearchInName")), nullptr);
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SearchIn"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    EXPECT_GE(selector->findText(QString("Criar novo %1").arg(QString::fromStdString(Util::TypeOf<EntityGroup>()))), 0);
+    const int groupIndex = selector->findText(QString::fromStdString(group->getName()));
+    ASSERT_GE(groupIndex, 0);
+    selector->setCurrentIndex(groupIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getSearchIn(), group);
+    EXPECT_EQ(component.getSearchInType(), Search::SearchInType::ENTITYGROUP);
+}
+
+TEST(PropertyEditorAssignment, DestinationIsAttributeCheckboxCanToggleBothWays) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Assign assign(model, "AssignmentBooleanEditor");
+    auto* assignment = new Assignment("Entity.booleanDestination", "1", true);
+    assign.addAssignment(assignment);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &assign);
+    for (bool value : {false, true, false, true}) {
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("DestinationIsAttribute"));
+        ASSERT_NE(item, nullptr);
+        auto* property = dynamic_cast<QtVariantProperty*>(item->property());
+        ASSERT_NE(property, nullptr);
+        property->setValue(value);
+        drainGuiEvents();
+        EXPECT_EQ(assignment->isAttributeNotVariable(), value);
+    }
+    for (bool expected : {false, true}) {
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("DestinationIsAttribute"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QCheckBox* checkBox = browser.findChild<QCheckBox*>();
+        ASSERT_NE(checkBox, nullptr);
+        checkBox->click();
+        drainGuiEvents();
+        EXPECT_EQ(assignment->isAttributeNotVariable(), expected);
+    }
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveQueueCanBeClearedWithoutRecreation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* queue = new Queue(model, "DecisionQueueEditor");
+    Search search(model, "SearchQueueEditor");
+    Remove remove(model, "RemoveQueueEditor");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    for (auto* component : {static_cast<ModelComponent*>(&search), static_cast<ModelComponent*>(&remove)}) {
+        bindEditableKernelObject(browser, component);
+        const QString propertyName = component == &search ? QStringLiteral("SearchIn") : QStringLiteral("RemoveFrom");
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int queueIndex = selector->findText(QString::fromStdString(queue->getName()));
+        ASSERT_GE(queueIndex, 0);
+        selector->setCurrentIndex(queueIndex);
+        drainGuiEvents();
+        EXPECT_EQ(component == &search ? search.getSearchIn() : remove.getRemoveFrom(), queue);
+        bindEditableKernelObject(browser, component);
+        item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int clearIndex = selector->findText(QStringLiteral("Remover referência"));
+        ASSERT_GE(clearIndex, 0);
+        selector->setCurrentIndex(clearIndex);
+        drainGuiEvents();
+        EXPECT_EQ(component == &search ? search.getSearchIn() : remove.getRemoveFrom(), nullptr);
+        EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queue->getName()), queue);
+    }
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveCreateQueueOnlyWhenRequested) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Search search(model, "ExplicitSearchQueue");
+    Remove remove(model, "ExplicitRemoveQueue");
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    for (auto* component : {static_cast<ModelComponent*>(&search), static_cast<ModelComponent*>(&remove)}) {
+        bindEditableKernelObject(browser, component);
+        const QString propertyName = component == &search ? QStringLiteral("SearchIn") : QStringLiteral("RemoveFrom");
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), propertyName);
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int createIndex = selector->findText(QStringLiteral("Criar novo Queue"));
+        ASSERT_GE(createIndex, 0);
+        const std::size_t before = model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size();
+        selector->setCurrentIndex(createIndex);
+        drainGuiEvents();
+        EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), before + 1);
+        EXPECT_NE(component == &search ? search.getSearchIn() : remove.getRemoveFrom(), nullptr);
+    }
+}
+
+TEST(PropertyEditorModelDataReference, RemoveSelectsEntityGroupWithoutChangingRemoveMode) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "RemoveGroup_PropertyEditor");
+    Remove component(model, "Remove_PropertyEditor");
+    component.setRemoveFromType(Remove::RemoveFromType::ENTITYGROUP);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("RemoveFrom"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    EXPECT_GE(selector->findText(QString("Criar novo %1").arg(QString::fromStdString(Util::TypeOf<EntityGroup>()))), 0);
+    const int groupIndex = selector->findText(QString::fromStdString(group->getName()));
+    ASSERT_GE(groupIndex, 0);
+    selector->setCurrentIndex(groupIndex);
+    drainGuiEvents();
+
+    EXPECT_EQ(component.getRemoveFrom(), group);
+    EXPECT_EQ(component.getRemoveFromType(), Remove::RemoveFromType::ENTITYGROUP);
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveRestoreSharedEntityGroupReference) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* group = new EntityGroup(model, "SharedGroup_RoundTrip");
+    auto* search = new Search(model, "Search_RoundTrip");
+    auto* remove = new Remove(model, "Remove_RoundTrip");
+    search->setSearchInType(Search::SearchInType::ENTITYGROUP);
+    search->setSearchIn(group);
+    remove->setRemoveFromType(Remove::RemoveFromType::ENTITYGROUP);
+    remove->setRemoveFrom(group);
+
+    const QString path = QStringLiteral("/tmp/genesys_search_remove_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedGroup = dynamic_cast<EntityGroup*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<EntityGroup>(), "SharedGroup_RoundTrip"));
+    auto* loadedSearch = dynamic_cast<Search*>(loaded->getComponentManager()->find("Search_RoundTrip"));
+    auto* loadedRemove = dynamic_cast<Remove*>(loaded->getComponentManager()->find("Remove_RoundTrip"));
+    ASSERT_NE(loadedGroup, nullptr);
+    ASSERT_NE(loadedSearch, nullptr);
+    ASSERT_NE(loadedRemove, nullptr);
+    EXPECT_EQ(loadedSearch->getSearchIn(), loadedGroup);
+    EXPECT_EQ(loadedRemove->getRemoveFrom(), loadedGroup);
+    EXPECT_EQ(loadedSearch->getSearchInType(), Search::SearchInType::ENTITYGROUP);
+    EXPECT_EQ(loadedRemove->getRemoveFromType(), Remove::RemoveFromType::ENTITYGROUP);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, SearchAndRemoveRoundTripPreservesClearedQueueReference) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* queue = new Queue(model, "RoundTripDecisionQueue");
+    auto* search = new Search(model, "ClearedSearch");
+    auto* remove = new Remove(model, "SharedQueueRemove");
+    search->setSearchIn(queue);
+    remove->setRemoveFrom(queue);
+    search->setSearchIn(nullptr);
+    const QString path = QStringLiteral("/tmp/genesys_search_remove_cleared_queue_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedQueue = dynamic_cast<Queue*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<Queue>(), "RoundTripDecisionQueue"));
+    auto* loadedSearch = dynamic_cast<Search*>(loaded->getComponentManager()->find("ClearedSearch"));
+    auto* loadedRemove = dynamic_cast<Remove*>(loaded->getComponentManager()->find("SharedQueueRemove"));
+    ASSERT_NE(loadedQueue, nullptr);
+    ASSERT_NE(loadedSearch, nullptr);
+    ASSERT_NE(loadedRemove, nullptr);
+    EXPECT_EQ(loadedSearch->getSearchIn(), nullptr);
+    EXPECT_EQ(loadedRemove->getRemoveFrom(), loadedQueue);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, MatchExposesCommonQueueOrderingProperties) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Match component(model, "Match_PropertyEditor");
+    ModelDataDefinition::CreateInternalData(&component);
+    auto* q0 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "Match_PropertyEditor.Queue0"));
+    auto* q1 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "Match_PropertyEditor.Queue1"));
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    QtBrowserItem* ruleItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderRule"));
+    ASSERT_NE(ruleItem, nullptr);
+    browser.setCurrentItem(ruleItem);
+    browser.editItem(ruleItem);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int ruleIndex = selector->findText(QStringLiteral("HIGHESTVALUE"));
+    ASSERT_GE(ruleIndex, 0);
+    selector->setCurrentIndex(ruleIndex);
+    drainGuiEvents();
+
+    QtBrowserItem* attributeItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("QueueOrderAttributeName"));
+    ASSERT_NE(attributeItem, nullptr);
+    browser.setCurrentItem(attributeItem);
+    browser.editItem(attributeItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("Priority"));
+    EXPECT_EQ(component.getQueueOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(component.getQueueOrderAttributeName(), "Priority");
+    EXPECT_EQ(q0->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q1->getOrderRule(), Queue::OrderRule::HIGHESTVALUE);
+    EXPECT_EQ(q0->getAttributeName(), "Priority");
+    EXPECT_EQ(q1->getAttributeName(), "Priority");
+}
+
+TEST(PropertyEditorModelDataReference, CppForGExposesOwnedCompilerSettingsInline) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppForG component(model, "CppForG_PropertyEditor");
+    CppCompiler* ownedCompiler = component.getCppCompiler();
+    ASSERT_NE(ownedCompiler, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("CppCompiler")), nullptr);
+    QtBrowserItem* sourceFileItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename"));
+    ASSERT_NE(sourceFileItem, nullptr);
+    browser.setCurrentItem(sourceFileItem);
+    browser.editItem(sourceFileItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("cppforg-edited.cpp"));
+    EXPECT_EQ(ownedCompiler->getSourceFilename(), "cppforg-edited.cpp");
+    EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
+    EXPECT_THROW(component.setCppCompiler(nullptr), std::invalid_argument);
+}
+
+TEST(PropertyEditorModelDataReference, SPICECircuitRunnerCallbackExpiresWithCircuit) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* runner = new SPICERunner(model, "SPICERunner_CallbackLifetime");
+    {
+        SPICECircuit circuit(model, "SPICECircuit_CallbackLifetime");
+        circuit.setRunner(runner);
+    }
+    EXPECT_NO_THROW(runner->CompileSpiceFile());
+}
+
+TEST(PropertyEditorModelDataReference, SPICECircuitPreservesSharedRunnerOnGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* runner = new SPICERunner(model, "SPICERunner_RoundTrip");
+    auto* circuit = new SPICECircuit(model, "SPICECircuit_RoundTrip");
+    circuit->setRunner(runner);
+
+    const QString path = QStringLiteral("/tmp/genesys_spice_runner_reference_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedCircuit = dynamic_cast<SPICECircuit*>(loaded->getComponentManager()->find("SPICECircuit_RoundTrip"));
+    auto* loadedRunner = dynamic_cast<SPICERunner*>(loaded->getDataManager()->getDataDefinition(
+        Util::TypeOf<SPICERunner>(), "SPICERunner_RoundTrip"));
+    ASSERT_NE(loadedCircuit, nullptr);
+    ASSERT_NE(loadedRunner, nullptr);
+    EXPECT_EQ(loadedCircuit->getRunner(), loadedRunner);
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorModelDataReference, DiffEquationsExposesOwnedCompilerSettingsInline) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DiffEquations component(model, "DiffEquations_PropertyEditor");
+    CppCompiler* ownedCompiler = component.getCppCompiler();
+    ASSERT_NE(ownedCompiler, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &component);
+    drainGuiEvents();
+
+    EXPECT_NE(findBrowserItemByName(browser.topLevelItems(), QStringLiteral("CppCompiler")), nullptr);
+    QtBrowserItem* sourceFileItem = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SourceFilename"));
+    ASSERT_NE(sourceFileItem, nullptr);
+    browser.setCurrentItem(sourceFileItem);
+    browser.editItem(sourceFileItem);
+    drainGuiEvents();
+    QLineEdit* editor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(editor, nullptr);
+    commitTextWithEnter(editor, QStringLiteral("diff-equations-edited.cpp"));
+    EXPECT_EQ(ownedCompiler->getSourceFilename(), "diff-equations-edited.cpp");
+    EXPECT_EQ(component.getCppCompiler(), ownedCompiler);
+}
+
+TEST(PropertyEditorModelDataReference, OwnedCompilerSettingsSurviveGenRoundTrip) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* cppForG = new CppForG(model, "CppForG_CompilerRoundTrip");
+    auto* diffEquations = new DiffEquations(model, "DiffEquations_CompilerRoundTrip");
+    cppForG->getCppCompiler()->setCompilerCommand("custom-cxx");
+    diffEquations->getCppCompiler()->setOutputFilename("custom-output.so");
+    cppForG->setOnDispatchEventCode("// editable incomplete source\n");
+
+    const QString path = QStringLiteral("/tmp/genesys_internal_compiler_roundtrip.gen");
+    QFile::remove(path);
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Model* loaded = simulator.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedCppForG = dynamic_cast<CppForG*>(loaded->getComponentManager()->find("CppForG_CompilerRoundTrip"));
+    auto* loadedDiffEquations = dynamic_cast<DiffEquations*>(loaded->getComponentManager()->find("DiffEquations_CompilerRoundTrip"));
+    ASSERT_NE(loadedCppForG, nullptr);
+    ASSERT_NE(loadedDiffEquations, nullptr);
+    ASSERT_NE(loadedCppForG->getCppCompiler(), nullptr);
+    ASSERT_NE(loadedDiffEquations->getCppCompiler(), nullptr);
+    EXPECT_EQ(loaded->getDataManager()->getDataDefinition(Util::TypeOf<CppCompiler>(),
+                                                          "CppForG_CompilerRoundTrip.CppCompiler"),
+              loadedCppForG->getCppCompiler());
+    EXPECT_EQ(loaded->getDataManager()->getDataDefinition(Util::TypeOf<CppCompiler>(),
+                                                          "DiffEquations_CompilerRoundTrip.CppCompiler"),
+              loadedDiffEquations->getCppCompiler());
+    auto* loadedCompilers = loaded->getDataManager()->getDataDefinitionList(Util::TypeOf<CppCompiler>());
+    ASSERT_NE(loadedCompilers, nullptr);
+    EXPECT_EQ(loadedCompilers->size(), 2u);
+    EXPECT_EQ(loadedCppForG->getCppCompiler()->getCompilerCommand(), "custom-cxx");
+    EXPECT_EQ(loadedDiffEquations->getCppCompiler()->getOutputFilename(), "custom-output.so");
+    EXPECT_EQ(loadedCppForG->getOnDispatchEventCode(), "// editable incomplete source\n");
+    QFile::remove(path);
+}
+
+TEST(PropertyEditorDoubleCommit, GenericSimulationControlDoubleCommitsLocalizedValueOnce) {
+    ScopedDefaultLocale locale(QLocale(QLocale::Portuguese, QLocale::Brazil));
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* object = new GenericDoubleDataDefinition(model);
+    ASSERT_NE(object, nullptr);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+
+    int modelChangedCount = 0;
+    bindEditableKernelObject(browser, object, &modelChangedCount);
+
+    QDoubleSpinBox* spinBox = beginDoubleEdit(browser, QStringLiteral("Value"));
+    ASSERT_NE(spinBox, nullptr);
+    const int countBefore = modelChangedCount;
+    commitTextWithEnter(spinBox->findChild<QLineEdit*>(), QStringLiteral("1,25"));
+
+    EXPECT_NEAR(object->value(), 1.25, 1e-12);
+    EXPECT_EQ(modelChangedCount, countBefore + 1);
+    EXPECT_EQ(object->valueSetCount(), 1);
+    drainGuiEvents();
+    EXPECT_NEAR(object->value(), 1.25, 1e-12);
+}
+
+TEST(PropertyEditorModelDataReference, WaitAndSignalSelectTheSameSignalData) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* sharedSignalData = new SignalData(model, "SharedSignalData_PropertyEditor");
+    ASSERT_NE(sharedSignalData, nullptr);
+    Wait wait(model, "Wait_PropertyEditor");
+    Signal signal(model, "Signal_PropertyEditor");
+
+    // Construction and association materialization must not manufacture either reference.
+    ASSERT_EQ(wait.getQueue(), nullptr);
+    ASSERT_EQ(wait.getSignalData(), nullptr);
+    ASSERT_EQ(signal.getSignalData(), nullptr);
+    ModelDataDefinition::CreateInternalData(&wait);
+    ModelDataDefinition::CreateInternalData(&signal);
+    EXPECT_EQ(wait.getQueue(), nullptr);
+    EXPECT_EQ(wait.getSignalData(), nullptr);
+    EXPECT_EQ(signal.getSignalData(), nullptr);
+    auto* queue = new Queue(model, "Queue_PropertyEditor");
+    model->getDataManager()->insert(queue);
+    wait.setQueue(queue);
+
+    auto selectSharedSignalData = [sharedSignalData](ModelComponent* component) {
+        ASSERT_NE(component, nullptr);
+        ObjectPropertyBrowser browser;
+        browser.resize(640, 480);
+        browser.show();
+        bindEditableKernelObject(browser, component);
+
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("SignalData"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int sharedIndex = selector->findText(QString::fromStdString(sharedSignalData->getName()));
+        ASSERT_GE(sharedIndex, 0);
+        EXPECT_EQ(selector->findText(QStringLiteral("Selecionar SignalData e Editar")), -1);
+        EXPECT_EQ(selector->findText(QStringLiteral("Remover SignalData")), -1);
+        EXPECT_GE(selector->findText(QStringLiteral("Criar novo SignalData")), 0);
+        selector->setCurrentIndex(sharedIndex);
+        drainGuiEvents();
+
+        SimulationControl* signalDataControl = nullptr;
+        for (SimulationControl* control : *component->getSimulationControls()->list()) {
+            if (control != nullptr && control->getName() == "SignalData") {
+                signalDataControl = control;
+                break;
+            }
+        }
+        ASSERT_NE(signalDataControl, nullptr);
+        EXPECT_EQ(signalDataControl->getReferencedModelDataDefinition(), sharedSignalData);
+    };
+
+    selectSharedSignalData(&wait);
+    selectSharedSignalData(&signal);
+}
+
+TEST(PropertyEditorModelDataReference, EnterStationSelectorSwitchesAndRemovesReferenceWithoutDeletingStation) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* stationA = new Station(model, "EnterSelectorStationA");
+    auto* stationB = new Station(model, "EnterSelectorStationB");
+    model->getDataManager()->insert(stationA);
+    model->getDataManager()->insert(stationB);
+
+    Enter enter(model, "EnterStationSelector");
+    enter.setStation(stationA);
+    ModelDataDefinition::CreateInternalData(&enter);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, &enter);
+    QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Station"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    QComboBox* selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int stationBIndex = selector->findText(QStringLiteral("EnterSelectorStationB"));
+    ASSERT_GE(stationBIndex, 0);
+    EXPECT_GE(selector->findText(QStringLiteral("Criar novo Station")), 0);
+    selector->setCurrentIndex(stationBIndex);
+    drainGuiEvents();
+    EXPECT_EQ(enter.getStation(), stationB);
+    EXPECT_EQ(stationA->getEnterIntoStationComponent(), nullptr);
+    EXPECT_EQ(stationB->getEnterIntoStationComponent(), &enter);
+
+    item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Station"));
+    ASSERT_NE(item, nullptr);
+    browser.setCurrentItem(item);
+    browser.editItem(item);
+    drainGuiEvents();
+    selector = browser.findChild<QComboBox*>();
+    ASSERT_NE(selector, nullptr);
+    const int removeIndex = selector->findText(QStringLiteral("Remover referência"));
+    ASSERT_GE(removeIndex, 0);
+    selector->setCurrentIndex(removeIndex);
+    drainGuiEvents();
+    EXPECT_EQ(enter.getStation(), nullptr);
+    EXPECT_EQ(stationB->getEnterIntoStationComponent(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationA->getName()), stationA);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationB->getName()), stationB);
+}
+
+TEST(PropertyEditorModelDataReference, WaitQueueSelectorRetainsAllChoicesAndSwitchesByIdentity) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    auto* queueA = new Queue(model, "WaitQueueA");
+    auto* queueB = new Queue(model, "WaitQueueB");
+    model->getDataManager()->insert(queueA);
+    model->getDataManager()->insert(queueB);
+    {
+        Wait wait(model, "WaitQueueSelector");
+        wait.setQueue(queueA);
+        ModelDataDefinition::CreateInternalData(&wait);
+        ObjectPropertyBrowser browser;
+        browser.resize(640, 480);
+        browser.show();
+        bindEditableKernelObject(browser, &wait);
+        QtBrowserItem* item = findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Queue"));
+        ASSERT_NE(item, nullptr);
+        browser.setCurrentItem(item);
+        browser.editItem(item);
+        drainGuiEvents();
+        QComboBox* selector = browser.findChild<QComboBox*>();
+        ASSERT_NE(selector, nullptr);
+        const int aIndex = selector->findText(QStringLiteral("WaitQueueA"));
+        const int bIndex = selector->findText(QStringLiteral("WaitQueueB"));
+        ASSERT_GE(aIndex, 0);
+        ASSERT_GE(bIndex, 0);
+        EXPECT_GE(selector->findText(QStringLiteral("Criar novo Queue")), 0);
+        EXPECT_EQ(selector->findText(QStringLiteral("Selecionar Queue e Editar")), -1);
+        EXPECT_GE(selector->findText(QStringLiteral("Remover referência")), 0);
+        selector->setCurrentIndex(bIndex);
+        drainGuiEvents();
+        EXPECT_EQ(wait.getQueue(), queueB);
+        EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "WaitQueueA"), queueA);
+        EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "WaitQueueB"), queueB);
+    }
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "WaitQueueA"), queueA);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "WaitQueueB"), queueB);
+    Wait createWait(model, "WaitQueueCreate");
+    ObjectPropertyBrowser createBrowser;
+    createBrowser.resize(640, 480);
+    createBrowser.show();
+    bindEditableKernelObject(createBrowser, &createWait);
+    QtBrowserItem* createItem = findBrowserItemByName(createBrowser.topLevelItems(), QStringLiteral("Queue"));
+    ASSERT_NE(createItem, nullptr);
+    createBrowser.setCurrentItem(createItem);
+    createBrowser.editItem(createItem);
+    drainGuiEvents();
+    QComboBox* createSelector = createBrowser.findChild<QComboBox*>();
+    ASSERT_NE(createSelector, nullptr);
+    const int createIndex = createSelector->findText(QStringLiteral("Criar novo Queue"));
+    ASSERT_GE(createIndex, 0);
+    const std::size_t queueCountBefore = model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size();
+    createSelector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    EXPECT_NE(createWait.getQueue(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinitionList(Util::TypeOf<Queue>())->size(), queueCountBefore + 1);
+}
+
+TEST(PropertyEditorModelDataReference, SignalExplicitlyCreatesAndWaitReusesOneSignalData) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    Signal signal(model, "SignalCreateSignalData");
+    Wait wait(model, "WaitReuseSignalData");
+    ModelDataDefinition::CreateInternalData(&signal);
+    ModelDataDefinition::CreateInternalData(&wait);
+    ASSERT_EQ(signal.getSignalData(), nullptr);
+    ASSERT_EQ(wait.getSignalData(), nullptr);
+    auto* dataList = model->getDataManager()->getDataDefinitionList(Util::TypeOf<SignalData>());
+    ASSERT_NE(dataList, nullptr);
+    ASSERT_EQ(dataList->size(), 0u);
+
+    ObjectPropertyBrowser signalBrowser;
+    signalBrowser.resize(640, 480);
+    signalBrowser.show();
+    bindEditableKernelObject(signalBrowser, &signal);
+    QtBrowserItem* signalItem = findBrowserItemByName(signalBrowser.topLevelItems(), QStringLiteral("SignalData"));
+    ASSERT_NE(signalItem, nullptr);
+    signalBrowser.setCurrentItem(signalItem);
+    signalBrowser.editItem(signalItem);
+    drainGuiEvents();
+    QComboBox* signalSelector = signalBrowser.findChild<QComboBox*>();
+    ASSERT_NE(signalSelector, nullptr);
+    const int createIndex = signalSelector->findText(QStringLiteral("Criar novo SignalData"));
+    ASSERT_GE(createIndex, 0);
+    signalSelector->setCurrentIndex(createIndex);
+    drainGuiEvents();
+    ASSERT_NE(signal.getSignalData(), nullptr);
+    ASSERT_EQ(dataList->size(), 1u);
+
+    ObjectPropertyBrowser waitBrowser;
+    waitBrowser.resize(640, 480);
+    waitBrowser.show();
+    bindEditableKernelObject(waitBrowser, &wait);
+    QtBrowserItem* waitItem = findBrowserItemByName(waitBrowser.topLevelItems(), QStringLiteral("SignalData"));
+    ASSERT_NE(waitItem, nullptr);
+    waitBrowser.setCurrentItem(waitItem);
+    waitBrowser.editItem(waitItem);
+    drainGuiEvents();
+    QComboBox* waitSelector = waitBrowser.findChild<QComboBox*>();
+    ASSERT_NE(waitSelector, nullptr);
+    const int sharedIndex = waitSelector->findText(QString::fromStdString(signal.getSignalData()->getName()));
+    ASSERT_GE(sharedIndex, 0);
+    waitSelector->setCurrentIndex(sharedIndex);
+    drainGuiEvents();
+    EXPECT_EQ(wait.getSignalData(), signal.getSignalData());
+    EXPECT_EQ(dataList->size(), 1u);
+}
+
+TEST(PropertyEditorDoubleCommit, BacteriaSignalGridSetterAndSimulationControlPreserveDouble) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_KernelContract");
+    ASSERT_NE(grid, nullptr);
+
+    grid->setDiffusionRate(0.37);
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.37);
+
+    SimulationControl* diffusionControl = nullptr;
+    for (SimulationControl* control : *grid->getSimulationControls()->list()) {
+        if (control != nullptr && control->getName() == "DiffusionRate") {
+            diffusionControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(diffusionControl, nullptr);
+    diffusionControl->setValue("0.18");
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.18);
+}
+
+TEST(PropertyEditorDoubleCommit, PortugueseLocaleCommitsAllBiochemicalDoubleControlsOnce) {
+    ScopedDefaultLocale locale(QLocale(QLocale::Portuguese, QLocale::Brazil));
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioNetwork* network = manager->newInstance<BioNetwork>(model, "BioNetwork_PropertyEditor");
+    ASSERT_NE(network, nullptr);
+    network->setStepSize(0.4);
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_PropertyEditor");
+    ASSERT_NE(grid, nullptr);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+
+    int modelChangedCount = 0;
+    bindEditableKernelObject(browser, network, &modelChangedCount);
+
+    auto commitNetworkDouble = [&](const QString& propertyName,
+                                   const QString& localizedText,
+                                   const std::function<double()>& getter) -> double {
+        const int countBefore = modelChangedCount;
+        QDoubleSpinBox* spinBox = beginDoubleEdit(browser, propertyName);
+        if (spinBox == nullptr) {
+            ADD_FAILURE() << "Expected QDoubleSpinBox for " << propertyName.toStdString();
+            return getter();
+        }
+        commitTextWithEnter(spinBox->findChild<QLineEdit*>(), localizedText);
+        drainGuiEvents();
+        EXPECT_EQ(modelChangedCount, countBefore + 1);
+        return getter();
+    };
+
+    EXPECT_NEAR(commitNetworkDouble("StartTime", "0,18", [&]() { return network->getStartTime(); }),
+                0.18, 1e-12);
+    EXPECT_NEAR(commitNetworkDouble("StopTime", "1,25", [&]() { return network->getStopTime(); }),
+                1.25, 1e-12);
+    EXPECT_NEAR(commitNetworkDouble("StepSize", "0,1", [&]() { return network->getStepSize(); }),
+                0.1, 1e-12);
+
+    bindEditableKernelObject(browser, grid, &modelChangedCount);
+    auto commitGridDouble = [&](const QString& propertyName,
+                                const QString& localizedText,
+                                const std::function<double()>& getter) -> double {
+        const int countBefore = modelChangedCount;
+        QDoubleSpinBox* spinBox = beginDoubleEdit(browser, propertyName);
+        if (spinBox == nullptr) {
+            ADD_FAILURE() << "Expected QDoubleSpinBox for " << propertyName.toStdString();
+            return getter();
+        }
+        commitTextWithEnter(spinBox->findChild<QLineEdit*>(), localizedText);
+        drainGuiEvents();
+        EXPECT_EQ(modelChangedCount, countBefore + 1);
+        return getter();
+    };
+
+    EXPECT_NEAR(commitGridDouble("InitialSignal", "-0,5", [&]() { return grid->getInitialSignal(); }),
+                -0.5, 1e-12);
+    EXPECT_NEAR(commitGridDouble("DiffusionRate", "1,0", [&]() { return grid->getDiffusionRate(); }),
+                1.0, 1e-12);
+    EXPECT_NEAR(commitGridDouble("DecayRate", "0,25", [&]() { return grid->getDecayRate(); }),
+                0.25, 1e-12);
+}
+
+TEST(PropertyEditorDoubleCommit, BacteriaSignalGridDiffusionRateCommitsOnFocusOut) {
+    ScopedDefaultLocale locale(QLocale::c());
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_FocusOut");
+    ASSERT_NE(grid, nullptr);
+    grid->setDiffusionRate(0.0);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    int modelChangedCount = 0;
+    bindEditableKernelObject(browser, grid, &modelChangedCount);
+
+    QDoubleSpinBox* diffusionEditor = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(diffusionEditor, nullptr);
+    EXPECT_EQ(diffusionEditor->property("value").metaType().id(), QMetaType::Double);
+    int valueChangedCount = 0;
+    int editingFinishedCount = 0;
+    QObject::connect(diffusionEditor, &QDoubleSpinBox::valueChanged,
+                     [&valueChangedCount](double) { ++valueChangedCount; });
+    QObject::connect(diffusionEditor, &QAbstractSpinBox::editingFinished,
+                     [&editingFinishedCount]() { ++editingFinishedCount; });
+    const int modelChangedBefore = modelChangedCount;
+    QLineEdit* diffusionLineEdit = diffusionEditor->findChild<QLineEdit*>();
+    ASSERT_NE(diffusionLineEdit, nullptr);
+    diffusionLineEdit->setFocus();
+    diffusionLineEdit->selectAll();
+    diffusionLineEdit->setText(QStringLiteral("0.37"));
+
+    QFocusEvent focusOut(QEvent::FocusOut);
+    QApplication::sendEvent(diffusionLineEdit, &focusOut);
+    browser.clear();
+    drainGuiEvents();
+
+    EXPECT_GE(valueChangedCount, 1);
+    EXPECT_GE(editingFinishedCount, 1);
+    EXPECT_EQ(modelChangedCount, modelChangedBefore + 1);
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.37);
+}
+
+TEST(PropertyEditorDoubleCommit, BacteriaSignalGridSpinButtonsAndEscapeUseKernelValue) {
+    ScopedDefaultLocale locale(QLocale::c());
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_SpinButtons");
+    ASSERT_NE(grid, nullptr);
+    grid->setDiffusionRate(0.0);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, grid);
+
+    QDoubleSpinBox* spinBox = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(spinBox, nullptr);
+    spinBox->stepUp();
+    QLineEdit* lineEdit = spinBox->findChild<QLineEdit*>();
+    ASSERT_NE(lineEdit, nullptr);
+    QKeyEvent press(QEvent::KeyPress, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &press);
+    QKeyEvent release(QEvent::KeyRelease, Qt::Key_Return, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &release);
+    drainGuiEvents();
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 1.0);
+
+    spinBox = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(spinBox, nullptr);
+    spinBox->stepDown();
+    lineEdit = spinBox->findChild<QLineEdit*>();
+    ASSERT_NE(lineEdit, nullptr);
+    QApplication::sendEvent(lineEdit, &press);
+    QApplication::sendEvent(lineEdit, &release);
+    drainGuiEvents();
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.0);
+
+    spinBox = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(spinBox, nullptr);
+    spinBox->setValue(0.18);
+    lineEdit = spinBox->findChild<QLineEdit*>();
+    ASSERT_NE(lineEdit, nullptr);
+    QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+    QApplication::sendEvent(lineEdit, &escape);
+    drainGuiEvents();
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.0);
+}
+
+TEST(PropertyEditorDoubleCommit, GraphicalDataDefinitionDiffusionRateCommitsOnFocusOut) {
+    ScopedDefaultLocale locale(QLocale::c());
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_GraphicalFocusOut");
+    ASSERT_NE(grid, nullptr);
+    grid->setDiffusionRate(0.0);
+    Plugin* plugin = manager->find(Util::TypeOf<BacteriaSignalGrid>());
+    ASSERT_NE(plugin, nullptr);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    auto* graphicalGrid = new GraphicalModelDataDefinition(
+        plugin, grid, QPointF(100.0, 100.0), QColor(Qt::blue));
+    graphicalGrid->setEditableInPropertyEditor(true);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    QSet<QString> editableObjects;
+    editableObjects.insert(QString::fromStdString(grid->getName()));
+    browser.setActiveObject(graphicalGrid, grid, {}, editableObjects, nullptr, nullptr, nullptr, nullptr);
+    drainGuiEvents();
+
+    QDoubleSpinBox* diffusionEditor = beginDoubleEdit(browser, QStringLiteral("DiffusionRate"));
+    ASSERT_NE(diffusionEditor, nullptr);
+    QLineEdit* diffusionLineEdit = diffusionEditor->findChild<QLineEdit*>();
+    ASSERT_NE(diffusionLineEdit, nullptr);
+    diffusionLineEdit->setFocus();
+    diffusionLineEdit->selectAll();
+    diffusionLineEdit->setText(QStringLiteral("0.37"));
+
+    QtBrowserItem* decayRate = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("DecayRate"));
+    ASSERT_NE(decayRate, nullptr);
+    browser.setCurrentItem(decayRate);
+    browser.editItem(decayRate);
+    drainGuiEvents();
+
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.37);
+}
+
+TEST(PropertyEditorDoubleCommit, CommitIsNotDroppedWhenBindingIsCleared) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_QueuedCommit");
+    ASSERT_NE(grid, nullptr);
+    grid->setDiffusionRate(0.0);
+
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+    bindEditableKernelObject(browser, grid);
+
+    QtBrowserItem* item = findBrowserItemByName(
+        browser.topLevelItems(), QStringLiteral("DiffusionRate"));
+    ASSERT_NE(item, nullptr);
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &browser,
+        "onVariantEditorCommitted",
+        Qt::DirectConnection,
+        Q_ARG(QtProperty*, item->property()),
+        Q_ARG(QVariant, QVariant(0.37))));
+
+    browser.clearCurrentlyConnectedObject();
+    drainGuiEvents();
+
+    EXPECT_DOUBLE_EQ(grid->getDiffusionRate(), 0.37);
+}
+
+TEST(PropertyEditorDoubleCommit, IntegerStringAndBoolEditorsRemainFunctional) {
+    ScopedDefaultLocale locale(QLocale(QLocale::Portuguese, QLocale::Brazil));
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BacteriaSignalGrid* grid =
+        manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_NonDoubleRegression");
+    ASSERT_NE(grid, nullptr);
+    ObjectPropertyBrowser browser;
+    browser.resize(640, 480);
+    browser.show();
+
+    int modelChangedCount = 0;
+    bindEditableKernelObject(browser, grid, &modelChangedCount);
+
+    const int countBeforeWidth = modelChangedCount;
+    QSpinBox* widthEditor = beginIntegerEdit(browser, QStringLiteral("Width"));
+    ASSERT_NE(widthEditor, nullptr);
+    commitTextWithEnter(widthEditor->findChild<QLineEdit*>(), QStringLiteral("7"));
+    EXPECT_EQ(grid->getWidth(), 7u);
+    EXPECT_EQ(modelChangedCount, countBeforeWidth + 1);
+
+    QtBrowserItem* initialValues =
+        findBrowserItemByName(browser.topLevelItems(), QStringLiteral("InitialValues"));
+    ASSERT_NE(initialValues, nullptr);
+    browser.setCurrentItem(initialValues);
+    browser.editItem(initialValues);
+    drainGuiEvents();
+    QLineEdit* stringEditor = browser.findChild<QLineEdit*>();
+    ASSERT_NE(stringEditor, nullptr);
+    const int countBeforeString = modelChangedCount;
+    commitTextWithEnter(stringEditor, QStringLiteral("1, 2, 3"));
+    EXPECT_EQ(grid->getInitialValues(), "1, 2, 3");
+    EXPECT_EQ(modelChangedCount, countBeforeString + 1);
+
+    auto* genericObject = new GenericDoubleDataDefinition(model);
+    ASSERT_NE(genericObject, nullptr);
+    bindEditableKernelObject(browser, genericObject, &modelChangedCount);
+
+    QtBrowserItem* enabled =
+        findBrowserItemByName(browser.topLevelItems(), QStringLiteral("Enabled"));
+    ASSERT_NE(enabled, nullptr);
+    browser.setCurrentItem(enabled);
+    browser.editItem(enabled);
+    drainGuiEvents();
+    QCheckBox* checkBox = browser.findChild<QCheckBox*>();
+    ASSERT_NE(checkBox, nullptr);
+    checkBox->click();
+    drainGuiEvents();
+    EXPECT_TRUE(genericObject->enabled());
+}
+
+TEST(ModelLanguageSynchronizerRegression, RefreshIsSignalSafeCommentFilteredAndKeepsGroPayload) {
+    QFile::remove(QStringLiteral("./temp.tmp"));
+
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    ASSERT_NE(model->getPersistence(), nullptr);
+    model->getPersistence()->setHasChanged(true);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_TextSync");
+    ASSERT_NE(program, nullptr);
+    const std::string sourceCode =
+        "include gro;\n"
+        "set ( \"dt\", 0.18 );\n"
+        "# payload line that belongs to GRO source\n"
+        "// another GRO source comment\n"
+        "program p() := { message ( 1, \"x=y\" ) };\n";
+    program->setSourceCode(sourceCode);
+
+    QPlainTextEdit editor;
+    bool textModelHasChanged = true;
+    int textChangedCount = 0;
+    QObject::connect(&editor, &QPlainTextEdit::textChanged, [&]() {
+        ++textChangedCount;
+    });
+
+    QWidget owner;
+    ModelLanguageSynchronizer synchronizer(
+        &simulator,
+        &editor,
+        &textModelHasChanged,
+        &owner,
+        {});
+
+    synchronizer.actualizeModelSimLanguage();
+
+    const QString displayed = editor.toPlainText();
+    EXPECT_FALSE(displayed.isEmpty());
+    EXPECT_FALSE(textModelHasChanged);
+    EXPECT_EQ(textChangedCount, 0);
+    EXPECT_TRUE(model->getPersistence()->hasChanged())
+        << "Generating the TextCodeEditor representation must not mark persistence clean";
+    EXPECT_FALSE(QFile::exists(QStringLiteral("./temp.tmp")));
+
+    const QStringList lines = displayed.split(QLatin1Char('\n'));
+    for (const QString& line : lines) {
+        EXPECT_FALSE(line.trimmed().startsWith(QLatin1Char('#')))
+            << line.toStdString();
+    }
+
+    EXPECT_TRUE(displayed.contains(QStringLiteral("GroProgram")));
+    EXPECT_TRUE(displayed.contains(QStringLiteral("sourceCode=e\"")));
+    EXPECT_TRUE(displayed.contains(QStringLiteral("\\\"dt\\\"")));
+    EXPECT_TRUE(displayed.contains(QStringLiteral("\\n# payload line that belongs to GRO source")));
+    EXPECT_TRUE(displayed.contains(QStringLiteral("// another GRO source comment")));
+}
+
+
+TEST(ModelLanguageSynchronizerRegression, SemanticSceneEventsDoNotSerializeHiddenTextViews) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    Simulator* simulator = scene->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    PluginManager* manager = simulator->getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+
+    QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
+    ASSERT_NE(modelTabs, nullptr);
+    ASSERT_FALSE(modelTabs->isTabVisible(0));
+    ASSERT_FALSE(modelTabs->isTabVisible(1));
+    ASSERT_TRUE(modelTabs->isTabVisible(3));
+    ASSERT_TRUE(modelTabs->isTabVisible(4));
+    const QString unchangedText = window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"))->toPlainText();
+    drainGuiEvents();
+
+    QPlainTextEdit* editor =
+        window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(editor, nullptr);
+
+    GroProgram* program =
+        manager->newInstance<GroProgram>(model, "GroProgram_SceneSync");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode("include gro;\nset ( \"dt\", 0.18 );\n");
+
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::CREATE,
+        GraphicalModelEvent::EventObjectType::DATADEFINITION,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    model->getDataManager()->remove(program);
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::REMOVE,
+        GraphicalModelEvent::EventObjectType::DATADEFINITION,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+    delete program;
+
+    Create* source = manager->newInstance<Create>(model, "Create_SceneSync");
+    Dispose* destination = manager->newInstance<Dispose>(model, "Dispose_SceneSync");
+    ASSERT_NE(source, nullptr);
+    ASSERT_NE(destination, nullptr);
+
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::CREATE,
+        GraphicalModelEvent::EventObjectType::COMPONENT,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    source->getConnectionManager()->insert(destination);
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::CREATE,
+        GraphicalModelEvent::EventObjectType::CONNECTION,
+        nullptr);
+    drainGuiEvents();
+    const QString destinationId =
+        QStringLiteral("nextId=") + QString::number(destination->getId());
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    source->getConnectionManager()->removeAtPort(0);
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::REMOVE,
+        GraphicalModelEvent::EventObjectType::CONNECTION,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    model->getComponentManager()->remove(source);
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::REMOVE,
+        GraphicalModelEvent::EventObjectType::COMPONENT,
+        nullptr);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+    delete source;
+}
+
+
+TEST(ModelLanguageSynchronizerRegression, VisualOnlySceneEventPreservesManualText) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+
+    QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
+    ASSERT_NE(modelTabs, nullptr);
+    modelTabs->setCurrentIndex(0);
+    drainGuiEvents();
+
+    QPlainTextEdit* editor =
+        window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(editor, nullptr);
+
+    const QString manualText = QStringLiteral("manual text must survive a drawing-only scene event");
+    editor->setPlainText(manualText);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), manualText);
+
+    scene->notifyGraphicalModelChange(
+        GraphicalModelEvent::EventType::EDIT,
+        GraphicalModelEvent::EventObjectType::DRAWING,
+        nullptr);
+    drainGuiEvents();
+
+    EXPECT_EQ(editor->toPlainText(), manualText);
+}
+
+TEST(MainWindowPropertyChanges, MarkDocumentDirtyWithoutRefreshingOrSavingTextViews) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    Simulator* simulator = scene->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    PluginManager* manager = simulator->getPluginManager();
+    manager->autoInsertPlugins();
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+
+    QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
+    ASSERT_NE(modelTabs, nullptr);
+    ASSERT_FALSE(modelTabs->isTabVisible(0));
+    ASSERT_FALSE(modelTabs->isTabVisible(1));
+    ASSERT_TRUE(modelTabs->isTabVisible(3));
+    ASSERT_TRUE(modelTabs->isTabVisible(4));
+
+    auto* create = manager->newInstance<Create>(model, "PropertyDirtyCreate");
+    ASSERT_NE(create, nullptr);
+    ObjectPropertyBrowser* browser = window.findChild<ObjectPropertyBrowser*>(QStringLiteral("treeViewPropertyEditor"));
+    ASSERT_NE(browser, nullptr);
+    bindEditableKernelObject(*browser, create);
+
+    QTemporaryDir temporaryDirectory;
+    ASSERT_TRUE(temporaryDirectory.isValid());
+    const QString path = temporaryDirectory.filePath(QStringLiteral("property-edit-baseline.gen"));
+    ASSERT_TRUE(model->save(path.toStdString()));
+    QFile baselineFile(path);
+    ASSERT_TRUE(baselineFile.open(QIODevice::ReadOnly));
+    const QByteArray baseline = baselineFile.readAll();
+    baselineFile.close();
+    QPlainTextEdit* textEditor = window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(textEditor, nullptr);
+    const QString oldText = textEditor->toPlainText();
+
+#ifdef __linux__
+    const int notificationFd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+    ASSERT_GE(notificationFd, 0);
+    struct CloseNotifications { int fd; ~CloseNotifications() { ::close(fd); } } cleanup{notificationFd};
+    ASSERT_GE(inotify_add_watch(notificationFd, QDir::tempPath().toLocal8Bit().constData(), IN_CREATE | IN_CLOSE_WRITE), 0);
+#endif
+    for (int value = 7; value < 17; ++value) {
+        bindEditableKernelObject(*browser, create);
+        QtBrowserItem* maxCreations = findBrowserItemByName(browser->topLevelItems(), QStringLiteral("MaxCreations"));
+        ASSERT_NE(maxCreations, nullptr);
+        browser->setCurrentItem(maxCreations);
+        browser->editItem(maxCreations);
+        drainGuiEvents();
+        QLineEdit* editor = browser->findChild<QLineEdit*>();
+        ASSERT_NE(editor, nullptr);
+        commitTextWithEnter(editor, QString::number(value));
+        EXPECT_EQ(create->getMaxCreations(), std::to_string(value));
+    }
+#ifdef __linux__
+    alignas(inotify_event) char notifications[16384];
+    for (ssize_t count; (count = ::read(notificationFd, notifications, sizeof(notifications))) > 0;) {
+        for (ssize_t offset = 0; offset < count;) {
+            const auto* event = reinterpret_cast<const inotify_event*>(notifications + offset);
+            if (event->len != 0) {
+                EXPECT_FALSE(QString::fromLocal8Bit(event->name).startsWith("genesys-model-"))
+                    << "Ordinary edits must not create transient serialized model files";
+            }
+            offset += sizeof(inotify_event) + event->len;
+        }
+    }
+#endif
+    EXPECT_TRUE(window.graphicalModelHasChanged());
+    EXPECT_EQ(textEditor->toPlainText(), oldText);
+    QFile afterEditFile(path);
+    ASSERT_TRUE(afterEditFile.open(QIODevice::ReadOnly));
+    EXPECT_EQ(afterEditFile.readAll(), baseline)
+        << "A property edit must not persist the existing model file";
+
+    ASSERT_TRUE(model->save(path.toStdString()));
+    Simulator restored;
+    restored.getPluginManager()->autoInsertPlugins();
+    Model* loaded = restored.getModelManager()->loadModel(path.toStdString());
+    ASSERT_NE(loaded, nullptr);
+    auto* loadedCreate = dynamic_cast<Create*>(loaded->getComponentManager()->find("PropertyDirtyCreate"));
+    ASSERT_NE(loadedCreate, nullptr);
+    EXPECT_EQ(loadedCreate->getMaxCreations(), "16");
+}
+
+TEST(ModelLanguageSynchronizerRegression, ModelTabsKeepManualTextIsolated) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    QPlainTextEdit* editor =
+        window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(editor, nullptr);
+    QTabWidget* graphicsTabs =
+        window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModelGraphics"));
+    ASSERT_NE(graphicsTabs, nullptr);
+
+    const int firstIndex = graphicsTabs->currentIndex();
+    ASSERT_GE(firstIndex, 0);
+
+    const QString firstText = QStringLiteral("manual text for model A");
+    editor->setPlainText(firstText);
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+    ASSERT_GE(graphicsTabs->count(), 2);
+
+    const int secondIndex = graphicsTabs->currentIndex();
+    ASSERT_GE(secondIndex, 0);
+    ASSERT_NE(secondIndex, firstIndex);
+
+    const QString secondText = QStringLiteral("manual text for model B");
+    editor->setPlainText(secondText);
+    drainGuiEvents();
+
+    graphicsTabs->setCurrentIndex(firstIndex);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), firstText);
+
+    graphicsTabs->setCurrentIndex(secondIndex);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), secondText);
+}
+
+TEST(ModelLanguageSynchronizerRegression, ComponentAndConnectionUndoRedoLeaveHiddenTextViewsUntouched) {
+    MainWindow window;
+    window.resize(900, 700);
+    window.show();
+    drainGuiEvents();
+
+    ASSERT_TRUE(QMetaObject::invokeMethod(
+        &window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+
+    ModelGraphicsScene* scene = window.myScene();
+    ASSERT_NE(scene, nullptr);
+    QUndoStack* undoStack = scene->getUndoStack();
+    ASSERT_NE(undoStack, nullptr);
+
+    Simulator* simulator = scene->getSimulator();
+    ASSERT_NE(simulator, nullptr);
+    PluginManager* manager = simulator->getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator->getModelManager()->current();
+    ASSERT_NE(model, nullptr);
+
+    QTabWidget* modelTabs = window.findChild<QTabWidget*>(QStringLiteral("tabWidgetModel"));
+    ASSERT_NE(modelTabs, nullptr);
+    ASSERT_FALSE(modelTabs->isTabVisible(0));
+    ASSERT_FALSE(modelTabs->isTabVisible(1));
+    drainGuiEvents();
+
+    QPlainTextEdit* editor =
+        window.findChild<QPlainTextEdit*>(QStringLiteral("TextCodeEditor"));
+    ASSERT_NE(editor, nullptr);
+    const QString unchangedText = editor->toPlainText();
+
+    Create* source = manager->newInstance<Create>(model, "Create_UndoSync");
+    Dispose* destination = manager->newInstance<Dispose>(model, "Dispose_UndoSync");
+    ASSERT_NE(source, nullptr);
+    ASSERT_NE(destination, nullptr);
+
+    Plugin* createPlugin = manager->find(source->getClassname());
+    Plugin* disposePlugin = manager->find(destination->getClassname());
+    ASSERT_NE(createPlugin, nullptr);
+    ASSERT_NE(disposePlugin, nullptr);
+
+    GraphicalModelComponent* graphicalSource =
+        scene->addGraphicalModelComponent(createPlugin, source, QPointF(120.0, 120.0), Qt::blue, true);
+    GraphicalModelComponent* graphicalDestination =
+        scene->addGraphicalModelComponent(disposePlugin, destination, QPointF(360.0, 120.0), Qt::blue, true);
+    ASSERT_NE(graphicalSource, nullptr);
+    ASSERT_NE(graphicalDestination, nullptr);
+    drainGuiEvents();
+
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    undoStack->undo();
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    undoStack->redo();
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    const QList<GraphicalComponentPort*> sourcePorts = graphicalSource->getGraphicalOutputPorts();
+    const QList<GraphicalComponentPort*> destinationPorts = graphicalDestination->getGraphicalInputPorts();
+    ASSERT_FALSE(sourcePorts.isEmpty());
+    ASSERT_FALSE(destinationPorts.isEmpty());
+
+    auto* connection = new GraphicalConnection(sourcePorts.first(), destinationPorts.first());
+    undoStack->push(new AddUndoCommand(connection, scene));
+    drainGuiEvents();
+
+    const QString destinationId =
+        QStringLiteral("nextId=") + QString::number(destination->getId());
+    EXPECT_EQ(source->getConnectionManager()->size(), 1u);
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    undoStack->undo();
+    drainGuiEvents();
+    EXPECT_EQ(source->getConnectionManager()->size(), 0u);
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    undoStack->redo();
+    drainGuiEvents();
+    EXPECT_EQ(source->getConnectionManager()->size(), 1u);
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    Create* deleted = manager->newInstance<Create>(model, "Create_DeleteUndoSync");
+    ASSERT_NE(deleted, nullptr);
+    Plugin* deletedPlugin = manager->find(deleted->getClassname());
+    ASSERT_NE(deletedPlugin, nullptr);
+    GraphicalModelComponent* graphicalDeleted =
+        scene->addGraphicalModelComponent(deletedPlugin, deleted, QPointF(120.0, 320.0), Qt::blue, true);
+    ASSERT_NE(graphicalDeleted, nullptr);
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    QList<QGraphicsItem*> deleteItems;
+    deleteItems.append(graphicalDeleted);
+    undoStack->push(new DeleteUndoCommand(deleteItems, scene));
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    undoStack->undo();
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+
+    undoStack->redo();
+    drainGuiEvents();
+    EXPECT_EQ(editor->toPlainText(), unchangedText);
+}
+
+TEST(ModelInspectorSelectionRegression, PopulatesHiddenTreesAndKeepsSelectionAcrossTabs) {
+    MainWindow window;
+    window.show();
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+    auto* scene = window.myScene();
+    auto* simulator = scene->getSimulator();
+    auto* model = simulator->getModelManager()->current();
+    auto* manager = simulator->getPluginManager();
+    auto* component = manager->newInstance<Create>(model, "InspectorCreate");
+    auto* data = manager->newInstance<Resource>(model, "InspectorResource");
+    auto* gc = scene->addGraphicalModelComponent(manager->find("Create"), component, QPointF(100,100));
+    auto* gd = new GraphicalModelDataDefinition(manager->find("Resource"), data, QPointF(350,100));
+    scene->addItem(gd);
+    auto* tabs = window.findChild<QTabWidget*>("tabWidgetModel");
+    auto* central = window.findChild<QTabWidget*>("tabWidgetCentral");
+    auto* components = window.findChild<QTreeWidget*>("treeWidgetComponents");
+    auto* definitions = window.findChild<QTreeWidget*>("treeWidgetDataDefnitions");
+    ASSERT_NE(components, nullptr);
+    ASSERT_NE(definitions, nullptr);
+    for (int round = 0; round < 3; ++round) {
+        scene->clearSelection();
+        tabs->setCurrentIndex(4);
+        central->setCurrentIndex(1);
+        components->clear();
+        definitions->clear();
+        gc->setSelected(true);
+        drainGuiEvents();
+        EXPECT_EQ(tabs->currentWidget()->objectName(), "tabModelComponents");
+        ASSERT_NE(components->currentItem(), nullptr);
+        EXPECT_EQ(components->currentItem()->data(0, Qt::UserRole).value<quintptr>(), reinterpret_cast<quintptr>(component));
+        EXPECT_TRUE(gc->isSelected());
+        scene->clearSelection();
+        gd = new GraphicalModelDataDefinition(manager->find("Resource"), data, QPointF(350,100));
+        scene->addItem(gd);
+        gd->setSelected(true);
+        drainGuiEvents();
+        EXPECT_EQ(tabs->currentWidget()->objectName(), "tabModelDataDefinitions");
+        ASSERT_NE(definitions->currentItem(), nullptr);
+        EXPECT_EQ(definitions->currentItem()->data(0, Qt::UserRole).value<quintptr>(), reinterpret_cast<quintptr>(data));
+        EXPECT_TRUE(gd->isSelected());
+        gc->setSelected(true);
+        drainGuiEvents();
+        EXPECT_EQ(tabs->currentWidget()->objectName(), "tabModelDataDefinitions");
+        EXPECT_EQ(scene->selectedItems().size(), 2);
+    }
+}
+
+TEST(ModelInspectorSelectionRegression, PropertyReferenceComboSelectsAndEditsInMainWindow) {
+    MainWindow window;
+    window.show();
+    ASSERT_TRUE(QMetaObject::invokeMethod(&window, "on_actionModelNew_triggered", Qt::DirectConnection));
+    drainGuiEvents();
+    auto* scene = window.myScene();
+    auto* simulator = scene->getSimulator();
+    auto* model = simulator->getModelManager()->current();
+    auto* manager = simulator->getPluginManager();
+    auto* wait = manager->newInstance<Seize>(model, "ReferenceNavigation");
+    auto* queue = manager->newInstance<Queue>(model, "NavigationQueue");
+    wait->setQueue(queue);
+    auto* graphical = scene->addGraphicalModelComponent(manager->find("Seize"), wait, QPointF(100, 100));
+    scene->setShowEditableDataDefinitions(true);
+    auto* tabs = window.findChild<QTabWidget*>("tabWidgetModel");
+    auto* browser = window.findChild<ObjectPropertyBrowser*>();
+    ASSERT_NE(browser, nullptr);
+    tabs->setCurrentIndex(4);
+    tabs->setCurrentIndex(3);
+    graphical->setSelected(true);
+    drainGuiEvents();
+    ASSERT_EQ(tabs->currentWidget()->objectName(), "tabModelComponents");
+    auto* item = findBrowserItemByName(browser->topLevelItems(), "Queue");
+    ASSERT_NE(item, nullptr);
+    browser->setCurrentItem(item);
+    browser->editItem(item);
+    drainGuiEvents();
+    auto* combo = browser->findChild<QComboBox*>();
+    ASSERT_NE(combo, nullptr);
+    const int index = combo->findText("Selecionar Queue e Editar");
+    ASSERT_GE(index, 0);
+    combo->setCurrentIndex(index);
+    drainGuiEvents();
+    auto* tree = window.findChild<QTreeWidget*>("treeWidgetDataDefnitions");
+    ASSERT_NE(tree->currentItem(), nullptr);
+    EXPECT_EQ(tree->currentItem()->data(0, Qt::UserRole).value<quintptr>(), reinterpret_cast<quintptr>(queue));
+    EXPECT_EQ(tabs->currentWidget()->objectName(), "tabModelDataDefinitions");
+    ASSERT_EQ(scene->selectedItems().size(), 1);
+    auto* selected = dynamic_cast<GraphicalModelDataDefinition*>(scene->selectedItems().front());
+    ASSERT_NE(selected, nullptr);
+    EXPECT_EQ(selected->getDataDefinition(), queue);
+    EXPECT_EQ(wait->getQueueableItem()->getQueue(), queue);
+}

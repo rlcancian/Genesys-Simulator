@@ -8,6 +8,7 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "../../../../plugins/components/BiochemicalSimulation/BacteriaColony.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
+#include "BacteriaColonyViewerCoordinates.h"
 
 #include <QComboBox>
 #include <QDialog>
@@ -74,6 +75,7 @@ struct ColonyVisualSnapshot {
 	double colonyTime = 0.0;
 	double minSignal = 0.0;
 	double maxSignal = 0.0;
+	unsigned int signalChannel = 1;
 	unsigned int populationSize = 0;
 	unsigned int internalBacteriaCount = 0;
 	unsigned int gridWidth = 1;
@@ -284,9 +286,10 @@ protected:
 		drawCornerCross(gridFrame.bottomLeft(), 1.0, -1.0);
 		drawCornerCross(gridFrame.bottomRight(), -1.0, -1.0);
 
-		const auto pointForWorldCoordinate = [&gridFrame, cellWidth, cellHeight](double x, double y) {
-			return QPointF(gridFrame.left() + (x + 0.5) * cellWidth,
-			               gridFrame.top() + (y + 0.5) * cellHeight);
+		const auto pointForWorldCoordinate = [&gridFrame, cellWidth, cellHeight, gridWidth, gridHeight](double x, double y) {
+			return QPointF(
+				gridFrame.left() + BacteriaColonyViewerCoordinates::centeredCoordinateToCellOffset(x, gridWidth) * cellWidth,
+				gridFrame.top() + BacteriaColonyViewerCoordinates::centeredCoordinateToCellOffset(y, gridHeight) * cellHeight);
 		};
 		if (_snapshot.chemostatEnabled) {
 			QPen chemostatPen(QColor(59, 130, 246, 140));
@@ -338,9 +341,11 @@ protected:
 			}
 		}
 
-		const auto positionToPoint = [&gridFrame, cellWidth, cellHeight](double x, double y) {
-			const double px = gridFrame.left() + (x + 0.5) * cellWidth;
-			const double py = gridFrame.top() + (y + 0.5) * cellHeight;
+		const auto positionToPoint = [&gridFrame, cellWidth, cellHeight, gridWidth, gridHeight](double x, double y) {
+			const double px = gridFrame.left() +
+			                  BacteriaColonyViewerCoordinates::centeredCoordinateToCellOffset(x, gridWidth) * cellWidth;
+			const double py = gridFrame.top() +
+			                  BacteriaColonyViewerCoordinates::centeredCoordinateToCellOffset(y, gridHeight) * cellHeight;
 			return QPointF(px, py);
 		};
 		constexpr double kPi = 3.14159265358979323846;
@@ -589,11 +594,15 @@ public:
 
 		auto* rootLayout = new QVBoxLayout(this);
 		auto* selectorLayout = new QHBoxLayout();
+		auto* channelLayout = new QHBoxLayout();
 
 		auto* selectorLabel = new QLabel(tr("Colony:"), this);
 		_colonySelector = new QComboBox(this);
 		_colonySelector->setMinimumContentsLength(24);
 		_colonySelector->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+		auto* signalChannelLabel = new QLabel(tr("Signal:"), this);
+		_signalChannelSelector = new QComboBox(this);
+		_signalChannelSelector->setMinimumContentsLength(10);
 
 		auto* refreshButton = new QPushButton(tr("Refresh now"), this);
 		auto* stepButton = new QPushButton(tr("Step colony"), this);
@@ -620,6 +629,10 @@ public:
 		selectorLayout->addWidget(_liveToggleButton);
 		selectorLayout->addWidget(refreshButton);
 		rootLayout->addLayout(selectorLayout);
+		channelLayout->addWidget(signalChannelLabel);
+		channelLayout->addWidget(_signalChannelSelector);
+		channelLayout->addStretch(1);
+		rootLayout->addLayout(channelLayout);
 
 		_summaryLabel = new QLabel(this);
 		_summaryLabel->setWordWrap(true);
@@ -680,6 +693,13 @@ public:
 		});
 		connect(_colonySelector, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int currentIndex) {
 			Q_UNUSED(currentIndex)
+			_refreshSnapshot();
+		});
+		connect(_signalChannelSelector, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int currentIndex) {
+			Q_UNUSED(currentIndex)
+			if (_signalChannelSelector->currentIndex() >= 0) {
+				_selectedSignalChannel = _signalChannelSelector->currentData().toUInt();
+			}
 			_refreshSnapshot();
 		});
 
@@ -744,6 +764,12 @@ private:
 			_setRunEnabled(false);
 			return;
 		}
+		ModelSimulation* simulation = colony->getParentModel()->getSimulation();
+		if (simulation != nullptr && (simulation->isRunning() || simulation->isPaused())) {
+			_lastExecutionMessage = tr("Execution unavailable while the model simulation is running or paused.");
+			_setRunEnabled(false);
+			return;
+		}
 
 		GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
 		if (!result.succeeded) {
@@ -758,6 +784,14 @@ private:
 				.arg(result.executedCommands)
 				.arg(static_cast<qulonglong>(result.signalMutations.size()))
 				.arg(static_cast<qulonglong>(result.populationMutations.size()));
+		// Unsupported/unrecognized Gro constructs must stay visible here too,
+		// not just in BacteriaColony's event-calendar trace: the viewer is the
+		// other real entry point that executes a colony's Gro program.
+		if (!result.unsupportedCommands.empty() || !result.skippedRawStatements.empty()) {
+			_lastExecutionMessage += tr(" [%1 unsupported, %2 unrecognized, outside the selected Gro subset]")
+				.arg(static_cast<qulonglong>(result.unsupportedCommands.size()))
+				.arg(static_cast<qulonglong>(result.skippedRawStatements.size()));
+		}
 	}
 
 	Model* _currentModel() const {
@@ -825,9 +859,40 @@ private:
 		return nullptr;
 	}
 
+	void _refreshSignalChannelSelector(BacteriaColony* colony) {
+		const QString colonyName = colony != nullptr ? QString::fromStdString(colony->getName()) : QString();
+		const unsigned int channelCount = colony != nullptr ? colony->getSignalChannelCount() : 0u;
+		if (colonyName == _channelSelectorColonyName && channelCount == _knownSignalChannelCount &&
+		    static_cast<unsigned int>(_signalChannelSelector->count()) == channelCount) {
+			return;
+		}
+
+		const unsigned int previouslySelectedChannel = _selectedSignalChannel;
+		const bool wasBlocked = _signalChannelSelector->blockSignals(true);
+		_signalChannelSelector->clear();
+		for (unsigned int channel = 1; channel <= channelCount; ++channel) {
+			_signalChannelSelector->addItem(tr("Signal %1").arg(channel), channel);
+		}
+		if (channelCount == 0u) {
+			_selectedSignalChannel = 1u;
+		} else if (previouslySelectedChannel <= channelCount) {
+			_selectedSignalChannel = previouslySelectedChannel;
+		} else {
+			_selectedSignalChannel = 1u;
+		}
+		if (channelCount > 0u) {
+			_signalChannelSelector->setCurrentIndex(static_cast<int>(_selectedSignalChannel - 1u));
+		}
+		_signalChannelSelector->setEnabled(channelCount > 0u);
+		_signalChannelSelector->blockSignals(wasBlocked);
+		_channelSelectorColonyName = colonyName;
+		_knownSignalChannelCount = channelCount;
+	}
+
 	void _refreshSnapshot() {
 		ColonyVisualSnapshot snapshot;
 		BacteriaColony* colony = _selectedColony();
+		_refreshSignalChannelSelector(colony);
 		if (colony == nullptr) {
 			snapshot.statusMessage = _currentModel() == nullptr
 			                         ? tr("No opened model.")
@@ -857,6 +922,7 @@ private:
 		snapshot.signalGridName = colony->getSignalGrid() != nullptr
 		                         ? QString::fromStdString(colony->getSignalGrid()->getName())
 		                         : tr("(none)");
+		snapshot.signalChannel = _selectedSignalChannel;
 		snapshot.chemostatEnabled = colony->getChemostatMode();
 		snapshot.barriers = colony->getBarriers();
 		snapshot.mappedCellExpression = colony->getMappedCellExpression().empty()
@@ -866,9 +932,11 @@ private:
 		snapshot.signalValues.reserve(static_cast<std::size_t>(snapshot.gridWidth) * snapshot.gridHeight);
 		double minSignal = std::numeric_limits<double>::max();
 		double maxSignal = std::numeric_limits<double>::lowest();
-		const std::vector<std::vector<double>> signalMatrix = colony->getSignalMatrix();
-		for (const std::vector<double>& row : signalMatrix) {
-			for (double signalValue : row) {
+		for (unsigned int y = 0; y < snapshot.gridHeight; ++y) {
+			for (unsigned int x = 0; x < snapshot.gridWidth; ++x) {
+				const double signalValue = snapshot.signalChannel == 1u
+				                           ? colony->getSignalValueAt(x, y)
+				                           : colony->getAdditionalSignalValueAt(snapshot.signalChannel, x, y);
 				snapshot.signalValues.push_back(signalValue);
 				minSignal = std::min(minSignal, signalValue);
 				maxSignal = std::max(maxSignal, signalValue);
@@ -899,19 +967,29 @@ private:
 			visual.yfp = bacterium.yfp;
 			visual.cfp = bacterium.cfp;
 			visual.age = colony->getBacteriumAge(index);
-			visual.localSignal = colony->getBacteriumLocalSignal(index);
+			visual.localSignal = snapshot.signalChannel == 1u
+			                     ? colony->getBacteriumLocalSignal(index)
+			                     : colony->getAdditionalSignalValueAt(snapshot.signalChannel, visual.gridX, visual.gridY);
 			double neighborSignalSum = 0.0;
 			if (visual.gridX > 0) {
-				neighborSignalSum += colony->getSignalValueAt(visual.gridX - 1, visual.gridY);
+				neighborSignalSum += snapshot.signalChannel == 1u
+				                     ? colony->getSignalValueAt(visual.gridX - 1, visual.gridY)
+				                     : colony->getAdditionalSignalValueAt(snapshot.signalChannel, visual.gridX - 1, visual.gridY);
 			}
 			if (visual.gridX + 1 < snapshot.gridWidth) {
-				neighborSignalSum += colony->getSignalValueAt(visual.gridX + 1, visual.gridY);
+				neighborSignalSum += snapshot.signalChannel == 1u
+				                     ? colony->getSignalValueAt(visual.gridX + 1, visual.gridY)
+				                     : colony->getAdditionalSignalValueAt(snapshot.signalChannel, visual.gridX + 1, visual.gridY);
 			}
 			if (visual.gridY > 0) {
-				neighborSignalSum += colony->getSignalValueAt(visual.gridX, visual.gridY - 1);
+				neighborSignalSum += snapshot.signalChannel == 1u
+				                     ? colony->getSignalValueAt(visual.gridX, visual.gridY - 1)
+				                     : colony->getAdditionalSignalValueAt(snapshot.signalChannel, visual.gridX, visual.gridY - 1);
 			}
 			if (visual.gridY + 1 < snapshot.gridHeight) {
-				neighborSignalSum += colony->getSignalValueAt(visual.gridX, visual.gridY + 1);
+				neighborSignalSum += snapshot.signalChannel == 1u
+				                     ? colony->getSignalValueAt(visual.gridX, visual.gridY + 1)
+				                     : colony->getAdditionalSignalValueAt(snapshot.signalChannel, visual.gridX, visual.gridY + 1);
 			}
 			visual.neighborSignalSum = neighborSignalSum;
 			visual.programName = bacterium.programName.empty()
@@ -955,7 +1033,7 @@ private:
 			.arg(snapshot.chemostatEnabled ? tr("on") : tr("off"))
 			.arg(static_cast<qulonglong>(snapshot.barriers.size())));
 		_detailsLabel->setText(
-			tr("Signal range: [%1, %2] | Peak occupancy per cell: %3 | Trail depth: %4 refreshes | Live=%5 | Manual run=%6 | map_to_cells=%7 (%8 values)\nSignal matrix preview:\n%9")
+			tr("Signal %10 range: [%1, %2] | Peak occupancy per cell: %3 | Trail depth: %4 refreshes | Live=%5 | Manual run=%6 | map_to_cells=%7 (%8 values)\nLegacy signal matrix preview:\n%9")
 				.arg(QString::number(snapshot.minSignal, 'g', 4))
 				.arg(QString::number(snapshot.maxSignal, 'g', 4))
 				.arg(snapshot.maxBacteriaPerCell)
@@ -964,7 +1042,8 @@ private:
 				.arg(_runEnabled ? tr("on") : tr("off"))
 				.arg(snapshot.mappedCellExpression)
 				.arg(static_cast<qulonglong>(snapshot.mappedCellValueCount))
-				.arg(QString::fromStdString(colony->getSignalMatrixDump(4, 8))));
+				.arg(QString::fromStdString(colony->getSignalMatrixDump(4, 8)))
+				.arg(snapshot.signalChannel));
 		_executionLabel->setText(_lastExecutionMessage);
 		_lastSnapshot = snapshot;
 		_refreshSelectionSummary(_lastSnapshot);
@@ -1063,6 +1142,7 @@ private:
 private:
 	Simulator* _simulator = nullptr;
 	QComboBox* _colonySelector = nullptr;
+	QComboBox* _signalChannelSelector = nullptr;
 	QPushButton* _runToggleButton = nullptr;
 	QPushButton* _liveToggleButton = nullptr;
 	QSpinBox* _refreshIntervalSpin = nullptr;
@@ -1076,11 +1156,14 @@ private:
 	QTimer* _runTimer = nullptr;
 	bool _runEnabled = false;
 	bool _liveUpdatesEnabled = true;
+	unsigned int _selectedSignalChannel = 1u;
+	unsigned int _knownSignalChannelCount = 0u;
 	QString _lastExecutionMessage = tr("Execution: idle");
 	std::optional<unsigned int> _selectedBacteriumId;
 	ColonyVisualSnapshot _lastSnapshot;
 	QString _lastColonyName;
 	QString _initialColonyName;
+	QString _channelSelectorColonyName;
 	double _lastColonyTime = 0.0;
 	unsigned int _lastGridWidth = 0;
 	unsigned int _lastGridHeight = 0;

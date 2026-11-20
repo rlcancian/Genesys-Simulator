@@ -1,4 +1,5 @@
 #include "PasteUndoCommand.h"
+#include <algorithm>
 
 PasteUndoCommand::PasteUndoCommand(QList<GraphicalModelComponent *> *graphicalComponents, QList<GraphicalConnection *> *connections, QList<QGraphicsItemGroup *> *groups, QList<QGraphicsItem *> *drawing, ModelGraphicsScene *scene, QUndoCommand *parent)
     : QUndoCommand(parent), _myComponentItems(new QList<ComponentItem>()), _myConnectionItems(new QList<GraphicalConnection *>()), _myDrawingItems(new QList<DrawingItem>()), _myGroupItems(new QList<GroupItem>()), _myGraphicsScene(scene) {
@@ -175,6 +176,14 @@ void PasteUndoCommand::undo() {
 
     GraphicalModelEvent::EventType eventType = GraphicalModelEvent::EventType::REMOVE;
     GraphicalModelEvent::EventObjectType eventObjectType = GraphicalModelEvent::EventObjectType::OTHER;
+    const bool containsGroupedComponents = std::any_of(
+        _myGroupItems->cbegin(), _myGroupItems->cend(),
+        [](const GroupItem& group) { return !group.myComponentItems.isEmpty(); });
+    if (!_myComponentItems->isEmpty() || containsGroupedComponents) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::COMPONENT;
+    } else if (!_myConnectionItems->isEmpty()) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::CONNECTION;
+    }
 
     _myGraphicsScene->notifyGraphicalModelChange(eventType, eventObjectType, nullptr);
 
@@ -292,6 +301,14 @@ void PasteUndoCommand::redo() {
 
     GraphicalModelEvent::EventType eventType = GraphicalModelEvent::EventType::CREATE;
     GraphicalModelEvent::EventObjectType eventObjectType = GraphicalModelEvent::EventObjectType::OTHER;
+    const bool containsGroupedComponents = std::any_of(
+        _myGroupItems->cbegin(), _myGroupItems->cend(),
+        [](const GroupItem& group) { return !group.myComponentItems.isEmpty(); });
+    if (!_myComponentItems->isEmpty() || containsGroupedComponents) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::COMPONENT;
+    } else if (!_myConnectionItems->isEmpty()) {
+        eventObjectType = GraphicalModelEvent::EventObjectType::CONNECTION;
+    }
 
     _myGraphicsScene->notifyGraphicalModelChange(eventType, eventObjectType, nullptr);
 

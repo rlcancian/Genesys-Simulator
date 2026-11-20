@@ -1,154 +1,241 @@
 #include "DialogReportIssue.h"
 
-#include <QCheckBox>
+#include "../services/IssueReportBrowserService.h"
+
+#include <QApplication>
+#include <QClipboard>
+#include <QCloseEvent>
 #include <QComboBox>
+#include <QCoreApplication>
+#include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
+#include <QNetworkAccessManager>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <utility>
 
-DialogReportIssue::DialogReportIssue(QWidget* parent)
-    : QDialog(parent) {
+DialogReportIssue::DialogReportIssue(QWidget* parent,
+                                     QNetworkAccessManager* networkManager,
+                                     std::function<bool(const QUrl&)> browserOpener)
+    : QDialog(parent),
+      _networkManager(networkManager != nullptr ? networkManager : new QNetworkAccessManager(this)),
+      _browserOpener(browserOpener ? std::move(browserOpener)
+                                   : [](const QUrl& url) { return QDesktopServices::openUrl(url); }) {
     setWindowTitle(tr("Report Issue"));
     setModal(true);
-    resize(820, 700);
+    resize(540, 420);
+    setMinimumSize(440, 390);
 
-    QVBoxLayout* rootLayout = new QVBoxLayout(this);
-    rootLayout->setContentsMargins(14, 14, 14, 14);
-    rootLayout->setSpacing(10);
+    auto* root = new QVBoxLayout(this);
+    root->setContentsMargins(14, 14, 14, 14);
+    root->setSpacing(9);
 
-    QLabel* introLabel = new QLabel(
-        tr("Submit a bug report, error/inconformity, question, or suggestion through the configured secure relay. "
-           "No GitHub credential is stored in this desktop client."), this);
-    introLabel->setWordWrap(true);
-    rootLayout->addWidget(introLabel);
+    _hintLabel = new QLabel(this);
+    _hintLabel->setWordWrap(true);
+    root->addWidget(_hintLabel);
 
-    _relayStatusLabel = new QLabel(this);
-    _relayStatusLabel->setWordWrap(true);
-    _relayStatusLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    rootLayout->addWidget(_relayStatusLabel);
-
-    QFormLayout* formLayout = new QFormLayout();
-    formLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignTop);
-    formLayout->setFormAlignment(Qt::AlignTop);
+    auto* form = new QFormLayout();
+    form->setLabelAlignment(Qt::AlignRight | Qt::AlignTop);
 
     _categoryCombo = new QComboBox(this);
+    _categoryCombo->setObjectName(QStringLiteral("issueType"));
     _categoryCombo->addItem(tr("Bug"), QStringLiteral("bug"));
-    _categoryCombo->addItem(tr("Error / Inconformity"), QStringLiteral("error"));
     _categoryCombo->addItem(tr("Suggestion / Enhancement"), QStringLiteral("enhancement"));
     _categoryCombo->addItem(tr("Question"), QStringLiteral("question"));
-    formLayout->addRow(tr("Category:"), _categoryCombo);
+    form->addRow(tr("Type:"), _categoryCombo);
 
     _titleEdit = new QLineEdit(this);
-    _titleEdit->setPlaceholderText(tr("Short title for the issue"));
-    formLayout->addRow(tr("Title:"), _titleEdit);
+    _titleEdit->setObjectName(QStringLiteral("issueTitle"));
+    _titleEdit->setMaxLength(256);
+    _titleEdit->setPlaceholderText(tr("Short summary of the issue"));
+    form->addRow(tr("Title:"), _titleEdit);
 
-    _summaryEdit = new QPlainTextEdit(this);
-    _summaryEdit->setPlaceholderText(tr("Describe the problem or suggestion."));
-    _summaryEdit->setMinimumHeight(90);
-    formLayout->addRow(tr("Summary:"), _summaryEdit);
+    _descriptionEdit = new QPlainTextEdit(this);
+    _descriptionEdit->setObjectName(QStringLiteral("issueDescription"));
+    _descriptionEdit->setPlaceholderText(tr("Describe the problem, question, or suggestion."));
+    _descriptionEdit->setMinimumHeight(155);
+    form->addRow(tr("Description:"), _descriptionEdit);
+    root->addLayout(form, 1);
 
-    _stepsEdit = new QPlainTextEdit(this);
-    _stepsEdit->setPlaceholderText(tr("Step-by-step reproduction, if applicable."));
-    _stepsEdit->setMinimumHeight(80);
-    formLayout->addRow(tr("Reproduction steps:"), _stepsEdit);
+    _validationLabel = new QLabel(this);
+    _validationLabel->setObjectName(QStringLiteral("issueValidation"));
+    _validationLabel->setWordWrap(true);
+    root->addWidget(_validationLabel);
 
-    _expectedEdit = new QPlainTextEdit(this);
-    _expectedEdit->setPlaceholderText(tr("What did you expect to happen?"));
-    _expectedEdit->setMinimumHeight(70);
-    formLayout->addRow(tr("Expected behavior:"), _expectedEdit);
+    auto* buttons = new QDialogButtonBox(this);
+    _submitButton = buttons->addButton(tr("Continue on GitHub"), QDialogButtonBox::AcceptRole);
+    _submitButton->setObjectName(QStringLiteral("issueSubmit"));
+    _submitButton->setDefault(true);
+    buttons->addButton(QDialogButtonBox::Cancel);
+    root->addWidget(buttons);
 
-    _observedEdit = new QPlainTextEdit(this);
-    _observedEdit->setPlaceholderText(tr("What actually happened?"));
-    _observedEdit->setMinimumHeight(70);
-    formLayout->addRow(tr("Observed behavior:"), _observedEdit);
+    connect(_submitButton, &QPushButton::clicked, this, [this]() { submit(); });
+    connect(buttons, &QDialogButtonBox::rejected, this, &DialogReportIssue::reject);
+    connect(_titleEdit, &QLineEdit::textChanged, this, [this]() { updateSubmitButton(); });
+    connect(_descriptionEdit, &QPlainTextEdit::textChanged,
+            this, [this]() { updateSubmitButton(); });
 
-    _additionalContextEdit = new QPlainTextEdit(this);
-    _additionalContextEdit->setPlaceholderText(tr("Any extra information that may help the maintainers."));
-    _additionalContextEdit->setMinimumHeight(70);
-    formLayout->addRow(tr("Additional context:"), _additionalContextEdit);
-
-    _contactEdit = new QLineEdit(this);
-    _contactEdit->setPlaceholderText(tr("Optional e-mail or contact handle"));
-    formLayout->addRow(tr("Contact:"), _contactEdit);
-
-    rootLayout->addLayout(formLayout);
-
-    QLabel* consentLabel = new QLabel(
-        tr("Optional diagnostics to include in the payload sent to the relay:"), this);
-    consentLabel->setWordWrap(true);
-    rootLayout->addWidget(consentLabel);
-
-    _includeScreenshotCheck = new QCheckBox(tr("Attach screenshot of the main window"), this);
-    _includeScreenshotCheck->setChecked(false);
-    rootLayout->addWidget(_includeScreenshotCheck);
-
-    _includeLogTailCheck = new QCheckBox(tr("Attach tail of crashesAndLogs.log"), this);
-    _includeLogTailCheck->setChecked(true);
-    rootLayout->addWidget(_includeLogTailCheck);
-
-    _includeModelTextCheck = new QCheckBox(tr("Attach current SimulLang editor contents"), this);
-    _includeModelTextCheck->setChecked(false);
-    rootLayout->addWidget(_includeModelTextCheck);
-
-    QDialogButtonBox* buttonBox = new QDialogButtonBox(this);
-    _sendButton = buttonBox->addButton(tr("Send Issue"), QDialogButtonBox::AcceptRole);
-    _sendButton->setDefault(true);
-    buttonBox->addButton(QDialogButtonBox::Cancel);
-    rootLayout->addWidget(buttonBox);
-
-    connect(buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    connect(buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    connect(_categoryCombo, &QComboBox::currentIndexChanged, this, [this](int) { _updateSendButton(); });
-    connect(_titleEdit, &QLineEdit::textChanged, this, [this](const QString&) { _updateSendButton(); });
-    connect(_summaryEdit, &QPlainTextEdit::textChanged, this, [this]() { _updateSendButton(); });
-
-    _updateSendButton();
+    setRelayAvailable(false);
+    updateSubmitButton();
 }
 
 IssueReportDraft DialogReportIssue::draft() const {
     IssueReportDraft value;
-    value.categoryKey = _categoryCombo->currentData().toString().trimmed();
-    value.categoryLabel = _categoryCombo->currentText().trimmed();
+    value.categoryKey = _categoryCombo->currentData().toString();
+    value.categoryLabel = _categoryCombo->currentText();
     value.title = _titleEdit->text().trimmed();
-    value.summary = _summaryEdit->toPlainText().trimmed();
-    value.reproductionSteps = _stepsEdit->toPlainText().trimmed();
-    value.expectedBehavior = _expectedEdit->toPlainText().trimmed();
-    value.observedBehavior = _observedEdit->toPlainText().trimmed();
-    value.additionalContext = _additionalContextEdit->toPlainText().trimmed();
-    value.contactEmail = _contactEdit->text().trimmed();
-    value.includeScreenshot = _includeScreenshotCheck->isChecked();
-    value.includeLogTail = _includeLogTailCheck->isChecked();
-    value.includeModelText = _includeModelTextCheck->isChecked();
+    value.summary = _descriptionEdit->toPlainText().trimmed();
+    // No diagnostics, model text, logs, contact data, or screenshots are collected.
     return value;
 }
 
-void DialogReportIssue::setRelayConfigurationStatus(const QString& endpoint,
-                                                    bool configured,
-                                                    const QString& detail) {
-    _relayConfigured = configured;
-    if (configured) {
-        _relayStatusLabel->setText(
-            tr("Relay endpoint configured: %1")
-                .arg(endpoint.isEmpty() ? tr("(not disclosed)") : endpoint));
-    } else {
-        _relayStatusLabel->setText(
-            tr("Relay endpoint is not configured.\n%1")
-                .arg(detail.trimmed()));
-    }
-    _updateSendButton();
+void DialogReportIssue::setRelayAvailable(bool configured) {
+    _relayAvailable = configured;
+    _hintLabel->setText(configured
+        ? tr("Send this report to the GenESyS project. Only the fields shown below "
+             "and basic application/Qt versions are transmitted.")
+        : tr("Continue on GitHub to review and submit your issue. "
+             "The title and description will be included in the browser URL "
+             "and may be saved in browser history. No issue is created automatically."));
+    _submitButton->setText(configured ? tr("Send Issue") : tr("Continue on GitHub"));
+    updateSubmitButton();
 }
 
-void DialogReportIssue::_updateSendButton() {
-    if (_sendButton == nullptr) {
+void DialogReportIssue::updateSubmitButton() {
+    const bool hasTitle = !_titleEdit->text().trimmed().isEmpty();
+    const bool hasDescription = !_descriptionEdit->toPlainText().trimmed().isEmpty();
+    _submitButton->setEnabled(!_submitting && hasTitle && hasDescription);
+    _validationLabel->setText(_submitting ? tr("Submitting report…")
+                              : (!hasTitle || !hasDescription)
+                                  ? tr("Title and description are required.")
+                                  : QString());
+}
+
+void DialogReportIssue::submit() {
+    if (_submitting || draft().title.isEmpty() || draft().summary.isEmpty()) {
+        updateSubmitButton();
+        return;
+    }
+    if (!_relayAvailable) {
+        continueOnGitHub();
         return;
     }
 
-    const bool hasCategory = !_categoryCombo->currentData().toString().trimmed().isEmpty();
-    const bool hasTitle = !_titleEdit->text().trimmed().isEmpty();
-    const bool hasSummary = !_summaryEdit->toPlainText().trimmed().isEmpty();
-    _sendButton->setEnabled(_relayConfigured && hasCategory && hasTitle && hasSummary);
+    _submitting = true;
+    _cancelRequested = false;
+    updateSubmitButton();
+
+    IssueReportRuntimeContext context;
+    context.applicationName = QCoreApplication::applicationName();
+    context.applicationVersion = QCoreApplication::applicationVersion();
+    context.qtVersion = QString::fromLatin1(qVersion());
+
+    _activeReply = IssueReportRelayService::submitAsync(
+        draft(), context, _networkManager, this,
+        [this](const IssueReportSubmissionResult& result) {
+            _activeReply = nullptr;
+            if (_cancelRequested) {
+                return;
+            }
+            _submitting = false;
+            updateSubmitButton();
+            handleRelayResult(result);
+        });
+}
+
+void DialogReportIssue::continueOnGitHub() {
+    const IssueReportDraft report = draft();
+    if (report.title.isEmpty() || report.summary.isEmpty()) {
+        updateSubmitButton();
+        return;
+    }
+
+    const auto link = IssueReportBrowserService::build(report);
+    if (!_browserOpener(link.url)) {
+        QMessageBox::warning(this, tr("Report Issue"),
+                             tr("Could not open the browser. Your report is still in this form."));
+        return;
+    }
+
+    if (link.prefill != IssueReportBrowserService::Prefill::Complete) {
+        QString copied;
+        QString instruction;
+        if (link.prefill == IssueReportBrowserService::Prefill::BodyRequiresPaste) {
+            copied = IssueReportBrowserService::body(report);
+            instruction = tr("The description was too long for a browser URL. "
+                             "It has been copied to the clipboard. Paste it into GitHub's description field.");
+        } else {
+            copied = report.title + QStringLiteral("\n\n") + IssueReportBrowserService::body(report);
+            instruction = tr("The title and description were too long for a browser URL. "
+                             "Both have been copied to the clipboard. Paste them into the GitHub form.");
+        }
+        QApplication::clipboard()->setText(copied);
+        QMessageBox::information(this, tr("Finish on GitHub"), instruction
+            + tr("\n\nYour issue has not been submitted yet."));
+    } else {
+        QMessageBox::information(this, tr("Finish on GitHub"),
+            tr("The GitHub issue form was opened with your title and description. "
+               "Review it and click Submit new issue on GitHub to finish. "
+               "No issue has been created by GenESyS."));
+    }
+    QDialog::accept();
+}
+
+void DialogReportIssue::handleRelayResult(const IssueReportSubmissionResult& result) {
+    if (!result.success) {
+        QMessageBox box(QMessageBox::Warning, tr("Report Issue"),
+                        tr("The issue could not be confirmed.\n\n%1\n\n"
+                           "Your text has been preserved. You may retry or continue on GitHub.")
+                            .arg(result.errorMessage),
+                        QMessageBox::NoButton, this);
+        QPushButton* browser = box.addButton(tr("Continue on GitHub"),
+                                            QMessageBox::ActionRole);
+        box.addButton(QMessageBox::Close);
+        box.exec();
+        if (box.clickedButton() == browser) {
+            continueOnGitHub();
+        }
+        return;
+    }
+
+    QMessageBox box(QMessageBox::Information, tr("Issue created"),
+                    tr("GitHub issue #%1 was confirmed by the report service.")
+                        .arg(result.issueNumber),
+                    QMessageBox::NoButton, this);
+    QPushButton* open = box.addButton(tr("Open Issue"), QMessageBox::ActionRole);
+    box.addButton(QMessageBox::Close);
+    box.exec();
+    if (box.clickedButton() == open) {
+        // The service validated the canonical GitHub URL and its issue number.
+        _browserOpener(QUrl(result.issueUrl));
+    }
+    QDialog::accept();
+}
+
+void DialogReportIssue::reject() {
+    cancelSubmission();
+    QDialog::reject();
+}
+
+void DialogReportIssue::closeEvent(QCloseEvent* event) {
+    cancelSubmission();
+    QDialog::closeEvent(event);
+}
+
+void DialogReportIssue::cancelSubmission() {
+    if (!_submitting) {
+        return;
+    }
+    _cancelRequested = true;
+    _submitting = false;
+    QNetworkReply* reply = _activeReply.data();
+    updateSubmitButton();
+    if (reply != nullptr && !reply->isFinished()) {
+        reply->abort();
+    }
 }

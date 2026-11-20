@@ -1,0 +1,385 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Shell Usage}
+\label{chap:shell-usage}
+
+This chapter documents the current terminal shell as implemented in
+\texttt{source/applications/shell/}. It is based on code inspection of:
+\begin{itemize}
+\item \texttt{GenesysShell.cpp};
+\item \texttt{GenesysShell.h};
+\item \texttt{main.cpp};
+\item \texttt{BaseGenesysTerminalApplication.cpp};
+\item the current \texttt{genesys\_shell} CMake target.
+\end{itemize}
+
+\noindent\textbf{Objective.} Document the supported terminal workflow for users
+who want to inspect a model, load a file, run a simulation, or automate a
+small sequence of shell commands.
+
+\noindent\textbf{Audience.} Readers who are comfortable with a terminal and
+want a lightweight command surface instead of the GUI.
+
+\noindent\textbf{Scope.} Cover build and launch, startup behavior, the current
+command families, model loading and validation, simulation control, scripted
+automation, and the current limits of the shell.
+
+\noindent\textbf{Status.} Confirmed by code inspection and aligned with the
+current shell target. The figure blocks are structural placeholders until the
+final screenshots are produced.
+
+The chapter follows this sequence:
+Figure~\ref{fig:shell-session},
+Figure~\ref{fig:shell-command-flow},
+Figure~\ref{fig:shell-model-loaded}, and
+Figure~\ref{fig:shell-terminal-result}.
+
+\section{Build and launch}
+\label{sec:shell-build-and-launch}
+
+The shell target is named \texttt{genesys\_shell}. The dedicated preset is
+\texttt{genesys\_shell}, and its build directory is configured under
+\path{build/genesys_shell}.
+
+The current build entry points are:
+\begin{itemize}
+\item \texttt{cmake --preset genesys\_shell};
+\item \texttt{cmake --build --preset genesys\_shell --parallel "\$(nproc)"}.
+\end{itemize}
+
+The executable starts by constructing \texttt{GenesysShell}, setting the
+default trace handlers, and then invoking \texttt{main(argc, argv)}. During
+startup, the shell temporarily lowers the trace level, tries to auto-load
+plugins from \texttt{autoloadplugins.txt}, restores the internal trace level,
+and then enters the prompt loop.
+
+If \texttt{autoloadplugins.txt} is missing or incomplete, the shell prints an
+error and continues. The shell still starts; plugin loading failure does not
+abort the process.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:shell-session
+% Source of truth:
+%   - source/applications/shell/main.cpp
+%   - source/applications/shell/GenesysShell.cpp
+%   - source/applications/shell/GenesysShell.h
+%   - source/applications/shell/CMakeLists.txt
+% Purpose:
+%   Show a complete terminal session from startup prompt through a clean exit.
+% Required visual content:
+%   - the shell prompt
+%   - the startup message
+%   - plugin autoload output or its failure message
+%   - at least one successful command and the quit command
+% Accessibility description:
+%   A terminal screenshot that proves the shell starts, accepts commands, and exits cleanly.
+% Validation:
+%   The visible prompt and messages must match the current shell implementation.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/shell-session}
+\caption{Complete terminal session for the Genesys shell.}
+\label{fig:shell-session}
+\end{figure}
+
+Figure~\ref{fig:shell-session} is the reference view for the rest of the
+chapter. It should show the prompt \texttt{\$genesys>} and a normal shutdown
+path.
+
+\section{Command surface}
+\label{sec:shell-command-surface}
+
+The shell accepts a single command word followed by optional arguments. The
+first word is matched case-insensitively; the remaining words are preserved as
+arguments and rejoined only by the commands that explicitly do so.
+
+The current command families are:
+\begin{itemize}
+\item \texttt{help} and \texttt{exit};
+\item metadata and identity: \texttt{facade}, \texttt{info}, \texttt{licence},
+and \texttt{trace};
+\item plugin management: \texttt{plugin};
+\item model lifecycle: \texttt{model}, \texttt{load}, and \texttt{save};
+\item simulation control: \texttt{sim}, \texttt{simul}, and \texttt{config};
+\item inspection helpers: \texttt{data}, \texttt{component}, and
+\texttt{experiment};
+\item automation helpers: \texttt{execute-script} and \texttt{bash}.
+\end{itemize}
+
+The command families are intentionally conservative. The shell does not invent
+new semantics on top of the underlying simulator facade; it forwards to the
+current code paths and prints textual diagnostics when a request cannot be
+fulfilled.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:shell-command-flow
+% Source of truth:
+%   - source/applications/shell/GenesysShell.cpp
+%   - source/applications/shell/GenesysShell.h
+% Purpose:
+%   Show the current command families and how they map to the shell handlers.
+% Required visual content:
+%   - the main command groups
+%   - the special grouped commands with topic help
+%   - the automation and inspection branches
+% Accessibility description:
+%   A diagram that helps the reader understand how the shell routes each command family.
+% Validation:
+%   The groups and labels must match the current command definitions.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/shell-command-flow}
+\caption{Current Genesys shell command families.}
+\label{fig:shell-command-flow}
+\end{figure}
+
+\subsection{Help and exit}
+\label{subsec:shell-help-and-exit}
+
+\texttt{help} without arguments prints the main command list, split into
+ordinary commands and the grouped commands that have topic help. The grouped
+topics currently include \texttt{sim}, \texttt{config}, \texttt{plugin},
+\texttt{model}, \texttt{trace}, \texttt{execute-script}, \texttt{load},
+\texttt{save}, \texttt{facade}, \texttt{licence}, \texttt{data},
+\texttt{component}, and \texttt{experiment}.
+
+\texttt{help <topic>} expands the selected topic and shows the current
+subcommand vocabulary. This is the safest way to discover the command surface
+without reading the source.
+
+\texttt{exit} sets the exit flag and returns control to the outer loop. The
+current implementation prints a quit message and stops the interactive loop.
+
+\subsection{Metadata, identity, and trace}
+\label{subsec:shell-metadata}
+
+\texttt{facade} reports the simulator name and version metadata through
+\texttt{SimulatorFacade}. The subcommands \texttt{get-version},
+\texttt{get-version-number}, and \texttt{get-name} are confirmed in the code.
+
+\texttt{info} exposes the current model metadata. The supported actions include
+reading and updating the model name, analyst name, description, project
+title, version, and changed flag.
+
+\texttt{licence} prints licence details and the current model or runtime
+limits. The shell supports show, limits, activation-code, the activation-code
+search and insertion/removal actions, and the model/entity/host/thread limit
+queries.
+
+\texttt{trace} reads or changes the current trace level. The shell accepts
+\texttt{show} and \texttt{level <1-9>} and stores the chosen level in the
+underlying trace manager.
+
+\subsection{Plugin management}
+\label{subsec:shell-plugins}
+
+\texttt{plugin} inspects installed plugins, prints their count, shows detailed
+information for a selected plugin, autoloads a plugin list file, displays a
+language template, validates a candidate library, checks system dependencies,
+discovers plugin filenames, and navigates the plugin list.
+
+The current shell has a safety gate around dependency installation. When a
+plugin load path requires system packages, the shell only offers automatic
+installation when every missing dependency can be installed automatically and
+stdin is interactive. In non-interactive mode, it refuses to run the install
+command automatically and asks the user to retry manually.
+
+\subsection{Model and simulation}
+\label{subsec:shell-model-simulation}
+
+The model commands are split between grouped and convenience forms.
+\texttt{model} supports creating, removing, checking, showing, loading, saving,
+and navigating the current model list. The top-level \texttt{load} and
+\texttt{save} commands are convenience aliases for the current model file
+operations.
+
+\texttt{sim} is the main simulation inspection and control command. It can
+show the current state, start, pause, step, stop, read counters and timing
+values, change the replication configuration, toggle pause behavior, and read
+or update reporting options.
+
+\texttt{config} is the configuration-oriented command family. It focuses on
+replication count, replication length, warm-up, base time unit, terminating
+condition, pause behavior, and the report toggles.
+
+\texttt{simul} remains as a compact control alias in the current code. The
+shell also keeps the lower-level report and breakpoint helpers exposed by
+\texttt{sim} for users who need fine-grained control during debugging.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:shell-model-loaded
+% Source of truth:
+%   - source/applications/shell/GenesysShell.cpp
+%   - models/AirportSecurityExample.gen
+%   - source/kernel/simulator/SimulatorFacade.h
+% Purpose:
+%   Show the shell after a real model has been loaded and inspected.
+% Required visual content:
+%   - the model load command
+%   - a confirmation that the model loaded
+%   - a follow-up inspection command such as model show, model check, or sim show
+% Accessibility description:
+%   A terminal screenshot that proves the shell can move from startup to a loaded model.
+% Validation:
+%   The observed model path and output must match a repository model file.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/shell-model-loaded}
+\caption{Shell session after loading a model file.}
+\label{fig:shell-model-loaded}
+\end{figure}
+
+Figure~\ref{fig:shell-model-loaded} should be read as the minimum proof that
+the shell can move from startup into a loaded-model workflow.
+
+\subsection{Inspection helpers}
+\label{subsec:shell-inspection}
+
+\texttt{data} inspects the current model data definitions. The current code can
+count definitions, list them by class name, retrieve individual entries, clear
+the set, and read or update the changed flag.
+
+\texttt{component} inspects the current model components. It can count, show,
+list, clear, search by id or name, move through the list, and update the
+changed flag.
+
+\texttt{experiment} inspects simulation experiments. It can count, show the
+current experiment, create a new one, save or load an experiment file, and
+navigate the experiment list.
+
+\section{Loading, validation, and execution}
+\label{sec:shell-loading-validation-execution}
+
+There are two model-loading paths in the current shell:
+\begin{itemize}
+\item \texttt{model load <filename>};
+\item \texttt{load <filename>}.
+\end{itemize}
+
+Both paths call the current facade loader and print either \texttt{Model loaded}
+or an error message. The file path is used as provided, so the command should be
+run from a directory where that path resolves correctly.
+
+\texttt{model check} validates the loaded model through the facade. The shell
+prints a notice if the check reports errors. This is the current validation
+step for the terminal workflow; it confirms that the loaded model is accepted by
+the code, not that the scenario is scientifically sufficient.
+
+\texttt{sim start}, \texttt{sim pause}, \texttt{sim step}, and \texttt{sim stop}
+control execution. The \texttt{sim show} command prints the current simulation
+state, including the configured parameters and runtime flags.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:shell-terminal-result
+% Source of truth:
+%   - source/applications/shell/GenesysShell.cpp
+%   - source/kernel/simulator/SimulationReporterDefaultImpl1.cpp
+%   - source/kernel/simulator/model/ModelSimulation.cpp
+% Purpose:
+%   Show a real terminal result produced after loading and checking a model, or after starting a short run.
+% Required visual content:
+%   - the command that was executed
+%   - the immediate terminal response
+%   - any follow-up line that proves the command had effect
+% Accessibility description:
+%   A result screenshot that proves the shell is doing real work, not only echoing prompts.
+% Validation:
+%   The shown output must be produced by the current shell or facade code.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/shell-terminal-result}
+\caption{Terminal result after a real shell command.}
+\label{fig:shell-terminal-result}
+\end{figure}
+
+The terminal result in Figure~\ref{fig:shell-terminal-result} should be read
+as evidence of the current command path. It must come from the real shell
+output, not from an edited mockup.
+
+\section{Output, return, and automation}
+\label{sec:shell-output-automation}
+
+The shell prints its own diagnostics directly to standard output. There is no
+separate structured return object for command success or failure, so the user
+must read the text output to understand what happened.
+
+The current process exit path is conservative: \texttt{main} returns \texttt{0}
+after the shell loop ends. In practice, this means that command failures are
+communicated through text rather than by a rich exit-status protocol.
+
+Automation is supported in three ways:
+\begin{itemize}
+\item additional command strings passed on the argv list;
+\item \texttt{execute-script <filename>} for line-oriented shell scripts;
+\item \texttt{bash <command>} for raw host-shell execution.
+\end{itemize}
+
+The argv path executes each argument string as a command string in order. This
+is useful for compact command sequences, but it is not a full shell parser.
+When a command line needs spaces, quote the entire string at the outer shell
+layer or prefer \texttt{execute-script}.
+
+\texttt{execute-script} ignores blank lines and comment lines that begin with
+\texttt{\#}. Each executed line is echoed with the \texttt{\$execute-script>}
+prefix before it is routed through the same command parser used by the
+interactive shell.
+
+\texttt{bash} forwards the collected argument text to \texttt{system()}. That
+makes it powerful but also unsafe for untrusted input. It is intended for local
+automation, not for a security boundary.
+
+\begin{figure}[htbp]
+\centering
+% FIGURE-SPEC-BEGIN
+% ID: fig:shell-automation
+% Source of truth:
+%   - source/applications/shell/GenesysShell.cpp
+%   - source/applications/shell/main.cpp
+% Purpose:
+%   Show a small scripted or argv-driven session that demonstrates automation.
+% Required visual content:
+%   - an argv-driven command or execute-script run
+%   - the echoed command lines
+%   - a real output line from the shell
+% Accessibility description:
+%   A screenshot that demonstrates the non-interactive shell path.
+% Validation:
+%   The session must use a command path confirmed in the current source.
+% FIGURE-SPEC-END
+\figureplaceholder{figs/generated/shell-automation}
+\caption{Automated shell execution through argv or script input.}
+\label{fig:shell-automation}
+\end{figure}
+
+Figure~\ref{fig:shell-automation} is the right place to document the scripted
+path because it proves the shell can be used for lightweight automation without
+opening the GUI.
+
+\section{Current limits}
+\label{sec:shell-limits}
+
+The shell is intentionally narrow and has several limits that should be stated
+explicitly.
+\begin{itemize}
+\item Command parsing is whitespace based; there is no general quoted-argument
+parser inside the shell itself.
+\item Many commands expect exactly one path token, so file names with spaces are
+not a supported pattern.
+\item Failures are mostly textual and do not map to a detailed exit-status
+protocol.
+\item \texttt{bash} executes host commands directly and should only be used on
+trusted local input.
+\item \texttt{plugin} autoload can prompt for dependency installation only when
+the input is interactive and all missing dependencies are eligible for
+automatic installation.
+\item The shell is a command surface over the current simulator code; it does
+not add a separate policy layer for security, scientific validation, or release
+approval.
+\end{itemize}
+
+These limits are deliberate. They keep the shell small, predictable, and easy
+to audit, while leaving stronger policy decisions to the surrounding
+documentation and governance process.

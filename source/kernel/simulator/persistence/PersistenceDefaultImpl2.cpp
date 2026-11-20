@@ -1,6 +1,10 @@
 #include "PersistenceDefaultImpl2.h"
+#include "ConnectionPersistence.h"
 
 #include <cassert>
+#include <cstdio>
+#include <cerrno>
+#include <exception>
 #include <memory>
 #include <fstream>
 #include <vector>
@@ -12,9 +16,11 @@
 #include "../essentialPlugins/Counter.h"
 
 #include "GenSerializer.h"
+#include "LegacyPluginTypeAliases.h"
 #include "XmlSerializer.h"
 #include "JsonSerializer.h"
 #include "CppSerializer.h"
+#include <unordered_set>
 
 PersistenceDefaultImpl2::PersistenceDefaultImpl2(Model* model) :
 	_model(model) {
@@ -24,6 +30,8 @@ PersistenceDefaultImpl2::PersistenceDefaultImpl2(Model* model) :
 bool PersistenceDefaultImpl2::save(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file \"" + filename + "\"");
 	Util::IncIndent();
+
+	const auto errorsBeforeSerialization = _model->getTracer()->errorMessages()->size();
 
 	// choose format
 	std::unique_ptr<Serializer> serializer;
@@ -52,17 +60,27 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	fields->saveField("typename", "Simulator");
 	fields->saveField("name", _model->getParentSimulator()->getName());
 	fields->saveField("versionNumber", _model->getParentSimulator()->getVersionNumber());
-	serializer->put("SimulatorInfo", "Simulator", 0, fields.get());
+	if (!serializer->put("SimulatorInfo", "Simulator", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=SimulatorInfo stage=put");
+	}
 
 	// grab model metadata
 	fields->clear();
 	_model->getInfos()->saveInstance(fields.get());
-	serializer->put("ModelInfo", "ModelInfo", 0, fields.get());
+	if (!serializer->put("ModelInfo", "ModelInfo", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelInfo stage=put");
+	}
 
 	// grab simulation params
 	fields->clear();
 	_model->getSimulation()->saveInstance(fields.get(), saveDefaults);
-	serializer->put("ModelSimulation", "ModelSimulation", 0, fields.get());
+	if (!serializer->put("ModelSimulation", "ModelSimulation", 0, fields.get())) {
+		_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelSimulation stage=put");
+	}
+
+	// Internal components can occur in both registries (for example Process).
+	// Serialize each object once; distinct objects still require distinct names.
+	std::unordered_set<const ModelDataDefinition*> serializedObjects;
 
 	// gather data definitions
 	const std::string counter = Util::TypeOf<Counter>();
@@ -74,13 +92,22 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 		_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing elements of type \"" + type + "\":");
 		Util::IncIndent();
 		for (ModelDataDefinition *data : *_model->getDataManager()->getDataDefinitionList(type)->list()) {
+			if (!serializedObjects.insert(data).second) continue;
 			_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing " + type + " \"" + data->getName() + "\"");
 			fields->clear();
+			const auto errorsBefore = _model->getTracer()->errorMessages()->size();
 			data->SaveInstance(fields.get(), data);
+			if (_model->getTracer()->errorMessages()->size() > errorsBefore) {
+				_model->getTracer()->traceError("SERIALIZER_RECORD_SAVE_REPORTED_ERROR category=ModelDataDefinition stage=SaveInstance id="
+					+ std::to_string(data->getId()) + " typename=" + data->getClassname());
+			}
 			auto name = data->getName();
 			auto id = data->getId();
 			auto type = data->getClassname();
-			serializer->put(name, type, id, fields.get());
+			if (!serializer->put(name, type, id, fields.get())) {
+				_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelDataDefinition stage=put id="
+					+ std::to_string(id) + " typename=" + type);
+			}
 		}
 		Util::DecIndent();
 	}
@@ -89,23 +116,111 @@ bool PersistenceDefaultImpl2::save(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing components:");
 	Util::IncIndent();
 	for (ModelComponent* component : *_model->getComponentManager()) {
-		if (component->getLevel() == 0) {
-			fields->clear();
-			component->SaveInstance(fields.get(), component);
-			auto name = component->getName();
-			auto id = component->getId();
-			auto type = component->getClassname();
-			serializer->put(name, type, id, fields.get());
+		if (!serializedObjects.insert(component).second) continue;
+		fields->clear();
+		const auto errorsBefore = _model->getTracer()->errorMessages()->size();
+		component->SaveInstance(fields.get(), component);
+		if (_model->getTracer()->errorMessages()->size() > errorsBefore) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_SAVE_REPORTED_ERROR category=ModelComponent stage=SaveInstance id="
+				+ std::to_string(component->getId()) + " typename=" + component->getClassname());
+		}
+		auto name = component->getName();
+		auto id = component->getId();
+		auto type = component->getClassname();
+		if (!serializer->put(name, type, id, fields.get())) {
+			_model->getTracer()->traceError("SERIALIZER_RECORD_REGISTRATION_FAILED category=ModelComponent stage=put id="
+				+ std::to_string(id) + " typename=" + type);
 		}
 	}
 	Util::DecIndent();
 
-	// write contents to file
+	// A serializer may diagnose a duplicate name or a failed SaveInstance while
+	// retaining a partial record buffer. Never commit that incomplete snapshot.
+	if (_model->getTracer()->errorMessages()->size() > errorsBeforeSerialization) {
+		_model->getTracer()->traceError("SAVE_DIAGNOSTIC code=SERIALIZATION_FAILED stage=records; previous file preserved");
+		Util::DecIndent();
+		return false;
+	}
+
+	// write contents to a temp file first, then atomically replace the destination. A plain
+	// std::ofstream on `filename` truncates it the instant it's opened, so a crash/disk-full/
+	// interrupted save would otherwise leave the previous good save gone and the new one
+	// incomplete.
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file");
 	Util::IncIndent();
-	std::ofstream file{filename};
-	bool ok = serializer->dump(file);
-	file.close();
+	const std::string tempFilename = filename + ".tmp";
+	const auto dot = filename.find_last_of('.');
+	const std::string requestedExtension = dot == std::string::npos ? "" : filename.substr(dot + 1);
+	const std::string format = requestedExtension == "xml" || requestedExtension == "json"
+			|| requestedExtension == "cpp" ? requestedExtension : "gen";
+	std::string failureCode;
+	std::string failureDetail;
+	bool dumpSucceeded = false;
+	int systemError = 0;
+	{
+		std::ofstream file{tempFilename};
+		if (!file.is_open()) {
+			// Capture errno immediately after the failed open, before logging or cleanup.
+			systemError = errno;
+			failureCode = "FILE_OPEN_FAILED";
+			failureDetail = "stage=open";
+		} else {
+			try {
+				dumpSucceeded = serializer->dump(file);
+			} catch (const std::exception&) {
+				failureCode = "SERIALIZER_EXCEPTION";
+				failureDetail = "stage=dump exception=std::exception";
+			} catch (...) {
+				failureCode = "SERIALIZER_EXCEPTION";
+				failureDetail = "stage=dump exception=unknown";
+			}
+
+			// A serializer can return false with a healthy stream (logical error), or
+			// return false because the stream failed. Never conflate these cases.
+			if (failureCode.empty() && !file.good()) {
+				failureCode = "FILE_WRITE_FAILED";
+				failureDetail = "stage=dump stream_state=" + std::to_string(file.rdstate());
+			} else if (failureCode.empty() && !dumpSucceeded) {
+				failureCode = "SERIALIZER_DUMP_FAILED";
+				failureDetail = "stage=dump stream_state=" + std::to_string(file.rdstate());
+			}
+			if (failureCode.empty()) {
+				file.flush();
+				if (!file.good()) {
+					failureCode = "FILE_FLUSH_FAILED";
+					failureDetail = "stage=flush stream_state=" + std::to_string(file.rdstate());
+				}
+			}
+			file.close();
+			if (!file.good()) {
+				// iostream close failure is represented by stream flags; no POSIX errno is fabricated.
+				if (failureCode.empty()) {
+					failureCode = "FILE_CLOSE_FAILED";
+					failureDetail = "stage=close stream_state=" + std::to_string(file.rdstate());
+				}
+			}
+		}
+	}
+	if (failureCode.empty() && std::rename(tempFilename.c_str(), filename.c_str()) != 0) {
+		systemError = errno; // POSIX rename: capture before any logging or cleanup.
+		failureCode = "FILE_RENAME_FAILED";
+		failureDetail = "stage=rename";
+	}
+	const bool ok = failureCode.empty();
+	if (!ok) {
+		_model->getTracer()->traceError("SAVE_DIAGNOSTIC code=" + failureCode
+			+ " " + failureDetail
+			+ " format=" + format
+			+ " destination=\"" + filename + "\""
+			+ " temporary=\"" + tempFilename + "\""
+			+ " dump_result=" + (dumpSucceeded ? "true" : "false")
+			+ (systemError != 0 ? " errno=" + std::to_string(systemError) : ""));
+		// An unsuccessful open did not create this temp file: do not remove a
+		// preexisting file/directory belonging to another operation.
+		if (failureCode != "FILE_OPEN_FAILED") {
+			std::remove(tempFilename.c_str());
+		}
+	}
 	Util::DecIndent();
 
 	// finish save
@@ -173,7 +288,8 @@ bool PersistenceDefaultImpl2::load(std::string filename) {
 			_model->getSimulation()->loadInstance(fields.get());
 					_dirty = true;
 		} else {
-			Plugin* plugin = this->_model->getParentSimulator()->getPluginManager()->find(type);
+			Plugin* plugin = this->_model->getParentSimulator()->getPluginManager()->find(
+				currentPluginTypeForPersistedType(type));
 			if (plugin != nullptr) {
 				ok = plugin->loadAndInsertNew(_model, fields.get());
 				if (ok && plugin->getPluginInfo()->isComponent()) {
@@ -199,26 +315,38 @@ bool PersistenceDefaultImpl2::load(std::string filename) {
 			Util::identification id = fields->loadField("id", -1);
 			ModelComponent *component = cm->find(id);
 			if (component == nullptr) {
-				_model->getTracer()->traceError("found unregistered component ID " + std::to_string(id));
-				continue;
+				_model->getTracer()->traceError("Unable to restore connection source: component id="
+					+ std::to_string(id) + " is not registered");
+				ok = false;
+				break;
 			}
 			// then set up its connections
 			unsigned short nextSize = fields->loadField("nexts", 1);
-			for (unsigned short i = 0; i < nextSize; i++) {
+			const auto outputPorts = nextSize == 0 ? std::vector<unsigned int>{} : connectionOutputPorts(*fields);
+			if (outputPorts.size() != nextSize) {
+				_model->getTracer()->traceError("Unable to restore connections: source component id="
+					+ std::to_string(id) + ", connection count does not match saved ports");
+				ok = false;
+				break;
+			}
+			for (unsigned int outputPort : outputPorts) {
 				// target id
-				Util::identification nextId = fields->loadField("nextId" + Util::StrIndex(i), 0);
+				Util::identification nextId = fields->loadField("nextId" + Util::StrIndex(outputPort), 0);
 				if (nextSize == 1) nextId = fields->loadField("nextId", static_cast<unsigned int> (nextId));
 				// id -> component
 				ModelComponent* nextComponent = cm->find(nextId);
 				if (nextComponent == nullptr) {
-					_model->getTracer()->traceError("found unregistered target ID " + std::to_string(nextId));
-					continue;
+					_model->getTracer()->traceError("Unable to restore connection: source component id="
+						+ std::to_string(id) + ", target component id=" + std::to_string(nextId)
+						+ " is not registered");
+					ok = false;
+					break;
 				}
 				// target port
-				unsigned short nextPort = fields->loadField("nextinputPortNumber" + Util::StrIndex(i), 0);
+				unsigned short nextPort = fields->loadField("nextinputPortNumber" + Util::StrIndex(outputPort), 0);
 				// connect
-				component->getConnectionManager()->insert(nextComponent, nextPort);
-				_model->getTracer()->trace(component->getName() + "<" + std::to_string(i) + ">" + " --> " + nextComponent->getName() + "<" + std::to_string(nextPort) + ">");
+				component->getConnectionManager()->insertAtPort(outputPort, new Connection{nextComponent, {nextPort, ""}});
+				_model->getTracer()->trace(component->getName() + "<" + std::to_string(outputPort) + ">" + " --> " + nextComponent->getName() + "<" + std::to_string(nextPort) + ">");
 			}
 		}
 		Util::DecIndent();

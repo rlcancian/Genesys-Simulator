@@ -13,14 +13,15 @@
 
 #pragma once
 
-#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include <functional>
 #include <string>
-//#include "plugins/data/Template/DummyElement.h"
+//#include "plugins/data/Template/TemplateDataDefinition.h"
 
 class DefaultNode;
 class Model;
 class Entity;
+class PluginInformation;
 
 class DefaultNodeTransition {
 public:
@@ -72,11 +73,11 @@ private:
 /*!
  This component ...
  */
-class DefaultNode : public ModelComponent {
+class DefaultNode : public ModelDataDefinition {
 public: /// constructors
     DefaultNode(Model* model, std::string componentTypename, std::string name);
     DefaultNode(Model* model, std::string name = "");
-    virtual ~DefaultNode() = default;
+    virtual ~DefaultNode() override;
 
 public: /// new public user methods for this component
 	void addTransition(DefaultNodeTransition* transition);
@@ -92,15 +93,12 @@ public: /// virtual public methods
 
 public: /// static public methods that must have implementations (Load and New just the same. GetInformation must provide specific infos for the new component
 	static PluginInformation* GetPluginInformation();
-	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
+	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected: /// virtual protected method that must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override; ///< This method is only for ModelComponents, not ModelDataElements
-
-
 protected: /// virtual protected methods that could be overriden by derived classes, if needed
 	/*! This method is called by ModelChecker during model check. The component should check itself to verify if user parameters are ok (ex: correct syntax for the parser) and everithing in its parameters allow the model too run without errors in this component */
 	// virtual bool _check(std::string& errorMessage);
@@ -132,7 +130,7 @@ private: /// Attributes that should be loaded or saved with this component (Pers
 	List<DefaultNodeTransition*>* _transitions = new List<DefaultNodeTransition*>();
 
 private: /// internal DataElements (Composition)
-    //DummyElement* _internalDataDefinition = nullptr;
+    //TemplateDataDefinition* _internalDataDefinition = nullptr;
 
 private: /// attached DataElements (Agrregation)
 	// ...

@@ -23,6 +23,7 @@ class MainWindow;
  */
 class GraphicalContextMenuController {
 public:
+    using ExtensionMenuPopulator = std::function<void(QMenu*, QGraphicsItem*)>;
     /**
      * @brief Creates the controller without taking ownership of UI or scene objects.
      */
@@ -30,7 +31,8 @@ public:
                                    Ui::MainWindow* ui,
                                    QAction* openSubmodelAction,
                                    std::function<ModelGraphicsScene*()> currentScene,
-                                   std::function<void()> actualizeActions);
+                                   std::function<void()> actualizeActions,
+                                   ExtensionMenuPopulator populateExtensionMenu = {});
 
     /**
      * @brief Shows the context menu matching the item or background under the mouse.
@@ -100,11 +102,6 @@ private:
     void addTraceLevelMenu(QMenu* menu, QGraphicsItem* clickedItem) const;
 
     /**
-     * @brief Adds biochemical relation commands when the selection is one BioReaction plus BioSpecies.
-     */
-    void addBioReactionLinkMenu(QMenu* menu) const;
-
-    /**
      * @brief Adds drawing tool actions used when the user starts from the canvas background.
      */
     void addDrawMenu(QMenu* menu) const;
@@ -124,6 +121,7 @@ private:
     QAction* _openSubmodelAction;
     std::function<ModelGraphicsScene*()> _currentScene;
     std::function<void()> _actualizeActions;
+    ExtensionMenuPopulator _populateExtensionMenu;
 };
 
 #endif // GRAPHICALCONTEXTMENUCONTROLLER_H

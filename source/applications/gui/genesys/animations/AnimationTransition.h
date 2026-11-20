@@ -41,6 +41,8 @@ public:
     static void setTimeExecution(double timeExecution);
     static void setPause(bool pause);
     static void setRunning(bool running);
+    static bool isPaused();
+    static bool isRunning();
 
     // Inicia a animação
     void startAnimation();

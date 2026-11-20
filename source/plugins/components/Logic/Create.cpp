@@ -49,10 +49,30 @@ Create::Create(Model* model, std::string name) : SourceModelComponent(model, Uti
 									_parentModel,
 									std::bind(&Create::getTimeBetweenCreationsFormula, this), std::bind(&Create::setTimeBetweenCreationsFormula, this, std::placeholders::_1),
 									Util::TypeOf<Create>(), getName(), "TimeBetweenCreationsFormula", "");
+	propTimeBetweenCreationsFormula->setDynamicEnabled([this]() -> bool {
+		return this->getTimeBetweenCreationsExpression().empty()
+				&& this->getTimeBetweenCreationsSchedule() == nullptr;
+	});
 	SimulationControlGenericClass<Schedule*, Model*, Schedule>* propTimeBetweenCreationsSchedule = new SimulationControlGenericClass<Schedule*, Model*, Schedule>(
 									_parentModel,
 									std::bind(&Create::getTimeBetweenCreationsSchedule, this), std::bind(&Create::setTimeBetweenCreationsSchedule, this, std::placeholders::_1),
 									Util::TypeOf<Create>(), getName(), "TimeBetweenCreationsSchedule", "");
+	propTimeBetweenCreationsSchedule->setDynamicEnabled([this]() -> bool {
+		return this->getTimeBetweenCreationsExpression().empty()
+				&& this->getTimeBetweenCreationsFormula() == nullptr;
+	});
+
+	// Configure the inherited SourceModelComponent property without touching
+	// controls belonging to other model objects with the same property name.
+	for (SimulationControl* control : *getSimulationControls()->list()) {
+		if (control != nullptr && control->getName() == "TimeBetweenArrivals") {
+			control->setDynamicEnabled([this]() -> bool {
+				return this->getTimeBetweenCreationsFormula() == nullptr
+						&& this->getTimeBetweenCreationsSchedule() == nullptr;
+			});
+			break;
+		}
+	}
 
 	_parentModel->getControls()->insert(propTimeBetweenCreationsFormula);
 	_parentModel->getControls()->insert(propTimeBetweenCreationsSchedule);
@@ -73,10 +93,16 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
     entity->setAttributeValue("Entity.ArrivalTime", tnow);
 	entity->setAttributeValue("Entity.Type", (double) entity->getEntityType()->getId());
 	//entity->setAttributeValue("Entity.Picture", 1);
-	double timeBetweenCreations, timeScale, newArrivalTime;
-	unsigned int _maxCreations = _parentModel->parseExpression(this->_maxCreationsExpression);
-	if (tnow != _lastArrival) {
-		_lastArrival = tnow;
+	if (_entitiesAwaitingCurrentArrivalDispatch > 0) {
+		--_entitiesAwaitingCurrentArrivalDispatch;
+	}
+	if (_entitiesAwaitingCurrentArrivalDispatch == 0) {
+		double timeBetweenCreations, timeScale, newArrivalTime;
+		const double parsedMaxCreations = _parentModel->parseExpression(this->_maxCreationsExpression);
+		const unsigned int maxCreations = parsedMaxCreations <= 0.0 ? 0u
+				: parsedMaxCreations >= static_cast<double>(std::numeric_limits<unsigned int>::max())
+					? std::numeric_limits<unsigned int>::max()
+					: static_cast<unsigned int>(parsedMaxCreations);
 		if (_timeBetweenCreationsExpression != "") {
 			timeBetweenCreations = _parentModel->parseExpression(_timeBetweenCreationsExpression);
 		} else if (_timeBetweenCreationsSchedule != nullptr) {
@@ -90,17 +116,21 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		timeScale = Util::TimeUnitConvert(this->_timeBetweenCreationsTimeUnit, _parentModel->getSimulation()->getReplicationBaseTimeUnit());
 		newArrivalTime = std::max<double>(tnow + timeBetweenCreations*timeScale, tnow); // force no time travel to past. Not sure if it should really be avoided
         // create new entities (to be sent to this component in future at time newArrivalTime
-        for (unsigned int i = 0; i<this->_entitiesPerCreation; i++) {
-			if (_entitiesCreatedSoFar < _maxCreations) {
-				_entitiesCreatedSoFar++;
+		const unsigned int remainingCreations = maxCreations > _entitiesCreatedSoFar
+				? maxCreations - _entitiesCreatedSoFar : 0u;
+		const unsigned int nextArrivalCreations = std::min(_entitiesPerCreation, remainingCreations);
+		traceSimulation(this, "Scheduling next Create arrival", TraceManager::Level::L7_internal);
+		traceSimulation(this, "Inter-arrival value=" + std::to_string(timeBetweenCreations) + ", scaled arrival time=" + std::to_string(newArrivalTime), TraceManager::Level::L8_detailed);
+		_entitiesAwaitingCurrentArrivalDispatch = nextArrivalCreations;
+		for (unsigned int i = 0; i < nextArrivalCreations; i++) {
+			_entitiesCreatedSoFar++;
 				Entity* newEntity = _parentModel->createEntity(entity->getEntityType()->getName() + "_%", false);
 				newEntity->setEntityType(entity->getEntityType());
 				Event* newEvent = new Event(newArrivalTime, newEntity, this);
 				_parentModel->getFutureEvents()->insert(newEvent);
-				traceSimulation(this, "Arrival of "/*entity " + std::to_string(newEntity->entityNumber())*/ + newEntity->getName() + " scheduled for time " + std::to_string(newArrivalTime) + Util::StrTimeUnitShort(_parentModel->getSimulation()->getReplicationBaseTimeUnit()));
+				traceSimulation(this, "Arrival of " + newEntity->getName() + " scheduled for time " + std::to_string(newArrivalTime) + Util::StrTimeUnitShort(_parentModel->getSimulation()->getReplicationBaseTimeUnit()), TraceManager::Level::L9_mostDetailed);
 			}
 		}
-	}
 	if (_reportStatistics)
 		_numberOut->incCountValue();
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
@@ -145,6 +175,7 @@ bool Create::_loadInstance(PersistenceRecord *fields) {
 
 void Create::_initBetweenReplications() {
 	SourceModelComponent::_initBetweenReplications();
+	_entitiesAwaitingCurrentArrivalDispatch = _entitiesCreatedSoFar;
 }
 
 void Create::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {

@@ -80,17 +80,17 @@ O texto original deste documento apontava conflitos LR elevados, erros de tokeni
 
 ## Pontos ainda pendentes (ou parcialmente mitigados)
 
-### Funções semânticas não implementadas totalmente (`fDISC`, `fLASTINQ`, `fRESSEIZES`)
+### Funções semânticas não implementadas totalmente (`fLASTINQ`, `fRESSEIZES`)
 ### Audit status
 `OPEN`
 
 ### Evidence
-- `fDISC` em `probFunction` contém TODO e retorno placeholder (`sampleDiscrete(0,0)`).
+- `fDISC` agora valida pares de probabilidade acumulada e valor, converte a CDF em massas e realiza uma amostragem pela sobrecarga vetorial do sampler. A probabilidade final aceita arredondamento até `1e-12` abaixo de 1.
 - `fLASTINQ` possui ação vazia com comentário de não implementado.
 - `fRESSEIZES` também está com comentário de não implementado.
 
 ### Remaining gaps
-- Implementar semântica real dessas funções e cobrir com testes de expressão.
+- Implementar a semântica das funções restantes e cobrir com testes de expressão.
 
 ### Avaliação de `FORM`
 ### Audit status
@@ -129,7 +129,6 @@ O texto original deste documento apontava conflitos LR elevados, erros de tokeni
 4. Fortalecer testes de regressão de parser para operadores, funções de plugin e cenários de erro.
 
 ## Remaining Work
-- `OPEN` — Implementar semântica real de `fDISC`.
 - `OPEN` — Implementar semântica real de `fLASTINQ`.
 - `OPEN` — Implementar semântica real de `fRESSEIZES`.
 - `OPEN` — Resolver avaliação de `FORM` sem retorno neutro silencioso.

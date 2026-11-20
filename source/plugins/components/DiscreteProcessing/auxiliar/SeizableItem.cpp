@@ -48,39 +48,51 @@ void SeizableItem::_ensureSimulationControls(Model* model) {
     auto* propIndex = new SimulationControlGeneric<std::string>(
         std::bind(&SeizableItem::getIndex, this), std::bind(&SeizableItem::setIndex, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "Index", "");
+	propIndex->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
+	propIndex->setDynamicEnabled([this]() -> bool {
+		return this->getSet() != nullptr && this->getSelectionRule() == SelectionRule::SPECIFICMEMBER;
+	});
     auto* propRule = new SimulationControlGenericEnum<SeizableItem::SelectionRule, SeizableItem>(
         std::bind(&SeizableItem::getSelectionRule, this),
         std::bind(&SeizableItem::setSelectionRule, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "SelectionRule", "");
+	propRule->setDynamicEnabled([this]() -> bool { return this->getSet() != nullptr; });
     auto* propSaveAttribute = new SimulationControlGeneric<std::string>(
         std::bind(&SeizableItem::getSaveAttribute, this), std::bind(&SeizableItem::setSaveAttribute, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "SaveAttribute", "");
+	propSaveAttribute->setDynamicEnabled([this]() -> bool {
+		return this->getSet() != nullptr && this->getSelectionRule() != SelectionRule::SPECIFICMEMBER;
+	});
     auto* propQuantityExpression = new SimulationControlGeneric<std::string>(
         std::bind(&SeizableItem::getQuantityExpression, this), std::bind(&SeizableItem::setQuantityExpression, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "QuantityExpression", "");
+	propQuantityExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
     auto* propResource = new SimulationControlGenericClass<Resource*, Model*, Resource>(
         model,
         std::bind(&SeizableItem::getResource, this), std::bind(&SeizableItem::setResource, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), "", "Resource", "");
+	propResource->setDynamicEnabled([this]() -> bool { return this->getSet() == nullptr; });
     auto* propSet = new SimulationControlGenericClass<Set*, Model*, Set>(
         model,
         std::bind(&SeizableItem::getSet, this), std::bind(&SeizableItem::setSet, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), "", "Set", "");
+	propSet->setDynamicEnabled([this]() -> bool { return this->getResource() == nullptr; });
+/*
     auto* propLastMemberSeized = new SimulationControlGeneric<unsigned int>(
         std::bind(&SeizableItem::getLastMemberSeized, this), std::bind(&SeizableItem::setLastMemberSeized, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "LastMemberSeized", "");
     auto* propLastPreferedOrder = new SimulationControlGeneric<unsigned int>(
         std::bind(&SeizableItem::getLastPreferedOrder, this), std::bind(&SeizableItem::setLastPreferedOrder, this, std::placeholders::_1),
         Util::TypeOf<SeizableItem>(), getName(), "LastPreferedOrder", "");
-
+*/
     _addSimulationControl(propIndex);
     _addSimulationControl(propRule);
     _addSimulationControl(propSaveAttribute);
     _addSimulationControl(propQuantityExpression);
     _addSimulationControl(propResource);
     _addSimulationControl(propSet);
-    _addSimulationControl(propLastMemberSeized);
-    _addSimulationControl(propLastPreferedOrder);
+    //_addSimulationControl(propLastMemberSeized);
+    //_addSimulationControl(propLastPreferedOrder);
 }
 
 SeizableItem::SeizableItem(ModelDataDefinition* resourceOrSet, std::string quantityExpression, SeizableItem::SelectionRule selectionRule, std::string saveAttribute, std::string index) {
@@ -164,6 +176,17 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields) {
             } else if (_seizableType == SeizableItem::SeizableType::SET) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _seizableName);
             }
+            if (_resourceOrSet == nullptr && !_seizableName.empty()) {
+                // The referenced Resource/Set is missing from the file being loaded (e.g. renamed
+                // or deleted while this reference still pointed at the old name). Do not fabricate
+                // a fresh stand-in here: that would silently create an unrelated duplicate that
+                // passes downstream _check() trivially. Report the unresolved reference instead.
+                _modeldataManager->getParentModel()->getTracer()->traceError(
+                    "SeizableItem could not resolve referenced " +
+                    (_seizableType == SeizableItem::SeizableType::SET ? std::string("Set") : std::string("Resource")) +
+                    " named '" + _seizableName + "' on loading");
+                res = false;
+            }
             if (Set* set = dynamic_cast<Set*>(_resourceOrSet)) {
                 // Loading a SeizableItem re-applies the contextual contract for the GUI editor:
                 // this Set reference is intended to create/select Resource members.
@@ -171,7 +194,6 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields) {
                 set->setSetOfType(Util::TypeOf<Resource>());
             }
             _ensureSimulationControls(_modeldataManager->getParentModel());
-            //assert(_resourceOrSet != nullptr); // @TODO TraceError
         }
     } catch (...) {
         res = false;
@@ -192,16 +214,8 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
         if (_modeldataManager != nullptr) {
             if (_seizableType == SeizableItem::SeizableType::RESOURCE) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
-                if (_resourceOrSet == nullptr) {
-                    auto model = _modeldataManager->getParentModel();
-                    _resourceOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Resource>(model, _seizableName);
-                }
             } else if (_seizableType == SeizableItem::SeizableType::SET) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _seizableName);
-                if (_resourceOrSet == nullptr) {
-                    auto model = _modeldataManager->getParentModel();
-                    _resourceOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Set>(model, _seizableName);
-                }
                 if (Set* set = dynamic_cast<Set*>(_resourceOrSet)) {
                     // Loading indexed SeizableItems uses the same Set contract as direct GUI editing.
                     set->setAllowedElementTypes({Util::TypeOf<Resource>()});
@@ -209,7 +223,17 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
                 }
             } else {
                 _resourceOrSet = nullptr;
-                _modeldataManager->getParentModel()->getTracer()->traceError("SeizableItem named '" + _seizableName + "' could not be found on loading");
+            }
+            if (_resourceOrSet == nullptr && !_seizableName.empty()) {
+                // Do not fabricate a fresh stand-in Resource/Set here: the referenced object is
+                // missing from the file being loaded (dangling reference), and creating a new
+                // default one silently would insert an unrelated duplicate that later satisfies
+                // _check() trivially, hiding the real problem. Report it instead.
+                _modeldataManager->getParentModel()->getTracer()->traceError(
+                    "SeizableItem could not resolve referenced " +
+                    (_seizableType == SeizableItem::SeizableType::SET ? std::string("Set") : std::string("Resource")) +
+                    " named '" + _seizableName + "' on loading");
+                res = false;
             }
             _ensureSimulationControls(_modeldataManager->getParentModel());
         }

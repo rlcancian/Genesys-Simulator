@@ -1,0 +1,69 @@
+name: GenESyS GUI Issue Reporting
+
+on:
+  pull_request:
+    branches:
+      - WorkInProgress
+    paths:
+      - source/applications/gui/genesys/**
+      - .github/workflows/genesys-gui-report-issue.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gui-report-issue-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  issue-report-gui:
+    name: Qt6 form, relay, browser URL and main GUI build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      QT_QPA_PLATFORM: offscreen
+      CTEST_OUTPUT_ON_FAILURE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain and commit
+        run: |
+          set -Eeuo pipefail
+          git rev-parse HEAD
+          cmake --version
+          ninja --version
+          g++ --version
+
+      - name: Install Qt6 and GenESyS build dependencies
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build python3 python3-dev \
+            libsbml5-dev ngspice r-base octave \
+            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libgl1-mesa-dev
+
+      - name: Configure GUI with issue-report QtTest enabled
+        run: cmake --preset gui-app -DGENESYS_BUILD_GUI_ISSUE_TESTS=ON
+
+      - name: Build focused report tests
+        run: cmake --build build/gui-app --target genesys_gui_issue_tests --parallel 2
+
+      - name: Execute QtTest interaction and transport mocks
+        run: ctest --test-dir build/gui-app -R '^genesys_gui_issue_tests$' --output-on-failure --verbose
+
+      - name: Compile complete main GUI
+        run: cmake --build --preset gui-app --parallel 2
+
+      - name: Upload configure/test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gui-report-issue-evidence
+          path: |
+            build/gui-app/CMakeCache.txt
+            build/gui-app/Testing/Temporary/LastTest.log
+            build/gui-app/Testing/Temporary/LastTestsFailed.log
+          if-no-files-found: warn
+          retention-days: 14

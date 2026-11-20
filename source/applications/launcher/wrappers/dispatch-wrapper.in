@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "@GENESYS_DISPATCH_EXECUTABLE_PATH@" --app "@GENESYS_WRAPPER_APPLICATION@" -- "$@"

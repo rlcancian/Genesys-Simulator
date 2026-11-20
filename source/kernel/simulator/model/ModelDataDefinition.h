@@ -117,6 +117,8 @@ public:
 	 * \return Map of attached data indexed by name.
 	 */
 	std::map<std::string, ModelDataDefinition*>* getAttachedData() const;
+	/*!\brief Returns references explicitly registered as optional editable data definitions. */
+	std::map<std::string, ModelDataDefinition*>* getOptionalEditableDataDefinitions() const;
 	//ModelDataDefinition* getInternalData(std::string key) const;
 	/*!
 	 * \brief Indicates whether this instance has been modified since the last reset.
@@ -129,13 +131,20 @@ public:
 	 */
 	void setHasChanged(bool hasChanged);
 	/*!
-	 * \brief Returns the level in the model hierarchy where this definition lives.
-	 * \return Model nesting level.
+	 * \brief Returns the hierarchical editing context containing this element.
+	 * \details Zero denotes the root model view. A nonzero value identifies
+	 * the ModelDataDefinition that owns the editing context; a ModelComponent
+	 * may identify a context because it derives from ModelDataDefinition.
+	 * Context membership does not transfer object ownership or imply Entity flow.
+	 * \return Current editing-context identifier (not an ordinal depth).
 	 */
 	unsigned int getLevel() const;
 	/*!
-	 * \brief Sets the model nesting level for this definition.
-	 * \param _modelLevel New hierarchy level.
+	 * \brief Sets this element's hierarchical editing context.
+	 * \details Use zero for the root context, or the ID of the containing
+	 * ModelDataDefinition / ModelComponent. This API only updates the context
+	 * key: the caller remains responsible for domain ownership and persistence.
+	 * \param _modelLevel Editing-context identifier.
 	 */
 	void setModelLevel(unsigned int _modelLevel);
 	/*!
@@ -249,6 +258,8 @@ public: // public virtual methods
 	 * \return Human-readable summary used by traces and debug output.
 	 */
 	virtual std::string show();
+	/** True when this model-managed definition remains a root without references. */
+	virtual bool isModelDataRoot() const { return false; }
 	/*! Returns a list of keys (names) of internal ModelDatas, cuch as Counters, StatisticsCollectors and others. ChildrenElements are ModelDatas used by this ModelDataDefinition thar are needed before model checking */
 
 protected:
@@ -331,7 +342,7 @@ protected:
 	std::string _typename;
 	bool _reportStatistics;
 	bool _hasChanged;
-	unsigned int _modelLevel = 0; // the ID of parent component (submodel or process, for now) in the "superlevel"
+	unsigned int _modelLevel = 0; // 0=root; otherwise ID of the ModelDataDefinition defining this editing context.
 	Model* _parentModel;
 
 private:

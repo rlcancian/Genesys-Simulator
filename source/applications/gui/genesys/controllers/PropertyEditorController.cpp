@@ -9,6 +9,7 @@
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 
 #include "../../../../kernel/simulator/model/ModelComponentManager.h"
 #include "kernel/simulator/GenesysPropertyIntrospection.h"
@@ -28,6 +29,13 @@
 #include <set>
 
 namespace {
+QString modelDataDefinitionIdentity(ModelDataDefinition* definition) {
+    if (definition == nullptr) return {};
+    return QStringLiteral("@model-object:%1:%2")
+        .arg(QString::fromStdString(definition->getClassname()))
+        .arg(static_cast<qulonglong>(definition->getId()));
+}
+
 /*! \brief Returns true for selection chrome that belongs to the scene infrastructure instead of a model object.
  *
  * Ports and diagram connections should not be treated as primary property-editor targets because they
@@ -176,6 +184,17 @@ void collectEditableAttachedDataDefinitionNames(ModelComponent* component, QSet<
             }
         }
     }
+
+    // Optional editable associations are an explicit kernel declaration of objects
+    // exposed for editing (for example, Assign's Variable destination). They need
+    // not correspond to a class-valued SimulationControl.
+    if (auto* editable = component->getOptionalEditableDataDefinitions()) {
+        for (const auto& entry : *editable) {
+            if (entry.second != nullptr) {
+                names.insert(QString::fromStdString(entry.second->getName()));
+            }
+        }
+    }
 }
 
 /*! \brief Builds the full editable data-definition set from the current scene and loaded model.
@@ -210,6 +229,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
     }
 
     if (model->getDataManager() != nullptr) {
+        ModelDataDefinition* networkOwner = scene->networkEditorOwner();
         for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
             List<ModelDataDefinition*>* dataDefinitions = model->getDataManager()->getDataDefinitionList(dataTypename);
             if (dataDefinitions == nullptr) {
@@ -222,6 +242,9 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
                         names,
                         recursionPath
                         );
+                    if (GuiExtensionPluginCatalog::ownsEditableNetworkDataDefinition(networkOwner, dataDefinition)) {
+                        names.insert(modelDataDefinitionIdentity(dataDefinition));
+                    }
                 }
             }
         }
@@ -247,8 +270,11 @@ void refreshGraphicalDataDefinitionEditability(
         if (graphicalDataDefinition == nullptr || graphicalDataDefinition->getDataDefinition() == nullptr) {
             continue;
         }
-        const QString name = QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName());
-        graphicalDataDefinition->setEditableInPropertyEditor(editableDataDefinitions.contains(name));
+        ModelDataDefinition* definition = graphicalDataDefinition->getDataDefinition();
+        const QString name = QString::fromStdString(definition->getName());
+        graphicalDataDefinition->setEditableInPropertyEditor(
+            editableDataDefinitions.contains(name)
+            || editableDataDefinitions.contains(modelDataDefinitionIdentity(definition)));
     }
 }
 } // namespace
@@ -261,10 +287,9 @@ PropertyEditorController::PropertyEditorController(
     std::map<SimulationControl*, DataComponentProperty*>* propertyList,
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI,
     std::map<SimulationControl*, ComboBoxEnum*>* propertyBox,
-    std::function<void()> actualizeModelSimLanguage,
+    std::function<void()> markModelChanged,
     std::function<void(bool)> actualizeModelComponents,
     std::function<void(bool)> actualizeModelDataDefinitions,
-    std::function<void()> actualizeModelCppCode,
     std::function<bool()> createModelImage,
     std::function<void()> actualizeTabPanes,
     std::function<void()> actualizeActions)
@@ -274,10 +299,9 @@ PropertyEditorController::PropertyEditorController(
       _propertyList(propertyList),
       _propertyEditorUI(propertyEditorUI),
       _propertyBox(propertyBox),
-      _actualizeModelSimLanguage(std::move(actualizeModelSimLanguage)),
+      _markModelChanged(std::move(markModelChanged)),
       _actualizeModelComponents(std::move(actualizeModelComponents)),
       _actualizeModelDataDefinitions(std::move(actualizeModelDataDefinitions)),
-      _actualizeModelCppCode(std::move(actualizeModelCppCode)),
       _createModelImage(std::move(createModelImage)),
       _actualizeTabPanes(std::move(actualizeTabPanes)),
       _actualizeActions(std::move(actualizeActions)) {
@@ -312,6 +336,7 @@ void PropertyEditorController::bindDataDefinitionFromInspector(
     }
 
     ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;
+    _propertyBrowser->setModelScene(scene);
     QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
     QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
 
@@ -340,7 +365,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
         qInfo() << "[PropertyEditorController] sceneSelectionChanged deferred because post-commit pipeline is active";
         if (!_isDeferredSelectionSyncScheduled) {
             _isDeferredSelectionSyncScheduled = true;
-            QTimer::singleShot(0, [this]() {
+            QTimer::singleShot(0, this, [this]() {
                 _isDeferredSelectionSyncScheduled = false;
                 this->sceneSelectionChanged();
             });
@@ -353,6 +378,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
     if (selectedItems.size() == 1) {
         QGraphicsItem* item = selectedItems.at(0);
         ModelGraphicsScene* scene = _graphicsView->getScene();
+        _propertyBrowser->setModelScene(scene);
         const QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
         const QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
         refreshGraphicalDataDefinitionEditability(scene, editableDataDefinitions);
@@ -409,13 +435,18 @@ void PropertyEditorController::sceneSelectionChanged() const {
 void PropertyEditorController::onPropertyEditorModelChanged() const {
     qInfo() << "[PropertyEditorController] onPropertyEditorModelChanged request. queued=" << _isGlobalRefreshQueued
             << " running=" << _isGlobalRefreshRunning << " pending=" << _pendingGlobalRefresh;
+    // Record the commit while its document is still active. Only widget refreshes
+    // are deferred; a tab switch or close may happen before the next event turn.
+    if (_markModelChanged) {
+        _markModelChanged();
+    }
     _pendingGlobalRefresh = true;
     if (_isGlobalRefreshRunning || _isGlobalRefreshQueued) {
         return;
     }
 
     _isGlobalRefreshQueued = true;
-    QTimer::singleShot(0, [this]() {
+    QTimer::singleShot(0, this, [this]() {
         _isGlobalRefreshQueued = false;
         _runGlobalRefresh();
     });
@@ -432,7 +463,7 @@ void PropertyEditorController::_runGlobalRefresh() const {
         qInfo() << "[PropertyEditorController] _runGlobalRefresh deferred because property editor is still stabilizing";
         if (!_isGlobalRefreshQueued) {
             _isGlobalRefreshQueued = true;
-            QTimer::singleShot(0, [this]() {
+            QTimer::singleShot(0, this, [this]() {
                 _isGlobalRefreshQueued = false;
                 _runGlobalRefresh();
             });
@@ -451,20 +482,11 @@ void PropertyEditorController::_runGlobalRefresh() const {
         if (_actualizeModelDataDefinitions) {
             _actualizeModelDataDefinitions(true);
         }
-        // Refresh the serialized model text only after component and data-definition panes have
-        // consumed the committed kernel state. This keeps Siman aligned with the same model
-        // snapshot already visible in the inspector widgets.
-        if (_actualizeModelSimLanguage) {
-            _actualizeModelSimLanguage();
-        }
-        if (_actualizeModelCppCode) {
-            _actualizeModelCppCode();
-        }
         if (_createModelImage) {
             _createModelImage();
         }
-        if (_actualizeTabPanes) {
-            _actualizeTabPanes();
+        if (_actualizeActions) {
+            _actualizeActions();
         }
 
         ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;

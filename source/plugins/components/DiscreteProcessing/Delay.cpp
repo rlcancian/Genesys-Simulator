@@ -39,6 +39,7 @@ Delay::Delay(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Delay::delayExpression, this), std::bind(&Delay::setDelayExpression, this, std::placeholders::_1, Util::TimeUnit::unknown),
 									Util::TypeOf<Delay>(), getName(), "DelayExpression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 //	SimulationControlGeneric<double>* propDelay = new SimulationControlGeneric<double>(
 //									std::bind(&Delay::delay, this), std::bind(&Delay::setDelay, this, std::placeholders::_1),
 //									Util::TypeOf<Delay>(), getName(), "Delay", "");
@@ -106,6 +107,7 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	Util::TimeUnit stu = _parentModel->getSimulation()->getReplicationBaseTimeUnit(); //getReplicationLengthTimeUnit();
 	waitTime *= Util::TimeUnitConvert(_delayTimeUnit, stu);
 	if (_reportStatistics) {
+		_initCStats();
 		std::string allocationCategory = Util::StrAllocation(_allocation);
         _cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
 		if (entity->getEntityType()->isReportStatistics())
@@ -123,7 +125,9 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
     // Route delayed forwarding through Model API so entity-move handlers are notified.
     _parentModel->sendEntityToComponent(entity, frontConnection, waitTime);
 	double delayEndTime = _parentModel->getSimulation()->getSimulatedTime() + waitTime;
-	traceSimulation(this, "End of delay of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " scheduled to time " + std::to_string(delayEndTime) + Util::StrTimeUnitShort(stu) + " (wait time " + std::to_string(waitTime) + Util::StrTimeUnitShort(stu) + ") // " + _delayExpression+ " "+Util::StrTimeUnitShort(_delayTimeUnit));
+	traceSimulation(this, "Delay schedules entity continuation", TraceManager::Level::L7_internal);
+	traceSimulation(this, "Delay expression \"" + _delayExpression + "\" produced " + std::to_string(waitTime) + Util::StrTimeUnitShort(stu), TraceManager::Level::L8_detailed);
+	traceSimulation(this, "End of delay of " + entity->getName() + " scheduled to time " + std::to_string(delayEndTime) + Util::StrTimeUnitShort(stu), TraceManager::Level::L9_mostDetailed);
 }
 
 ModelComponent* Delay::LoadInstance(Model* model, PersistenceRecord *fields) {
@@ -224,6 +228,12 @@ void Delay::_createInternalStatisticReporters() {
 		_statisticReportersClear();
 		_cstatWaitTime = nullptr;
 		// @TODO remove StatisticsCollector needed in EntityType
+	}
+}
+
+void Delay::_initCStats() {
+	if (_reportStatistics && _cstatWaitTime == nullptr) {
+		_createInternalStatisticReporters();
 	}
 }
 

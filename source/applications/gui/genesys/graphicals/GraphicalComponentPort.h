@@ -47,6 +47,7 @@ public:
 public: // sets and gets
     /** @brief Returns the port number within the owning component. */
 	unsigned int portNum() const;
+	void setPortNum(unsigned int portNumber);
     /** @brief Returns true when this is an input port. */
 	bool isInputPort() const;
     /** @brief Returns the owning graphical component. */

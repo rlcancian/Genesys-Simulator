@@ -601,6 +601,15 @@ void MainWindow::on_actionAnimation_triggered()
         ui->actionActivateGraphicalSimulation->setChecked(false);
         on_actionActivateGraphicalSimulation_triggered();
     }
+    if (!enabled) {
+        // A paused simulation can retain transitions outside the active list.
+        // Destroy them while animation is disabled so Resume cannot restart stale objects.
+        AnimationTransition::setPause(false);
+        AnimationTransition::setRunning(false);
+        if (ModelGraphicsScene* scene = myScene()) {
+            scene->clearAnimationsTransition();
+        }
+    }
     _actualizeActions();
 }
 
@@ -960,6 +969,10 @@ void MainWindow::on_pushButton_Export_clicked() {
 
 
 void MainWindow::on_tabWidgetModelLanguages_currentChanged(int index) {
+    if (!ui->tabWidgetModel->isTabVisible(index)) {
+        _actualizeActions();
+        return;
+    }
     if (index == CONST.TabModelSimLangIndex) {
         if (_graphicalModelHasChanged) {
             _actualizeModelSimLanguage();

@@ -117,6 +117,8 @@ public:
 	std::string getLanguageTemplate() const;
 	void setCategory(std::string _category);
 	std::string getCategory() const;
+	void setDataDefinitionBaseTypeName(std::string typeName);
+	const std::string& getDataDefinitionBaseTypeName() const;
 	static std::string categoryFolderName(const std::string& category);
 public:
 private:
@@ -124,6 +126,9 @@ private:
 	std::string _date = "01/08/2018";
 	std::string _version = "0.9.1";
 	std::string _category = "DiscreteProcessing";
+	// Optional direct ModelDataDefinition base type, used to discover compatible
+	// concrete factories without instantiating plugins or hard-coding GUI types.
+	std::string _dataDefinitionBaseTypeName;
 	std::string _observation = "First implementation not fully completed nor tested. Use with caution.";
 	std::string _descriptionHelp = "";
 	std::string _languageTemplate = "";

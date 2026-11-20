@@ -213,12 +213,12 @@ void ModelComponent::_initBetweenReplications() {
 void ModelComponent::_createInternalAndAttachedData() {
 	if (_internalDataDefinition == nullptr) {
 		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
+		_internalDataDefinition = pm->newInstance<TemplateDataDefinition>(_parentModel, getName() + "." + "JustaDummy");
 		_internalDataInsert("JustaDummy", _internalDataDefinition);
 	}
 	if (_attachedDataDefinition == nullptr) {
 		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_attachedDataDefinition = pm->newInstance<DummyElement>(_parentModel);
+		_attachedDataDefinition = pm->newInstance<TemplateDataDefinition>(_parentModel);
 		_attachedDataInsert("JustaDummy", _attachedDataDefinition);
 	}
 }

@@ -4,6 +4,8 @@
 /cmake-build-*/
 build/
 build-gui/
+/docs/developers/ManualGenESyS_source/
+/docs/developers/ManualGenESyS/
 
 # CMake
 CMakeCache.txt
@@ -12,6 +14,9 @@ CTestTestfile.cmake
 cmake_install.cmake
 compile_commands.json
 Testing/
+
+# Non versioned directories (named using the pattern gitignore_*)
+gitignore_*
 
 # Ninja
 .ninja_deps
@@ -28,8 +33,12 @@ CMakeLists.txt.user
 # Local IDE and AI assistant metadata
 /.idea/
 /.aider*
+/CLAUDE.md
 /.claude*
 /.codex*
+/.crontab-execplan-codex/
+/ai_periodic_plan/
+*.swp
 
 # Generic
 *.o
@@ -47,4 +56,16 @@ temp*
 # Logs
 *.log
 
-documentation/diagrams/
+# Debian packaging build artifacts (dpkg-buildpackage staging output)
+/build-debian/
+/debian/.debhelper/
+/debian/debhelper-build-stamp
+/debian/files
+/debian/*.substvars
+/debian/genesys-common/
+/debian/genesys-gui/
+/debian/genesys-simulator/
+/debian/genesys-shell/
+/debian/genesys-worker/
+/debian/genesys-web/
+/debian/tmp/

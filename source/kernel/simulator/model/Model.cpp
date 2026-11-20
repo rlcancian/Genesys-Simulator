@@ -19,6 +19,7 @@
 #include <list>
 #include <fstream>
 #include <filesystem>
+#include <memory>
 #include <unordered_set>
 //#include <stdio.h>
 
@@ -252,6 +253,10 @@ void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, dou
 }
 
 bool Model::save(std::string filename) {
+	// Materialize declared internal/attached data before serialization. ModelCheck
+	// also prunes orphaned definitions, which is deliberately not part of save:
+	// an incomplete model and independent user-created data must remain savable.
+	_createInternalDataDefinitions();
     bool res = this->_modelPersistence->save(filename);
     if (res) {
         this->_traceManager->trace("Model successfully saved", TraceManager::Level::L2_results);
@@ -264,6 +269,18 @@ bool Model::save(std::string filename) {
 }
 
 bool Model::load(std::string filename) {
+	// Validate into an isolated model before touching an already open model. This
+	// keeps a malformed or semantically incomplete file from destroying the
+	// caller's current state. The actual load remains in this instance so its
+	// identity and ownership relationships stay unchanged on success.
+	Model validationModel(_parentSimulator, _level);
+	if (!validationModel._modelPersistence->load(filename)) {
+		this->getTracer()->trace(TraceManager::Level::L2_results,
+			"Model load rejected before replacing current state");
+		return false;
+	}
+	validationModel.clear();
+
     this->clear();
     bool res = this->_modelPersistence->load(filename);
     if (res)
@@ -309,10 +326,23 @@ bool Model::checkExpression(const std::string expression, const std::string expr
 void Model::checkReferencesToDataDefinitions(std::string expression,
                                              std::map<std::string, std::list<std::string>*>*
                                              referencedDataDefinitions) {
+    if (referencedDataDefinitions == nullptr) {
+        return;
+    }
     genesyspp_driver wrapper = _parser->getParser();
     wrapper.setRegisterReferedDataElements(true);
     wrapper.clearReferedDataElements();
-    wrapper.parse_str(expression);
+    // Reference discovery only needs lexical symbol resolution. The syntax-only
+    // parser suppresses semantic actions, so distributions and stateful functions
+    // are never evaluated merely to populate attachment metadata.
+    const ExpressionSyntaxValidation validation = wrapper.validateSyntax(expression, true);
+    wrapper.setRegisterReferedDataElements(false);
+    if (!validation.isValid()) {
+        _traceManager->trace("Could not discover data-definition references in expression '" + expression + "': " + validation.errorMessage,
+                             TraceManager::Level::L3_errorRecover);
+        wrapper.clearReferedDataElements();
+        return;
+    }
     std::map<std::string, std::list<std::string>*>* refs = wrapper.getReferedDataElements();
     // Deep-copy referred element names so output map owns stable lists beyond parser wrapper lifetime.
     for (const auto& typeAndNames : *refs) {
@@ -332,7 +362,7 @@ void Model::checkReferencesToDataDefinitions(std::string expression,
             }
         }
     }
-    wrapper.setRegisterReferedDataElements(false);
+    wrapper.clearReferedDataElements();
 }
 
 double Model::parseExpression(const std::string expression, bool& success, std::string& errorMessage) {
@@ -676,7 +706,7 @@ void Model::_clearOrphanedDataDefinitions() {
         std::list<std::string> allTypes = _modeldataManager->getDataDefinitionClassnames();
         for (std::string ddtypename : allTypes) {
             for (ModelDataDefinition* element : *_modeldataManager->getDataDefinitionList(ddtypename)->list()) {
-                orphaned.insert(element);
+                if (element != nullptr && !element->isModelDataRoot()) orphaned.insert(element);
             }
         }
         // Remove every referenced data definition from orphan candidates while preserving trace semantics.

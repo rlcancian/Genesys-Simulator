@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include <memory>
+#include <string>
 
 class QCloseEvent;
 class QShowEvent;
@@ -19,12 +20,16 @@ class WebWorkerDialog : public QDialog {
 public:
     explicit WebWorkerDialog(QWidget* parent = nullptr, bool allowClose = false);
     ~WebWorkerDialog() override;
+    std::string getVersionName() const { return _versionName; }
+    unsigned int getVersionNumber() const { return _versionNumber; }
 
 protected:
     void closeEvent(QCloseEvent* event) override;
     void showEvent(QShowEvent* event) override;
 
 private:
+    const std::string _versionName = "inaiera";
+    const unsigned int _versionNumber = 261115;
     void _refresh();
 
     bool _allowClose = false;

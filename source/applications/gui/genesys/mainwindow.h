@@ -10,7 +10,7 @@
 #include <memory>
 #include <map>
 
-#include "propertyeditor/DataComponentProperty.h"
+class DataComponentProperty;
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
 
@@ -18,6 +18,7 @@
 #include "kernel/simulator/PropertyGenesys.h"
 #include "kernel/simulator/TraceManager.h"
 #include "graphicals/ModelGraphicsScene.h"
+#include "extensions/GuiExtensionContracts.h"
 
 QT_BEGIN_NAMESPACE
 		namespace Ui {
@@ -43,6 +44,7 @@ class SceneToolController;
 class GraphicalContextMenuController;
 class DialogUtilityController;
 class GuiExtensionManager;
+class EFSMNetworkEditorController;
 class QAction;
 class QMenu;
 class QTabWidget;
@@ -75,10 +77,14 @@ class MainWindow : public QMainWindow {
 
     // Allow the Phase 4 event controller to register private compatibility handlers.
     friend class SimulationEventController;
-
+    friend class EFSMNetworkEditorController;
 public:
     /** @brief Builds the composition root, wiring controllers/services and legacy Qt surface. */
 	MainWindow(QWidget *parent = nullptr);
+    /** @brief Returns this GUI application's author-defined version name. */
+    std::string getVersionName() const { return _versionName; }
+    /** @brief Returns this GUI application's date-coded version, independent of Simulator. */
+    unsigned int getVersionNumber() const { return _versionNumber; }
     /** @brief Releases UI resources while preserving existing Qt ownership semantics. */
 	~MainWindow();
     /** @brief Returns the current model graphics scene used by delegated controllers/services. */
@@ -353,6 +359,7 @@ private: // view
     ModelGraphicsView* _createModelGraphicsView(QWidget* parent);
     /** @brief Makes a graphics view the active compatibility target used by legacy wrappers. */
     void _activateModelGraphicsView(ModelGraphicsView* graphicsView, bool rebuildControllers = true);
+    void _reloadPluginCatalogForCurrentContext();
     /** @brief Ensures that an opened kernel model has a corresponding graphical tab. */
     ModelGraphicsView* _ensureModelTab(Model* model);
     /** @brief Removes the tab and graphical view associated with a model no longer opened. */
@@ -457,6 +464,8 @@ private: // opened-model document state
     GraphicalModelViewContext* _contextForView(ModelGraphicsView* graphicsView) const;
     /** @brief Returns the root-model context for a kernel model. */
     GraphicalModelViewContext* _rootContextForModel(Model* model) const;
+    /** @brief Captures formalism-owned GUI layout before a Network view is discarded. */
+    void _captureNetworkDiagramLayoutForContext(GraphicalModelViewContext* context);
     /** @brief Creates or updates the root context backing a model tab. */
     GraphicalModelViewContext* _ensureRootModelViewContext(Model* model, ModelGraphicsView* graphicsView);
     /** @brief Opens or activates a submodel tab for the selected owner data definition/component. */
@@ -530,6 +539,11 @@ private: // interface and model main elements to join
     std::map<Model*, bool> _modelTextHasChanged;
     // Tracks graphical dirty state per opened model while legacy flags mirror only the active model.
     std::map<Model*, bool> _modelGraphicalHasChanged;
+    // Serializer instances are rebuilt when the active graphical view changes.
+    std::shared_ptr<GuiDiagramLayoutsByModel> _diagramLayoutsByModel =
+        std::make_shared<GuiDiagramLayoutsByModel>();
+    std::shared_ptr<GuiUnknownDiagramSectionsByModel> _unknownDiagramSectionsByModel =
+        std::make_shared<GuiUnknownDiagramSectionsByModel>();
     // Tracks tabs being changed programmatically to avoid re-entrant model switching.
     bool _changingModelTabProgrammatically = false;
     // Runtime menu actions for navigating the opened-model list.
@@ -624,6 +638,8 @@ private: // misc useful
     bool _firstClickShowConnection = true;
 
 private:
+	const std::string _versionName = "inaiera";
+	const unsigned int _versionNumber = 261115;
 
 	const struct TABINDEXES_STRUC {
 		const int TabCentralModelIndex = 0;
@@ -664,7 +680,6 @@ private:
     QMetaObject::Connection _sceneChangedConnection;
     QMetaObject::Connection _sceneFocusItemChangedConnection;
     QMetaObject::Connection _sceneSelectionChangedConnection;
-    bool _isDeferredPropertyEditorModelChangedScheduled = false;
 	//CodeEditor* textCodeEdit_Model;
 };
 #endif // MAINWINDOW_H

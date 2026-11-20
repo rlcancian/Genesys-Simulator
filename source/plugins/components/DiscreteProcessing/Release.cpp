@@ -17,8 +17,9 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 //#include "kernel/simulator/Attribute.h"
-#include <assert.h>
+#include <stdexcept>
 #include <cmath>
+#include "auxiliar/ResourceSetSelection.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -99,135 +100,36 @@ void Release::removeReleaseRequests(SeizableItem* request) {
 //}
 
 Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* entity) {
-	Resource* resource;
-	if (seizable->getSeizableType() == SeizableItem::SeizableType::RESOURCE) {
-		resource = seizable->getResource();
-	} else { // assume SET
-		SeizableItem::SelectionRule rule = seizable->getSelectionRule();
-		Set* set = seizable->getSet();
-		unsigned int index = 0;
-		double value, bestValue;
-		unsigned int bestIndex;
-        switch (rule) {
-			case SeizableItem::SelectionRule::CYCLICAL:
-				index = (seizable->getLastMemberSeized() + 1) % _releaseRequests->list()->size();
-				trace("Member index " + std::to_string(index) + " was cyclically choosen", TraceManager::Level::L9_mostDetailed);
-				break;
-			case SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY:
-				unsigned int bestIndex;
-				index = 0;
-				bestValue = std::numeric_limits<double>::min();
-				for (ModelDataDefinition* dd : *seizable->getSet()->getElementSet()->list()) {
-					resource = dynamic_cast<Resource*>(dd);
-					if (resource == nullptr) { index++; continue; }
-					value = resource->getCapacity() - resource->getNumberBusy();
-					if (value > bestValue) {
-						bestValue = value;
-						bestIndex = index;
-					}
-					trace("Member index " + std::to_string(index) + " has " + Util::StrTruncIfInt(value) + " remaining capacity. Largest one is " + Util::StrTruncIfInt(bestValue) + " from index " + std::to_string(bestIndex), TraceManager::Level::L9_mostDetailed);
-					index++;
-				}
-				index = bestIndex;
-				break;
-			case SeizableItem::SelectionRule::RANDOM:
-				// @TODO: RANDOM IS REALLY A PROBLEM!!! NOW IT MAY CAUSE AN ERROR (DEQUEUE AN ENTITY BECAUSE IT CAN SEIZE ALL REQUESTS, BUT ANOTHER RANDOM REQUEST MY BE SELECTED AFTER, IT IT MAY BE BUSY
-				index = std::trunc(rand() * this->_releaseRequests->list()->size());
-				trace("Member index " + std::to_string(index) + " was randomlly choosen", TraceManager::Level::L9_mostDetailed);
-				break;
-			case SeizableItem::SelectionRule::SMALLESTNUMBERBUSY:
-				bestValue = std::numeric_limits<double>::max();
-				index = 0;
-				for (ModelDataDefinition* dd : *seizable->getSet()->getElementSet()->list()) {
-					resource = dynamic_cast<Resource*>(dd);
-					if (resource == nullptr) { index++; continue; }
-					value = resource->getNumberBusy();
-					if (value < bestValue) {
-						bestValue = value;
-						bestIndex = index;
-					}
-					trace("Member index " + std::to_string(index) + " has " + Util::StrTruncIfInt(value) + " number busy. Smallest one is " + Util::StrTruncIfInt(bestValue) + " from index " + std::to_string(bestIndex), TraceManager::Level::L9_mostDetailed);
-					index++;
-				}
-				index = bestIndex;
-				break;
-			case SeizableItem::SelectionRule::SPECIFICMEMBER:
-				index = _parentModel->parseExpression(seizable->getSaveAttribute());
-				trace("Member index " + std::to_string(index) + " was specifically choosen", TraceManager::Level::L9_mostDetailed);
-				break;
-			case SeizableItem::SelectionRule::PREFEREDORDER:
-			{
-				bestValue = 0;
-				index = 0;
-				unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
-				unsigned int numRecAvaliable = 0;
-				for (ModelDataDefinition* dd : *seizable->getSet()->getElementSet()->list()) {
-					resource = dynamic_cast<Resource*>(dd);
-					if (resource == nullptr) { continue; }
-					if ((resource->getCapacity() - resource->getNumberBusy()) >= quantity) { // resource "avaliable"
-						numRecAvaliable++;
-					}
-				}
-				unsigned int lastPreferedOrder = seizable->getLastPreferedOrder();
-				if (numRecAvaliable == 0) {
-					// to avoid the entity always to be waiting on the queue of the resource index 0 when there is no avaliable resource,
-					// it will be waiting on the "preferedOrder"-th index member
-					if (++lastPreferedOrder < seizable->getSet()->getElementSet()->size()) {
-						index = lastPreferedOrder;
-					}
-					trace("There is no available resources. Will request the " + std::to_string(index) + "th member index", TraceManager::Level::L9_mostDetailed);
-				} else {
-					seizable->setLastPreferedOrder(++lastPreferedOrder);
-					if (lastPreferedOrder >= numRecAvaliable) {
-						seizable->setLastPreferedOrder(1);
-						trace("There isn't " + std::to_string(lastPreferedOrder) + " available resources. Preferable order is now the 1th", TraceManager::Level::L9_mostDetailed);
-					}
-					for (ModelDataDefinition* dd : *seizable->getSet()->getElementSet()->list()) {
-						resource = dynamic_cast<Resource*>(dd);
-						if (resource == nullptr) { index++; continue; }
-						if (resource->getCapacity() - resource->getNumberBusy() >= quantity) { // resource "avaliable"
-							bestValue++; // bestValue is always the i-th available resource index
-							if (bestValue <= lastPreferedOrder) { // changed "==" to "<=" so if not enought available resources, entity will not be always on the index=0 resource's queue
-								bestIndex = index;
-							}
-							trace("Member index " + std::to_string(index) + " is the " + Util::StrTruncIfInt(bestValue) + "th available one. Will chosse the  " + Util::StrTruncIfInt(lastPreferedOrder) + "th one.", TraceManager::Level::L9_mostDetailed);
-							if (bestValue == lastPreferedOrder) {
-								break;
-							}
-						} else {
-							trace("Member index " + std::to_string(index) + " is not available", TraceManager::Level::L9_mostDetailed);
-						}
-						index++;
-					}
-					index = bestIndex;
-				}
-				break;
-			}
-			case SeizableItem::SelectionRule::num_elements:
-				traceError("Invalid SelectionRule enum value: num_elements");
-				break;
-		}
-		trace("Member of set " + set->getName() + " chosen index " + std::to_string(index), TraceManager::Level::L8_detailed);
-		resource = dynamic_cast<Resource*>(set->getElementSet()->getAtRank(index));
-		if (resource == nullptr) {
-			traceError("Set member at index " + std::to_string(index) + " of \"" + set->getName() + "\" is not a Resource");
-			return nullptr;
-		}
-	}
-	return resource;
+    (void) entity;
+    return selectRequestResource(_parentModel, seizable, true, getName()).resource;
 }
 
 
 void Release::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	for (SeizableItem* seizable : *_releaseRequests->list()) {
 		Resource* resource = _getResourceFromSeizableItem(seizable, entity);
-		unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
-		assert(resource->getNumberBusy() >= quantity); // 202104 ops. maybe not anymore
-		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, entity->getName() + " releases " + std::to_string(quantity) + " units of resource \"" + resource->getName() + "\" seized on time " + std::to_string(resource->getLastTimeSeized()));
+        if (resource == nullptr) {
+            throw std::runtime_error("Release \"" + getName() + "\": request has no resolved Resource");
+        }
+		unsigned int quantity = resourceRequestQuantity(_parentModel, seizable->getQuantityExpression(), getName());
+        if (resource->getNumberBusy() < quantity) {
+            throw std::runtime_error("Release \"" + getName() + "\": cannot release "
+                + std::to_string(quantity) + " units of Resource \"" + resource->getName()
+                + "\"; only " + std::to_string(resource->getNumberBusy()) + " units are busy");
+        }
+		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, entity->getName() + " releases " + std::to_string(quantity) + " units of resource \"" + resource->getName() + "\"", TraceManager::Level::L7_internal);
+		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Resource busy units before release=" + std::to_string(resource->getNumberBusy()), TraceManager::Level::L9_mostDetailed);
 		resource->release(quantity); //{releases and sets the 'LastTimeSeized'property}
+        if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
+            unsigned int memberIndex = 0;
+            for (auto* member : *seizable->getSet()->getElementSet()->list()) {
+                if (member == resource) { seizable->setLastMemberSeized(memberIndex); break; }
+                ++memberIndex;
+            }
+        }
 		if (_reportStatistics) {
 			double timeSeized = resource->getLastTimeSeized();
-			double allocationEntityResource = entity->getAttributeValue("Entity.Allocation."+resource->getName()); //@TODO: Seize is not setting this attribute. Fiz it.
+			double allocationEntityResource = entity->getAttributeValue("Entity.Allocation."+resource->getName()); // set by Seize::_onDispatchEvent() when the resource was seized
 			std::string allocationCategory = Util::StrAllocation(static_cast<Util::AllocationType>((int) allocationEntityResource));
 			std::string attribIndex="";
 			entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + "."+allocationCategory+"Time")->getStatistics()->getCollector()->addValue(timeSeized);
@@ -254,7 +156,7 @@ bool Release::_loadInstance(PersistenceRecord *fields) {
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr, "", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
 			item->setElementManager(_parentModel->getDataManager());
-			item->loadInstance(fields, i);
+			res &= item->loadInstance(fields, i);
 			this->_releaseRequests->insert(item);
 		}
 	}
@@ -272,7 +174,17 @@ void Release::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	}
 }
 
-// void Release::_createAttachedAttributes() { }
+void Release::_createAttachedAttributes() {
+    if (_reportStatistics) {
+        // The allocation category is supplied by the upstream Seize and may
+        // differ from Delay's category. Materialize every category we may read.
+        for (auto category : {Util::AllocationType::ValueAdded, Util::AllocationType::NonValueAdded,
+                              Util::AllocationType::Transfer, Util::AllocationType::Wait,
+                              Util::AllocationType::Others}) {
+            _attachedAttributesInsert({"Entity.Total" + Util::StrAllocation(category) + "Time"});
+        }
+    }
+}
 
 bool Release::_check(std::string& errorMessage) {
 	bool resultAll = true;
@@ -285,6 +197,11 @@ bool Release::_check(std::string& errorMessage) {
 		} else if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
 			// Set* set = seizable->getSet();
 			resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Set>(), seizable->getSet(), "Set", errorMessage);
+			if (seizable->getSelectionRule() == SeizableItem::SelectionRule::SPECIFICMEMBER
+					&& seizable->getSaveAttribute().empty()) {
+				resultAll = false;
+				errorMessage += getName() + ".Release.SaveAttribute is required to identify the previously seized Set member. ";
+			}
 		}
 		i++;
 	}

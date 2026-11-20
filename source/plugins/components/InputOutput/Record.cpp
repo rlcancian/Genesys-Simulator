@@ -83,6 +83,7 @@ Record::Record(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 			std::bind(&Record::getExpression, this), std::bind(&Record::setExpression, this, std::placeholders::_1),
 			Util::TypeOf<Record>(), getName(), "Expression", "");
+	propExpression->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	SimulationControlGeneric<std::string>* propExpressionName = new SimulationControlGeneric<std::string>(
 			std::bind(&Record::getExpressionName, this),
 			std::bind(&Record::setExpressionName, this, std::placeholders::_1),
@@ -228,7 +229,9 @@ void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		file.close();
 	}
 	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
-	                "Recording value " + fileinfos);
+	                "Recording observation" + fileinfos, TraceManager::Level::L7_internal);
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+	                "Expression \"" + _expression + "\" recorded value=" + std::to_string(value), TraceManager::Level::L9_mostDetailed);
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 

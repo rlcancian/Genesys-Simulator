@@ -1,0 +1,633 @@
+// Regression test for the GUI model save/load bug investigation:
+// PersistenceDefaultImpl2::save() must write through a temp file and
+// atomically replace the destination, rather than truncating the target
+// file directly (which would corrupt/lose the previous good save if the
+// process is interrupted mid-write). See PersistenceDefaultImpl2.cpp.
+
+#include <gtest/gtest.h>
+
+#include <fstream>
+#include <filesystem>
+#include <string>
+#include <unistd.h>
+
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/persistence/PersistencePartialLoadImpl1.h"
+#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Failure.h"
+#include "plugins/data/Logic/Set.h"
+#include "plugins/data/Transfer/Station.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/Continuous/LSODE.h"
+#include "plugins/components/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/Transfer/PickStation.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/Decisions/PickUp.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
+#include "plugins/components/ExternalIntegration/PythonForG.h"
+#include "plugins/components/ExternalIntegration/RSimulator.h"
+#include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
+#include "plugins/data/ExternalIntegration/OctaveRunner.h"
+
+TEST(PersistenceIntegrityTest, MissingConnectionTargetMakesLoadFail) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+
+	const std::string filename = "/tmp/genesys_persistence_missing_target_"
+		+ std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+
+	std::ofstream file(filename);
+	ASSERT_TRUE(file.is_open());
+	file << "# Genesys Simulation Model\n"
+		 << "0 Simulator \"GenESyS\" versionNumber=260705\n"
+		 << "0 ModelInfo \"Broken connection\" version=\"1.0\"\n"
+		 << "0 ModelSimulation \"\"\n"
+		 << "140 Delay \"Broken\" delayExpression=\"1\" nexts=1 nextId=999999\n";
+	file.close();
+
+	EXPECT_EQ(simulator.getModelManager()->loadModel(filename), nullptr);
+	::unlink(filename.c_str());
+}
+
+TEST(PersistenceIntegrityTest, InvalidLoadPreservesExistingModel) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	Resource* resource = new Resource(model, "MustSurviveFailedLoad");
+	ASSERT_NE(resource, nullptr);
+
+	const std::string filename = "/tmp/genesys_persistence_invalid_"
+		+ std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	std::ofstream file(filename);
+	ASSERT_TRUE(file.is_open());
+	file << "# Genesys Simulation Model\n"
+		 << "140 UnknownPersistenceType \"Broken\"\n";
+	file.close();
+
+	EXPECT_FALSE(model->load(filename));
+	ASSERT_NE(model->getDataManager(), nullptr);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "MustSurviveFailedLoad"), resource);
+	::unlink(filename.c_str());
+}
+
+TEST(PersistenceAtomicSaveTest, SuccessfulSaveLeavesNoTemporaryFileBehind) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	new Resource(model, "AtomicSaveResource");
+
+	const std::string filename = "/tmp/genesys_atomic_save_test_" + std::to_string(::getpid()) + ".gen";
+	const std::string tempFilename = filename + ".tmp";
+	::unlink(filename.c_str());
+	::unlink(tempFilename.c_str());
+
+	ASSERT_TRUE(model->save(filename));
+
+	std::ifstream savedFile(filename);
+	EXPECT_TRUE(savedFile.good());
+	savedFile.close();
+
+	std::ifstream tempFile(tempFilename);
+	EXPECT_FALSE(tempFile.good()) << "temporary file should have been renamed away, not left behind";
+
+	::unlink(filename.c_str());
+	::unlink(tempFilename.c_str());
+}
+
+TEST(PersistenceAtomicSaveTest, SaveWithoutCheckPreservesIndependentDataDefinition) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* resource = new Resource(model, "IndependentResource");
+	auto* incomplete = new Decide(model, "IncompleteDecide");
+	incomplete->addConditions("unfinished +");
+
+	const std::string filename = "/tmp/genesys_save_without_check_"
+		+ std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+
+	ASSERT_TRUE(model->save(filename));
+	ASSERT_TRUE(model->save(filename));
+	std::ifstream savedFile(filename);
+	ASSERT_TRUE(savedFile.good());
+	const std::string contents((std::istreambuf_iterator<char>(savedFile)),
+		std::istreambuf_iterator<char>());
+	EXPECT_NE(contents.find("IndependentResource"), std::string::npos);
+	EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(),
+		"IndependentResource"), resource);
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedIncomplete = dynamic_cast<Decide*>(loaded->getComponentManager()->find("IncompleteDecide"));
+	ASSERT_NE(loadedIncomplete, nullptr);
+	ASSERT_EQ(loadedIncomplete->getConditions()->size(), 1u);
+	EXPECT_EQ(loadedIncomplete->getConditions()->getAtRank(0), "unfinished +");
+
+	::unlink(filename.c_str());
+}
+
+TEST(DecideConditionsEditorTest, SupportsOrderedDuplicateConditionsAndPositionalRemoval) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* decide = new Decide(model, "OrderedDecide");
+	SimulationControl* conditions = nullptr;
+	for (SimulationControl* control : *decide->getSimulationControls()->list()) {
+		if (control->getName() == "Conditions") conditions = control;
+	}
+	ASSERT_NE(conditions, nullptr);
+	ASSERT_TRUE(conditions->supportsPositionalListEditing());
+	conditions->insertListValueAt(0, "x > 0");
+	conditions->insertListValueAt(1, "x > 0");
+	conditions->insertListValueAt(1, "x == 0");
+	ASSERT_EQ(decide->getConditions()->size(), 3u);
+	EXPECT_EQ(decide->getConditions()->getAtRank(0), "x > 0");
+	EXPECT_EQ(decide->getConditions()->getAtRank(1), "x == 0");
+	auto* keepTarget = new Dispose(model, "KeepTarget");
+	auto* removeTarget = new Dispose(model, "RemoveTarget");
+	auto* keepConnection = new Connection{keepTarget, {0, ""}};
+	auto* removeConnection = new Connection{removeTarget, {0, ""}};
+	decide->getConnectionManager()->insertAtPort(0, keepConnection);
+	decide->getConnectionManager()->insertAtPort(2, removeConnection);
+	conditions->insertListValueAt(1, "inserted");
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), keepConnection);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(3), removeConnection);
+	conditions->removeListValueAt(3);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), keepConnection);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(3), nullptr);
+	conditions->removeListValueAt(2);
+	ASSERT_EQ(decide->getConditions()->size(), 2u);
+	EXPECT_EQ(decide->getConditions()->getAtRank(1), "inserted");
+	std::unique_ptr<PluginInformation> info(Decide::GetPluginInformation());
+	EXPECT_EQ(info->getMinimumOutputs(), 1);
+}
+
+TEST(DecideConditionsEditorTest, OutputStatisticsTrackTheCurrentConditionCount) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* decide = new Decide(model, "StatisticsDecide");
+	decide->setReportStatistics(true);
+	ModelDataDefinition::CreateInternalData(decide);
+	ASSERT_EQ(decide->getInternalData()->size(), 1u);
+	decide->insertConditionAt(0, "first");
+	ASSERT_EQ(decide->getInternalData()->size(), 2u);
+	decide->insertConditionAt(1, "second");
+	ASSERT_EQ(decide->getInternalData()->size(), 3u);
+	decide->removeConditionAt(0);
+	ASSERT_EQ(decide->getInternalData()->size(), 2u);
+	decide->removeConditionAt(0);
+	EXPECT_EQ(decide->getInternalData()->size(), 1u);
+}
+
+TEST(DecideConditionsEditorTest, PositionalEditsPreserveUnaffectedKernelConnections) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* decide = new Decide(model, "ConnectedDecide");
+	auto* firstTarget = new Decide(model, "FirstTarget");
+	auto* secondTarget = new Decide(model, "SecondTarget");
+	auto* elseTarget = new Decide(model, "ElseTarget");
+	decide->addConditions("first");
+	decide->addConditions("second");
+	auto* first = new Connection{firstTarget, {0}};
+	auto* second = new Connection{secondTarget, {0}};
+	auto* otherwise = new Connection{elseTarget, {0}};
+	decide->getConnectionManager()->insertAtPort(0, first);
+	decide->getConnectionManager()->insertAtPort(1, second);
+	decide->getConnectionManager()->insertAtPort(2, otherwise);
+
+	decide->insertConditionAt(1, "inserted");
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), first);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), second);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(3), otherwise);
+	EXPECT_EQ(decide->getConnectionManager()->size(), 3u);
+
+	decide->removeConditionAt(2);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(0), first);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(2), otherwise);
+	EXPECT_EQ(decide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+	EXPECT_EQ(decide->getConnectionManager()->size(), 2u);
+}
+
+TEST(DecideConditionsEditorTest, MovePreservesConnectionsAndElseAcrossEmptyPorts) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	Decide decide(model, "MoveDecide");
+	Decide destination(model, "MoveDestination");
+	decide.addConditions("first");
+	decide.addConditions("second");
+	decide.addConditions("third");
+	auto* first = new Connection{&destination, {0}};
+	auto* otherwise = new Connection{&destination, {1}};
+	decide.getConnectionManager()->insertAtPort(0, first);
+	decide.getConnectionManager()->insertAtPort(3, otherwise);
+	decide.moveCondition(0, 2);
+	EXPECT_EQ(decide.getConditions()->getAtRank(2), "first");
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(0), nullptr);
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(2), first);
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(3), otherwise);
+	decide.moveCondition(2, 0);
+	EXPECT_EQ(decide.getConditions()->getAtRank(0), "first");
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(0), first);
+	EXPECT_EQ(decide.getConnectionManager()->getConnectionAtPort(3), otherwise);
+}
+
+TEST(DecideConditionsEditorTest, MovedListsAndConnectionsSurviveSaveAndLoad) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* decide = new Decide(model, "MovePersistDecide");
+	decide->addConditions("1");
+	decide->addConditions("0");
+	auto* target = new Dispose(model, "MovePersistTarget");
+	auto* otherwise = new Dispose(model, "MovePersistElse");
+	decide->getConnectionManager()->insertAtPort(0, new Connection{target, {0}});
+	decide->getConnectionManager()->insertAtPort(2, new Connection{otherwise, {0}});
+	decide->moveCondition(0, 1);
+	auto* lsode = new LSODE(model, "MovePersistLSODE");
+	lsode->addDiffEquation("first");
+	lsode->addDiffEquation("second");
+	auto* assign = new Assign(model, "MovePersistAssign");
+	assign->addAssignment(new Assignment("Entity.first", "1"));
+	assign->addAssignment(new Assignment("Entity.second", "2"));
+	for (ModelComponent* component : {static_cast<ModelComponent*>(lsode), static_cast<ModelComponent*>(assign)}) {
+		for (SimulationControl* control : *component->getSimulationControls()->list()) {
+			if (control->getName() == "DiffEquations" || control->getName() == "Assignments") control->moveListElement(0, 1);
+		}
+	}
+	const std::string filename = "/tmp/genesys_list_move_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedDecide = dynamic_cast<Decide*>(loaded->getComponentManager()->find("MovePersistDecide"));
+	auto* loadedLSODE = dynamic_cast<LSODE*>(loaded->getComponentManager()->find("MovePersistLSODE"));
+	auto* loadedAssign = dynamic_cast<Assign*>(loaded->getComponentManager()->find("MovePersistAssign"));
+	ASSERT_NE(loadedDecide, nullptr);
+	ASSERT_NE(loadedLSODE, nullptr);
+	ASSERT_NE(loadedAssign, nullptr);
+	EXPECT_EQ(loadedDecide->getConditions()->getAtRank(0), "0");
+	EXPECT_EQ(loadedDecide->getConditions()->getAtRank(1), "1");
+	ASSERT_NE(loadedDecide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(1)->component->getName(), "MovePersistTarget");
+	ASSERT_NE(loadedDecide->getConnectionManager()->getConnectionAtPort(2), nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(2)->component->getName(), "MovePersistElse");
+	EXPECT_EQ(loadedLSODE->getDiffEquations()->getAtRank(0), "second");
+	EXPECT_EQ(loadedAssign->getAssignments()->getAtRank(0)->getDestination(), "Entity.second");
+	Model* partiallyLoaded = simulator.getModelManager()->newModel();
+	PersistencePartialLoadImpl1 partialLoader(partiallyLoaded);
+	ASSERT_TRUE(partialLoader.load(filename));
+	auto* partialDecide = dynamic_cast<Decide*>(partiallyLoaded->getComponentManager()->find("MovePersistDecide"));
+	ASSERT_NE(partialDecide, nullptr);
+	ASSERT_NE(partialDecide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+	EXPECT_EQ(partialDecide->getConnectionManager()->getConnectionAtPort(1)->component->getName(), "MovePersistTarget");
+	ASSERT_NE(partialDecide->getConnectionManager()->getConnectionAtPort(2), nullptr);
+	EXPECT_EQ(partialDecide->getConnectionManager()->getConnectionAtPort(2)->component->getName(), "MovePersistElse");
+	const std::string cppFilename = "/tmp/genesys_list_move_" + std::to_string(::getpid()) + ".cpp";
+	ASSERT_TRUE(model->save(cppFilename));
+	std::ifstream cppFile(cppFilename);
+	ASSERT_TRUE(cppFile.good());
+	const std::string generated((std::istreambuf_iterator<char>(cppFile)), std::istreambuf_iterator<char>());
+	EXPECT_NE(generated.find("MovePersistDecide->getConnectionManager()->insertAtPort(1,"), std::string::npos);
+	EXPECT_NE(generated.find("MovePersistDecide->getConnectionManager()->insertAtPort(2,"), std::string::npos);
+	::unlink(cppFilename.c_str());
+	::unlink(filename.c_str());
+}
+
+TEST(DecideConditionsEditorTest, SingleSparseElseConnectionSurvivesSaveAndLoad) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* decide = new Decide(model, "SingleSparseDecide");
+	decide->addConditions("0");
+	decide->addConditions("1");
+	auto* otherwise = new Dispose(model, "SingleSparseElse");
+	decide->getConnectionManager()->insertAtPort(2, new Connection{otherwise, {0}});
+	const std::string filename = "/tmp/genesys_single_sparse_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedDecide = dynamic_cast<Decide*>(loaded->getComponentManager()->find("SingleSparseDecide"));
+	ASSERT_NE(loadedDecide, nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(0), nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(1), nullptr);
+	ASSERT_NE(loadedDecide->getConnectionManager()->getConnectionAtPort(2), nullptr);
+	EXPECT_EQ(loadedDecide->getConnectionManager()->getConnectionAtPort(2)->component->getName(), "SingleSparseElse");
+	::unlink(filename.c_str());
+}
+
+TEST(DecideConditionsEditorTest, MovedNonOwningResourceListsSurviveSaveAndLoad) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* first = new Resource(model, "MoveListResourceFirst");
+	auto* second = new Resource(model, "MoveListResourceSecond");
+	auto* resourceSet = new Set(model, "MoveListSet");
+	resourceSet->addElementSet(first);
+	resourceSet->addElementSet(second);
+	auto* failure = new Failure(model, "MoveListFailure");
+	failure->addResource(first);
+	failure->addResource(second);
+	for (ModelDataDefinition* owner : {static_cast<ModelDataDefinition*>(resourceSet), static_cast<ModelDataDefinition*>(failure)}) {
+		for (SimulationControl* control : *owner->getSimulationControls()->list()) {
+			if (control->getName() == "ElementSet" || control->getName() == "FalingResources") control->moveListElement(0, 1);
+		}
+	}
+	const std::string filename = "/tmp/genesys_resource_list_move_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedSet = dynamic_cast<Set*>(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Set>(), "MoveListSet"));
+	auto* loadedFailure = dynamic_cast<Failure*>(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Failure>(), "MoveListFailure"));
+	ASSERT_NE(loadedSet, nullptr);
+	ASSERT_NE(loadedFailure, nullptr);
+	ASSERT_EQ(loadedSet->getElementSet()->size(), 2u);
+	ASSERT_EQ(loadedFailure->falingResources()->size(), 2u);
+	EXPECT_EQ(loadedSet->getElementSet()->getAtRank(0)->getName(), "MoveListResourceSecond");
+	EXPECT_EQ(loadedFailure->falingResources()->getAtRank(0)->getName(), "MoveListResourceSecond");
+	::unlink(filename.c_str());
+}
+
+TEST(DecideConditionsEditorTest, MovedObjectListsSurviveSaveAndLoad) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	auto* first = new Resource(model, "MoveObjectFirst");
+	auto* second = new Resource(model, "MoveObjectSecond");
+	auto* seize = new Seize(model, "MoveObjectSeize");
+	seize->addRequest(new SeizableItem(first));
+	seize->addRequest(new SeizableItem(second));
+	auto* release = new Release(model, "MoveObjectRelease");
+	release->addReleaseRequests(new SeizableItem(first));
+	release->addReleaseRequests(new SeizableItem(second));
+	auto* process = new Process(model, "MoveObjectProcess");
+	process->addSeizeRequest(new SeizableItem(first));
+	process->addSeizeRequest(new SeizableItem(second));
+	ModelDataDefinition::CreateInternalData(process);
+	auto* firstStation = new Station(model, "MoveStationFirst");
+	auto* secondStation = new Station(model, "MoveStationSecond");
+	auto* pick = new PickStation(model, "MoveObjectPick");
+	pick->addPickableStationItem(new PickableStationItem(firstStation, std::string("1")));
+	pick->addPickableStationItem(new PickableStationItem(secondStation, std::string("2")));
+	for (ModelComponent* component : {static_cast<ModelComponent*>(seize), static_cast<ModelComponent*>(release),
+			static_cast<ModelComponent*>(process), static_cast<ModelComponent*>(pick)}) {
+		for (SimulationControl* control : *component->getSimulationControls()->list()) {
+			if (control->getName() == "Requests" || control->getName() == "ReleaseRequests"
+				|| control->getName() == "SeizeRequests" || control->getName() == "PickableStationItens") {
+				control->moveListElement(0, 1);
+			}
+		}
+	}
+	const std::string filename = "/tmp/genesys_object_list_move_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+    const bool saved = model->save(filename);
+    std::string diagnostics;
+    for (const auto& error : *model->getTracer()->errorMessages()->list()) diagnostics += error + "\n";
+    ASSERT_TRUE(saved) << diagnostics;
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedSeize = dynamic_cast<Seize*>(loaded->getComponentManager()->find("MoveObjectSeize"));
+	auto* loadedRelease = dynamic_cast<Release*>(loaded->getComponentManager()->find("MoveObjectRelease"));
+	auto* loadedProcess = dynamic_cast<Process*>(loaded->getComponentManager()->find("MoveObjectProcess"));
+	auto* loadedPick = dynamic_cast<PickStation*>(loaded->getComponentManager()->find("MoveObjectPick"));
+	ASSERT_NE(loadedSeize, nullptr);
+	ASSERT_NE(loadedRelease, nullptr);
+	ASSERT_NE(loadedProcess, nullptr);
+	ASSERT_NE(loadedPick, nullptr);
+	ASSERT_EQ(loadedSeize->getSeizeRequests()->size(), 2u);
+	ASSERT_EQ(loadedRelease->getReleaseRequests()->size(), 2u);
+	ASSERT_EQ(loadedProcess->getSeizeRequests()->size(), 2u);
+	ASSERT_EQ(loadedPick->getPickableStationItens()->size(), 2u);
+	EXPECT_EQ(loadedSeize->getSeizeRequests()->getAtRank(0)->getName(), "MoveObjectSecond");
+	EXPECT_EQ(loadedRelease->getReleaseRequests()->getAtRank(0)->getName(), "MoveObjectSecond");
+	EXPECT_EQ(loadedProcess->getSeizeRequests()->getAtRank(0)->getName(), "MoveObjectSecond");
+	ASSERT_NE(loadedPick->getPickableStationItens()->getAtRank(0)->getStation(), nullptr);
+	EXPECT_EQ(loadedPick->getPickableStationItens()->getAtRank(0)->getStation()->getName(), "MoveStationSecond");
+	::unlink(filename.c_str());
+}
+
+TEST(PluginIdentityAndCodePersistenceTest, PickUpHasDistinctIdentityAndCppForGRoundTripsText) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	ASSERT_NE(simulator.getPluginManager()->find(Util::TypeOf<PickUp>()), nullptr);
+	Model* model = simulator.getModelManager()->newModel();
+	auto* removeA = new Remove(model, "RemoveA");
+	auto* removeB = new Remove(model, "RemoveB");
+	auto* pickUp = new PickUp(model, "PickUpA");
+	auto* python = new PythonForG(model, "PythonText");
+	python->setInitBetweenReplicationCode("# λ\nstate = {\"quote\": \"value\"}");
+	python->setOnDispatchEventCode("# arrival\nentity.setAttribute(\"label\", \"α\")");
+	EXPECT_EQ(removeA->getClassname(), Util::TypeOf<Remove>());
+	EXPECT_EQ(removeB->getClassname(), Util::TypeOf<Remove>());
+	EXPECT_EQ(pickUp->getClassname(), Util::TypeOf<PickUp>());
+	auto* cpp = new CppForG(model, "CppText");
+	const std::string dispatch = R"(// λ
+const char* s = "quoted"; \\path
+)";
+	cpp->setOnDispatchEventCode(dispatch);
+	cpp->setInitBetweenReplicationCode("if (x) {\n  x++;\n}");
+	cpp->setIncludesCode("#include <vector>\n// include text");
+	const std::string filename = "/tmp/genesys_cppforg_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	CppForG* loadedCpp = nullptr;
+	PickUp* loadedPickUp = nullptr;
+	PythonForG* loadedPython = nullptr;
+	unsigned int loadedRemoves = 0;
+	for (ModelComponent* component : *loaded->getComponentManager()) {
+		if (component->getName() == "CppText") loadedCpp = dynamic_cast<CppForG*>(component);
+		if (component->getClassname() == Util::TypeOf<PickUp>()) loadedPickUp = dynamic_cast<PickUp*>(component);
+		if (component->getName() == "PythonText") loadedPython = dynamic_cast<PythonForG*>(component);
+		if (component->getClassname() == Util::TypeOf<Remove>()) ++loadedRemoves;
+	}
+	ASSERT_NE(loadedCpp, nullptr);
+	ASSERT_NE(loadedPickUp, nullptr);
+	ASSERT_NE(loadedPython, nullptr);
+	EXPECT_EQ(loadedRemoves, 2u);
+	EXPECT_EQ(loadedCpp->getOnDispatchEventCode(), dispatch);
+	EXPECT_EQ(loadedCpp->getInitBetweenReplicationCode(), "if (x) {\n  x++;\n}");
+	EXPECT_EQ(loadedCpp->getIncludesCode(), "#include <vector>\n// include text");
+	EXPECT_EQ(loadedPython->getInitBetweenReplicationCode(), "# λ\nstate = {\"quote\": \"value\"}");
+	EXPECT_EQ(loadedPython->getOnDispatchEventCode(), "# arrival\nentity.setAttribute(\"label\", \"α\")");
+	::unlink(filename.c_str());
+}
+
+TEST(SourceCodePropertyTest, PythonAndRCodeFieldsUseTheExistingCodeEditorContract) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* python = new PythonForG(model, "PythonSource");
+	auto* rSimulator = new RSimulator(model, "RSource");
+	auto* runner = new RSimulatorRunner(model, "RRunnerSource");
+	auto findControl = [](ModelDataDefinition* object, const std::string& property) {
+		for (SimulationControl* control : *object->getSimulationControls()->list()) {
+			if (control->getName() == property) return control;
+		}
+		return static_cast<SimulationControl*>(nullptr);
+	};
+	for (const auto& [object, property] : std::vector<std::pair<ModelDataDefinition*, std::string>>{
+			{python, "OnDispatchEventCode"}, {rSimulator, "PreludeScript"}, {rSimulator, "CommandList"},
+			{runner, "PreludeScript"}, {runner, "Command"}}) {
+		SimulationControl* control = findControl(object, property);
+		ASSERT_NE(control, nullptr) << property;
+		EXPECT_EQ(control->preferredEditorHint(), SimulationControlEditorHint::CodeEditor) << property;
+		control->setValue("# λ\nprint(\"text\")");
+		EXPECT_EQ(control->getValue(), "# λ\nprint(\"text\")");
+	}
+}
+
+TEST(SourceCodePropertyTest, OctaveRunnerCodeFieldsUseEditorAndRoundTripWithoutExecution) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* runner = new OctaveRunner(model, "OctaveCode");
+	const std::string prelude = "% λ prelude\nvalue = \"quoted\"; % keep this comment";
+	const std::string command = "if value > 0\n  disp(value);\nend";
+	runner->setPreludeScript(prelude);
+	runner->setCommand(command);
+	auto findControl = [runner](const std::string& property) {
+		for (SimulationControl* control : *runner->getSimulationControls()->list()) {
+			if (control->getName() == property) return control;
+		}
+		return static_cast<SimulationControl*>(nullptr);
+	};
+	for (const char* property : {"PreludeScript", "Command"}) {
+		SimulationControl* control = findControl(property);
+		ASSERT_NE(control, nullptr) << property;
+		EXPECT_EQ(control->preferredEditorHint(), SimulationControlEditorHint::CodeEditor) << property;
+	}
+
+	const std::string filename = "/tmp/genesys_octave_source_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedRunner = dynamic_cast<OctaveRunner*>(loaded->getDataManager()->getDataDefinition(
+		Util::TypeOf<OctaveRunner>(), "OctaveCode"));
+	ASSERT_NE(loadedRunner, nullptr);
+	EXPECT_EQ(loadedRunner->getPreludeScript(), prelude);
+	EXPECT_EQ(loadedRunner->getCommand(), command);
+	EXPECT_EQ(loadedRunner->getLastScriptFilename(), "");
+	::unlink(filename.c_str());
+}
+
+TEST(SourceCodePropertyTest, RSimulatorAndRunnerPreserveScriptsAcrossGenRoundTrip) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	auto* component = new RSimulator(model, "RCommands");
+	component->setPreludeScript("# λ prelude\noptions(stringsAsFactors = FALSE)");
+	component->setCommandList("x <- \"quoted\"\nprint(x)");
+	auto* runner = new RSimulatorRunner(model, "RRunner");
+	runner->setPreludeScript("# λ runner\nset.seed(1)");
+	runner->setCommand("message(\"done\")");
+	const std::string filename = "/tmp/genesys_r_source_roundtrip_" + std::to_string(::getpid()) + ".gen";
+	::unlink(filename.c_str());
+	ASSERT_TRUE(model->save(filename));
+	EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<RSimulatorRunner>(),
+		"RCommands.RSimulatorRunner"), nullptr);
+	Model* loaded = simulator.getModelManager()->loadModel(filename);
+	ASSERT_NE(loaded, nullptr);
+	auto* loadedComponent = dynamic_cast<RSimulator*>(loaded->getComponentManager()->find("RCommands"));
+	ASSERT_NE(loadedComponent, nullptr);
+	EXPECT_EQ(loadedComponent->getPreludeScript(), "# λ prelude\noptions(stringsAsFactors = FALSE)");
+	EXPECT_EQ(loadedComponent->getCommandList(), "x <- \"quoted\"\nprint(x)");
+	auto* loadedRunner = dynamic_cast<RSimulatorRunner*>(loaded->getDataManager()->getDataDefinition(
+		Util::TypeOf<RSimulatorRunner>(), "RRunner"));
+	ASSERT_NE(loadedRunner, nullptr);
+	EXPECT_EQ(loadedRunner->getPreludeScript(), "# λ runner\nset.seed(1)");
+	EXPECT_EQ(loadedRunner->getCommand(), "message(\"done\")");
+	::unlink(filename.c_str());
+}
+
+TEST(PersistenceAtomicSaveTest, SaveFailsCleanlyAndPreservesExistingFileWhenDestinationDirIsMissing) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	new Resource(model, "AtomicSaveResource");
+
+	// A destination inside a nonexistent directory forces the temp-write step to fail
+	// (std::ofstream cannot open a file whose parent directory doesn't exist).
+	const std::string filename = "/tmp/genesys_atomic_save_missing_dir_"
+		+ std::to_string(::getpid()) + "/model.gen";
+
+	EXPECT_FALSE(model->save(filename));
+}
+
+TEST(PersistenceAtomicSaveTest, FailedTemporaryWritePreservesPreviousFileContents) {
+	Simulator simulator;
+	simulator.getPluginManager()->autoInsertPlugins();
+	Model* model = simulator.getModelManager()->newModel();
+	ASSERT_NE(model, nullptr);
+	new Resource(model, "PreservePriorSave");
+	const std::string filename = "/tmp/genesys_atomic_save_preserve_" + std::to_string(::getpid()) + ".gen";
+	const std::string tempFilename = filename + ".tmp";
+	::unlink(filename.c_str());
+	std::filesystem::remove_all(tempFilename);
+	{
+		std::ofstream previous(filename);
+		ASSERT_TRUE(previous.is_open());
+		previous << "previous valid model";
+	}
+	ASSERT_TRUE(std::filesystem::create_directory(tempFilename));
+	EXPECT_FALSE(model->save(filename));
+	std::ifstream previous(filename);
+	ASSERT_TRUE(previous.good());
+	const std::string contents((std::istreambuf_iterator<char>(previous)),
+		std::istreambuf_iterator<char>());
+	EXPECT_EQ(contents, "previous valid model");
+	previous.close();
+	std::filesystem::remove(tempFilename);
+	::unlink(filename.c_str());
+}
+
+TEST(PersistenceIntegrityTest, DuplicateNamesRejectSaveWithoutReplacingValidSnapshot) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    const auto path = std::filesystem::temp_directory_path() /
+        ("genesys_duplicate_save_" + std::to_string(::getpid()) + ".gen");
+    struct Cleanup { std::filesystem::path path; ~Cleanup() { std::filesystem::remove(path); } } cleanup{path};
+    auto* resource = new Resource(model, "KeepBothObjects");
+    ASSERT_TRUE(model->save(path.string()));
+    const auto read = [&]() {
+        std::ifstream input(path);
+        return std::string(std::istreambuf_iterator<char>(input), {});
+    };
+    const auto before = read();
+    auto* other = new Resource(model, "OtherObject");
+    other->setName(resource->getName());
+    model->setHasChanged(true);
+    EXPECT_FALSE(model->save(path.string()));
+    EXPECT_EQ(read(), before);
+    EXPECT_TRUE(model->hasChanged());
+    EXPECT_FALSE(std::filesystem::exists(path.string() + ".tmp"));
+    other->setName("RepairedObject");
+    ASSERT_TRUE(model->save(path.string()));
+    Simulator restored;
+    restored.getPluginManager()->autoInsertPlugins();
+    auto* loaded = restored.getModelManager()->loadModel(path.string());
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_NE(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "KeepBothObjects"), nullptr);
+    EXPECT_NE(loaded->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), "RepairedObject"), nullptr);
+}

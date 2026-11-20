@@ -4,6 +4,8 @@
 #include <cstdint>
 
 #include <QColor>
+#include <QFont>
+#include <QVector>
 #include <QPainterPath>
 #include <QRectF>
 #include <QString>
@@ -24,6 +26,10 @@ struct GraphicalModelItemRenderContext {
     QString tertiaryText;
     QString semanticClassName;
     QString semanticSubtype;
+    bool hasSpecializedGlyph = false;
+    QPainterPath specializedShape;
+    QPainterPath specializedDetails;
+    QColor specializedAccent;
     bool selected = false;
     bool breakpoint = false;
 
@@ -65,8 +71,24 @@ public:
     virtual QPainterPath shape(const GraphicalModelItemRenderContext& context) const = 0;
 };
 
+struct GraphicalItemTextLine {
+    QString text;
+    QFont font;
+    QRectF rect;
+    Qt::Alignment alignment;
+    int penWidth;
+};
+
+struct GraphicalItemTextLayout {
+    QVector<GraphicalItemTextLine> lines;
+    qreal scale = 1.0;
+};
+
 class GraphicalModelItemRenderer {
 public:
+    // Rectangles are in unscaled coordinates, scaled about contentRect.center().
+    static GraphicalItemTextLayout layoutText(const GraphicalModelItemRenderContext& context,
+                                             const QRectF& contentRect, const QFont& baseFont);
     static void paint(QPainter* painter, const GraphicalModelItemRenderContext& context);
     static QPainterPath shape(const GraphicalModelItemRenderContext& context);
     static const GraphicalModelItemRenderStrategy& currentStrategy();

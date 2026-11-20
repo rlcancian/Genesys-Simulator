@@ -1,0 +1,195 @@
+Segue uma descrição estruturada em JSON, com granularidade elevada (nível técnico e semântico), adequada para reprodução, análise computacional ou geração posterior:
+
+```json
+{
+    "image_type": "book_cover",
+    "format": {
+        "orientation": "vertical",
+        "aspect_ratio": "A4 (~1:1.414)",
+        "resolution_estimate": "high",
+        "color_space": "RGB"
+    },
+    "style": {
+        "genre": [
+        "science fiction",
+        "cyberpunk",
+        "technical illustration"
+        ],
+        "visual_influences": [
+        "The Matrix",
+        "The Thirteenth Floor"
+        ],
+        "aesthetic_characteristics": [
+        "digital grid environment",
+        "neon glow",
+        "high contrast",
+        "depth via perspective",
+        "layered composition",
+        "semi-realistic + abstract hybrid"
+        ]
+    },
+    "color_palette": {
+        "dominant_colors": [
+        "dark green",
+        "black",
+        "neon green"
+        ],
+        "secondary_colors": [
+        "yellow-green glow",
+        "warm brown/orange (foreground ground)",
+        "white (text and light source)"
+        ],
+        "contrast_profile": "high contrast between dark background and luminous central portal"
+    },
+    "composition": {
+        "layout_type": "central perspective with vertical hierarchy",
+        "depth_structure": [
+        "foreground (car and ground)",
+        "midground (human figure)",
+        "background (portal and digital landscape)",
+        "overlay (matrix-like code and wireframe)"
+        ],
+        "symmetry": "approximately central symmetry around vertical axis",
+        "visual_flow": "bottom (real world) → center (human) → top (digital abstraction)"
+    },
+    "scene": {
+        "environment": "hybrid physical-digital environment",
+        "ground": {
+            "texture": "grainy, earth-like, warm-toned",
+            "interpretation": "real-world layer"
+        },
+        "upper_space": {
+            "elements": [
+            "wireframe landscape",
+            "digital grid",
+            "floating matrix-like symbols"
+            ],
+            "interpretation": "simulated or computational layer"
+        }
+    },
+    "subjects": [
+    {
+        "id": "person_1",
+        "type": "human",
+        "position": "center",
+        "pose": "walking forward toward portal",
+        "orientation": "back facing viewer",
+        "scale": "medium (dominant subject)",
+        "lighting": "backlit silhouette",
+        "semantic_role": "observer entering simulation / epistemological transition"
+    },
+    {
+        "id": "object_1",
+        "type": "car",
+        "style": "vintage (mid-20th century)",
+        "position": "foreground_bottom_right",
+        "state": "driver door open",
+        "lighting": "low light with reflections",
+        "semantic_role": "entry point from physical reality"
+    },
+    {
+        "id": "object_2",
+        "type": "portal",
+        "position": "center_background",
+        "shape": "rectangular doorway",
+        "lighting": "intense white-yellow glow",
+        "effects": [
+        "light bloom",
+        "radiating particles",
+        "volumetric light"
+        ],
+        "semantic_role": "transition between reality and simulation"
+    }
+    ],
+    "visual_elements": {
+        "digital_code": {
+            "type": "matrix-style vertical streams",
+            "distribution": "background overlay",
+            "color": "green",
+            "opacity": "semi-transparent"
+        },
+        "wireframe": {
+            "type": "3D mesh landscape",
+            "location": "upper half",
+            "color": "neon green",
+            "style": "triangular mesh"
+        },
+        "particles": {
+            "type": "floating light points",
+            "distribution": "global",
+            "function": "depth enhancement and digital atmosphere"
+        }
+    },
+    "typography": {
+        "title": {
+            "text": "Modelagem e Simulação de Sistemas",
+            "position": "top_center",
+            "alignment": "center",
+            "font_style": "modern sans-serif / techno-inspired",
+            "weight": "bold",
+            "color": "light green / off-white",
+            "effects": [
+            "subtle glow",
+            "high contrast"
+            ]
+        },
+        "subtitle": {
+            "text": "Métodos, práticas e fundamentos para o desenvolvimento e uso de modelos e estudos científicos de simulação",
+            "position": "upper_middle",
+            "alignment": "center",
+            "font_style": "clean sans-serif",
+            "weight": "regular",
+            "color": "light green",
+            "line_spacing": "compact"
+        },
+        "additional_text": {
+            "sections": [
+            {
+                "text": "Edição INTERNA de RASCUNHO versão 0.26.03",
+                "position": "lower_middle"
+            },
+            {
+                "text": "TODOS OS DIREITOS RESERVADOS.",
+                "position": "lower_middle_below"
+            },
+            {
+                "text": "Prof. Dr. Eng. Rafael Luiz Cancian",
+                "position": "bottom_center"
+            }
+            ],
+            "alignment": "center",
+            "font_style": "sans-serif",
+            "color": "light green / white",
+            "visibility": "high contrast against dark background"
+        }
+    },
+    "lighting": {
+        "primary_source": "central portal",
+        "type": "backlighting",
+        "effects": [
+        "silhouette creation",
+        "radial glow",
+        "depth emphasis"
+        ],
+        "secondary_sources": [
+        "ambient digital glow",
+        "particle reflections"
+        ]
+    },
+    "semantic_interpretation": {
+        "core_theme": "transition from physical reality to simulated reality",
+        "conceptual_mapping": [
+        "car → real world entry point",
+        "human → modeler/observer",
+        "portal → abstraction/model/simulation",
+        "wireframe → mathematical representation",
+        "matrix code → computational substrate"
+        ],
+        "disciplinary_alignment": [
+        "modeling and simulation",
+        "systems theory",
+        "computational science"
+        ]
+    }
+}
+```

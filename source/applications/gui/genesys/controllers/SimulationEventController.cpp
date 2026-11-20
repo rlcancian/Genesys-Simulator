@@ -459,7 +459,7 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
                         << "destinationName=" << (destination ? QString::fromStdString(destination->getName()) : QStringLiteral("<null>"))
                         << "eventPtr=" << re->getCurrentEvent();
 
-                _scene->animateQueueRemove(source);
+                _scene->animateEntityDeparture(source);
 
                 _scene->animateTransition(
                     source,

@@ -1,0 +1,58 @@
+\chapterimage{figs/chapterhead.png}
+\chapter{Known Limitations}
+\label{chap:appendix-known-limitations}
+
+This appendix records the main limitations that remain explicit in the current
+manual. It is not a complaint list; it is a guardrail against overclaiming.
+\index{limitations}
+
+\section{Simulation and numerical limits}
+
+The manual documents discrete-event simulation, continuous solvers, Petri
+nets, cellular automata, and whole-cell extensions, but it does not pretend
+that all of those domains have the same level of validation. The discrete-event
+and simulation background is grounded in standard texts \cite{banks2005,law2015};
+the numerical ODE background is grounded in standard numerical methods
+\cite{hairer1993}; and the Petri-net and cellular-automaton surfaces are
+presented as modeling formalisms, not as blanket scientific proof of a given
+result \cite{murata1989,wolfram2002}.
+
+\section{Biological and domain limits}
+
+The biological extension surface is documented conservatively. Flux balance
+analysis is a modeling technique for metabolite flow, not a universal proof of
+biological correctness \cite{orth2010}. SBML is a model exchange format, not a
+validation oracle \cite{hucka2003}. Whole-cell modeling remains a demanding
+research area with a specific scientific scope \cite{karr2012}. The manual
+keeps that boundary visible on purpose.
+
+\section{Build and toolchain limits}
+
+The repository uses CMake and Qt as its current build and application
+frameworks. Their official documentation is the reference point for build and
+GUI semantics \cite{cmake-docs,qt-docs}. The manual does not claim that every
+target or preset is equally mature, and it does not promote a build-system
+example into a supported product unless another chapter says so explicitly.
+
+\section{Testing and quality limits}
+
+Software testing has its own evidence level. General software engineering and
+testing references are useful background, but they do not turn one successful
+run into a release gate \cite{sommerville2015,myers2011}. The current manual
+keeps that distinction visible because the repository still separates build,
+startup, functional, numerical, scientific, and release evidence.
+
+\section{What the appendix does not claim}
+
+\begin{itemize}
+\item It does not declare public release readiness.
+\item It does not declare that every experimental model is scientifically
+  validated.
+\item It does not declare that loopback or local-only services are safe for
+  public deployment.
+\item It does not declare that every current target has equal maturity.
+\item It does not replace the chapter-specific validation evidence.
+\end{itemize}
+
+The manual should be read as a current-state reflection of the repository, not
+as a permanent promise about future support.

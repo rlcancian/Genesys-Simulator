@@ -147,6 +147,7 @@ void BioSteadyState::_createAttachedAttributes() {
 }
 
 void BioSteadyState::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "BioSteadyState evaluates biochemical steady state", TraceManager::Level::L7_internal);
 	(void)inputPortNumber;
 
 	if (_bioNetwork == nullptr) {

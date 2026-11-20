@@ -16,7 +16,9 @@
 
 #include <Qt>
 #include <QFont>
+#include <QSignalBlocker>
 
+#include <memory>
 #include <set>
 
 namespace {
@@ -126,6 +128,7 @@ void ModelInspectorController::actualizeModelComponents(bool force) const {
             0);
         if (items.size() == 0) {
             QTreeWidgetItem* treeComp = new QTreeWidgetItem(_componentsTree);
+            treeComp->setData(0, Qt::UserRole, QVariant::fromValue(reinterpret_cast<quintptr>(comp)));
             treeComp->setText(0, QString::fromStdString(std::to_string(comp->getId())));
             treeComp->setText(1, QString::fromStdString(comp->getClassname()));
             treeComp->setText(2, QString::fromStdString(comp->getName()));
@@ -148,6 +151,23 @@ void ModelInspectorController::actualizeModelDataDefinitions(bool force) const {
     Q_UNUSED(force)
 
     Model* m = _simulator->getModelManager()->current();
+    const QList<QTreeWidgetItem*> selectedItems = _dataDefinitionsTree->selectedItems();
+    const quintptr selectedIdentity = selectedItems.isEmpty() ? 0
+        : selectedItems.first()->data(0, Qt::UserRole).value<quintptr>();
+    bool selectedStillInModel = false;
+    if (m != nullptr && selectedIdentity != 0) {
+        for (const std::string& type : m->getDataManager()->getDataDefinitionClassnames()) {
+            for (ModelDataDefinition* definition : *m->getDataManager()->getDataDefinitionList(type)->list()) {
+                selectedStillInModel |= reinterpret_cast<quintptr>(definition) == selectedIdentity;
+            }
+        }
+    }
+    // Rebuilding rows for an existing selection must not emit a transient empty
+    // selection, which detaches the Property Editor during a list edit.
+    std::unique_ptr<QSignalBlocker> selectionBlocker;
+    if (selectedStillInModel) {
+        selectionBlocker = std::make_unique<QSignalBlocker>(_dataDefinitionsTree);
+    }
     _dataDefinitionsTree->clear();
     if (m == nullptr) {
         return;
@@ -164,6 +184,11 @@ void ModelInspectorController::actualizeModelDataDefinitions(bool force) const {
                 0);
             if (items.size() == 0) {
                 QTreeWidgetItem* treeComp = new QTreeWidgetItem(_dataDefinitionsTree);
+                treeComp->setData(0, Qt::UserRole, QVariant::fromValue(reinterpret_cast<quintptr>(comp)));
+                if (selectedStillInModel && reinterpret_cast<quintptr>(comp) == selectedIdentity) {
+                    _dataDefinitionsTree->setCurrentItem(treeComp);
+                    treeComp->setSelected(true);
+                }
                 treeComp->setText(0, QString::fromStdString(std::to_string(comp->getId())));
                 treeComp->setText(1, QString::fromStdString(comp->getClassname()));
                 treeComp->setText(2, QString::fromStdString(comp->getName()));

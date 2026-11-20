@@ -469,7 +469,7 @@ void SceneToolController::onActionActivateGraphicalSimulationTriggered() {
     QList<QGraphicsItem*>* componentes = scene->getGraphicalModelComponents();
     for (QGraphicsItem* item : *componentes) {
         if (GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(item)) {
-            component->visivibleImageQueue(visivible);
+            component->setAnimationTracksVisible(visivible);
         }
     }
 }

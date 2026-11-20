@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <gtest/gtest.h>
@@ -88,6 +89,67 @@ TEST_F(ParserExpressionsTest, MathFunctionsRoundTruncFracAndSqrt) {
     EXPECT_DOUBLE_EQ(model->parseExpression("trunc(3.9)"), 3.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("frac(3.9)"), 0.9);
     EXPECT_DOUBLE_EQ(model->parseExpression("sqrt(9)"), 3.0);
+}
+
+TEST_F(ParserExpressionsTest, DiscUsesCumulativeProbabilitiesAndRejectsInvalidParameters) {
+    for (int i = 0; i < 20; ++i) EXPECT_DOUBLE_EQ(model->parseExpression("DISC(1,5)"), 5.0);
+    for (const std::string expression : {
+             "DISC(-0.1,1,1,2)", "DISC(1.1,1)", "DISC(0.8,1,0.6,2,1,3)",
+             "DISC(0.6,1,0.9,2)", "DISC(0.6,1,1)", "DISC()",
+             "DISC(0.6,1,1,2,0.5)", "DISC(0.5,1/0,1,2)"}) {
+        bool success = true;
+        std::string error;
+        model->parseExpression(expression, success, error);
+        EXPECT_FALSE(success) << expression;
+        EXPECT_FALSE(error.empty()) << expression;
+    }
+    bool success = false;
+    std::string error;
+    const double value = model->parseExpression("disc(0.5,2+3,1,7)", success, error);
+    EXPECT_TRUE(success) << error;
+    EXPECT_TRUE(value == 5.0 || value == 7.0);
+}
+
+TEST_F(ParserExpressionsTest, DiscSyntaxValidationDoesNotAdvanceRandomStream) {
+    SamplerDefaultImpl1 sampler;
+    SamplerDefaultImpl1 untouched;
+    genesyspp_driver driver(model, &sampler, true);
+    EXPECT_TRUE(driver.validateSyntax("DISC(0.6,1,1,2)").isValid());
+    EXPECT_DOUBLE_EQ(sampler.random(), untouched.random());
+}
+
+TEST_F(ParserExpressionsTest, DiscEvaluationConsumesOneDrawAndSupportsThreeValues) {
+    SamplerDefaultImpl1 sampler;
+    SamplerDefaultImpl1 reference;
+    genesyspp_driver driver(model, &sampler, true);
+    ASSERT_EQ(driver.parse_str("DISC(0,10,0.5,20,1,30)"), 0);
+    EXPECT_TRUE(driver.getResult() == 20.0 || driver.getResult() == 30.0);
+    reference.random();
+    EXPECT_DOUBLE_EQ(sampler.random(), reference.random());
+}
+
+TEST_F(ParserExpressionsTest, DiscInvalidCdfDoesNotConsumeRandomDraw) {
+    SamplerDefaultImpl1 sampler;
+    SamplerDefaultImpl1 reference;
+    genesyspp_driver driver(model, &sampler, true);
+    EXPECT_THROW(driver.parse_str("DISC(0.7,1,0.6,2)"), std::string);
+    EXPECT_DOUBLE_EQ(sampler.random(), reference.random());
+}
+
+TEST_F(ParserExpressionsTest, DiscSamplingFollowsSeededStatisticalDistribution) {
+    // Seed 16021974, N=10000, tolerance 0.025 (>5 standard errors).
+    SamplerDefaultImpl1 sampler;
+    genesyspp_driver driver(model, &sampler, true);
+    int ones = 0;
+    constexpr int samples = 10000;
+    for (int i = 0; i < samples; ++i) {
+        ASSERT_EQ(driver.parse_str("DISC(0.6,1,1,2)"), 0);
+        const double value = driver.getResult();
+        ASSERT_TRUE(value == 1.0 || value == 2.0);
+        ones += value == 1.0;
+    }
+    EXPECT_EQ(ones, 5989);
+    EXPECT_NEAR(static_cast<double>(ones) / samples, 0.6, 0.025);
 }
 
 TEST_F(ParserExpressionsTest, VariableIndexesSupportScalarLegacyAndNDReads) {
@@ -330,6 +392,25 @@ TEST_F(ParserExpressionsTest, ProbabilisticFunctionsValidExpressionsWithThrowsEx
     EXPECT_GE(weibValue, 0.0);
 }
 
+TEST_F(ParserExpressionsTest, UniformConditionExpressionEvaluatesAsBoolean) {
+    bool success = false;
+    std::string errorMessage;
+    unsigned int trueCount = 0;
+    constexpr unsigned int samples = 100;
+
+    for (unsigned int i = 0; i < samples; ++i) {
+        errorMessage.clear();
+        const double value = model->parseExpression("unif(0,1) < 0.5", success, errorMessage);
+        ASSERT_TRUE(success) << errorMessage;
+        ASSERT_TRUE(errorMessage.empty());
+        ASSERT_TRUE(value == 0.0 || value == 1.0);
+        trueCount += value != 0.0 ? 1u : 0u;
+    }
+
+    EXPECT_GT(trueCount, 0u);
+    EXPECT_LT(trueCount, samples);
+}
+
 TEST_F(ParserExpressionsTest, AdditionalProbabilisticFunctionsValidExpressionsWithThrowsExceptionTrue) {
     bool success = false;
     std::string errorMessage;
@@ -559,4 +640,126 @@ TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerSameExternalPointerDoe
 
     EXPECT_FALSE(externalDestroyed);
     EXPECT_EQ(destroyedCounter, 1);
+}
+
+
+// Expression Builder prerequisite: validation must use the actual grammar but
+// must never execute reductions, access the current entity or sample RNGs.
+TEST_F(ParserExpressionsTest, SyntaxOnlyAcceptsGrammarWithoutEvaluatingFunctions) {
+    genesyspp_driver driver(model, nullptr, false); // any RNG call would be unsafe
+    const auto validation = driver.validateSyntax("unif(10,1) + norm(0,-1) + rnd + ident + tnow");
+    EXPECT_TRUE(validation.isValid()) << validation.errorMessage;
+    EXPECT_TRUE(validation.unresolvedIdentifiers.empty());
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyNeverAssignsToModelVariables) {
+    auto* variable = new Variable(model, "ParserSyntaxVariable");
+    ASSERT_NE(variable, nullptr);
+    variable->setValue(42.0);
+
+    genesyspp_driver driver(model, nullptr, false);
+    const auto scalar = driver.validateSyntax("ParserSyntaxVariable = norm(0,1)");
+    const auto indexed = driver.validateSyntax("ParserSyntaxVariable[1,2] = rnd");
+    EXPECT_TRUE(scalar.isValid()) << scalar.errorMessage;
+    EXPECT_TRUE(indexed.isValid()) << indexed.errorMessage;
+    EXPECT_DOUBLE_EQ(variable->getValue(), 42.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2"), 0.0);
+
+    delete variable;
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyDoesNotRegisterReferedDataElements) {
+    auto* variable = new Variable(model, "ParserSyntaxDependencyVariable");
+    auto* attribute = new Attribute(model, "ParserSyntaxDependencyAttribute");
+    ASSERT_NE(variable, nullptr);
+    ASSERT_NE(attribute, nullptr);
+    variable->setValue(8.0);
+
+    genesyspp_driver driver(model, nullptr, false);
+    driver.setRegisterReferedDataElements(true);
+
+    const auto syntax = driver.validateSyntax(
+        "ParserSyntaxDependencyVariable + ParserSyntaxDependencyAttribute");
+    EXPECT_TRUE(syntax.isValid()) << syntax.errorMessage;
+    ASSERT_NE(driver.getReferedDataElements(), nullptr);
+    EXPECT_TRUE(driver.getReferedDataElements()->empty())
+        << "Syntax validation must not register model-element references";
+
+    // The previous setting must remain enabled: normal evaluation is still
+    // expected to register dependencies for orphan-data-element analysis.
+    EXPECT_TRUE(driver.getRegisterReferedDataElements());
+    EXPECT_EQ(driver.parse_str("ParserSyntaxDependencyVariable + 1"), 0);
+    EXPECT_DOUBLE_EQ(driver.getResult(), 9.0);
+
+    const auto* references = driver.getReferedDataElements();
+    const auto it = references->find(Util::TypeOf<Variable>());
+    ASSERT_NE(it, references->end());
+    ASSERT_NE(it->second, nullptr);
+    EXPECT_NE(std::find(it->second->begin(), it->second->end(),
+                        "ParserSyntaxDependencyVariable"), it->second->end());
+
+    delete attribute;
+    delete variable;
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyAcceptsDangerousArithmeticWithoutExecutingIt) {
+    genesyspp_driver driver(model, nullptr, false);
+    EXPECT_TRUE(driver.validateSyntax("1/0").isValid());
+    EXPECT_TRUE(driver.validateSyntax("mod(5,0)").isValid());
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyReportsInvalidSyntaxAndCharacters) {
+    genesyspp_driver driver(model, nullptr, false);
+    for (const auto* expression : {"1+(", "norm(1)", "1+2)", "@"}) {
+        const auto validation = driver.validateSyntax(expression);
+        EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::InvalidSyntax)
+            << expression << ": " << validation.errorMessage;
+        EXPECT_FALSE(validation.errorMessage.empty());
+    }
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyDiagnosticsIncludeParserLocation) {
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax("1 + (");
+    EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::InvalidSyntax);
+    EXPECT_NE(validation.errorMessage.find("line"), std::string::npos);
+    EXPECT_NE(validation.errorMessage.find("column"), std::string::npos);
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlySeparatesUnknownIdentifiersFromGrammarErrors) {
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax("ParserUnknownSymbol + 2");
+    EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::UnresolvedIdentifiers);
+    ASSERT_EQ(validation.unresolvedIdentifiers.size(), 1u);
+    EXPECT_EQ(validation.unresolvedIdentifiers.front(), "ParserUnknownSymbol");
+    EXPECT_FALSE(validation.errorMessage.empty());
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyDoesNotNeedModelOrSamplerForPureExpressions) {
+    genesyspp_driver driver(nullptr, nullptr, false);
+    const auto validation = driver.validateSyntax("1 + exp(2) + rnd + tnow");
+    EXPECT_TRUE(validation.isValid()) << validation.errorMessage;
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyRejectsBlankInput) {
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax(" \t\n ");
+    EXPECT_EQ(validation.status, ExpressionSyntaxValidation::Status::InvalidSyntax);
+    EXPECT_FALSE(validation.errorMessage.empty());
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyCanInspectAttributesWithoutCurrentEntity) {
+    auto* attribute = new Attribute(model, "ParserSyntaxAttribute");
+    ASSERT_NE(attribute, nullptr);
+    genesyspp_driver driver(model, nullptr, false);
+    const auto validation = driver.validateSyntax("ParserSyntaxAttribute[1,2] + 3");
+    EXPECT_TRUE(validation.isValid()) << validation.errorMessage;
+    delete attribute;
+}
+
+TEST_F(ParserExpressionsTest, SyntaxOnlyRestoresNormalEvaluationMode) {
+    genesyspp_driver driver(model, nullptr, false);
+    EXPECT_TRUE(driver.validateSyntax("1+2*3").isValid());
+    EXPECT_EQ(driver.parse_str("1+2*3"), 0);
+    EXPECT_DOUBLE_EQ(driver.getResult(), 7.0);
 }

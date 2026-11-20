@@ -62,6 +62,7 @@ public:
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
 		bool hasExplicitGridPosition = false;
+		bool positionInitialized = false;
 		bool justDivided = false;
 		bool daughter = false;
 		bool alive = true;
@@ -105,6 +106,14 @@ public:
 	unsigned int getInitialPopulation() const;
 	/*! \brief Returns the current bacteria population summary. */
 	unsigned int getPopulationSize() const;
+	/*! \brief Enables optional automatic volume-threshold division. */
+	void setAutomaticDivisionEnabled(bool enabled);
+	/*! \brief Returns whether automatic division is enabled. */
+	bool getAutomaticDivisionEnabled() const;
+	/*! \brief Sets the volume threshold that triggers automatic division. */
+	void setDivisionThresholdVolume(double threshold);
+	/*! \brief Returns the automatic-division volume threshold. */
+	double getDivisionThresholdVolume() const;
 	/*! \brief Sets the optional BioNetwork reused as the colony biochemical state. */
 	void setBioNetwork(BioNetwork* bioNetwork);
 	/*! \brief Returns the optional BioNetwork reused as the colony biochemical state. */
@@ -143,6 +152,10 @@ public:
 	bool hasRuntimeVariable(const std::string& variableName) const;
 	/*! \brief Returns the runtime signal value stored at one grid coordinate. */
 	double getSignalValueAt(unsigned int x, unsigned int y) const;
+	/*! \brief Returns the number of currently available signal channels, including the legacy first channel. */
+	unsigned int getSignalChannelCount() const;
+	/*! \brief Returns the runtime value for one additional (handle >= 2) signal channel at one grid coordinate. */
+	double getAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const;
 	/*! \brief Returns the current runtime signal field as a row-major matrix. */
 	std::vector<std::vector<double>> getSignalMatrix() const;
 	/*! \brief Returns a textual dump of the current runtime signal field. */
@@ -198,6 +211,8 @@ private:
 		const unsigned int initialPopulation = 1;
 		const unsigned int gridWidth = 1;
 		const unsigned int gridHeight = 1;
+		const bool automaticDivisionEnabled = false;
+		const double divisionThresholdVolume = 2.0;
 	} DEFAULT;
 
 	GroProgram* _groProgram = nullptr;
@@ -211,18 +226,55 @@ private:
 	unsigned int _populationSize = DEFAULT.initialPopulation;
 	unsigned int _gridWidth = DEFAULT.gridWidth;
 	unsigned int _gridHeight = DEFAULT.gridHeight;
+	bool _automaticDivisionEnabled = DEFAULT.automaticDivisionEnabled;
+	double _divisionThresholdVolume = DEFAULT.divisionThresholdVolume;
 	unsigned int _nextBacteriumId = 1;
 	unsigned int _colonyTickCount = 0;
 	bool _chemostatMode = false;
 	std::vector<BacteriumState> _bacteria;
+	std::vector<unsigned int> _bacteriaDividedThisStep;
 	std::map<std::string, double> _runtimeVariables;
 	std::vector<BarrierSegment> _barriers;
 	std::vector<double> _mappedCellValues;
 	std::string _mappedCellExpression;
 	std::vector<double> _signalField;
+	struct AdditionalSignalChannel {
+		double diffusionRate = 0.0;
+		double decayRate = 0.0;
+		bool coefficientsDeclared = false;
+		std::string declarationScope;
+		std::vector<double> field;
+	};
+	// Channel 0/1 (no "signal()" handle, or the first declaration) always
+	// means the legacy single field above, so every pre-multi-channel
+	// program/fixture is unaffected. Channel N >= 2 is the (N-2)th entry
+	// here: a genuinely independent field with its own diffusion/decay
+	// rate, created lazily the first time a program declares a second (or
+	// later) "signal(...)" channel. Purely runtime state, not persisted:
+	// dynamically-declared channels are reconstructed by re-running the
+	// Gro program's own declarations, matching the original Gro model
+	// where signals are created by the running program, not by the
+	// modeler.
+	std::vector<AdditionalSignalChannel> _additionalSignalChannels;
+	// Coefficients declared by the first "signal(kdiff,kdeg)" statement
+	// (handle 1). Honored by _applySignalFieldStep() only when no
+	// BacteriaSignalGrid is attached; when one is attached, its persisted
+	// diffusionRate/decayRate remain authoritative for the legacy field
+	// and these are stored but not used. Default 0.0/0.0 preserves the
+	// prior "no diffusion/decay" behavior when no such declaration ever
+	// runs. Pure runtime state, not persisted, same lifecycle as
+	// _additionalSignalChannels.
+	double _legacyChannelDiffusionRate = 0.0;
+	double _legacyChannelDecayRate = 0.0;
+	bool _legacyChannelCoefficientsDeclared = false;
+	std::string _legacyChannelDeclarationScope;
+	// One-shot latch: emits at most one diagnostic per replication when a
+	// declared first-channel coefficient differs from an attached
+	// BacteriaSignalGrid's persisted value, instead of once per step.
+	bool _legacyChannelCoefficientMismatchWarned = false;
 	struct GroSeedDefinition {
-		unsigned int gridX = 0;
-		unsigned int gridY = 0;
+		double positionX = 0.0;
+		double positionY = 0.0;
 		std::string programName = "";
 		std::vector<double> programArguments;
 	};
@@ -256,13 +308,31 @@ private:
 	                                 std::size_t maxColumns = 0) const;
 	double _computeNeighborSignalSum(unsigned int x, unsigned int y) const;
 	unsigned int _computeLocalBacteriaCount(unsigned int x, unsigned int y) const;
+	bool _ensureAdditionalSignalChannel(unsigned int channel, double diffusionRate, double decayRate,
+	                                    const std::string& declarationScope,
+	                                    std::string& errorMessage);
+	double _additionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y) const;
+	void _setAdditionalSignalValueAt(unsigned int channel, unsigned int x, unsigned int y, double value);
+	void _addAdditionalSignalAt(unsigned int channel, unsigned int x, unsigned int y, double value);
+	void _applyAdditionalSignalChannelsStep();
+	void _resizeAdditionalSignalChannelsToGrid();
+	// Handle 0/1 always resolves to the legacy single field; handle N >= 2
+	// only resolves if that channel has already been declared (i.e. an
+	// EnsureSignalChannel mutation for it was already applied in this same
+	// mutation batch/program order). Rejects negative/non-integer/
+	// not-yet-declared handles instead of silently aliasing channel 0.
+	bool _tryResolveSignalChannelHandle(double handleValue, unsigned int& channel, std::string& errorMessage) const;
+	void _relaxLegacySignalField(double diffusionRate, double decayRate);
 	void _applySignalFieldStep();
 	void _applyBacteriumSignalMutations(const BacteriumState& bacterium,
 	                                    const std::vector<GroProgramRuntime::SignalMutation>& mutations);
 	void _rebuildInternalBacteria(unsigned int populationSize);
 	void _resizeInternalBacteria(unsigned int populationSize);
-	void _applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
-	                                      unsigned int finalPopulationSize);
+	bool _applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
+	                                      unsigned int finalPopulationSize,
+	                                      std::string& errorMessage);
+	bool _divideBacterium(unsigned int bacteriumId);
+	void _applyAutomaticDivisions(const std::vector<unsigned int>& eligibleBacteriumIds);
 	bool _applyColonyMutations(const std::vector<GroProgramRuntime::ColonyMutation>& mutations,
 	                           GroProgramRuntime::ExecutionResult& result,
 	                           bool allowStructureMutations,
@@ -275,7 +345,6 @@ private:
 	GroProgramRuntimeState _createBacteriumRuntimeState(const BacteriumState& bacterium,
 	                                                    std::size_t bacteriumIndex) const;
 	void _applyBacteriumScopedPopulationMutations(unsigned int bacteriumId,
-	                                              unsigned int parentGeneration,
 	                                              const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
 	                                              GroProgramRuntime::ExecutionResult& result);
 	void _appendBacterium(unsigned int parentId = 0, unsigned int generation = 0,
@@ -290,6 +359,7 @@ private:
 	void _initializeBacteriumPhenotype(BacteriumState& bacterium, std::size_t index) const;
 	void _syncBacteriumSpatialState(BacteriumState& bacterium, const GroProgramRuntimeState& runtimeState) const;
 	void _updateBacteriumSpatialMotion(BacteriumState& bacterium) const;
+	void _separateBacteriaBodies();
 	void _setBacteriumPosition(BacteriumState& bacterium, double x, double y) const;
 	double _clampPositionX(double value) const;
 	double _clampPositionY(double value) const;

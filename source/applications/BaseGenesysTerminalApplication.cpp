@@ -46,7 +46,9 @@ void BaseGenesysTerminalApplication::traceHandler(TraceEvent e) {
 }
 
 void BaseGenesysTerminalApplication::traceErrorHandler(TraceErrorEvent e) {
-	std::cout << e.getText() << std::endl;
+    std::cout << e.getText();
+    if (!e.getExceptionMessage().empty()) std::cout << ": " << e.getExceptionMessage();
+    std::cout << std::endl;
 }
 
 void BaseGenesysTerminalApplication::traceReportHandler(TraceEvent e) {

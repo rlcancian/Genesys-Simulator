@@ -1,8 +1,12 @@
+include(GNUInstallDirs)
+
 add_executable(genesys_shell
     main.cpp
     GenesysShell.cpp
     ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
 )
+# Runtime-compiled CppForG code resolves kernel methods from the host executable.
+set_target_properties(genesys_shell PROPERTIES ENABLE_EXPORTS ON)
 
 target_include_directories(genesys_shell
     PRIVATE
@@ -24,3 +28,10 @@ target_link_libraries(genesys_shell
 )
 
 add_dependencies(genesys_shell genesys_kernel)
+
+# Preserve the historical build-tree executable name used by focused CI while
+# installing the public runtime name expected by the dispatcher contract.
+install(PROGRAMS "$<TARGET_FILE:genesys_shell>"
+    DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/genesys/system/bin
+    RENAME genesys-shell
+)

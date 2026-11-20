@@ -13,6 +13,7 @@
 
 #include <fstream>
 #include <memory>
+#include <map>
 #include <sstream>
 #include <utility>
 #include "PluginManager.h"
@@ -577,6 +578,34 @@ std::vector<std::string> PluginManager::getDataDefinitionPluginTypenames() const
 		PluginInformation* info = plugin->getPluginInfo();
 		if (!info->isComponent() && info->getDataDefinitionConstructor() != nullptr) {
 			typeNames.push_back(info->getPluginTypename());
+		}
+	}
+	return typeNames;
+}
+
+std::vector<std::string> PluginManager::getDataDefinitionPluginTypenamesAssignableTo(
+	const std::string& baseTypeName) const {
+	std::vector<std::string> typeNames;
+	if (baseTypeName.empty() || _plugins == nullptr || _plugins->list() == nullptr) return typeNames;
+	std::map<std::string, std::string> baseTypesByType;
+	for (Plugin* const plugin : *_plugins->list()) {
+		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) continue;
+		PluginInformation* info = plugin->getPluginInfo();
+		if (!info->isComponent() && info->getDataDefinitionConstructor() != nullptr) {
+			baseTypesByType.emplace(info->getPluginTypename(), info->getDataDefinitionBaseTypeName());
+		}
+	}
+	for (const auto& [typeName, directBase] : baseTypesByType) {
+		std::string current = directBase;
+		std::size_t depth = 0;
+		while (!current.empty() && depth++ <= baseTypesByType.size()) {
+			if (current == baseTypeName) {
+				typeNames.push_back(typeName);
+				break;
+			}
+			auto base = baseTypesByType.find(current);
+			if (base == baseTypesByType.end()) break;
+			current = base->second;
 		}
 	}
 	return typeNames;

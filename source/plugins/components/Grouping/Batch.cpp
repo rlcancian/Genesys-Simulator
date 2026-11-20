@@ -76,10 +76,12 @@ Batch::Batch(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 				std::bind(&Batch::getAttributeName, this),
 				std::bind(&Batch::setAttributeName, this, std::placeholders::_1),
 				Util::TypeOf<Batch>(), getName(), "AttributeName", "");
+	propAttributeName->setDynamicEnabled([this]() -> bool{ return this->getRule() == Rule::ByAttribute;});
 	SimulationControlGeneric<std::string>* propSize = new SimulationControlGeneric<std::string>(
 				std::bind(&Batch::getBatchSize, this),
 				std::bind(&Batch::setBatchSize, this, std::placeholders::_1),
 				Util::TypeOf<Batch>(), getName(), "BatchSize", "");
+	propSize->setPreferredEditorHint(SimulationControlEditorHint::ParserExpression);
 	
 
 	_parentModel->getControls()->insert(propBatchType);
@@ -170,6 +172,7 @@ Batch::GroupedAttribs Batch::getGroupedAttributes() const {
 }
 
 void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	traceSimulation(this, "Batch evaluates whether queued entities can form a group", TraceManager::Level::L7_internal);
 	ModelDataManager* elements = _parentModel->getDataManager();
 	ModelDataDefinition* queueByName = elements->getDataDefinition(Util::TypeOf<Queue>(), this->getName() + ".Queue");
 	if (queueByName != nullptr) {

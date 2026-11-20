@@ -8,6 +8,11 @@
  * controller. It does not define a new class; it is a thematic partition of MainWindow.
  */
 #include "mainwindow.h"
+#include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
+#include <QSignalBlocker>
 #include "ui_mainwindow.h"
 // Include the Phase 6 controller type so member calls compile with a complete class definition.
 #include "controllers/PropertyEditorController.h"
@@ -49,8 +54,16 @@ void MainWindow::_onSceneWheelOutEvent() {
  * @brief Refreshes dependent panes when the graphical model changes.
  * @param event Graphical change event (currently unused by this compatibility wrapper).
  */
-void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*/) {
-    // Any structural graphical event changes the persisted .gui representation.
+void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& event) {
+    // Any scene-level event changes the persisted .gui representation. Only events
+    // that mutate the kernel model invalidate a cached SimulLang snapshot.
+    const bool changesSimulLang =
+        event.eventObjectType == GraphicalModelEvent::EventObjectType::COMPONENT
+        || event.eventObjectType == GraphicalModelEvent::EventObjectType::DATADEFINITION
+        || event.eventObjectType == GraphicalModelEvent::EventObjectType::CONNECTION;
+    if (changesSimulLang) {
+        _actualizeModelTextHasChanged(false);
+    }
     setGraphicalModelHasChanged(true);
 }
 
@@ -66,14 +79,13 @@ void MainWindow::sceneChanged(const QList<QRectF> &region) {
         return;
     }
     Q_UNUSED(region);
-    // Synchronize undo/redo state and textual model dirty flag.
+    // Synchronize undo/redo state. QGraphicsScene dirtiness is not evidence that
+    // the user edited TextCodeEditor; conflating those states prevents kernel-to-text refresh.
     bool canUndo = ui->graphicsView->getScene()->getUndoStack()->canUndo();
     bool canRedo = ui->graphicsView->getScene()->getUndoStack()->canRedo();
 
     ui->actionEditUndo->setEnabled(canUndo);
     ui->actionEditRedo->setEnabled(canRedo);
-
-    _actualizeModelTextHasChanged(canUndo);
 
     ui->graphicsView->scene()->update();
 
@@ -142,6 +154,61 @@ void MainWindow::sceneSelectionChanged() {
     if (simulationInteractionLocked) {
         qInfo() << "[MainWindow] sceneSelectionChanged skipped while simulation keeps property editor disabled";
         return;
+    }
+    // Keep the model inspector aligned with a single graphical model-object selection.
+    // Tree rows expose the kernel identification in column zero; compare that stable
+    // identity rather than the user-visible name (which need not be unique).
+    const QList<QGraphicsItem*> selectedGraphics = ui->graphicsView->selectedItems();
+    if (selectedGraphics.size() == 1 &&
+        !(_propertyEditorController && _propertyEditorController->isPostCommitPipelineActive())) {
+        QTreeWidget* targetTree = nullptr;
+        QWidget* targetTab = nullptr;
+        const void* selectedObject = nullptr;
+        if (auto* component = dynamic_cast<GraphicalModelComponent*>(selectedGraphics.front())) {
+            if (component->getComponent() != nullptr) {
+                selectedObject = component->getComponent();
+                targetTree = ui->treeWidgetComponents;
+                targetTab = ui->tabModelComponents;
+            }
+        } else if (auto* definition = dynamic_cast<GraphicalModelDataDefinition*>(selectedGraphics.front())) {
+            if (definition->getDataDefinition() != nullptr) {
+                selectedObject = definition->getDataDefinition();
+                targetTree = ui->treeWidgetDataDefnitions;
+                targetTab = ui->tabModelDataDefinitions;
+            }
+        }
+        if (targetTree != nullptr && targetTab != nullptr) {
+            // Populate before lookup, and prevent tab callbacks from rebuilding matched rows.
+            const QSignalBlocker treeBlocker(targetTree);
+            if (targetTree == ui->treeWidgetComponents) _actualizeModelComponents(true);
+            else _actualizeModelDataDefinitions(true);
+            const QSignalBlocker centralBlocker(ui->tabWidgetCentral);
+            const QSignalBlocker modelBlocker(ui->tabWidgetModel);
+            std::function<QTreeWidgetItem*(QTreeWidgetItem*)> findByIdentity = [&](QTreeWidgetItem* parent) -> QTreeWidgetItem* {
+                for (int i = 0; i < parent->childCount(); ++i) {
+                    QTreeWidgetItem* child = parent->child(i);
+                    if (child->data(0, Qt::UserRole).value<quintptr>() == reinterpret_cast<quintptr>(selectedObject)) return child;
+                    if (QTreeWidgetItem* nested = findByIdentity(child)) return nested;
+                }
+                return nullptr;
+            };
+            QTreeWidgetItem* match = nullptr;
+            for (int i = 0; i < targetTree->topLevelItemCount() && match == nullptr; ++i) {
+                auto* root = targetTree->topLevelItem(i);
+                if (root->data(0, Qt::UserRole).value<quintptr>() == reinterpret_cast<quintptr>(selectedObject)) match = root;
+                else match = findByIdentity(root);
+            }
+            if (match != nullptr) {
+                ui->tabWidgetCentral->setCurrentIndex(CONST.TabCentralModelIndex);
+                ui->tabWidgetModel->setCurrentWidget(targetTab);
+                const QSignalBlocker blocker(targetTree);
+                for (auto* ancestor = match->parent(); ancestor != nullptr; ancestor = ancestor->parent()) ancestor->setExpanded(true);
+                targetTree->clearSelection();
+                targetTree->setCurrentItem(match);
+                match->setSelected(true);
+                targetTree->scrollToItem(match);
+            }
+        }
     }
     if (_propertyEditorController == nullptr) {
         if (ui != nullptr && ui->treeViewPropertyEditor != nullptr) {
