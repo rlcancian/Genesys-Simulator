@@ -13,6 +13,42 @@ base_commit: 6c57631cfcfa881f3fd57d411de7099ae0bb4d99
 # Modal / Network GUI remote implementation — local agent handoff
 
 
+## Checkpoint 2026-11-19 — EFSM transition reload ownership
+
+A source-inspection-confirmed lifetime defect was corrected after the prior
+EFSM semantic follow-up:
+
+- During an in-place `EFSMNetwork::_loadInstance()`, previously owned
+  `EFSMTransition` objects were deleted without removing them from the
+  outgoing transition lists of surviving model-owned `FSMState` objects.
+  That left dangling pointers after a persistence reload.
+- The reload path now matches old transition sources against live
+  `ModelDataManager`-registered `FSMState` objects **by pointer identity**,
+  removes each owned outgoing pointer from any live source, and only then
+  deletes the old transitions. It never dereferences unregistered old sources.
+  The destructor teardown order was intentionally not changed.
+- `EFSMNetworkTest.RepeatedReloadDetachesOldOutgoingTransitions` now
+  exercises two consecutive in-place loads and asserts that each surviving
+  state's outgoing list points to the newly owned relation exactly once.
+- Code commit: `ee14eb825da3f2b997cc145de760ff4f20effe0b`.
+  Test commit: `a8fcb7a45225018ab67642636bb6f146d4f82c7b`.
+- **Validation:** the two commits are published and their remote diff was
+  inspected (16 production + 31 test lines). CMake/Ninja, Google Test,
+  Qt6/Xvfb, model round-trip and sanitizers are **UNKNOWN**, not PASS.
+  The available isolated execution container lacks a complete checkout,
+  Qt6 and outbound GitHub DNS; no GitHub Actions workflow run was returned
+  for the test commit. Do not merge into `WorkInProgress` yet.
+- **Next local gate:** compile the exact branch; run the new focused test
+  first, then all EFSM and GUI diagram tests, kernel/unit/smoke suites,
+  Xvfb interaction and focused ASan/UBSan. Examine state deletion and
+  cross-Network shared-state ownership separately before extending the
+  correction to destructors or removal APIs.
+
+This checkpoint supersedes only the previous `no further code changes`
+status, not the unverified execution status of GUI-010 through GUI-014.
+
+---
+
 ## 2026-11-19 follow-up — EFSM semantics without further kernel architecture changes
 
 The frozen-architecture stabilization work in this branch was based on commit
