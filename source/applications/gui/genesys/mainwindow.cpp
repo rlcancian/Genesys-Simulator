@@ -356,7 +356,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->treeWidget_Plugins->viewport()->setAcceptDrops(false);
     ui->treeWidget_Plugins->setDropIndicatorShown(false);
     ui->treeWidget_Plugins->setContextMenuPolicy(Qt::CustomContextMenu);
-    ui->treeWidget_Plugins->setSortingEnabled(false);
+    ui->treeWidget_Plugins->setSortingEnabled(true);
+    ui->treeWidget_Plugins->sortItems(0, Qt::AscendingOrder);
     //
     // Genesys Simulator
     simulator = new Simulator();
@@ -1949,7 +1950,8 @@ void MainWindow::_actualizeActions() {
     }
 
     //slider animation speed
-    ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused && animationEnabled);
+    //ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused && animationEnabled);
+    ui->horizontalSliderAnimationSpeed->setEnabled(animationEnabled);
 
     ui->actionSelectAll->setEnabled(opened && !simulationInteractionLocked);
 
