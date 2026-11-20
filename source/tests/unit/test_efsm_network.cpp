@@ -1309,6 +1309,37 @@ TEST(EFSMNetworkTest, PersistenceRoundTripPreservesStatesTransitionsPortsAndCurr
 	EXPECT_EQ(loadedTransition->getSetActions(), "counter = 2");
 }
 
+// A same-object persistence reload reuses model-owned FSMState instances.
+// Old EFSMTransition owners must first be removed from each state's outgoing
+// list, rather than leaving pointers to transitions deleted during reload.
+TEST(EFSMNetworkTest, RepeatedReloadDetachesOldOutgoingTransitions) {
+    Simulator simulator;
+    ASSERT_NE(simulator.getPluginManager()->insert("fsmstate.so"), nullptr);
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EFSMNetworkProbe network(model, "ReloadCleanup");
+    FSMState from(model, "ReloadFrom");
+    FSMState to(model, "ReloadTo");
+    network.setInitialState(&from);
+    network.addState(&to);
+    network.addTransition(new EFSMTransition(&from, &to, "Move"));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    network.SaveInstanceProbe(&fields, true);
+
+    for (unsigned int reload = 0; reload < 2; ++reload) {
+        ASSERT_TRUE(network.LoadInstanceProbe(&fields));
+        ASSERT_EQ(network.getTransitions()->size(), 1u);
+        ASSERT_EQ(from.getTransitions()->size(), 1u);
+        ASSERT_EQ(from.getTransitions()->front(), network.getTransitions()->front());
+
+        std::string errorMessage;
+        EXPECT_TRUE(network.CheckProbe(errorMessage)) << errorMessage;
+    }
+}
+
 TEST(EFSMNetworkTest, PersistencePreservesExplicitlyEmptyTransitionName) {
 	Simulator simulator;
 	ASSERT_NE(simulator.getPluginManager()->insert("fsmstate.so"), nullptr);
