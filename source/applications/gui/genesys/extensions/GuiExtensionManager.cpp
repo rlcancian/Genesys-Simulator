@@ -12,25 +12,7 @@
 #include <Qt>
 
 #include <algorithm>
-#include <cctype>
-#include <unordered_set>
 #include <utility>
-
-namespace {
-std::string normalizePluginId(std::string text) {
-	std::string normalized;
-	normalized.reserve(text.size());
-	for (unsigned char c : text) {
-		if (!std::isspace(c)) {
-			normalized.push_back(static_cast<char>(std::tolower(c)));
-		}
-	}
-	if (normalized.size() > 3 && normalized.substr(normalized.size() - 3) == ".so") {
-		normalized.erase(normalized.size() - 3);
-	}
-	return normalized;
-}
-} // namespace
 
 GuiExtensionManager::GuiExtensionManager(QMainWindow* mainWindow) : _mainWindow(mainWindow) {
 }
@@ -47,6 +29,18 @@ void GuiExtensionManager::setLoadedModelPluginIds(std::vector<std::string> model
 	_loadedModelPluginIds = std::move(modelPluginIds);
 }
 
+void GuiExtensionManager::setAvailableSystemCapabilityIds(std::vector<std::string> capabilityIds) {
+	_systemCapabilityIds = std::move(capabilityIds);
+}
+
+void GuiExtensionManager::setAvailableModelPluginVersions(std::unordered_map<std::string, std::string> versions) {
+    _modelPluginVersions = std::move(versions);
+}
+
+void GuiExtensionManager::setAvailableSystemCapabilityVersions(std::unordered_map<std::string, std::string> versions) {
+    _systemCapabilityVersions = std::move(versions);
+}
+
 void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	clear();
 	_runtimeContext = context;
@@ -55,14 +49,16 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	}
 
 	GuiExtensionRegistry registry;
-	for (const GuiExtensionPlugin* plugin : _plugins) {
-		if (plugin == nullptr) {
-			continue;
-		}
-		if (!_isPluginDependenciesSatisfied(plugin)) {
-			continue;
-		}
-		plugin->registerContributions(&registry);
+	GuiExtensionDependencyResolver::Environment env{_loadedModelPluginIds, _systemCapabilityIds};
+	env.modelPluginVersions = _modelPluginVersions;
+	env.systemCapabilityVersions = _systemCapabilityVersions;
+	const auto resolution = GuiExtensionDependencyResolver::resolve(_plugins, env);
+	for (const GuiExtensionPlugin* plugin : resolution.active) {
+		GuiExtensionRegistry contributed;
+		plugin->registerContributions(&contributed);
+		registry.appendEligibleFrom(contributed, [&](const GuiExtensionDependencyGroups& groups) {
+			return GuiExtensionDependencyResolver::contributionEligible(groups, env, resolution);
+		});
 	}
 
 	for (const GuiActionContribution& action : registry.actions()) {
@@ -211,37 +207,6 @@ void GuiExtensionManager::clear() {
 	_editingContextContributions.clear();
 	_modelReferenceContributions.clear();
 	_runtimeContext = GuiExtensionRuntimeContext{};
-}
-
-bool GuiExtensionManager::_isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const {
-	if (plugin == nullptr) {
-		return false;
-	}
-
-	const std::vector<std::string> required = plugin->requiredModelPlugins();
-	if (required.empty()) {
-		return true;
-	}
-
-	std::unordered_set<std::string> loaded;
-	loaded.reserve(_loadedModelPluginIds.size());
-	for (const std::string& id : _loadedModelPluginIds) {
-		const std::string normalized = normalizePluginId(id);
-		if (!normalized.empty()) {
-			loaded.insert(normalized);
-		}
-	}
-
-	for (const std::string& dependency : required) {
-		const std::string normalized = normalizePluginId(dependency);
-		if (normalized.empty()) {
-			continue;
-		}
-		if (loaded.find(normalized) == loaded.end()) {
-			return false;
-		}
-	}
-	return true;
 }
 
 QMenu* GuiExtensionManager::_resolveMenuPath(const std::string& menuPath) {

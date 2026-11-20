@@ -71,6 +71,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <algorithm>
+#include <unordered_map>
 #include <cmath>
 #include <limits>
 //#include <streambuf>
@@ -284,6 +285,22 @@ static bool fillPlotItem(ModelDataDefinition* data, QString* category, ReportPlo
             ? QString::fromStdString(data->getName())
             : parentName + "." + QString::fromStdString(data->getName());
     return true;
+}
+
+// The kernel plugin registry is the authoritative source of model-plugin versions.
+std::unordered_map<std::string, std::string> collectLoadedModelPluginVersions(const Simulator* simulator) {
+    std::unordered_map<std::string, std::string> versions;
+    if (simulator == nullptr || simulator->getPluginManager() == nullptr) return versions;
+    PluginManager* manager = simulator->getPluginManager();
+    for (unsigned int index = 0; index < manager->size(); ++index) {
+        Plugin* plugin = manager->getAtRank(index);
+        if (plugin == nullptr || plugin->getPluginInfo() == nullptr) continue;
+        const auto* info = plugin->getPluginInfo();
+        if (!info->getPluginTypename().empty()) {
+            versions.emplace(info->getPluginTypename(), info->getVersion());
+        }
+    }
+    return versions;
 }
 
 std::vector<std::string> collectLoadedModelPluginIds(const Simulator* simulator) {
@@ -1729,7 +1746,12 @@ void MainWindow::_refreshGuiExtensions() {
     extensionContext.ui = ui;
     extensionContext.graphicsView = ui->graphicsView;
     extensionContext.graphicsScene = ui->graphicsView->getScene();
-    _guiExtensionManager->setLoadedModelPluginIds(collectLoadedModelPluginIds(simulator));
+    const auto loadedModelPluginIds = collectLoadedModelPluginIds(simulator);
+    GuiExtensionPluginCatalog::setAvailableModelPluginIds(loadedModelPluginIds);
+    _guiExtensionManager->setLoadedModelPluginIds(loadedModelPluginIds);
+    const auto loadedModelPluginVersions = collectLoadedModelPluginVersions(simulator);
+    GuiExtensionPluginCatalog::setAvailableModelPluginVersions(loadedModelPluginVersions);
+    _guiExtensionManager->setAvailableModelPluginVersions(loadedModelPluginVersions);
     _guiExtensionManager->setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
     _guiExtensionManager->rebuild(extensionContext);
     if (ui->treeViewPropertyEditor != nullptr) {
