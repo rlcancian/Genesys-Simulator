@@ -201,6 +201,11 @@ struct GuiAnimationToolContribution {
     GuiExtensionDependencyGroups eligibility;
 };
 
+struct GuiSimulationStartContribution {
+    std::string id;
+    std::function<void(Simulator*, QMainWindow*)> onSimulationStart;
+};
+
 class GuiExtensionRegistry {
 public:
 	void addAnimationTool(GuiAnimationToolContribution contribution) {
@@ -225,6 +230,10 @@ public:
 
 	void addDiagramProjection(GuiDiagramProjectionContribution contribution) {
 		_diagramProjections.push_back(std::move(contribution));
+	}
+
+	void addSimulationStart(GuiSimulationStartContribution contribution) {
+		_simulationStarts.push_back(std::move(contribution));
 	}
 
 	void addNetworkEditor(GuiNetworkEditorContribution contribution) {
@@ -273,6 +282,10 @@ public:
 
 	const std::vector<GuiDiagramProjectionContribution>& diagramProjections() const {
 		return _diagramProjections;
+	}
+
+	const std::vector<GuiSimulationStartContribution>& simulationStarts() const {
+		return _simulationStarts;
 	}
 
 	const std::vector<GuiNetworkEditorContribution>& networkEditors() const {
@@ -335,6 +348,7 @@ public:
 		_modelReferences.clear();
 		_componentVisualizations.clear();
 		_dataDefinitionRenderings.clear();
+		_simulationStarts.clear();
 	}
 
 private:
@@ -350,6 +364,7 @@ private:
 	std::vector<GuiModelReferenceContribution> _modelReferences;
 	std::vector<GuiComponentVisualizationContribution> _componentVisualizations;
 	std::vector<GuiDataDefinitionRenderingContribution> _dataDefinitionRenderings;
+	std::vector<GuiSimulationStartContribution> _simulationStarts;
 };
 
 class GuiExtensionPlugin {

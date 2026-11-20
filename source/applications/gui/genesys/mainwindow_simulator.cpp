@@ -84,6 +84,7 @@ void MainWindow::_onSimulationStartHandler(SimulationEvent * re) {
     if (_simulationEventController != nullptr) {
         _simulationEventController->onSimulationStartHandler(re);
     }
+    GuiExtensionPluginCatalog::notifySimulationStart(simulator, this);
 }
 
 void MainWindow::_onSimulationPausedHandler(SimulationEvent * re) {

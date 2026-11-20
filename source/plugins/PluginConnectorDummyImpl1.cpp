@@ -62,7 +62,7 @@
 #include "components/Transfer/PickStation.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
-//#include "../../plugins/components/Read.h"
+#include "plugins/components/InputOutput/Read.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
@@ -273,7 +273,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("rsimulatorrunner.so");
     filenames->insert("octave.so");
     filenames->insert("file.so");
-    //filenames->insert("read.so");
+    filenames->insert("read.so");
     filenames->insert("write.so");
     filenames->insert("access.so");
     filenames->insert("conveyor.so");
@@ -533,8 +533,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
     	GetInfo = &OctaveRunner::GetPluginInformation;
     else if (fn == "file.so")
         GetInfo = &File::GetPluginInformation;
-    //else if (fn == "read.so")
-    //    GetInfo = &Read::GetPluginInformation;
+    else if (fn == "read.so")
+        GetInfo = &Read::GetPluginInformation;
     else if (fn == "write.so")
         GetInfo = &Write::GetPluginInformation;
     else if (fn == "access.so")
