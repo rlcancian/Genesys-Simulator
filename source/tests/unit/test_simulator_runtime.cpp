@@ -17,6 +17,7 @@
 #include "kernel/simulator/Event.h"
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
@@ -12523,4 +12524,70 @@ TEST(SimulatorRuntimeTest, ReleaseCyclicalAdvancesThroughSetMembersAfterSuccessf
         EXPECT_EQ(request->getLastMemberSeized(),expected);
         EXPECT_EQ(dynamic_cast<Resource*>(set->getElementSet()->getAtRank(expected))->getNumberBusy(),0u);
     }
+}
+
+TEST(SimulatorRuntimeTest, SimulationControlDynamicEnabledDefaultsToEnabled) {
+    std::string value = "initial";
+    SimulationControlString control(
+        [&]() { return value; },
+        [&](std::string next) { value = std::move(next); },
+        "Test", "Element", "Expression");
+
+    EXPECT_TRUE(control.isEnabled());
+    EXPECT_FALSE(control.hasDynamicEnabledCondition());
+}
+
+TEST(SimulatorRuntimeTest, SimulationControlDynamicEnabledIsEvaluatedOnEveryQuery) {
+    std::string value = "initial";
+    bool enabled = false;
+    SimulationControlString control(
+        [&]() { return value; },
+        [&](std::string next) { value = std::move(next); },
+        "Test", "Element", "Expression");
+
+    control.setDynamicEnabled([&]() { return enabled; });
+    EXPECT_TRUE(control.hasDynamicEnabledCondition());
+    EXPECT_FALSE(control.isEnabled());
+
+    enabled = true;
+    EXPECT_TRUE(control.isEnabled());
+
+    control.clearDynamicEnabledCondition();
+    EXPECT_FALSE(control.hasDynamicEnabledCondition());
+    EXPECT_TRUE(control.isEnabled());
+}
+
+TEST(SimulatorRuntimeTest, PropertyIntrospectionReportsDynamicEnabledStateIndependentlyOfReadOnly) {
+    std::string value = "initial";
+    bool enabled = false;
+    SimulationControlString control(
+        [&]() { return value; },
+        [&](std::string next) { value = std::move(next); },
+        "Test", "Element", "Expression");
+    control.setDynamicEnabled([&]() { return enabled; });
+
+    auto descriptor = GenesysPropertyIntrospection::describe(&control);
+    EXPECT_FALSE(descriptor.readOnly);
+    EXPECT_FALSE(descriptor.enabled);
+    EXPECT_TRUE(descriptor.hasDynamicEnabledCondition);
+
+    enabled = true;
+    descriptor = GenesysPropertyIntrospection::describe(&control);
+    EXPECT_FALSE(descriptor.readOnly);
+    EXPECT_TRUE(descriptor.enabled);
+    EXPECT_TRUE(descriptor.hasDynamicEnabledCondition);
+}
+
+TEST(SimulatorRuntimeTest, DynamicEnabledPredicateExceptionsRemainObservable) {
+    std::string value = "initial";
+    SimulationControlString control(
+        [&]() { return value; },
+        [&](std::string next) { value = std::move(next); },
+        "Test", "Element", "Expression");
+    control.setDynamicEnabled([]() -> bool {
+        throw std::runtime_error("dynamic enabled failure");
+    });
+
+    EXPECT_THROW(control.isEnabled(), std::runtime_error);
+    EXPECT_THROW(GenesysPropertyIntrospection::describe(&control), std::runtime_error);
 }

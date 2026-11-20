@@ -88,6 +88,8 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.technicalTypeName = control->propertyType();
     desc.kind = deduceKind(control);
     desc.readOnly = control->isReadOnly();
+    desc.enabled = control->isEnabled();
+    desc.hasDynamicEnabledCondition = control->hasDynamicEnabledCondition();
     desc.isList = control->getIsList();
     desc.isClass = control->getIsClass();
     desc.isEnum = control->getIsEnum();

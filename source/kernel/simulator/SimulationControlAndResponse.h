@@ -167,6 +167,8 @@ enum class SimulationControlEditorHint {
  */
 class SimulationControl: public SimulationResponse {
 public:
+    using DynamicEnabledCondition = std::function<bool()>;
+
     SimulationControl(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false,  bool isClass=false, bool isEnum=false)
         : SimulationResponse(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 	}
@@ -180,6 +182,26 @@ public:
 		return msg;
 	}
 	bool isReadOnly() const { return _readonly; }
+	/**
+	 * @brief Evaluates the optional dynamic enabled-state predicate.
+	 *
+	 * A control without a predicate is enabled.  Predicates are evaluated on
+	 * every query, so the result always reflects the current model state.  An
+	 * exception raised by a predicate is intentionally propagated to the caller;
+	 * predicates are kernel code and their failures must remain diagnosable.
+	 */
+	bool isEnabled() const {
+		return !_dynamicEnabledCondition || _dynamicEnabledCondition();
+	}
+	bool hasDynamicEnabledCondition() const {
+		return static_cast<bool>(_dynamicEnabledCondition);
+	}
+	void setDynamicEnabled(DynamicEnabledCondition condition) {
+		_dynamicEnabledCondition = std::move(condition);
+	}
+	void clearDynamicEnabledCondition() {
+		_dynamicEnabledCondition = nullptr;
+	}
 public:
     virtual void setValue(std::string value, bool remove=false) = 0;
     /**
@@ -321,6 +343,7 @@ protected:
 	}
 	bool _readonly = false;
     SimulationControlEditorHint _preferredEditorHint = SimulationControlEditorHint::Default;
+	DynamicEnabledCondition _dynamicEnabledCondition;
 };
 
 // -----------------------------------------------------------

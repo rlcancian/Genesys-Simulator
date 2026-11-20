@@ -31,6 +31,8 @@ struct GenesysPropertyDescriptor {
     GenesysPropertyKind kind = GenesysPropertyKind::Unknown;
 
     bool readOnly = true;
+    bool enabled = true;
+    bool hasDynamicEnabledCondition = false;
     bool isList = false;
     bool isClass = false;
     bool isEnum = false;
