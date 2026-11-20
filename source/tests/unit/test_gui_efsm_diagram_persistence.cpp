@@ -2476,6 +2476,7 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     ASSERT_NE(model, nullptr);
 
     EFSMNetwork network(model, "ViewerNetwork");
+    const unsigned int arrivalPort = network.addInputPort("arrive");
     FSMState idle(model, "Idle");
     FSMState done(model, "Done");
     network.setInitialState(&idle);
@@ -2515,7 +2516,9 @@ TEST(EFSMNetworkDiagramProjection, BuildsStatesAndFormalTransitionsWithoutChangi
     EXPECT_EQ(network.getTransitions()->size(), 3u);
 
     guardedUnnamed->setGuardExpression("");
-    network.activate(NetworkActivationFrame(network.getNumInputPorts()));
+    NetworkActivationFrame frame(network.getNumInputPorts());
+    frame.setPresent(arrivalPort, 0.0);
+    network.activate(frame);
     EXPECT_EQ(network.getCurrentState(), &done);
     EXPECT_EQ(network.getLastTransition(), guardedUnnamed);
     EFSMNetworkDiagramProjection::synchronize(&simulator, scene);
