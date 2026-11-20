@@ -338,6 +338,22 @@ void EFSMNetwork::_destroyOwnedTransitions() {
 bool EFSMNetwork::_loadInstance(PersistenceRecord* fields) {
 	bool res = DefaultNetwork::_loadInstance(fields);
 	if (res) {
+        // Reload can reuse FSMState objects still registered in this model.
+        // Detach old outgoing pointers before deleting their owned transitions;
+        // otherwise a live state can retain dangling pointers on the next fire.
+        // Compare identities against the registry instead of dereferencing an
+        // old source, which may have been removed from the model already.
+        const auto liveStates = _parentModel->getDataManager()
+            ->getDataDefinitionsAssignableTo<FSMState>();
+        for (EFSMTransition* oldTransition : *_transitions->list()) {
+            if (oldTransition == nullptr) continue;
+            DefaultNode* const oldSource = oldTransition->getSource();
+            for (FSMState* liveState : liveStates) {
+                if (static_cast<DefaultNode*>(liveState) != oldSource) continue;
+                liveState->removeTransition(oldTransition);
+                break;
+            }
+        }
 		_states->clear();
 		_destroyOwnedTransitions();
 		_initialState = nullptr;
