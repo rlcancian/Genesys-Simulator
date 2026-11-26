@@ -119,7 +119,7 @@ PluginInformation* Schedule::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
-	info->setCategory("DiscreteProcessing");
+	info->setCategory("Arena");
 	return info;
 }
 

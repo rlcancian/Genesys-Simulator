@@ -11,9 +11,9 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/ModalModel/ModalModel.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"

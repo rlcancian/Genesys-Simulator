@@ -4,7 +4,7 @@
 #include <QUndoCommand>
 #include <QPointer>
 
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 
 class GraphicalModelComponent;
 class ModelGraphicsScene;

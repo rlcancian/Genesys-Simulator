@@ -3,8 +3,8 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/WholeCellModeling/StochasticTranscription.h"
 #include "plugins/components/WholeCellModeling/StochasticTranslation.h"
 #include "plugins/components/WholeCellModeling/StochasticReactionComponent.h"

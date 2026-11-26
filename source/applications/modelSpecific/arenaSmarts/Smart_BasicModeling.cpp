@@ -5,9 +5,9 @@
 
 #include "Smart_BasicModeling.h"
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Process.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 
 Smart_BasicModeling::Smart_BasicModeling() {
 }

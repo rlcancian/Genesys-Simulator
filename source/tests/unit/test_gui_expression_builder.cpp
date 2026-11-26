@@ -12,7 +12,7 @@
 #include "kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "kernel/simulator/PluginManager.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/WholeCellModeling/MolecularSpecies.h"
 #include "plugins/data/Logic/Variable.h"

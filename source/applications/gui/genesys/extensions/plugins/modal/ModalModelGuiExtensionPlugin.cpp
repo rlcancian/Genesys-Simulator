@@ -2,7 +2,7 @@
 #include "../../GuiExtensionPluginCatalog.h"
 
 #include "plugins/components/ModalModel/ModalModel.h"
-#include "plugins/components/ModalModel/Submodel.h"
+#include "plugins/components/DiscreteProcessing/Logic/Submodel.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelDataManager.h"

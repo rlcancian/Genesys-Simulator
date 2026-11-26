@@ -9,7 +9,7 @@
 #include "kernel/simulator/essentialPlugins/Entity.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponent.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/ModalModel/ModalModel.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/ModalModel/GraphNetwork.h"

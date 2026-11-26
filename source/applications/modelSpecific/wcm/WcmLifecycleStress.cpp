@@ -5,8 +5,8 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/WholeCellModeling/CellCycleCheckpointComponent.h"
 #include "plugins/components/WholeCellModeling/CellFateDecisionComponent.h"
 #include "plugins/data/WholeCellModeling/WholeCellState.h"

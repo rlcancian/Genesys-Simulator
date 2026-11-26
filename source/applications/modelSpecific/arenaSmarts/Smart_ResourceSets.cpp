@@ -17,11 +17,11 @@
 #include "kernel/simulator/Simulator.h"
 
 // Components for the model
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Process.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 
 Smart_ResourceSets::Smart_ResourceSets() {
 

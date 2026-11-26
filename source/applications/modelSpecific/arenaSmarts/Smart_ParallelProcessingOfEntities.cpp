@@ -19,13 +19,13 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Grouping/Separate.h"
-#include "plugins/components/DiscreteProcessing/Clone.h"
-#include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/Grouping/Batch.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Grouping/Separate.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Clone.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Process.h"
+#include "plugins/components/DiscreteProcessing/Grouping/Batch.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Assign.h"
 
 Smart_ParallelProcessingOfEntities::Smart_ParallelProcessingOfEntities() {
 }

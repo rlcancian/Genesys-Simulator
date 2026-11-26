@@ -19,10 +19,10 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/InputOutput/Write.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Process.h"
+#include "plugins/components/DiscreteProcessing/Logic/Write.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/data/Logic/Set.h"
 #include "plugins/data/Logic/Formula.h"
 

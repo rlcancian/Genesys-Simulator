@@ -1,0 +1,75 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/*
+ * File:   Signal.h
+ * Author: rlcancian
+ *
+ * Created on 03 de Junho de 2019, 15:20
+ */
+
+#ifndef SIGNAL_H
+#define SIGNAL_H
+
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../data/Synchronization/SignalData.h"
+
+/*!
+ * \brief Broadcasts a signal value, releasing up to `_limitExpression`
+ * entities waiting at any `Wait` (Arena Hold) component in `WaitForSignal`
+ * mode with a matching signal.
+ *
+ * Arena correspondence: the "Signal module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Advanced Process Panel", p. 65). The attached
+ * `SignalData` matches Signal Value; `_limitExpression` matches Limit.
+ */
+class Signal : public ModelComponent {
+public: // constructors
+	Signal(Model* model, std::string name = "");
+	virtual ~Signal() = default;
+public: // virtual
+	virtual std::string show() override;
+public:
+	void setSignalData(SignalData* signal);
+	SignalData* getSignalData() const;
+	const std::string&limitExpression() const;
+	void setLimitExpression(const std::string&newLimitExpression);
+public: // static
+	static PluginInformation* GetPluginInformation();
+	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
+	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
+
+protected: // must be overriden
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+protected: // could be overriden .
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _initBetweenReplications() override;
+	// virtual void _createInternalAndAttachedData() override;
+	//virtual ParserChangesInformation* _getParserChangesInformation();
+
+protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+
+private: // methods
+private: // attributes 1:1
+	const struct DEFAULT_VALUES {
+		const std::string limitExpression = "1";
+	} DEFAULT;
+	std::string _limitExpression = DEFAULT.limitExpression;
+	unsigned int _signalsTriggered = 0;
+private: // attributes 1:n
+private: // attached
+	SignalData* _signalData = nullptr;
+
+};
+
+
+#endif /* SIGNAL_H */

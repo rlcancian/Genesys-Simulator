@@ -9,9 +9,9 @@
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "kernel/simulator/model/ModelDataManager.h"
-#include "plugins/components/InputOutput/Read.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Read.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/data/Logic/Variable.h"
 
 #include <atomic>

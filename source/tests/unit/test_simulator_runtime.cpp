@@ -24,8 +24,8 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "../../plugins/data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/components/DiscreteProcessing/Release.h"
-#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Release.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/ResourceSetSelection.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/Logic/Formula.h"
@@ -39,7 +39,7 @@
 #include "../../plugins/data/Transfer/Station.h"
 #include "../../plugins/data/Logic/Set.h"
 #include "plugins/data/Transfer/LabelDefinition.h"
-#include "plugins/components/Transfer/Label.h"
+#include "plugins/components/DiscreteProcessing/Transfer/Label.h"
 #include "../../plugins/data/Transfer/Storage.h"
 #include "../../plugins/data/InputOutput/File.h"
 #include "../../plugins/data/ExternalIntegration/CppCompiler.h"
@@ -88,50 +88,50 @@
 #include "../../plugins/data/Grouping/EntityGroup.h"
 #undef protected
 #undef private
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "../../plugins/components/Decisions/DropOff.h"
-#include "../../plugins/components/Logic/Dispose.h"
-#include "plugins/components/Grouping/Batch.h"
-#include "plugins/components/Grouping/Separate.h"
-#include "plugins/components/Synchronization/Match.h"
-#include "plugins/components/Decisions/Search.h"
-#include "plugins/components/Decisions/Decide.h"
-#include "plugins/components/Decisions/Remove.h"
-#include "../../plugins/components/Logic/Assign.h"
-#include "plugins/components/InputOutput/Record.h"
-#include "plugins/components/InputOutput/Write.h"
-#include "../../plugins/components/Transfer/Access.h"
-#include "../../plugins/components/Transfer/Exit.h"
-#include "../../plugins/components/Transfer/Move.h"
-#include "../../plugins/components/Transfer/Start.h"
-#include "../../plugins/components/Transfer/Store.h"
-#include "../../plugins/components/Transfer/Stop.h"
-#include "../../plugins/components/Transfer/Unstore.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "../../plugins/components/DiscreteProcessing/Decisions/DropOff.h"
+#include "../../plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Grouping/Batch.h"
+#include "plugins/components/DiscreteProcessing/Grouping/Separate.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Match.h"
+#include "plugins/components/DiscreteProcessing/Decisions/Search.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
+#include "plugins/components/DiscreteProcessing/Decisions/Remove.h"
+#include "../../plugins/components/DiscreteProcessing/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Logic/Record.h"
+#include "plugins/components/DiscreteProcessing/Logic/Write.h"
+#include "../../plugins/components/DiscreteProcessing/Transportation/Access.h"
+#include "../../plugins/components/DiscreteProcessing/Transfer/Exit.h"
+#include "../../plugins/components/DiscreteProcessing/Transfer/Move.h"
+#include "../../plugins/components/DiscreteProcessing/Transportation/Start.h"
+#include "../../plugins/components/DiscreteProcessing/Transfer/Store.h"
+#include "../../plugins/components/DiscreteProcessing/Transportation/Stop.h"
+#include "../../plugins/components/DiscreteProcessing/Transfer/Unstore.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #define private public
 #define protected public
-#include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "../../plugins/components/Transfer/Enter.h"
-#include "../../plugins/components/Transfer/PickStation.h"
-#include "../../plugins/components/Transfer/Route.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Buffer.h"
+#include "../../plugins/components/DiscreteProcessing/Transfer/Enter.h"
+#include "../../plugins/components/DiscreteProcessing/Transfer/PickStation.h"
+#include "../../plugins/components/DiscreteProcessing/Transfer/Route.h"
 #undef protected
 #undef private
 #define private public
 #define protected public
-#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #undef protected
 #undef private
 #define private public
 #define protected public
-#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Process.h"
 #undef protected
 #undef private
 #define private public
 #define protected public
-#include "../../plugins/components/Synchronization/Wait.h"
-#include "../../plugins/components/Synchronization/Signal.h"
+#include "../../plugins/components/DiscreteProcessing/Synchronization/Wait.h"
+#include "../../plugins/components/DiscreteProcessing/Synchronization/Signal.h"
 #undef protected
 #undef private
 
@@ -654,8 +654,8 @@ public:
         _onDispatchEvent(entity, inputPortNumber);
     }
 
-    std::vector<Entity*>* RawBufferProbe() const {
-        return _buffer;
+    Queue* RawBufferProbe() const {
+        return getQueue();
     }
 };
 
@@ -5197,6 +5197,39 @@ TEST(SimulatorRuntimeTest, BufferCheckFailsWhenCapacityIsZero) {
     EXPECT_NE(errorMessage.find("Capacity greater than zero"), std::string::npos);
 }
 
+TEST(SimulatorRuntimeTest, BufferExposesAllSimulationControlsAsProperties) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferProperties");
+    std::vector<std::string> propertyNames;
+    for (SimulationControl* control : *buffer.getSimulationControls()->list()) {
+        propertyNames.push_back(control->getName());
+    }
+
+    EXPECT_NE(std::find(propertyNames.begin(), propertyNames.end(), "ArrivalOnFullBufferRule"), propertyNames.end());
+    EXPECT_NE(std::find(propertyNames.begin(), propertyNames.end(), "AdvanceOn"), propertyNames.end());
+    EXPECT_NE(std::find(propertyNames.begin(), propertyNames.end(), "Capacity"), propertyNames.end());
+    EXPECT_NE(std::find(propertyNames.begin(), propertyNames.end(), "Queue"), propertyNames.end());
+    EXPECT_NE(std::find(propertyNames.begin(), propertyNames.end(), "Signal"), propertyNames.end());
+}
+
+TEST(SimulatorRuntimeTest, BufferCanRemoveQueueReferenceWithoutDeletingQueue) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferQueueRemoval");
+    Queue* queue = buffer.getQueue();
+    ASSERT_NE(queue, nullptr);
+
+    buffer.setQueue(nullptr);
+
+    EXPECT_EQ(buffer.getQueue(), nullptr);
+    EXPECT_EQ(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queue->getName()), queue);
+}
+
 TEST(SimulatorRuntimeTest, BufferCheckRequiresSignalDataWhenAdvanceOnSignal) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -5212,7 +5245,7 @@ TEST(SimulatorRuntimeTest, BufferCheckRequiresSignalDataWhenAdvanceOnSignal) {
     EXPECT_NE(errorMessage.find("requires a valid SignalData"), std::string::npos);
 }
 
-TEST(SimulatorRuntimeTest, BufferRecheckKeepsInternalVectorSizedToCapacityIdempotently) {
+TEST(SimulatorRuntimeTest, BufferRecheckLeavesAssociatedQueueManagedByQueueLifecycle) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
@@ -5220,16 +5253,16 @@ TEST(SimulatorRuntimeTest, BufferRecheckKeepsInternalVectorSizedToCapacityIdempo
     BufferProbe buffer(model, "BufferRecheckResize");
     buffer.setCapacity(4);
     buffer.InitBetweenReplicationsProbe();
-    ASSERT_EQ(buffer.RawBufferProbe()->size(), 4u);
+    ASSERT_EQ(buffer.RawBufferProbe()->size(), 0u);
 
     buffer.setCapacity(2);
     std::string checkError;
     EXPECT_TRUE(buffer.CheckProbe(checkError));
-    EXPECT_EQ(buffer.RawBufferProbe()->size(), 2u);
+    EXPECT_EQ(buffer.RawBufferProbe()->size(), 0u);
 
     std::string secondCheckError;
     EXPECT_TRUE(buffer.CheckProbe(secondCheckError));
-    EXPECT_EQ(buffer.RawBufferProbe()->size(), 2u);
+    EXPECT_EQ(buffer.RawBufferProbe()->size(), 0u);
 }
 
 TEST(SimulatorRuntimeTest, BufferSignalArrivalOccupiesFirstFreePositionInsteadOfLastByDefault) {
@@ -5246,17 +5279,15 @@ TEST(SimulatorRuntimeTest, BufferSignalArrivalOccupiesFirstFreePositionInsteadOf
 
     Entity* existing = model->createEntity("BufferExisting", true);
     Entity* arriving = model->createEntity("BufferArriving", true);
-    buffer.RawBufferProbe()->at(0) = existing;
-    buffer.RawBufferProbe()->at(1) = nullptr;
-    buffer.RawBufferProbe()->at(2) = nullptr;
+    buffer.RawBufferProbe()->insertElement(new Waiting(existing, 0.0, &buffer));
 
     buffer.DispatchEventProbe(arriving);
-    EXPECT_EQ(buffer.RawBufferProbe()->at(0), existing);
-    EXPECT_EQ(buffer.RawBufferProbe()->at(1), arriving);
-    EXPECT_EQ(buffer.RawBufferProbe()->at(2), nullptr);
+    ASSERT_EQ(buffer.RawBufferProbe()->size(), 2u);
+    EXPECT_EQ(buffer.RawBufferProbe()->getAtRank(0)->getEntity(), existing);
+    EXPECT_EQ(buffer.RawBufferProbe()->getAtRank(1)->getEntity(), arriving);
 }
 
-TEST(SimulatorRuntimeTest, BufferNewArrivalsDoesNotForwardNullEntityWhenFirstSlotIsEmpty) {
+TEST(SimulatorRuntimeTest, BufferNewArrivalsStoresIncomingEntityWhenQueueIsEmpty) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
@@ -5268,16 +5299,93 @@ TEST(SimulatorRuntimeTest, BufferNewArrivalsDoesNotForwardNullEntityWhenFirstSlo
     buffer.setCapacity(2);
     buffer.InitBetweenReplicationsProbe();
 
-    Entity* retained = model->createEntity("BufferRetained", true);
     Entity* arriving = model->createEntity("BufferIncoming", true);
-    buffer.RawBufferProbe()->at(0) = nullptr;
-    buffer.RawBufferProbe()->at(1) = retained;
 
     buffer.DispatchEventProbe(arriving);
     DrainFutureEvents(model);
     EXPECT_TRUE(sink.ReceivedEntities().empty());
-    EXPECT_EQ(buffer.RawBufferProbe()->at(0), retained);
-    EXPECT_EQ(buffer.RawBufferProbe()->at(1), arriving);
+    ASSERT_EQ(buffer.RawBufferProbe()->size(), 1u);
+    EXPECT_EQ(buffer.RawBufferProbe()->first()->getEntity(), arriving);
+}
+
+TEST(SimulatorRuntimeTest, BufferNewArrivalsRemovesFirstEntityFromAssociatedQueue) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferQueueAdvance");
+    CollectorSinkComponentProbe sink(model, "BufferQueueAdvanceSink");
+    buffer.connectTo(&sink);
+    buffer.setCapacity(2);
+
+    Entity* first = model->createEntity("BufferQueueFirst", true);
+    Entity* second = model->createEntity("BufferQueueSecond", true);
+    buffer.DispatchEventProbe(first);
+    buffer.DispatchEventProbe(second);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities().front(), first);
+    ASSERT_EQ(buffer.RawBufferProbe()->size(), 1u);
+    EXPECT_EQ(buffer.RawBufferProbe()->first()->getEntity(), second);
+}
+
+TEST(SimulatorRuntimeTest, BufferSignalReleasesFirstEntityFromAssociatedQueue) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalData signal(model, "BufferQueueSignal");
+    BufferProbe buffer(model, "BufferQueueSignalMode");
+    CollectorSinkComponentProbe sink(model, "BufferQueueSignalSink");
+    buffer.connectTo(&sink);
+    buffer.setAdvanceOn(Buffer::AdvanceOn::Signal);
+    buffer.setSignal(&signal);
+    buffer.CreateInternalAndAttachedDataProbe();
+
+    Entity* waiting = model->createEntity("BufferQueueWaiting", true);
+    buffer.DispatchEventProbe(waiting);
+    ASSERT_EQ(buffer.RawBufferProbe()->size(), 1u);
+
+    EXPECT_EQ(signal.generateSignal(0.0, 1u), 1u);
+    DrainFutureEvents(model);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities().front(), waiting);
+    EXPECT_EQ(buffer.RawBufferProbe()->size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, BufferGenRoundTripRestoresAssociatedQueue) {
+    const std::string path = "/tmp/genesys_buffer_queue_roundtrip_" + std::to_string(getpid()) + ".gen";
+    std::remove(path.c_str());
+
+    Simulator sourceSimulator;
+    sourceSimulator.getPluginManager()->autoInsertPlugins();
+    Model* sourceModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(sourceModel, nullptr);
+
+    auto* queue = new Queue(sourceModel, "BufferPersistedQueue");
+    auto* buffer = new Buffer(sourceModel, "BufferQueueRoundTrip");
+    buffer->setQueue(queue);
+    buffer->setCapacity(3);
+    buffer->setAdvanceOn(Buffer::AdvanceOn::Signal);
+    ASSERT_TRUE(sourceModel->save(path));
+
+    Simulator loadedSimulator;
+    loadedSimulator.getPluginManager()->autoInsertPlugins();
+    Model* loadedModel = loadedSimulator.getModelManager()->loadModel(path);
+    ASSERT_NE(loadedModel, nullptr);
+
+    auto* loadedBuffer = dynamic_cast<Buffer*>(loadedModel->getComponentManager()->find("BufferQueueRoundTrip"));
+    auto* loadedQueue = dynamic_cast<Queue*>(loadedModel->getDataManager()->getDataDefinition(
+        Util::TypeOf<Queue>(), "BufferPersistedQueue"));
+    ASSERT_NE(loadedBuffer, nullptr);
+    ASSERT_NE(loadedQueue, nullptr);
+    EXPECT_EQ(loadedBuffer->getQueue(), loadedQueue);
+    EXPECT_EQ(loadedBuffer->getcapacity(), 3u);
+    EXPECT_EQ(loadedBuffer->getadvanceOn(), Buffer::AdvanceOn::Signal);
+    EXPECT_EQ(loadedModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Queue>()), 2u);
+
+    std::remove(path.c_str());
 }
 
 TEST(SimulatorRuntimeTest, PickStationCheckFailsWithoutPickableItems) {

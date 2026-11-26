@@ -18,8 +18,8 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/TraceManager.h"
 #include "plugins/components/Continuous/LSODE.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/data/Logic/Variable.h"
 
 struct LSODESample {

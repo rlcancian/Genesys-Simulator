@@ -19,11 +19,11 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Transfer/Route.h"
-#include "plugins/components/Transfer/Enter.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Transfer/Route.h"
+#include "plugins/components/DiscreteProcessing/Transfer/Enter.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 
 Smart_RouteStation::Smart_RouteStation() {
 }

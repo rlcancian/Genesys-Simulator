@@ -14,8 +14,8 @@
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "kernel/simulator/model/ModelSimulation.h"
 #include "kernel/simulator/essentialPlugins/Counter.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
 
 namespace {

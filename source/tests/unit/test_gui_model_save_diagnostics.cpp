@@ -14,7 +14,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 
 namespace {
 struct GuiSaveHarness {
@@ -102,8 +102,8 @@ TEST(ModelSaveGuiDiagnostics, OverlaySerializationFailurePreservesPreviousGuiFil
 
 #include "mainwindow.h"
 #include "controllers/PropertyEditorController.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include <QApplication>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -283,10 +283,10 @@ TEST(GuiClassroomLifecycle, PropertyCommitMarksDirtyBeforeDeferredRefresh) {
 }
 
 #include "services/GraphicalModelBuilder.h"
-#include "plugins/components/Logic/Assign.h"
-#include "plugins/components/DiscreteProcessing/Seize.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Release.h"
 #include "plugins/data/Logic/Set.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "kernel/simulator/essentialPlugins/Counter.h"

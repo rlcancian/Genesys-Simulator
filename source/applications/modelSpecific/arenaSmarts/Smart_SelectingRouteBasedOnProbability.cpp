@@ -21,12 +21,12 @@
 #include "kernel/util/Util.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Transfer/Route.h"
-#include "plugins/components/Transfer/Enter.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/Decisions/Decide.h"
-#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Transfer/Route.h"
+#include "plugins/components/DiscreteProcessing/Transfer/Enter.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Process.h"
 
 #include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"

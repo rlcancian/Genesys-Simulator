@@ -182,7 +182,7 @@ double Queue::getAttributeFromWaitingRank(unsigned int rank, Util::identificatio
 
 PluginInformation* Queue::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Queue>(), &Queue::LoadInstance, &Queue::NewInstance);
-	info->setCategory("DiscreteProcessing");
+	info->setCategory("Arena");
 	return info;
 }
 

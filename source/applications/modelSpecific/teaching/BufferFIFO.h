@@ -10,12 +10,12 @@
 #include "../../BaseGenesysTerminalApplication.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/DiscreteProcessing/Clone.h"
-#include "plugins/components/Synchronization/Wait.h"
-#include "plugins/components/Synchronization/Signal.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Clone.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Wait.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Signal.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 #include "plugins/data/Synchronization/SignalData.h"
 #include "plugins/data/Logic/Variable.h"
 

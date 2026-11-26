@@ -19,12 +19,12 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/Template/TemplateComponent.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/Logic/Assign.h"
-#include "plugins/components/Synchronization/Wait.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Wait.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 
 Smart_PlacingEntitiesInQueueSets::Smart_PlacingEntitiesInQueueSets() {
 }

@@ -9,8 +9,8 @@
 #include "kernel/simulator/model/Model.h"
 
 #include "plugins/components/BiochemicalSimulation/BioSimulate.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/WholeCellModeling/BioStateProjectionComponent.h"
 #include "plugins/components/WholeCellModeling/StochasticReactionComponent.h"
 #include "plugins/components/WholeCellModeling/StochasticTranscription.h"

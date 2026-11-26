@@ -19,9 +19,9 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "plugins/data/Logic/Variable.h"
 

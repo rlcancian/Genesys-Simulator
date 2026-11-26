@@ -14,12 +14,12 @@
 
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/essentialPlugins/Attribute.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/Logic/Assign.h"
-#include "plugins/components/Grouping/Batch.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/Grouping/Separate.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Grouping/Batch.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/Grouping/Separate.h"
 
 Smart_BatchSeparate::Smart_BatchSeparate() {
 }

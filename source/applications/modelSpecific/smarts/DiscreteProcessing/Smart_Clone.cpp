@@ -19,9 +19,9 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/DiscreteProcessing/Clone.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Clone.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 
 Smart_Clone::Smart_Clone() {
 }

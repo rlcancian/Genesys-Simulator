@@ -3,7 +3,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponentManager.h"
-#include "plugins/components/InputOutput/Read.h"
+#include "plugins/components/DiscreteProcessing/Logic/Read.h"
 
 #include <QInputDialog>
 #include <QLineEdit>

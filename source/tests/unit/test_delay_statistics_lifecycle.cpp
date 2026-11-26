@@ -7,7 +7,7 @@
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/essentialPlugins/Entity.h"
 #include "kernel/simulator/essentialPlugins/EntityType.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 
 #include <vector>
 

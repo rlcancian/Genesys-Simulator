@@ -19,11 +19,11 @@
 #include "kernel/simulator/model/ModelSimulation.h"
 #include "kernel/simulator/Simulator.h"
 
-#include "plugins/components/Logic/Assign.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/InputOutput/Record.h"
+#include "plugins/components/DiscreteProcessing/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Record.h"
 
 Smart_Record_Arena::Smart_Record_Arena() {
 }

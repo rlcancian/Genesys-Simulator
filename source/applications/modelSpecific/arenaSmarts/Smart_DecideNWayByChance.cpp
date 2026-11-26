@@ -17,10 +17,10 @@
 #include "kernel/simulator/Simulator.h"
 
 // Components for the model
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/Decisions/Decide.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 
 Smart_DecideNWayByChance::Smart_DecideNWayByChance() {
 

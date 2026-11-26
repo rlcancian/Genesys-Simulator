@@ -1,0 +1,106 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   Process.h
+ * Author: rafael.luiz.cancian
+ *
+ * Created on 22 de Maio de 2019, 18:41
+ */
+
+#ifndef PROCESS_H
+#define PROCESS_H
+
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Release.h"
+
+/*!
+ * \brief Composite component that always chains an internal Seize, Delay
+ * and Release to model "seize a resource, hold it for a while, release it".
+ *
+ * Arena correspondence: the "Process module" (Rockwell Automation, *Getting
+ * Started with Arena*, "The Basic Process Panel", pp. 33-35, plus the
+ * "Process module — Resource dialog box", p. 35). Priority, the
+ * QueueableItem and the SeizeRequests list are forwarded to the internal
+ * Seize; the delay expression/time unit are forwarded to the internal
+ * Delay; see Seize, Delay and Release for their own accessors.
+ *
+ * Known differences from Arena, see
+ * `docs/ai_assistants/reference/ARENA_GENESYS_COMPATIBILITY.md` §6.5 for
+ * full detail:
+ * - there is no Action selector (Delay / Seize Delay Release / Seize Delay /
+ *   Delay Release); a Process instance always builds all three
+ *   sub-components — a standalone Delay is the closest substitute for
+ *   Arena's resource-free Action variants;
+ * - `setAllocationType()`/`getAllocationType()` control the internal
+ *   Seize's allocation category, not the internal Delay's, so a Process
+ *   component's own processing time stays permanently categorized as
+ *   "Wait" (Delay's own default) rather than reaching Arena's typical
+ *   "Value Added" default — flagged as a bug candidate pending maintainer
+ *   confirmation, not fixed here.
+ */
+class Process : public ModelComponent {
+public: // constructors
+	Process(Model* model, std::string name = "");
+	virtual ~Process() = default;
+public: // virtual
+	virtual std::string show() override;
+public: // static
+	static PluginInformation* GetPluginInformation();
+	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
+	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
+public:
+	void setPriority(unsigned short _priority);
+	unsigned short getPriority() const;
+	void setPriorityExpression(std::string priority);
+	std::string getPriorityExpression() const;
+	void setAllocationType(Util::AllocationType _allocationType);
+	Util::AllocationType getAllocationType() const;
+	List<SeizableItem*>* getSeizeRequests() const;
+	void addSeizeRequest(SeizableItem* newRequest);
+	void removeSeizeRequest(SeizableItem* request);
+	void setQueueableItem(QueueableItem* _queueableItem);
+	QueueableItem* getQueueableItem() const;
+	void setDelayExpression(std::string _delayExpression);
+	void setDelayExpression(std::string _delayExpression, Util::TimeUnit _delayTimeUnit);
+	std::string delayExpression() const;
+	void setDelayTimeUnit(Util::TimeUnit _delayTimeUnit);
+	Util::TimeUnit delayTimeUnit() const;
+protected: // virtual
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	// virtual void _initBetweenReplications();
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+protected: // virtual
+	virtual bool _check(std::string& errorMessage) override;
+protected: // virtual
+	// virtual void _createInternalStatisticReporters() override;
+	virtual void _createNonEditableDataDefinitions() override;
+	virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalAndAttachedData() override;
+
+protected:
+
+private: // methods
+	void _moveSeizeRequest(int from, int to);
+	void _adjustConnections();
+	void _ensureInternalComponents();
+	void _reconcileInternalComponents();
+	bool _hasConsistentInternalChain(std::string& errorMessage) const;
+private: // attributes 1:1
+	Seize* _seize = nullptr;
+	Delay* _delay = nullptr;
+	Release* _release = nullptr;
+	bool _flagConstructing;
+	//ModelComponent* _nextComponent = nullptr;
+	//unsigned int _nextInput;
+private: // attributes 1:n
+};
+
+#endif /* PROCESS_H */

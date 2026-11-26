@@ -35,7 +35,7 @@
 #include "ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "UtilGUI.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 #include "kernel/simulator/model/Model.h"
 #include <QPainter>
 #include <QRgba64>

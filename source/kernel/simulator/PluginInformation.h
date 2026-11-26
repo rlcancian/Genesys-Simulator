@@ -125,7 +125,7 @@ private:
 	std::string _author = "prof. Dr. Ing. Rafael Luiz Cancian";
 	std::string _date = "01/08/2018";
 	std::string _version = "0.9.1";
-	std::string _category = "DiscreteProcessing";
+	std::string _category = "Arena";
 	// Optional direct ModelDataDefinition base type, used to discover compatible
 	// concrete factories without instantiating plugins or hard-coding GUI types.
 	std::string _dataDefinitionBaseTypeName;

@@ -30,7 +30,7 @@
  */
 
 #include "dialogBreakpoint.h"
-#include "plugins/components/Transfer/Access.h"
+#include "plugins/components/DiscreteProcessing/Transportation/Access.h"
 #include "../../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/util/List.h"
 

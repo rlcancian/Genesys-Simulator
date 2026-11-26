@@ -19,15 +19,15 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/Template/TemplateComponent.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/Logic/Assign.h"
-#include "plugins/components/DiscreteProcessing/Seize.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/DiscreteProcessing/Release.h"
-#include "plugins/components/DiscreteProcessing/Clone.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Process.h"
+#include "plugins/components/DiscreteProcessing/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Release.h"
+#include "plugins/components/DiscreteProcessing/Synchronization/Clone.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/Logic/Variable.h"
 

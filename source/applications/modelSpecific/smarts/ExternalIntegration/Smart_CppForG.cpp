@@ -13,9 +13,9 @@
 #include "Smart_CppForG.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "kernel/simulator/model/ModelSimulation.h"
 
 Smart_CppForG::Smart_CppForG() {

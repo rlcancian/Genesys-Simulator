@@ -4,7 +4,7 @@
 #include "actions/DecideConditionUndoCommand.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/ModelGraphicsScene.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 
 namespace {
 GraphicalModelComponent* findGraphicalComponent(ModelGraphicsScene* scene, Decide* decide) {

@@ -15,7 +15,7 @@
 #define Smart_DELAYBASEDONREPLICATION_H
 
 #include "../../BaseGenesysTerminalApplication.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 
 
 class Smart_DelayBasedOnReplication : public BaseGenesysTerminalApplication {

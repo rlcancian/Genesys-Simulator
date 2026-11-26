@@ -1,7 +1,7 @@
 #include "../../GuiExtensionContracts.h"
 #include "../../GuiExtensionPluginCatalog.h"
 
-#include "plugins/components/Transfer/PickStation.h"
+#include "plugins/components/DiscreteProcessing/Transfer/PickStation.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "QueueAnimationController.h"

@@ -552,7 +552,7 @@ PluginInformation* Resource::GetPluginInformation() {
     info->insertDynamicLibFileDependence("failure.so");
     info->insertDynamicLibFileDependence("schedule.so");
     //info->set...
-    info->setCategory("DiscreteProcessing");
+    info->setCategory("Arena");
     return info;
 }
 

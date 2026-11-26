@@ -6,9 +6,9 @@
 #include "kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/essentialPlugins/Entity.h"
-#include "plugins/components/Decisions/Remove.h"
-#include "plugins/components/Decisions/Search.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/Decisions/Remove.h"
+#include "plugins/components/DiscreteProcessing/Decisions/Search.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 
 #include <vector>

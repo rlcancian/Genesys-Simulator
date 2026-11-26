@@ -4,11 +4,11 @@
 // GEnSyS Simulator
 #include "kernel/simulator/Simulator.h"
 // Model Components
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/DiscreteProcessing/Seize.h"
-#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Release.h"
 // Model data definitions
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"

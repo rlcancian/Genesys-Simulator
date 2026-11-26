@@ -12,12 +12,12 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
-#include "plugins/components/Logic/Assign.h"
-#include "plugins/components/InputOutput/Record.h"
-#include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Logic/Assign.h"
+#include "plugins/components/DiscreteProcessing/Logic/Record.h"
+#include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
+#include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 
 
 Smart_DefiningAttributesAsStrings::Smart_DefiningAttributesAsStrings() {

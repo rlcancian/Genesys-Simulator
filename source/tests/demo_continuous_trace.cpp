@@ -26,9 +26,9 @@
 #include "kernel/simulator/PluginManager.h"
 #include "plugins/data/Logic/Variable.h"
 #include "plugins/data/Continuous/ODESolver.h"
-#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "kernel/simulator/essentialPlugins/EntityType.h"
 #include "kernel/simulator/TraceManager.h"
 

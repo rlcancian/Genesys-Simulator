@@ -11,8 +11,8 @@
 #include "kernel/simulator/model/ModelSimulation.h"
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/BiochemicalSimulation/BacteriaColony.h"
-#include "plugins/components/Logic/Create.h"
-#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 

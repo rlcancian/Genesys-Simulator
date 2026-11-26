@@ -13,8 +13,8 @@
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/components/ModalModel/FSMState.h"
-#include "plugins/components/ModalModel/Submodel.h"
-#include "plugins/components/Logic/Create.h"
+#include "plugins/components/DiscreteProcessing/Logic/Submodel.h"
+#include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 
