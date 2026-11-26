@@ -224,8 +224,10 @@ bool ModelDataDefinition::_getSaveDefaultsOption() {
 }
 
 bool ModelDataDefinition::_loadInstance(PersistenceRecord* fields) {
-	int id = fields->loadField("id", -1);
-	if (id > 0) this->_id = id;
+	long int id = -1;
+	try { id = std::stol(fields->loadField("id", "-1")); }
+	catch (...) { return false; }
+	if (id > 0) this->_id = static_cast<Util::identification>(id);
 	else return false;
 
 	setName(fields->loadField("name", ""));

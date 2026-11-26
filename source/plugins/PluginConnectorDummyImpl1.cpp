@@ -55,6 +55,8 @@
 #include "plugins/components/DiscreteProcessing/Transfer/Leave.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Label.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Goto.h"
+#include "plugins/components/DiscreteProcessing/Transfer/Gosub.h"
+#include "plugins/components/DiscreteProcessing/Transfer/Return.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Move.h"
 #include "plugins/components/DiscreteProcessing/Synchronization/Match.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
@@ -218,6 +220,8 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("labeldefinition.so");
     filenames->insert("label.so");
     filenames->insert("goto.so");
+    filenames->insert("gosub.so");
+    filenames->insert("return.so");
     filenames->insert("queue.so");
     filenames->insert("resource.so");
     filenames->insert("variable.so");
@@ -423,6 +427,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Label::GetPluginInformation;
     else if (fn == "goto.so")
         GetInfo = &Goto::GetPluginInformation;
+    else if (fn == "gosub.so")
+        GetInfo = &Gosub::GetPluginInformation;
+    else if (fn == "return.so")
+        GetInfo = &Return::GetPluginInformation;
     else if (fn == "queue.so")
         GetInfo = &Queue::GetPluginInformation;
     else if (fn == "resource.so")

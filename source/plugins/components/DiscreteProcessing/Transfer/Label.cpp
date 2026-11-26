@@ -1,6 +1,7 @@
 #include "plugins/components/DiscreteProcessing/Transfer/Label.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Route.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Goto.h"
+#include "plugins/components/DiscreteProcessing/Transfer/Gosub.h"
 #include "plugins/data/DiscreteProcessing/Transfer/Sequence.h"
 #include "../../../../kernel/simulator/model/Model.h"
 #include <algorithm>
@@ -46,6 +47,12 @@ Label::~Label() {
         for (auto* component : *_parentModel->getComponentManager()->getAllComponents()) {
             if (!component || component == this) continue;
             if (auto* sender = dynamic_cast<Goto*>(component)) {
+                const auto* attached = sender->getAttachedData();
+                const auto destination = attached->find("LabelDefinition");
+                if (destination != attached->end() && destination->second == definition)
+                    sender->setLabelDefinition(nullptr);
+            }
+            if (auto* sender = dynamic_cast<Gosub*>(component)) {
                 const auto* attached = sender->getAttachedData();
                 const auto destination = attached->find("LabelDefinition");
                 if (destination != attached->end() && destination->second == definition)
