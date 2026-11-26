@@ -15,7 +15,7 @@
 #define QUEUEABLEITEM_H
 
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "../../../data/Logic/Set.h"
+#include "../../../data/DiscreteProcessing/Logic/Set.h"
 #include "../../../../kernel/simulator/model/ModelDataManager.h"
 
 // @TODO should inhere from a common base to SeizeableItem

@@ -12,7 +12,7 @@
 #include "plugins/components/DiscreteProcessing/Logic/Read.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 #include <atomic>
 #include <cstdio>
@@ -84,7 +84,7 @@ TEST_F(ReadFixture, MetadataAndStaticPluginRegistration) {
     std::unique_ptr<PluginInformation> info(Read::GetPluginInformation());
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), "Read");
-    EXPECT_EQ(info->getCategory(), "InputOutput");
+    EXPECT_EQ(info->getCategory(), "Arena/Logic");
     EXPECT_EQ(info->getMinimumInputs(), 1u);
     EXPECT_EQ(info->getMaximumInputs(), 1u);
     EXPECT_EQ(info->getMinimumOutputs(), 1u);

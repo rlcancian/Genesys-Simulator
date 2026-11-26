@@ -24,7 +24,7 @@
 #include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/DiscreteProcessing/Logic/Assign.h"
 #include "plugins/components/DiscreteProcessing/Logic/Decide.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Release.h"

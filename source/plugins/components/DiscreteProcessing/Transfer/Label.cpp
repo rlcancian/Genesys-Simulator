@@ -1,7 +1,7 @@
 #include "plugins/components/DiscreteProcessing/Transfer/Label.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Route.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Goto.h"
-#include "plugins/data/Transfer/Sequence.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Sequence.h"
 #include "../../../../kernel/simulator/model/Model.h"
 #include <algorithm>
 

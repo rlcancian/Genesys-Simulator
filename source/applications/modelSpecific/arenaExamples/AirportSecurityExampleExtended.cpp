@@ -6,7 +6,7 @@
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Logic/Assign.h"
 #include "plugins/components/DiscreteProcessing/Logic/Record.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 
 AirportSecurityExampleExtended::AirportSecurityExampleExtended() {

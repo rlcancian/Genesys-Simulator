@@ -20,7 +20,7 @@
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 
 // Model Components
 #include "plugins/components/DiscreteProcessing/SourceSink/Create.h"

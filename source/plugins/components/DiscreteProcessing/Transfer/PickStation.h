@@ -18,7 +18,7 @@
 #include "../../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/util/List.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 
 #include "PickableStationItem.h"
 

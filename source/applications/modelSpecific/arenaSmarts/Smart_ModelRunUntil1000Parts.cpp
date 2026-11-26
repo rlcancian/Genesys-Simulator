@@ -23,7 +23,7 @@
 #include "plugins/components/DiscreteProcessing/Allocation/Process.h"
 #include "plugins/components/DiscreteProcessing/Logic/Assign.h"
 
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 
 

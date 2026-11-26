@@ -26,7 +26,7 @@
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
 #include "../../../kernel/simulator/essentialPlugins/Entity.h"
 
-#include "../../../plugins/data/Logic/Variable.h"
+#include "../../../plugins/data/DiscreteProcessing/Logic/Variable.h"
 #include "../../../plugins/data/DiscreteProcessing/Queue.h"
 
 #include "../../../tools/Statistics/FitterDefaultImpl.h"

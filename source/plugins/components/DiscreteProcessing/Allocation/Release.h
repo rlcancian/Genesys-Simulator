@@ -19,7 +19,7 @@
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 
 /*!
  * \brief Gives up control of one or more previously seized resources,

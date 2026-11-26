@@ -17,7 +17,7 @@
 #include <string>
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../../kernel/simulator/model/Model.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"

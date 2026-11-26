@@ -15,7 +15,7 @@
 #include <cassert>
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
-#include "../../../data/Grouping/EntityGroup.h"
+#include "../../../data/DiscreteProcessing/Grouping/EntityGroup.h"
 #include "kernel/simulator/Simulator.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

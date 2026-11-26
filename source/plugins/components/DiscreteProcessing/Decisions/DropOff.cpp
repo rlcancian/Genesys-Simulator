@@ -14,7 +14,7 @@
 #include "plugins/components/DiscreteProcessing/Decisions/DropOff.h"
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
-#include "../../../data/Grouping/EntityGroup.h"
+#include "../../../data/DiscreteProcessing/Grouping/EntityGroup.h"
 #include <algorithm>
 #include <cstdlib>
 #include <vector>

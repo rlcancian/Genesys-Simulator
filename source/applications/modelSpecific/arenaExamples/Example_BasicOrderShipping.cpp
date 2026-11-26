@@ -28,8 +28,8 @@
 #include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 #include "plugins/components/DiscreteProcessing/Logic/Record.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 Example_BasicOrderShipping::Example_BasicOrderShipping() {
 }

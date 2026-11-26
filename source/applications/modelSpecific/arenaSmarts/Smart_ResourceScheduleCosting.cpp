@@ -10,7 +10,7 @@
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Process.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 
 Smart_ResourceScheduleCosting::Smart_ResourceScheduleCosting() {

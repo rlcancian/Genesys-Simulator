@@ -14,7 +14,7 @@
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "../../../../kernel/simulator/model/ModelDataManager.h"
-#include "../../../../plugins/data/Logic/Variable.h"
+#include "../../../../plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 class AnimationVariable : public QGraphicsRectItem {
 public:

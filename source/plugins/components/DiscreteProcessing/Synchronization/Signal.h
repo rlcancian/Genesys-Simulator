@@ -15,7 +15,7 @@
 #define SIGNAL_H
 
 #include "../../../../kernel/simulator/model/ModelComponent.h"
-#include "../../../data/Synchronization/SignalData.h"
+#include "../../../data/DiscreteProcessing/Synchronization/SignalData.h"
 
 /*!
  * \brief Broadcasts a signal value, releasing up to `_limitExpression`

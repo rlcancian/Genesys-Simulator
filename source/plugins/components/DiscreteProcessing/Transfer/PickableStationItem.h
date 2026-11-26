@@ -15,8 +15,8 @@
 
 #include "../../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
-#include "../../../data/Transfer/Station.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
+#include "../../../data/DiscreteProcessing/Transfer/Station.h"
 
 class PickableStationItem {
 public:

@@ -19,7 +19,7 @@
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/persistence/GenSerializer.h"
 #include "kernel/simulator/essentialPlugins/Entity.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Label.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
@@ -28,7 +28,7 @@
 #include "plugins/components/DiscreteProcessing/Synchronization/Signal.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Goto.h"
-#include "plugins/data/Transfer/LabelDefinition.h"
+#include "plugins/data/DiscreteProcessing/Transfer/LabelDefinition.h"
 
 namespace {
 namespace fs = std::filesystem;

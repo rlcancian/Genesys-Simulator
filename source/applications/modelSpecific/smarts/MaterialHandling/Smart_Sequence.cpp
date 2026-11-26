@@ -23,8 +23,8 @@
 #include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 #include "plugins/components/DiscreteProcessing/Logic/Assign.h"
 
-#include "plugins/data/Transfer/Sequence.h"
-#include "plugins/data/Transfer/Station.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Sequence.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Station.h"
 
 Smart_Sequence::Smart_Sequence() {
 }

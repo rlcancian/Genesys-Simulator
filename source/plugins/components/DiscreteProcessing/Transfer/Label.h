@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../../../kernel/simulator/model/ModelComponent.h"
-#include "../../../data/Transfer/LabelDefinition.h"
+#include "../../../data/DiscreteProcessing/Transfer/LabelDefinition.h"
 
 /**
  * Receiving endpoint for transfer events. Owns one internal LabelDefinition

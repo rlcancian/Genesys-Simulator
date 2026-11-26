@@ -13,7 +13,7 @@
 #include "plugins/data/ModalModel/EFSMNetwork.h"
 #include "plugins/data/ModalModel/DefaultNetwork.h"
 #include "plugins/data/ModalModel/NetworkActivation.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 #include <memory>
 #include <algorithm>

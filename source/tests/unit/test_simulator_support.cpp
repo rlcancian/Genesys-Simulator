@@ -544,7 +544,7 @@ TEST(SimulatorSupportTest, SystemDependencyResolverInstallDiagnosticIncludesComm
 TEST(SimulatorSupportTest, PluginInformationDefaultsAndContainerReplacementWork) {
     PluginInformation info("Delay", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
 
-    EXPECT_EQ(info.getCategory(), "DiscreteProcessing");
+    EXPECT_EQ(info.getCategory(), "Arena");
     EXPECT_FALSE(info.isGenerateReport());
     EXPECT_FALSE(info.isSource());
     EXPECT_FALSE(info.isSink());

@@ -14,8 +14,8 @@
 #ifndef SEIZABLEITEM_H
 #define SEIZABLEITEM_H
 
-#include "plugins/data/DiscreteProcessing/Resource.h"
-#include "../../../data/Logic/Set.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
+#include "../../../data/DiscreteProcessing/Logic/Set.h"
 #include "../../../../kernel/simulator/model/ModelDataManager.h"
 
 // @TODO should inhere from a common base to QueueableItem

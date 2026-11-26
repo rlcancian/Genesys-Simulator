@@ -58,11 +58,11 @@
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
-#include "plugins/data/Synchronization/SignalData.h"
+#include "plugins/data/DiscreteProcessing/Synchronization/SignalData.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/DiscreteProcessing/Failure.h"
-#include "plugins/data/Logic/Set.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Failure.h"
+#include "plugins/data/DiscreteProcessing/Logic/Set.h"
 #include "plugins/data/AI/AISupport.h"
 #include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
@@ -70,8 +70,8 @@
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "plugins/data/Template/TemplateDataDefinition.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
-#include "plugins/data/Grouping/EntityGroup.h"
-#include "plugins/data/Transfer/Station.h"
+#include "plugins/data/DiscreteProcessing/Grouping/EntityGroup.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Station.h"
 
 #include <functional>
 

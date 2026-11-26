@@ -24,8 +24,8 @@
 #include "plugins/components/DiscreteProcessing/Synchronization/Signal.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 
-#include "plugins/data/Synchronization/SignalData.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Synchronization/SignalData.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 
 Smart_WaitForSignal::Smart_WaitForSignal() {
 }

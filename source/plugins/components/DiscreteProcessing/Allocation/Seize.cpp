@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"

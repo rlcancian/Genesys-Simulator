@@ -18,8 +18,8 @@
 #include "../../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Plugin.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
-#include "../../../data/Logic/AssignmentItem.h"
-#include "../../../data/Logic/Variable.h"
+#include "../../../data/DiscreteProcessing/Logic/AssignmentItem.h"
+#include "../../../data/DiscreteProcessing/Logic/Variable.h"
 
 /*!
  * \brief Component that evaluates one or more (destination, expression)
@@ -33,7 +33,7 @@
  * as resource capacity or simulation end time).
  *
  * Each entry in \c _assignments (see Assignment, in
- * `plugins/data/Logic/AssignmentItem.h`) only distinguishes Attribute vs.
+ * `plugins/data/DiscreteProcessing/Logic/AssignmentItem.h`) only distinguishes Attribute vs.
  * Variable destinations; an optional `name[index]` syntax on the
  * destination string is the closest correspondence to Arena's separate
  * Row/Column fields.

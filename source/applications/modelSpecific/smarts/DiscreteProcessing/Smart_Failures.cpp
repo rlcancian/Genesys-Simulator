@@ -10,7 +10,7 @@
 #include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Release.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
-#include "plugins/data/DiscreteProcessing/Failure.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Failure.h"
 
 Smart_Failures::Smart_Failures() {
 }

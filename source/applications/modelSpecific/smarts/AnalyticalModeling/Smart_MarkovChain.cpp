@@ -23,7 +23,7 @@
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 Smart_MarkovChain::Smart_MarkovChain() {
 }

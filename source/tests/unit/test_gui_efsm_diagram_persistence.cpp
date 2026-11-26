@@ -42,7 +42,7 @@
 #include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Goto.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Label.h"
-#include "plugins/data/Transfer/LabelDefinition.h"
+#include "plugins/data/DiscreteProcessing/Transfer/LabelDefinition.h"
 #include "kernel/simulator/essentialPlugins/EntityType.h"
 #include "kernel/simulator/model/ModelComponentManager.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"

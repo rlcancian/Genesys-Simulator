@@ -18,7 +18,7 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
-#include "../../data/Logic/Variable.h"
+#include "../../data/DiscreteProcessing/Logic/Variable.h"
 
 #include <algorithm>
 #include <cassert>

@@ -27,9 +27,9 @@
 #include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Enter.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Release.h"
-#include "plugins/data/Transfer/Station.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/Logic/Set.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Station.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
+#include "plugins/data/DiscreteProcessing/Logic/Set.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Route.h"
 
 Banking_Transactions::Banking_Transactions() {

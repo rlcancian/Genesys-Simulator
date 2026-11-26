@@ -22,26 +22,26 @@
 #include "kernel/simulator/Plugin.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "../../plugins/data/Logic/Variable.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "../../plugins/data/DiscreteProcessing/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Release.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/ResourceSetSelection.h"
-#include "plugins/data/DiscreteProcessing/Failure.h"
-#include "plugins/data/Logic/Formula.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Failure.h"
+#include "plugins/data/DiscreteProcessing/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
-#include "plugins/data/Transfer/Conveyor.h"
-#include "plugins/data/Transfer/Distance.h"
-#include "plugins/data/Transfer/Sequence.h"
-#include "plugins/data/Transfer/Segment.h"
-#include "plugins/data/Transfer/Transporter.h"
-#include "../../plugins/data/Synchronization/SignalData.h"
-#include "../../plugins/data/Transfer/Station.h"
-#include "../../plugins/data/Logic/Set.h"
-#include "plugins/data/Transfer/LabelDefinition.h"
+#include "plugins/data/DiscreteProcessing/Transportation/Conveyor.h"
+#include "plugins/data/DiscreteProcessing/Transportation/Distance.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Sequence.h"
+#include "plugins/data/DiscreteProcessing/Transportation/Segment.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Transporter.h"
+#include "../../plugins/data/DiscreteProcessing/Synchronization/SignalData.h"
+#include "../../plugins/data/DiscreteProcessing/Transfer/Station.h"
+#include "../../plugins/data/DiscreteProcessing/Logic/Set.h"
+#include "plugins/data/DiscreteProcessing/Transfer/LabelDefinition.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Label.h"
-#include "../../plugins/data/Transfer/Storage.h"
-#include "../../plugins/data/InputOutput/File.h"
+#include "../../plugins/data/DiscreteProcessing/Transfer/Storage.h"
+#include "../../plugins/data/DiscreteProcessing/Logic/File.h"
 #include "../../plugins/data/ExternalIntegration/CppCompiler.h"
 #include "../../plugins/data/ExternalIntegration/PythonRuntime.h"
 #include "../../plugins/data/ExternalIntegration/SPICERunner.h"
@@ -65,7 +65,7 @@
 #include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
 #include "plugins/components/WholeCellModeling/MetabolicStateProjectionComponent.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
-#include "../../plugins/data/Logic/AssignmentItem.h"
+#include "../../plugins/data/DiscreteProcessing/Logic/AssignmentItem.h"
 #include "plugins/data/Template/TemplateDataDefinition.h"
 #include "kernel/util/Util.h"
 #include "tools/Biochemical/MassActionOdeSystem.h"
@@ -85,7 +85,7 @@
 #include "plugins/components/WholeCellModeling/StochasticTranslation.h"
 #define private public
 #define protected public
-#include "../../plugins/data/Grouping/EntityGroup.h"
+#include "../../plugins/data/DiscreteProcessing/Grouping/EntityGroup.h"
 #undef protected
 #undef private
 #include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
@@ -3617,11 +3617,11 @@ TEST(SimulatorRuntimeTest, DistanceSaveAndLoadPreservesEntries) {
     EXPECT_FALSE(second->bidirectional);
 }
 
-TEST(SimulatorRuntimeTest, DistancePluginInformationExposesMaterialHandlingCategory) {
+TEST(SimulatorRuntimeTest, DistancePluginInformationExposesTransportationCategory) {
     std::unique_ptr<PluginInformation> info(Distance::GetPluginInformation());
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<Distance>());
-    EXPECT_EQ(info->getCategory(), "Transfer");
+    EXPECT_EQ(info->getCategory(), "Arena/Transportation");
 }
 
 TEST(SimulatorRuntimeTest, SegmentCheckFailsForMissingStationsAndNegativeLengths) {
@@ -3693,11 +3693,11 @@ TEST(SimulatorRuntimeTest, SegmentSaveAndLoadPreservesOrderedSteps) {
     EXPECT_DOUBLE_EQ(third->lengthToNext, 0.0);
 }
 
-TEST(SimulatorRuntimeTest, SegmentPluginInformationExposesMaterialHandlingCategory) {
+TEST(SimulatorRuntimeTest, SegmentPluginInformationExposesTransportationCategory) {
     std::unique_ptr<PluginInformation> info(Segment::GetPluginInformation());
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<Segment>());
-    EXPECT_EQ(info->getCategory(), "Transfer");
+    EXPECT_EQ(info->getCategory(), "Arena/Transportation");
 }
 
 TEST(SimulatorRuntimeTest, LabelCheckFailsWithoutEnteringComponent) {

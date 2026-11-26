@@ -16,7 +16,7 @@
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/data/AI/AISupport.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 
 namespace {
 std::string envOr(const char* name, const std::string& fallback) {

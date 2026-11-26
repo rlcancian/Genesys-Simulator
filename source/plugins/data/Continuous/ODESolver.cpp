@@ -10,7 +10,7 @@
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelSimulation.h"
 #include "kernel/simulator/Event.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 #include "kernel/util/Util.h"
 
 #include <sstream>

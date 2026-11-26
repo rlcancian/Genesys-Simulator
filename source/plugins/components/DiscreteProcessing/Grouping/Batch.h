@@ -16,7 +16,7 @@
 
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "../../../data/Grouping/EntityGroup.h"
+#include "../../../data/DiscreteProcessing/Grouping/EntityGroup.h"
 /*!
  * \brief Accumulates entities in an internal queue until a batch is
  * complete, then dispatches one representative entity for the group.

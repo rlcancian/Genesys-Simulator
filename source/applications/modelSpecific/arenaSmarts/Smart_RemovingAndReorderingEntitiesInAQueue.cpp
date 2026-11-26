@@ -22,7 +22,7 @@
 
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 
 Smart_RemovingAndReorderingEntitiesInAQueue::Smart_RemovingAndReorderingEntitiesInAQueue() {
 }

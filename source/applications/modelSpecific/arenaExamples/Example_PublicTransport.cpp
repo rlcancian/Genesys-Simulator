@@ -30,10 +30,10 @@
 #include "plugins/components/DiscreteProcessing/Decisions/PickUp.h"
 #include "plugins/components/DiscreteProcessing/Decisions/DropOff.h"
 #include "plugins/components/DiscreteProcessing/Decisions/Search.h"
-#include "plugins/data/Grouping/EntityGroup.h"
-#include "plugins/data/Transfer/Station.h"
+#include "plugins/data/DiscreteProcessing/Grouping/EntityGroup.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Station.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 Example_PublicTransport::Example_PublicTransport() {
 }

@@ -21,7 +21,7 @@
 #include "../../../../kernel/simulator/essentialPlugins/Counter.h"
 #include "kernel/simulator/Plugin.h"
 
-#include "../../../data/Logic/Formula.h"
+#include "../../../data/DiscreteProcessing/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 
 /*!

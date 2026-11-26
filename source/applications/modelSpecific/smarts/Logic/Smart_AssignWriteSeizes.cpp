@@ -29,7 +29,7 @@
 
 // Model data definitions
 #include "kernel/simulator/model/ModelDataManager.h"
-#include "plugins/data/Logic/Set.h"
+#include "plugins/data/DiscreteProcessing/Logic/Set.h"
 
 Smart_AssignWriteSeizes::Smart_AssignWriteSeizes() {
 }

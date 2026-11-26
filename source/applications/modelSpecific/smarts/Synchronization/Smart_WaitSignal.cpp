@@ -22,7 +22,7 @@
 #include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/DiscreteProcessing/Synchronization/Wait.h"
 #include "plugins/components/DiscreteProcessing/Synchronization/Signal.h"
-#include "plugins/data/Synchronization/SignalData.h"
+#include "plugins/data/DiscreteProcessing/Synchronization/SignalData.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 
 // Model data definitions

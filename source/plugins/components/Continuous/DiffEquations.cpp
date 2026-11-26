@@ -16,7 +16,7 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 //#include "kernel/simulator/Simulator.h"
 //#include "kernel/simulator/PluginManager.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 #include <algorithm>
 #include <cctype>

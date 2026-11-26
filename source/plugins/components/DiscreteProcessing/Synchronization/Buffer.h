@@ -16,7 +16,7 @@
 
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "../../../data/DiscreteProcessing/Queue.h"
-#include "../../../data/Synchronization/SignalData.h"
+#include "../../../data/DiscreteProcessing/Synchronization/SignalData.h"
 
 /*!
  This component ...

@@ -20,8 +20,8 @@
 #include "plugins/components/DiscreteProcessing/Transfer/Label.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Goto.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Route.h"
-#include "plugins/data/Transfer/Sequence.h"
-#include "plugins/data/Transfer/LabelDefinition.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Sequence.h"
+#include "plugins/data/DiscreteProcessing/Transfer/LabelDefinition.h"
 
 namespace {
 struct GotoProbe : Goto {
@@ -62,9 +62,9 @@ TEST_F(TransferFixture, PluginMetadataAndUniqueIdentities) {
     ASSERT_NE(defInfo, nullptr);
     ASSERT_NE(labelInfo, nullptr);
     ASSERT_NE(gotoInfo, nullptr);
-    EXPECT_EQ(defInfo->getCategory(), "Transfer");
-    EXPECT_EQ(labelInfo->getCategory(), "Transfer");
-    EXPECT_EQ(gotoInfo->getCategory(), "Transfer");
+    EXPECT_EQ(defInfo->getCategory(), "Arena/Transfer");
+    EXPECT_EQ(labelInfo->getCategory(), "Arena/Transfer");
+    EXPECT_EQ(gotoInfo->getCategory(), "Arena/Transfer");
     EXPECT_EQ(defInfo->getPluginTypename(), "LabelDefinition");
     EXPECT_EQ(labelInfo->getPluginTypename(), "Label");
     EXPECT_EQ(gotoInfo->getPluginTypename(), "Goto");

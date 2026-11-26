@@ -20,7 +20,7 @@
 #include "plugins/components/Continuous/LSODE.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 struct LSODESample {
 	double t;

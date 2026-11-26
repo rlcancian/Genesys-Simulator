@@ -14,7 +14,7 @@
 #include "kernel/statistics/SamplerDefaultImpl1.h"
 #include "kernel/statistics/Sampler_if.h"
 #include "kernel/simulator/model/ModelDataManager.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 #include <algorithm>

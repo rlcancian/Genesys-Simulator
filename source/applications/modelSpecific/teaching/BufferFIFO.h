@@ -16,8 +16,8 @@
 #include "plugins/components/DiscreteProcessing/Synchronization/Signal.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Logic/Decide.h"
-#include "plugins/data/Synchronization/SignalData.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Synchronization/SignalData.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 class BufferFIFO : public BaseGenesysTerminalApplication {
 public:

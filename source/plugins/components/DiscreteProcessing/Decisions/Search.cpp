@@ -16,7 +16,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Event.h"
-#include "../../../data/Grouping/EntityGroup.h"
+#include "../../../data/DiscreteProcessing/Grouping/EntityGroup.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include <algorithm>

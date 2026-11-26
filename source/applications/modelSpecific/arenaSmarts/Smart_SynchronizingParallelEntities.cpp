@@ -26,9 +26,9 @@
 #include "plugins/components/DiscreteProcessing/Synchronization/Clone.h"
 #include "plugins/components/DiscreteProcessing/Grouping/Batch.h"
 
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 Smart_SynchronizingParallelEntities::Smart_SynchronizingParallelEntities() {
 }

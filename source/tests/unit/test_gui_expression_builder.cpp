@@ -15,7 +15,7 @@
 #include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/WholeCellModeling/MolecularSpecies.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 #include <QApplication>
 #include <QClipboard>

@@ -4,7 +4,7 @@
 #include "../../../../kernel/simulator/essentialPlugins/Entity.h"
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/model/ModelDataManager.h"
-#include "../../../../plugins/data/Logic/Variable.h"
+#include "../../../../plugins/data/DiscreteProcessing/Logic/Variable.h"
 #include <algorithm>
 #include <cmath>
 #include <iterator>

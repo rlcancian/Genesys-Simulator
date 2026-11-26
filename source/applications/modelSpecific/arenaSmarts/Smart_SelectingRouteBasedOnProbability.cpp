@@ -31,7 +31,7 @@
 #include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 
 // Model data definitions

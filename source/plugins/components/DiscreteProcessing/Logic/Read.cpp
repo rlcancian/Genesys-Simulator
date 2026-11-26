@@ -4,7 +4,7 @@
 #include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelSimulation.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 #include <algorithm>
 #include <charconv>

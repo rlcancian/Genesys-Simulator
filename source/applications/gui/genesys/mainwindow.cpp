@@ -65,7 +65,7 @@
 //#include "actions/PasteUndoCommand.h"
 //#include "actions/DeleteUndoCommand.h"
 // @TODO: Should NOT be hardcoded!!! (Used to visualize variables)
-#include "../../../plugins/data/Logic/Variable.h"// std
+#include "../../../plugins/data/DiscreteProcessing/Logic/Variable.h"// std
 #include <string>
 #include <fstream>
 #include <sstream>

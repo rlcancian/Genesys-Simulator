@@ -11,7 +11,7 @@
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {

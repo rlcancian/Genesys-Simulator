@@ -13,7 +13,7 @@
 #include "services/GraphicalModelSerializer.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include "plugins/components/DiscreteProcessing/Logic/Decide.h"
 
 namespace {
@@ -287,7 +287,7 @@ TEST(GuiClassroomLifecycle, PropertyCommitMarksDirtyBeforeDeferredRefresh) {
 #include "plugins/components/DiscreteProcessing/Allocation/Seize.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Release.h"
-#include "plugins/data/Logic/Set.h"
+#include "plugins/data/DiscreteProcessing/Logic/Set.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "kernel/simulator/essentialPlugins/Counter.h"
 

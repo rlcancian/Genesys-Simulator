@@ -61,7 +61,7 @@ class DataComponentProperty;
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/PropertyGenesys.h"
 #include "../../../../kernel/simulator/model/ModelDataDefinition.h"
-#include "../../../../plugins/data/Logic/Variable.h"
+#include "../../../../plugins/data/DiscreteProcessing/Logic/Variable.h"
 /**
  * @brief Lightweight event envelope used to notify GUI changes in the graphics scene.
  */

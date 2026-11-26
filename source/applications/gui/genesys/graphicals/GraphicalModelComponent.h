@@ -18,7 +18,7 @@
 #include "../../../../kernel/simulator/essentialPlugins/Counter.h"
 #include "../../../../kernel/simulator/PropertyGenesys.h"
 #include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/data/Logic/Variable.h"
+#include "../../../../plugins/data/DiscreteProcessing/Logic/Variable.h"
 #include "kernel/simulator/Plugin.h"
 #include "graphicals/GraphicalImageAnimation.h"
 #include "GraphicalComponentPort.h"

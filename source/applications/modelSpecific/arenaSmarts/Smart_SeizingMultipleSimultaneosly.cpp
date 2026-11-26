@@ -25,7 +25,7 @@
 #include "plugins/components/DiscreteProcessing/Allocation/Release.h"
 
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 
 Smart_SeizingMultipleSimultaneosly::Smart_SeizingMultipleSimultaneosly() {
 }

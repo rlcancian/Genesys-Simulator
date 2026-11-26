@@ -20,7 +20,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/PluginManager.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 #include "plugins/data/Continuous/ODESolver.h"
 #include "plugins/components/DiscreteProcessing/SourceSink/Create.h"
 #include "plugins/components/Continuous/ContinuousSystemComponent.h"

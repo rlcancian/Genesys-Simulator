@@ -7,7 +7,7 @@
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "plugins/data/ModalModel/EFSMNetwork.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 Smart_ModalModelFSM::Smart_ModalModelFSM() {
 }

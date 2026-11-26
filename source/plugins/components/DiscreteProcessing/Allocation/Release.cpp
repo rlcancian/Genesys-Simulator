@@ -15,7 +15,7 @@
 #include "../../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 //#include "kernel/simulator/Attribute.h"
 #include <stdexcept>
 #include <cmath>

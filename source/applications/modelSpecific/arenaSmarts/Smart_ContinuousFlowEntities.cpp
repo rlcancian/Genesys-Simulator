@@ -28,8 +28,8 @@
 #include "plugins/components/DiscreteProcessing/Allocation/Delay.h"
 #include "plugins/components/DiscreteProcessing/Allocation/Release.h"
 #include "plugins/components/DiscreteProcessing/Synchronization/Clone.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
+#include "plugins/data/DiscreteProcessing/Logic/Variable.h"
 
 Smart_ContinuousFlowEntities::Smart_ContinuousFlowEntities() {
 }

@@ -18,8 +18,8 @@
 #include "../../../../kernel/simulator/model/Model.h"
 #include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
-#include "../../../data/Logic/Variable.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "../../../data/DiscreteProcessing/Logic/Variable.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 
 namespace {
 std::string _trimCopy(std::string value) {

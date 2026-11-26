@@ -3,7 +3,7 @@
 
 #include "SeizableItem.h"
 #include "kernel/simulator/model/Model.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
 #include <cmath>
 #include <cstdlib>
 #include <limits>

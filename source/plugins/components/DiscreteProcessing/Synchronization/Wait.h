@@ -16,7 +16,7 @@
 
 #include "../../../../kernel/simulator/model/ModelComponent.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "../../../data/Synchronization/SignalData.h"
+#include "../../../data/DiscreteProcessing/Synchronization/SignalData.h"
 #include "kernel/simulator/OnEventManager.h"
 
 /*!

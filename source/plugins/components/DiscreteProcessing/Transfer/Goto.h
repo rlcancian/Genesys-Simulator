@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../../../kernel/simulator/model/ModelComponent.h"
-#include "../../../data/Transfer/LabelDefinition.h"
+#include "../../../data/DiscreteProcessing/Transfer/LabelDefinition.h"
 
 /** Transfers its incoming entity to a LabelDefinition without a conventional output. */
 class Goto : public ModelComponent {

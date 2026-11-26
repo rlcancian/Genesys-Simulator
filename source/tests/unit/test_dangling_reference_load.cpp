@@ -18,8 +18,8 @@
 #include "plugins/components/DiscreteProcessing/Transfer/Enter.h"
 #include "plugins/components/DiscreteProcessing/Transfer/Leave.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/Transfer/Station.h"
+#include "plugins/data/DiscreteProcessing/Allocation/Resource.h"
+#include "plugins/data/DiscreteProcessing/Transfer/Station.h"
 
 namespace {
 
